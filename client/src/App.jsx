@@ -9402,39 +9402,38 @@ export default function App() {
           const nextRevealedQuestions = { ...revealedQuestions };
           delete nextRevealedQuestions[idx];
 
+          const nextTableAnswers = { ...tableAnswers };
+          Object.keys(nextTableAnswers).forEach(k => {
+            if (k.startsWith(`${idx}_`)) delete nextTableAnswers[k];
+          });
+          
+          const nextTableGradingResults = { ...tableGradingResults };
+          Object.keys(nextTableGradingResults).forEach(k => {
+            if (k.startsWith(`${idx}_`)) delete nextTableGradingResults[k];
+          });
+
+          const nextTutorAnswers = { ...tutorAnswers };
+          delete nextTutorAnswers[key];
+
+          const nextTutorInputText = { ...tutorInputText };
+          delete nextTutorInputText[key];
+
+          const nextShowAnswersState = { ...showAnswersState };
+          delete nextShowAnswersState[idx];
+
           setAiQuestions(updated);
           setSelectedAnswers(nextSelectedAnswers);
           setRevealedQuestions(nextRevealedQuestions);
+          setTableAnswers(nextTableAnswers);
+          setTableGradingResults(nextTableGradingResults);
+          setTutorAnswers(nextTutorAnswers);
+          setTutorInputText(nextTutorInputText);
+          setShowAnswersState(nextShowAnswersState);
 
-          setTableAnswers(prev => {
-            const copy = { ...prev };
-            Object.keys(copy).forEach(k => {
-              if (k.startsWith(`${idx}_`)) delete copy[k];
-            });
-            return copy;
-          });
-          setTableGradingResults(prev => {
-            const copy = { ...prev };
-            Object.keys(copy).forEach(k => {
-              if (k.startsWith(`${idx}_`)) delete copy[k];
-            });
-            return copy;
-          });
-          setTutorAnswers(prev => {
-            const copy = { ...prev };
-            delete copy[key];
-            return copy;
-          });
-          setTutorInputText(prev => {
-            const copy = { ...prev };
-            delete copy[key];
-            return copy;
-          });
-          setShowAnswersState(prev => {
-            const copy = { ...prev };
-            delete copy[idx];
-            return copy;
-          });
+          tableAnswersRef.current = nextTableAnswers;
+          tableGradingResultsRef.current = nextTableGradingResults;
+          tutorAnswersRef.current = nextTutorAnswers;
+          tutorInputTextRef.current = nextTutorInputText;
 
           // 주관식인 경우 혹시 열려있는 아코디언 섹션도 초기화
           setOpenSections(prev => {
@@ -9454,9 +9453,15 @@ export default function App() {
             body: JSON.stringify({
               topicId: selectedTopic?.id,
               scheduleId: selectedTopic?.schedule_id,
+              sessionId: reviewSessionId,
               questions: updated,
               selectedAnswers: nextSelectedAnswers,
               revealedQuestions: nextRevealedQuestions,
+              tableAnswers: nextTableAnswers,
+              tableGradingResults: nextTableGradingResults,
+              tutorAnswers: nextTutorAnswers,
+              tutorInputText: nextTutorInputText,
+              chatHistory: chatHistoryRef.current,
               savedQuizScroll: quizBodyRef.current?.scrollTop || 0
             })
           }).catch(e => console.warn('복습 세션 동기화 실패:', e));
