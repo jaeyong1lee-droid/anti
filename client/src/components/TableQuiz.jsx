@@ -705,23 +705,12 @@ export const TableQuiz = React.memo(function TableQuiz({
     e.preventDefault();
     e.stopPropagation();
 
-    const containerEl = e.currentTarget.closest('.floated-table-quiz') || (containerRef.current ? containerRef.current.querySelector('.floated-table-quiz') : null);
-    let startPopupX = floatedPosRef.current.x;
-    let startPopupY = floatedPosRef.current.y;
-
-    if (containerEl) {
-      const rect = containerEl.getBoundingClientRect();
-      startPopupX = rect.left;
-      startPopupY = rect.top;
-      floatedPosRef.current = { x: startPopupX, y: startPopupY };
-    }
-
     const isTouch = e.type === 'touchstart';
     const clientX = isTouch ? e.touches[0].clientX : e.clientX;
     const clientY = isTouch ? e.touches[0].clientY : e.clientY;
 
-    const startX = clientX;
-    const startY = clientY;
+    const startX = clientX - floatedPosRef.current.x;
+    const startY = clientY - floatedPosRef.current.y;
 
     document.body.style.userSelect = 'none';
     document.body.style.cursor = 'grabbing';
@@ -732,34 +721,22 @@ export const TableQuiz = React.memo(function TableQuiz({
       iframe.style.pointerEvents = 'none';
     });
 
-    let moveRafId = null;
-
     const handleMove = (moveEvent) => {
       if (moveEvent.cancelable) moveEvent.preventDefault();
       const currentX = (moveEvent.touches && moveEvent.touches.length > 0) ? moveEvent.touches[0].clientX : moveEvent.clientX;
       const currentY = (moveEvent.touches && moveEvent.touches.length > 0) ? moveEvent.touches[0].clientY : moveEvent.clientY;
 
-      const dx = currentX - startX;
-      const dy = currentY - startY;
+      const newX = currentX - startX;
+      const newY = currentY - startY;
 
       const currentSize = floatedSizeRef.current;
-      const newX = Math.max(0, Math.min(window.innerWidth - currentSize.width, startPopupX + dx));
-      const newY = Math.max(0, Math.min(window.innerHeight - currentSize.height, startPopupY + dy));
+      const boundedX = Math.max(10, Math.min(window.innerWidth - currentSize.width - 10, newX));
+      const boundedY = Math.max(10, Math.min(window.innerHeight - currentSize.height - 10, newY));
 
-      floatedPosRef.current = { x: newX, y: newY };
-
-      if (moveRafId) cancelAnimationFrame(moveRafId);
-      moveRafId = requestAnimationFrame(() => {
-        if (containerEl) {
-          containerEl.style.left = `${newX}px`;
-          containerEl.style.top = `${newY}px`;
-        }
-      });
+      setFloatedPos({ x: boundedX, y: boundedY });
     };
 
     const handleMoveEnd = () => {
-      if (moveRafId) cancelAnimationFrame(moveRafId);
-
       document.body.style.userSelect = '';
       document.body.style.cursor = '';
       
@@ -768,10 +745,8 @@ export const TableQuiz = React.memo(function TableQuiz({
         iframe.style.pointerEvents = 'auto';
       });
 
-      const finalPos = floatedPosRef.current;
-      setFloatedPos(finalPos);
       try {
-        localStorage.setItem('anti_floated_table_pos', JSON.stringify(finalPos));
+        localStorage.setItem('anti_floated_table_pos', JSON.stringify(floatedPosRef.current));
       } catch (err) {}
 
       if (isTouch) {
