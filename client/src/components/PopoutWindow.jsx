@@ -130,6 +130,16 @@ export const PopoutWindow = ({ title, onClose, children, initWidth = 720, initHe
           Array.from(link.attributes).forEach(attr => {
             newLink.setAttribute(attr.name, attr.value);
           });
+          newLink.onerror = () => {
+            console.warn("Popout stylesheet load failed (possibly deleted due to new deployment). Reloading parent page to self-heal...");
+            try {
+              if (window.opener && !window.opener.closed) {
+                window.opener.location.reload();
+              } else {
+                window.location.reload();
+              }
+            } catch (e) {}
+          };
           destHead.appendChild(newLink);
         });
 
