@@ -274,11 +274,14 @@ export function ImageTabList({ formulaImages, setFormulaImages, handleSaveFormul
   };
 
   const filteredImages = formulaImages.filter(img => {
-    const query = formulaSearchQuery.toLowerCase();
-    return (img.title || '').toLowerCase().includes(query) ||
+    const query = formulaSearchQuery.toLowerCase().trim();
+    if (!query) return true;
+    const idMatch = String(img.id).toLowerCase() === query;
+    const textMatch = (img.title || '').toLowerCase().includes(query) ||
            (img.analysis || '').toLowerCase().includes(query) ||
            (img.intuitive || '').toLowerCase().includes(query) ||
            (img.description || '').toLowerCase().includes(query);
+    return idMatch || textMatch;
   });
 
   if (!formulaImages || formulaImages.length === 0) {
@@ -382,6 +385,17 @@ export function ImageTabList({ formulaImages, setFormulaImages, handleSaveFormul
                         title="더블클릭하여 제목 수정"
                       >
                         {img.title}
+                      </span>
+                      <span 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigator.clipboard.writeText(img.id);
+                          showNotification('이미지 ID가 클립보드에 복사되었습니다: ' + img.id, 'success');
+                        }}
+                        className="text-[9px] font-black bg-slate-900/90 border border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700 px-1.5 py-0.5 rounded cursor-pointer transition-all active:scale-95 select-none"
+                        title="클릭하여 ID 복사"
+                      >
+                        ID: {img.id}
                       </span>
                     </div>
                   )}

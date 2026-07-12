@@ -731,7 +731,56 @@ div, section, article, form, .container, .page, .wrapper, .section, .WordSection
 }
 </style>
 `;
-      htmlContent = htmlContent + responsiveStyle;
+      const trackingScript = `
+<script>
+(function() {
+  function sendActiveId(id) {
+    if (!id) return;
+    try {
+      if (window.opener && !window.opener.closed) {
+        window.opener.postMessage({ type: 'anti-select-id', id: id }, '*');
+      }
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({ type: 'anti-select-id', id: id }, '*');
+      }
+    } catch (e) {
+      console.warn('[Tracking Script] Failed to send active ID:', e);
+    }
+  }
+
+  // Track clicks
+  document.addEventListener('click', function(e) {
+    const elWithId = e.target.closest('[id]');
+    if (elWithId) {
+      sendActiveId(elWithId.id);
+    }
+  });
+
+  // Track cursor / selection changes
+  let selectionTimeout = null;
+  document.addEventListener('selectionchange', function() {
+    if (selectionTimeout) clearTimeout(selectionTimeout);
+    selectionTimeout = setTimeout(function() {
+      const selection = window.getSelection();
+      if (selection && selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        if (!range.collapsed) {
+          let node = range.commonAncestorContainer;
+          if (node.nodeType === Node.TEXT_NODE) {
+            node = node.parentNode;
+          }
+          const elWithId = node.closest('[id]');
+          if (elWithId) {
+            sendActiveId(elWithId.id);
+          }
+        }
+      }
+    }, 200);
+  });
+})();
+</script>
+`;
+      htmlContent = htmlContent + responsiveStyle + trackingScript;
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
       res.send(htmlContent);
     } else {

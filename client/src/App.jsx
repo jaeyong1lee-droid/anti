@@ -5491,6 +5491,11 @@ export default function App() {
       const clientY = e.touches ? e.touches[0].clientY : e.clientY;
       startSelectionPos = { x: clientX, y: clientY };
       lastPointerPos = { x: clientX, y: clientY };
+
+      const elWithId = e.target.closest('[id]');
+      if (elWithId && elWithId.id) {
+        window.dispatchEvent(new CustomEvent('anti-memorization-select-id', { detail: { id: elWithId.id } }));
+      }
     };
     const handleDocumentMouseUp = () => {
       isMouseDown = false;
@@ -5711,6 +5716,10 @@ export default function App() {
           if (anchorEl && anchorEl.nodeType === Node.TEXT_NODE) {
             anchorEl = anchorEl.parentElement;
           }
+          const elWithId = anchorEl?.closest('[id]');
+          if (elWithId && elWithId.id) {
+            window.dispatchEvent(new CustomEvent('anti-memorization-select-id', { detail: { id: elWithId.id } }));
+          }
           const cardEl = anchorEl?.closest('[data-qkey]');
           const foundQKey = cardEl?.getAttribute('data-qkey') || '';
 
@@ -5795,6 +5804,17 @@ export default function App() {
       }
     };
 
+    const handleMessageEvent = (e) => {
+      if (e.data && e.data.type === 'anti-select-id') {
+        const { id } = e.data;
+        if (id) {
+          console.log('[Parent] Received anti-select-id message:', id);
+          window.dispatchEvent(new CustomEvent('anti-memorization-select-id', { detail: { id } }));
+        }
+      }
+    };
+    window.addEventListener('message', handleMessageEvent);
+
     window.addEventListener('mousedown', handleDocumentMouseDown);
     window.addEventListener('mouseup', handleDocumentMouseUp);
     window.addEventListener('touchstart', handleDocumentMouseDown);
@@ -5810,6 +5830,7 @@ export default function App() {
 
     return () => {
       if (selectionTimeout) clearTimeout(selectionTimeout);
+      window.removeEventListener('message', handleMessageEvent);
       window.removeEventListener('mousedown', handleDocumentMouseDown);
       window.removeEventListener('mouseup', handleDocumentMouseUp);
       window.removeEventListener('touchstart', handleDocumentMouseDown);

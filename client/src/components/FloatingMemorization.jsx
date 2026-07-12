@@ -391,6 +391,34 @@ export function FloatingMemorization({
     }
   }, [isVisible, focusedQuestion, formulaAcronyms, formulaTables, formulaOverviews, formulaImages]);
 
+  useEffect(() => {
+    const handleSelectIdEvent = (e) => {
+      const { id } = e.detail;
+      if (!id) return;
+      
+      let foundTab = null;
+      if (formulaOverviews?.some(ov => String(ov.id) === String(id))) {
+        foundTab = 'overview';
+      } else if (formulaTables?.some(t => String(t.id) === String(id))) {
+        foundTab = 'table';
+      } else if (formulaAcronyms?.some(ac => String(ac.id) === String(id))) {
+        foundTab = 'acronym';
+      } else if (formulaImages?.some(img => String(img.id) === String(id))) {
+        foundTab = 'image';
+      }
+      
+      if (foundTab) {
+        setSubTab(foundTab);
+        setSearchQuery(id);
+      }
+    };
+    
+    window.addEventListener('anti-memorization-select-id', handleSelectIdEvent);
+    return () => {
+      window.removeEventListener('anti-memorization-select-id', handleSelectIdEvent);
+    };
+  }, [formulaOverviews, formulaTables, formulaAcronyms, formulaImages]);
+
   // Local editing states for cells and overviews inside the popup
   const [localActiveEditCell, setLocalActiveEditCell] = useState(null); // { tableId, type, rIdx, colIdx }
   const [localEditingCellValue, setLocalEditingCellValue] = useState('');
@@ -578,18 +606,16 @@ export function FloatingMemorization({
               <RefreshCw className="animate-spin text-violet-500" size={24} />
               <span className="text-xs font-bold text-slate-400">표 데이터를 로드하는 중...</span>
             </div>
-          ) : formulaTables.length === 0 ? (
-            <div className="py-20 text-center flex flex-col items-center justify-center gap-3">
-              <FileText size={24} className="text-slate-600" />
-              <h4 className="text-sm font-bold text-slate-300">저장된 표가 없습니다</h4>
-            </div>
           ) : formulaTables.filter(t => {
-            const query = searchQuery.toLowerCase();
-            return (t.title || '').toLowerCase().includes(query) || (t.html || '').toLowerCase().includes(query);
+            const query = searchQuery.toLowerCase().trim();
+            if (!query) return true;
+            const idMatch = String(t.id).toLowerCase() === query;
+            const textMatch = (t.title || '').toLowerCase().includes(query) || (t.html || '').toLowerCase().includes(query);
+            return idMatch || textMatch;
           }).length === 0 ? (
             <div className="py-20 text-center flex flex-col items-center justify-center gap-3">
               <Search size={24} className="text-slate-600" />
-              <h4 className="text-sm font-bold text-slate-350">검색 결과가 없습니다</h4>
+              <h4 className="text-sm font-bold text-slate-355">검색 결과가 없습니다</h4>
             </div>
           ) : (
             <div className="space-y-4 w-full">
@@ -632,13 +658,26 @@ export function FloatingMemorization({
                               />
                             </div>
                           ) : (
-                            <h4 
-                              onClick={() => { setEditingTableIdx(idx); setEditingTableText(t.title); }}
-                              className="text-[12px] font-black text-white hover:text-violet-300 transition-colors cursor-pointer truncate"
-                              title="클릭하여 제목 수정"
-                            >
-                              {t.title}
-                            </h4>
+                            <div className="flex items-center flex-wrap gap-1.5 min-w-0">
+                              <h4 
+                                onClick={() => { setEditingTableIdx(idx); setEditingTableText(t.title); }}
+                                className="text-[12px] font-black text-white hover:text-violet-300 transition-colors cursor-pointer truncate max-w-[200px]"
+                                title="클릭하여 제목 수정"
+                              >
+                                {t.title}
+                              </h4>
+                              <span 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigator.clipboard.writeText(t.id);
+                                  showNotification('테이블 ID가 클립보드에 복사되었습니다: ' + t.id, 'success');
+                                }}
+                                className="text-[9px] font-black bg-slate-900/90 border border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700 px-1.5 py-0.5 rounded cursor-pointer transition-all active:scale-95 select-none"
+                                title="클릭하여 ID 복사"
+                              >
+                                ID: {t.id}
+                              </span>
+                            </div>
                           )}
                         </div>
                         <div className="flex items-center gap-1 shrink-0">
@@ -841,8 +880,11 @@ export function FloatingMemorization({
               <h4 className="text-sm font-bold text-slate-300">저장된 앞글자 카드가 없습니다</h4>
             </div>
           ) : formulaAcronyms.filter(ac => {
-            const query = searchQuery.toLowerCase();
-            return (ac.title || '').toLowerCase().includes(query) || (ac.content || '').toLowerCase().includes(query);
+            const query = searchQuery.toLowerCase().trim();
+            if (!query) return true;
+            const idMatch = String(ac.id).toLowerCase() === query;
+            const textMatch = (ac.title || '').toLowerCase().includes(query) || (ac.content || '').toLowerCase().includes(query);
+            return idMatch || textMatch;
           }).length === 0 ? (
             <div className="py-20 text-center flex flex-col items-center justify-center gap-3">
               <Search size={24} className="text-slate-600" />
@@ -852,8 +894,11 @@ export function FloatingMemorization({
             <div className="space-y-4 w-full">
               {formulaAcronyms
                 .filter(ac => {
-                  const query = searchQuery.toLowerCase();
-                  return (ac.title || '').toLowerCase().includes(query) || (ac.content || '').toLowerCase().includes(query);
+                  const query = searchQuery.toLowerCase().trim();
+                  if (!query) return true;
+                  const idMatch = String(ac.id).toLowerCase() === query;
+                  const textMatch = (ac.title || '').toLowerCase().includes(query) || (ac.content || '').toLowerCase().includes(query);
+                  return idMatch || textMatch;
                 })
                 .map((ac, idx) => {
                   if (ac.isLoading && !ac.content) {
@@ -912,13 +957,26 @@ export function FloatingMemorization({
                               autoFocus
                             />
                           ) : (
-                            <h4 
-                              onClick={() => { setEditingAcronymId(ac.id); setEditingAcronymText(ac.title); }}
-                              className="text-[12px] font-black text-white hover:text-emerald-300 transition-colors cursor-pointer truncate"
-                              title="클릭하여 제목 수정"
-                            >
-                              {ac.title}
-                            </h4>
+                            <div className="flex items-center flex-wrap gap-1.5 min-w-0">
+                              <h4 
+                                onClick={() => { setEditingAcronymId(ac.id); setEditingAcronymText(ac.title); }}
+                                className="text-[12px] font-black text-white hover:text-emerald-300 transition-colors cursor-pointer truncate max-w-[200px]"
+                                title="클릭하여 제목 수정"
+                              >
+                                {ac.title}
+                              </h4>
+                              <span 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigator.clipboard.writeText(ac.id);
+                                  showNotification('두문자 ID가 클립보드에 복사되었습니다: ' + ac.id, 'success');
+                                }}
+                                className="text-[9px] font-black bg-slate-900/90 border border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700 px-1.5 py-0.5 rounded cursor-pointer transition-all active:scale-95 select-none"
+                                title="클릭하여 ID 복사"
+                              >
+                                ID: {ac.id}
+                              </span>
+                            </div>
                           )}
                         </div>
                         <button
@@ -1128,19 +1186,25 @@ export function FloatingMemorization({
               <h4 className="text-sm font-bold text-slate-300">저장된 개요가 없습니다</h4>
             </div>
           ) : formulaOverviews.filter(ov => {
-            const query = searchQuery.toLowerCase();
-            return (ov.title || '').toLowerCase().includes(query) || (ov.content || '').toLowerCase().includes(query);
+            const query = searchQuery.toLowerCase().trim();
+            if (!query) return true;
+            const idMatch = String(ov.id).toLowerCase() === query;
+            const textMatch = (ov.title || '').toLowerCase().includes(query) || (ov.content || '').toLowerCase().includes(query);
+            return idMatch || textMatch;
           }).length === 0 ? (
             <div className="py-20 text-center flex flex-col items-center justify-center gap-3">
               <Search size={24} className="text-slate-600" />
-              <h4 className="text-sm font-bold text-slate-350">검색 결과가 없습니다</h4>
+              <h4 className="text-sm font-bold text-slate-355">검색 결과가 없습니다</h4>
             </div>
           ) : (
             <div className="space-y-4 w-full">
               {formulaOverviews
                 .filter(ov => {
-                  const query = searchQuery.toLowerCase();
-                  return (ov.title || '').toLowerCase().includes(query) || (ov.content || '').toLowerCase().includes(query);
+                  const query = searchQuery.toLowerCase().trim();
+                  if (!query) return true;
+                  const idMatch = String(ov.id).toLowerCase() === query;
+                  const textMatch = (ov.title || '').toLowerCase().includes(query) || (ov.content || '').toLowerCase().includes(query);
+                  return idMatch || textMatch;
                 })
                 .map((ov, idx) => {
                   const isExpanded = !!localExpandedOverviewIds[ov.id];
@@ -1152,17 +1216,30 @@ export function FloatingMemorization({
                           <span className="text-[10px] font-black bg-rose-950/80 text-rose-400 px-2 py-0.5 rounded border border-rose-500/20 shrink-0">
                             O{idx + 1}
                           </span>
-                          <h4 
-                            onClick={() => {
-                              setLocalEditingOverviewId(ov.id);
-                              setLocalEditingOverviewText(ov.title);
-                              setLocalEditingOverviewContent(ov.content);
-                            }}
-                            className="text-[12px] font-black text-white hover:text-rose-300 transition-colors cursor-pointer truncate"
-                            title="클릭하여 내용 및 제목 수정"
-                          >
-                            {ov.title}
-                          </h4>
+                          <div className="flex items-center flex-wrap gap-1.5 min-w-0">
+                            <h4 
+                              onClick={() => {
+                                setLocalEditingOverviewId(ov.id);
+                                setLocalEditingOverviewText(ov.title);
+                                setLocalEditingOverviewContent(ov.content);
+                              }}
+                              className="text-[12px] font-black text-white hover:text-rose-300 transition-colors cursor-pointer truncate max-w-[200px]"
+                              title="클릭하여 내용 및 제목 수정"
+                            >
+                              {ov.title}
+                            </h4>
+                            <span 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigator.clipboard.writeText(ov.id);
+                                showNotification('개요/공식 ID가 클립보드에 복사되었습니다: ' + ov.id, 'success');
+                              }}
+                              className="text-[9px] font-black bg-slate-900/90 border border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700 px-1.5 py-0.5 rounded cursor-pointer transition-all active:scale-95 select-none"
+                              title="클릭하여 ID 복사"
+                            >
+                              ID: {ov.id}
+                            </span>
+                          </div>
                         </div>
                         <div className="flex items-center gap-1 shrink-0">
                           <button
