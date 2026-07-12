@@ -243,6 +243,49 @@ function parseOverviewContentServer(content) {
   return result;
 }
 
+function parseMarkdownTableServer(questionText) {
+  if (!questionText) return null;
+  const lines = questionText.split('\n');
+  let startIdx = -1;
+  let endIdx = -1;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (line.startsWith('|') && line !== '|') {
+      if (startIdx === -1) {
+        startIdx = i;
+      }
+      endIdx = i;
+    } else {
+      if (startIdx !== -1) {
+        break;
+      }
+    }
+  }
+
+  const parseRowCells = (rowText) => {
+    let cells = rowText.split('|').map(c => c.trim());
+    while (cells.length > 0 && cells[0] === '') cells.shift();
+    while (cells.length > 0 && cells[cells.length - 1] === '') cells.pop();
+    return cells;
+  };
+
+  if (startIdx !== -1 && endIdx !== -1 && (endIdx - startIdx) >= 2) {
+    const headers = parseRowCells(lines[startIdx]);
+    
+    const separatorLine = lines[startIdx + 1];
+    if (separatorLine.includes('---')) {
+      const rows = [];
+      for (let i = startIdx + 2; i <= endIdx; i++) {
+        const rowCells = parseRowCells(lines[i]);
+        rows.push(rowCells);
+      }
+      return { headers, rows };
+    }
+  }
+  return null;
+}
+
 // POST /api/question/regenerate -> Regenerate a single question
 router.post('/question/regenerate', async (req, res) => {
   const { mode, topicId, currentQuestion, questionIdx, allQuestions, targetTypeSelection } = req.body;
@@ -291,25 +334,79 @@ router.post('/question/regenerate', async (req, res) => {
 
         let healedQuestion = { ...currentQuestion, mixedType };
         
-        // Auto-heal previously corrupted overview questions back to 주관식 (개요) layout
+        // Auto-heal previously corrupted overview questions back to 주관식 (표채우기) TableQuiz layout
         if (mixedType === 'overview') {
-          healedQuestion.type = '주관식 (개요)';
-          healedQuestion.subtype = '개요';
+          healedQuestion.type = '주관식 (표채우기)';
+          healedQuestion.subtype = '표채우기';
+
+          // Extract original definition, mechanism, and comparison table text from explanation
+          const parsed = parseOverviewContentServer(healedQuestion.explanation || '');
+          const answers = {};
+          const rows = [];
+          
+          if (parsed.definition) {
+            answers['INPUT_0_1'] = parsed.definition;
+            rows.push(['학술적 정의', '[INPUT_0_1]']);
+          }
+          if (parsed.mechanism) {
+            const rowIdx = rows.length;
+            answers[`INPUT_${rowIdx}_1`] = parsed.mechanism;
+            rows.push(['공학적 작동 메커니즘', `[INPUT_${rowIdx}_1]`]);
+          }
+
+          let comparisonTableData = null;
+          if (parsed.comparison) {
+            let normalizedComparison = parsed.comparison;
+            normalizedComparison = normalizedComparison.split('\n').map(line => {
+              let l = line.trim();
+              if (l && l.includes('|')) {
+                if (!l.startsWith('|')) l = '| ' + l;
+                if (!l.endsWith('|')) l = l + ' |';
+              }
+              return l;
+            }).join('\n');
+
+            const parsedComp = parseMarkdownTableServer(normalizedComparison);
+            if (parsedComp && parsedComp.headers && parsedComp.rows) {
+              const compRows = parsedComp.rows.map((row, rIdx) => {
+                return row.map((cell, cIdx) => {
+                  if (cIdx === 0) return cell;
+                  const inputId = `INPUT_${rows.length + rIdx}_${cIdx}`;
+                  answers[inputId] = cell;
+                  return `[${inputId}]`;
+                });
+              });
+              comparisonTableData = {
+                headers: parsedComp.headers,
+                rows: compRows
+              };
+            }
+          }
+
+          let explanationHtml = '';
+          if (parsed.definition) {
+            explanationHtml += `📖 **학술적 정의**\n${parsed.definition}\n\n`;
+          }
+          if (parsed.mechanism) {
+            explanationHtml += `⚙️ **공학적 작동 메커니즘**\n${parsed.mechanism}\n\n`;
+          }
+          if (parsed.comparison) {
+            explanationHtml += `⚖️ **비교표 / 장단점**\n${parsed.comparison}\n\n`;
+          }
+
           healedQuestion.tableData = {
             headers: ['구분', '내용'],
-            rows: [
-              ['정의', ''],
-              ['메커니즘', '']
-            ]
+            rows: rows
           };
+          healedQuestion.comparisonTableData = comparisonTableData;
+          healedQuestion.answers = answers;
+          healedQuestion.explanation = explanationHtml;
+
           delete healedQuestion.acronym;
           delete healedQuestion.sentence;
           delete healedQuestion.correctRows;
-
-          // Self-heal concept (definition) and formula (mechanism) answers by parsing explanation content
-          const parsed = parseOverviewContentServer(healedQuestion.explanation || '');
-          healedQuestion.concept = parsed.definition || healedQuestion.concept || '';
-          healedQuestion.formula = parsed.mechanism || healedQuestion.formula || '';
+          delete healedQuestion.concept;
+          delete healedQuestion.formula;
         }
 
         return res.json({
