@@ -765,7 +765,10 @@ export const TableQuiz = React.memo(function TableQuiz({
   const floatedStyleTag = isAnyFloated ? (
     <style>{`
       .floated-table-quiz,
-      .floated-table-quiz * {
+      .floated-table-quiz *,
+      .floated-table-quiz textarea,
+      .floated-table-quiz input,
+      .floated-table-quiz .table-quiz-input {
         font-size: 13px !important;
       }
     `}</style>
