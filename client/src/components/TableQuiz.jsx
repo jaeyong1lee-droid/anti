@@ -671,6 +671,23 @@ export const TableQuiz = React.memo(function TableQuiz({
     </div>
   ) : null;
 
+  const mainTableTitle = !isMainFloated ? (
+    <div className="flex justify-between items-center w-full mb-1">
+      <div className="text-xs sm:text-sm font-extrabold text-slate-400 select-none text-left">
+        📋 표 채우기
+      </div>
+      {!isMobileView && (
+        <button
+          onClick={() => setFloatedTableId(mainTableUniqueId)}
+          className="p-1 text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 rounded-lg text-sm transition-all active:scale-95 select-none"
+          title="표를 화면에 고정하여 편리하게 문제를 풉니다"
+        >
+          📌
+        </button>
+      )}
+    </div>
+  ) : null;
+
   const mainTable = (
     <>
       <div 
@@ -718,18 +735,6 @@ export const TableQuiz = React.memo(function TableQuiz({
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
               </svg>
-            </button>
-          </div>
-        )}
-        
-        {!isMainFloated && !isMobileView && (
-          <div className="flex justify-end p-1.5 border-b border-slate-900/60 bg-slate-900/10">
-            <button
-              onClick={() => setFloatedTableId(mainTableUniqueId)}
-              className="p-1 bg-slate-900/80 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800 rounded-lg text-sm transition-all active:scale-95 select-none"
-              title="표를 화면에 고정하여 편리하게 문제를 풉니다"
-            >
-              📌
             </button>
           </div>
         )}
@@ -961,14 +966,26 @@ export const TableQuiz = React.memo(function TableQuiz({
     </div>
   ) : null;
 
+  const compTableTitle = !isCompFloated ? (
+    <div className="flex justify-between items-center w-full mt-4 mb-1">
+      <div className="text-xs sm:text-sm font-extrabold text-slate-400 select-none text-left">
+        ⚖️ 비교표 / 장단점 채우기
+      </div>
+      {!isMobileView && (
+        <button
+          onClick={() => setFloatedTableId(compTableUniqueId)}
+          className="p-1 text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 rounded-lg text-sm transition-all active:scale-95 select-none"
+          title="비교표를 화면에 고정하여 편리하게 문제를 풉니다"
+        >
+          📌
+        </button>
+      )}
+    </div>
+  ) : null;
+
   const compTable = q.comparisonTableData ? (
     <>
-      <div className={isCompFloated ? "" : "mt-4 space-y-2"}>
-        {!isCompFloated && (
-          <div className="text-xs sm:text-sm font-extrabold text-slate-400 select-none text-left">
-            ⚖️ 비교표 / 장단점 채우기
-          </div>
-        )}
+      <div className={isCompFloated ? "" : "mt-2"}>
         <div 
           className={isCompFloated
             ? "fixed top-20 right-6 z-[9991] bg-slate-900/95 border border-slate-700 rounded-2xl shadow-2xl p-3 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150 backdrop-blur-md floated-table-quiz"
@@ -1011,18 +1028,6 @@ export const TableQuiz = React.memo(function TableQuiz({
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
                 </svg>
-              </button>
-            </div>
-          )}
-
-          {!isCompFloated && !isMobileView && (
-            <div className="flex justify-end p-1.5 border-b border-slate-900/60 bg-slate-900/10">
-              <button
-                onClick={() => setFloatedTableId(compTableUniqueId)}
-                className="p-1 bg-slate-900/80 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800 rounded-lg text-sm transition-all active:scale-95 select-none"
-                title="비교표를 화면에 고정하여 편리하게 문제를 풉니다"
-              >
-                📌
               </button>
             </div>
           )}
@@ -1223,8 +1228,10 @@ export const TableQuiz = React.memo(function TableQuiz({
   return (
     <div ref={containerRef} className="w-full">
       {floatedStyleTag}
+      {mainTableTitle}
       {mainTablePlaceholder}
       {mainTable}
+      {compTableTitle}
       {compTablePlaceholder}
       {compTable}
     </div>
