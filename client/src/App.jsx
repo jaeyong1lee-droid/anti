@@ -4959,9 +4959,8 @@ export default function App() {
     }
   }, [isPinVerified, isDesktop, isLockscreenQuizEnabled]);
 
-  // [모바일 세로 수평 드래그 전체 차단]
-  // CSS touch-action: pan-y로 1차 차단, document native non-passive 리스너로 2차 차단.
-  // Galaxy(Android Chrome) 환경에서 CSS가 우회되는 경우를 대비.
+  // [모바일 세로 수평 드래그 차단 및 가로 스크롤 구역 예외 적용]
+  // 표/수식 영역 안의 가로 터치 스크롤은 부드럽게 허용하고, 그 외 영역의 좌우 드래그 및 화면 쏠림만 완벽하게 차단한다.
   useEffect(() => {
     let _startX = 0;
     let _startY = 0;
@@ -4980,10 +4979,32 @@ export default function App() {
       const deltaX = Math.abs(e.touches[0].clientX - _startX);
       const deltaY = Math.abs(e.touches[0].clientY - _startY);
 
-      // 수평 스와이프가 수직보다 강할 때: 무조건 차단 (표 포함)
-      // 표 가로 이동은 하단 스크롤바로만 허용
+      // 수평 스와이프가 수직보다 강할 때
       if (deltaX > deltaY && deltaX > 5) {
-        e.preventDefault();
+        // 터치 대상이 가로 스크롤 가능한 컨테이너 안인지 확인
+        let el = e.target;
+        let insideHScroll = false;
+        while (el && el !== document.body) {
+          if (el.classList && (
+            el.classList.contains('markdown-table-container') ||
+            el.classList.contains('overflow-x-auto') ||
+            el.classList.contains('overflow-auto') ||
+            el.classList.contains('table-quiz-container') ||
+            el.classList.contains('landscape-overflow-x-auto') ||
+            el.classList.contains('formula-scroll-container')
+          )) {
+            insideHScroll = true;
+            break;
+          }
+          el = el.parentElement;
+        }
+
+        // 가로 스크롤 구역이 아니면 페이지의 수평 드래그 이동을 막는다.
+        if (!insideHScroll) {
+          if (e.cancelable) {
+            e.preventDefault();
+          }
+        }
       }
     };
 

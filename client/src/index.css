@@ -1054,27 +1054,28 @@ div[class*="overflow-y-auto"] {
     touch-action: pan-y !important; /* Force only vertical touch pan, absolute block on horizontal viewport wiggle */
   }
 
-  /* 모바일 세로: 표 터치 드래그 가로 이동 차단 - 하단 스크롤바만 가로 이동 허용
-     touch-action: pan-y  → 터치로 가로 드래그 불가 (세로 스크롤만)
-     overflow-x: auto     → 스크롤바는 유지 (브라우저 UI 스크롤바는 touch-action을 우회) */
+  /* 모바일 세로: 표 및 긴 수식 영역 터치 드래그 가로 스크롤 허용 (단, overscroll 차단)
+     touch-action: pan-x pan-y  → 터치로 가로/세로 드래그 모두 가능 */
   .table-quiz-container,
   .overflow-x-auto,
   .overflow-auto,
-  .markdown-table-container {
-    overflow-x: auto;
+  .markdown-table-container,
+  .formula-scroll-container {
+    overflow-x: auto !important;
     max-width: 100% !important;
-    touch-action: pan-y !important;
+    touch-action: pan-x pan-y !important;
     overscroll-behavior-x: contain !important;
   }
 
   .table-quiz-container *,
   .overflow-x-auto *,
   .overflow-auto *,
-  .markdown-table-container * {
-    touch-action: pan-y !important;
+  .markdown-table-container *,
+  .formula-scroll-container * {
+    touch-action: pan-x pan-y !important;
   }
 
-  /* Hide all scrollbars globally on mobile portrait EXCEPT for table containers */
+  /* Hide all scrollbars globally on mobile portrait EXCEPT for table/formula containers */
   ::-webkit-scrollbar {
     display: none !important;
   }
@@ -1085,26 +1086,33 @@ div[class*="overflow-y-auto"] {
   .table-quiz-container::-webkit-scrollbar,
   .overflow-x-auto::-webkit-scrollbar,
   .overflow-auto::-webkit-scrollbar,
-  .markdown-table-container::-webkit-scrollbar {
+  .markdown-table-container::-webkit-scrollbar,
+  .formula-scroll-container::-webkit-scrollbar {
     display: block !important;
     height: 8px !important;
   }
   .table-quiz-container::-webkit-scrollbar-thumb,
   .overflow-x-auto::-webkit-scrollbar-thumb,
   .overflow-auto::-webkit-scrollbar-thumb,
-  .markdown-table-container::-webkit-scrollbar-thumb {
+  .markdown-table-container::-webkit-scrollbar-thumb,
+  .formula-scroll-container::-webkit-scrollbar-thumb {
     background: rgba(148, 163, 184, 0.6) !important;
     border-radius: 4px !important;
   }
   .table-quiz-container::-webkit-scrollbar-track,
   .overflow-x-auto::-webkit-scrollbar-track,
   .overflow-auto::-webkit-scrollbar-track,
-  .markdown-table-container::-webkit-scrollbar-track {
+  .markdown-table-container::-webkit-scrollbar-track,
+  .formula-scroll-container::-webkit-scrollbar-track {
     background: rgba(30, 41, 59, 0.5) !important;
     border-radius: 4px !important;
   }
 
-  /* Wrap and block horizontal scroll on AI tutor responses to prevent layout wiggle, letting inner tables/formulas scroll independently */
+  /* 퀴즈 카드, 답안 영역, 튜터 답변, 피드백 등 일반 레이아웃 영역은 가로 드래그 완전 차단 */
+  .quiz-card-item,
+  .exam-card-item,
+  .model-answer-section,
+  .subjective-quiz-textarea,
   .tutor-response-content, 
   .tutor-msg-text,
   .subjective-feedback-content,
@@ -1112,7 +1120,19 @@ div[class*="overflow-y-auto"] {
     overflow-x: hidden !important;
     max-width: 100% !important;
     width: 100% !important;
+    touch-action: pan-y !important;
     word-break: break-all;
+  }
+
+  .quiz-card-item *,
+  .exam-card-item *,
+  .model-answer-section *,
+  .subjective-quiz-textarea *,
+  .tutor-response-content *, 
+  .tutor-msg-text *,
+  .subjective-feedback-content *,
+  .acronym-response-content * {
+    touch-action: inherit;
   }
 }
 
