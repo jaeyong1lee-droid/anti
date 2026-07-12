@@ -933,12 +933,12 @@ export const TableQuiz = React.memo(function TableQuiz({
           </div>
         )}
 
-        <div className={isMainFloated ? "flex-1 overflow-auto w-full" : "w-full"}>
+        <div className={isMainFloated ? "flex-1 overflow-auto w-full h-full" : "w-full"}>
           <table 
             ref={tableRef} 
         className={`table-quiz-table w-full table-fixed text-center border-collapse text-[14px] sm:text-[16px] ${
           colCount === 2 ? 'min-w-[320px] sm:min-w-[600px]' : 'min-w-[480px] sm:min-w-[700px]'
-        }`}
+        } ${isMainFloated ? 'h-full' : ''}`}
         style={isMobileView ? {
           '--table-width': colCount === 2 ? '100%' : `max(100%, ${mobileColWidths.reduce((sum, w) => sum + parseInt(w || '0', 10), 0)}px)`,
           minWidth: '0px'
@@ -1244,10 +1244,10 @@ export const TableQuiz = React.memo(function TableQuiz({
             </div>
           )}
 
-          <div className={isCompFloated ? "flex-1 overflow-auto w-full" : "w-full"}>
+          <div className={isCompFloated ? "flex-1 overflow-auto w-full h-full" : "w-full"}>
             <table 
           ref={compTableRef}
-          className="table-quiz-table w-full table-fixed text-center border-collapse text-[14px] sm:text-[16px] min-w-full"
+          className={`table-quiz-table w-full table-fixed text-center border-collapse text-[14px] sm:text-[16px] min-w-full ${isCompFloated ? 'h-full' : ''}`}
           style={isMobileView ? {
             '--table-width': compColCount === 2 ? '100%' : `max(100%, ${compMobileColWidths.reduce((sum, w) => sum + parseInt(w || '0', 10), 0)}px)`,
             minWidth: '0px'
