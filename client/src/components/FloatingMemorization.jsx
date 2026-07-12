@@ -397,7 +397,11 @@ export function FloatingMemorization({
           ].map((tab) => (
             <button
               key={tab.id}
-              onClick={() => { setSubTab(tab.id); setLocalActiveEditCell(null); }}
+              onClick={() => {
+                setSubTab(tab.id);
+                setLocalActiveEditCell(null);
+                setSearchQuery('');
+              }}
               className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
                 subTab === tab.id
                   ? 'bg-slate-800 text-white border border-slate-700 shadow-md'
