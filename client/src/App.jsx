@@ -24,7 +24,10 @@ import {
   isSameConditionValue,
   areCellsEqual,
   getTableScoreColorTheme,
-  formatGradingReason
+  formatGradingReason,
+  stripHtmlTagsFromRawData,
+  isOverviewReview,
+  cleanCorruptedFormula
 } from './utils/renderingHelpers';
 import { 
   Brain, 
