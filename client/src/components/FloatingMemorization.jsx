@@ -798,7 +798,7 @@ export function FloatingMemorization({
                           </button>
                         </div>
 
-                        <div className="overflow-x-auto w-full border border-slate-800 bg-slate-950/40 rounded-xl select-text text-[14px] md:text-[16px]">
+                        <div className="overflow-x-auto w-full border border-slate-800 bg-slate-950/40 rounded-xl select-text text-[14px]">
                           <table className="w-full text-left border-collapse table-fixed min-w-[500px]">
                             <colgroup>
                               <col style={{ width: '42px' }} />
@@ -807,7 +807,7 @@ export function FloatingMemorization({
                               <col style={{ width: '80px' }} />
                             </colgroup>
                             <thead>
-                              <tr className="bg-slate-900/60 border-b border-slate-800 text-[11px] font-black text-slate-400 select-none">
+                              <tr className="bg-slate-900/60 border-b border-slate-800 text-[14px] font-black text-slate-400 select-none">
                                 <th className="p-2 border-r border-slate-800/80 text-center">두</th>
                                 <th className="p-2 border-r border-slate-800/80">암기단어</th>
                                 <th className="p-2 border-r border-slate-800/80">매칭설명 (키워드/스펙)</th>
@@ -823,7 +823,7 @@ export function FloatingMemorization({
                                         type="text"
                                         value={rowVal.acronym}
                                         onChange={(e) => handleUpdateAcronymRowCell(ac.id, rIdx, 'acronym', e.target.value)}
-                                        className="w-full text-center bg-transparent border-0 text-slate-100 font-extrabold focus:outline-none p-0 text-[14px] md:text-[16px]"
+                                        className="w-full text-center bg-transparent border-0 text-slate-100 font-extrabold focus:outline-none p-0 text-[14px]"
                                       />
                                     </td>
                                     <td className="p-1 border-r border-slate-850">
@@ -831,7 +831,7 @@ export function FloatingMemorization({
                                         type="text"
                                         value={rowVal.word}
                                         onChange={(e) => handleUpdateAcronymRowCell(ac.id, rIdx, 'word', e.target.value)}
-                                        className="w-full bg-transparent border-0 text-slate-200 font-bold focus:outline-none p-0 text-[14px] md:text-[16px]"
+                                        className="w-full bg-transparent border-0 text-slate-200 font-bold focus:outline-none p-0 text-[14px]"
                                       />
                                     </td>
                                     <td className="p-1 border-r border-slate-850">
@@ -845,7 +845,7 @@ export function FloatingMemorization({
                                         value={rowVal.description}
                                         onChange={(e) => handleUpdateAcronymRowCell(ac.id, rIdx, 'description', e.target.value)}
                                         rows={1}
-                                        className="w-full bg-transparent border-0 text-slate-300 focus:outline-none p-0 text-[14px] md:text-[16px] resize-none overflow-hidden"
+                                        className="w-full bg-transparent border-0 text-slate-300 focus:outline-none p-0 text-[14px] resize-none overflow-hidden"
                                       />
                                     </td>
                                     <td className="p-1 text-center align-middle select-none">
