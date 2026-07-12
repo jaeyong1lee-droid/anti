@@ -335,7 +335,7 @@ export function FloatingMemorization({
         touchAction: 'none',
         display: isVisible ? 'flex' : 'none'
       }}
-      className="w-[92vw] md:w-[720px] h-[80vh] md:h-[650px] bg-slate-900/95 border border-slate-700/60 rounded-2xl shadow-[0_24px_60px_rgba(0,0,0,0.95)] flex flex-col overflow-hidden backdrop-blur-md transition-shadow duration-300 hover:shadow-violet-500/10 hover:border-violet-500/20"
+      className="floating-memorization-popup w-[92vw] md:w-[720px] h-[80vh] md:h-[650px] bg-slate-900/95 border border-slate-700/60 rounded-2xl shadow-[0_24px_60px_rgba(0,0,0,0.95)] flex flex-col overflow-hidden backdrop-blur-md transition-shadow duration-300 hover:shadow-violet-500/10 hover:border-violet-500/20"
     >
       {/* Header / Drag Handle */}
       <div 

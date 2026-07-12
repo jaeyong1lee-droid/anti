@@ -1060,3 +1060,16 @@ div[class*="overflow-y-auto"] {
   }
 }
 
+/* 📋 Unify all font sizes in the PC floating memorization companion popup to 13px */
+@media (min-width: 768px) {
+  .floating-memorization-popup,
+  .floating-memorization-popup *,
+  .floating-memorization-popup table,
+  .floating-memorization-popup td,
+  .floating-memorization-popup th,
+  .floating-memorization-popup input,
+  .floating-memorization-popup textarea {
+    font-size: 13px !important;
+  }
+}
+
