@@ -757,10 +757,10 @@ export const TableQuiz = React.memo(function TableQuiz({
       {!isMobileView && (
         <button
           onClick={() => setFloatedTableId(mainTableUniqueId)}
-          className="p-1 text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 rounded-lg text-sm transition-all active:scale-95 select-none"
+          className="p-1 text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 rounded-lg text-sm transition-all active:scale-95 select-none font-bold"
           title="표를 화면에 고정하여 편리하게 문제를 풉니다"
         >
-          📌
+          &gt;
         </button>
       )}
     </div>
@@ -1058,10 +1058,10 @@ export const TableQuiz = React.memo(function TableQuiz({
       {!isMobileView && (
         <button
           onClick={() => setFloatedTableId(compTableUniqueId)}
-          className="p-1 text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 rounded-lg text-sm transition-all active:scale-95 select-none"
+          className="p-1 text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 rounded-lg text-sm transition-all active:scale-95 select-none font-bold"
           title="비교표를 화면에 고정하여 편리하게 문제를 풉니다"
         >
-          📌
+          &gt;
         </button>
       )}
     </div>
