@@ -1408,8 +1408,8 @@ export function FloatingMemorization({
                                                 })}
                                                 <td className="p-2 sm:p-2.5 text-center align-middle whitespace-nowrap bg-slate-950/10">
                                                   <button
-                                                    onClick={async () => {
-                                                      const currentWindow = window;
+                                                    onClick={async (e) => {
+                                                      const currentWindow = e.target.ownerDocument.defaultView || window;
                                                       if (currentWindow.confirm(`'${row[0] || '이 행'}' 행을 삭제하시겠습니까?`)) {
                                                         const updatedRows = rows.filter((_, idx) => idx !== rIdx);
                                                         const newCompTableMd = rebuildMarkdownTable(headers, updatedRows, '<br>');
