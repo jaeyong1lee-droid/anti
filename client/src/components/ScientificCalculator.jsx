@@ -184,8 +184,23 @@ export function ScientificCalculator() {
     return saved !== null ? parseInt(saved, 10) : -1;
   });
   const [variables, setVariables] = useState(() => {
+    const initial = { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0, X: 0, Y: 0, M: 0 };
+    'abcdefghijklmnopqrstuvwxyz'.split('').forEach(char => {
+      initial[char] = 0;
+    });
+    const greekLetters = ['α', 'β', 'γ', 'δ', 'ε', 'ζ', 'η', 'θ', 'ι', 'κ', 'λ', 'μ', 'ν', 'ξ', 'π', 'ρ', 'σ', 'τ', 'υ', 'φ', 'χ', 'ψ', 'ω', 'Δ', 'Σ', 'Φ', 'Ω'];
+    greekLetters.forEach(char => {
+      initial[char] = 0;
+    });
+
     const saved = localStorage.getItem('anti_calc_variables');
-    return saved ? JSON.parse(saved) : { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0, X: 0, Y: 0, M: 0 };
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return { ...initial, ...parsed };
+      } catch (e) {}
+    }
+    return initial;
   });
   const [isStoring, setIsStoring] = useState(false);
   const [isRecalling, setIsRecalling] = useState(false);
@@ -1074,9 +1089,14 @@ export function ScientificCalculator() {
         if (eqParts.length !== 2) return 'Error';
         
         let varName = null;
-        const possibleVars = ['X', 'Y', 'A', 'B', 'C', 'D', 'E', 'F', 'M'];
+        const possibleVars = Object.keys(variables);
         for (const v of possibleVars) {
-          if (processedExpr.includes(v)) {
+          const isWordChar = /^[a-zA-Z_]$/.test(v);
+          const hasVar = isWordChar 
+            ? new RegExp(`\\b${v}\\b`).test(processedExpr)
+            : processedExpr.includes(v);
+          
+          if (hasVar) {
             varName = v;
             break;
           }
@@ -1105,12 +1125,12 @@ export function ScientificCalculator() {
       
       preProcessed = preProcessed.replace(/\^\(\s*\)/g, '^(1)');
 
-      preProcessed = preProcessed.replace(/(\d+(\.\d+)?)\s*([a-zA-Z가-힣π_∛\(]|sin⁻¹|cos⁻¹|tan⁻¹)/g, '$1*$3');
-      preProcessed = preProcessed.replace(/([XYABCDEFMπe])\s*(\d+(\.\d+)?)/g, '$1*$2');
-      preProcessed = preProcessed.replace(/([XYABCDEFMπe])\s*([XYABCDEFMπe\(])/g, '$1*$2');
-      preProcessed = preProcessed.replace(/\)\s*([\dXYABCDEFMπe\([a-zA-Z가-힣_∛]|sin⁻¹|cos⁻¹|tan⁻¹)/g, ')*$1');
+      preProcessed = preProcessed.replace(/(\d+(\.\d+)?)\s*([a-zA-Z가-힣\u0370-\u03ff_∛\(]|sin⁻¹|cos⁻¹|tan⁻¹)/g, '$1*$3');
+      preProcessed = preProcessed.replace(/([a-zA-Z\u0370-\u03ff])\s*(\d+(\.\d+)?)/g, '$1*$2');
+      preProcessed = preProcessed.replace(/([a-zA-Z\u0370-\u03ff])\s*([a-zA-Z\u0370-\u03ff\(])/g, '$1*$2');
+      preProcessed = preProcessed.replace(/\)\s*([\da-zA-Z가-힣\u0370-\u03ff_∛\(]|sin⁻¹|cos⁻¹|tan⁻¹)/g, ')*$1');
       
-      preProcessed = preProcessed.replace(/([XYABCDEFMπe\d\.\)]+)%/g, '($1*0.01)');
+      preProcessed = preProcessed.replace(/([a-zA-Z\u0370-\u03ff\d\.\)]+)%/g, '($1*0.01)');
       
       if (!isInternal) {
         preProcessed = parseIntegrationAndDerivatives(preProcessed);
@@ -1147,7 +1167,12 @@ export function ScientificCalculator() {
 
       Object.keys(variables).forEach(v => {
         const val = variables[v] !== undefined ? variables[v] : 0;
-        tempExpr = tempExpr.replace(new RegExp(`\\b${v}\\b`, 'g'), `(${val})`);
+        const isWordChar = /^[a-zA-Z_]$/.test(v);
+        if (isWordChar) {
+          tempExpr = tempExpr.replace(new RegExp(`\\b${v}\\b`, 'g'), `(${val})`);
+        } else {
+          tempExpr = tempExpr.replaceAll(v, `(${val})`);
+        }
       });
 
       Object.keys(placeholders).forEach(key => {
@@ -2362,22 +2387,24 @@ export function FloatingCalculator({ isVisible, onClose }) {
 
   const content = (
     <div className="w-full h-full flex flex-col overflow-hidden bg-slate-900 text-slate-100">
-      <div 
-        onMouseDown={usePopout ? undefined : handleMouseDown}
-        onTouchStart={usePopout ? undefined : handleTouchStart}
-        className={`drag-handle flex items-center justify-between px-3.5 py-2.5 bg-lime-200 border-b border-lime-300 select-none ${usePopout ? '' : 'cursor-move'}`}
-      >
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] bg-slate-950 text-slate-100 font-black px-1.5 py-0.5 rounded border border-slate-900/30">CASIO</span>
-          <span className="text-[10px] text-slate-950 font-black tracking-wider">공학용 계산기</span>
-        </div>
-        <button
-          onClick={onClose}
-          className="p-1 rounded-lg hover:bg-lime-300 text-slate-900 hover:text-black transition-colors cursor-pointer flex items-center justify-center"
+      {!usePopout && (
+        <div 
+          onMouseDown={handleMouseDown}
+          onTouchStart={handleTouchStart}
+          className={`drag-handle flex items-center justify-between px-3.5 py-2.5 bg-lime-200 border-b border-lime-300 select-none cursor-move`}
         >
-          <X size={14} />
-        </button>
-      </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] bg-slate-950 text-slate-100 font-black px-1.5 py-0.5 rounded border border-slate-900/30">CASIO</span>
+            <span className="text-[10px] text-slate-950 font-black tracking-wider">공학용 계산기</span>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1 rounded-lg hover:bg-lime-300 text-slate-900 hover:text-black transition-colors cursor-pointer flex items-center justify-center"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
       <div className="p-2 overflow-y-auto flex-1 custom-vertical-scrollbar bg-slate-950/20">
         <ScientificCalculator />
       </div>
@@ -2390,7 +2417,7 @@ export function FloatingCalculator({ isVisible, onClose }) {
         title="공학용 계산기"
         onClose={onClose}
         initWidth={680}
-        initHeight={620}
+        initHeight={780}
       >
         {content}
       </PopoutWindow>

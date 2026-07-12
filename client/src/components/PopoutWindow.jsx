@@ -47,9 +47,20 @@ export const PopoutWindow = ({ title, onClose, children, initWidth = 720, initHe
           doc.body.appendChild(root);
         }
 
-        // Apply background style
+        // Ensure html, body, and root have full height and overflow hidden to allow inner scrolling
+        doc.documentElement.style.height = '100%';
+        doc.documentElement.style.overflow = 'hidden';
+
         doc.body.style.margin = '0';
+        doc.body.style.padding = '0';
+        doc.body.style.width = '100%';
+        doc.body.style.height = '100%';
+        doc.body.style.overflow = 'hidden';
         doc.body.style.backgroundColor = '#020617';
+
+        root.style.width = '100%';
+        root.style.height = '100%';
+        root.style.overflow = 'hidden';
 
         // Copy style and link tags from main document head, skipping script tags to prevent crash
         const srcHead = document.head;
