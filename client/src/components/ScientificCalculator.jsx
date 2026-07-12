@@ -1089,16 +1089,28 @@ export function ScientificCalculator() {
         if (eqParts.length !== 2) return 'Error';
         
         let varName = null;
-        const possibleVars = Object.keys(variables);
-        for (const v of possibleVars) {
-          const isWordChar = /^[a-zA-Z_]$/.test(v);
-          const hasVar = isWordChar 
-            ? new RegExp(`\\b${v}\\b`).test(processedExpr)
-            : processedExpr.includes(v);
-          
-          if (hasVar) {
-            varName = v;
+        const varRegex = /[a-zA-Z\u0370-\u03ff]+(_[a-zA-Z\u0370-\u03ff0-9]+)?/g;
+        const excludedNames = new Set([
+          'sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'sinh', 'cosh', 'tanh', 'asinh', 'acosh', 'atanh',
+          'log', 'ln', 'exp', 'sqrt', 'cbrt', 'Abs', 'Ans', 'Math', 'd', 'dx', 'd/dx', 'pi', 'e'
+        ]);
+        
+        let match;
+        // Search left side of equation first, then right side
+        while ((match = varRegex.exec(eqParts[0])) !== null) {
+          const name = match[0];
+          if (!excludedNames.has(name) && isNaN(name)) {
+            varName = name;
             break;
+          }
+        }
+        if (!varName) {
+          while ((match = varRegex.exec(eqParts[1])) !== null) {
+            const name = match[0];
+            if (!excludedNames.has(name) && isNaN(name)) {
+              varName = name;
+              break;
+            }
           }
         }
         if (!varName) return 'Error';
@@ -1165,14 +1177,31 @@ export function ScientificCalculator() {
         tempExpr = tempExpr.replaceAll(key, placeholders[key]);
       });
 
-      Object.keys(variables).forEach(v => {
-        const val = variables[v] !== undefined ? variables[v] : 0;
-        const isWordChar = /^[a-zA-Z_]$/.test(v);
-        if (isWordChar) {
-          tempExpr = tempExpr.replace(new RegExp(`\\b${v}\\b`, 'g'), `(${val})`);
-        } else {
-          tempExpr = tempExpr.replaceAll(v, `(${val})`);
+      // 1. Build a map of all variables to substitute (existing state variables + any newly detected ones in expression)
+      const activeVars = { ...variables };
+      const varRegex = /[a-zA-Z\u0370-\u03ff]+(_[a-zA-Z\u0370-\u03ff0-9]+)?/g;
+      const excludedNames = new Set([
+        'sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'sinh', 'cosh', 'tanh', 'asinh', 'acosh', 'atanh',
+        'log', 'ln', 'exp', 'sqrt', 'cbrt', 'Abs', 'Ans', 'Math', 'd', 'dx', 'd/dx', 'pi', 'e'
+      ]);
+      
+      let match;
+      while ((match = varRegex.exec(tempExpr)) !== null) {
+        const name = match[0];
+        if (!excludedNames.has(name) && isNaN(name) && activeVars[name] === undefined) {
+          activeVars[name] = 0;
         }
+      }
+      
+      // 2. Sort by length descending to replace longer variable names (like γ_w) before shorter ones (like γ)
+      const sortedVarKeys = Object.keys(activeVars).sort((a, b) => b.length - a.length);
+      
+      sortedVarKeys.forEach(v => {
+        const val = activeVars[v];
+        const escapedVar = v.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+        // Word boundary that works safely for English, Greek, numbers, and underscores
+        const pattern = `(?<![a-zA-Z\\u0370-\\u03ff0-9_])${escapedVar}(?![a-zA-Z\\u0370-\\u03ff0-9_])`;
+        tempExpr = tempExpr.replace(new RegExp(pattern, 'g'), `(${val})`);
       });
 
       Object.keys(placeholders).forEach(key => {
@@ -2295,7 +2324,8 @@ export function ScientificCalculator() {
               { label: 'Δ (Delta)', char: 'Δ' },
               { label: 'Σ (Sigma)', char: 'Σ' },
               { label: 'Φ (Phi)', char: 'Φ' },
-              { label: 'Ω (Omega)', char: 'Ω' }
+              { label: 'Ω (Omega)', char: 'Ω' },
+              { label: '아래첨자 (_)', char: '_', display: 'x_□' }
             ].map(item => (
               <button
                 key={item.char}
@@ -2304,7 +2334,7 @@ export function ScientificCalculator() {
                 title={item.label}
                 className="py-1 bg-slate-950/60 hover:bg-slate-800 text-amber-500 hover:text-amber-400 rounded border border-slate-800 text-[12px] font-bold transition-all active:scale-90 cursor-pointer"
               >
-                {item.char}
+                {item.display || item.char}
               </button>
             ))}
           </div>

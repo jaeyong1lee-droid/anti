@@ -41,7 +41,7 @@ export const PopoutWindow = ({ title, onClose, children, initWidth = 720, initHe
     const x = (savedPos && savedPos.x !== undefined) ? savedPos.x : defaultLeft;
     const y = (savedPos && savedPos.y !== undefined) ? savedPos.y : defaultTop;
 
-    const features = `popup=yes,left=${Math.round(x)},top=${Math.round(y)},width=${Math.round(w)},height=${Math.round(h)},resizable=yes`;
+    const features = `popup=yes,left=${Math.round(x)},screenX=${Math.round(x)},top=${Math.round(y)},screenY=${Math.round(y)},width=${Math.round(w)},height=${Math.round(h)},resizable=yes`;
     
     const newWindow = window.open(
       '/popout.html',
