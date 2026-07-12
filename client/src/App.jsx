@@ -1984,6 +1984,23 @@ export default function App() {
   const renderDetailedTableFeedback = (idx, q, weight = 10) => {
     const inputIds = Object.keys(q.answers || {});
     if (inputIds.length === 0) return null;
+
+    const isOverviewReview = q.question.startsWith("[개요 복습]") || q.mixedType === "overview" || q.subtype === "개요";
+    let filteredInputIds = inputIds;
+    if (isOverviewReview) {
+      const secondTableInputs = [];
+      if (q.comparisonTableData && q.comparisonTableData.rows) {
+        q.comparisonTableData.rows.forEach(row => {
+          row.forEach(cell => {
+            if (typeof cell === 'string' && cell.includes('[INPUT_')) {
+              const inputId = cell.replace('[', '').replace(']', '').trim();
+              secondTableInputs.push(inputId);
+            }
+          });
+        });
+      }
+      filteredInputIds = secondTableInputs;
+    }
     
     const activeAnswers = showExam ? examTableAnswers : tableAnswers;
     const activeGradingResults = showExam ? examTableGradingResults : tableGradingResults;
@@ -1992,7 +2009,7 @@ export default function App() {
       <div className="mt-4 pt-3 border-t border-current/10 space-y-3">
         <span className="font-extrabold text-amber-400 text-[14px] sm:text-[16px]">💡 빈칸별 상세 피드백:</span>
         <div className="divide-y divide-slate-800/80 mt-1">
-          {inputIds.map((inputId) => {
+          {filteredInputIds.map((inputId) => {
             const value = activeAnswers[`${idx}_${inputId}`] || '';
             const correctAnswer = q.answers?.[inputId] || '';
             const gradingResult = activeGradingResults?.[`${idx}_${inputId}`];
@@ -18568,19 +18585,21 @@ ${itemsStr}
                                   />
                                 );
                               })()}
-                              {(!isRevd && !(q.question.startsWith("[개요 복습]") || q.mixedType === "overview" || q.subtype === "개요")) ? (
-                                <button
-                                  onClick={async () => {
-                                    if (gradingLoading[idx]) return;
-                                    await gradeTableQuestion(idx, q);
-                                    setRevealedQuestions(prev => ({ ...prev, [idx]: true }));
-                                  }}
-                                  className={`w-full py-3 bg-slate-600 hover:bg-slate-500 text-white border border-slate-500/50 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 shadow-md shadow-slate-600/10 font-black ${
-                                    gradingLoading[idx] ? 'opacity-50 pointer-events-none' : ''
-                                  }`}
-                                >
-                                  {gradingLoading[idx] ? 'AI 채점 진행 중...' : '제출하고 채점하기 →'}
-                                </button>
+                              {!isRevd ? (
+                                !(q.question.startsWith("[개요 복습]") || q.mixedType === "overview" || q.subtype === "개요") && (
+                                  <button
+                                    onClick={async () => {
+                                      if (gradingLoading[idx]) return;
+                                      await gradeTableQuestion(idx, q);
+                                      setRevealedQuestions(prev => ({ ...prev, [idx]: true }));
+                                    }}
+                                    className={`w-full py-3 bg-slate-600 hover:bg-slate-500 text-white border border-slate-500/50 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 shadow-md shadow-slate-600/10 font-black ${
+                                      gradingLoading[idx] ? 'opacity-50 pointer-events-none' : ''
+                                    }`}
+                                  >
+                                    {gradingLoading[idx] ? 'AI 채점 진행 중...' : '제출하고 채점하기 →'}
+                                  </button>
+                                )
                               ) : (
                                 <div className={`p-0 sm:p-4 rounded-none sm:rounded-xl border-0 sm:border space-y-3 text-left transition-all ${getTableContainerClasses(idx, q, isRevd)}`}>
                                   {/* 테이블 주관식 개별 피드백 */}
@@ -21995,19 +22014,21 @@ ${itemsStr}
                                   />
                                 );
                               })()}
-                              {(!examRevealed[idx] && !(q.question.startsWith("[개요 복습]") || q.mixedType === "overview" || q.subtype === "개요")) ? (
-                                <button
-                                  onClick={async () => {
-                                    if (gradingLoading[idx]) return;
-                                    await gradeTableQuestion(idx, q);
-                                    setExamRevealed(prev => ({ ...prev, [idx]: true }));
-                                  }}
-                                  className={`w-full py-3 bg-slate-600 hover:bg-slate-500 text-white border border-slate-500/50 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 shadow-md shadow-slate-600/10 font-black ${
-                                    gradingLoading[idx] ? 'opacity-50 pointer-events-none' : ''
-                                  }`}
-                                >
-                                  {gradingLoading[idx] ? 'AI 채점 진행 중...' : '제출하고 채점하기 →'}
-                                </button>
+                              {!examRevealed[idx] ? (
+                                !(q.question.startsWith("[개요 복습]") || q.mixedType === "overview" || q.subtype === "개요") && (
+                                  <button
+                                    onClick={async () => {
+                                      if (gradingLoading[idx]) return;
+                                      await gradeTableQuestion(idx, q);
+                                      setExamRevealed(prev => ({ ...prev, [idx]: true }));
+                                    }}
+                                    className={`w-full py-3 bg-slate-600 hover:bg-slate-500 text-white border border-slate-500/50 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 shadow-md shadow-slate-600/10 font-black ${
+                                      gradingLoading[idx] ? 'opacity-50 pointer-events-none' : ''
+                                    }`}
+                                  >
+                                    {gradingLoading[idx] ? 'AI 채점 진행 중...' : '제출하고 채점하기 →'}
+                                  </button>
+                                )
                               ) : (
                                 <div className={`p-0 sm:p-4 rounded-none sm:rounded-xl border-0 sm:border space-y-3 text-left transition-all ${getTableContainerClasses(idx, q, !!examRevealed[idx])}`}>
                                   {/* 테이블 주관식 개별 피드백 */}
