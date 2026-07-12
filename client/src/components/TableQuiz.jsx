@@ -563,23 +563,36 @@ export const TableQuiz = React.memo(function TableQuiz({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [floatedTableId, setFloatedTableId]);
 
+  useEffect(() => {
+    if (isMobileView && floatedTableId) {
+      setFloatedTableId(null);
+    }
+  }, [isMobileView, floatedTableId, setFloatedTableId]);
+
   const mainTableUniqueId = `${isExam ? 'exam' : 'review'}_${questionIdx}_main`;
   const isMainFloated = floatedTableId === mainTableUniqueId;
 
   const compTableUniqueId = `${isExam ? 'exam' : 'review'}_${questionIdx}_comp`;
   const isCompFloated = floatedTableId === compTableUniqueId;
 
+  const mainTablePlaceholder = isMainFloated ? (
+    <div className="w-full my-3 p-4 rounded-xl border border-dashed border-sky-500/20 bg-sky-500/5 text-center flex flex-col items-center justify-center gap-1.5 min-h-[100px] select-none">
+      <span className="text-lg">📌</span>
+      <p className="text-xs font-semibold text-sky-400">표가 우측 상단에 고정되어 있습니다.</p>
+      <button 
+        onClick={() => setFloatedTableId(null)}
+        className="px-2.5 py-1 bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 text-xs font-bold rounded-lg transition-all border border-sky-500/30 active:scale-95"
+      >
+        화면 고정 해제
+      </button>
+    </div>
+  ) : null;
+
   const mainTable = (
     <>
-      {isMainFloated && (
-        <div 
-          className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[9990]" 
-          onClick={() => setFloatedTableId(null)} 
-        />
-      )}
       <div 
         className={isMainFloated 
-          ? "fixed inset-4 md:inset-10 z-[9991] bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl p-4 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+          ? "fixed top-20 right-6 w-[500px] max-w-[90vw] h-[45vh] max-h-[500px] z-[9991] bg-slate-900/95 border border-slate-700 rounded-2xl shadow-2xl p-3 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150 backdrop-blur-md"
           : "table-quiz-container w-full my-3 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40"
         }
       style={mobileColWidths.reduce((acc, w, i) => {
@@ -606,14 +619,14 @@ export const TableQuiz = React.memo(function TableQuiz({
           </div>
         )}
         
-        {!isMainFloated && (
-          <div className="flex justify-end p-2 border-b border-slate-900/60 bg-slate-900/10">
+        {!isMainFloated && !isMobileView && (
+          <div className="flex justify-end p-1.5 border-b border-slate-900/60 bg-slate-900/10">
             <button
               onClick={() => setFloatedTableId(mainTableUniqueId)}
-              className="px-2.5 py-1 bg-slate-900/80 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800 rounded-lg text-xs font-bold flex items-center gap-1 transition-all active:scale-95 select-none"
+              className="p-1 bg-slate-900/80 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800 rounded-lg text-sm transition-all active:scale-95 select-none"
               title="표를 화면에 고정하여 편리하게 문제를 풉니다"
             >
-              <span>📌</span> 화면 고정
+              📌
             </button>
           </div>
         )}
@@ -832,14 +845,21 @@ export const TableQuiz = React.memo(function TableQuiz({
     </>
   );
 
+  const compTablePlaceholder = isCompFloated ? (
+    <div className="w-full my-3 p-4 rounded-xl border border-dashed border-sky-500/20 bg-sky-500/5 text-center flex flex-col items-center justify-center gap-1.5 min-h-[100px] select-none">
+      <span className="text-lg">⚖️</span>
+      <p className="text-xs font-semibold text-sky-400">비교표가 우측 상단에 고정되어 있습니다.</p>
+      <button 
+        onClick={() => setFloatedTableId(null)}
+        className="px-2.5 py-1 bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 text-xs font-bold rounded-lg transition-all border border-sky-500/30 active:scale-95"
+      >
+        화면 고정 해제
+      </button>
+    </div>
+  ) : null;
+
   const compTable = q.comparisonTableData ? (
     <>
-      {isCompFloated && (
-        <div 
-          className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[9990]" 
-          onClick={() => setFloatedTableId(null)} 
-        />
-      )}
       <div className={isCompFloated ? "" : "mt-4 space-y-2"}>
         {!isCompFloated && (
           <div className="text-xs sm:text-sm font-extrabold text-slate-400 select-none text-left">
@@ -848,7 +868,7 @@ export const TableQuiz = React.memo(function TableQuiz({
         )}
         <div 
           className={isCompFloated
-            ? "fixed inset-4 md:inset-10 z-[9991] bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl p-4 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+            ? "fixed top-20 right-6 w-[500px] max-w-[90vw] h-[45vh] max-h-[500px] z-[9991] bg-slate-900/95 border border-slate-700 rounded-2xl shadow-2xl p-3 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150 backdrop-blur-md"
             : "table-quiz-container w-full my-3 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40"
           }
         >
@@ -871,14 +891,14 @@ export const TableQuiz = React.memo(function TableQuiz({
             </div>
           )}
 
-          {!isCompFloated && (
-            <div className="flex justify-end p-2 border-b border-slate-900/60 bg-slate-900/10">
+          {!isCompFloated && !isMobileView && (
+            <div className="flex justify-end p-1.5 border-b border-slate-900/60 bg-slate-900/10">
               <button
                 onClick={() => setFloatedTableId(compTableUniqueId)}
-                className="px-2.5 py-1 bg-slate-900/80 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800 rounded-lg text-xs font-bold flex items-center gap-1 transition-all active:scale-95 select-none"
+                className="p-1 bg-slate-900/80 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800 rounded-lg text-sm transition-all active:scale-95 select-none"
                 title="비교표를 화면에 고정하여 편리하게 문제를 풉니다"
               >
-                <span>📌</span> 화면 고정
+                📌
               </button>
             </div>
           )}
@@ -1078,7 +1098,9 @@ export const TableQuiz = React.memo(function TableQuiz({
 
   return (
     <div ref={containerRef} className="w-full">
+      {mainTablePlaceholder}
       {mainTable}
+      {compTablePlaceholder}
       {compTable}
     </div>
   );
