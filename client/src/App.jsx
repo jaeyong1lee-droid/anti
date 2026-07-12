@@ -5669,7 +5669,7 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
         chatHistory
       };
 
-      const delay = 30000;
+      const delay = 5000;
 
       const delayDebounceFn = setTimeout(() => {
         console.log(`[Auto-Sync] Sending POST request to server... key fields: topicId=${selectedTopic.id}, scheduleId=${selectedTopic.schedule_id}`);
@@ -5731,7 +5731,7 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
             savedExamScroll: examBodyRef.current?.scrollTop || 0
           })
         }).catch(e => console.warn('종합평가 세션 자동 동기화 실패:', e));
-      }, 30000); // 30-second debounce to prevent spamming server on rapid clicks
+      }, 5000); // 5-second debounce to prevent spamming server on rapid clicks
 
       return () => clearTimeout(delayDebounceFn);
     }
@@ -5893,7 +5893,7 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
     autoSaveTimeoutRef.current = setTimeout(() => {
       console.log('[Auto-Save] Running debounced save...');
       forceSaveActiveSessions().catch(err => console.warn('Debounced save failed:', err));
-    }, 30000);
+    }, 5000);
   };
 
   const refreshActiveReviewSession = async () => {
@@ -10111,6 +10111,9 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
 
     if (typeof customMessage !== 'string') {
       setRealTimeTutorInput('');
+      if (realTimeTutorInputRef.current) {
+        realTimeTutorInputRef.current.style.height = 'auto';
+      }
     }
     setRealTimeAttachedImage(null);
 
@@ -14719,6 +14722,12 @@ ${itemsStr}
     if (typeof customMessage !== 'string') {
       setFormulaChatInput('');
       setFormulaAttachedImage(null);
+      if (e && e.target) {
+        const textarea = e.target.querySelector?.('textarea') || (e.target.tagName === 'TEXTAREA' ? e.target : null);
+        if (textarea) {
+          textarea.style.height = 'auto';
+        }
+      }
     }
     
     const updatedHistory = [...formulaChatHistory, { role: 'user', text: userMessage, image: currentAttachedImage }];
@@ -24816,14 +24825,28 @@ ${itemsStr}
                         >
                           <Image size={13} />
                         </button>
-                        <input
-                          type="text"
+                        <textarea
                           disabled={isFormulaChatLoading}
                           value={formulaChatInput}
-                          onChange={(e) => setFormulaChatInput(e.target.value)}
+                          onChange={(e) => {
+                            setFormulaChatInput(e.target.value);
+                            e.target.style.height = 'auto';
+                            e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
+                          }}
                           onPaste={handleFormulaPasteImage}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              if (isDesktop && !e.shiftKey) {
+                                e.preventDefault();
+                                if ((formulaChatInput.trim() || formulaAttachedImage) && !isFormulaChatLoading) {
+                                  handleSendFormulaChatMessage(e);
+                                }
+                              }
+                            }
+                          }}
                           placeholder="공식 튜터에게 질문해 보세요..."
-                          className="flex-grow bg-slateCustom-900 border border-slate-800 focus:border-rose-500/50 text-white text-[11px] rounded-lg px-2.5 py-1.5 focus:outline-none placeholder-slate-550 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          rows={1}
+                          className="flex-grow bg-slateCustom-900 border border-slate-800 focus:border-rose-500/50 text-white text-[11px] rounded-lg px-2.5 py-1.5 focus:outline-none placeholder-slate-550 transition-colors disabled:opacity-50 disabled:cursor-not-allowed resize-none overflow-y-auto min-h-[30px] max-h-[120px] leading-normal"
                         />
                         <button
                           type="submit"
@@ -25043,18 +25066,32 @@ ${itemsStr}
                     >
                       <Image size={15} />
                     </button>
-                    <input
-                      type="text"
+                    <textarea
                       disabled={isFormulaChatLoading}
                       value={formulaChatInput}
-                      onChange={(e) => setFormulaChatInput(e.target.value)}
+                      onChange={(e) => {
+                        setFormulaChatInput(e.target.value);
+                        e.target.style.height = 'auto';
+                        e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
+                      }}
                       onPaste={handleFormulaPasteImage}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          if (isDesktop && !e.shiftKey) {
+                            e.preventDefault();
+                            if ((formulaChatInput.trim() || formulaAttachedImage) && !isFormulaChatLoading) {
+                              handleSendFormulaChatMessage(e);
+                            }
+                          }
+                        }
+                      }}
                       placeholder={
                         selectedFormulaIdx === -1 
                           ? "AI 공식 튜터에게 자유롭게 질문해 보세요..." 
                           : "공식에 대해 질문해 보세요 (예: 유도과정, 적용조건)..."
                       }
-                      className="flex-grow bg-slateCustom-900 border border-slate-800 focus:border-rose-500/50 text-white text-xs rounded-xl px-3 py-2.5 focus:outline-none placeholder-slate-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      rows={1}
+                      className="flex-grow bg-slateCustom-900 border border-slate-800 focus:border-rose-500/50 text-white text-xs rounded-xl px-3 py-2.5 focus:outline-none placeholder-slate-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed resize-none overflow-y-auto min-h-[40px] max-h-[120px] leading-relaxed"
                     />
                     <button
                       type="submit"
@@ -26591,15 +26628,29 @@ ${itemsStr}
                 className="hidden"
               />
 
-              <input
-                type="text"
+              <textarea
                 ref={realTimeTutorInputRef}
                 value={realTimeTutorInput}
-                onChange={(e) => setRealTimeTutorInput(e.target.value)}
+                onChange={(e) => {
+                  setRealTimeTutorInput(e.target.value);
+                  e.target.style.height = 'auto';
+                  e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
+                }}
                 onPaste={handleRealTimePasteImage}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    if (isDesktop && !e.shiftKey) {
+                      e.preventDefault();
+                      if ((realTimeTutorInput.trim() || realTimeAttachedImage) && !isRealTimeChatLoading) {
+                        handleSendRealTimeMessage(e);
+                      }
+                    }
+                  }
+                }}
                 disabled={isRealTimeChatLoading}
                 placeholder="실시간 튜터에게 질문하기..."
-                className="flex-grow bg-slate-950 border border-slate-800 focus:border-brand-500/80 text-white text-sm md:text-base rounded-xl px-3 py-2 focus:outline-none transition-all placeholder-slate-500"
+                rows={1}
+                className="flex-grow bg-slate-950 border border-slate-800 focus:border-brand-500/80 text-white text-sm md:text-base rounded-xl px-3 py-2 focus:outline-none transition-all placeholder-slate-500 resize-none overflow-y-auto min-h-[40px] max-h-[120px] leading-relaxed"
                 style={{ fontSize: isDesktop ? '16px' : '14px' }}
               />
 
