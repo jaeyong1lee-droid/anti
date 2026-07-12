@@ -8341,9 +8341,27 @@ export default function App() {
     setSelectedAnswers(prev => {
       const copy = { ...prev };
       delete copy[idx];
+      selectedAnswersRef.current = copy;
       if (!selectedTopic?.isReadOnly) {
         lastSyncStateRef.current.selectedAnswers = copy;
-        saveActiveSessionDebounced();
+        fetch(`${API_BASE}/api/session/review`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            topicId: selectedTopic.id,
+            scheduleId: selectedTopic.schedule_id,
+            sessionId: reviewSessionId,
+            questions: aiQuestions,
+            selectedAnswers: copy,
+            revealedQuestions: revealedQuestionsRef.current,
+            tableAnswers: tableAnswersRef.current,
+            tableGradingResults: tableGradingResultsRef.current,
+            tutorAnswers: tutorAnswersRef.current,
+            tutorInputText: tutorInputTextRef.current,
+            chatHistory: chatHistoryRef.current,
+            savedQuizScroll: quizBodyRef.current?.scrollTop || 0
+          })
+        }).catch(e => console.warn('복습 세션 즉시 동기화 실패:', e));
       }
       return copy;
     });
@@ -8444,7 +8462,25 @@ export default function App() {
     setExamAnswers(prev => {
       const copy = { ...prev };
       delete copy[idx];
-      saveActiveSessionDebounced();
+      examAnswersRef.current = copy;
+      if (examQuestions.length > 0 && !loadingExam) {
+        fetch(`${API_BASE}/api/session/exam`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            examQuestions: examQuestionsRef.current,
+            examRevealed: examRevealedRef.current,
+            examAnswers: copy,
+            examTopic,
+            tableAnswers: examTableAnswersRef.current,
+            tableGradingResults: examTableGradingResultsRef.current,
+            tutorAnswers: tutorAnswersRef.current,
+            tutorInputText: tutorInputTextRef.current,
+            chatHistory: chatHistoryRef.current,
+            savedExamScroll: examBodyRef.current?.scrollTop || 0
+          })
+        }).catch(e => console.warn('종합평가 세션 즉시 동기화 실패:', e));
+      }
       return copy;
     });
     setExamOptionExplanations(prev => {
@@ -11260,6 +11296,51 @@ export default function App() {
     }, 500);
   };
 
+  // ── Save Chat to Neon Helper ───────────────────────────────────
+  const saveChatToNeon = (updatedChatHistory) => {
+    if (showExam) {
+      if (examQuestions.length > 0 && !loadingExam) {
+        fetch(`${API_BASE}/api/session/exam`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            examQuestions: examQuestionsRef.current,
+            examRevealed: examRevealedRef.current,
+            examAnswers: examAnswersRef.current,
+            examTopic,
+            tableAnswers: examTableAnswersRef.current,
+            tableGradingResults: examTableGradingResultsRef.current,
+            tutorAnswers: tutorAnswersRef.current,
+            tutorInputText: tutorInputTextRef.current,
+            chatHistory: updatedChatHistory,
+            savedExamScroll: examBodyRef.current?.scrollTop || 0
+          })
+        }).catch(e => console.warn('종합평가 세션 즉시 동기화 실패:', e));
+      }
+    } else {
+      if (selectedTopic && selectedTopic.id && !selectedTopic.isReadOnly) {
+        fetch(`${API_BASE}/api/session/review`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            topicId: selectedTopic.id,
+            scheduleId: selectedTopic.schedule_id,
+            sessionId: reviewSessionId,
+            questions: aiQuestions,
+            selectedAnswers: selectedAnswersRef.current,
+            revealedQuestions: revealedQuestionsRef.current,
+            tableAnswers: tableAnswersRef.current,
+            tableGradingResults: tableGradingResultsRef.current,
+            tutorAnswers: tutorAnswersRef.current,
+            tutorInputText: tutorInputTextRef.current,
+            chatHistory: updatedChatHistory,
+            savedQuizScroll: quizBodyRef.current?.scrollTop || 0
+          })
+        }).catch(e => console.warn('복습 세션 즉시 동기화 실패:', e));
+      }
+    }
+  };
+
   // ── Gemini Sidebar Chat Handler ───────────────────────────────
   const handleSendChat = async (customMessage, overrideAcronymMode = false) => {
     const userMessage = (typeof customMessage === 'string' ? customMessage : chatInput).trim();
@@ -11270,6 +11351,7 @@ export default function App() {
       setChatInput('');
     }
     setAttachedImage(null);
+    setAttachedImagePreview(null);
     
     // 공식이 첨부되어 있다면 프롬프트 상단에 메타 정보로 추가하고 즉시 비웁니다.
     let apiMessage = userMessage;
@@ -11284,7 +11366,13 @@ export default function App() {
     if (sentAttachedFormula) {
       displayMessage = `$$${sentAttachedFormula}$$\n\n${userMessage}`;
     }
-    setChatHistory(prev => [...prev, { role: 'user', text: displayMessage, image: currentAttachedImage }]);
+    
+    const newUserMsg = { role: 'user', text: displayMessage, image: currentAttachedImage };
+    const historyWithUser = [...chatHistoryRef.current, newUserMsg];
+    setChatHistory(historyWithUser);
+    chatHistoryRef.current = historyWithUser;
+    saveChatToNeon(historyWithUser);
+    
     setIsChatLoading(true);
 
     requestAnimationFrame(() => {
@@ -11299,7 +11387,7 @@ export default function App() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          history: chatHistory.map(h => ({ role: h.role, text: h.text })), 
+          history: historyWithUser.map(h => ({ role: h.role, text: h.text })), 
           message: apiMessage,
           image: currentAttachedImage ? { mimeType: currentAttachedImage.mimeType, data: currentAttachedImage.data } : null,
           acronymMode: overrideAcronymMode || acronymModeActive,
@@ -11307,10 +11395,20 @@ export default function App() {
         })
       });
       stopProgressPolling('답변 생성이 완료되었습니다!', 100);
-      setChatHistory(prev => [...prev, { role: 'model', text: data.text }]);
+      
+      const newModelMsg = { role: 'model', text: data.text };
+      const historyWithModel = [...chatHistoryRef.current, newModelMsg];
+      setChatHistory(historyWithModel);
+      chatHistoryRef.current = historyWithModel;
+      saveChatToNeon(historyWithModel);
     } catch (err) {
       stopProgressPolling('답변 생성 실패', 100, false);
-      setChatHistory(prev => [...prev, { role: 'model', text: `오류가 발생했습니다: ${err.message}` }]);
+      
+      const newErrorMsg = { role: 'model', text: `오류가 발생했습니다: ${err.message}` };
+      const historyWithError = [...chatHistoryRef.current, newErrorMsg];
+      setChatHistory(historyWithError);
+      chatHistoryRef.current = historyWithError;
+      saveChatToNeon(historyWithError);
     } finally {
       setIsChatLoading(false);
       scrollToLastTutorResponse(chatBodyRef.current);
@@ -17987,7 +18085,24 @@ ${itemsStr}
                                     // 서버 세션 동기화 (디바운스 적용)
                                     if (selectedTopic && selectedTopic.id && !selectedTopic.isReadOnly) {
                                       lastSyncStateRef.current.selectedAnswers = nextAnswers;
-                                      saveActiveSessionDebounced();
+                                       fetch(`${API_BASE}/api/session/review`, {
+                                         method: 'POST',
+                                         headers: { 'Content-Type': 'application/json' },
+                                         body: JSON.stringify({
+                                           topicId: selectedTopic.id,
+                                           scheduleId: selectedTopic.schedule_id,
+                                           sessionId: reviewSessionId,
+                                           questions: aiQuestions,
+                                           selectedAnswers: nextAnswers,
+                                           revealedQuestions: revealedQuestionsRef.current,
+                                           tableAnswers: tableAnswersRef.current,
+                                           tableGradingResults: tableGradingResultsRef.current,
+                                           tutorAnswers: tutorAnswersRef.current,
+                                           tutorInputText: tutorInputTextRef.current,
+                                           chatHistory: chatHistoryRef.current,
+                                           savedQuizScroll: quizBodyRef.current?.scrollTop || 0
+                                         })
+                                       }).catch(e => console.warn('복습 세션 즉시 동기화 실패:', e));
                                     }
 
                                     const normalizeAns = (s) => (s || '').replace(/^\d+\.\s*/, '').trim();
