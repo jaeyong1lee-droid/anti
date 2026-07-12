@@ -27056,206 +27056,272 @@ ${itemsStr}
         </div>
       )}
 
-      {/* Answer Popup Modal (Popout Window) */}
-      {activeAnswerPopupData && (
-        <PopoutWindow
-          title={
-            activeAnswerPopupData.type === 'overview' ? '📖 개요 답안 - ' + activeAnswerPopupData.title :
-            activeAnswerPopupData.type === 'table' ? '⚖️ 비교표 답안 - ' + activeAnswerPopupData.title :
-            activeAnswerPopupData.type === 'acronym' ? '💡 두문자 답안 - ' + activeAnswerPopupData.title :
-            '🔬 공식 답안 - ' + activeAnswerPopupData.title
-          }
-          onClose={() => setActiveAnswerPopupData(null)}
-          initWidth={768}
-          initHeight={600}
-          storageKey={"anti_popout_answer_" + activeAnswerPopupData.type}
-        >
-          <div className="w-full h-full flex flex-col overflow-hidden text-slate-100 p-4">
-            {/* Modal Content */}
-            <div className="flex-1 overflow-y-auto pr-1 space-y-4">
-              {activeAnswerPopupData.type === 'overview' && (() => {
-                const parsed = parseOverviewContent(activeAnswerPopupData.content.content);
-                const steps = parsed.mechanism ? parsed.mechanism.split(/\s*->\s*/).filter(Boolean) : [];
-                return (
-                  <div className="space-y-4">
-                    {parsed.definition && (
-                      <div className="text-left py-1.5 px-0.5">
-                        <span className="text-[10px] text-slate-400 font-black block mb-1.5 uppercase tracking-wider select-none">📖 학술적 정의</span>
-                        <div className="font-bold text-white text-sm leading-relaxed">
-                          <LatexRenderer text={parsed.definition} katexLoaded={katexLoaded} isMarkdown={true} />
-                        </div>
+      {/* Answer Popup Modal */}
+      {activeAnswerPopupData && (() => {
+        const renderAnswerPopupContent = () => (
+          <>
+            {activeAnswerPopupData.type === 'overview' && (() => {
+              const parsed = parseOverviewContent(activeAnswerPopupData.content.content);
+              const steps = parsed.mechanism ? parsed.mechanism.split(/\s*->\s*/).filter(Boolean) : [];
+              return (
+                <div className="space-y-4">
+                  {parsed.definition && (
+                    <div className="text-left py-1.5 px-0.5">
+                      <span className="text-[10px] text-slate-400 font-black block mb-1.5 uppercase tracking-wider select-none">📖 학술적 정의</span>
+                      <div className="font-bold text-white text-sm leading-relaxed">
+                        <LatexRenderer text={parsed.definition} katexLoaded={katexLoaded} isMarkdown={true} />
                       </div>
-                    )}
-                    {steps.length > 0 && (
-                      <div className="space-y-2 text-left">
-                        <span className="text-[10px] text-rose-455 font-black block mb-1.5 uppercase tracking-wider select-none">⚙️ 공학적 작동 메커니즘</span>
-                        <div className="flex flex-col gap-1.5 w-full">
-                          {steps.map((step, sIdx) => (
-                            <React.Fragment key={sIdx}>
-                              <div className="text-slate-200 text-xs sm:text-sm font-semibold leading-relaxed py-1 px-0.5">
-                                <div className="flex gap-2.5 items-start">
-                                  <span className="flex items-center justify-center w-5 h-5 rounded-full bg-rose-500/10 text-rose-400 text-[10px] font-black border border-rose-500/20 shrink-0 mt-0.5 select-none">
-                                    {sIdx + 1}
-                                  </span>
-                                  <div className="flex-grow text-slate-250 leading-relaxed">
-                                    <LatexRenderer text={step} katexLoaded={katexLoaded} isMarkdown={true} />
-                                  </div>
+                    </div>
+                  )}
+                  {steps.length > 0 && (
+                    <div className="space-y-2 text-left">
+                      <span className="text-[10px] text-rose-455 font-black block mb-1.5 uppercase tracking-wider select-none">⚙️ 공학적 작동 메커니즘</span>
+                      <div className="flex flex-col gap-1.5 w-full">
+                        {steps.map((step, sIdx) => (
+                          <React.Fragment key={sIdx}>
+                            <div className="text-slate-200 text-xs sm:text-sm font-semibold leading-relaxed py-1 px-0.5">
+                              <div className="flex gap-2.5 items-start">
+                                <span className="flex items-center justify-center w-5 h-5 rounded-full bg-rose-500/10 text-rose-400 text-[10px] font-black border border-rose-500/20 shrink-0 mt-0.5 select-none">
+                                  {sIdx + 1}
+                                </span>
+                                <div className="flex-grow text-slate-250 leading-relaxed">
+                                  <LatexRenderer text={step} katexLoaded={katexLoaded} isMarkdown={true} />
                                 </div>
                               </div>
-                              {sIdx < steps.length - 1 && (
-                                <div className="flex justify-center my-0.5 select-none">
-                                  <span className="text-rose-500/40 text-[11px] font-black">↓</span>
-                                </div>
-                              )}
-                            </React.Fragment>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {parsed.comparison && (
-                      <div className="text-slate-200 text-xs sm:text-sm leading-relaxed text-left py-1.5 px-0.5">
-                        <span className="text-[10px] text-emerald-400 font-black block mb-1.5 uppercase tracking-wider select-none">⚖️ 비교표 / 장단점</span>
-                        <div className="text-slate-250 text-sm leading-relaxed font-normal">
-                          <LatexRenderer text={parsed.comparison} katexLoaded={katexLoaded} isMarkdown={true} hideTableWrapper={true} />
-                        </div>
-                      </div>
-                    )}
-                    {parsed.significance && (
-                      <div className="text-left py-1.5 px-0.5">
-                        <span className="text-[10px] text-rose-400 font-black block mb-1.5 uppercase tracking-wider select-none">⚠️ 공학적 의미 및 한계성</span>
-                        <div className="text-slate-250 text-sm leading-relaxed font-semibold">
-                          <LatexRenderer text={parsed.significance} katexLoaded={katexLoaded} isMarkdown={true} />
-                        </div>
-                      </div>
-                    )}
-                    {parsed.intuitive && (
-                      <div className="text-left py-1.5 px-0.5">
-                        <span className="text-[10px] text-violet-400 font-extrabold block mb-1.5 uppercase tracking-wider select-none">💡 직관적 본질 (비유)</span>
-                        <div className="text-slate-300 text-sm leading-relaxed">
-                          <LatexRenderer text={parsed.intuitive} katexLoaded={katexLoaded} isMarkdown={true} />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })()}
-
-              {activeAnswerPopupData.type === 'table' && (() => {
-                const parsed = parseHtmlTable(activeAnswerPopupData.content.html);
-                return (
-                  <div className="table-quiz-container overflow-x-auto rounded-2xl border border-white/20 bg-slate-950/40 p-0 text-left">
-                    <table className="table-quiz-table w-full table-auto text-center border-collapse text-[13px] sm:text-[14px]">
-                      <thead>
-                        <tr className="bg-slate-955/80 text-slate-355 border-b border-white/20">
-                          {parsed.headers.map((h, hIdx) => (
-                            <th key={hIdx} className="p-2.5 border-r border-white/20 last:border-r-0 font-extrabold">
-                              <LatexRenderer text={h} katexLoaded={katexLoaded} />
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {parsed.rows.map((row, rIdx) => (
-                          <tr key={rIdx} className="border-b border-white/20 last:border-b-0 hover:bg-slate-900/10">
-                            {row.map((cell, cIdx) => (
-                              <td key={cIdx} className="p-3 border-r border-white/20 last:border-r-0 text-slate-200 align-middle">
-                                <LatexRenderer text={cell} katexLoaded={katexLoaded} />
-                              </td>
-                            ))}
-                          </tr>
+                            </div>
+                            {sIdx < steps.length - 1 && (
+                              <div className="flex justify-center my-0.5 select-none">
+                                <span className="text-rose-500/40 text-[11px] font-black">↓</span>
+                              </div>
+                            )}
+                          </React.Fragment>
                         ))}
-                      </tbody>
-                    </table>
-                  </div>
-                );
-              })()}
-
-              {activeAnswerPopupData.type === 'acronym' && (() => {
-                const rows = getAcronymRows(activeAnswerPopupData.content.content);
-                const acronymHeaderMatch = activeAnswerPopupData.content.content.match(/^두문자:\s*([^\n]+)/m);
-                const acronymHeaderText = acronymHeaderMatch ? acronymHeaderMatch[1].trim() : rows.map(r => r.acronym).join('');
-                const sentenceMatch = activeAnswerPopupData.content.content.match(/^연상문장:\s*([^\n]+)/m);
-                const sentenceText = sentenceMatch ? sentenceMatch[1].trim() : '';
-                return (
-                  <div className="space-y-4">
-                    <div className="flex flex-col gap-2 bg-slate-955/40 border border-white/20 rounded-2xl p-4 text-left">
-                      <div className="text-xs font-black text-emerald-400 bg-emerald-950/40 px-3 py-1.5 rounded-lg border border-emerald-500/20 w-fit">
-                        두문자 조합: {acronymHeaderText}
-                      </div>
-                      {sentenceText && (
-                        <div className="mt-2 text-sm text-slate-255 leading-relaxed font-semibold">
-                          <span className="text-emerald-400">💡 연상문장:</span> {sentenceText}
-                        </div>
-                      )}
-                    </div>
-                    {rows.length > 0 && (
-                      <div className="overflow-x-auto w-full border border-white/20 bg-slate-950/40 rounded-2xl">
-                        <table className="w-full text-left border-collapse text-[13px] sm:text-[14px]">
-                          <thead>
-                            <tr className="border-b border-white/20 bg-slate-955/80 text-slate-355">
-                              <th className="p-2.5 font-black text-center border-r border-white/20 w-16">두문자</th>
-                              <th className="p-2.5 font-black border-r border-white/20">암기단어</th>
-                              <th className="p-2.5 font-black">설명</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {rows.map((row, rIdx) => (
-                              <tr key={rIdx} className="border-b border-white/20 last:border-b-0 hover:bg-slate-900/10">
-                                <td className="p-2.5 text-center font-extrabold text-emerald-400 border-r border-white/20">{row.acronym}</td>
-                                <td className="p-2.5 font-bold text-white border-r border-white/20">{row.word}</td>
-                                <td className="p-2.5 text-slate-300">{row.description}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                  </div>
-                );
-              })()}
-
-              {activeAnswerPopupData.type === 'formula' && (
-                <div className="space-y-4 text-left">
-                  {activeAnswerPopupData.content.concept && (
-                    <div className="bg-slate-955/40 border border-slate-800/60 p-4 rounded-2xl">
-                      <span className="text-[10px] text-slate-400 font-black block mb-1.5 uppercase tracking-wider">🔬 핵심 개념</span>
-                      <div className="text-sm font-semibold text-white leading-relaxed">
-                        <LatexRenderer text={activeAnswerPopupData.content.concept} katexLoaded={katexLoaded} isMarkdown={true} />
                       </div>
                     </div>
                   )}
-                  {activeAnswerPopupData.content.formula && (
-                    <div className="bg-slate-955/60 border border-slate-800/80 p-4 rounded-2xl">
-                      <span className="text-[10px] text-rose-455 font-black block mb-1.5 uppercase tracking-wider">📐 관계 공식 및 기호 정의</span>
-                      <div className="text-sm text-slate-200 leading-relaxed overflow-x-auto">
-                        <LatexRenderer text={activeAnswerPopupData.content.formula} katexLoaded={katexLoaded} isMarkdown={true} />
+                  {parsed.comparison && (
+                    <div className="text-slate-200 text-xs sm:text-sm leading-relaxed text-left py-1.5 px-0.5">
+                      <span className="text-[10px] text-emerald-400 font-black block mb-1.5 uppercase tracking-wider select-none">⚖️ 비교표 / 장단점</span>
+                      <div className="text-slate-250 text-sm leading-relaxed font-normal">
+                        <LatexRenderer text={parsed.comparison} katexLoaded={katexLoaded} isMarkdown={true} hideTableWrapper={true} />
                       </div>
                     </div>
                   )}
-                  {activeAnswerPopupData.content.structure && (
-                    <div className="bg-violet-955/15 border border-violet-500/10 p-4 rounded-2xl">
-                      <span className="text-[10px] text-violet-400 font-extrabold block mb-1.5 uppercase tracking-wider">⚙️ 공식의 물리적 구성 구조</span>
-                      <div className="text-sm text-slate-300 leading-relaxed">
-                        <LatexRenderer text={activeAnswerPopupData.content.structure} katexLoaded={katexLoaded} isMarkdown={true} />
+                  {parsed.significance && (
+                    <div className="text-left py-1.5 px-0.5">
+                      <span className="text-[10px] text-rose-400 font-black block mb-1.5 uppercase tracking-wider select-none">⚠️ 공학적 의미 및 한계성</span>
+                      <div className="text-slate-250 text-sm leading-relaxed font-semibold">
+                        <LatexRenderer text={parsed.significance} katexLoaded={katexLoaded} isMarkdown={true} />
+                      </div>
+                    </div>
+                  )}
+                  {parsed.intuitive && (
+                    <div className="text-left py-1.5 px-0.5">
+                      <span className="text-[10px] text-violet-400 font-extrabold block mb-1.5 uppercase tracking-wider select-none">💡 직관적 본질 (비유)</span>
+                      <div className="text-slate-300 text-sm leading-relaxed">
+                        <LatexRenderer text={parsed.intuitive} katexLoaded={katexLoaded} isMarkdown={true} />
                       </div>
                     </div>
                   )}
                 </div>
-              )}
-            </div>
+              );
+            })()}
 
-            {/* Modal Footer */}
-            <div className="mt-4 pt-3 border-t border-slate-800/80 flex justify-end select-none">
-              <button
-                onClick={() => setActiveAnswerPopupData(null)}
-                className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
+            {activeAnswerPopupData.type === 'table' && (() => {
+              const parsed = parseHtmlTable(activeAnswerPopupData.content.html);
+              return (
+                <div className="table-quiz-container overflow-x-auto rounded-2xl border border-white/20 bg-slate-955/40 p-0 text-left">
+                  <table className="table-quiz-table w-full table-auto text-center border-collapse text-[13px] sm:text-[14px]">
+                    <thead>
+                      <tr className="bg-slate-955/80 text-slate-355 border-b border-white/20">
+                        {parsed.headers.map((h, hIdx) => (
+                          <th key={hIdx} className="p-2.5 border-r border-white/20 last:border-r-0 font-extrabold">
+                            <LatexRenderer text={h} katexLoaded={katexLoaded} />
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {parsed.rows.map((row, rIdx) => (
+                        <tr key={rIdx} className="border-b border-white/20 last:border-b-0 hover:bg-slate-900/10">
+                          {row.map((cell, cIdx) => (
+                            <td key={cIdx} className="p-3 border-r border-white/20 last:border-r-0 text-slate-200 align-middle">
+                              <LatexRenderer text={cell} katexLoaded={katexLoaded} />
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })()}
+
+            {activeAnswerPopupData.type === 'acronym' && (() => {
+              const rows = getAcronymRows(activeAnswerPopupData.content.content);
+              const acronymHeaderMatch = activeAnswerPopupData.content.content.match(/^두문자:\s*([^\n]+)/m);
+              const acronymHeaderText = acronymHeaderMatch ? acronymHeaderMatch[1].trim() : rows.map(r => r.acronym).join('');
+              const sentenceMatch = activeAnswerPopupData.content.content.match(/^연상문장:\s*([^\n]+)/m);
+              const sentenceText = sentenceMatch ? sentenceMatch[1].trim() : '';
+              return (
+                <div className="space-y-4">
+                  <div className="flex flex-col gap-2 bg-slate-955/40 border border-white/20 rounded-2xl p-4 text-left">
+                    <div className="text-xs font-black text-emerald-400 bg-emerald-950/40 px-3 py-1.5 rounded-lg border border-emerald-500/20 w-fit">
+                      두문자 조합: {acronymHeaderText}
+                    </div>
+                    {sentenceText && (
+                      <div className="mt-2 text-sm text-slate-255 leading-relaxed font-semibold">
+                        <span className="text-emerald-400">💡 연상문장:</span> {sentenceText}
+                      </div>
+                    )}
+                  </div>
+                  {rows.length > 0 && (
+                    <div className="overflow-x-auto w-full border border-white/20 bg-slate-955/40 rounded-2xl">
+                      <table className="w-full text-left border-collapse text-[13px] sm:text-[14px]">
+                        <thead>
+                          <tr className="border-b border-white/20 bg-slate-955/80 text-slate-355">
+                            <th className="p-2.5 font-black text-center border-r border-white/20 w-16">두문자</th>
+                            <th className="p-2.5 font-black border-r border-white/20">암기단어</th>
+                            <th className="p-2.5 font-black">설명</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {rows.map((row, rIdx) => (
+                            <tr key={rIdx} className="border-b border-white/20 last:border-b-0 hover:bg-slate-900/10">
+                              <td className="p-2.5 text-center font-extrabold text-emerald-400 border-r border-white/20">{row.acronym}</td>
+                              <td className="p-2.5 font-bold text-white border-r border-white/20">{row.word}</td>
+                              <td className="p-2.5 text-slate-300">{row.description}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            {activeAnswerPopupData.type === 'formula' && (
+              <div className="space-y-4 text-left">
+                {activeAnswerPopupData.content.concept && (
+                  <div className="bg-slate-955/40 border border-slate-800/60 p-4 rounded-2xl">
+                    <span className="text-[10px] text-slate-400 font-black block mb-1.5 uppercase tracking-wider">🔬 핵심 개념</span>
+                    <div className="text-sm font-semibold text-white leading-relaxed">
+                      <LatexRenderer text={activeAnswerPopupData.content.concept} katexLoaded={katexLoaded} isMarkdown={true} />
+                    </div>
+                  </div>
+                )}
+                {activeAnswerPopupData.content.formula && (
+                  <div className="bg-slate-955/60 border border-slate-800/80 p-4 rounded-2xl">
+                    <span className="text-[10px] text-rose-455 font-black block mb-1.5 uppercase tracking-wider">📐 관계 공식 및 기호 정의</span>
+                    <div className="text-sm text-slate-200 leading-relaxed overflow-x-auto">
+                      <LatexRenderer text={activeAnswerPopupData.content.formula} katexLoaded={katexLoaded} isMarkdown={true} />
+                    </div>
+                  </div>
+                )}
+                {activeAnswerPopupData.content.structure && (
+                  <div className="bg-violet-955/15 border border-violet-500/10 p-4 rounded-2xl">
+                    <span className="text-[10px] text-violet-400 font-extrabold block mb-1.5 uppercase tracking-wider">⚙️ 공식의 물리적 구성 구조</span>
+                    <div className="text-sm text-slate-300 leading-relaxed">
+                      <LatexRenderer text={activeAnswerPopupData.content.structure} katexLoaded={katexLoaded} isMarkdown={true} />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </>
+        );
+
+        if (isDesktop) {
+          return (
+            <PopoutWindow
+              title={
+                activeAnswerPopupData.type === 'overview' ? '📖 개요 답안 - ' + activeAnswerPopupData.title :
+                activeAnswerPopupData.type === 'table' ? '⚖️ 비교표 답안 - ' + activeAnswerPopupData.title :
+                activeAnswerPopupData.type === 'acronym' ? '💡 두문자 답안 - ' + activeAnswerPopupData.title :
+                '🔬 공식 답안 - ' + activeAnswerPopupData.title
+              }
+              onClose={() => setActiveAnswerPopupData(null)}
+              initWidth={768}
+              initHeight={600}
+              storageKey={"anti_popout_answer_" + activeAnswerPopupData.type}
+            >
+              <div className="w-full h-full flex flex-col overflow-hidden text-slate-100 p-4">
+                {/* Modal Content */}
+                <div className="flex-1 overflow-y-auto pr-1 space-y-4">
+                  {renderAnswerPopupContent()}
+                </div>
+
+                {/* Modal Footer */}
+                <div className="mt-4 pt-3 border-t border-slate-800/80 flex justify-end select-none">
+                  <button
+                    onClick={() => setActiveAnswerPopupData(null)}
+                    className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                  >
+                    닫기
+                  </button>
+                </div>
+              </div>
+            </PopoutWindow>
+          );
+        } else {
+          return (
+            <div
+              id="answer-popup-modal"
+              style={{
+                position: 'fixed',
+                left: 'var(--answer-popup-x, 16px)',
+                top: 'var(--answer-popup-y, 80px)',
+                width: 'min(768px, calc(100vw - 32px))',
+                maxHeight: '75vh',
+                zIndex: 9999,
+                display: 'flex',
+                flexDirection: 'column',
+              }}
+              className="bg-slate-900/95 border border-white/20 rounded-3xl shadow-2xl overflow-hidden glassmorphism select-text animate-fade-in"
+            >
+              {/* Modal Header */}
+              <div
+                onMouseDown={handleAnswerPopupMoveStart}
+                onTouchStart={handleAnswerPopupMoveStart}
+                className="flex items-center justify-between px-6 py-4 border-b border-slate-800/80 bg-slate-955/40 cursor-grab active:cursor-grabbing select-none"
               >
-                닫기
-              </button>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-black uppercase px-2.5 py-1 rounded-lg bg-indigo-950/60 border border-indigo-500/20 text-indigo-400">
+                    {activeAnswerPopupData.type === 'overview' ? '📖 개요 답안' :
+                     activeAnswerPopupData.type === 'table' ? '⚖️ 비교표 답안' :
+                     activeAnswerPopupData.type === 'acronym' ? '💡 두문자 답안' : '🔬 공식 답안'}
+                  </span>
+                  <h2 className="text-base font-extrabold text-white truncate max-w-[200px] sm:max-w-md">
+                    {activeAnswerPopupData.title}
+                  </h2>
+                </div>
+                <button
+                  onClick={() => setActiveAnswerPopupData(null)}
+                  className="p-1.5 rounded-full hover:bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Modal Content */}
+              <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                {renderAnswerPopupContent()}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="px-6 py-4 border-t border-slate-800/80 bg-slate-955/40 flex justify-end select-none">
+                <button
+                  onClick={() => setActiveAnswerPopupData(null)}
+                  className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                >
+                  닫기
+                </button>
+              </div>
             </div>
-          </div>
-        </PopoutWindow>
-      )}
+          );
+        }
+      })()}
 
       {/* Custom Overview Prompt Modal */}
       {showOverviewPromptModal && (
