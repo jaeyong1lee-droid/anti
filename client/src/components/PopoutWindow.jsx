@@ -14,13 +14,15 @@ export const PopoutWindow = ({ title, onClose, children, initWidth = 720, initHe
   // Keep window title up-to-date without reopening the window
   useEffect(() => {
     if (windowRef.current) {
-      windowRef.current.document.title = title;
+      try {
+        windowRef.current.document.title = title;
+      } catch (e) {}
     }
   }, [title]);
 
   useEffect(() => {
     const newWindow = window.open(
-      '',
+      '/popout.html',
       '_blank',
       `popup=yes,width=${initWidth},height=${initHeight},resizable=yes`
     );
@@ -32,34 +34,72 @@ export const PopoutWindow = ({ title, onClose, children, initWidth = 720, initHe
     }
 
     windowRef.current = newWindow;
-    newWindow.document.title = title;
 
-    const appContainer = newWindow.document.createElement('div');
-    // Standard classes to maintain theme
-    appContainer.className = 'w-full h-full min-h-screen bg-slate-950 text-slate-100 flex flex-col p-4 overflow-auto';
-    newWindow.document.body.appendChild(appContainer);
-    newWindow.document.body.style.margin = '0';
-    newWindow.document.body.style.backgroundColor = '#020617';
+    const setupContainer = () => {
+      try {
+        const doc = newWindow.document;
+        doc.title = title;
 
-    // Copy style and link tags from main document head, skipping script tags to prevent crash
-    const srcHead = document.head;
-    const destHead = newWindow.document.head;
+        let root = doc.getElementById('popout-root');
+        if (!root) {
+          root = doc.createElement('div');
+          root.id = 'popout-root';
+          doc.body.appendChild(root);
+        }
 
-    Array.from(srcHead.querySelectorAll('link[rel="stylesheet"]')).forEach((link) => {
-      const newLink = newWindow.document.createElement('link');
-      Array.from(link.attributes).forEach(attr => {
-        newLink.setAttribute(attr.name, attr.value);
-      });
-      destHead.appendChild(newLink);
-    });
+        // Apply background style
+        doc.body.style.margin = '0';
+        doc.body.style.backgroundColor = '#020617';
 
-    Array.from(srcHead.querySelectorAll('style')).forEach((style) => {
-      const newStyle = newWindow.document.createElement('style');
-      newStyle.innerHTML = style.innerHTML;
-      destHead.appendChild(newStyle);
-    });
+        // Copy style and link tags from main document head, skipping script tags to prevent crash
+        const srcHead = document.head;
+        const destHead = doc.head;
 
-    setContainer(appContainer);
+        // Clear existing stylesheet links/styles in case they were copied/duplicated
+        destHead.querySelectorAll('link[rel="stylesheet"], style').forEach(el => el.remove());
+
+        Array.from(srcHead.querySelectorAll('link[rel="stylesheet"]')).forEach((link) => {
+          const newLink = doc.createElement('link');
+          Array.from(link.attributes).forEach(attr => {
+            newLink.setAttribute(attr.name, attr.value);
+          });
+          destHead.appendChild(newLink);
+        });
+
+        Array.from(srcHead.querySelectorAll('style')).forEach((style) => {
+          const newStyle = doc.createElement('style');
+          newStyle.innerHTML = style.innerHTML;
+          destHead.appendChild(newStyle);
+        });
+
+        setContainer(root);
+      } catch (err) {
+        console.error('Error setting up popout container:', err);
+      }
+    };
+
+    // Wait for the window to load
+    let isCleanedUp = false;
+    let checkInterval = null;
+
+    const onWindowLoad = () => {
+      if (isCleanedUp) return;
+      setupContainer();
+    };
+
+    newWindow.addEventListener('load', onWindowLoad);
+    
+    // Fallback: poll because window.open with local files might already be loaded or fast
+    checkInterval = setInterval(() => {
+      try {
+        if (newWindow.document && newWindow.document.readyState === 'complete') {
+          clearInterval(checkInterval);
+          setupContainer();
+        }
+      } catch (e) {
+        // Handle cross-origin exception if it's transient
+      }
+    }, 50);
 
     const handleUnload = () => {
       if (onCloseRef.current) onCloseRef.current();
@@ -74,9 +114,12 @@ export const PopoutWindow = ({ title, onClose, children, initWidth = 720, initHe
     window.addEventListener('beforeunload', handleParentUnload);
 
     return () => {
+      isCleanedUp = true;
+      if (checkInterval) clearInterval(checkInterval);
       window.removeEventListener('beforeunload', handleParentUnload);
       if (newWindow && !newWindow.closed) {
         newWindow.removeEventListener('beforeunload', handleUnload);
+        newWindow.removeEventListener('load', onWindowLoad);
         newWindow.close();
       }
     };
