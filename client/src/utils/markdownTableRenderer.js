@@ -93,7 +93,10 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false,
     headers.forEach((h, hIdx) => {
       const renderedH = renderCellMath(h);
       if (hIdx === 0) {
-        html += `<th class="p-1 sm:p-1.5 font-black border-r border-slate-800 last:border-r-0"><div class="resizable-table-cell text-center" style="resize: horizontal; overflow: hidden; display: block; min-width: 60px; max-width: 250px; width: 100px; margin: 0 auto; padding-right: 8px;">${renderedH}</div></th>`;
+        html += `<th class="p-1 sm:p-1.5 font-black border-r border-slate-800 last:border-r-0" style="position: relative; select-none;">`;
+        html += `${renderedH}`;
+        html += `<div class="markdown-table-resize-handle" onmousedown="if(window.__startMarkdownTableResize) { window.__startMarkdownTableResize(event, this, false) }" ontouchstart="if(window.__startMarkdownTableResize) { window.__startMarkdownTableResize(event, this, true) }"></div>`;
+        html += `</th>`;
       } else {
         html += `<th class="p-1 sm:p-1.5 font-black border-r border-slate-800 last:border-r-0">${renderedH}</th>`;
       }
@@ -158,7 +161,10 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false,
   headers.forEach((h, hIdx) => {
     const renderedH = renderCellMath(h);
     if (hIdx === 0) {
-      html += `<th class="p-1 sm:p-1.5 font-extrabold border-r border-slate-800 last:border-r-0"><div class="resizable-table-cell text-center" style="resize: horizontal; overflow: hidden; display: block; min-width: 60px; max-width: 250px; width: 100px; margin: 0 auto; padding-right: 8px;">${renderedH}</div></th>`;
+      html += `<th class="p-1 sm:p-1.5 font-extrabold border-r border-slate-800 last:border-r-0" style="position: relative; select-none;">`;
+      html += `${renderedH}`;
+      html += `<div class="markdown-table-resize-handle" onmousedown="if(window.__startMarkdownTableResize) { window.__startMarkdownTableResize(event, this, false) }" ontouchstart="if(window.__startMarkdownTableResize) { window.__startMarkdownTableResize(event, this, true) }"></div>`;
+      html += `</th>`;
     } else {
       html += `<th class="p-1 sm:p-1.5 font-extrabold border-r border-slate-800 last:border-r-0">${renderedH}</th>`;
     }

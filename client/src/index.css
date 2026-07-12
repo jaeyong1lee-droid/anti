@@ -1046,20 +1046,26 @@ div[class*="overflow-y-auto"] {
 }
 
 /* ↕️ Table Column Resizer Styles */
-.resizable-table-cell {
-  position: relative;
-  cursor: col-resize;
+.markdown-table th {
+  position: relative; /* Ensure drag handle can be positioned absolutely */
 }
-.resizable-table-cell::after {
-  content: "↔";
+
+.markdown-table-resize-handle {
   position: absolute;
-  right: 1px;
-  bottom: 0px;
-  font-size: 10px;
-  color: #38bdf8;
-  opacity: 0.7;
-  font-weight: 900;
-  pointer-events: none;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 12px; /* Touch-friendly hit box width */
+  cursor: col-resize;
+  user-select: none;
+  z-index: 20;
+  touch-action: none;
+}
+.markdown-table-resize-handle:hover {
+  background-color: rgba(56, 189, 248, 0.3) !important; /* sky-500/30 */
+}
+.markdown-table-resize-handle:active {
+  background-color: rgba(56, 189, 248, 0.55) !important; /* sky-500/55 */
 }
 
 /* Strict compliance for quiz font sizes: PC 16px, Mobile 14px. No bold styling for input/answer cells */

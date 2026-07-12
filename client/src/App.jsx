@@ -3810,9 +3810,51 @@ export default function App() {
     window.__hideSelectionPopup = () => {
       setSelectionPopup(prev => prev.show ? { ...prev, show: false } : prev);
     };
+    
+    // Global column resize handler for markdown tables
+    window.__startMarkdownTableResize = (e, handleEl, isTouch) => {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      const touch = isTouch ? (e.touches[0] || e.changedTouches[0]) : e;
+      const startX = touch.clientX;
+      
+      const th = handleEl.closest('th');
+      if (!th) return;
+      const startWidth = th.offsetWidth;
+      
+      const doResize = (ev) => {
+        const t = isTouch ? (ev.touches[0] || ev.changedTouches[0]) : ev;
+        const deltaX = t.clientX - startX;
+        const newWidth = Math.max(50, startWidth + deltaX);
+        th.style.width = newWidth + 'px';
+        th.style.minWidth = newWidth + 'px';
+        th.style.maxWidth = newWidth + 'px';
+      };
+      
+      const stopResize = () => {
+        if (isTouch) {
+          window.removeEventListener('touchmove', doResize);
+          window.removeEventListener('touchend', stopResize);
+        } else {
+          window.removeEventListener('mousemove', doResize);
+          window.removeEventListener('mouseup', stopResize);
+        }
+      };
+      
+      if (isTouch) {
+        window.addEventListener('touchmove', doResize, { passive: false });
+        window.addEventListener('touchend', stopResize);
+      } else {
+        window.addEventListener('mousemove', doResize);
+        window.addEventListener('mouseup', stopResize);
+      }
+    };
+
     return () => {
       delete window.__handleFormulaConfirmRequest;
       delete window.__hideSelectionPopup;
+      delete window.__startMarkdownTableResize;
     };
   }, []);
 
