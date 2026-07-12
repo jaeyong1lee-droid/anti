@@ -938,86 +938,81 @@ export const TableQuiz = React.memo(function TableQuiz({
                       ? gradingResult.isCorrect 
                       : (normalize(value) === normalize(correctAnswer));
    
-                    const inputIdx = inputIds.indexOf(inputId);
-                    const inputLetter = String.fromCharCode(65 + (inputIdx !== -1 ? inputIdx : 0));
-
+                    const theme = revealed ? getTableScoreColorTheme(gradingResult, isCorrect, value) : null;
                     return (
                       <td 
                         key={cIdx} 
                         colSpan={cellColSpan}
-                        className="p-0 border-r border-slate-800 last:border-r-0 text-slate-200 text-[14px] sm:text-[16px] whitespace-normal break-words text-center align-middle cursor-text h-full"
+                        className={`p-0 border-r border-slate-800 last:border-r-0 text-slate-200 text-[14px] sm:text-[16px] whitespace-normal break-words text-center align-middle cursor-text ${theme ? theme.cellBg : ''}`}
                         onClick={(e) => {
                           const textarea = e.currentTarget.querySelector('textarea');
                           if (textarea) textarea.focus();
                         }}
                       >
-                        {revealed ? (() => {
-                          const theme = getTableScoreColorTheme(gradingResult, isCorrect, value);
-                          return (
-                            <div className={`w-full h-full flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-1 p-1 sm:p-1.5 text-[14px] sm:text-[16px] ${theme.cellBg}`}>
-                              <div className="flex-grow text-left font-medium">
-                                <BufferedTextarea
-                                  value={value}
-                                  onChange={(val) => {
-                                    handleInputChange(inputId, val);
-                                  }}
-                                  onKeystroke={(val) => {
-                                    handleInputKeystroke(inputId, val);
-                                  }}
-                                  placeholder={`${inputLetter} 입력`}
-                                  data-answer-key={`${questionIdx}_${inputId}`}
-                                  className="table-quiz-input w-full text-left text-[14px] sm:text-[16px] bg-transparent border-0 outline-none focus:outline-none focus:ring-0 text-inherit placeholder-slate-500 py-1 px-1.5 resize-none min-h-[30px] block font-medium align-middle"
-                                  rows={1}
-                                  onKeyDown={async (e) => {
-                                    if (e.key === 'Enter' && !e.shiftKey) {
-                                      e.preventDefault();
-                                      const newVal = e.target.value;
-                                      if (newVal !== value) {
-                                        handleInputChange(inputId, newVal);
-                                      }
-                                      e.target.blur();
-                                      if (gradeSingleTableCell && !cellGradingLoading?.[`${questionIdx}_${inputId}`]) {
-                                        await gradeSingleTableCell(questionIdx, q, inputId);
-                                      }
+                        {revealed ? (
+                          <div className="w-full flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-1 p-1 sm:p-1.5 text-[14px] sm:text-[16px]">
+                            <div className="flex-grow text-left font-medium">
+                              <BufferedTextarea
+                                value={value}
+                                onChange={(val) => {
+                                  handleInputChange(inputId, val);
+                                }}
+                                onKeystroke={(val) => {
+                                  handleInputKeystroke(inputId, val);
+                                }}
+                                placeholder={`${inputLetter} 입력`}
+                                data-answer-key={`${questionIdx}_${inputId}`}
+                                className="table-quiz-input w-full text-left text-[14px] sm:text-[16px] bg-transparent border-0 outline-none focus:outline-none focus:ring-0 text-inherit placeholder-slate-500 py-1 px-1.5 resize-none min-h-[30px] block font-medium align-middle"
+                                rows={1}
+                                onKeyDown={async (e) => {
+                                  if (e.key === 'Enter' && !e.shiftKey) {
+                                    e.preventDefault();
+                                    const newVal = e.target.value;
+                                    if (newVal !== value) {
+                                      handleInputChange(inputId, newVal);
+                                    }
+                                    e.target.blur();
+                                    if (gradeSingleTableCell && !cellGradingLoading?.[`${questionIdx}_${inputId}`]) {
+                                      await gradeSingleTableCell(questionIdx, q, inputId);
+                                    }
+                                  }
+                                }}
+                              />
+                            </div>
+                            {gradingResult && gradingResult.score !== undefined && (() => {
+                              const cellObtained = (gradingResult.score / 10) * (weight / inputIds.length);
+                              const displayScore = Math.round(cellObtained * 10) / 10;
+                              const isCellLoading = cellGradingLoading?.[`${questionIdx}_${inputId}`];
+                              return (
+                                <button
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    if (isCellLoading) return;
+                                    if (gradeSingleTableCell) {
+                                      await gradeSingleTableCell(questionIdx, q, inputId);
                                     }
                                   }}
-                                />
-                              </div>
-                              {gradingResult && gradingResult.score !== undefined && (() => {
-                                const cellObtained = (gradingResult.score / 10) * (weight / inputIds.length);
-                                const displayScore = Math.round(cellObtained * 10) / 10;
-                                const isCellLoading = cellGradingLoading?.[`${questionIdx}_${inputId}`];
-                                return (
-                                  <button
-                                    onClick={async (e) => {
-                                      e.stopPropagation();
-                                      if (isCellLoading) return;
-                                      if (gradeSingleTableCell) {
-                                        await gradeSingleTableCell(questionIdx, q, inputId);
-                                      }
-                                    }}
-                                    title="클릭 시 이 칸만 재평가합니다"
-                                    className={`mt-1 sm:mt-0 sm:ml-2 text-center sm:text-right font-extrabold select-none whitespace-nowrap hover:underline active:scale-95 transition-all text-[11px] sm:text-[13px] cursor-pointer ${theme.text} ${
-                                      isCellLoading ? 'animate-pulse' : ''
-                                    }`}
-                                  >
-                                    {isCellLoading ? (
-                                      <span className="flex items-center gap-1">
-                                        <svg className="animate-spin h-3 w-3 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                        </svg>
-                                        ...
-                                      </span>
-                                    ) : (
-                                      `${displayScore}점 ↻`
-                                    )}
-                                  </button>
-                                );
-                              })()}
-                            </div>
-                          );
-                        })() : (
+                                  title="클릭 시 이 칸만 재평가합니다"
+                                  className={`mt-1 sm:mt-0 sm:ml-2 text-center sm:text-right font-extrabold select-none whitespace-nowrap hover:underline active:scale-95 transition-all text-[11px] sm:text-[13px] cursor-pointer ${theme.text} ${
+                                    isCellLoading ? 'animate-pulse' : ''
+                                  }`}
+                                >
+                                  {isCellLoading ? (
+                                    <span className="flex items-center gap-1">
+                                      <svg className="animate-spin h-3 w-3 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                      </svg>
+                                      ...
+                                    </span>
+                                  ) : (
+                                    `${displayScore}점 ↻`
+                                  )}
+                                </button>
+                              );
+                            })()}
+                          </div>
+                        ) : (
                           <BufferedTextarea
                             value={value}
                             onChange={(val) => {
@@ -1227,81 +1222,76 @@ export const TableQuiz = React.memo(function TableQuiz({
                         ? gradingResult.isCorrect 
                         : (normalize(value) === normalize(correctAnswer));
      
-                      const inputIdx = inputIds.indexOf(inputId);
-                      const inputLetter = String.fromCharCode(65 + (inputIdx !== -1 ? inputIdx : 0));
-
+                      const theme = revealed ? getTableScoreColorTheme(gradingResult, isCorrect, value) : null;
                       return (
                         <td 
                           key={cIdx} 
-                          className="p-0 border-r border-slate-800 last:border-r-0 text-slate-200 text-[14px] sm:text-[16px] whitespace-normal break-words text-center align-middle cursor-text h-full"
+                          className={`p-0 border-r border-slate-800 last:border-r-0 text-slate-200 text-[14px] sm:text-[16px] whitespace-normal break-words text-center align-middle cursor-text ${theme ? theme.cellBg : ''}`}
                           onClick={(e) => {
                             const textarea = e.currentTarget.querySelector('textarea');
                             if (textarea) textarea.focus();
                           }}
                         >
-                          {revealed ? (() => {
-                            const theme = getTableScoreColorTheme(gradingResult, isCorrect, value);
-                            return (
-                              <div className={`w-full h-full flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-1 p-1 sm:p-1.5 text-[14px] sm:text-[16px] ${theme.cellBg}`}>
-                                <div className="flex-grow text-left font-medium">
-                                  <BufferedTextarea
-                                    value={value}
-                                    onChange={(val) => handleInputChange(inputId, val)}
-                                    onKeystroke={(val) => handleInputKeystroke(inputId, val)}
-                                    placeholder={`${inputLetter} 입력`}
-                                    data-answer-key={`${questionIdx}_${inputId}`}
-                                    className="table-quiz-input w-full text-left text-[14px] sm:text-[16px] bg-transparent border-0 outline-none focus:outline-none focus:ring-0 text-inherit placeholder-slate-500 py-1 px-1.5 resize-none min-h-[30px] block font-medium align-middle"
-                                    rows={1}
-                                    onKeyDown={async (e) => {
-                                      if (e.key === 'Enter' && !e.shiftKey) {
-                                        e.preventDefault();
-                                        const newVal = e.target.value;
-                                        if (newVal !== value) {
-                                          handleInputChange(inputId, newVal);
-                                        }
-                                        e.target.blur();
-                                        if (gradeSingleTableCell && !cellGradingLoading?.[`${questionIdx}_${inputId}`]) {
-                                          await gradeSingleTableCell(questionIdx, q, inputId);
-                                        }
+                          {revealed ? (
+                            <div className="w-full flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-1 p-1 sm:p-1.5 text-[14px] sm:text-[16px]">
+                              <div className="flex-grow text-left font-medium">
+                                <BufferedTextarea
+                                  value={value}
+                                  onChange={(val) => handleInputChange(inputId, val)}
+                                  onKeystroke={(val) => handleInputKeystroke(inputId, val)}
+                                  placeholder={`${inputLetter} 입력`}
+                                  data-answer-key={`${questionIdx}_${inputId}`}
+                                  className="table-quiz-input w-full text-left text-[14px] sm:text-[16px] bg-transparent border-0 outline-none focus:outline-none focus:ring-0 text-inherit placeholder-slate-500 py-1 px-1.5 resize-none min-h-[30px] block font-medium align-middle"
+                                  rows={1}
+                                  onKeyDown={async (e) => {
+                                    if (e.key === 'Enter' && !e.shiftKey) {
+                                      e.preventDefault();
+                                      const newVal = e.target.value;
+                                      if (newVal !== value) {
+                                        handleInputChange(inputId, newVal);
+                                      }
+                                      e.target.blur();
+                                      if (gradeSingleTableCell && !cellGradingLoading?.[`${questionIdx}_${inputId}`]) {
+                                        await gradeSingleTableCell(questionIdx, q, inputId);
+                                      }
+                                    }
+                                  }}
+                                />
+                              </div>
+                              {gradingResult && gradingResult.score !== undefined && (() => {
+                                const cellObtained = (gradingResult.score / 10) * (weight / inputIds.length);
+                                const displayScore = Math.round(cellObtained * 10) / 10;
+                                const isCellLoading = cellGradingLoading?.[`${questionIdx}_${inputId}`];
+                                return (
+                                  <button
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      if (isCellLoading) return;
+                                      if (gradeSingleTableCell) {
+                                        await gradeSingleTableCell(questionIdx, q, inputId);
                                       }
                                     }}
-                                  />
-                                </div>
-                                {gradingResult && gradingResult.score !== undefined && (() => {
-                                  const cellObtained = (gradingResult.score / 10) * (weight / inputIds.length);
-                                  const displayScore = Math.round(cellObtained * 10) / 10;
-                                  const isCellLoading = cellGradingLoading?.[`${questionIdx}_${inputId}`];
-                                  return (
-                                    <button
-                                      onClick={async (e) => {
-                                        e.stopPropagation();
-                                        if (isCellLoading) return;
-                                        if (gradeSingleTableCell) {
-                                          await gradeSingleTableCell(questionIdx, q, inputId);
-                                        }
-                                      }}
-                                      title="클릭 시 이 칸만 재평가합니다"
-                                      className={`mt-1 sm:mt-0 sm:ml-2 text-center sm:text-right font-extrabold select-none whitespace-nowrap hover:underline active:scale-95 transition-all text-[11px] sm:text-[13px] cursor-pointer ${theme.text} ${
-                                        isCellLoading ? 'animate-pulse' : ''
-                                      }`}
-                                    >
-                                      {isCellLoading ? (
-                                        <span className="flex items-center gap-1">
-                                          <svg className="animate-spin h-3 w-3 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                          </svg>
-                                          ...
-                                        </span>
-                                      ) : (
-                                        `${displayScore}점 ↻`
-                                      )}
-                                    </button>
-                                  );
-                                })()}
-                              </div>
-                            );
-                          })() : (
+                                    title="클릭 시 이 칸만 재평가합니다"
+                                    className={`mt-1 sm:mt-0 sm:ml-2 text-center sm:text-right font-extrabold select-none whitespace-nowrap hover:underline active:scale-95 transition-all text-[11px] sm:text-[13px] cursor-pointer ${theme.text} ${
+                                      isCellLoading ? 'animate-pulse' : ''
+                                    }`}
+                                  >
+                                    {isCellLoading ? (
+                                      <span className="flex items-center gap-1">
+                                        <svg className="animate-spin h-3 w-3 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        ...
+                                      </span>
+                                    ) : (
+                                      `${displayScore}점 ↻`
+                                    )}
+                                  </button>
+                                );
+                              })()}
+                            </div>
+                          ) : (
                             <BufferedTextarea
                               value={value}
                               onChange={(val) => handleInputChange(inputId, val)}
