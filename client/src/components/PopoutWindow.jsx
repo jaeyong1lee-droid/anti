@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import ReactDOM from 'react-dom';
 
-export const PopoutWindow = ({ title, onClose, children, initWidth = 720, initHeight = 650 }) => {
+export const PopoutWindow = ({ title, onClose, children, initWidth = 720, initHeight = 650, storageKey }) => {
   const [container, setContainer] = useState(null);
   const windowRef = useRef(null);
   const onCloseRef = useRef(onClose);
@@ -21,10 +21,32 @@ export const PopoutWindow = ({ title, onClose, children, initWidth = 720, initHe
   }, [title]);
 
   useEffect(() => {
+    // 1. Load saved window bounds from localStorage if available
+    let savedPos = null;
+    if (storageKey) {
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        try {
+          savedPos = JSON.parse(saved);
+        } catch (e) {}
+      }
+    }
+
+    const w = (savedPos && savedPos.w) ? savedPos.w : initWidth;
+    const h = (savedPos && savedPos.h) ? savedPos.h : initHeight;
+    
+    // Centering fallback relative to main window if no coordinates saved
+    const defaultLeft = window.screenX + (window.outerWidth - w) / 2;
+    const defaultTop = window.screenY + (window.outerHeight - h) / 2;
+    const x = (savedPos && savedPos.x !== undefined) ? savedPos.x : defaultLeft;
+    const y = (savedPos && savedPos.y !== undefined) ? savedPos.y : defaultTop;
+
+    const features = `popup=yes,left=${Math.round(x)},top=${Math.round(y)},width=${Math.round(w)},height=${Math.round(h)},resizable=yes`;
+    
     const newWindow = window.open(
       '/popout.html',
       '_blank',
-      `popup=yes,width=${initWidth},height=${initHeight},resizable=yes`
+      features
     );
 
     if (!newWindow) {
@@ -117,12 +139,36 @@ export const PopoutWindow = ({ title, onClose, children, initWidth = 720, initHe
     };
     newWindow.addEventListener('beforeunload', handleUnload);
 
+    // Keep active track of the window's position and bounds
+    let lastPosition = { x, y, w, h };
+
     // Polling check to detect if the popout window was closed by the user
     const closeCheckInterval = setInterval(() => {
-      if (newWindow && newWindow.closed) {
-        clearInterval(closeCheckInterval);
-        if (onCloseRef.current) {
-          onCloseRef.current();
+      if (newWindow) {
+        if (newWindow.closed) {
+          clearInterval(closeCheckInterval);
+          // Save the last known position/size to localStorage
+          if (storageKey) {
+            localStorage.setItem(storageKey, JSON.stringify(lastPosition));
+          }
+          if (onCloseRef.current) {
+            onCloseRef.current();
+          }
+        } else {
+          try {
+            // Track position and size while the window is active
+            const curX = newWindow.screenX !== undefined ? newWindow.screenX : newWindow.screenLeft;
+            const curY = newWindow.screenY !== undefined ? newWindow.screenY : newWindow.screenTop;
+            const curW = newWindow.outerWidth;
+            const curH = newWindow.outerHeight;
+            
+            // Only update if they are valid numbers and window is not minimized (screenX/Y could be -32000 on Windows when minimized)
+            if (curX !== undefined && curY !== undefined && curW && curH && curX > -10000 && curY > -10000) {
+              lastPosition = { x: curX, y: curY, w: curW, h: curH };
+            }
+          } catch (e) {
+            // Ignore cross-origin error if it arises
+          }
         }
       }
     }, 200);
