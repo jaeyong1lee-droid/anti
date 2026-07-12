@@ -5828,6 +5828,9 @@ export default function App() {
     chatHistory: null
   });
 
+  const syncedQuestionsRef = React.useRef('');
+  const syncedChatHistoryRef = React.useRef('');
+
   useEffect(() => {
     if (selectedTopic && selectedTopic.id && (aiQuestions.length > 0 || chatHistory.length > 0) && !restoringReviewSession) {
       const hasImmediateChange = 
@@ -5950,24 +5953,36 @@ export default function App() {
 
       // Local storage saving disabled per user instructions
 
+      const questionsStr = JSON.stringify(aiQuestions);
+      const chatHistoryStr = JSON.stringify(finalChatHistory);
+
+      const requestPayload = {
+        topicId: selectedTopic.id,
+        scheduleId: selectedTopic.schedule_id,
+        sessionId: activeSid,
+        selectedAnswers: finalSelectedAnswers,
+        revealedQuestions: finalRevealedQuestions,
+        tableAnswers: latestTableAnswers,
+        tableGradingResults: finalTableGradingResults,
+        tutorAnswers: finalTutorAnswers,
+        tutorInputText: finalTutorInputText,
+        isResetAction,
+        savedQuizScroll: quizBodyRef.current?.scrollTop || 0
+      };
+
+      if (isResetAction || questionsStr !== syncedQuestionsRef.current) {
+        requestPayload.questions = aiQuestions;
+        syncedQuestionsRef.current = questionsStr;
+      }
+      if (chatHistoryStr !== syncedChatHistoryRef.current) {
+        requestPayload.chatHistory = finalChatHistory;
+        syncedChatHistoryRef.current = chatHistoryStr;
+      }
+
       const fetchOpts = {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          topicId: selectedTopic.id,
-          scheduleId: selectedTopic.schedule_id,
-          sessionId: activeSid,
-          questions: aiQuestions,
-          selectedAnswers: finalSelectedAnswers,
-          revealedQuestions: finalRevealedQuestions,
-          tableAnswers: latestTableAnswers,
-          tableGradingResults: finalTableGradingResults,
-          tutorAnswers: finalTutorAnswers,
-          tutorInputText: finalTutorInputText,
-          chatHistory: finalChatHistory,
-          isResetAction,
-          savedQuizScroll: quizBodyRef.current?.scrollTop || 0
-        })
+        body: JSON.stringify(requestPayload)
       };
       if (isUnloading) {
         fetchOpts.keepalive = true;

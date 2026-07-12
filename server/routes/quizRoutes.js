@@ -7,8 +7,8 @@ import { callLLMWithFailover, analyzeStandardsBeforeTask, saveSessionValue, getT
 import { healLatexFormulas, healQuizQuestionObject, healAnswersheetQuestionObject, parseLlmJson, LATEX_PROMPT_INSTRUCTIONS, LATEX_CHAT_PROMPT_INSTRUCTIONS } from '../utils/latexUtils.js';
 import * as fileUtils from '../utils/fileUtils.js';
 import { generateFallbackQuestions } from '../fallback_generator.js';
-import { GENERATION_STANDARDS } from '../plugins/generationStandards.js';
-import { ENGINEERING_STANDARDS } from '../plugins/engineeringStandards.js';
+import { GENERATION_STANDARDS, generationStandardsList } from '../plugins/generationStandards.js';
+import { ENGINEERING_STANDARDS, standardsList as engineeringStandardsList } from '../plugins/engineeringStandards.js';
 import * as ocrPlugin from '../plugins/calculationPlugin.js';
 import pdfParse from 'pdf-parse';
 
@@ -773,31 +773,12 @@ ${adjustments.map((a, idx) => `
     const coreSubject = getCoreSubjectFromTitle(topic.title);
     const topicInstructionsPrompt = await getFormattedTopicInstructions(topicId);
 
-    let activeGenerationStandards = GENERATION_STANDARDS;
-    let activeEngineeringStandards = ENGINEERING_STANDARDS;
-    try {
-      const genRow = await dbQuery.get("SELECT value FROM app_session WHERE key = 'generation_standards'");
-      if (genRow && genRow.value) {
-        const list = JSON.parse(genRow.value);
-        if (Array.isArray(list)) {
-          activeGenerationStandards = list.map((std, idx) => `${idx + 1}. **${std.title}**:\n   - ${std.content}`).join('\n');
-        }
-      }
-    } catch (e) {
-      console.warn('Failed to load generation standards dynamically:', e);
-    }
-    
-    try {
-      const engRow = await dbQuery.get("SELECT value FROM app_session WHERE key = 'engineering_standards'");
-      if (engRow && engRow.value) {
-        const list = JSON.parse(engRow.value);
-        if (Array.isArray(list)) {
-          activeEngineeringStandards = list.map((std, idx) => `${idx + 1}. **${std.title}**:\n   - ${std.content}`).join('\n');
-        }
-      }
-    } catch (e) {
-      console.warn('Failed to load engineering standards dynamically:', e);
-    }
+    const activeGenerationStandards = generationStandardsList && generationStandardsList.length > 0
+      ? generationStandardsList.map((std, idx) => `${idx + 1}. **${std.title}**:\n   - ${std.content}`).join('\n')
+      : GENERATION_STANDARDS;
+    const activeEngineeringStandards = engineeringStandardsList && engineeringStandardsList.length > 0
+      ? engineeringStandardsList.map((std, idx) => `${idx + 1}. **${std.title}**:\n   - ${std.content}`).join('\n')
+      : ENGINEERING_STANDARDS;
 
     const prompt = (topic.category === '계산') ? `
 [문제 생성 태스크 시작]:
@@ -1265,24 +1246,32 @@ router.post('/session/review', async (req, res) => {
       targetTopicId = targetTopicId.split('_sess_')[0];
     }
 
-    if (!topicId || !questions) {
+    if (!topicId) {
       return res.status(400).json({ error: '필수 인자가 누락되었습니다.' });
     }
 
     if (targetTopicId && targetTopicId.startsWith('mixed_')) {
       const sId = sessionId || 'legacy_default';
       const key = `review_questions_topic_${targetTopicId}_sess_${sId}`;
+      
+      // Merge with existing session to avoid overwriting questions/chatHistory when not sent
+      let existingData = {};
+      try {
+        const existingRow = await dbQuery.get('SELECT value FROM app_session WHERE key = ?', [key]);
+        if (existingRow && existingRow.value) existingData = JSON.parse(existingRow.value);
+      } catch (e) {}
+
       const value = JSON.stringify({
-        sessionId: sessionId || '',
-        questions,
-        selectedAnswers: selectedAnswers || {},
-        revealedQuestions: revealedQuestions || {},
-        tableAnswers: tableAnswers || {},
-        tableGradingResults: tableGradingResults || {},
-        tutorAnswers: tutorAnswers || {},
-        tutorInputText: tutorInputText || {},
-        chatHistory: chatHistory || [],
-        savedQuizScroll: savedQuizScroll || 0
+        sessionId: sessionId || existingData.sessionId || '',
+        questions: questions || existingData.questions || [],
+        selectedAnswers: selectedAnswers !== undefined ? selectedAnswers : (existingData.selectedAnswers || {}),
+        revealedQuestions: revealedQuestions !== undefined ? revealedQuestions : (existingData.revealedQuestions || {}),
+        tableAnswers: tableAnswers !== undefined ? tableAnswers : (existingData.tableAnswers || {}),
+        tableGradingResults: tableGradingResults !== undefined ? tableGradingResults : (existingData.tableGradingResults || {}),
+        tutorAnswers: tutorAnswers !== undefined ? tutorAnswers : (existingData.tutorAnswers || {}),
+        tutorInputText: tutorInputText !== undefined ? tutorInputText : (existingData.tutorInputText || {}),
+        chatHistory: chatHistory !== undefined ? chatHistory : (existingData.chatHistory || []),
+        savedQuizScroll: savedQuizScroll !== undefined ? savedQuizScroll : (existingData.savedQuizScroll || 0)
       });
       await dbQuery.run(
         `INSERT INTO app_session (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)
@@ -1293,17 +1282,25 @@ router.post('/session/review', async (req, res) => {
     }
 
     const key = `review_questions_topic_${targetTopicId}`;
+    
+    // Merge with existing session to preserve questions/chatHistory when not sent
+    let existingData2 = {};
+    try {
+      const existingRow2 = await dbQuery.get('SELECT value FROM app_session WHERE key = ?', [key]);
+      if (existingRow2 && existingRow2.value) existingData2 = JSON.parse(existingRow2.value);
+    } catch (e) {}
+
     const value = JSON.stringify({
-      sessionId: sessionId || '',
-      questions,
-      selectedAnswers: selectedAnswers || {},
-      revealedQuestions: revealedQuestions || {},
-      tableAnswers: tableAnswers || {},
-      tableGradingResults: tableGradingResults || {},
-      tutorAnswers: tutorAnswers || {},
-      tutorInputText: tutorInputText || {},
-      chatHistory: chatHistory || [],
-      savedQuizScroll: savedQuizScroll || 0
+      sessionId: sessionId || existingData2.sessionId || '',
+      questions: questions || existingData2.questions || [],
+      selectedAnswers: selectedAnswers !== undefined ? selectedAnswers : (existingData2.selectedAnswers || {}),
+      revealedQuestions: revealedQuestions !== undefined ? revealedQuestions : (existingData2.revealedQuestions || {}),
+      tableAnswers: tableAnswers !== undefined ? tableAnswers : (existingData2.tableAnswers || {}),
+      tableGradingResults: tableGradingResults !== undefined ? tableGradingResults : (existingData2.tableGradingResults || {}),
+      tutorAnswers: tutorAnswers !== undefined ? tutorAnswers : (existingData2.tutorAnswers || {}),
+      tutorInputText: tutorInputText !== undefined ? tutorInputText : (existingData2.tutorInputText || {}),
+      chatHistory: chatHistory !== undefined ? chatHistory : (existingData2.chatHistory || []),
+      savedQuizScroll: savedQuizScroll !== undefined ? savedQuizScroll : (existingData2.savedQuizScroll || 0)
     });
 
     await saveSessionValue(key, value);
@@ -3072,23 +3069,21 @@ router.post('/quiz/submit', async (req, res) => {
       );
     }
 
-    // 복습 데이터 세션 보존
+    // 복습 데이터 세션 보존 (questions, chatHistory는 제외하여 데이터량 최소화)
     if (questions && questions.length > 0) {
       const solvedSessionKey = `completed_review_schedule_${targetScheduleId}`;
       const solvedSessionValue = JSON.stringify({ 
-        questions, 
         selectedAnswers: selectedAnswers || {}, 
         revealedQuestions: revealedQuestions || {},
         tableAnswers: tableAnswers || {},
         tableGradingResults: tableGradingResults || {},
         tutorAnswers: tutorAnswers || {},
-        tutorInputText: tutorInputText || {},
-        chatHistory: chatHistory || []
+        tutorInputText: tutorInputText || {}
       });
       await ensureSessionTable();
-      await dbQuery.run('DELETE FROM app_session WHERE key = ?', [solvedSessionKey]);
       await dbQuery.run(
-        'INSERT INTO app_session (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)',
+        `INSERT INTO app_session (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)
+         ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=CURRENT_TIMESTAMP`,
         [solvedSessionKey, solvedSessionValue]
       );
 
@@ -3112,8 +3107,7 @@ router.post('/quiz/submit', async (req, res) => {
       }
     }
 
-    // 캐시 삭제
-    await ensureSessionTable();
+    // 캐시 삭제 (ensureSessionTable 호출 제거)
     await dbQuery.run(
       "DELETE FROM app_session WHERE key = ? OR key LIKE ?",
       [`review_questions_topic_${topic_id}`, `review_questions_topic_${topic_id}_sess_%`]

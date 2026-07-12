@@ -5,9 +5,9 @@ import { callLLMWithFailover, analyzeStandardsBeforeTask, getTopicText, startBac
 import { healQuizQuestionObject, parseLlmJson, healLatexFormulas } from '../utils/latexUtils.js';
 import * as fileUtils from '../utils/fileUtils.js';
 import { generateFallbackQuestions } from '../fallback_generator.js';
-import { gradeSubjective, GRADING_STANDARDS } from '../plugins/gradingPlugin.js';
-import { ENGINEERING_STANDARDS } from '../plugins/engineeringStandards.js';
-import { GENERATION_STANDARDS } from '../plugins/generationStandards.js';
+import { gradeSubjective, GRADING_STANDARDS, gradingStandardsList } from '../plugins/gradingPlugin.js';
+import { ENGINEERING_STANDARDS, standardsList as engineeringStandardsList } from '../plugins/engineeringStandards.js';
+import { GENERATION_STANDARDS, generationStandardsList } from '../plugins/generationStandards.js';
 import * as ocrPlugin from '../plugins/calculationPlugin.js';
 
 const router = express.Router();
@@ -69,31 +69,12 @@ router.post('/grade-subjective', async (req, res) => {
   const { question, correctAnswer, userAnswer, rowHeader, colHeader, explanation, category } = req.body;
   const progressId = req.body.progressId || req.query.progressId;
 
-  let dynamicGradingStandards = GRADING_STANDARDS;
-  let dynamicEngineeringStandards = ENGINEERING_STANDARDS;
-  try {
-    const gradingRow = await dbQuery.get("SELECT value FROM app_session WHERE key = 'grading_standards'");
-    if (gradingRow && gradingRow.value) {
-      const list = JSON.parse(gradingRow.value);
-      if (Array.isArray(list)) {
-        dynamicGradingStandards = list.map(s => s.content).join('\n\n');
-      }
-    }
-  } catch (dbErr) {
-    console.error('Failed to dynamically fetch grading standards:', dbErr);
-  }
-
-  try {
-    const engRow = await dbQuery.get("SELECT value FROM app_session WHERE key = 'engineering_standards'");
-    if (engRow && engRow.value) {
-      const list = JSON.parse(engRow.value);
-      if (Array.isArray(list)) {
-        dynamicEngineeringStandards = list.map(s => s.content).join('\n\n');
-      }
-    }
-  } catch (dbErr) {
-    console.error('Failed to dynamically fetch engineering standards:', dbErr);
-  }
+  const dynamicGradingStandards = gradingStandardsList && gradingStandardsList.length > 0
+    ? gradingStandardsList.map(s => s.content).join('\n\n')
+    : GRADING_STANDARDS;
+  const dynamicEngineeringStandards = engineeringStandardsList && engineeringStandardsList.length > 0
+    ? engineeringStandardsList.map(s => s.content).join('\n\n')
+    : ENGINEERING_STANDARDS;
 
   let standardsAnalysis = '';
   const localCallLLM = (sys, prompt, img, scenario, opts) => {

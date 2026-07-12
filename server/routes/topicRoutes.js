@@ -135,21 +135,37 @@ router.get('/topics', async (req, res) => {
     `;
     const topics = await dbQuery.all(sql);
 
-    const topicsWithSchedules = [];
-    for (const topic of topics) {
-      const scheduleSql = `
-        SELECT s.id, s.review_round, s.planned_date, s.completed_at, s.status, s.score, s.correct_count, s.total_count,
-               CASE WHEN (SELECT 1 FROM app_session WHERE key = 'completed_review_schedule_' || s.id) IS NOT NULL THEN 1 ELSE 0 END AS has_session
-        FROM schedules s
-        WHERE s.topic_id = ?
-        ORDER BY s.review_round ASC
-      `;
-      const schedules = await dbQuery.all(scheduleSql, [topic.id]);
-      topicsWithSchedules.push({
-        ...topic,
-        schedules: schedules
-      });
+    if (!topics || topics.length === 0) {
+      return res.json([]);
     }
+
+    const topicIds = topics.map(t => t.id);
+    // Batch query all schedules for all topics in one shot (replaces N+1 query)
+    const placeholders = topicIds.map(() => '?').join(',');
+    const allSchedules = await dbQuery.all(
+      `SELECT s.id, s.topic_id, s.review_round, s.planned_date, s.completed_at, s.status, s.score, s.correct_count, s.total_count,
+              CASE WHEN a.key IS NOT NULL THEN 1 ELSE 0 END AS has_session
+       FROM schedules s
+       LEFT JOIN app_session a ON a.key = 'completed_review_schedule_' || s.id
+       WHERE s.topic_id IN (${placeholders})
+       ORDER BY s.topic_id ASC, s.review_round ASC`,
+      topicIds
+    );
+
+    // Group schedules by topic_id
+    const schedulesByTopic = {};
+    for (const s of allSchedules) {
+      if (!schedulesByTopic[s.topic_id]) {
+        schedulesByTopic[s.topic_id] = [];
+      }
+      schedulesByTopic[s.topic_id].push(s);
+    }
+
+    const topicsWithSchedules = topics.map(topic => ({
+      ...topic,
+      schedules: schedulesByTopic[topic.id] || []
+    }));
+
     res.json(topicsWithSchedules);
   } catch (error) {
     console.error('Error fetching all topics:', error);

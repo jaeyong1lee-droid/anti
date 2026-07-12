@@ -190,6 +190,21 @@ async function startServer() {
   try {
     console.log('[Startup] Initializing SQLite/PostgreSQL Database connection...');
     await initDatabase();
+    
+    // Ensure app_session table exists once at startup (bypasses per-request DDL check)
+    try {
+      await dbQuery.run(`
+        CREATE TABLE IF NOT EXISTS app_session (
+          key TEXT PRIMARY KEY,
+          value TEXT,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+      console.log('[Startup] app_session table ensured.');
+    } catch (e) {
+      console.warn('[Startup] ensureSessionTable warning:', e.message);
+    }
+
     console.log('[Startup] Syncing saved standards from database...');
     await initializeAllStandards();
     console.log('[Startup] Loading saved preferred model configuration...');

@@ -937,9 +937,9 @@ router.post('/options/:key', async (req, res) => {
     await ensureSessionTable();
     const key = `option_${req.params.key}`;
     const { value } = req.body;
-    await dbQuery.run('DELETE FROM app_session WHERE key = ?', [key]);
     await dbQuery.run(
-      'INSERT INTO app_session (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)',
+      `INSERT INTO app_session (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)
+       ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=CURRENT_TIMESTAMP`,
       [key, value]
     );
     res.json({ ok: true });
