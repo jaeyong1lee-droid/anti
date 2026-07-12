@@ -26952,8 +26952,8 @@ ${itemsStr}
           className="bg-slate-900/95 border border-white/20 rounded-3xl p-6 space-y-5 shadow-[0_20px_50px_rgba(0,0,0,0.6)] glassmorphism animate-scale-up text-left select-text"
         >
           <div 
-            onMouseDown={handleGeneratorPopupMoveStart}
-            onTouchStart={handleGeneratorPopupMoveStart}
+            onMouseDown={isDesktop ? handleGeneratorPopupMoveStart : undefined}
+            onTouchStart={isDesktop ? handleGeneratorPopupMoveStart : undefined}
             className="flex items-center justify-between border-b border-slate-800 pb-3 cursor-grab active:cursor-grabbing select-none"
           >
               <h3 className="text-sm font-black text-emerald-400 flex items-center gap-2">
@@ -27302,8 +27302,8 @@ ${itemsStr}
             >
               {/* Modal Header */}
               <div
-                onMouseDown={handleAnswerPopupMoveStart}
-                onTouchStart={handleAnswerPopupMoveStart}
+                onMouseDown={isDesktop ? handleAnswerPopupMoveStart : undefined}
+                onTouchStart={isDesktop ? handleAnswerPopupMoveStart : undefined}
                 className="flex items-center justify-between px-6 py-4 border-b border-slate-800/80 bg-slate-955/40 cursor-grab active:cursor-grabbing select-none"
               >
                 <div className="flex items-center gap-2">
@@ -27366,8 +27366,8 @@ ${itemsStr}
           className="bg-slate-900/95 border border-white/20 rounded-3xl p-6 space-y-5 shadow-[0_20px_50px_rgba(0,0,0,0.6)] glassmorphism animate-scale-up text-left select-text"
         >
           <div 
-            onMouseDown={handleGeneratorPopupMoveStart}
-            onTouchStart={handleGeneratorPopupMoveStart}
+            onMouseDown={isDesktop ? handleGeneratorPopupMoveStart : undefined}
+            onTouchStart={isDesktop ? handleGeneratorPopupMoveStart : undefined}
             className="flex items-center justify-between border-b border-slate-800 pb-3 cursor-grab active:cursor-grabbing select-none"
           >
               <h3 className="text-sm font-black text-rose-450 flex items-center gap-2">
