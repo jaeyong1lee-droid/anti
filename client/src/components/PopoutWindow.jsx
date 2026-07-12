@@ -43,16 +43,50 @@ export const PopoutWindow = ({ title, onClose, children, initWidth = 720, initHe
 
     const features = `popup=yes,left=${Math.round(x)},screenX=${Math.round(x)},top=${Math.round(y)},screenY=${Math.round(y)},width=${Math.round(w)},height=${Math.round(h)},resizable=yes`;
     
-    const newWindow = window.open(
-      '/popout.html',
-      storageKey || '_blank',
-      features
-    );
+    let newWindow = null;
+    try {
+      // Try opening as empty first to prevent reloading existing window
+      newWindow = window.open(
+        '',
+        storageKey || '_blank',
+        features
+      );
+    } catch (e) {
+      console.warn('Failed to reference window via empty url:', e);
+    }
+
+    if (!newWindow) {
+      // Fallback to direct URL if empty url failed
+      try {
+        newWindow = window.open(
+          '/popout.html',
+          storageKey || '_blank',
+          features
+        );
+      } catch (e) {
+        console.error('Failed to open popout window:', e);
+      }
+    }
 
     if (!newWindow) {
       alert('팝업 차단이 활성화되어 있습니다. 브라우저 설정에서 팝업을 허용해주세요.');
       if (onCloseRef.current) onCloseRef.current();
       return;
+    }
+
+    // Determine if the window is newly opened or already navigated
+    let isNew = false;
+    try {
+      if (!newWindow.location || newWindow.location.href === 'about:blank' || newWindow.location.pathname === 'blank') {
+        isNew = true;
+      }
+    } catch (e) {
+      // Cross-origin restriction might happen if it was on a different page, treat as new
+      isNew = true;
+    }
+
+    if (isNew) {
+      newWindow.location.href = '/popout.html';
     }
 
     windowRef.current = newWindow;
