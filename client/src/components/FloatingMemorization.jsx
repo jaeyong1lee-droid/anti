@@ -121,6 +121,8 @@ export function FloatingMemorization({
   });
   const isDragging = useRef(false);
   const dragStart = useRef({ x: 0, y: 0 });
+  const lastProcessedQuestionRef = useRef(null);
+  const lastVisibleRef = useRef(false);
 
   const [subTab, setSubTab] = useState(() => {
     return localStorage.getItem('anti_memorization_sub_tab') || 'table';
@@ -132,7 +134,18 @@ export function FloatingMemorization({
   }, [subTab]);
 
   useEffect(() => {
-    if (isVisible && focusedQuestion) {
+    const justOpened = isVisible && !lastVisibleRef.current;
+    lastVisibleRef.current = isVisible;
+
+    const questionChanged = focusedQuestion && (
+      !lastProcessedQuestionRef.current ||
+      lastProcessedQuestionRef.current.id !== focusedQuestion.id ||
+      lastProcessedQuestionRef.current.question !== focusedQuestion.question
+    );
+
+    if (isVisible && focusedQuestion && (justOpened || questionChanged)) {
+      lastProcessedQuestionRef.current = focusedQuestion;
+
       const qText = (focusedQuestion.question || '').toLowerCase();
       const qType = (focusedQuestion.type || '').toLowerCase();
       const qSubtype = (focusedQuestion.subtype || '').toLowerCase();
