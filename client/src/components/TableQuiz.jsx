@@ -938,6 +938,8 @@ export const TableQuiz = React.memo(function TableQuiz({
                       ? gradingResult.isCorrect 
                       : (normalize(value) === normalize(correctAnswer));
    
+                    const inputIdx = inputIds.indexOf(inputId);
+                    const inputLetter = String.fromCharCode(65 + (inputIdx !== -1 ? inputIdx : 0));
                     const theme = revealed ? getTableScoreColorTheme(gradingResult, isCorrect, value) : null;
                     return (
                       <td 
@@ -1222,6 +1224,8 @@ export const TableQuiz = React.memo(function TableQuiz({
                         ? gradingResult.isCorrect 
                         : (normalize(value) === normalize(correctAnswer));
      
+                      const inputIdx = inputIds.indexOf(inputId);
+                      const inputLetter = String.fromCharCode(65 + (inputIdx !== -1 ? inputIdx : 0));
                       const theme = revealed ? getTableScoreColorTheme(gradingResult, isCorrect, value) : null;
                       return (
                         <td 

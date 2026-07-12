@@ -1480,6 +1480,27 @@ export default function App() {
     latestAnswerPopupPosRef.current = answerPopupPos;
   }, [answerPopupPos]);
 
+  useEffect(() => {
+    const handleWidthChange = (e) => {
+      const width = e.detail?.width;
+      if (width) {
+        document.documentElement.style.setProperty('--global-mobile-first-col-width', width);
+      }
+    };
+    window.addEventListener('firstColWidthChanged', handleWidthChange);
+
+    // Initialize from localStorage for common column counts (2 to 6)
+    for (let c = 2; c <= 6; c++) {
+      const val = localStorage.getItem(`anti_mobile_first_col_width_${c}`);
+      if (val) {
+        document.documentElement.style.setProperty('--global-mobile-first-col-width', val);
+        break;
+      }
+    }
+
+    return () => window.removeEventListener('firstColWidthChanged', handleWidthChange);
+  }, []);
+
   const handleAnswerPopupMoveStart = (e) => {
     if (e.target.closest('button, svg, path, input, textarea')) return;
 
