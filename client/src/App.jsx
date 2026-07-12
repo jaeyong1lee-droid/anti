@@ -4543,6 +4543,7 @@ export default function App() {
   const [examPull, setExamPull] = useState(0);
   const [examRefreshing, setExamRefreshing] = useState(false);
   const examTouchStartY = useRef(0);
+  const examTouchStartX = useRef(0); // iOS 수평 드래그 차단용
 
   useEffect(() => {
     const handleResize = () => {
@@ -21175,11 +21176,42 @@ ${itemsStr}
                   }
                 }}
                 onTouchStart={(e) => {
+                  examTouchStartX.current = e.touches[0].clientX;
                   if (!isDesktop && !isMobileLandscape && examBodyRef.current && examBodyRef.current.scrollTop === 0) {
                     examTouchStartY.current = e.touches[0].clientY;
                   }
                 }}
                 onTouchMove={(e) => {
+                  // [iOS 수평 드래그 차단] 수평 스와이프가 감지될 때, 가로 스크롤 가능한 컨테이너
+                  // (.markdown-table-container, .overflow-x-auto 등) 내부가 아니면 차단한다.
+                  if (!isDesktop && !isMobileLandscape && e.cancelable) {
+                    const touchX = e.touches[0].clientX;
+                    const touchY = e.touches[0].clientY;
+                    const deltaX = Math.abs(touchX - (examTouchStartX.current || touchX));
+                    const deltaY = Math.abs(touchY - examTouchStartY.current);
+                    if (deltaX > deltaY && deltaX > 5) {
+                      // 수평 스와이프: 터치 대상이 가로 스크롤 컨테이너 안인지 확인
+                      let el = e.target;
+                      let insideHScroll = false;
+                      while (el && el !== examBodyRef.current) {
+                        if (
+                          el.classList &&
+                          (el.classList.contains('markdown-table-container') ||
+                           el.classList.contains('overflow-x-auto') ||
+                           el.classList.contains('overflow-auto') ||
+                           el.classList.contains('table-quiz-container'))
+                        ) {
+                          insideHScroll = true;
+                          break;
+                        }
+                        el = el.parentElement;
+                      }
+                      if (!insideHScroll) {
+                        e.preventDefault(); // 페이지/컨테이너 수평 이동 차단
+                      }
+                    }
+                  }
+                  // Pull-to-refresh 로직
                   if (!isDesktop && !isMobileLandscape && examBodyRef.current && examBodyRef.current.scrollTop === 0 && !examRefreshing) {
                     const currentY = e.touches[0].clientY;
                     const deltaY = currentY - examTouchStartY.current;
