@@ -72,7 +72,7 @@ export const TableQuiz = React.memo(function TableQuiz({
     if (targetInputs.length === 0) return null;
     
     return (
-      <div className="mt-4 p-4 rounded-xl border border-slate-800 bg-slate-900/10 text-left space-y-3 w-full animate-in fade-in slide-in-from-top-2 duration-200">
+      <div className="mt-4 text-left space-y-3 w-full animate-in fade-in slide-in-from-top-2 duration-200">
         <span className="font-extrabold text-amber-400 text-[14px] sm:text-[16px]">{title}:</span>
         <div className="divide-y divide-slate-800/80 mt-1">
           {targetInputs.map((inputId) => {
