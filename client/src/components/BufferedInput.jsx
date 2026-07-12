@@ -54,10 +54,39 @@ export const BufferedTextarea = React.memo(({ value, onChange, onKeystroke, onKe
 
   React.useEffect(() => {
     const el = textareaRef.current;
-    if (el) {
+    if (!el) return;
+
+    let lastWidth = el.clientWidth;
+
+    const adjustHeight = () => {
       el.style.height = 'auto';
       el.style.height = `${el.scrollHeight}px`;
+    };
+
+    // Run on mount / value change
+    adjustHeight();
+
+    let resizeObserver = null;
+    if (typeof window !== 'undefined' && 'ResizeObserver' in window) {
+      resizeObserver = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          const newWidth = entry.contentRect.width;
+          if (Math.abs(newWidth - lastWidth) > 0.5) {
+            lastWidth = newWidth;
+            requestAnimationFrame(() => {
+              adjustHeight();
+            });
+          }
+        }
+      });
+      resizeObserver.observe(el);
     }
+
+    return () => {
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+      }
+    };
   }, [localVal]);
 
   const handleBlur = () => {

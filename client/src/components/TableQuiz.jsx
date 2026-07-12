@@ -864,6 +864,7 @@ export const TableQuiz = React.memo(function TableQuiz({
   const mainTable = (
     <>
       <div 
+        key={isMainFloated ? 'floated' : 'inline'}
         className={isMainFloated 
           ? "fixed z-[9991] bg-slate-900/95 border border-slate-700 rounded-2xl shadow-2xl p-3 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150 backdrop-blur-md floated-table-quiz"
           : "table-quiz-container w-full my-3 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40"
@@ -1177,6 +1178,7 @@ export const TableQuiz = React.memo(function TableQuiz({
     <>
       <div className={isCompFloated ? "" : "mt-2"}>
         <div 
+          key={isCompFloated ? 'floated' : 'inline'}
           className={isCompFloated
             ? "fixed z-[9991] bg-slate-900/95 border border-slate-700 rounded-2xl shadow-2xl p-3 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150 backdrop-blur-md floated-table-quiz"
             : "table-quiz-container w-full my-3 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40"
