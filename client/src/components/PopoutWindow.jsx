@@ -45,48 +45,20 @@ export const PopoutWindow = ({ title, onClose, children, initWidth = 720, initHe
     
     let newWindow = null;
     try {
-      // Try opening as empty first to prevent reloading existing window
+      // Open as empty window directly
       newWindow = window.open(
-        '',
+        'about:blank',
         storageKey || '_blank',
         features
       );
     } catch (e) {
-      console.warn('Failed to reference window via empty url:', e);
-    }
-
-    if (!newWindow) {
-      // Fallback to direct URL if empty url failed
-      try {
-        newWindow = window.open(
-          '/popout.html',
-          storageKey || '_blank',
-          features
-        );
-      } catch (e) {
-        console.error('Failed to open popout window:', e);
-      }
+      console.warn('Failed to open blank popout window:', e);
     }
 
     if (!newWindow) {
       alert('팝업 차단이 활성화되어 있습니다. 브라우저 설정에서 팝업을 허용해주세요.');
       if (onCloseRef.current) onCloseRef.current();
       return;
-    }
-
-    // Determine if the window is newly opened or already navigated
-    let isNew = false;
-    try {
-      if (!newWindow.location || newWindow.location.href === 'about:blank' || newWindow.location.pathname === 'blank') {
-        isNew = true;
-      }
-    } catch (e) {
-      // Cross-origin restriction might happen if it was on a different page, treat as new
-      isNew = true;
-    }
-
-    if (isNew) {
-      newWindow.location.href = '/popout.html';
     }
 
     windowRef.current = newWindow;
@@ -162,39 +134,8 @@ export const PopoutWindow = ({ title, onClose, children, initWidth = 720, initHe
       }
     };
 
-    // Wait for the window to load
-    let isCleanedUp = false;
-    let checkInterval = null;
-
-    const onWindowLoad = () => {
-      if (isCleanedUp) return;
-      try {
-        const loc = newWindow.location;
-        if (loc && loc.href && loc.href !== 'about:blank' && loc.pathname !== 'blank') {
-          setupContainer();
-        }
-      } catch (e) {}
-    };
-
-    newWindow.addEventListener('load', onWindowLoad);
-    
-    // Fallback: poll because window.open with local files might already be loaded or fast
-    checkInterval = setInterval(() => {
-      try {
-        const loc = newWindow.location;
-        if (newWindow.document && 
-            newWindow.document.readyState === 'complete' &&
-            loc &&
-            loc.href &&
-            loc.href !== 'about:blank' &&
-            loc.pathname !== 'blank') {
-          clearInterval(checkInterval);
-          setupContainer();
-        }
-      } catch (e) {
-        // Handle cross-origin exception if it's transient
-      }
-    }, 50);
+    // Since it's 'about:blank', it is already loaded synchronously. We can setup immediately.
+    setupContainer();
 
     const handleUnload = () => {
       if (onCloseRef.current) onCloseRef.current();
@@ -224,7 +165,7 @@ export const PopoutWindow = ({ title, onClose, children, initWidth = 720, initHe
             const curW = newWindow.outerWidth;
             const curH = newWindow.outerHeight;
             
-            // Only update if they are valid numbers and window is not minimized (screenX/Y could be -32000 on Windows when minimized)
+            // Only update if they are valid numbers and window is not minimized
             if (curX !== undefined && curY !== undefined && curW && curH && curX > -10000 && curY > -10000) {
               lastPosition = { x: curX, y: curY, w: curW, h: curH };
             }
@@ -242,8 +183,6 @@ export const PopoutWindow = ({ title, onClose, children, initWidth = 720, initHe
     window.addEventListener('beforeunload', handleParentUnload);
 
     return () => {
-      isCleanedUp = true;
-      if (checkInterval) clearInterval(checkInterval);
       if (closeCheckInterval) clearInterval(closeCheckInterval);
       window.removeEventListener('beforeunload', handleParentUnload);
       window.removeEventListener(`focus-popout-${storageKey || 'window'}`, handleFocusRequest);
@@ -251,11 +190,10 @@ export const PopoutWindow = ({ title, onClose, children, initWidth = 720, initHe
       // Only close the child window if the parent is NOT reloading/unloading (e.g. normal React unmount)
       if (newWindow && !newWindow.closed && !isParentUnloading) {
         newWindow.removeEventListener('beforeunload', handleUnload);
-        newWindow.removeEventListener('load', onWindowLoad);
         newWindow.close();
       }
     };
-  }, []); // Run ONLY once on mount!
+  }, []); // Run ONLY once on mount! // Run ONLY once on mount!
 
   if (!container) return null;
 
