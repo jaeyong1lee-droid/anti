@@ -327,12 +327,38 @@ export function FloatingMemorization({
 
   if (!isVisible) return null;
 
-  const usePopout = isDesktop;
+  const [usePopout, setUsePopout] = useState(() => {
+    if (!isDesktop) return false;
+    return localStorage.getItem('anti_use_popout_memo') !== 'false';
+  });
+
+  const togglePopoutMode = () => {
+    const newVal = !usePopout;
+    setUsePopout(newVal);
+    localStorage.setItem('anti_use_popout_memo', newVal ? 'true' : 'false');
+  };
+
+  const activeUsePopout = usePopout && isDesktop;
 
   const content = (
-    <div className="floating-memorization-popup w-full h-full flex flex-col overflow-hidden text-slate-100">
+    <div className="floating-memorization-popup w-full h-full flex flex-col overflow-hidden text-slate-100 bg-slate-950">
+      {activeUsePopout && (
+        <div className="flex items-center justify-between px-3.5 py-1.5 bg-slate-900 border-b border-slate-800 select-none shrink-0">
+          <div className="text-[10px] text-slate-400 font-bold">
+            독립 팝업 창 모드
+          </div>
+          <button
+            type="button"
+            onClick={togglePopoutMode}
+            className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-violet-400 hover:text-violet-300 border border-slate-700 rounded text-[9px] font-black transition-colors cursor-pointer"
+            title="메인 화면 내부의 항상 위에 고정된 창으로 전환합니다"
+          >
+            화면 내 고정 (항상위)
+          </button>
+        </div>
+      )}
       {/* Header */}
-      {!usePopout && (
+      {!activeUsePopout && (
         <div 
           onMouseDown={handleMouseDown}
           onTouchStart={handleTouchStart}
@@ -343,12 +369,22 @@ export function FloatingMemorization({
             <span className="text-xs text-white font-extrabold tracking-wider">플로팅 암기자료 팝업</span>
             <span className="text-[9px] font-black text-slate-400 bg-slate-950/40 px-1.5 py-0.5 rounded border border-slate-800">Review Companion</span>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1 rounded-lg hover:bg-slate-800/80 text-slate-400 hover:text-white transition-colors cursor-pointer flex items-center justify-center"
-          >
-            <X size={14} />
-          </button>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={togglePopoutMode}
+              className="px-2 py-0.5 bg-slate-950 text-violet-300 hover:text-white rounded text-[9px] font-black transition-colors cursor-pointer border-none"
+              title="독립된 새 창으로 분리합니다"
+            >
+              새창 분리
+            </button>
+            <button
+              onClick={onClose}
+              className="p-1 rounded-lg hover:bg-slate-800/80 text-slate-400 hover:text-white transition-colors cursor-pointer flex items-center justify-center border-none bg-transparent"
+            >
+              <X size={14} />
+            </button>
+          </div>
         </div>
       )}
 
@@ -1093,7 +1129,7 @@ export function FloatingMemorization({
       </div>
     );
 
-    if (usePopout) {
+    if (activeUsePopout) {
       return (
         <PopoutWindow
           title="플로팅 암기자료 팝업"

@@ -366,6 +366,16 @@ export const TableQuiz = React.memo(function TableQuiz({
 
   const [isMobileView, setIsMobileView] = useState(() => window.innerWidth < 768);
 
+  const [usePopout, setUsePopout] = useState(() => {
+    return localStorage.getItem('anti_use_popout_table') !== 'false';
+  });
+
+  const togglePopoutMode = () => {
+    const newVal = !usePopout;
+    setUsePopout(newVal);
+    localStorage.setItem('anti_use_popout_table', newVal ? 'true' : 'false');
+  };
+
   useEffect(() => {
     const handleResize = () => {
       setIsMobileView(window.innerWidth < 768);
@@ -859,7 +869,7 @@ export const TableQuiz = React.memo(function TableQuiz({
     </div>
   ) : null;
 
-  const usePopout = !isMobileView;
+  const activeUsePopout = usePopout && !isMobileView;
 
   const mainTable = (() => {
     const tableEl = (
@@ -1073,7 +1083,7 @@ export const TableQuiz = React.memo(function TableQuiz({
     );
 
     if (isMainFloated) {
-      if (usePopout) {
+      if (activeUsePopout) {
         return (
           <PopoutWindow
             title="📌 표 채우기"
@@ -1082,8 +1092,27 @@ export const TableQuiz = React.memo(function TableQuiz({
             initHeight={floatedSize.height}
             storageKey={"anti_popout_table_main_" + mainTableUniqueId}
           >
-            <div className="w-full h-full flex flex-col overflow-hidden text-slate-100">
-              {tableEl}
+            <div className="w-full h-full flex flex-col overflow-hidden text-slate-100 p-4 sm:p-5 bg-[#020617]">
+              {/* Header inside popout to allow toggling back to floating overlay (always on top) */}
+              <div className="flex items-center justify-between px-2.5 py-1.5 mb-2.5 bg-slate-900 border border-slate-800 rounded-xl select-none shrink-0">
+                <div className="text-[10px] text-slate-400 font-bold">
+                  독립 팝업 창 모드
+                </div>
+                <button
+                  type="button"
+                  onClick={togglePopoutMode}
+                  className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-sky-400 hover:text-sky-300 border border-slate-700 rounded text-[9px] font-black transition-colors cursor-pointer"
+                  title="메인 화면 내부의 항상 위에 고정된 창으로 전환합니다"
+                >
+                  화면 내 고정 (항상위)
+                </button>
+              </div>
+
+              {/* Table wrapper with elegant border gradient and shadow */}
+              <div className="flex-1 w-full h-full flex flex-col overflow-hidden bg-slate-900/40 rounded-2xl border border-slate-800/80 p-3 sm:p-4 shadow-[0_20px_50px_rgba(0,0,0,0.5)] relative">
+                <div className="absolute inset-0 rounded-2xl border border-transparent bg-gradient-to-tr from-violet-500/20 via-transparent to-emerald-500/20 pointer-events-none" />
+                {tableEl}
+              </div>
             </div>
           </PopoutWindow>
         );
@@ -1132,21 +1161,31 @@ export const TableQuiz = React.memo(function TableQuiz({
           >
             <div className="flex items-center gap-2">
               <span className="text-sky-400 font-extrabold text-sm sm:text-base flex items-center gap-1.5">
-                📌
+                ⚖️
               </span>
               <span className="text-xs text-slate-400 hidden sm:inline">
                 (입력 및 채점 상태가 실시간 동기화됩니다)
               </span>
             </div>
-            <button 
-              onClick={() => setFloatedTableId(null)}
-              className="p-1 text-slate-400 hover:text-white rounded-lg transition-all active:scale-95 hover:bg-slate-800"
-              title="고정 해제 (ESC)"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={togglePopoutMode}
+                className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-sky-400 hover:text-sky-300 rounded text-[9px] font-black transition-colors cursor-pointer border-none"
+                title="독립된 새 창으로 분리합니다"
+              >
+                새창 분리
+              </button>
+              <button 
+                onClick={() => setFloatedTableId(null)}
+                className="p-1 text-slate-400 hover:text-white rounded-lg transition-all active:scale-95 hover:bg-slate-800"
+                title="고정 해제 (ESC)"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
           </div>
           {tableEl}
         </div>
@@ -1387,72 +1426,100 @@ export const TableQuiz = React.memo(function TableQuiz({
         </div>
       );
 
-      if (isCompFloated) {
-        if (usePopout) {
-          return (
-            <PopoutWindow
-              title="⚖️ 비교표"
-              onClose={() => setFloatedTableId(null)}
-              initWidth={floatedSize.width}
-              initHeight={floatedSize.height}
-              storageKey={"anti_popout_table_comp_" + compTableUniqueId}
-            >
-              <div className="w-full h-full flex flex-col overflow-hidden text-slate-100">
+    if (isCompFloated) {
+      if (activeUsePopout) {
+        return (
+          <PopoutWindow
+            title="⚖️ 비교표"
+            onClose={() => setFloatedTableId(null)}
+            initWidth={floatedSize.width}
+            initHeight={floatedSize.height}
+            storageKey={"anti_popout_table_comp_" + compTableUniqueId}
+          >
+            <div className="w-full h-full flex flex-col overflow-hidden text-slate-100 p-4 sm:p-5 bg-[#020617]">
+              {/* Header inside popout to allow toggling back to floating overlay (always on top) */}
+              <div className="flex items-center justify-between px-2.5 py-1.5 mb-2.5 bg-slate-900 border border-slate-800 rounded-xl select-none shrink-0">
+                <div className="text-[10px] text-slate-400 font-bold">
+                  독립 팝업 창 모드
+                </div>
+                <button
+                  type="button"
+                  onClick={togglePopoutMode}
+                  className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-sky-400 hover:text-sky-300 border border-slate-700 rounded text-[9px] font-black transition-colors cursor-pointer"
+                  title="메인 화면 내부의 항상 위에 고정된 창으로 전환합니다"
+                >
+                  화면 내 고정 (항상위)
+                </button>
+              </div>
+
+              {/* Table wrapper with elegant border gradient and shadow */}
+              <div className="flex-1 w-full h-full flex flex-col overflow-hidden bg-slate-900/40 rounded-2xl border border-slate-800/80 p-3 sm:p-4 shadow-[0_20px_50px_rgba(0,0,0,0.5)] relative">
+                <div className="absolute inset-0 rounded-2xl border border-transparent bg-gradient-to-tr from-violet-500/20 via-transparent to-emerald-500/20 pointer-events-none" />
                 {tableEl}
               </div>
-            </PopoutWindow>
-          );
-        }
-        return (
-          <div 
-            key="floated"
-            className="fixed z-[9991] bg-slate-900/95 border border-slate-700 rounded-2xl shadow-2xl p-3 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150 backdrop-blur-md floated-table-quiz"
-            style={{
-              width: `${floatedSize.width}px`,
-              height: `${floatedSize.height}px`,
-              left: `${floatedPos.x}px`,
-              top: `${floatedPos.y}px`,
-              maxWidth: '90vw',
-              maxHeight: '90vh'
-            }}
-          >
-            <>
-              {/* Bottom Left Resize */}
-              <div 
-                className="absolute left-0 bottom-0 w-4.5 h-4.5 cursor-sw-resize z-50 flex items-end justify-start p-1 select-none active:scale-95"
-                onMouseDown={startFloatedResizeLeft}
-                onTouchStart={startFloatedResizeLeft}
-                title="드래그하여 좌측으로 크기를 조절합니다"
-              >
-                <svg className="w-2.5 h-2.5 text-slate-500 hover:text-slate-300" viewBox="0 0 10 10" fill="none" stroke="currentColor">
-                  <path d="M1 9 L9 1 M1 6 L6 1 M1 3 L3 1" strokeWidth="1" strokeLinecap="round" />
-                </svg>
-              </div>
-              {/* Bottom Right Resize */}
-              <div 
-                className="absolute right-0 bottom-0 w-4.5 h-4.5 cursor-se-resize z-50 flex items-end justify-end p-1 select-none active:scale-95"
-                onMouseDown={startFloatedResizeRight}
-                onTouchStart={startFloatedResizeRight}
-                title="드래그하여 우측으로 크기를 조절합니다"
-              >
-                <svg className="w-2.5 h-2.5 text-slate-500 hover:text-slate-300" viewBox="0 0 10 10" fill="none" stroke="currentColor">
-                  <path d="M9 9 L1 1 M9 6 L6 9 M9 3 L3 9" strokeWidth="1" strokeLinecap="round" />
-                </svg>
-              </div>
-            </>
+            </div>
+          </PopoutWindow>
+        );
+      }
+      return (
+        <div 
+          key="floated"
+          className="fixed z-[9991] bg-slate-900/95 border border-slate-700 rounded-2xl shadow-2xl p-3 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150 backdrop-blur-md floated-table-quiz"
+          style={{
+            width: `${floatedSize.width}px`,
+            height: `${floatedSize.height}px`,
+            left: `${floatedPos.x}px`,
+            top: `${floatedPos.y}px`,
+            maxWidth: '90vw',
+            maxHeight: '90vh'
+          }}
+        >
+          <>
+            {/* Bottom Left Resize */}
             <div 
-              onMouseDown={startFloatedMove}
-              onTouchStart={startFloatedMove}
-              className="flex items-center justify-between pb-1.5 mb-2 border-b border-slate-800 select-none cursor-grab active:cursor-grabbing"
+              className="absolute left-0 bottom-0 w-4.5 h-4.5 cursor-sw-resize z-50 flex items-end justify-start p-1 select-none active:scale-95"
+              onMouseDown={startFloatedResizeLeft}
+              onTouchStart={startFloatedResizeLeft}
+              title="드래그하여 좌측으로 크기를 조절합니다"
             >
-              <div className="flex items-center gap-2">
-                <span className="text-sky-400 font-extrabold text-sm sm:text-base flex items-center gap-1.5">
-                  ⚖️
-                </span>
-                <span className="text-xs text-slate-400 hidden sm:inline">
-                  (입력 및 채점 상태가 실시간 동기화됩니다)
-                </span>
-              </div>
+              <svg className="w-2.5 h-2.5 text-slate-500 hover:text-slate-300" viewBox="0 0 10 10" fill="none" stroke="currentColor">
+                <path d="M1 9 L9 1 M1 6 L6 1 M1 3 L3 1" strokeWidth="1" strokeLinecap="round" />
+              </svg>
+            </div>
+            {/* Bottom Right Resize */}
+            <div 
+              className="absolute right-0 bottom-0 w-4.5 h-4.5 cursor-se-resize z-50 flex items-end justify-end p-1 select-none active:scale-95"
+              onMouseDown={startFloatedResizeRight}
+              onTouchStart={startFloatedResizeRight}
+              title="드래그하여 우측으로 크기를 조절합니다"
+            >
+              <svg className="w-2.5 h-2.5 text-slate-500 hover:text-slate-300" viewBox="0 0 10 10" fill="none" stroke="currentColor">
+                <path d="M9 9 L1 1 M9 6 L6 9 M9 3 L3 9" strokeWidth="1" strokeLinecap="round" />
+              </svg>
+            </div>
+          </>
+          <div 
+            onMouseDown={startFloatedMove}
+            onTouchStart={startFloatedMove}
+            className="flex items-center justify-between pb-1.5 mb-2 border-b border-slate-800 select-none cursor-grab active:cursor-grabbing"
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-sky-400 font-extrabold text-sm sm:text-base flex items-center gap-1.5">
+                ⚖️
+              </span>
+              <span className="text-xs text-slate-400 hidden sm:inline">
+                (입력 및 채점 상태가 실시간 동기화됩니다)
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={togglePopoutMode}
+                className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-sky-400 hover:text-sky-300 rounded text-[9px] font-black transition-colors cursor-pointer border-none"
+                title="독립된 새 창으로 분리합니다"
+              >
+                새창 분리
+              </button>
               <button 
                 onClick={() => setFloatedTableId(null)}
                 className="p-1 text-slate-400 hover:text-white rounded-lg transition-all active:scale-95 hover:bg-slate-800"
@@ -1463,9 +1530,10 @@ export const TableQuiz = React.memo(function TableQuiz({
                 </svg>
               </button>
             </div>
-            {tableEl}
           </div>
-        );
+          {tableEl}
+        </div>
+      );
       }
 
       return (

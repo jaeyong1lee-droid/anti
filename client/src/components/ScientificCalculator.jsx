@@ -2959,8 +2959,20 @@ export function ScientificCalculator() {
 
 export function FloatingCalculator({ isVisible, onClose }) {
   const dragRef = useRef(null);
+
+  const isMobile = window.innerWidth < 768;
+  const [usePopout, setUsePopout] = useState(() => {
+    if (isMobile) return false;
+    return localStorage.getItem('anti_use_popout_calc') !== 'false';
+  });
+
+  const togglePopoutMode = () => {
+    const newVal = !usePopout;
+    setUsePopout(newVal);
+    localStorage.setItem('anti_use_popout_calc', newVal ? 'true' : 'false');
+  };
+
   const [position, setPosition] = useState(() => {
-    const isMobile = window.innerWidth < 768;
     const width = isMobile ? window.innerWidth * 0.9 : 660;
     return { x: Math.max(10, window.innerWidth - width - 20), y: 150 };
   });
@@ -3025,12 +3037,26 @@ export function FloatingCalculator({ isVisible, onClose }) {
 
   if (!isVisible) return null;
 
-  const isMobile = window.innerWidth < 768;
-  const usePopout = !isMobile;
+  const activeUsePopout = usePopout && !isMobile;
 
   const content = (
     <div className="w-full h-full flex flex-col overflow-hidden bg-slate-900 text-slate-100">
-      {!usePopout && (
+      {activeUsePopout && (
+        <div className="flex items-center justify-between px-3.5 py-1.5 bg-slate-900 border-b border-slate-800 select-none shrink-0">
+          <div className="text-[10px] text-slate-400 font-bold">
+            독립 팝업 창 모드
+          </div>
+          <button
+            type="button"
+            onClick={togglePopoutMode}
+            className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-lime-300 hover:text-lime-200 border border-slate-700 rounded text-[9px] font-black transition-colors cursor-pointer"
+            title="메인 화면 내부의 항상 위에 고정된 창으로 전환합니다"
+          >
+            화면 내 고정 (항상위)
+          </button>
+        </div>
+      )}
+      {!activeUsePopout && (
         <div 
           onMouseDown={handleMouseDown}
           onTouchStart={handleTouchStart}
@@ -3040,12 +3066,22 @@ export function FloatingCalculator({ isVisible, onClose }) {
             <span className="text-[10px] bg-slate-950 text-slate-100 font-black px-1.5 py-0.5 rounded border border-slate-900/30">CASIO</span>
             <span className="text-[10px] text-slate-950 font-black tracking-wider">공학용 계산기</span>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1 rounded-lg hover:bg-lime-300 text-slate-900 hover:text-black transition-colors cursor-pointer flex items-center justify-center"
-          >
-            <X size={14} />
-          </button>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={togglePopoutMode}
+              className="px-2 py-0.5 bg-slate-950 text-lime-300 hover:text-white rounded text-[9px] font-black transition-colors cursor-pointer border-none"
+              title="독립된 새 창으로 분리합니다"
+            >
+              새창 분리
+            </button>
+            <button
+              onClick={onClose}
+              className="p-1 rounded-lg hover:bg-lime-300 text-slate-900 hover:text-black transition-colors cursor-pointer flex items-center justify-center border-none bg-transparent"
+            >
+              <X size={14} />
+            </button>
+          </div>
         </div>
       )}
       <div className="p-2 overflow-y-auto flex-1 custom-vertical-scrollbar bg-slate-950/20">
@@ -3054,7 +3090,7 @@ export function FloatingCalculator({ isVisible, onClose }) {
     </div>
   );
 
-  if (usePopout) {
+  if (activeUsePopout) {
     return (
       <PopoutWindow
         title="공학용 계산기"
