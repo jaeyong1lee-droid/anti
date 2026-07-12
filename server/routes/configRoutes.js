@@ -754,10 +754,12 @@ router.get('/session/images', async (req, res) => {
 // GET /api/session/images/proxy
 router.get('/session/images/proxy', async (req, res) => {
   try {
-    const imageUrl = req.query.url;
+    let imageUrl = req.query.url;
     if (!imageUrl) {
       return res.status(400).send('Missing url parameter');
     }
+    // Clean spaces and dollar signs in case of client-side LaTeX pollution in query params
+    imageUrl = imageUrl.replace(/\s+/g, '').replace(/\$/g, '').trim();
 
     // 1. Try standard direct fetch first (works for public blobs or if accessible)
     try {

@@ -1224,11 +1224,14 @@ const renderQuestionContent = (q, topicTitle, katexLoaded, topicId = null, pdfNa
           <div className="text-[11px] text-indigo-400 font-extrabold mb-1 select-none flex items-center gap-1.5 w-full justify-start">
             <span>🖼️ 첨부된 문제 그래프/그림</span>
           </div>
-          {imgs.map((src, index) => (
-            <div key={index} className="w-full overflow-hidden rounded-xl border border-slate-800 bg-slate-950/40 p-2 flex items-center justify-center max-h-[340px]">
-              <img src={src} className="max-h-[320px] object-contain rounded-lg max-w-full" alt={`첨부 그림 ${index + 1}`} />
-            </div>
-          ))}
+          {imgs.map((src, index) => {
+            const cleanSrc = typeof src === 'string' ? src.replace(/\s+/g, '').replace(/\$/g, '').trim() : src;
+            return (
+              <div key={index} className="w-full overflow-hidden rounded-xl border border-slate-800 bg-slate-950/40 p-2 flex items-center justify-center max-h-[340px]">
+                <img src={cleanSrc} className="max-h-[320px] object-contain rounded-lg max-w-full" alt={`첨부 그림 ${index + 1}`} />
+              </div>
+            );
+          })}
         </div>
       );
     }
