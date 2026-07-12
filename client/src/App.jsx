@@ -14,6 +14,7 @@ import { LatexRenderer } from './components/LatexRenderer';
 import { TableQuiz } from './components/TableQuiz';
 import { AcronymQuiz } from './components/AcronymQuiz';
 import { ReadOnlyTable } from './components/ReadOnlyTable';
+import { PopoutWindow } from './components/PopoutWindow';
 import { 
   buildHtmlDocument, 
   handleOpenHtmlAnswerPopup, 
@@ -2160,55 +2161,54 @@ export default function App() {
             );
           })()}
           
-          {Array.from({ length: rowCount }).map((_, rIdx) => {
-            const userLetter = activeAnswers[`${idx}_ROW_${rIdx}_ACRONYM`] || '';
-            const userContent = activeAnswers[`${idx}_ROW_${rIdx}_COMB`] || '';
-            
-            const acronymGrading = activeGradingResults[`${idx}_ROW_${rIdx}_ACRONYM`];
-            const combGrading = activeGradingResults[`${idx}_ROW_${rIdx}_COMB`];
-            
-            const isContentCorrect = combGrading ? combGrading.isCorrect : false;
-            
-            // Match the scoring of AcronymQuiz rows
-            const acronymScore = ((acronymGrading?.score || 0) / 10) * (weight / (rowCount * 2));
-            const combScore = ((combGrading?.score || 0) / 10) * (weight / (rowCount * 2));
-            const rowTotalScore = Math.round((acronymScore + combScore) * 10) / 10;
-            const rowMaxScore = weight / rowCount;
-            
-            let correctRow = q.correctRows?.[rIdx];
-            if (correctRow && correctRow.acronym !== userLetter) {
-              const matched = q.correctRows?.find(r => r.acronym === userLetter);
-              if (matched) {
-                correctRow = matched;
-              }
-            }
-            
-            return (
-              <div key={rIdx} className="py-3.5 first:pt-1 last:pb-1 text-[14px] sm:text-[16px] space-y-1 w-full text-left">
-                <div className="flex justify-between items-center font-extrabold border-b border-slate-800/40 pb-1 mb-1.5">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-slate-100 font-bold">행 {rIdx + 1} ({userLetter || '미입력'})</span>
+          {(() => {
+            const userLetters = Array.from({ length: rowCount }).map((_, rIdx) => activeAnswers[`${idx}_ROW_${rIdx}_ACRONYM`] || '');
+            const mappedCorrectRows = matchUserRowsToCorrectRows(userLetters, q.correctRows);
+
+            return Array.from({ length: rowCount }).map((_, rIdx) => {
+              const userLetter = userLetters[rIdx];
+              const userContent = activeAnswers[`${idx}_ROW_${rIdx}_COMB`] || '';
+              
+              const acronymGrading = activeGradingResults[`${idx}_ROW_${rIdx}_ACRONYM`];
+              const combGrading = activeGradingResults[`${idx}_ROW_${rIdx}_COMB`];
+              
+              const isContentCorrect = combGrading ? combGrading.isCorrect : false;
+              
+              // Match the scoring of AcronymQuiz rows
+              const acronymScore = ((acronymGrading?.score || 0) / 10) * (weight / (rowCount * 2));
+              const combScore = ((combGrading?.score || 0) / 10) * (weight / (rowCount * 2));
+              const rowTotalScore = Math.round((acronymScore + combScore) * 10) / 10;
+              const rowMaxScore = weight / rowCount;
+              
+              const correctRow = mappedCorrectRows[rIdx];
+              
+              return (
+                <div key={rIdx} className="py-3.5 first:pt-1 last:pb-1 text-[14px] sm:text-[16px] space-y-1 w-full text-left">
+                  <div className="flex justify-between items-center font-extrabold border-b border-slate-800/40 pb-1 mb-1.5">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-slate-100 font-bold">행 {rIdx + 1} ({userLetter || '미입력'})</span>
+                    </div>
+                    <span className={isContentCorrect ? 'text-emerald-400' : 'text-rose-400'}>
+                      {rowTotalScore} / {Math.round(rowMaxScore * 10) / 10}점
+                    </span>
                   </div>
-                  <span className={isContentCorrect ? 'text-emerald-400' : 'text-rose-400'}>
-                    {rowTotalScore} / {Math.round(rowMaxScore * 10) / 10}점
-                  </span>
-                </div>
-                <div className="text-slate-300">입력내용: <span className={`font-semibold ${isContentCorrect ? 'text-emerald-400' : 'text-rose-400'}`}>{userContent || '(미입력)'}</span></div>
-                <div className="text-slate-300">
-                  모범답안: {correctRow ? (
-                    <span className="font-semibold text-slate-100">{correctRow.word} : {correctRow.description}</span>
-                  ) : (
-                    <span className="font-semibold text-rose-400">(올바른 두문자 매칭 필요)</span>
+                  <div className="text-slate-300">입력내용: <span className={`font-semibold ${isContentCorrect ? 'text-emerald-400' : 'text-rose-400'}`}>{userContent || '(미입력)'}</span></div>
+                  <div className="text-slate-300">
+                    모범답안: {correctRow ? (
+                      <span className="font-semibold text-slate-100">{correctRow.word} : {correctRow.description}</span>
+                    ) : (
+                      <span className="font-semibold text-rose-400">(올바른 두문자 매칭 필요)</span>
+                    )}
+                  </div>
+                  {combGrading?.reason && (
+                    <div className="mt-1 text-slate-400">
+                      <span className="font-bold text-slate-300 font-bold text-slate-300">피드백:</span> {combGrading.reason}
+                    </div>
                   )}
                 </div>
-                {combGrading?.reason && (
-                  <div className="mt-1 text-slate-400">
-                    <span className="font-bold text-slate-300 font-bold text-slate-300">피드백:</span> {combGrading.reason}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+              );
+            });
+          })()}
         </div>
       </div>
     );
@@ -2243,17 +2243,14 @@ export default function App() {
     const progressId = 'grade_acronym_' + Math.random().toString(36).substring(2, 9);
     startProgressPolling(progressId);
     
+    const userLetters = userRows.map(r => r.acronym);
+    const mappedCorrectRows = matchUserRowsToCorrectRows(userLetters, q.correctRows);
+
     const promises = userRows.map(async (userRow, rIdx) => {
       const userLetter = userRow.acronym;
       const userContent = userRow.combined;
       
-      let correctRow = q.correctRows?.[rIdx];
-      if (correctRow && correctRow.acronym !== userLetter) {
-        const matched = q.correctRows?.find(r => r.acronym === userLetter);
-        if (matched) {
-          correctRow = matched;
-        }
-      }
+      const correctRow = mappedCorrectRows[rIdx];
       
       if (!userLetter) {
         results[`${qIdx}_ROW_${rIdx}_ACRONYM`] = { isCorrect: false, score: 0, reason: '두문자 미입력' };
@@ -3241,13 +3238,10 @@ export default function App() {
     const userLetter = (activeAnswers[acronymKey] || '').trim();
     const userContent = (activeAnswers[combKey] || '').trim();
     
-    let correctRow = q.correctRows?.[rIdx];
-    if (correctRow && correctRow.acronym !== userLetter) {
-      const matched = q.correctRows?.find(r => r.acronym === userLetter);
-      if (matched) {
-        correctRow = matched;
-      }
-    }
+    const rowCount = q.correctRows?.length || 0;
+    const userLetters = Array.from({ length: rowCount }).map((_, i) => (activeAnswers[`${qIdx}_ROW_${i}_ACRONYM`] || '').trim());
+    const mappedCorrectRows = matchUserRowsToCorrectRows(userLetters, q.correctRows);
+    const correctRow = mappedCorrectRows[rIdx];
     
     if (!userLetter) {
       nextGrading[acronymKey] = { isCorrect: false, score: 0, reason: '두문자 미입력' };
@@ -12621,6 +12615,50 @@ export default function App() {
       await handleSaveFormulaOverviews(updated, false);
       showNotification('개요가 삭제되었습니다.', 'info');
     }
+  };
+
+  const matchUserRowsToCorrectRows = (userLetters, correctRows) => {
+    if (!correctRows) return [];
+    const rowCount = correctRows.length;
+    const assignedIndices = new Set();
+    const mappedRows = Array(rowCount).fill(null);
+
+    // Phase 1: Direct matches
+    for (let rIdx = 0; rIdx < rowCount; rIdx++) {
+      const userLetter = userLetters[rIdx] || '';
+      const correctRow = correctRows[rIdx];
+      if (correctRow && correctRow.acronym === userLetter) {
+        mappedRows[rIdx] = correctRow;
+        assignedIndices.add(rIdx);
+      }
+    }
+
+    // Phase 2: Permuted matches
+    for (let rIdx = 0; rIdx < rowCount; rIdx++) {
+      if (mappedRows[rIdx] !== null) continue;
+      const userLetter = userLetters[rIdx] || '';
+      const matchIdx = correctRows.findIndex((r, cIdx) => 
+        r.acronym === userLetter && !assignedIndices.has(cIdx)
+      );
+      if (matchIdx !== -1) {
+        mappedRows[rIdx] = correctRows[matchIdx];
+        assignedIndices.add(matchIdx);
+      }
+    }
+
+    // Phase 3: Fallback for unmatched rows
+    for (let rIdx = 0; rIdx < rowCount; rIdx++) {
+      if (mappedRows[rIdx] !== null) continue;
+      const firstUnassignedIdx = correctRows.findIndex((_, cIdx) => !assignedIndices.has(cIdx));
+      if (firstUnassignedIdx !== -1) {
+        mappedRows[rIdx] = correctRows[firstUnassignedIdx];
+        assignedIndices.add(firstUnassignedIdx);
+      } else {
+        mappedRows[rIdx] = correctRows[rIdx];
+      }
+    }
+
+    return mappedRows;
   };
 
   const getAcronymRows = (content) => {
