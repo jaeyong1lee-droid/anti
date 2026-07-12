@@ -17996,7 +17996,7 @@ ${itemsStr}
                             <button
                               onClick={() => handleToggleFeedback(q.topic_id || selectedTopic?.id || examTopic?.id, q.question, 'upvote')}
                               className={`flex-1 sm:flex-none justify-center flex items-center gap-0 sm:gap-1.5 text-[9.5px] sm:text-[11px] font-bold px-1.5 py-1 rounded-lg border transition-all duration-300 active:scale-95 cursor-pointer whitespace-nowrap ${
-                                questionFeedback[`${q.topic_id || selectedTopic?.id || examTopic?.id}_${q.question.trim()}`] === 'upvote'
+                                questionFeedback[`${q.topic_id || selectedTopic?.id || examTopic?.id}_${(q.question || '').trim()}`] === 'upvote'
                                   ? 'bg-emerald-950/60 border-emerald-500 text-emerald-400 font-black' 
                                   : 'bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-emerald-950/20 hover:border-emerald-500/30 hover:text-emerald-400'
                               }`}
@@ -21446,7 +21446,7 @@ ${itemsStr}
                           <button
                             onClick={() => handleToggleFeedback(q.topic_id || selectedTopic?.id || examTopic?.id, q.question, 'upvote')}
                             className={`flex-1 sm:flex-none justify-center flex items-center gap-0 sm:gap-1.5 text-[9.5px] sm:text-[11px] font-bold px-1.5 py-1 rounded-lg border transition-all duration-300 active:scale-95 cursor-pointer whitespace-nowrap ${
-                              questionFeedback[`${q.topic_id || selectedTopic?.id || examTopic?.id}_${q.question.trim()}`] === 'upvote'
+                              questionFeedback[`${q.topic_id || selectedTopic?.id || examTopic?.id}_${(q.question || '').trim()}`] === 'upvote'
                                 ? 'bg-emerald-950/60 border-emerald-500 text-emerald-400 font-black' 
                                 : 'bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-emerald-950/20 hover:border-emerald-500/30 hover:text-emerald-400'
                             }`}

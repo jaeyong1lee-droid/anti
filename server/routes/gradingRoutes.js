@@ -284,11 +284,17 @@ ${GENERATION_STANDARDS}`;
         }
       }
 
+      // Preserve metadata and title/question from the current question
+      const finalQuestion = {
+        ...currentQuestion,
+        ...parsed
+      };
+
       if (progressTimer) clearInterval(progressTimer);
       if (progressId) stopBackendProgressTimer(progressId, 100, '성공적으로 재출제했습니다!', true);
 
       return res.json({
-        question: parsed,
+        question: finalQuestion,
         isFallback: false
       });
     }
