@@ -569,6 +569,14 @@ export function ScientificCalculator() {
     return saved !== null ? parseInt(saved, 10) : 0;
   });
 
+  const [isQuickInsertUpper, setIsQuickInsertUpper] = useState(() => {
+    return localStorage.getItem('anti_calc_quick_insert_upper') === 'true';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('anti_calc_quick_insert_upper', isQuickInsertUpper);
+  }, [isQuickInsertUpper]);
+
   useEffect(() => {
     localStorage.setItem('anti_calc_input', calcInput);
   }, [calcInput]);
@@ -2777,28 +2785,40 @@ export function ScientificCalculator() {
 
       {/* Quick Insert Panel for variables and Greek letters */}
       <div className="mt-4 p-3 bg-slate-900/60 rounded-xl border border-slate-800 select-none">
-        <div className="text-[11px] font-black text-slate-400 mb-2.5 tracking-wide uppercase flex items-center gap-1.5">
-          <span>📝 Quick Insert (영어 소문자 & 그리스 문자)</span>
-          <span className="text-[9px] font-normal text-slate-500 lowercase">(클릭 시 커서 위치에 입력됩니다)</span>
+        <div className="text-[11px] font-black text-slate-400 mb-2.5 tracking-wide uppercase flex justify-between items-center w-full gap-2">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span>📝 Quick Insert (영어 {isQuickInsertUpper ? '대문자' : '소문자'} & 그리스 문자)</span>
+            <span className="text-[9px] font-normal text-slate-500 lowercase">(클릭 시 커서 위치에 입력됩니다)</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsQuickInsertUpper(!isQuickInsertUpper)}
+            className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-indigo-300 hover:text-indigo-200 border border-slate-700/60 rounded text-[10px] font-bold transition-all cursor-pointer select-none flex-shrink-0"
+          >
+            {isQuickInsertUpper ? '소문자 (a-z)' : '대문자 (A-Z)'}
+          </button>
         </div>
         
         {/* a-z alphabet buttons */}
         <div className="mb-3">
           <div className="text-[10px] font-bold text-slate-500 mb-1 flex justify-between items-center">
-            <span>Alphabet (a-z) & Custom Presets</span>
+            <span>Alphabet ({isQuickInsertUpper ? 'A-Z' : 'a-z'}) & Custom Presets</span>
             <span className="text-[8px] font-normal text-slate-600">(빈 버튼 더블클릭 시 편집 가능)</span>
           </div>
           <div className="grid grid-cols-6 sm:grid-cols-12 gap-1.5">
-            {['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z'].map(char => (
-              <button
-                key={char}
-                type="button"
-                onClick={() => insertAtCursor(char)}
-                className="py-1 bg-slate-950/60 hover:bg-slate-800 text-slate-300 hover:text-white rounded border border-slate-800 text-[14px] font-bold transition-all active:scale-90 cursor-pointer"
-              >
-                {char}
-              </button>
-            ))}
+            {['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z'].map(char => {
+              const displayChar = isQuickInsertUpper ? char.toUpperCase() : char;
+              return (
+                <button
+                  key={char}
+                  type="button"
+                  onClick={() => insertAtCursor(displayChar)}
+                  className="py-1 bg-slate-950/60 hover:bg-slate-800 text-slate-300 hover:text-white rounded border border-slate-800 text-[14px] font-bold transition-all active:scale-90 cursor-pointer"
+                >
+                  {displayChar}
+                </button>
+              );
+            })}
             {/* 10 custom alphabet preset buttons */}
             {customAlphabetButtons.map((val, idx) => (
               <button
