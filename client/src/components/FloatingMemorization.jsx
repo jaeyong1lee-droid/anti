@@ -66,6 +66,13 @@ const rebuildTableHtml = (headers, rows) => {
   html += '</div>';
   return html;
 };
+const rebuildMarkdownTable = (headers, rows, separator = '\n') => {
+  if (!headers || !rows) return '';
+  const headerLine = '| ' + headers.join(' | ') + ' |';
+  const sepLine = '| ' + headers.map(() => '---').join(' | ') + ' |';
+  const rowLines = rows.map(r => '| ' + r.join(' | ') + ' |');
+  return [headerLine, sepLine, ...rowLines].join(separator);
+};
 
 const parseMarkdownTable = (questionText) => {
   if (!questionText) return null;
@@ -1297,6 +1304,9 @@ export function FloatingMemorization({
                                                   <LatexRenderer text={h} katexLoaded={katexLoaded} />
                                                 </th>
                                               ))}
+                                              <th className="p-2 sm:p-2.5 font-extrabold text-rose-400 select-none whitespace-nowrap w-16">
+                                                비고
+                                              </th>
                                             </tr>
                                           </thead>
                                           <tbody>
@@ -1317,6 +1327,53 @@ export function FloatingMemorization({
                                                     </td>
                                                   );
                                                 })}
+                                                <td className="p-2 sm:p-2.5 text-center align-middle whitespace-nowrap bg-slate-950/10">
+                                                  <button
+                                                    onClick={async () => {
+                                                      const currentWindow = window;
+                                                      if (currentWindow.confirm(`'${row[0] || '이 행'}' 행을 삭제하시겠습니까?`)) {
+                                                        const updatedRows = rows.filter((_, idx) => idx !== rIdx);
+                                                        const newCompTableMd = rebuildMarkdownTable(headers, updatedRows, '<br>');
+                                                        let newContent = ov.content;
+                                                        let replaced = false;
+
+                                                        const lines = ov.content.split('\n');
+                                                        const compIdx = lines.findIndex(line => line.trim().match(/^\|\s*(비교표|비교|장단점)\s*\|/i));
+
+                                                        if (compIdx !== -1) {
+                                                          const line = lines[compIdx].trim();
+                                                          const match = line.match(/^(\|\s*(비교표|비교|장단점)\s*\|)(.*)\|$/i);
+                                                          if (match) {
+                                                            lines[compIdx] = `${match[1]} ${newCompTableMd.trim()} |`;
+                                                            newContent = lines.join('\n');
+                                                            replaced = true;
+                                                          }
+                                                        }
+
+                                                        if (!replaced) {
+                                                          const match = ov.content.match(/^([\s\S]*\|\s*(비교표|비교|장단점)\s*\|)(.*?)(?=\s*\|\s*(공학적 의미\/한계성|공학적 의미 및 한계성|의미\/한계성|직관적의미|직관적)\s*\||$)/i);
+                                                          if (match) {
+                                                            let nestedPart = match[3].trim();
+                                                            if (nestedPart.endsWith('|')) {
+                                                              nestedPart = nestedPart.slice(0, -1).trim();
+                                                            }
+                                                            newContent = ov.content.replace(nestedPart, newCompTableMd.trim());
+                                                            replaced = true;
+                                                          }
+                                                        }
+
+                                                        const updated = formulaOverviews.map(item => item.id === ov.id ? { ...item, content: newContent } : item);
+                                                        setFormulaOverviews(updated);
+                                                        await handleSaveFormulaOverviews(updated, false);
+                                                        showNotification('행이 삭제되었습니다.', 'info');
+                                                      }
+                                                    }}
+                                                    className="p-1 rounded bg-slate-850 hover:bg-rose-950 text-slate-400 hover:text-rose-400 cursor-pointer transition-all border border-slate-800 hover:border-rose-500/20 md:opacity-0 md:group-hover:opacity-100 opacity-100 flex items-center justify-center mx-auto shrink-0"
+                                                    title="행 삭제"
+                                                  >
+                                                    <Trash2 size={11} />
+                                                  </button>
+                                                </td>
                                               </tr>
                                             ))}
                                           </tbody>
