@@ -4,6 +4,19 @@ import ReactDOM from 'react-dom';
 export const PopoutWindow = ({ title, onClose, children, initWidth = 720, initHeight = 650 }) => {
   const [container, setContainer] = useState(null);
   const windowRef = useRef(null);
+  const onCloseRef = useRef(onClose);
+
+  // Keep onClose callback up-to-date
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  // Keep window title up-to-date without reopening the window
+  useEffect(() => {
+    if (windowRef.current) {
+      windowRef.current.document.title = title;
+    }
+  }, [title]);
 
   useEffect(() => {
     const newWindow = window.open(
@@ -14,7 +27,7 @@ export const PopoutWindow = ({ title, onClose, children, initWidth = 720, initHe
 
     if (!newWindow) {
       alert('팝업 차단이 활성화되어 있습니다. 브라우저 설정에서 팝업을 허용해주세요.');
-      if (onClose) onClose();
+      if (onCloseRef.current) onCloseRef.current();
       return;
     }
 
@@ -49,7 +62,7 @@ export const PopoutWindow = ({ title, onClose, children, initWidth = 720, initHe
     setContainer(appContainer);
 
     const handleUnload = () => {
-      if (onClose) onClose();
+      if (onCloseRef.current) onCloseRef.current();
     };
     newWindow.addEventListener('beforeunload', handleUnload);
 
@@ -67,7 +80,7 @@ export const PopoutWindow = ({ title, onClose, children, initWidth = 720, initHe
         newWindow.close();
       }
     };
-  }, [title, onClose, initWidth, initHeight]);
+  }, []); // Run ONLY once on mount!
 
   if (!container) return null;
 
