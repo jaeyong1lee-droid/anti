@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { LatexRenderer } from './LatexRenderer';
 import { BufferedTextarea } from './BufferedInput';
+import { PopoutWindow } from './PopoutWindow';
 import { getTableScoreColorTheme, areCellsEqual } from '../utils/renderingHelpers';
 
 export const TableQuiz = React.memo(function TableQuiz({ 
@@ -836,84 +837,16 @@ export const TableQuiz = React.memo(function TableQuiz({
     </div>
   ) : null;
 
-  const mainTable = (
-    <>
-      <div 
-        key={isMainFloated ? 'floated' : 'inline'}
-        className={isMainFloated 
-          ? "fixed z-[9991] bg-slate-900/95 border border-slate-700 rounded-2xl shadow-2xl p-3 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150 backdrop-blur-md floated-table-quiz"
-          : "table-quiz-container w-full my-3 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40"
-        }
-        style={isMainFloated ? {
-          width: `${floatedSize.width}px`,
-          height: `${floatedSize.height}px`,
-          left: `${floatedPos.x}px`,
-          top: `${floatedPos.y}px`,
-          maxWidth: '90vw',
-          maxHeight: '90vh'
-        } : mobileColWidths.reduce((acc, w, i) => {
-          acc[`--col-width-${i}`] = w;
-          return acc;
-        }, {})}
-      >
-        {isMainFloated && (
-          <>
-            {/* Bottom Left Resize */}
-            <div 
-              className="absolute left-0 bottom-0 w-4.5 h-4.5 cursor-sw-resize z-50 flex items-end justify-start p-1 select-none active:scale-95"
-              onMouseDown={startFloatedResizeLeft}
-              onTouchStart={startFloatedResizeLeft}
-              title="드래그하여 좌측으로 크기를 조절합니다"
-            >
-              <svg className="w-2.5 h-2.5 text-slate-500 hover:text-slate-300" viewBox="0 0 10 10" fill="none" stroke="currentColor">
-                <path d="M1 9 L9 1 M1 6 L6 1 M1 3 L3 1" strokeWidth="1" strokeLinecap="round" />
-              </svg>
-            </div>
-            {/* Bottom Right Resize */}
-            <div 
-              className="absolute right-0 bottom-0 w-4.5 h-4.5 cursor-se-resize z-50 flex items-end justify-end p-1 select-none active:scale-95"
-              onMouseDown={startFloatedResizeRight}
-              onTouchStart={startFloatedResizeRight}
-              title="드래그하여 우측으로 크기를 조절합니다"
-            >
-              <svg className="w-2.5 h-2.5 text-slate-500 hover:text-slate-300" viewBox="0 0 10 10" fill="none" stroke="currentColor">
-                <path d="M9 9 L1 1 M9 6 L6 9 M9 3 L3 9" strokeWidth="1" strokeLinecap="round" />
-              </svg>
-            </div>
-          </>
-        )}
-        {isMainFloated && (
-          <div 
-            onMouseDown={startFloatedMove}
-            onTouchStart={startFloatedMove}
-            className="flex items-center justify-between pb-1.5 mb-2 border-b border-slate-800 select-none cursor-grab active:cursor-grabbing"
-          >
-            <div className="flex items-center gap-2">
-              <span className="text-sky-400 font-extrabold text-sm sm:text-base flex items-center gap-1.5">
-                📌
-              </span>
-              <span className="text-xs text-slate-400 hidden sm:inline">
-                (입력 및 채점 상태가 실시간 동기화됩니다)
-              </span>
-            </div>
-            <button 
-              onClick={() => setFloatedTableId(null)}
-              className="p-1 text-slate-400 hover:text-white rounded-lg transition-all active:scale-95 hover:bg-slate-800"
-              title="고정 해제 (ESC)"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-        )}
+  const usePopout = !isMobileView;
 
-        <div className={isMainFloated ? "flex-1 overflow-auto w-full h-full" : "w-full"}>
-          <table 
-            ref={tableRef} 
-        className={`table-quiz-table w-full table-fixed text-center border-collapse text-[14px] sm:text-[16px] ${
-          colCount === 2 ? 'min-w-[320px] sm:min-w-[600px]' : 'min-w-[480px] sm:min-w-[700px]'
-        } ${isMainFloated ? 'h-full' : ''}`}
+  const mainTable = (() => {
+    const tableEl = (
+      <div className={isMainFloated ? "flex-1 overflow-auto w-full h-full" : "w-full"}>
+        <table 
+          ref={tableRef} 
+          className={`table-quiz-table w-full table-fixed text-center border-collapse text-[14px] sm:text-[16px] ${
+            colCount === 2 ? 'min-w-[320px] sm:min-w-[600px]' : 'min-w-[480px] sm:min-w-[700px]'
+          } ${isMainFloated ? 'h-full' : ''}`}
         style={isMobileView ? {
           '--table-width': colCount === 2 ? '100%' : `max(100%, ${mobileColWidths.reduce((sum, w) => sum + parseInt(w || '0', 10), 0)}px)`,
           minWidth: '0px'
@@ -1114,10 +1047,102 @@ export const TableQuiz = React.memo(function TableQuiz({
           })}
         </tbody>
       </table>
-        </div>
       </div>
-    </>
-  );
+    );
+
+    if (isMainFloated) {
+      if (usePopout) {
+        return (
+          <PopoutWindow
+            title="📌 표 채우기"
+            onClose={() => setFloatedTableId(null)}
+            initWidth={floatedSize.width}
+            initHeight={floatedSize.height}
+          >
+            <div className="w-full h-full flex flex-col overflow-hidden text-slate-100">
+              {tableEl}
+            </div>
+          </PopoutWindow>
+        );
+      }
+      return (
+        <div 
+          key="floated"
+          className="fixed z-[9991] bg-slate-900/95 border border-slate-700 rounded-2xl shadow-2xl p-3 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150 backdrop-blur-md floated-table-quiz"
+          style={{
+            width: `${floatedSize.width}px`,
+            height: `${floatedSize.height}px`,
+            left: `${floatedPos.x}px`,
+            top: `${floatedPos.y}px`,
+            maxWidth: '90vw',
+            maxHeight: '90vh'
+          }}
+        >
+          <>
+            {/* Bottom Left Resize */}
+            <div 
+              className="absolute left-0 bottom-0 w-4.5 h-4.5 cursor-sw-resize z-50 flex items-end justify-start p-1 select-none active:scale-95"
+              onMouseDown={startFloatedResizeLeft}
+              onTouchStart={startFloatedResizeLeft}
+              title="드래그하여 좌측으로 크기를 조절합니다"
+            >
+              <svg className="w-2.5 h-2.5 text-slate-500 hover:text-slate-300" viewBox="0 0 10 10" fill="none" stroke="currentColor">
+                <path d="M1 9 L9 1 M1 6 L6 1 M1 3 L3 1" strokeWidth="1" strokeLinecap="round" />
+              </svg>
+            </div>
+            {/* Bottom Right Resize */}
+            <div 
+              className="absolute right-0 bottom-0 w-4.5 h-4.5 cursor-se-resize z-50 flex items-end justify-end p-1 select-none active:scale-95"
+              onMouseDown={startFloatedResizeRight}
+              onTouchStart={startFloatedResizeRight}
+              title="드래그하여 우측으로 크기를 조절합니다"
+            >
+              <svg className="w-2.5 h-2.5 text-slate-500 hover:text-slate-300" viewBox="0 0 10 10" fill="none" stroke="currentColor">
+                <path d="M9 9 L1 1 M9 6 L6 9 M9 3 L3 9" strokeWidth="1" strokeLinecap="round" />
+              </svg>
+            </div>
+          </>
+          <div 
+            onMouseDown={startFloatedMove}
+            onTouchStart={startFloatedMove}
+            className="flex items-center justify-between pb-1.5 mb-2 border-b border-slate-800 select-none cursor-grab active:cursor-grabbing"
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-sky-400 font-extrabold text-sm sm:text-base flex items-center gap-1.5">
+                📌
+              </span>
+              <span className="text-xs text-slate-400 hidden sm:inline">
+                (입력 및 채점 상태가 실시간 동기화됩니다)
+              </span>
+            </div>
+            <button 
+              onClick={() => setFloatedTableId(null)}
+              className="p-1 text-slate-400 hover:text-white rounded-lg transition-all active:scale-95 hover:bg-slate-800"
+              title="고정 해제 (ESC)"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          {tableEl}
+        </div>
+      );
+    }
+
+    return (
+      <div 
+        key="inline"
+        className="table-quiz-container w-full my-3 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40"
+        style={mobileColWidths.reduce((acc, w, i) => {
+          acc[`--col-width-${i}`] = w;
+          return acc;
+        }, {})}
+      >
+        {tableEl}
+      </div>
+    );
+  })();
 
   const compTablePlaceholder = isCompFloated ? (
     <div className="w-full my-3 p-4 rounded-xl border border-dashed border-sky-500/20 bg-sky-500/5 text-center flex flex-col items-center justify-center gap-1.5 min-h-[100px] select-none">
@@ -1150,84 +1175,17 @@ export const TableQuiz = React.memo(function TableQuiz({
   ) : null;
 
   const compTable = q.comparisonTableData ? (
-    <>
-      <div className={isCompFloated ? "" : "mt-2"}>
-        <div 
-          key={isCompFloated ? 'floated' : 'inline'}
-          className={isCompFloated
-            ? "fixed z-[9991] bg-slate-900/95 border border-slate-700 rounded-2xl shadow-2xl p-3 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150 backdrop-blur-md floated-table-quiz"
-            : "table-quiz-container w-full my-3 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40"
-          }
-          style={isCompFloated ? {
-            width: `${floatedSize.width}px`,
-            height: `${floatedSize.height}px`,
-            left: `${floatedPos.x}px`,
-            top: `${floatedPos.y}px`,
-            maxWidth: '90vw',
-            maxHeight: '90vh'
-          } : undefined}
-        >
-          {isCompFloated && (
-            <>
-              {/* Bottom Left Resize */}
-              <div 
-                className="absolute left-0 bottom-0 w-4.5 h-4.5 cursor-sw-resize z-50 flex items-end justify-start p-1 select-none active:scale-95"
-                onMouseDown={startFloatedResizeLeft}
-                onTouchStart={startFloatedResizeLeft}
-                title="드래그하여 좌측으로 크기를 조절합니다"
-              >
-                <svg className="w-2.5 h-2.5 text-slate-500 hover:text-slate-300" viewBox="0 0 10 10" fill="none" stroke="currentColor">
-                  <path d="M1 9 L9 1 M1 6 L6 1 M1 3 L3 1" strokeWidth="1" strokeLinecap="round" />
-                </svg>
-              </div>
-              {/* Bottom Right Resize */}
-              <div 
-                className="absolute right-0 bottom-0 w-4.5 h-4.5 cursor-se-resize z-50 flex items-end justify-end p-1 select-none active:scale-95"
-                onMouseDown={startFloatedResizeRight}
-                onTouchStart={startFloatedResizeRight}
-                title="드래그하여 우측으로 크기를 조절합니다"
-              >
-                <svg className="w-2.5 h-2.5 text-slate-500 hover:text-slate-300" viewBox="0 0 10 10" fill="none" stroke="currentColor">
-                  <path d="M9 9 L1 1 M9 6 L6 9 M9 3 L3 9" strokeWidth="1" strokeLinecap="round" />
-                </svg>
-              </div>
-            </>
-          )}
-          {isCompFloated && (
-            <div 
-              onMouseDown={startFloatedMove}
-              onTouchStart={startFloatedMove}
-              className="flex items-center justify-between pb-1.5 mb-2 border-b border-slate-800 select-none cursor-grab active:cursor-grabbing"
-            >
-              <div className="flex items-center gap-2">
-                <span className="text-sky-400 font-extrabold text-sm sm:text-base flex items-center gap-1.5">
-                  ⚖️
-                </span>
-                <span className="text-xs text-slate-400 hidden sm:inline">
-                  (입력 및 채점 상태가 실시간 동기화됩니다)
-                </span>
-              </div>
-              <button 
-                onClick={() => setFloatedTableId(null)}
-                className="p-1 text-slate-400 hover:text-white rounded-lg transition-all active:scale-95 hover:bg-slate-800"
-                title="고정 해제 (ESC)"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-          )}
-
-          <div className={isCompFloated ? "flex-1 overflow-auto w-full h-full" : "w-full"}>
-            <table 
-          ref={compTableRef}
-          className={`table-quiz-table w-full table-fixed text-center border-collapse text-[14px] sm:text-[16px] min-w-full ${isCompFloated ? 'h-full' : ''}`}
-          style={isMobileView ? {
-            '--table-width': compColCount === 2 ? '100%' : `max(100%, ${compMobileColWidths.reduce((sum, w) => sum + parseInt(w || '0', 10), 0)}px)`,
-            minWidth: '0px'
-          } : undefined}
-        >
+    (() => {
+      const tableEl = (
+        <div className={isCompFloated ? "flex-1 overflow-auto w-full h-full" : "w-full"}>
+          <table 
+            ref={compTableRef}
+            className={`table-quiz-table w-full table-fixed text-center border-collapse text-[14px] sm:text-[16px] min-w-full ${isCompFloated ? 'h-full' : ''}`}
+            style={isMobileView ? {
+              '--table-width': compColCount === 2 ? '100%' : `max(100%, ${compMobileColWidths.reduce((sum, w) => sum + parseInt(w || '0', 10), 0)}px)`,
+              minWidth: '0px'
+            } : undefined}
+          >
           <colgroup>
             {compColWidths.map((w, idx) => (
               <col 
@@ -1403,10 +1361,100 @@ export const TableQuiz = React.memo(function TableQuiz({
             })}
           </tbody>
         </table>
+        </div>
+      );
+
+      if (isCompFloated) {
+        if (usePopout) {
+          return (
+            <PopoutWindow
+              title="⚖️ 비교표"
+              onClose={() => setFloatedTableId(null)}
+              initWidth={floatedSize.width}
+              initHeight={floatedSize.height}
+            >
+              <div className="w-full h-full flex flex-col overflow-hidden text-slate-100">
+                {tableEl}
+              </div>
+            </PopoutWindow>
+          );
+        }
+        return (
+          <div 
+            key="floated"
+            className="fixed z-[9991] bg-slate-900/95 border border-slate-700 rounded-2xl shadow-2xl p-3 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150 backdrop-blur-md floated-table-quiz"
+            style={{
+              width: `${floatedSize.width}px`,
+              height: `${floatedSize.height}px`,
+              left: `${floatedPos.x}px`,
+              top: `${floatedPos.y}px`,
+              maxWidth: '90vw',
+              maxHeight: '90vh'
+            }}
+          >
+            <>
+              {/* Bottom Left Resize */}
+              <div 
+                className="absolute left-0 bottom-0 w-4.5 h-4.5 cursor-sw-resize z-50 flex items-end justify-start p-1 select-none active:scale-95"
+                onMouseDown={startFloatedResizeLeft}
+                onTouchStart={startFloatedResizeLeft}
+                title="드래그하여 좌측으로 크기를 조절합니다"
+              >
+                <svg className="w-2.5 h-2.5 text-slate-500 hover:text-slate-300" viewBox="0 0 10 10" fill="none" stroke="currentColor">
+                  <path d="M1 9 L9 1 M1 6 L6 1 M1 3 L3 1" strokeWidth="1" strokeLinecap="round" />
+                </svg>
+              </div>
+              {/* Bottom Right Resize */}
+              <div 
+                className="absolute right-0 bottom-0 w-4.5 h-4.5 cursor-se-resize z-50 flex items-end justify-end p-1 select-none active:scale-95"
+                onMouseDown={startFloatedResizeRight}
+                onTouchStart={startFloatedResizeRight}
+                title="드래그하여 우측으로 크기를 조절합니다"
+              >
+                <svg className="w-2.5 h-2.5 text-slate-500 hover:text-slate-300" viewBox="0 0 10 10" fill="none" stroke="currentColor">
+                  <path d="M9 9 L1 1 M9 6 L6 9 M9 3 L3 9" strokeWidth="1" strokeLinecap="round" />
+                </svg>
+              </div>
+            </>
+            <div 
+              onMouseDown={startFloatedMove}
+              onTouchStart={startFloatedMove}
+              className="flex items-center justify-between pb-1.5 mb-2 border-b border-slate-800 select-none cursor-grab active:cursor-grabbing"
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-sky-400 font-extrabold text-sm sm:text-base flex items-center gap-1.5">
+                  ⚖️
+                </span>
+                <span className="text-xs text-slate-400 hidden sm:inline">
+                  (입력 및 채점 상태가 실시간 동기화됩니다)
+                </span>
+              </div>
+              <button 
+                onClick={() => setFloatedTableId(null)}
+                className="p-1 text-slate-400 hover:text-white rounded-lg transition-all active:scale-95 hover:bg-slate-800"
+                title="고정 해제 (ESC)"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            {tableEl}
+          </div>
+        );
+      }
+
+      return (
+        <div className="mt-2">
+          <div 
+            key="inline"
+            className="table-quiz-container w-full my-3 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40"
+          >
+            {tableEl}
           </div>
         </div>
-      </div>
-    </>
+      );
+    })()
   ) : null;
 
   return (

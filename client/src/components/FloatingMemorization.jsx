@@ -3,6 +3,7 @@ import {
   X, Search, RefreshCw, Trash2, BookOpen, Type, FileText, Image, ChevronDown, ChevronUp, Layers, HelpCircle
 } from 'lucide-react';
 import { ImageTabList } from './ImageStandardsPlugin';
+import { PopoutWindow } from './PopoutWindow';
 
 const parseHtmlTable = (htmlStr) => {
   const parser = new DOMParser();
@@ -324,25 +325,18 @@ export function FloatingMemorization({
     }));
   };
 
+  if (!isVisible) return null;
+
   return (
-    <div
-      ref={dragRef}
-      style={{
-        position: 'fixed',
-        left: `${position.x}px`,
-        top: `${position.y}px`,
-        zIndex: 9998,
-        touchAction: 'none',
-        display: isVisible ? 'flex' : 'none'
-      }}
-      className="floating-memorization-popup w-[92vw] md:w-[720px] h-[80vh] md:h-[650px] bg-slate-900/95 border border-slate-700/60 rounded-2xl shadow-[0_24px_60px_rgba(0,0,0,0.95)] flex flex-col overflow-hidden backdrop-blur-md transition-shadow duration-300 hover:shadow-violet-500/10 hover:border-violet-500/20"
+    <PopoutWindow
+      title="플로팅 암기자료 팝업"
+      onClose={onClose}
+      initWidth={720}
+      initHeight={650}
     >
-      {/* Header / Drag Handle */}
-      <div 
-        onMouseDown={handleMouseDown}
-        onTouchStart={handleTouchStart}
-        className="drag-handle flex items-center justify-between px-4 py-3 bg-gradient-to-r from-violet-900/80 to-indigo-900/80 border-b border-violet-800/50 cursor-move select-none"
-      >
+      <div className="floating-memorization-popup w-full h-full flex flex-col overflow-hidden text-slate-100">
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-violet-900/80 to-indigo-900/80 border-b border-violet-800/50 select-none shrink-0">
         <div className="flex items-center gap-2">
           <Layers size={14} className="text-violet-400" />
           <span className="text-xs text-white font-extrabold tracking-wider">플로팅 암기자료 팝업</span>
@@ -1094,6 +1088,7 @@ export function FloatingMemorization({
         )}
         
       </div>
-    </div>
+      </div>
+    </PopoutWindow>
   );
 }
