@@ -92,10 +92,10 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false,
     html += `<tr class="bg-slate-900/80 text-slate-355 border-b border-slate-800">`;
     headers.forEach((h, hIdx) => {
       const renderedH = renderCellMath(h);
-      if (hIdx === 0) {
+      if (hIdx === 0 || hIdx === 1) {
         html += `<th class="p-1 sm:p-1.5 font-black border-r border-slate-800 last:border-r-0" style="position: relative; select-none;">`;
         html += `${renderedH}`;
-        html += `<div class="markdown-table-resize-handle" onmousedown="if(window.__startMarkdownTableResize) { window.__startMarkdownTableResize(event, this, false) }" ontouchstart="if(window.__startMarkdownTableResize) { window.__startMarkdownTableResize(event, this, true) }"></div>`;
+        html += `<div class="markdown-table-resize-handle" onmousedown="if(window.__startMarkdownTableResize) { window.__startMarkdownTableResize(event, this, ${hIdx}, false) }" ontouchstart="if(window.__startMarkdownTableResize) { window.__startMarkdownTableResize(event, this, ${hIdx}, true) }"></div>`;
         html += `</th>`;
       } else {
         html += `<th class="p-1 sm:p-1.5 font-black border-r border-slate-800 last:border-r-0">${renderedH}</th>`;
@@ -160,10 +160,10 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false,
   html += `<tr class="bg-slate-900/80 text-slate-350 border-b border-slate-800">`;
   headers.forEach((h, hIdx) => {
     const renderedH = renderCellMath(h);
-    if (hIdx === 0) {
+    if (hIdx === 0 || hIdx === 1) {
       html += `<th class="p-1 sm:p-1.5 font-extrabold border-r border-slate-800 last:border-r-0" style="position: relative; select-none;">`;
       html += `${renderedH}`;
-      html += `<div class="markdown-table-resize-handle" onmousedown="if(window.__startMarkdownTableResize) { window.__startMarkdownTableResize(event, this, false) }" ontouchstart="if(window.__startMarkdownTableResize) { window.__startMarkdownTableResize(event, this, true) }"></div>`;
+      html += `<div class="markdown-table-resize-handle" onmousedown="if(window.__startMarkdownTableResize) { window.__startMarkdownTableResize(event, this, ${hIdx}, false) }" ontouchstart="if(window.__startMarkdownTableResize) { window.__startMarkdownTableResize(event, this, ${hIdx}, true) }"></div>`;
       html += `</th>`;
     } else {
       html += `<th class="p-1 sm:p-1.5 font-extrabold border-r border-slate-800 last:border-r-0">${renderedH}</th>`;

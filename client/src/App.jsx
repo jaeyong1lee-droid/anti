@@ -3812,7 +3812,7 @@ export default function App() {
     };
     
     // Global column resize handler for markdown tables
-    window.__startMarkdownTableResize = (e, handleEl, isTouch) => {
+    window.__startMarkdownTableResize = (e, handleEl, colIdx, isTouch) => {
       e.preventDefault();
       e.stopPropagation();
       
@@ -3823,13 +3823,28 @@ export default function App() {
       if (!th) return;
       const startWidth = th.offsetWidth;
       
+      const tr = th.closest('tr');
+      const allThs = tr ? Array.from(tr.querySelectorAll('th')) : [th];
+      
       const doResize = (ev) => {
         const t = isTouch ? (ev.touches[0] || ev.changedTouches[0]) : ev;
         const deltaX = t.clientX - startX;
         const newWidth = Math.max(50, startWidth + deltaX);
-        th.style.width = newWidth + 'px';
-        th.style.minWidth = newWidth + 'px';
-        th.style.maxWidth = newWidth + 'px';
+        
+        if (colIdx === 0) {
+          th.style.width = newWidth + 'px';
+          th.style.minWidth = newWidth + 'px';
+          th.style.maxWidth = newWidth + 'px';
+        } else if (colIdx === 1) {
+          // 2열을 변경할 때, 1열을 제외한 모든 후속 열을 동일한 너비(등간격)로 변경
+          allThs.forEach((peerTh, idx) => {
+            if (idx >= 1) {
+              peerTh.style.width = newWidth + 'px';
+              peerTh.style.minWidth = newWidth + 'px';
+              peerTh.style.maxWidth = newWidth + 'px';
+            }
+          });
+        }
       };
       
       const stopResize = () => {
