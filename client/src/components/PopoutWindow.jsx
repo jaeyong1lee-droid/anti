@@ -117,6 +117,16 @@ export const PopoutWindow = ({ title, onClose, children, initWidth = 720, initHe
     };
     newWindow.addEventListener('beforeunload', handleUnload);
 
+    // Polling check to detect if the popout window was closed by the user
+    const closeCheckInterval = setInterval(() => {
+      if (newWindow && newWindow.closed) {
+        clearInterval(closeCheckInterval);
+        if (onCloseRef.current) {
+          onCloseRef.current();
+        }
+      }
+    }, 200);
+
     const handleParentUnload = () => {
       if (newWindow && !newWindow.closed) {
         newWindow.close();
@@ -127,6 +137,7 @@ export const PopoutWindow = ({ title, onClose, children, initWidth = 720, initHe
     return () => {
       isCleanedUp = true;
       if (checkInterval) clearInterval(checkInterval);
+      if (closeCheckInterval) clearInterval(closeCheckInterval);
       window.removeEventListener('beforeunload', handleParentUnload);
       if (newWindow && !newWindow.closed) {
         newWindow.removeEventListener('beforeunload', handleUnload);
