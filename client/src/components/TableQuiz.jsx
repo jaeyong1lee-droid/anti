@@ -648,19 +648,37 @@ export const TableQuiz = React.memo(function TableQuiz({
     e.preventDefault();
     e.stopPropagation();
 
+    const containerEl = e.currentTarget.closest('.floated-table-quiz') || (containerRef.current ? containerRef.current.querySelector('.floated-table-quiz') : null);
+    let startPopupX = floatedPosRef.current.x;
+    let startPopupY = floatedPosRef.current.y;
+
+    if (containerEl) {
+      const rect = containerEl.getBoundingClientRect();
+      startPopupX = rect.left;
+      startPopupY = rect.top;
+      floatedPosRef.current = { x: startPopupX, y: startPopupY };
+    }
+
     const isTouch = e.type === 'touchstart';
     const clientX = isTouch ? e.touches[0].clientX : e.clientX;
     const clientY = isTouch ? e.touches[0].clientY : e.clientY;
 
-    const startXPos = floatedPosRef.current.x;
-    const startYPos = floatedPosRef.current.y;
     const startX = clientX;
     const startY = clientY;
 
     document.body.style.userSelect = 'none';
     document.body.style.cursor = 'grabbing';
 
+    // Temporarily disable pointer-events on all iframes to prevent event interception
+    const iframes = document.querySelectorAll('iframe');
+    iframes.forEach(iframe => {
+      iframe.style.pointerEvents = 'none';
+    });
+
+    let moveRafId = null;
+
     const handleMove = (moveEvent) => {
+      if (moveEvent.cancelable) moveEvent.preventDefault();
       const currentX = (moveEvent.touches && moveEvent.touches.length > 0) ? moveEvent.touches[0].clientX : moveEvent.clientX;
       const currentY = (moveEvent.touches && moveEvent.touches.length > 0) ? moveEvent.touches[0].clientY : moveEvent.clientY;
 
@@ -668,18 +686,35 @@ export const TableQuiz = React.memo(function TableQuiz({
       const dy = currentY - startY;
 
       const currentSize = floatedSizeRef.current;
-      const newX = Math.max(0, Math.min(window.innerWidth - currentSize.width, startXPos + dx));
-      const newY = Math.max(0, Math.min(window.innerHeight - currentSize.height, startYPos + dy));
+      const newX = Math.max(0, Math.min(window.innerWidth - currentSize.width, startPopupX + dx));
+      const newY = Math.max(0, Math.min(window.innerHeight - currentSize.height, startPopupY + dy));
 
-      setFloatedPos({ x: newX, y: newY });
+      floatedPosRef.current = { x: newX, y: newY };
+
+      if (moveRafId) cancelAnimationFrame(moveRafId);
+      moveRafId = requestAnimationFrame(() => {
+        if (containerEl) {
+          containerEl.style.left = `${newX}px`;
+          containerEl.style.top = `${newY}px`;
+        }
+      });
     };
 
     const handleMoveEnd = () => {
+      if (moveRafId) cancelAnimationFrame(moveRafId);
+
       document.body.style.userSelect = '';
       document.body.style.cursor = '';
+      
+      const iframes = document.querySelectorAll('iframe');
+      iframes.forEach(iframe => {
+        iframe.style.pointerEvents = 'auto';
+      });
 
+      const finalPos = floatedPosRef.current;
+      setFloatedPos(finalPos);
       try {
-        localStorage.setItem('anti_floated_table_pos', JSON.stringify(floatedPosRef.current));
+        localStorage.setItem('anti_floated_table_pos', JSON.stringify(finalPos));
       } catch (err) {}
 
       if (isTouch) {
