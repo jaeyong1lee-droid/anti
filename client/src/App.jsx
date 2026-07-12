@@ -3353,6 +3353,7 @@ export default function App() {
   const formulaChatBodyRef = useRef(null);
   const [formulaChatInput, setFormulaChatInput] = useState('');
   const [formulaAttachedImage, setFormulaAttachedImage] = useState(null); // { name, mimeType, data }
+  const [tutorAttachedImages, setTutorAttachedImages] = useState({}); // { [key]: { name, mimeType, data } }
   const formulaTutorFileInputRef = useRef(null);
 
   // Single Question Regeneration states
@@ -9547,6 +9548,8 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
     const userQuery = (typeof customQuery === 'string' ? customQuery : (tutorInputText[key] || '')).trim();
     if (!userQuery) return;
 
+    const currentImg = tutorAttachedImages[key];
+
     setTutorAnswers(prev => ({
       ...prev,
       [key]: { loading: true, text: '', error: '' }
@@ -9686,22 +9689,47 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
                 e.preventDefault();
                 const isPending = tutorAnswers[key]?.loading;
                 const hasText = (tutorInputText[key] || '').trim();
-                if (!isPending && hasText) {
+                const hasImg = tutorAttachedImages[key];
+                if (!isPending && (hasText || hasImg)) {
                   handleAskCardTutor(key, q);
                 }
               }
             }}
-            placeholder=""
+            onPaste={(e) => handleCardTutorPasteImage(e, key)}
+            placeholder="이 문제에 대해 물어보세요 (클립보드 스크린샷 붙여넣기 지원)..."
             className="flex-1 text-[14px] sm:text-[16px] p-2 rounded-xl bg-slate-900 border border-slate-750 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-violet-500/50 resize-none leading-relaxed"
           />
           <button
-            disabled={tutorAnswers[key]?.loading || !(tutorInputText[key] || '').trim()}
+            disabled={tutorAnswers[key]?.loading || (!(tutorInputText[key] || '').trim() && !tutorAttachedImages[key])}
             onClick={() => handleAskCardTutor(key, q)}
             className="text-[10px] sm:text-xs px-3.5 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:bg-slate-800 disabled:text-slate-500 text-white font-extrabold transition-all cursor-pointer flex items-center justify-center whitespace-nowrap active:scale-95 duration-200"
           >
             {tutorAnswers[key]?.loading ? '작성 중...' : '질문'}
           </button>
         </div>
+
+        {/* 첨부 이미지 미리보기 */}
+        {tutorAttachedImages[key] && (
+          <div className="mt-1.5 p-1 bg-slate-900 border border-slate-800 rounded-lg flex items-center justify-between gap-1.5 max-w-full">
+            <div className="flex items-center gap-1.5 overflow-hidden">
+              <img 
+                src={`data:${tutorAttachedImages[key].mimeType};base64,${tutorAttachedImages[key].data}`} 
+                alt="첨부 이미지" 
+                className="w-6 h-6 rounded object-cover border border-slate-700"
+              />
+              <span className="text-[9px] text-slate-300 truncate font-mono">
+                {tutorAttachedImages[key].name}
+              </span>
+            </div>
+            <button 
+              type="button"
+              onClick={() => handleClearCardTutorAttachedImage(key)}
+              className="text-slate-400 hover:text-white p-0.5 hover:bg-slate-850 rounded-full transition-colors shrink-0"
+            >
+              <X size={12} />
+            </button>
+          </div>
+        )}
 
         {/* AI Tutor In-Card Answer Panel */}
         {!isCollapsed && (
@@ -9915,6 +9943,57 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
 
   const handleClearFormulaAttachedImage = () => {
     setFormulaAttachedImage(null);
+  };
+
+  const handleClearCardTutorAttachedImage = (key) => {
+    setTutorAttachedImages(prev => {
+      const copy = { ...prev };
+      delete copy[key];
+      return copy;
+    });
+  };
+
+  const handleCardTutorPasteImage = async (e, key) => {
+    const files = e.clipboardData?.files;
+    if (files && files.length > 0) {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (file.type.startsWith('image/')) {
+          const compressed = await compressImageFile(file);
+          if (compressed) {
+            setTutorAttachedImages(prev => ({ ...prev, [key]: compressed }));
+            showNotification('클립보드 이미지가 첨부되었습니다!');
+          }
+          e.preventDefault();
+          return;
+        }
+      }
+    }
+
+    const items = e.clipboardData?.items;
+    if (items) {
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.type.startsWith('image/') || item.kind === 'file') {
+          const file = item.getAsFile();
+          if (!file) continue;
+
+          const compressed = await compressImageFile(file);
+          if (compressed) {
+            setTutorAttachedImages(prev => ({
+              ...prev,
+              [key]: {
+                ...compressed,
+                name: compressed.name || `clipboard-image-${Date.now().toString().slice(-4)}.jpg`
+              }
+            }));
+            showNotification('클립보드 이미지가 첨부되었습니다!');
+          }
+          e.preventDefault();
+          return;
+        }
+      }
+    }
   };
 
   const handleFormulaPasteImage = async (e) => {
