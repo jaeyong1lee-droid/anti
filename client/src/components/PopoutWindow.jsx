@@ -28,8 +28,23 @@ export const PopoutWindow = ({ title, onClose, children, initWidth = 720, initHe
     newWindow.document.body.style.margin = '0';
     newWindow.document.body.style.backgroundColor = '#020617';
 
-    // Copy head content (styles, fonts, etc.)
-    newWindow.document.head.innerHTML = document.head.innerHTML;
+    // Copy style and link tags from main document head, skipping script tags to prevent crash
+    const srcHead = document.head;
+    const destHead = newWindow.document.head;
+
+    Array.from(srcHead.querySelectorAll('link')).forEach((link) => {
+      const newLink = newWindow.document.createElement('link');
+      Array.from(link.attributes).forEach(attr => {
+        newLink.setAttribute(attr.name, attr.value);
+      });
+      destHead.appendChild(newLink);
+    });
+
+    Array.from(srcHead.querySelectorAll('style')).forEach((style) => {
+      const newStyle = newWindow.document.createElement('style');
+      newStyle.innerHTML = style.innerHTML;
+      destHead.appendChild(newStyle);
+    });
 
     setContainer(appContainer);
 
