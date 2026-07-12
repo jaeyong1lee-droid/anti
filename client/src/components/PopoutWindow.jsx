@@ -9,7 +9,7 @@ export const PopoutWindow = ({ title, onClose, children, initWidth = 720, initHe
     const newWindow = window.open(
       '',
       '_blank',
-      `width=${initWidth},height=${initHeight},menubar=no,toolbar=no,location=no,status=no,resizable=yes`
+      `popup=yes,width=${initWidth},height=${initHeight},resizable=yes`
     );
 
     if (!newWindow) {
@@ -32,7 +32,7 @@ export const PopoutWindow = ({ title, onClose, children, initWidth = 720, initHe
     const srcHead = document.head;
     const destHead = newWindow.document.head;
 
-    Array.from(srcHead.querySelectorAll('link')).forEach((link) => {
+    Array.from(srcHead.querySelectorAll('link[rel="stylesheet"]')).forEach((link) => {
       const newLink = newWindow.document.createElement('link');
       Array.from(link.attributes).forEach(attr => {
         newLink.setAttribute(attr.name, attr.value);
