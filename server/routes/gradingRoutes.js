@@ -231,13 +231,52 @@ router.post('/question/regenerate', async (req, res) => {
 
   try {
     if ((topicId && String(topicId).startsWith('mixed_')) || currentQuestion?.mixedType) {
-      const mixedType = currentQuestion?.mixedType || (currentQuestion?.acronym ? 'acronym' : 'table');
+      let mixedType = currentQuestion?.mixedType;
+      const qText = currentQuestion?.question || '';
+      
+      // Auto-detect or heal mixedType based on title prefix in case database state was corrupted
+      if (qText.startsWith('[개요 복습]')) {
+        mixedType = 'overview';
+      } else if (qText.startsWith('[앞글자 복습]')) {
+        mixedType = 'acronym';
+      } else if (qText.startsWith('[표 복습]')) {
+        mixedType = 'table';
+      } else if (qText.startsWith('[그림 복습]')) {
+        mixedType = 'image';
+      }
+
+      if (!mixedType) {
+        mixedType = currentQuestion?.acronym ? 'acronym' : 'table';
+      }
+
       if (mixedType === 'image' || mixedType === 'overview') {
         if (progressTimer) {
           clearInterval(progressTimer);
           stopBackendProgressTimer(progressId, 100, '성공적으로 재출제했습니다!', true);
         }
-        return res.json({ question: currentQuestion });
+
+        let healedQuestion = { ...currentQuestion, mixedType };
+        
+        // Auto-heal previously corrupted overview questions back to 주관식 (개요) layout
+        if (mixedType === 'overview') {
+          healedQuestion.type = '주관식 (개요)';
+          healedQuestion.subtype = '개요';
+          healedQuestion.tableData = {
+            headers: ['구분', '내용'],
+            rows: [
+              ['정의', ''],
+              ['메커니즘', '']
+            ]
+          };
+          delete healedQuestion.acronym;
+          delete healedQuestion.sentence;
+          delete healedQuestion.correctRows;
+        }
+
+        return res.json({
+          question: healedQuestion,
+          isFallback: false
+        });
       }
       
       const content = currentQuestion.explanation || '';
@@ -246,10 +285,10 @@ router.post('/question/regenerate', async (req, res) => {
 
       if (mixedType === 'table') {
         systemPrompt = `당신은 지반공학 기술사 시험 전문 튜터이자 출제위원입니다.
-제공된 비교/대비 표 데이터를 기반으로, 수험생이 학습할 수 있는 참신한 표 빈칸 채우기(Table Quiz) 문항을 새로 구성하여 출제해 주십시오.
+제시된 비교/대비 표 데이터를 기반으로, 수험생이 학습할 수 있는 참신한 표 빈칸 채우기(Table Quiz) 문항을 새로 구성하여 출제해 주십시오.
 ${GENERATION_STANDARDS}
 ${ENGINEERING_STANDARDS}
-출력은 반드시 마크다운 블록이나 설명 없이 오직 순수한 JSON 객체 하나만 반환하십시오.`;
+제시된 HTML 테이블 소스를 성실히 반영하여 JSON 포맷으로 재출제해 주십시오.`;
         userPrompt = `[원본 비교 표 HTML]:\n${content}\n\n[기존 문제 질문]:\n${currentQuestion.question || ''}\n\n위 데이터를 바탕으로 JSON 포맷으로 재출제해 주십시오.`;
       } else {
         systemPrompt = `당신은 지반공학 기술사 시험 전문 튜터이자 출제위원입니다.
@@ -287,8 +326,18 @@ ${GENERATION_STANDARDS}`;
       // Preserve metadata and title/question from the current question
       const finalQuestion = {
         ...currentQuestion,
-        ...parsed
+        ...parsed,
+        mixedType
       };
+
+      // Clean up mismatched properties during conversion to avoid corruption
+      if (mixedType === 'table') {
+        delete finalQuestion.acronym;
+        delete finalQuestion.sentence;
+        delete finalQuestion.correctRows;
+      } else if (mixedType === 'acronym') {
+        delete finalQuestion.subtype;
+      }
 
       if (progressTimer) clearInterval(progressTimer);
       if (progressId) stopBackendProgressTimer(progressId, 100, '성공적으로 재출제했습니다!', true);
