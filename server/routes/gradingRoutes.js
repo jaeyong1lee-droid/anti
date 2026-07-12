@@ -213,6 +213,36 @@ router.get('/question-feedback/all', async (req, res) => {
   }
 });
 
+function parseOverviewContentServer(content) {
+  const result = { definition: '', mechanism: '' };
+  if (!content || typeof content !== 'string') return result;
+
+  const lines = content.split('\n');
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed === '|') continue;
+    if (trimmed.includes(':---') || (trimmed.startsWith('|') && trimmed.includes('구분') && trimmed.includes('내용'))) {
+      continue;
+    }
+
+    const sectionMatch = trimmed.match(/^\|\s*([^|]+)\s*\|?\s*([\s\S]*)$/);
+    if (sectionMatch) {
+      const rawKey = sectionMatch[1].trim();
+      let rawVal = sectionMatch[2].trim();
+      if (rawVal.endsWith('|')) {
+        rawVal = rawVal.slice(0, -1).trim();
+      }
+
+      if (rawKey.includes('개요')) {
+        result.definition = rawVal;
+      } else if (rawKey.includes('메커니즘')) {
+        result.mechanism = rawVal;
+      }
+    }
+  }
+  return result;
+}
+
 // POST /api/question/regenerate -> Regenerate a single question
 router.post('/question/regenerate', async (req, res) => {
   const { mode, topicId, currentQuestion, questionIdx, allQuestions, targetTypeSelection } = req.body;
@@ -234,15 +264,19 @@ router.post('/question/regenerate', async (req, res) => {
       let mixedType = currentQuestion?.mixedType;
       const qText = currentQuestion?.question || '';
       
-      // Auto-detect or heal mixedType based on title prefix in case database state was corrupted
+      // Robust auto-detect or heal mixedType based on title prefix or unique fields
       if (qText.startsWith('[개요 복습]')) {
         mixedType = 'overview';
+      } else if (qText.startsWith('[그림 암기 복습]') || qText.startsWith('[그림 복습]')) {
+        mixedType = 'image';
       } else if (qText.startsWith('[앞글자 복습]')) {
         mixedType = 'acronym';
       } else if (qText.startsWith('[표 복습]')) {
         mixedType = 'table';
-      } else if (qText.startsWith('[그림 복습]')) {
-        mixedType = 'image';
+      } else if (currentQuestion?.acronym || currentQuestion?.sentence || currentQuestion?.correctRows) {
+        mixedType = 'acronym';
+      } else if (currentQuestion?.answers) {
+        mixedType = 'table';
       }
 
       if (!mixedType) {
@@ -271,6 +305,11 @@ router.post('/question/regenerate', async (req, res) => {
           delete healedQuestion.acronym;
           delete healedQuestion.sentence;
           delete healedQuestion.correctRows;
+
+          // Self-heal concept (definition) and formula (mechanism) answers by parsing explanation content
+          const parsed = parseOverviewContentServer(healedQuestion.explanation || '');
+          healedQuestion.concept = parsed.definition || healedQuestion.concept || '';
+          healedQuestion.formula = parsed.mechanism || healedQuestion.formula || '';
         }
 
         return res.json({
