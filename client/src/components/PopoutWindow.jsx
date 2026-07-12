@@ -110,23 +110,37 @@ export const PopoutWindow = ({ title, onClose, children, initWidth = 720, initHe
         const srcHead = document.head;
         const destHead = doc.head;
 
+        // Catch any resource loading errors (like stylesheet 404s due to redeployments) via capture-phase listener
+        doc.addEventListener('error', (e) => {
+          if (e.target && e.target.tagName === 'LINK' && e.target.rel === 'stylesheet') {
+            console.warn("Capture: Popout stylesheet load failed. Reloading parent page to self-heal...");
+            window.location.reload();
+          }
+        }, true);
+
         // Clear existing stylesheet links/styles in case they were copied/duplicated
         destHead.querySelectorAll('link[rel="stylesheet"], style').forEach(el => el.remove());
 
         Array.from(srcHead.querySelectorAll('link[rel="stylesheet"]')).forEach((link) => {
           const newLink = doc.createElement('link');
           Array.from(link.attributes).forEach(attr => {
-            newLink.setAttribute(attr.name, attr.value);
+            if (attr.name === 'href') {
+              try {
+                // Convert relative path to absolute URL to ensure correct resolution in about:blank context
+                const absUrl = new URL(attr.value, window.location.href).href;
+                newLink.setAttribute('href', absUrl);
+              } catch (err) {
+                newLink.setAttribute(attr.name, attr.value);
+              }
+            } else {
+              newLink.setAttribute(attr.name, attr.value);
+            }
           });
           newLink.onerror = () => {
             console.warn("Popout stylesheet load failed (possibly deleted due to new deployment). Reloading parent page to self-heal...");
             try {
-              if (window.opener && !window.opener.closed) {
-                window.opener.location.reload();
-              } else {
-                window.location.reload();
-              }
-            } catch (e) {}
+              window.location.reload();
+            } catch (err) {}
           };
           destHead.appendChild(newLink);
         });
