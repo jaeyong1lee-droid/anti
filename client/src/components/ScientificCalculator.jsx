@@ -213,6 +213,16 @@ export function ScientificCalculator() {
   const [calcResult, setCalcResult] = useState(() => localStorage.getItem('anti_calc_result') || '');
   const [calcAngleMode, setCalcAngleMode] = useState(() => localStorage.getItem('anti_calc_angle_mode') || 'deg'); // deg / rad
   const [lastAns, setLastAns] = useState(() => localStorage.getItem('anti_calc_last_ans') || '');
+
+  const [customAlphabetButtons, setCustomAlphabetButtons] = useState(() => {
+    const saved = localStorage.getItem('anti_calc_custom_alphabet');
+    return saved ? JSON.parse(saved) : Array(10).fill('');
+  });
+
+  const [customGreekButtons, setCustomGreekButtons] = useState(() => {
+    const saved = localStorage.getItem('anti_calc_custom_greek');
+    return saved ? JSON.parse(saved) : Array(10).fill('');
+  });
   const [shiftActive, setShiftActive] = useState(false);
   const [alphaActive, setAlphaActive] = useState(false);
   const [hypActive, setHypActive] = useState(false);
@@ -436,6 +446,49 @@ export function ScientificCalculator() {
         });
     } else {
       fallbackCopy(calcInput);
+    }
+  };
+
+  // Handle custom button single/double click
+  const clickTimeoutRef = useRef({});
+  const handleCustomButtonClick = (type, index, val) => {
+    const key = `${type}-${index}`;
+    if (clickTimeoutRef.current[key]) {
+      // Double click detected!
+      clearTimeout(clickTimeoutRef.current[key]);
+      delete clickTimeoutRef.current[key];
+      handleDoubleClickCustomButton(type, index, val);
+    } else {
+      clickTimeoutRef.current[key] = setTimeout(() => {
+        delete clickTimeoutRef.current[key];
+        if (val) {
+          insertAtCursor(val);
+        } else {
+          setStatusMessage('Double-click to edit');
+          setTimeout(() => setStatusMessage(''), 1500);
+        }
+      }, 250);
+    }
+  };
+
+  const handleDoubleClickCustomButton = (type, index, currentVal) => {
+    const newVal = prompt("버튼에 등록할 문자나 수식을 입력하세요 (예: e_max, G_s):", currentVal);
+    if (newVal !== null) {
+      if (type === 'alphabet') {
+        setCustomAlphabetButtons(prev => {
+          const updated = [...prev];
+          updated[index] = newVal.trim();
+          localStorage.setItem('anti_calc_custom_alphabet', JSON.stringify(updated));
+          return updated;
+        });
+      } else {
+        setCustomGreekButtons(prev => {
+          const updated = [...prev];
+          updated[index] = newVal.trim();
+          localStorage.setItem('anti_calc_custom_greek', JSON.stringify(updated));
+          return updated;
+        });
+      }
     }
   };
 
@@ -2391,8 +2444,11 @@ export function ScientificCalculator() {
         
         {/* a-z alphabet buttons */}
         <div className="mb-3">
-          <div className="text-[10px] font-bold text-slate-500 mb-1">Alphabet (a-z)</div>
-          <div className="grid grid-cols-6 sm:grid-cols-13 gap-1.5">
+          <div className="text-[10px] font-bold text-slate-500 mb-1 flex justify-between items-center">
+            <span>Alphabet (a-z) & Custom Presets</span>
+            <span className="text-[8px] font-normal text-slate-600">(빈 버튼 더블클릭 시 편집 가능)</span>
+          </div>
+          <div className="grid grid-cols-6 sm:grid-cols-12 gap-1.5">
             {['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z'].map(char => (
               <button
                 key={char}
@@ -2403,11 +2459,27 @@ export function ScientificCalculator() {
                 {char}
               </button>
             ))}
+            {/* 10 custom alphabet preset buttons */}
+            {customAlphabetButtons.map((val, idx) => (
+              <button
+                key={`custom-alp-${idx}`}
+                type="button"
+                onClick={() => handleCustomButtonClick('alphabet', idx, val)}
+                className={`py-1 rounded border text-[11px] font-bold transition-all active:scale-90 cursor-pointer ${
+                  val 
+                    ? 'bg-slate-800 hover:bg-slate-700 text-indigo-300 border-indigo-900/50' 
+                    : 'bg-slate-950/30 hover:bg-slate-900 text-slate-600 border-slate-900 border-dashed'
+                }`}
+                title={val ? `클릭: 입력 | 더블클릭: 편집` : `더블클릭하여 등록`}
+              >
+                {val || '+'}
+              </button>
+            ))}
           </div>
         </div>
 
         {/* Greek letter buttons */}
-        <div>
+        <div className="mb-3">
           <div className="text-[10px] font-bold text-slate-500 mb-1">Greek Symbols</div>
           <div className="grid grid-cols-6 sm:grid-cols-10 gap-1.5">
             {[
@@ -2448,6 +2520,48 @@ export function ScientificCalculator() {
                 className="py-1 bg-slate-950/60 hover:bg-slate-800 text-amber-500 hover:text-amber-400 rounded border border-slate-800 text-[12px] font-bold transition-all active:scale-90 cursor-pointer"
               >
                 {item.display || item.char}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Engineering Constants & Greek Custom Presets */}
+        <div>
+          <div className="text-[10px] font-bold text-slate-500 mb-1 flex justify-between items-center">
+            <span>토질 및 기초 공학 공식 기호 & 커스텀 기호</span>
+            <span className="text-[8px] font-normal text-slate-600">(빈 버튼 더블클릭 시 편집 가능)</span>
+          </div>
+          <div className="grid grid-cols-5 sm:grid-cols-7 gap-1.5">
+            {[
+              { label: 'γ_sat (포화단위중량)', char: 'γ_sat' },
+              { label: 'γ_w (물의 단위중량)', char: 'γ_w' },
+              { label: 'γ_d (건조단위중량)', char: 'γ_d' },
+              { label: 'γ_d_max (최대건조단위중량)', char: 'γ_d_max' }
+            ].map(item => (
+              <button
+                key={item.char}
+                type="button"
+                onClick={() => insertAtCursor(item.char)}
+                title={item.label}
+                className="py-1.5 bg-slate-950/60 hover:bg-slate-800 text-amber-400 hover:text-amber-300 rounded border border-slate-800 text-[11px] font-bold transition-all active:scale-90 cursor-pointer"
+              >
+                {item.char}
+              </button>
+            ))}
+            {/* 10 custom Greek/Engineering preset buttons */}
+            {customGreekButtons.map((val, idx) => (
+              <button
+                key={`custom-grk-${idx}`}
+                type="button"
+                onClick={() => handleCustomButtonClick('greek', idx, val)}
+                className={`py-1.5 rounded border text-[11px] font-bold transition-all active:scale-90 cursor-pointer ${
+                  val 
+                    ? 'bg-slate-800 hover:bg-slate-700 text-amber-300 border-amber-900/50' 
+                    : 'bg-slate-950/30 hover:bg-slate-900 text-slate-600 border-slate-900 border-dashed'
+                }`}
+                title={val ? `클릭: 입력 | 더블클릭: 편집` : `더블클릭하여 등록`}
+              >
+                {val || '+'}
               </button>
             ))}
           </div>
