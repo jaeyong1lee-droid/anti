@@ -25,6 +25,24 @@ export const TableQuiz = React.memo(function TableQuiz({
   }
 
   const containerRef = useRef(null);
+  const [floatedSize, setFloatedSize] = useState(() => {
+    try {
+      const saved = localStorage.getItem('anti_floated_table_size');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (typeof parsed.width === 'number' && typeof parsed.height === 'number') {
+          return parsed;
+        }
+      }
+    } catch (e) {}
+    return { width: 500, height: 450 };
+  });
+
+  const floatedSizeRef = useRef(floatedSize);
+  useEffect(() => {
+    floatedSizeRef.current = floatedSize;
+  }, [floatedSize]);
+
   const { headers, rows } = q.tableData;
   const inputIds = Object.keys(q.answers || {});
 
@@ -551,6 +569,59 @@ export const TableQuiz = React.memo(function TableQuiz({
     }
   }, [colCount]);
 
+  const startFloatedResize = useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const isTouch = e.type === 'touchstart';
+    const startX = isTouch ? e.touches[0].clientX : e.clientX;
+    const startY = isTouch ? e.touches[0].clientY : e.clientY;
+    
+    const startWidth = floatedSizeRef.current.width;
+    const startHeight = floatedSizeRef.current.height;
+    
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor = 'sw-resize';
+    
+    const doResize = (moveEvent) => {
+      const currentX = (moveEvent.touches && moveEvent.touches.length > 0) ? moveEvent.touches[0].clientX : moveEvent.clientX;
+      const currentY = (moveEvent.touches && moveEvent.touches.length > 0) ? moveEvent.touches[0].clientY : moveEvent.clientY;
+      
+      const dx = currentX - startX;
+      const dy = currentY - startY;
+      
+      const newWidth = Math.max(300, Math.min(window.innerWidth - 40, startWidth - dx));
+      const newHeight = Math.max(200, Math.min(window.innerHeight - 100, startHeight + dy));
+      
+      setFloatedSize({ width: newWidth, height: newHeight });
+    };
+    
+    const stopResize = () => {
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
+      
+      try {
+        localStorage.setItem('anti_floated_table_size', JSON.stringify(floatedSizeRef.current));
+      } catch (err) {}
+      
+      if (isTouch) {
+        window.removeEventListener('touchmove', doResize);
+        window.removeEventListener('touchend', stopResize);
+      } else {
+        window.removeEventListener('mousemove', doResize);
+        window.removeEventListener('mouseup', stopResize);
+      }
+    };
+    
+    if (isTouch) {
+      window.addEventListener('touchmove', doResize, { passive: false });
+      window.addEventListener('touchend', stopResize);
+    } else {
+      window.addEventListener('mousemove', doResize);
+      window.addEventListener('mouseup', stopResize);
+    }
+  }, []);
+
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
@@ -575,6 +646,18 @@ export const TableQuiz = React.memo(function TableQuiz({
   const compTableUniqueId = `${isExam ? 'exam' : 'review'}_${questionIdx}_comp`;
   const isCompFloated = floatedTableId === compTableUniqueId;
 
+  const isAnyFloated = isMainFloated || isCompFloated;
+  const textSizeClass = isAnyFloated ? "text-[14px]" : "text-[14px] sm:text-[16px]";
+
+  const floatedStyleTag = isAnyFloated ? (
+    <style>{`
+      .floated-table-quiz,
+      .floated-table-quiz * {
+        font-size: 14px !important;
+      }
+    `}</style>
+  ) : null;
+
   const mainTablePlaceholder = isMainFloated ? (
     <div className="w-full my-3 p-4 rounded-xl border border-dashed border-sky-500/20 bg-sky-500/5 text-center flex flex-col items-center justify-center gap-1.5 min-h-[100px] select-none">
       <span className="text-lg">📌</span>
@@ -592,19 +675,36 @@ export const TableQuiz = React.memo(function TableQuiz({
     <>
       <div 
         className={isMainFloated 
-          ? "fixed top-20 right-6 w-[500px] max-w-[90vw] h-[45vh] max-h-[500px] z-[9991] bg-slate-900/95 border border-slate-700 rounded-2xl shadow-2xl p-3 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150 backdrop-blur-md"
+          ? "fixed top-20 right-6 z-[9991] bg-slate-900/95 border border-slate-700 rounded-2xl shadow-2xl p-3 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150 backdrop-blur-md floated-table-quiz"
           : "table-quiz-container w-full my-3 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40"
         }
-      style={mobileColWidths.reduce((acc, w, i) => {
-        acc[`--col-width-${i}`] = w;
-        return acc;
-      }, {})}
-    >
+        style={isMainFloated ? {
+          width: `${floatedSize.width}px`,
+          height: `${floatedSize.height}px`,
+          maxWidth: '90vw',
+          maxHeight: '90vh'
+        } : mobileColWidths.reduce((acc, w, i) => {
+          acc[`--col-width-${i}`] = w;
+          return acc;
+        }, {})}
+      >
         {isMainFloated && (
-          <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-800 select-none">
+          <div 
+            className="absolute left-0 bottom-0 w-4.5 h-4.5 cursor-sw-resize z-50 flex items-end justify-start p-1 select-none active:scale-95"
+            onMouseDown={startFloatedResize}
+            onTouchStart={startFloatedResize}
+            title="마우스 드래그로 표 크기를 조절합니다"
+          >
+            <svg className="w-2.5 h-2.5 text-slate-500 hover:text-slate-300" viewBox="0 0 10 10" fill="none" stroke="currentColor">
+              <path d="M1 9 L9 1 M1 6 L6 1 M1 3 L3 1" strokeWidth="1" strokeLinecap="round" />
+            </svg>
+          </div>
+        )}
+        {isMainFloated && (
+          <div className="flex items-center justify-between pb-1.5 mb-2 border-b border-slate-800 select-none">
             <div className="flex items-center gap-2">
               <span className="text-sky-400 font-extrabold text-sm sm:text-base flex items-center gap-1.5">
-                📌 표 고정 화면 (Main Table)
+                📌
               </span>
               <span className="text-xs text-slate-400 hidden sm:inline">
                 (입력 및 채점 상태가 실시간 동기화됩니다)
@@ -612,9 +712,12 @@ export const TableQuiz = React.memo(function TableQuiz({
             </div>
             <button 
               onClick={() => setFloatedTableId(null)}
-              className="px-3 py-1 bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white rounded-lg text-xs font-bold transition-all border border-slate-750 active:scale-95"
+              className="p-1 text-slate-400 hover:text-white rounded-lg transition-all active:scale-95 hover:bg-slate-800"
+              title="고정 해제 (ESC)"
             >
-              고정 해제 (ESC)
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+              </svg>
             </button>
           </div>
         )}
@@ -868,15 +971,33 @@ export const TableQuiz = React.memo(function TableQuiz({
         )}
         <div 
           className={isCompFloated
-            ? "fixed top-20 right-6 w-[500px] max-w-[90vw] h-[45vh] max-h-[500px] z-[9991] bg-slate-900/95 border border-slate-700 rounded-2xl shadow-2xl p-3 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150 backdrop-blur-md"
+            ? "fixed top-20 right-6 z-[9991] bg-slate-900/95 border border-slate-700 rounded-2xl shadow-2xl p-3 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150 backdrop-blur-md floated-table-quiz"
             : "table-quiz-container w-full my-3 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40"
           }
+          style={isCompFloated ? {
+            width: `${floatedSize.width}px`,
+            height: `${floatedSize.height}px`,
+            maxWidth: '90vw',
+            maxHeight: '90vh'
+          } : undefined}
         >
           {isCompFloated && (
-            <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-800 select-none">
+            <div 
+              className="absolute left-0 bottom-0 w-4.5 h-4.5 cursor-sw-resize z-50 flex items-end justify-start p-1 select-none active:scale-95"
+              onMouseDown={startFloatedResize}
+              onTouchStart={startFloatedResize}
+              title="마우스 드래그로 표 크기를 조절합니다"
+            >
+              <svg className="w-2.5 h-2.5 text-slate-500 hover:text-slate-300" viewBox="0 0 10 10" fill="none" stroke="currentColor">
+                <path d="M1 9 L9 1 M1 6 L6 1 M1 3 L3 1" strokeWidth="1" strokeLinecap="round" />
+              </svg>
+            </div>
+          )}
+          {isCompFloated && (
+            <div className="flex items-center justify-between pb-1.5 mb-2 border-b border-slate-800 select-none">
               <div className="flex items-center gap-2">
                 <span className="text-sky-400 font-extrabold text-sm sm:text-base flex items-center gap-1.5">
-                  📌 비교표 고정 화면 (Comparison Table)
+                  ⚖️
                 </span>
                 <span className="text-xs text-slate-400 hidden sm:inline">
                   (입력 및 채점 상태가 실시간 동기화됩니다)
@@ -884,9 +1005,12 @@ export const TableQuiz = React.memo(function TableQuiz({
               </div>
               <button 
                 onClick={() => setFloatedTableId(null)}
-                className="px-3 py-1 bg-slate-800 hover:bg-slate-755 text-slate-300 hover:text-white rounded-lg text-xs font-bold transition-all border border-slate-755 active:scale-95"
+                className="p-1 text-slate-400 hover:text-white rounded-lg transition-all active:scale-95 hover:bg-slate-800"
+                title="고정 해제 (ESC)"
               >
-                고정 해제 (ESC)
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </button>
             </div>
           )}
@@ -1098,6 +1222,7 @@ export const TableQuiz = React.memo(function TableQuiz({
 
   return (
     <div ref={containerRef} className="w-full">
+      {floatedStyleTag}
       {mainTablePlaceholder}
       {mainTable}
       {compTablePlaceholder}
