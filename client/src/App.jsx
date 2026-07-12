@@ -13006,8 +13006,8 @@ export default function App() {
     }));
   };
 
-  const handleDeleteAcronymCard = async (acronymId, title) => {
-    if (window.confirm(`[${title}] 앞글자를 필수암기 리스트에서 삭제하시겠습니까?`)) {
+  const handleDeleteAcronymCard = async (acronymId, title, targetWindow = window) => {
+    if (targetWindow.confirm(`[${title}] 앞글자를 필수암기 리스트에서 삭제하시겠습니까?`)) {
       const updated = formulaAcronyms.filter(x => x.id !== acronymId);
       setFormulaAcronyms(updated);
       await handleSaveFormulaAcronyms(updated, false);

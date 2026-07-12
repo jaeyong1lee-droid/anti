@@ -515,8 +515,9 @@ export function FloatingMemorization({
                             {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
                           </button>
                           <button
-                            onClick={async () => {
-                              if (window.confirm('이 표 카드를 삭제하시겠습니까?')) {
+                            onClick={async (e) => {
+                              const currentWindow = e.target.ownerDocument.defaultView || window;
+                              if (currentWindow.confirm('이 표 카드를 삭제하시겠습니까?')) {
                                 const updated = formulaTables.filter(x => x.id !== t.id);
                                 setFormulaTables(updated);
                                 await handleSaveFormulaTables(updated, false);
@@ -663,8 +664,9 @@ export function FloatingMemorization({
                                       })}
                                       <td className="p-1 text-center align-middle">
                                         <button
-                                          onClick={() => {
-                                            if (window.confirm('이 행을 삭제하시겠습니까?')) {
+                                          onClick={(e) => {
+                                            const currentWindow = e.target.ownerDocument.defaultView || window;
+                                            if (currentWindow.confirm('이 행을 삭제하시겠습니까?')) {
                                               const updatedRows = parsed.rows.filter((_, idx) => idx !== rIdx);
                                               const newHtml = rebuildTableHtml(parsed.headers, updatedRows);
                                               const updatedTables = formulaTables.map(item => item.id === t.id ? { ...item, html: newHtml } : item);
@@ -672,7 +674,7 @@ export function FloatingMemorization({
                                               handleSaveFormulaTables(updatedTables, false);
                                             }
                                           }}
-                                          className="p-0.5 rounded bg-red-950/40 text-red-400 hover:bg-red-900 border border-red-500/10 cursor-pointer"
+                                          className="p-0.5 rounded bg-red-955/40 border border-red-500/10 text-red-400 hover:bg-red-900 transition-all cursor-pointer"
                                         >
                                           삭제
                                         </button>
@@ -786,7 +788,10 @@ export function FloatingMemorization({
                           )}
                         </div>
                         <button
-                          onClick={() => handleDeleteAcronymCard(ac.id, ac.title)}
+                          onClick={(e) => {
+                            const currentWindow = e.target.ownerDocument.defaultView || window;
+                            handleDeleteAcronymCard(ac.id, ac.title, currentWindow);
+                          }}
                           className="p-1 rounded bg-red-955/40 border border-red-500/20 text-red-400 hover:bg-red-900 transition-all cursor-pointer shrink-0"
                         >
                           <Trash2 size={12} />
@@ -939,8 +944,9 @@ export function FloatingMemorization({
                                           ▼
                                         </button>
                                         <button
-                                          onClick={() => {
-                                            if (window.confirm('이 행을 삭제하시겠습니까?')) {
+                                          onClick={(e) => {
+                                            const currentWindow = e.target.ownerDocument.defaultView || window;
+                                            if (currentWindow.confirm('이 행을 삭제하시겠습니까?')) {
                                               const newRows = rows.filter((_, idx) => idx !== rIdx);
                                               const newContent = [
                                                 `두문자: ${acronymHeaderText}`,
@@ -1032,8 +1038,9 @@ export function FloatingMemorization({
                             {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
                           </button>
                           <button
-                            onClick={async () => {
-                              if (window.confirm('이 개요 카드를 삭제하시겠습니까?')) {
+                            onClick={async (e) => {
+                              const currentWindow = e.target.ownerDocument.defaultView || window;
+                              if (currentWindow.confirm('이 개요 카드를 삭제하시겠습니까?')) {
                                 const updated = formulaOverviews.filter(x => x.id !== ov.id);
                                 setFormulaOverviews(updated);
                                 await handleSaveFormulaOverviews(updated, false);
