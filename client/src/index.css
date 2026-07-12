@@ -1051,6 +1051,16 @@ div[class*="overflow-y-auto"] {
   .scrollbar-none-mobile {
     overflow-x: hidden !important;
     max-width: 100vw !important;
+    touch-action: pan-y !important; /* Force only vertical touch pan, absolute block on horizontal viewport wiggle */
+  }
+
+  /* Keep scrollable elements scrollable for horizontal scrolling inside tables/code blocks */
+  .table-quiz-container,
+  .overflow-x-auto,
+  .overflow-auto,
+  .table-quiz-container *,
+  .overflow-x-auto * {
+    touch-action: auto !important;
   }
 
   /* Wrap and block horizontal scroll on AI tutor responses to prevent layout wiggle, letting inner tables/formulas scroll independently */

@@ -111,6 +111,7 @@ export const ReadOnlyTable = React.memo(function ReadOnlyTable({
   const tableRef = useRef(null);
 
   const startColumnResize = useCallback((e, idx, isTouch) => {
+    e.stopPropagation();
     if (isTouch) {
       if (e.cancelable) e.preventDefault();
     } else {
@@ -122,7 +123,6 @@ export const ReadOnlyTable = React.memo(function ReadOnlyTable({
     const widths = Array.from(thElements).map(th => th.getBoundingClientRect().width);
     const totalWidth = widths.reduce((a, b) => a + b, 0);
     const percentWidths = widths.map(w => (w / totalWidth) * 100);
-    const firstColStartWidth = thElements[0] ? thElements[0].getBoundingClientRect().width : 120;
     const targetColStartWidth = thElements[idx] ? thElements[idx].getBoundingClientRect().width : 140;
 
     const container = tableRef.current.closest('.table-quiz-container');
@@ -135,6 +135,7 @@ export const ReadOnlyTable = React.memo(function ReadOnlyTable({
     }
 
     const doResize = (ev) => {
+      ev.stopPropagation();
       if (isTouch && ev.cancelable) {
         ev.preventDefault();
       }
@@ -147,19 +148,17 @@ export const ReadOnlyTable = React.memo(function ReadOnlyTable({
         
         setMobileColWidths(prev => {
           const next = [...prev];
+          next[idx] = `${newWidth}px`;
+          
           if (idx === 0) {
-            next[0] = `${newWidth}px`;
             const storageKey = `mobileFirstColWidth_${questionIdx !== null && questionIdx !== undefined ? questionIdx : 'default'}`;
             localStorage.setItem(storageKey, `${newWidth}px`);
             window.dispatchEvent(new CustomEvent('firstColWidthChanged', {
               detail: { questionIdx, width: `${newWidth}px` }
             }));
           } else {
-            for (let i = 1; i < colCount; i++) {
-              next[i] = `${newWidth}px`;
-              const storageKey = `mobileColWidth_${questionIdx !== null && questionIdx !== undefined ? questionIdx : 'default'}_${i}`;
-              localStorage.setItem(storageKey, `${newWidth}px`);
-            }
+            const storageKey = `mobileColWidth_${questionIdx !== null && questionIdx !== undefined ? questionIdx : 'default'}_${idx}`;
+            localStorage.setItem(storageKey, `${newWidth}px`);
           }
           return next;
         });
@@ -179,7 +178,8 @@ export const ReadOnlyTable = React.memo(function ReadOnlyTable({
       }
     };
 
-    const stopResize = () => {
+    const stopResize = (ev) => {
+      if (ev) ev.stopPropagation();
       if (isTouch && container) {
         container.style.overflowX = '';
       }
@@ -199,7 +199,7 @@ export const ReadOnlyTable = React.memo(function ReadOnlyTable({
       window.addEventListener('mousemove', doResize);
       window.addEventListener('mouseup', stopResize);
     }
-  }, [questionIdx]);
+  }, [questionIdx, colCount]);
 
   return (
     <div 
@@ -241,8 +241,8 @@ export const ReadOnlyTable = React.memo(function ReadOnlyTable({
               return (
                 <th 
                   key={hIdx} 
-                  className={`relative p-1 sm:p-1.5 font-extrabold border-r border-slate-800 last:border-r-0 select-text ${
-                    isFirstCol ? 'text-left break-all cursor-pointer' : ''
+                  className={`relative p-1.5 sm:p-2 font-extrabold border-r border-slate-800 last:border-r-0 whitespace-normal break-words select-text ${
+                    isFirstCol ? 'text-left cursor-pointer' : 'text-center'
                   }`}
                   onClick={isFirstCol ? handleHeaderClick : undefined}
                   title={isFirstCol ? "더블클릭 시 너비 초기화" : undefined}
@@ -275,8 +275,8 @@ export const ReadOnlyTable = React.memo(function ReadOnlyTable({
                     <td 
                       key={cIdx} 
                       colSpan={cellColSpan}
-                      className={`p-1 sm:p-1.5 border-r border-slate-800 last:border-r-0 text-slate-355 text-[14px] sm:text-[16px] select-text ${
-                        isFirstCol ? 'text-left break-all' : 'text-center'
+                      className={`p-1.5 sm:p-2 border-r border-slate-800 last:border-r-0 text-slate-300 text-[14px] sm:text-[16px] whitespace-normal break-words select-text ${
+                        isFirstCol ? 'text-left' : 'text-center'
                       }`}
                     >
                       <LatexRenderer text={cell} katexLoaded={katexLoaded} className="inline" />

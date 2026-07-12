@@ -516,6 +516,7 @@ export const TableQuiz = React.memo(function TableQuiz({
   const tableRef = useRef(null);
 
   const startColumnResize = useCallback((e, idx, isTouch) => {
+    e.stopPropagation();
     if (isTouch) {
       if (e.cancelable) e.preventDefault();
     } else {
@@ -527,7 +528,6 @@ export const TableQuiz = React.memo(function TableQuiz({
     const widths = Array.from(thElements).map(th => th.getBoundingClientRect().width);
     const totalWidth = widths.reduce((a, b) => a + b, 0);
     const percentWidths = widths.map(w => (w / totalWidth) * 100);
-    const firstColStartWidth = thElements[0] ? thElements[0].getBoundingClientRect().width : 120;
     const targetColStartWidth = thElements[idx] ? thElements[idx].getBoundingClientRect().width : 140;
 
     const container = tableRef.current.closest('.table-quiz-container');
@@ -540,6 +540,7 @@ export const TableQuiz = React.memo(function TableQuiz({
     }
 
     const doResize = (ev) => {
+      ev.stopPropagation();
       if (isTouch && ev.cancelable) {
         ev.preventDefault();
       }
@@ -552,19 +553,17 @@ export const TableQuiz = React.memo(function TableQuiz({
         
         setMobileColWidths(prev => {
           const next = [...prev];
+          next[idx] = `${newWidth}px`;
+          
           if (idx === 0) {
-            next[0] = `${newWidth}px`;
             const storageKey = `anti_mobile_first_col_width_${colCount}`;
             localStorage.setItem(storageKey, `${newWidth}px`);
             window.dispatchEvent(new CustomEvent('firstColWidthChanged', {
               detail: { colCount, width: `${newWidth}px` }
             }));
           } else {
-            for (let i = 1; i < colCount; i++) {
-              next[i] = `${newWidth}px`;
-              const storageKey = `anti_mobile_col_width_${colCount}_${i}`;
-              localStorage.setItem(storageKey, `${newWidth}px`);
-            }
+            const storageKey = `anti_mobile_col_width_${colCount}_${idx}`;
+            localStorage.setItem(storageKey, `${newWidth}px`);
           }
           return next;
         });
@@ -600,7 +599,8 @@ export const TableQuiz = React.memo(function TableQuiz({
       }
     };
 
-    const stopResize = () => {
+    const stopResize = (ev) => {
+      if (ev) ev.stopPropagation();
       if (isTouch && container) {
         container.style.overflowX = '';
       }

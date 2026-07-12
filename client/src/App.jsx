@@ -4460,56 +4460,11 @@ export default function App() {
   const swipeTouchStartY = useRef(null);
 
   const handleSwipeTouchStart = (e) => {
-    // Only detect swipe on mobile portrait
-    if (isDesktop || isMobileLandscape) return;
-
-    // Check if the touch start target is inside an interactive or horizontally scrollable element
-    let current = e.target;
-    while (current && current !== document.body) {
-      const tagName = current.tagName?.toLowerCase();
-      if (tagName === 'input' || tagName === 'textarea' || tagName === 'button' || tagName === 'select' || tagName === 'a') {
-        return;
-      }
-      if (current.getAttribute('role') === 'button' || current.onclick) {
-        return;
-      }
-      try {
-        const style = window.getComputedStyle(current);
-        if (
-          style &&
-          (current.scrollWidth > current.clientWidth) &&
-          (style.overflowX === 'auto' || style.overflowX === 'scroll' || style.overflowX === 'overlay')
-        ) {
-          return;
-        }
-      } catch (err) {
-        // ignore errors
-      }
-      current = current.parentElement;
-    }
-
-    swipeTouchStartX.current = e.touches[0].clientX;
-    swipeTouchStartY.current = e.touches[0].clientY;
+    // Disabled to prevent horizontal dragging/swiping on mobile
   };
 
   const handleSwipeTouchEnd = (e, currentTab, setTab) => {
-    if (isDesktop || isMobileLandscape) return;
-    if (swipeTouchStartX.current === null || swipeTouchStartY.current === null) return;
-
-    const diffX = e.changedTouches[0].clientX - swipeTouchStartX.current;
-    const diffY = e.changedTouches[0].clientY - swipeTouchStartY.current;
-
-    // Min distance 50px, and horizontal distance must be at least 1.5 times the vertical distance
-    if (Math.abs(diffX) > 50 && Math.abs(diffX) > Math.abs(diffY) * 1.5) {
-      if (diffX < 0 && currentTab === 'list') {
-        setTab('tutor');
-      } else if (diffX > 0 && currentTab === 'tutor') {
-        setTab('list');
-      }
-    }
-
-    swipeTouchStartX.current = null;
-    swipeTouchStartY.current = null;
+    // Disabled to prevent horizontal dragging/swiping on mobile
   };
 
   // States and refs for modal pull-to-refresh
