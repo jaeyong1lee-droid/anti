@@ -3106,9 +3106,9 @@ export default function App() {
   const [examShowAnswersState, setExamShowAnswersState] = useState({});
   const [gradingLoading, setGradingLoading] = useState({});
 
-  const gradeTableQuestion = async (qIdx, q) => {
+  const gradeTableQuestion = async (qIdx, q, targetInputs = null) => {
     setGradingLoading(prev => ({ ...prev, [qIdx]: true }));
-    const inputs = Object.keys(q.answers || {});
+    const inputs = targetInputs || Object.keys(q.answers || {});
     const activeAnswers = showExam ? examTableAnswersRef.current : tableAnswersRef.current;
     const activeSetGradingResults = showExam ? setExamTableGradingResults : setTableGradingResults;
     
@@ -18552,6 +18552,14 @@ ${itemsStr}
                                       await gradeTableQuestion(idx, q);
                                       setRevealedQuestions(prev => ({ ...prev, [idx]: true }));
                                     }}
+                                    onGradeOverviewStep={async (step, targetInputs) => {
+                                      if (gradingLoading[idx]) return;
+                                      await gradeTableQuestion(idx, q, targetInputs);
+                                      if (step === 2) {
+                                        setRevealedQuestions(prev => ({ ...prev, [idx]: true }));
+                                      }
+                                    }}
+                                    gradingLoading={!!gradingLoading[idx]}
                                     gradeSingleTableCell={gradeSingleTableCell}
                                     cellGradingLoading={cellGradingLoading}
                                     floatedTableId={floatedTableId}
@@ -18560,7 +18568,7 @@ ${itemsStr}
                                   />
                                 );
                               })()}
-                              {!isRevd ? (
+                              {(!isRevd && !(q.question.startsWith("[개요 복습]") || q.mixedType === "overview" || q.subtype === "개요")) ? (
                                 <button
                                   onClick={async () => {
                                     if (gradingLoading[idx]) return;
@@ -21971,6 +21979,14 @@ ${itemsStr}
                                       await gradeTableQuestion(idx, q);
                                       setExamRevealed(prev => ({ ...prev, [idx]: true }));
                                     }}
+                                    onGradeOverviewStep={async (step, targetInputs) => {
+                                      if (gradingLoading[idx]) return;
+                                      await gradeTableQuestion(idx, q, targetInputs);
+                                      if (step === 2) {
+                                        setExamRevealed(prev => ({ ...prev, [idx]: true }));
+                                      }
+                                    }}
+                                    gradingLoading={!!gradingLoading[idx]}
                                     gradeSingleTableCell={gradeSingleTableCell}
                                     cellGradingLoading={cellGradingLoading}
                                     floatedTableId={floatedTableId}
@@ -21979,7 +21995,7 @@ ${itemsStr}
                                   />
                                 );
                               })()}
-                              {!examRevealed[idx] ? (
+                              {(!examRevealed[idx] && !(q.question.startsWith("[개요 복습]") || q.mixedType === "overview" || q.subtype === "개요")) ? (
                                 <button
                                   onClick={async () => {
                                     if (gradingLoading[idx]) return;

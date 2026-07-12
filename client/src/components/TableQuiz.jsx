@@ -15,6 +15,8 @@ export const TableQuiz = React.memo(function TableQuiz({
   tableGradingResults, 
   weight = 10, 
   onSubmit, 
+  onGradeOverviewStep,
+  gradingLoading = false,
   gradeSingleTableCell, 
   cellGradingLoading,
   floatedTableId = null,
@@ -24,6 +26,47 @@ export const TableQuiz = React.memo(function TableQuiz({
   if (!q.tableData || !q.tableData.headers || !q.tableData.rows) {
     return <div className="text-red-400 text-xs py-2">오류: 표 데이터가 올바르지 않습니다.</div>;
   }
+
+  const isOverviewReview = q.question.startsWith("[개요 복습]") || q.mixedType === "overview" || q.subtype === "개요";
+
+  const getTableInputIds = () => {
+    const firstTableInputs = [];
+    const secondTableInputs = [];
+
+    if (q.tableData && q.tableData.rows) {
+      q.tableData.rows.forEach(row => {
+        row.forEach(cell => {
+          if (typeof cell === 'string' && cell.includes('[INPUT_')) {
+            const inputId = cell.replace('[', '').replace(']', '').trim();
+            firstTableInputs.push(inputId);
+          }
+        });
+      });
+    }
+
+    if (q.comparisonTableData && q.comparisonTableData.rows) {
+      q.comparisonTableData.rows.forEach(row => {
+        row.forEach(cell => {
+          if (typeof cell === 'string' && cell.includes('[INPUT_')) {
+            const inputId = cell.replace('[', '').replace(']', '').trim();
+            secondTableInputs.push(inputId);
+          }
+        });
+      });
+    }
+
+    return { firstTableInputs, secondTableInputs };
+  };
+
+  const { firstTableInputs, secondTableInputs } = getTableInputIds();
+
+  const isFirstTableGraded = revealed || (firstTableInputs.length > 0 && firstTableInputs.every(
+    id => tableGradingResults && tableGradingResults[`${questionIdx}_${id}`] !== undefined
+  ));
+
+  const isSecondTableGraded = revealed || (secondTableInputs.length > 0 && secondTableInputs.every(
+    id => tableGradingResults && tableGradingResults[`${questionIdx}_${id}`] !== undefined
+  ));
 
   const containerRef = useRef(null);
   const [floatedSize, setFloatedSize] = useState(() => {
@@ -985,7 +1028,8 @@ export const TableQuiz = React.memo(function TableQuiz({
    
                     const inputIdx = inputIds.indexOf(inputId);
                     const inputLetter = String.fromCharCode(65 + (inputIdx !== -1 ? inputIdx : 0));
-                    const theme = revealed ? getTableScoreColorTheme(gradingResult, isCorrect, value) : null;
+                    const isCellGraded = revealed || (tableGradingResults && tableGradingResults[`${questionIdx}_${inputId}`] !== undefined);
+                    const theme = isCellGraded ? getTableScoreColorTheme(gradingResult, isCorrect, value) : null;
                     return (
                       <td 
                         key={cIdx} 
@@ -996,7 +1040,7 @@ export const TableQuiz = React.memo(function TableQuiz({
                           if (textarea) textarea.focus();
                         }}
                       >
-                        {revealed ? (
+                        {isCellGraded ? (
                           <div className="w-full flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-1 p-1 sm:p-1.5 text-[14px] sm:text-[16px]">
                             <div className="flex-grow text-left font-medium">
                               <BufferedTextarea
@@ -1328,17 +1372,19 @@ export const TableQuiz = React.memo(function TableQuiz({
      
                       const inputIdx = inputIds.indexOf(inputId);
                       const inputLetter = String.fromCharCode(65 + (inputIdx !== -1 ? inputIdx : 0));
-                      const theme = revealed ? getTableScoreColorTheme(gradingResult, isCorrect, value) : null;
+                      const isCellGraded = revealed || (tableGradingResults && tableGradingResults[`${questionIdx}_${inputId}`] !== undefined);
+                      const theme = isCellGraded ? getTableScoreColorTheme(gradingResult, isCorrect, value) : null;
                       return (
                         <td 
                           key={cIdx} 
                           className={`p-0 border-r border-slate-800 last:border-r-0 text-slate-200 text-[14px] sm:text-[16px] whitespace-normal break-words text-center align-middle cursor-text ${theme ? theme.cellBg : ''}`}
                           onClick={(e) => {
+                            if (isOverviewReview && !isFirstTableGraded) return;
                             const textarea = e.currentTarget.querySelector('textarea');
                             if (textarea) textarea.focus();
                           }}
                         >
-                          {revealed ? (
+                          {isCellGraded ? (
                             <div className="w-full flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-1 p-1 sm:p-1.5 text-[14px] sm:text-[16px]">
                               <div className="flex-grow text-left font-medium">
                                 <BufferedTextarea
@@ -1402,9 +1448,15 @@ export const TableQuiz = React.memo(function TableQuiz({
                               value={value}
                               onChange={(val) => handleInputChange(inputId, val)}
                               onKeystroke={(val) => handleInputKeystroke(inputId, val)}
-                              placeholder={`${inputLetter} 입력`}
+                              placeholder={isOverviewReview && !isFirstTableGraded ? "🔒 1단계 완료 후 활성화" : `${inputLetter} 입력`}
+                              readOnly={isOverviewReview && !isFirstTableGraded}
+                              disabled={isOverviewReview && !isFirstTableGraded}
                               data-answer-key={`${questionIdx}_${inputId}`}
-                              className="table-quiz-input w-full text-center text-[14px] sm:text-[16px] bg-slate-900/10 focus:bg-slate-900/40 border-0 outline-none focus:outline-none focus:ring-0 text-slate-250 placeholder-slate-500 py-1 px-1.5 resize-none min-h-[30px] block align-middle"
+                              className={`table-quiz-input w-full text-center text-[14px] sm:text-[16px] border-0 outline-none focus:outline-none focus:ring-0 resize-none min-h-[30px] block align-middle ${
+                                isOverviewReview && !isFirstTableGraded
+                                  ? 'bg-slate-950/60 text-slate-500 cursor-not-allowed placeholder-slate-600'
+                                  : 'bg-slate-900/10 focus:bg-slate-900/40 text-slate-250 placeholder-slate-500'
+                              }`}
                               rows={1}
                               onKeyDown={(e) => {
                                 if (e.key === 'Enter' && !e.shiftKey) {
@@ -1562,9 +1614,64 @@ export const TableQuiz = React.memo(function TableQuiz({
       {mainTableTitle}
       {mainTablePlaceholder}
       {mainTable}
+
+      {isOverviewReview && !isFirstTableGraded && (
+        <div className="mt-3.5 mb-5 select-none flex justify-center w-full">
+          <button
+            type="button"
+            onClick={async () => {
+              if (onGradeOverviewStep) {
+                await onGradeOverviewStep(1, firstTableInputs);
+              }
+            }}
+            disabled={gradingLoading || (cellGradingLoading && Object.keys(cellGradingLoading).some(k => k.startsWith(`${questionIdx}_`) && cellGradingLoading[k]))}
+            className={`w-full py-3 bg-slate-600 hover:bg-slate-500 text-white border border-slate-500/50 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 shadow-md shadow-slate-600/10 font-black ${
+              gradingLoading ? 'opacity-50 pointer-events-none' : ''
+            }`}
+          >
+            {gradingLoading ? (
+              <span className="flex items-center gap-2">
+                <svg className="animate-spin h-3.5 w-3.5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                AI 채점 진행 중...
+              </span>
+            ) : '제출하고 채점하기 (1단계: 개요) →'}
+          </button>
+        </div>
+      )}
+
       {compTableTitle}
       {compTablePlaceholder}
       {compTable}
+
+      {isOverviewReview && isFirstTableGraded && !isSecondTableGraded && (
+        <div className="mt-3.5 mb-2 select-none flex justify-center w-full">
+          <button
+            type="button"
+            onClick={async () => {
+              if (onGradeOverviewStep) {
+                await onGradeOverviewStep(2, secondTableInputs);
+              }
+            }}
+            disabled={gradingLoading || (cellGradingLoading && Object.keys(cellGradingLoading).some(k => k.startsWith(`${questionIdx}_`) && cellGradingLoading[k]))}
+            className={`w-full py-3 bg-slate-600 hover:bg-slate-500 text-white border border-slate-500/50 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 shadow-md shadow-slate-600/10 font-black ${
+              gradingLoading ? 'opacity-50 pointer-events-none' : ''
+            }`}
+          >
+            {gradingLoading ? (
+              <span className="flex items-center gap-2">
+                <svg className="animate-spin h-3.5 w-3.5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                AI 채점 진행 중...
+              </span>
+            ) : '제출하고 채점하기 (2단계: 비교표) →'}
+          </button>
+        </div>
+      )}
     </div>
   );
 });
