@@ -90,9 +90,13 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false,
     html += `<table class="${tableClass} w-full table-auto text-center border-collapse text-[14px] sm:text-[15px] min-w-full">`;
     html += `<thead>`;
     html += `<tr class="bg-slate-900/80 text-slate-355 border-b border-slate-800">`;
-    headers.forEach(h => {
+    headers.forEach((h, hIdx) => {
       const renderedH = renderCellMath(h);
-      html += `<th class="p-1 sm:p-1.5 font-black border-r border-slate-800 last:border-r-0">${renderedH}</th>`;
+      if (hIdx === 0) {
+        html += `<th class="p-1 sm:p-1.5 font-black border-r border-slate-800 last:border-r-0"><div class="resizable-table-cell text-center" style="resize: horizontal; overflow: hidden; display: block; min-width: 60px; max-width: 250px; width: 100px; margin: 0 auto; padding-right: 8px;">${renderedH}</div></th>`;
+      } else {
+        html += `<th class="p-1 sm:p-1.5 font-black border-r border-slate-800 last:border-r-0">${renderedH}</th>`;
+      }
     });
     if (!hideRemarks) {
       html += `<th class="p-1 sm:p-1.5 font-black border-r border-slate-800 text-rose-400 select-none whitespace-nowrap w-16" style="border-right:0;">비고</th>`;
@@ -151,9 +155,13 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false,
   html += `<table class="${tableClass} w-full table-auto text-center border-collapse text-[14px] sm:text-[15px] min-w-full">`;
   html += `<thead>`;
   html += `<tr class="bg-slate-900/80 text-slate-350 border-b border-slate-800">`;
-  headers.forEach(h => {
+  headers.forEach((h, hIdx) => {
     const renderedH = renderCellMath(h);
-    html += `<th class="p-1 sm:p-1.5 font-extrabold border-r border-slate-800 last:border-r-0">${renderedH}</th>`;
+    if (hIdx === 0) {
+      html += `<th class="p-1 sm:p-1.5 font-extrabold border-r border-slate-800 last:border-r-0"><div class="resizable-table-cell text-center" style="resize: horizontal; overflow: hidden; display: block; min-width: 60px; max-width: 250px; width: 100px; margin: 0 auto; padding-right: 8px;">${renderedH}</div></th>`;
+    } else {
+      html += `<th class="p-1 sm:p-1.5 font-extrabold border-r border-slate-800 last:border-r-0">${renderedH}</th>`;
+    }
   });
   if (!hideRemarks) {
     html += `<th class="p-1 sm:p-1.5 font-extrabold border-r border-slate-800 text-rose-400 select-none whitespace-nowrap w-16" style="border-right:0;">비고</th>`;
