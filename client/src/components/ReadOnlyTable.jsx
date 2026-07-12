@@ -32,12 +32,29 @@ export const ReadOnlyTable = React.memo(function ReadOnlyTable({
     const widths = [];
     const storageKeyFirst = `mobileFirstColWidth_${questionIdx !== null && questionIdx !== undefined ? questionIdx : 'default'}`;
     const savedFirst = typeof window !== 'undefined' ? localStorage.getItem(storageKeyFirst) : null;
-    widths.push(savedFirst || '120px');
     
-    for (let i = 1; i < colCount; i++) {
-      const storageKeyOther = `mobileColWidth_${questionIdx !== null && questionIdx !== undefined ? questionIdx : 'default'}_${i}`;
-      const savedOther = typeof window !== 'undefined' ? localStorage.getItem(storageKeyOther) : null;
-      widths.push(savedOther || '140px');
+    if (savedFirst) {
+      widths.push(savedFirst);
+      for (let i = 1; i < colCount; i++) {
+        const storageKeyOther = `mobileColWidth_${questionIdx !== null && questionIdx !== undefined ? questionIdx : 'default'}_${i}`;
+        const savedOther = typeof window !== 'undefined' ? localStorage.getItem(storageKeyOther) : null;
+        widths.push(savedOther || '140px');
+      }
+    } else {
+      if (colCount <= 1) {
+        widths.push('100%');
+      } else if (colCount === 2) {
+        widths.push('45%', '55%');
+      } else if (colCount === 3) {
+        widths.push('40%', '30%', '30%');
+      } else {
+        const first = 30;
+        const others = (100 - first) / (colCount - 1);
+        widths.push(`${first}%`);
+        for (let i = 1; i < colCount; i++) {
+          widths.push(`${others}%`);
+        }
+      }
     }
     return widths;
   });
@@ -76,7 +93,6 @@ export const ReadOnlyTable = React.memo(function ReadOnlyTable({
   }, [questionIdx]);
 
   const resetMobileColWidths = useCallback(() => {
-    const defaultFirst = '120px';
     const storageKeyFirst = `mobileFirstColWidth_${questionIdx !== null && questionIdx !== undefined ? questionIdx : 'default'}`;
     localStorage.removeItem(storageKeyFirst);
     
@@ -85,16 +101,27 @@ export const ReadOnlyTable = React.memo(function ReadOnlyTable({
       localStorage.removeItem(storageKeyOther);
     }
     
-    setMobileColWidths(prev => {
-      const next = [defaultFirst];
-      for (let i = 1; i < colCount; i++) {
-        next.push('140px');
+    setMobileColWidths(() => {
+      const next = [];
+      if (colCount <= 1) {
+        next.push('100%');
+      } else if (colCount === 2) {
+        next.push('45%', '55%');
+      } else if (colCount === 3) {
+        next.push('40%', '30%', '30%');
+      } else {
+        const first = 30;
+        const others = (100 - first) / (colCount - 1);
+        next.push(`${first}%`);
+        for (let i = 1; i < colCount; i++) {
+          next.push(`${others}%`);
+        }
       }
       return next;
     });
 
     window.dispatchEvent(new CustomEvent('firstColWidthChanged', {
-      detail: { questionIdx, width: defaultFirst }
+      detail: { questionIdx, width: colCount === 2 ? '45%' : colCount === 3 ? '40%' : '30%' }
     }));
   }, [questionIdx, colCount]);
 
@@ -213,8 +240,8 @@ export const ReadOnlyTable = React.memo(function ReadOnlyTable({
     >
       <table 
         ref={tableRef} 
-        className={`table-quiz-table w-full table-fixed text-center border-collapse text-[14px] sm:text-[16px] ${
-          colCount === 2 ? 'min-w-[320px] sm:min-w-[600px]' : 'min-w-[480px] sm:min-w-[700px]'
+        className={`table-quiz-table w-full table-fixed text-center border-collapse text-[14px] sm:text-[16px] min-w-full ${
+          colCount === 2 ? 'sm:min-w-[600px]' : 'sm:min-w-[700px]'
         }`}
         style={isMobileView ? {
           '--table-width': colCount === 2 ? '100%' : `max(100%, ${mobileColWidths.reduce((sum, w) => sum + parseInt(w || '0', 10), 0)}px)`,
