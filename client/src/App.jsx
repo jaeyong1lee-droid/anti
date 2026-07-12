@@ -1236,50 +1236,51 @@ const renderQuestionContent = (q, topicTitle, katexLoaded, topicId = null, pdfNa
       );
     }
 
-    if (resolvedCategory !== '계산' || !resolvedTopicId || !showImage) {
-      return null;
+    const isImageQuestion = q.mixedType === 'image' || q.subtype === '그림' || q.type === '주관식 (그림)';
+    if (!isImageQuestion) {
+      if (resolvedCategory !== '계산' || !resolvedTopicId || !showImage) {
+        return null;
+      }
+    } else {
+      if (!resolvedTopicId) return null;
     }
 
-    if (isImageTopic) {
-      return (
-        <div className="mt-3 flex flex-col items-center w-full">
-          <div className="text-[11px] text-indigo-400 font-extrabold mb-1 select-none flex items-center gap-1.5 w-full justify-start">
-            <span>🖼️ 첨부된 문제 그래프/그림</span>
-          </div>
-          <div className="w-full overflow-hidden rounded-xl border border-slate-700 bg-white shadow-inner min-h-[180px]">
-            <iframe 
-              src={`${API_BASE}/api/topics/${resolvedTopicId}/pdf?part=screenshot`} 
-              className="w-full border-0 block"
-              style={{ minHeight: '350px', height: '350px', backgroundColor: '#ffffff' }}
-              sandbox="allow-scripts allow-same-origin"
-              onLoad={(e) => {
-                const iframe = e.target;
-                try {
-                  const doc = iframe.contentWindow?.document;
-                  if (doc && doc.body) {
-                    setTimeout(() => {
-                      const height = Math.max(
-                        doc.body.scrollHeight,
-                        doc.documentElement.scrollHeight,
-                        doc.body.offsetHeight,
-                        doc.documentElement.offsetHeight
-                      );
-                      if (height > 50) {
-                        iframe.style.height = (height + 25) + 'px';
-                      }
-                    }, 400);
-                  }
-                } catch (err) {
-                  console.warn("Iframe load dynamic resize failed:", err);
-                }
-              }}
-            />
-          </div>
+    return (
+      <div className="mt-3 flex flex-col items-center w-full">
+        <div className="text-[11px] text-indigo-400 font-extrabold mb-1 select-none flex items-center gap-1.5 w-full justify-start">
+          <span>🖼️ 첨부된 문제 그래프/그림</span>
         </div>
-      );
-    }
-
-    return null;
+        <div className="w-full overflow-hidden rounded-xl border border-slate-700 bg-white shadow-inner min-h-[180px]">
+          <iframe 
+            src={`${API_BASE}/api/topics/${resolvedTopicId}/pdf?part=screenshot`} 
+            className="w-full border-0 block"
+            style={{ minHeight: '350px', height: '350px', backgroundColor: '#ffffff' }}
+            sandbox="allow-scripts allow-same-origin"
+            onLoad={(e) => {
+              const iframe = e.target;
+              try {
+                const doc = iframe.contentWindow?.document;
+                if (doc && doc.body) {
+                  setTimeout(() => {
+                    const height = Math.max(
+                      doc.body.scrollHeight,
+                      doc.documentElement.scrollHeight,
+                      doc.body.offsetHeight,
+                      doc.documentElement.offsetHeight
+                    );
+                    if (height > 50) {
+                      iframe.style.height = (height + 25) + 'px';
+                    }
+                  }, 400);
+                }
+              } catch (err) {
+                console.warn("Iframe load dynamic resize failed:", err);
+              }
+            }}
+          />
+        </div>
+      </div>
+    );
   };
   
   if (conditionMatch) {
