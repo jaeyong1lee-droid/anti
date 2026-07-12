@@ -208,6 +208,80 @@ function parseFormula(str) {
   return parseExpr();
 }
 
+const translateKoreanEngineeringSymbol = (input) => {
+  if (!input) return '';
+  let str = input.trim();
+  
+  const greekMap = {
+    '알파': 'α',
+    '베타': 'β',
+    '감마': 'γ',
+    '델타': 'δ',
+    '대문자 델타': 'Δ',
+    '대문자델타': 'Δ',
+    '엡실론': 'ε',
+    '입실론': 'υ',
+    '제타': 'ζ',
+    '에타': 'η',
+    '세타': 'θ',
+    '쎄타': 'θ',
+    '이오타': 'ι',
+    '카파': 'κ',
+    '람다': 'λ',
+    '뮤': 'μ',
+    '뉴': 'ν',
+    '크시': 'ξ',
+    '크사이': 'ξ',
+    '파이': 'π',
+    '로': 'ρ',
+    '시그마': 'σ',
+    '대문자 시그마': 'Σ',
+    '대문자시그마': 'Σ',
+    '타우': 'τ',
+    '피': 'φ',
+    '키': 'χ',
+    '카이': 'χ',
+    '프시': 'ψ',
+    '프사이': 'ψ',
+    '오메가': 'ω',
+    '대문자 오메가': 'Ω',
+    '대문자오메가': 'Ω'
+  };
+
+  for (const koKey of Object.keys(greekMap)) {
+    const symbol = greekMap[koKey];
+    const escapedKey = koKey.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+    const regex = new RegExp(`^${escapedKey}(?:[\\s_]+)?([a-zA-Z0-9가-힣]+)$`, 'i');
+    const match = str.match(regex);
+    if (match) {
+      const sub = match[1];
+      const translatedSub = greekMap[sub] || sub;
+      return `${symbol}_${translatedSub}`;
+    }
+  }
+
+  for (const koKey of Object.keys(greekMap)) {
+    const symbol = greekMap[koKey];
+    str = str.replaceAll(koKey, symbol);
+  }
+
+  return str;
+};
+
+const renderSubscriptText = (text) => {
+  if (!text) return '';
+  if (!text.includes('_')) return text;
+  const parts = text.split('_');
+  const base = parts[0];
+  const sub = parts.slice(1).join('_');
+  return (
+    <span className="inline-flex items-baseline leading-none">
+      <span>{base}</span>
+      <sub className="text-[0.75em] align-baseline relative bottom-[-0.12em] font-normal leading-none ml-[0.5px] scale-[0.9]">{sub}</sub>
+    </span>
+  );
+};
+
 export function ScientificCalculator() {
   const [calcInput, setCalcInput] = useState(() => localStorage.getItem('anti_calc_input') || '');
   const [calcResult, setCalcResult] = useState(() => localStorage.getItem('anti_calc_result') || '');
@@ -472,19 +546,23 @@ export function ScientificCalculator() {
   };
 
   const handleDoubleClickCustomButton = (type, index, currentVal) => {
-    const newVal = prompt("버튼에 등록할 문자나 수식을 입력하세요 (예: e_max, G_s):", currentVal);
+    const childDoc = inputRef.current ? inputRef.current.ownerDocument : document;
+    const childWindow = childDoc.defaultView || window;
+
+    const newVal = childWindow.prompt("버튼에 등록할 문자나 수식을 입력하세요 (예: e_max, 시그마v):", currentVal);
     if (newVal !== null) {
+      const translated = translateKoreanEngineeringSymbol(newVal.trim());
       if (type === 'alphabet') {
         setCustomAlphabetButtons(prev => {
           const updated = [...prev];
-          updated[index] = newVal.trim();
+          updated[index] = translated;
           localStorage.setItem('anti_calc_custom_alphabet', JSON.stringify(updated));
           return updated;
         });
       } else {
         setCustomGreekButtons(prev => {
           const updated = [...prev];
-          updated[index] = newVal.trim();
+          updated[index] = translated;
           localStorage.setItem('anti_calc_custom_greek', JSON.stringify(updated));
           return updated;
         });
@@ -2465,14 +2543,14 @@ export function ScientificCalculator() {
                 key={`custom-alp-${idx}`}
                 type="button"
                 onClick={() => handleCustomButtonClick('alphabet', idx, val)}
-                className={`py-1 rounded border text-[11px] font-bold transition-all active:scale-90 cursor-pointer ${
+                className={`py-1 rounded border text-[11px] font-bold transition-all active:scale-90 cursor-pointer flex items-center justify-center ${
                   val 
                     ? 'bg-slate-800 hover:bg-slate-700 text-indigo-300 border-indigo-900/50' 
                     : 'bg-slate-950/30 hover:bg-slate-900 text-slate-600 border-slate-900 border-dashed'
                 }`}
                 title={val ? `클릭: 입력 | 더블클릭: 편집` : `더블클릭하여 등록`}
               >
-                {val || '+'}
+                {val ? renderSubscriptText(val) : '+'}
               </button>
             ))}
           </div>
@@ -2543,9 +2621,9 @@ export function ScientificCalculator() {
                 type="button"
                 onClick={() => insertAtCursor(item.char)}
                 title={item.label}
-                className="py-1.5 bg-slate-950/60 hover:bg-slate-800 text-amber-400 hover:text-amber-300 rounded border border-slate-800 text-[11px] font-bold transition-all active:scale-90 cursor-pointer"
+                className="py-1.5 bg-slate-950/60 hover:bg-slate-800 text-amber-400 hover:text-amber-300 rounded border border-slate-800 text-[11px] font-bold transition-all active:scale-90 cursor-pointer flex items-center justify-center"
               >
-                {item.char}
+                {renderSubscriptText(item.char)}
               </button>
             ))}
             {/* 10 custom Greek/Engineering preset buttons */}
@@ -2554,14 +2632,14 @@ export function ScientificCalculator() {
                 key={`custom-grk-${idx}`}
                 type="button"
                 onClick={() => handleCustomButtonClick('greek', idx, val)}
-                className={`py-1.5 rounded border text-[11px] font-bold transition-all active:scale-90 cursor-pointer ${
+                className={`py-1.5 rounded border text-[11px] font-bold transition-all active:scale-90 cursor-pointer flex items-center justify-center ${
                   val 
                     ? 'bg-slate-800 hover:bg-slate-700 text-amber-300 border-amber-900/50' 
                     : 'bg-slate-950/30 hover:bg-slate-900 text-slate-600 border-slate-900 border-dashed'
                 }`}
                 title={val ? `클릭: 입력 | 더블클릭: 편집` : `더블클릭하여 등록`}
               >
-                {val || '+'}
+                {val ? renderSubscriptText(val) : '+'}
               </button>
             ))}
           </div>
