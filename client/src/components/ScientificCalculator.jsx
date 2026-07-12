@@ -317,6 +317,29 @@ export function ScientificCalculator() {
     setCursorPosition(0);
   };
 
+  const handleCopyFormula = () => {
+    if (!calcInput) {
+      setStatusMessage('Empty Formula');
+      // Clear message after 1.5 seconds
+      setTimeout(() => {
+        setStatusMessage('');
+      }, 1500);
+      return;
+    }
+    navigator.clipboard.writeText(calcInput)
+      .then(() => {
+        setStatusMessage('Copied!');
+        // Clear message after 1.5 seconds
+        setTimeout(() => {
+          setStatusMessage('');
+        }, 1500);
+      })
+      .catch((err) => {
+        console.error('Failed to copy formula:', err);
+        setStatusMessage('Copy Failed');
+      });
+  };
+
   const getFractions = (currentStr) => {
     const parentMap = computeParenthesisPairs(currentStr);
     const fracs = [];
@@ -1404,6 +1427,9 @@ export function ScientificCalculator() {
         setCalcAngleMode(prev => prev === 'deg' ? 'rad' : 'deg');
         setShiftActive(false);
         break;
+      case 'copy':
+        handleCopyFormula();
+        break;
       case 'on':
         if (!isOn) {
           setIsOn(true);
@@ -2124,7 +2150,7 @@ export function ScientificCalculator() {
             </div>
             
             {renderSilverKey('MODE', 'SETUP', 'mode')}
-            {renderSilverKey('CLR', 'OFF', 'on')}
+            {renderSilverKey('복사', 'COPY', 'copy')}
             
             {renderFuncKey('calc', 'CALC', 'SOLVE', '=')}
             {renderFuncKey('integration', '∫dx', 'd/dx', ':')}
@@ -2185,6 +2211,77 @@ export function ScientificCalculator() {
             {renderNumPadKey('×10ˣ', () => appendToInput('*10^()'))}
             {renderNumPadKey('Ans', () => appendToInput('Ans'), 'operator')}
             {renderNumPadKey('=', handleEqual, 'equal')}
+          </div>
+        </div>
+      </div>
+
+      {/* Quick Insert Panel for variables and Greek letters */}
+      <div className="mt-4 p-3 bg-slate-900/60 rounded-xl border border-slate-800 select-none">
+        <div className="text-[11px] font-black text-slate-400 mb-2.5 tracking-wide uppercase flex items-center gap-1.5">
+          <span>📝 Quick Insert (영어 소문자 & 그리스 문자)</span>
+          <span className="text-[9px] font-normal text-slate-500 lowercase">(클릭 시 커서 위치에 입력됩니다)</span>
+        </div>
+        
+        {/* a-z alphabet buttons */}
+        <div className="mb-3">
+          <div className="text-[10px] font-bold text-slate-500 mb-1">Alphabet (a-z)</div>
+          <div className="grid grid-cols-6 sm:grid-cols-13 gap-1.5">
+            {['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z'].map(char => (
+              <button
+                key={char}
+                type="button"
+                onClick={() => insertAtCursor(char)}
+                className="py-1 bg-slate-950/60 hover:bg-slate-800 text-slate-300 hover:text-white rounded border border-slate-800 text-[12px] font-bold transition-all active:scale-90 cursor-pointer"
+              >
+                {char}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Greek letter buttons */}
+        <div>
+          <div className="text-[10px] font-bold text-slate-500 mb-1">Greek Symbols</div>
+          <div className="grid grid-cols-6 sm:grid-cols-10 gap-1.5">
+            {[
+              { label: 'α (alpha)', char: 'α' },
+              { label: 'β (beta)', char: 'β' },
+              { label: 'γ (gamma)', char: 'γ' },
+              { label: 'δ (delta)', char: 'δ' },
+              { label: 'ε (epsilon)', char: 'ε' },
+              { label: 'ζ (zeta)', char: 'ζ' },
+              { label: 'η (eta)', char: 'η' },
+              { label: 'θ (theta)', char: 'θ' },
+              { label: 'ι (iota)', char: 'ι' },
+              { label: 'κ (kappa)', char: 'κ' },
+              { label: 'λ (lambda)', char: 'λ' },
+              { label: 'μ (mu)', char: 'μ' },
+              { label: 'ν (nu)', char: 'ν' },
+              { label: 'ξ (xi)', char: 'ξ' },
+              { label: 'π (pi)', char: 'π' },
+              { label: 'ρ (rho)', char: 'ρ' },
+              { label: 'σ (sigma)', char: 'σ' },
+              { label: 'τ (tau)', char: 'τ' },
+              { label: 'υ (upsilon)', char: 'υ' },
+              { label: 'φ (phi)', char: 'φ' },
+              { label: 'χ (chi)', char: 'χ' },
+              { label: 'ψ (psi)', char: 'ψ' },
+              { label: 'ω (omega)', char: 'ω' },
+              { label: 'Δ (Delta)', char: 'Δ' },
+              { label: 'Σ (Sigma)', char: 'Σ' },
+              { label: 'Φ (Phi)', char: 'Φ' },
+              { label: 'Ω (Omega)', char: 'Ω' }
+            ].map(item => (
+              <button
+                key={item.char}
+                type="button"
+                onClick={() => insertAtCursor(item.char)}
+                title={item.label}
+                className="py-1 bg-slate-950/60 hover:bg-slate-800 text-amber-500 hover:text-amber-400 rounded border border-slate-800 text-[12px] font-bold transition-all active:scale-90 cursor-pointer"
+              >
+                {item.char}
+              </button>
+            ))}
           </div>
         </div>
       </div>
