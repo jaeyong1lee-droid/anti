@@ -1126,20 +1126,7 @@ export const TableQuiz = React.memo(function TableQuiz({
             storageKey={"anti_popout_table_main_" + mainTableUniqueId}
           >
             <div className="w-full h-full flex flex-col overflow-hidden text-slate-100 p-4 sm:p-5 bg-[#020617]">
-              {/* Header inside popout to allow toggling back to floating overlay (always on top) */}
-              <div className="flex items-center justify-between px-2.5 py-1.5 mb-2.5 bg-slate-900 border border-slate-800 rounded-xl select-none shrink-0">
-                <div className="text-[10px] text-slate-400 font-bold">
-                  독립 팝업 창 모드
-                </div>
-                <button
-                  type="button"
-                  onClick={togglePopoutMode}
-                  className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-sky-400 hover:text-sky-300 border border-slate-700 rounded text-[9px] font-black transition-colors cursor-pointer"
-                  title="메인 화면 내부의 항상 위에 고정된 창으로 전환합니다"
-                >
-                  화면 내 고정 (항상위)
-                </button>
-              </div>
+
 
               {/* Table wrapper with elegant border gradient and shadow */}
               <div className="flex-1 w-full h-full flex flex-col overflow-hidden bg-slate-900/40 rounded-2xl border border-slate-800/80 p-3 sm:p-4 shadow-[0_20px_50px_rgba(0,0,0,0.5)] relative">
@@ -1470,20 +1457,7 @@ export const TableQuiz = React.memo(function TableQuiz({
             storageKey={"anti_popout_table_comp_" + compTableUniqueId}
           >
             <div className="w-full h-full flex flex-col overflow-hidden text-slate-100 p-4 sm:p-5 bg-[#020617]">
-              {/* Header inside popout to allow toggling back to floating overlay (always on top) */}
-              <div className="flex items-center justify-between px-2.5 py-1.5 mb-2.5 bg-slate-900 border border-slate-800 rounded-xl select-none shrink-0">
-                <div className="text-[10px] text-slate-400 font-bold">
-                  독립 팝업 창 모드
-                </div>
-                <button
-                  type="button"
-                  onClick={togglePopoutMode}
-                  className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-sky-400 hover:text-sky-300 border border-slate-700 rounded text-[9px] font-black transition-colors cursor-pointer"
-                  title="메인 화면 내부의 항상 위에 고정된 창으로 전환합니다"
-                >
-                  화면 내 고정 (항상위)
-                </button>
-              </div>
+
 
               {/* Table wrapper with elegant border gradient and shadow */}
               <div className="flex-1 w-full h-full flex flex-col overflow-hidden bg-slate-900/40 rounded-2xl border border-slate-800/80 p-3 sm:p-4 shadow-[0_20px_50px_rgba(0,0,0,0.5)] relative">

@@ -342,21 +342,6 @@ export function FloatingMemorization({
 
   const content = (
     <div className="floating-memorization-popup w-full h-full flex flex-col overflow-hidden text-slate-100 bg-slate-950">
-      {activeUsePopout && (
-        <div className="flex items-center justify-between px-3.5 py-1.5 bg-slate-900 border-b border-slate-800 select-none shrink-0">
-          <div className="text-[10px] text-slate-400 font-bold">
-            독립 팝업 창 모드
-          </div>
-          <button
-            type="button"
-            onClick={togglePopoutMode}
-            className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-violet-400 hover:text-violet-300 border border-slate-700 rounded text-[9px] font-black transition-colors cursor-pointer"
-            title="메인 화면 내부의 항상 위에 고정된 창으로 전환합니다"
-          >
-            화면 내 고정 (항상위)
-          </button>
-        </div>
-      )}
       {/* Header */}
       {!activeUsePopout && (
         <div 
