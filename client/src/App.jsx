@@ -4959,6 +4959,61 @@ export default function App() {
     }
   }, [isPinVerified, isDesktop, isLockscreenQuizEnabled]);
 
+  // [iOS 수평 드래그 차단] React onTouchMove는 iOS Safari에서 passive 처리되어 preventDefault가 무시됨.
+  // document에 native non-passive touchmove 리스너를 달아 모바일 세로 모드에서 수평 드래그를 차단한다.
+  // 단, .markdown-table-container / .overflow-x-auto / .table-quiz-container 안에서의 수평 드래그는 허용.
+  useEffect(() => {
+    let _startX = 0;
+    let _startY = 0;
+
+    const _onTouchStart = (e) => {
+      if (e.touches && e.touches.length > 0) {
+        _startX = e.touches[0].clientX;
+        _startY = e.touches[0].clientY;
+      }
+    };
+
+    const _onTouchMove = (e) => {
+      // 세로 모드 좁은 화면에서만 동작
+      if (window.innerWidth > 767) return;
+      if (!e.cancelable) return;
+
+      const deltaX = Math.abs(e.touches[0].clientX - _startX);
+      const deltaY = Math.abs(e.touches[0].clientY - _startY);
+
+      // 수평 스와이프가 수직보다 강할 때
+      if (deltaX > deltaY && deltaX > 5) {
+        // 터치 타겟이 가로 스크롤 가능한 컨테이너 안인지 확인
+        let el = e.target;
+        let insideHScroll = false;
+        while (el && el !== document.body) {
+          if (el.classList && (
+            el.classList.contains('markdown-table-container') ||
+            el.classList.contains('overflow-x-auto') ||
+            el.classList.contains('overflow-auto') ||
+            el.classList.contains('table-quiz-container') ||
+            el.classList.contains('landscape-overflow-x-auto')
+          )) {
+            insideHScroll = true;
+            break;
+          }
+          el = el.parentElement;
+        }
+        if (!insideHScroll) {
+          e.preventDefault(); // 페이지/오버레이 수평 이동 차단
+        }
+      }
+    };
+
+    document.addEventListener('touchstart', _onTouchStart, { passive: true });
+    document.addEventListener('touchmove', _onTouchMove, { passive: false }); // ← passive: false 필수
+
+    return () => {
+      document.removeEventListener('touchstart', _onTouchStart);
+      document.removeEventListener('touchmove', _onTouchMove);
+    };
+  }, []); // 마운트 시 1회만 등록
+
   const chatBodyRef = useRef(null);
   const tutorFileInputRef = useRef(null);
   const mobileTutorFileInputRef = useRef(null);
@@ -21176,42 +21231,11 @@ ${itemsStr}
                   }
                 }}
                 onTouchStart={(e) => {
-                  examTouchStartX.current = e.touches[0].clientX;
                   if (!isDesktop && !isMobileLandscape && examBodyRef.current && examBodyRef.current.scrollTop === 0) {
                     examTouchStartY.current = e.touches[0].clientY;
                   }
                 }}
                 onTouchMove={(e) => {
-                  // [iOS 수평 드래그 차단] 수평 스와이프가 감지될 때, 가로 스크롤 가능한 컨테이너
-                  // (.markdown-table-container, .overflow-x-auto 등) 내부가 아니면 차단한다.
-                  if (!isDesktop && !isMobileLandscape && e.cancelable) {
-                    const touchX = e.touches[0].clientX;
-                    const touchY = e.touches[0].clientY;
-                    const deltaX = Math.abs(touchX - (examTouchStartX.current || touchX));
-                    const deltaY = Math.abs(touchY - examTouchStartY.current);
-                    if (deltaX > deltaY && deltaX > 5) {
-                      // 수평 스와이프: 터치 대상이 가로 스크롤 컨테이너 안인지 확인
-                      let el = e.target;
-                      let insideHScroll = false;
-                      while (el && el !== examBodyRef.current) {
-                        if (
-                          el.classList &&
-                          (el.classList.contains('markdown-table-container') ||
-                           el.classList.contains('overflow-x-auto') ||
-                           el.classList.contains('overflow-auto') ||
-                           el.classList.contains('table-quiz-container'))
-                        ) {
-                          insideHScroll = true;
-                          break;
-                        }
-                        el = el.parentElement;
-                      }
-                      if (!insideHScroll) {
-                        e.preventDefault(); // 페이지/컨테이너 수평 이동 차단
-                      }
-                    }
-                  }
-                  // Pull-to-refresh 로직
                   if (!isDesktop && !isMobileLandscape && examBodyRef.current && examBodyRef.current.scrollTop === 0 && !examRefreshing) {
                     const currentY = e.touches[0].clientY;
                     const deltaY = currentY - examTouchStartY.current;
