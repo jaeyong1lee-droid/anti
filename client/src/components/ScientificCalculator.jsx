@@ -2532,7 +2532,7 @@ export function ScientificCalculator() {
                 key={char}
                 type="button"
                 onClick={() => insertAtCursor(char)}
-                className="py-1 bg-slate-950/60 hover:bg-slate-800 text-slate-300 hover:text-white rounded border border-slate-800 text-[12px] font-bold transition-all active:scale-90 cursor-pointer"
+                className="py-1 bg-slate-950/60 hover:bg-slate-800 text-slate-300 hover:text-white rounded border border-slate-800 text-[14px] font-bold transition-all active:scale-90 cursor-pointer"
               >
                 {char}
               </button>
@@ -2543,7 +2543,7 @@ export function ScientificCalculator() {
                 key={`custom-alp-${idx}`}
                 type="button"
                 onClick={() => handleCustomButtonClick('alphabet', idx, val)}
-                className={`py-1 rounded border text-[11px] font-bold transition-all active:scale-90 cursor-pointer flex items-center justify-center ${
+                className={`py-1 rounded border text-[13px] font-bold transition-all active:scale-90 cursor-pointer flex items-center justify-center ${
                   val 
                     ? 'bg-slate-800 hover:bg-slate-700 text-indigo-300 border-indigo-900/50' 
                     : 'bg-slate-950/30 hover:bg-slate-900 text-slate-600 border-slate-900 border-dashed'
@@ -2595,7 +2595,7 @@ export function ScientificCalculator() {
                 type="button"
                 onClick={() => insertAtCursor(item.char)}
                 title={item.label}
-                className="py-1 bg-slate-950/60 hover:bg-slate-800 text-amber-500 hover:text-amber-400 rounded border border-slate-800 text-[12px] font-bold transition-all active:scale-90 cursor-pointer"
+                className="py-1 bg-slate-950/60 hover:bg-slate-800 text-amber-500 hover:text-amber-400 rounded border border-slate-800 text-[14px] font-bold transition-all active:scale-90 cursor-pointer"
               >
                 {item.display || item.char}
               </button>
@@ -2621,7 +2621,7 @@ export function ScientificCalculator() {
                 type="button"
                 onClick={() => insertAtCursor(item.char)}
                 title={item.label}
-                className="py-1.5 bg-slate-950/60 hover:bg-slate-800 text-amber-400 hover:text-amber-300 rounded border border-slate-800 text-[11px] font-bold transition-all active:scale-90 cursor-pointer flex items-center justify-center"
+                className="py-1.5 bg-slate-950/60 hover:bg-slate-800 text-amber-400 hover:text-amber-300 rounded border border-slate-800 text-[13px] font-bold transition-all active:scale-90 cursor-pointer flex items-center justify-center"
               >
                 {renderSubscriptText(item.char)}
               </button>
@@ -2632,7 +2632,7 @@ export function ScientificCalculator() {
                 key={`custom-grk-${idx}`}
                 type="button"
                 onClick={() => handleCustomButtonClick('greek', idx, val)}
-                className={`py-1.5 rounded border text-[11px] font-bold transition-all active:scale-90 cursor-pointer flex items-center justify-center ${
+                className={`py-1.5 rounded border text-[13px] font-bold transition-all active:scale-90 cursor-pointer flex items-center justify-center ${
                   val 
                     ? 'bg-slate-800 hover:bg-slate-700 text-amber-300 border-amber-900/50' 
                     : 'bg-slate-950/30 hover:bg-slate-900 text-slate-600 border-slate-900 border-dashed'
