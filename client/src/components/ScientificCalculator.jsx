@@ -148,9 +148,51 @@ function parseFormula(str) {
           endIdx: closeIdx + 1
         });
         i = closeIdx + 1;
+      } else if (str.startsWith('_(', i)) {
+        const startIdx = i;
+        const openIdx = i + 1;
+        const closeIdx = parentMap[openIdx];
+        if (closeIdx === undefined) {
+          nodes.push({ type: 'text', content: '_(', startIdx: i, endIdx: i + 2 });
+          i += 2;
+          continue;
+        }
+        const subStartIdx = openIdx + 1;
+        const subEndIdx = closeIdx;
+        nodes.push({
+          type: 'subscript',
+          subStartIdx,
+          subEndIdx,
+          subStr: str.substring(subStartIdx, subEndIdx),
+          startIdx,
+          endIdx: closeIdx + 1
+        });
+        i = closeIdx + 1;
+      } else if (str[i] === '_') {
+        const startIdx = i;
+        i++;
+        let subContentStart = i;
+        const varCharRegex = /[a-zA-Z\u0370-\u03ff0-9]/;
+        while (i < str.length && varCharRegex.test(str[i])) {
+          i++;
+        }
+        const subContentEnd = i;
+        nodes.push({
+          type: 'subscript',
+          subStartIdx: subContentStart,
+          subEndIdx: subContentEnd,
+          subStr: str.substring(subContentStart, subContentEnd),
+          startIdx,
+          endIdx: subContentEnd
+        });
       } else {
         let start = i;
-        while (i < str.length && !str.startsWith('frac(', i) && !str.startsWith('^(', i) && !str.startsWith('sqrt(', i)) {
+        while (i < str.length && 
+               !str.startsWith('frac(', i) && 
+               !str.startsWith('^(', i) && 
+               !str.startsWith('sqrt(', i) && 
+               !str.startsWith('_(', i) && 
+               str[i] !== '_') {
           i++;
         }
         nodes.push({
@@ -1819,6 +1861,14 @@ export function ScientificCalculator() {
           startIdx: node.startIdx + offset,
           endIdx: node.endIdx + offset
         };
+      } else if (node.type === 'subscript') {
+        return {
+          ...node,
+          subStartIdx: node.subStartIdx + offset,
+          subEndIdx: node.subEndIdx + offset,
+          startIdx: node.startIdx + offset,
+          endIdx: node.endIdx + offset
+        };
       }
       return node;
     };
@@ -1914,6 +1964,27 @@ export function ScientificCalculator() {
                 )}
                 {renderCursor(node.sqrtEndIdx)}
               </span>
+            </span>
+          );
+        } else if (node.type === 'subscript') {
+          const isEmpty = node.subStr === '';
+          const wrapperClass = isEmpty
+            ? `inline-flex items-center justify-center align-sub text-[0.65em] font-black border border-dashed border-[#202528]/40 rounded-[1px] p-0.5 min-w-[16px] min-h-[16px] ml-0.5 leading-none bg-[#202528]/25`
+            : `inline-flex items-center justify-center align-sub text-[0.65em] font-black ml-0.5 leading-none`;
+
+          return (
+            <span 
+              key={index}
+              className={wrapperClass} 
+              style={{ position: 'relative', bottom: '-0.3em' }}
+              data-index={node.subEndIdx}
+            >
+              {isEmpty ? (
+                <span className="w-2.5 h-3.5 inline-block"></span>
+              ) : (
+                renderTree(parseFormula(str.substring(node.subStartIdx, node.subEndIdx)).map(n => shiftIndices(n, node.subStartIdx)))
+              )}
+              {renderCursor(node.subEndIdx)}
             </span>
           );
         }

@@ -2336,7 +2336,9 @@ export default function App() {
       localStorage.setItem('anti_last_neon_sync_time', date.toISOString());
     }
   };
-  const [showFloatingCalculator, setShowFloatingCalculator] = useState(false);
+  const [showFloatingCalculator, setShowFloatingCalculator] = useState(() => {
+    return localStorage.getItem('anti_show_floating_calculator') === 'true';
+  });
   const [showFloatingMemorization, setShowFloatingMemorization] = useState(() => {
     return localStorage.getItem('anti_show_floating_memorization') === 'true';
   });
@@ -14128,6 +14130,10 @@ ${itemsStr}
   useEffect(() => {
     localStorage.setItem('anti_show_floating_memorization', showFloatingMemorization);
   }, [showFloatingMemorization]);
+
+  useEffect(() => {
+    localStorage.setItem('anti_show_floating_calculator', showFloatingCalculator);
+  }, [showFloatingCalculator]);
 
   useEffect(() => {
     localStorage.setItem('anti_expanded_overview_ids', JSON.stringify(expandedOverviewIds));

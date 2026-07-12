@@ -45,7 +45,7 @@ export const PopoutWindow = ({ title, onClose, children, initWidth = 720, initHe
     
     const newWindow = window.open(
       '/popout.html',
-      '_blank',
+      storageKey || '_blank',
       features
     );
 
@@ -173,10 +173,9 @@ export const PopoutWindow = ({ title, onClose, children, initWidth = 720, initHe
       }
     }, 200);
 
+    let isParentUnloading = false;
     const handleParentUnload = () => {
-      if (newWindow && !newWindow.closed) {
-        newWindow.close();
-      }
+      isParentUnloading = true;
     };
     window.addEventListener('beforeunload', handleParentUnload);
 
@@ -185,7 +184,9 @@ export const PopoutWindow = ({ title, onClose, children, initWidth = 720, initHe
       if (checkInterval) clearInterval(checkInterval);
       if (closeCheckInterval) clearInterval(closeCheckInterval);
       window.removeEventListener('beforeunload', handleParentUnload);
-      if (newWindow && !newWindow.closed) {
+      
+      // Only close the child window if the parent is NOT reloading/unloading (e.g. normal React unmount)
+      if (newWindow && !newWindow.closed && !isParentUnloading) {
         newWindow.removeEventListener('beforeunload', handleUnload);
         newWindow.removeEventListener('load', onWindowLoad);
         newWindow.close();
