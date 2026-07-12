@@ -1080,6 +1080,7 @@ export const TableQuiz = React.memo(function TableQuiz({
             onClose={() => setFloatedTableId(null)}
             initWidth={floatedSize.width}
             initHeight={floatedSize.height}
+            storageKey={"anti_popout_table_main_" + tableId}
           >
             <div className="w-full h-full flex flex-col overflow-hidden text-slate-100">
               {tableEl}
@@ -1394,6 +1395,7 @@ export const TableQuiz = React.memo(function TableQuiz({
               onClose={() => setFloatedTableId(null)}
               initWidth={floatedSize.width}
               initHeight={floatedSize.height}
+              storageKey={"anti_popout_table_comp_" + tableId}
             >
               <div className="w-full h-full flex flex-col overflow-hidden text-slate-100">
                 {tableEl}

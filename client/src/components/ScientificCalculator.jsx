@@ -2418,6 +2418,7 @@ export function FloatingCalculator({ isVisible, onClose }) {
         onClose={onClose}
         initWidth={680}
         initHeight={780}
+        storageKey="anti_popout_calculator"
       >
         {content}
       </PopoutWindow>

@@ -1100,6 +1100,7 @@ export function FloatingMemorization({
           onClose={onClose}
           initWidth={720}
           initHeight={650}
+          storageKey="anti_popout_memorization"
         >
           {content}
         </PopoutWindow>
