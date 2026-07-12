@@ -245,8 +245,6 @@ export function FloatingMemorization({
 }) {
   const dragRef = useRef(null);
   const [position, setPosition] = useState(() => {
-    const isMobile = window.innerWidth < 768;
-    const width = isMobile ? window.innerWidth * 0.9 : 720;
     return { x: 80, y: 120 };
   });
   const isDragging = useRef(false);

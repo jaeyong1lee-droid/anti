@@ -2,7 +2,9 @@ import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { LatexRenderer } from './LatexRenderer';
 import { BufferedTextarea } from './BufferedInput';
 import { PopoutWindow } from './PopoutWindow';
-import { getTableScoreColorTheme, areCellsEqual } from '../utils/renderingHelpers';
+import { getTableScoreColorTheme, areCellsEqual, isOverviewReview as isOverviewReviewHelper } from '../utils/renderingHelpers';
+
+const normalize = (s) => (s || '').trim().toLowerCase().replace(/\s+/g, '');
 
 export const TableQuiz = React.memo(function TableQuiz({ 
   questionIdx, 
@@ -27,7 +29,7 @@ export const TableQuiz = React.memo(function TableQuiz({
     return <div className="text-red-400 text-xs py-2">오류: 표 데이터가 올바르지 않습니다.</div>;
   }
 
-  const isOverviewReview = (q.question.startsWith("[개요 복습]") || q.mixedType === "overview" || q.subtype === "개요") && !!q.comparisonTableData;
+  const isOverviewReview = isOverviewReviewHelper(q);
 
   const getTableInputIds = () => {
     const firstTableInputs = [];
@@ -83,7 +85,6 @@ export const TableQuiz = React.memo(function TableQuiz({
             const inputIdx = inputIds.indexOf(inputId);
             const inputLetter = String.fromCharCode(65 + (inputIdx !== -1 ? inputIdx : 0));
             
-            const normalize = (s) => (s || '').trim().toLowerCase().replace(/\s+/g, '');
             const isCorrect = gradingResult 
               ? gradingResult.isCorrect 
               : (normalize(value) === normalize(correctAnswer));
@@ -1136,7 +1137,6 @@ export const TableQuiz = React.memo(function TableQuiz({
                     const value = tableAnswers[`${questionIdx}_${inputId}`] || '';
                     const correctAnswer = q.answers?.[inputId] || '';
                     
-                    const normalize = (s) => (s || '').trim().toLowerCase().replace(/\s+/g, '');
                     const gradingResult = tableGradingResults?.[`${questionIdx}_${inputId}`];
                     const isCorrect = gradingResult 
                       ? gradingResult.isCorrect 
@@ -1480,7 +1480,6 @@ export const TableQuiz = React.memo(function TableQuiz({
                       const value = tableAnswers[`${questionIdx}_${inputId}`] || '';
                       const correctAnswer = q.answers?.[inputId] || '';
                       
-                      const normalize = (s) => (s || '').trim().toLowerCase().replace(/\s+/g, '');
                       const gradingResult = tableGradingResults?.[`${questionIdx}_${inputId}`];
                       const isCorrect = gradingResult 
                         ? gradingResult.isCorrect 

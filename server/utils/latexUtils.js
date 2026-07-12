@@ -27,6 +27,17 @@ export function tokenizeForHealing(text) {
   return tokens;
 }
 
+const BACKSLASH_KEYWORDS = [
+  'sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta', 'Delta', 'Sigma', 'Gamma', 'Phi', 'Theta', 'Omega', 'nu',
+  'frac', 'dfrac', 'sqrt', 'cdot', 'times', 'div', 'pm', 'infty', 'partial', 'sum', 'int', 'sim',
+  'le', 'ge', 'lt', 'gt', 'sin', 'cos', 'tan', 'rightarrow', 'leftarrow', 'circ'
+];
+
+const BACKSLASH_REGEXES = BACKSLASH_KEYWORDS.map(kw => ({
+  kw,
+  regex: new RegExp(`(?<!\\\\)\\b${kw}\\b`, 'g')
+}));
+
 // 2. 누락된 백슬래시 일괄 복구
 export function healBackslashes(str) {
   if (!str) return str;
@@ -34,14 +45,7 @@ export function healBackslashes(str) {
   healed = healed.replace(/(?<!\\)\b(log|ln)\b/g, '\\$1')
                  .replace(/(?<!\\)\b(log|ln)(?=[pt_0-9])/g, '\\$1 ');
 
-  const keywords = [
-    'sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta', 'Delta', 'Sigma', 'Gamma', 'Phi', 'Theta', 'Omega', 'nu',
-    'frac', 'dfrac', 'sqrt', 'cdot', 'times', 'div', 'pm', 'infty', 'partial', 'sum', 'int', 'sim',
-    'le', 'ge', 'lt', 'gt', 'sin', 'cos', 'tan', 'rightarrow', 'leftarrow', 'circ'
-  ];
-
-  keywords.forEach(kw => {
-    const regex = new RegExp(`(?<!\\\\)\\b${kw}\\b`, 'g');
+  BACKSLASH_REGEXES.forEach(({ kw, regex }) => {
     healed = healed.replace(regex, `\\${kw}`);
   });
   return healed;

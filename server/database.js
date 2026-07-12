@@ -426,36 +426,45 @@ async function migrateSchedulesTable() {
         console.log('Cloud PostgreSQL schedules and topics tables migration checked.');
       }
     } else {
-      try {
+      const schedulesCols = await dbQuery.all("PRAGMA table_info(schedules)");
+      const schedulesNames = schedulesCols.map(c => c.name);
+      if (!schedulesNames.includes('score')) {
         await dbQuery.run(`ALTER TABLE schedules ADD COLUMN score REAL`);
-      } catch (e) {}
-      try {
+      }
+      if (!schedulesNames.includes('correct_count')) {
         await dbQuery.run(`ALTER TABLE schedules ADD COLUMN correct_count INTEGER`);
-      } catch (e) {}
-      try {
+      }
+      if (!schedulesNames.includes('total_count')) {
         await dbQuery.run(`ALTER TABLE schedules ADD COLUMN total_count INTEGER`);
-      } catch (e) {}
-      try {
-        await dbQuery.run(`CREATE INDEX IF NOT EXISTS idx_schedules_topic_id ON schedules(topic_id)`);
-      } catch (e) {}
-      try {
-        await dbQuery.run(`CREATE INDEX IF NOT EXISTS idx_schedules_status ON schedules(status)`);
-      } catch (e) {}
-      try {
+      }
+
+      await dbQuery.run(`CREATE INDEX IF NOT EXISTS idx_schedules_topic_id ON schedules(topic_id)`);
+      await dbQuery.run(`CREATE INDEX IF NOT EXISTS idx_schedules_status ON schedules(status)`);
+
+      const topicsCols = await dbQuery.all("PRAGMA table_info(topics)");
+      const topicsNames = topicsCols.map(c => c.name);
+      if (!topicsNames.includes('category')) {
         await dbQuery.run(`ALTER TABLE topics ADD COLUMN category TEXT DEFAULT '일반'`);
-      } catch (e) {}
-      try {
+      }
+      if (!topicsNames.includes('extracted_text')) {
         await dbQuery.run(`ALTER TABLE topics ADD COLUMN extracted_text TEXT`);
-      } catch (e) {}
-      try {
+      }
+      if (!topicsNames.includes('pdf_url')) {
         await dbQuery.run(`ALTER TABLE topics ADD COLUMN pdf_url TEXT`);
-      } catch (e) {}
-      try {
+      }
+
+      const reportCols = await dbQuery.all("PRAGMA table_info(answersheet_reports)");
+      const reportNames = reportCols.map(c => c.name);
+      if (!reportNames.includes('pdf_url')) {
         await dbQuery.run(`ALTER TABLE answersheet_reports ADD COLUMN pdf_url TEXT`);
-      } catch (e) {}
-      try {
+      }
+
+      const sessionCols = await dbQuery.all("PRAGMA table_info(app_session)");
+      const sessionNames = sessionCols.map(c => c.name);
+      if (!sessionNames.includes('updated_at')) {
         await dbQuery.run(`ALTER TABLE app_session ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP`);
-      } catch (e) {}
+      }
+
       console.log('Local SQLite schedules and topics tables migration checked.');
     }
   } catch (err) {

@@ -60,7 +60,9 @@ async function getFormattedTopicInstructions(topicId) {
         return '\n[🚨 이 토픽(' + topicId + ')의 전용 문제 출제 및 변환 지침 - 반드시 반영하십시오]:\n' + formatted + '\n';
       }
     }
-  } catch (e) {}
+  } catch (e) {
+    console.error('getFormattedTopicInstructions error:', e);
+  }
   return '';
 }
 
@@ -270,7 +272,6 @@ function parseMarkdownTableServer(questionText) {
 // POST /api/question/regenerate -> Regenerate a single question
 router.post('/question/regenerate', async (req, res) => {
   const { mode, topicId, currentQuestion, questionIdx, allQuestions, targetTypeSelection } = req.body;
-  const topicInstructionsPrompt = await getFormattedTopicInstructions(topicId);
   const progressId = req.query.progressId || req.body.progressId;
   let standardsAnalysis = '';
   let progressTimer = null;
@@ -672,7 +673,9 @@ ${formatRequirement}`;
               const parsed = await pdfParse(topic.pdf_data);
               fileText = parsed.text || '';
             }
-          } catch (e) {}
+          } catch (e) {
+            console.warn('Failed to extract text from file buffer in mixed pool:', e);
+          }
           fileText = fileUtils.mergeVerticalText(fileText);
         }
         if (fileText.length > 1000) fileText = fileText.substring(0, 1000);
@@ -748,7 +751,6 @@ ${ENGINEERING_STANDARDS}
 // POST /api/question/adjust -> Adjust a single question based on user feedback
 router.post('/question/adjust', async (req, res) => {
   const { mode, topicId, currentQuestion, questionIdx, userFeedback } = req.body;
-  const topicInstructionsPrompt = await getFormattedTopicInstructions(topicId);
   const progressId = req.query.progressId || req.body.progressId;
   const localCallLLM = (sys, prompt, img, scenario, opts) => 
     callLLMWithFailover(sys, prompt, img, scenario, { ...opts, progressId });
@@ -840,8 +842,12 @@ ${ENGINEERING_STANDARDS}
                )`,
               [finalTopicId, finalTopicId]
             );
-          } catch (pruneErr) {}
-        } catch (e) {}
+          } catch (pruneErr) {
+            console.error('Failed to prune question_adjustments:', pruneErr);
+          }
+        } catch (e) {
+          console.error('Failed to insert question_adjustments:', e);
+        }
       }
 
       const healedQ = healQuizQuestionObject({
@@ -907,7 +913,9 @@ ${ENGINEERING_STANDARDS}
               const parsed = await pdfParse(topic.pdf_data);
               fileText = parsed.text || '';
             }
-          } catch (e) {}
+          } catch (e) {
+            console.warn('Failed to extract text from file buffer in single adjust:', e);
+          }
           fileText = fileUtils.mergeVerticalText(fileText);
         }
         if (fileText.length > 1000) fileText = fileText.substring(0, 1000);

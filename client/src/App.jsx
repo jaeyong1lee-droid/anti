@@ -591,10 +591,7 @@ const getOrCreateSessionId = (topicId, scheduleId, reviewRound) => {
   return `sess_topic_${topicId}_round_${roundVal}`;
 };
 
-const renewSessionId = (topicId, scheduleId, reviewRound) => {
-  const roundVal = reviewRound || '99';
-  return `sess_topic_${topicId}_round_${roundVal}`;
-};
+
 
 const LOCAL_DISTRACTOR_FORMULAS = [
   {
@@ -681,284 +678,6 @@ const clientExtractVariables = (mathContent) => {
   return uniqueVars.map(v => `* $${v}$: (이 기호의 공학적 정의를 입력해 보세요)`).join('\n\n');
 };
 
-const cleanCorruptedFormula = (formula) => {
-  if (!formula || typeof formula !== 'string') return formula;
-  
-  let cleaned = formula;
-  if (cleaned.includes('color:#cc0000') || cleaned.includes('math mode at position')) {
-    const match = cleaned.match(/color:#cc0000"\s*>\s*([^<]+?)\s*<\s*\/\s*span\s*>/i) ||
-                  cleaned.match(/color:#cc0000"\s*&gt;\s*([^&]+?)\s*&lt;\s*\/\s*span\s*&gt;/i);
-                  
-    if (match) {
-      const coreMath = match[1].trim();
-      const closingSpanIndex = cleaned.search(/<\s*\/\s*span\s*>/i);
-      let rest = '';
-      if (closingSpanIndex !== -1) {
-        const restStart = cleaned.indexOf('>', closingSpanIndex);
-        if (restStart !== -1) {
-          rest = cleaned.substring(restStart + 1);
-        }
-      } else {
-        const closingSpanIndexEntity = cleaned.search(/&lt;\s*\/\s*span\s*&gt;/i);
-        if (closingSpanIndexEntity !== -1) {
-          const restStart = cleaned.indexOf('&gt;', closingSpanIndexEntity);
-          if (restStart !== -1) {
-            rest = cleaned.substring(restStart + 4);
-          }
-        }
-      }
-      
-      let cleanRest = rest
-        .replace(/<\s*\/\s*(span|div|p)\s*>/gi, '')
-        .replace(/<\s*(div|span|p)[^>]*>/gi, '')
-        .replace(/&lt;\s*\/\s*(span|div|p)\s*&gt;/gi, '')
-        .replace(/&lt;\s*(div|span|p)[^&]*&gt;/gi, '')
-        .trim();
-        
-      cleaned = `$$${coreMath}$$\n\n${cleanRest}`;
-    }
-  }
-  return cleaned;
-};
-
-const healCorruptedKatexHtml = (text) => {
-  if (!text || typeof text !== 'string') return text;
-  
-  let cleaned = text.replace(/\u200b/g, '');
-  
-  const cleanAndSplitFormula = (formula) => {
-    let clean = formula.trim().replace(/\\+/g, '\\');
-    // Decode basic HTML entities inside formula before parsing/splitting
-    clean = clean.replace(/&#x27;/g, "'")
-                 .replace(/&quot;/g, '"')
-                 .replace(/&lt;/g, '<')
-                 .replace(/&gt;/g, '>')
-                 .replace(/&amp;/g, '&');
-                 
-    // Split by any HTML tags (e.g. </div>, <br>, <a/>)
-    const parts = clean.split(/(?:<[^>]+?>)/gi);
-    return parts.map(p => {
-      const trimmed = p.trim();
-      if (!trimmed) return '';
-      // Math formula check: has math operators/symbols, and is not pure Korean text
-      const isMath = /[\+\-\*\/=_\\^]/.test(trimmed) && !/^[가-힣\s.,:;!]+$/.test(trimmed);
-      const hasKorean = /[가-힣]/.test(trimmed);
-      if (isMath && !hasKorean) {
-        return ` __MATH_FORMULA_START__${trimmed}__MATH_FORMULA_END__ `;
-      } else {
-        return ` ${trimmed} `;
-      }
-    }).join(' ');
-  };
-
-  // 1. Match any annotation block (normal or space-corrupted) and extract formula
-  const annotationRegex = /<\s*annotation[a-z]*\b(?:[^"'>]|"[^"]*"|'[^']*')*?>([\s\S]*?)<\s*\/\s*annotation[a-z]*\s*>/gi;
-  cleaned = cleaned.replace(annotationRegex, (match, formula) => {
-    return cleanAndSplitFormula(formula);
-  });
-  
-  // 1.5. Match any KaTeX error blocks and extract formula from title attribute
-  const errorSpanRegex = /<\s*span\b(?:[^"'>]|"[^"]*"|'[^']*')*?\bclass=["'][^"']*\bkatex-error\b[^"']*["'](?:[^"'>]|"[^"]*"|'[^']*')*?>([\s\S]*?)<\s*\/\s*span\s*>/gi;
-  cleaned = cleaned.replace(errorSpanRegex, (match, errContent) => {
-    const titleMatch = match.match(/title=["']KaTeX error:\s*([\s\S]*?)["']/i);
-    if (titleMatch && titleMatch[1]) {
-      let msg = titleMatch[1];
-      const colonIdx = msg.lastIndexOf(':');
-      if (colonIdx !== -1 && colonIdx < msg.length - 1) {
-        msg = msg.substring(colonIdx + 1);
-      }
-      return cleanAndSplitFormula(msg);
-    }
-    return errContent;
-  });
-  
-  // 2. Strip all KaTeX-related HTML tags (allowing space corruption suffixes and prefix spaces)
-  // Using quote-safe regex to prevent matching '>' inside attribute values
-  const katexTagsRegex = /<\s*\/?\s*(?:div|span|annotation|semantics|math|mrow|msub|msup|mfrac|msqrt|msubsup|mo|mi|mn|mtext|mspace|mstyle|mtd|mtr|mtable)[a-z]*\b(?:[^"'>]|"[^"]*"|'[^']*')*?>/gi;
-  cleaned = cleaned.replace(katexTagsRegex, '');
-  
-  // 3. Restore formula markers with standard dollar signs
-  cleaned = cleaned.replace(/__MATH_FORMULA_START__([\s\S]*?)__MATH_FORMULA_END__/g, (match, formula) => {
-    return ` $${formula}$ `;
-  });
-  
-  return cleaned;
-};
-
-const cleanAndSanitizeMathText = (rawText) => {
-  if (!rawText || typeof rawText !== 'string') return rawText || '';
-  let cleaned = healCorruptedKatexHtml(rawText);
-  cleaned = cleanCorruptedFormula(cleaned);
-  cleaned = cleaned.replace(/&amp;#gt;/gi, '>')
-                   .replace(/&amp;#lt;/gi, '<')
-                   .replace(/&#gt;/gi, '>')
-                   .replace(/&#lt;/gi, '<');
-
-  // ₩lt, \lt, &\lt 등 기괴하게 깨진 HTML 엔티티 및 이스케이프 부등호 기호를 표준 < 및 > 기호로 정밀 복원
-  // 1. 역슬래시가 포함된 경우 (오작동 위험이 없으므로 세미콜론/경계 없이 공격적으로 매칭)
-  cleaned = cleaned.replace(/&amp;\\gt;?/gi, '>')
-                   .replace(/&amp;\\lt;?/gi, '<')
-                   .replace(/&\\gt;?/gi, '>')
-                   .replace(/&\\lt;?/gi, '<')
-  // 2. 역슬래시가 없는 일반 엔티티 (URL 쿼리 파라미터 &gt=10 등과의 충돌 방지를 위해 단어 경계 \b 및 = 제외 필터링 적용)
-                   .replace(/&amp;gt;/gi, '>')
-                   .replace(/&amp;lt;/gi, '<')
-                   .replace(/&amp;gt\b(?!=)/gi, '>')
-                   .replace(/&amp;lt\b(?!=)/gi, '<')
-                   .replace(/&gt;/gi, '>')
-                   .replace(/&lt;/gi, '<')
-                   .replace(/&gt\b(?!=)/gi, '>')
-                   .replace(/&lt\b(?!=)/gi, '<')
-                   .replace(/\\gt\b/gi, '>')
-                   .replace(/\\lt\b/gi, '<');
-
-  cleaned = cleaned.replace(/&amp;lt;/g, '<')
-                   .replace(/&amp;gt;/g, '>')
-                   .replace(/&amp;quot;/g, '"')
-                   .replace(/&amp;apos;/g, "'")
-                   .replace(/&#x27;/g, "'")
-                   .replace(/&quot;/g, '"')
-                   .replace(/&lt;/g, '<')
-                   .replace(/&gt;/g, '>')
-                   .replace(/&amp;/g, '&');
-  
-  // [🚨 핵심] KaTeX HTML 블록 매칭 전에 en-dash/em-dash/math minus를 일반 하이픈으로 정규화
-  // 이렇게 해야 "application/x − tex" → "application/x-tex" 으로 복원되어 annotation 추출 가능
-  cleaned = cleaned.replace(/[–—−]/g, '-');
-  
-  // [🚨 핵심] 𝑘 (U+1D458), 𝐤 (U+1D48C), 𝒌 (U+1D4C0) 및 전각 ｋ/Ｋ를 아스키 k로 정규화하여 정규식 \b(k)\b 매칭 복원
-  cleaned = cleaned.replace(/\uD835\uDC58/g, 'k')
-                   .replace(/\uD835\uDC8C/g, 'k')
-                   .replace(/\uD835\uDCC0/g, 'k')
-                   .replace(/[\uFF4B\uFF2B]/g, 'k');
-  // 태그 속성 주변의 비정상적 공백 정규화 (예: "x - tex" → "x-tex", "py - 1.5" → "py-1.5")
-  // HTML 태그 내부의 속성값에서만 적용 (수식 텍스트의 "1.65 - 1.2" 공백 보존)
-  cleaned = cleaned.replace(/<[^>]+>/g, (tag) => {
-    return tag.replace(/(\w)\s*-\s*(\w)/g, '$1-$2');
-  });
-
-  const katexHtmlRegex = /<(div|span)\b[^>]*?class=["'][^"']*\b(?:formula-scroll-container|katex|inline|katex-display|katex-error)\b[^"']*["'][\s\S]*?<\/\s*\1\s*>/gi;
-  cleaned = cleaned.replace(katexHtmlRegex, (htmlBlock) => {
-    const annotMatch = htmlBlock.match(/<annotation[^>]*?encoding=["']?application\/x-tex["']?[^>]*?>([\s\S]*?)<\/annotation>/i);
-    if (annotMatch && annotMatch[1]) {
-      const formula = annotMatch[1].trim().replace(/\\+/g, '\\');
-      return ` $${formula}$ `;
-    }
-    const errMatch = htmlBlock.match(/title=["']KaTeX error:\s*([\s\S]*?)["']/i);
-    if (errMatch && errMatch[1]) {
-      let msg = errMatch[1].trim();
-      const colonIdx = msg.lastIndexOf(':');
-      if (colonIdx !== -1 && colonIdx < msg.length - 1) {
-        msg = msg.substring(colonIdx + 1);
-      }
-      const formula = msg.trim().replace(/\\+/g, '\\');
-      return ` $${formula}$ `;
-    }
-    return '';
-  });
-
-  // [Self-Healing] 공백이 기괴하게 소멸된 KaTeX HTML 블록(divclass, spanclass 등) 감지 및 원격 복구
-  const spaceCorruptedKatexRegex = /<\s*(div|span)class\b[\s\S]*?<\/\s*\1\s*>/gi;
-  cleaned = cleaned.replace(spaceCorruptedKatexRegex, (htmlBlock) => {
-    const annotMatch = htmlBlock.match(/<\s*annotationencoding\s*=\s*["']?application\/x-tex["']?[^>]*?>([\s\S]*?)<\/\s*annotation\s*>/i) ||
-                       htmlBlock.match(/<annotation[^>]*?encoding=["']?application\/x-tex["']?[^>]*?>([\s\S]*?)<\/annotation>/i);
-    if (annotMatch && annotMatch[1]) {
-      const formula = annotMatch[1].trim().replace(/\\+/g, '\\');
-      return ` $${formula}$ `;
-    }
-    return '';
-  });
-
-  // [🚨 최후의 핵 방어선 🚨] 위 모든 필터를 통과한 잔존 KaTeX HTML 잔해 일괄 제거
-  // annotation 태그가 포함된 대규모 HTML 덩어리를 통째로 잡아 수식을 추출합니다.
-  // 패턴: <...annotation...encoding...application/x-tex...>수식</annotation...> 을 포함하는 블록
-  cleaned = cleaned.replace(/<[^>]*?(?:katex|formula-scroll|katex-display)[^>]*>[\s\S]*?<\/\s*(?:div|span)\s*>/gi, (htmlBlock) => {
-    const annotMatch = htmlBlock.match(/<\s*annotation[^>]*?encoding\s*=\s*["']?application\/x-tex["']?[^>]*?>([\s\S]*?)<\/\s*annotation\s*>/i);
-    if (annotMatch && annotMatch[1]) {
-      const formula = annotMatch[1].trim().replace(/\\+/g, '\\');
-      return ` $${formula}$ `;
-    }
-    return '';
-  });
-
-  // [🚨 태그 완전 붕괴 대응] 이미 공백 정규화 후에도 잡히지 않는 잔해 HTML 태그 일괄 제거
-  // 예: < span class="mord" >, < /span >, < span class="vlist-r" > 등의 단편
-  cleaned = cleaned.replace(/<\s*\/?\s*(?:div|span|annotation|semantics|math|mrow|msub|msup|mfrac|msqrt|msubsup|mo|mi|mn|mtext|mspace|mstyle|mtd|mtr|mtable)\b[^>]*>/gi, '');
-  
-  cleaned = healLatexFormulas(cleaned);
-
-  cleaned = cleaned.replace(/_따라서/g, '따라서');
-
-  cleaned = cleaned.replace(/\\\[(\s*[\s\S]*?\s*)\\\]/g, (match, math) => {
-    return `$$${math}$$`;
-  });
-
-  cleaned = cleaned.replace(/\\\((\s*[\s\S]*?\s*)\\\)/g, (match, math) => {
-    if (/^[가-힣\s,.!?·()]+$/.test(math)) return match;
-    return `$${math}$`;
-  });
-
-  return cleaned;
-};
-
-const stripHtmlTagsFromRawData = (text) => {
-  if (!text || typeof text !== 'string') return text || '';
-  
-  let clean = healCorruptedKatexHtml(text);
-
-  clean = clean.replace(/&#x27;/g, "'")
-               .replace(/&quot;/g, '"')
-               .replace(/&lt;/g, '<')
-               .replace(/&gt;/g, '>')
-               .replace(/&amp;/g, '&');
-
-  // [🚨 핵심] KaTeX HTML 블록 매칭 전에 en-dash/em-dash/math minus를 일반 하이픈으로 정규화
-  clean = clean.replace(/[–—−]/g, '-');
-  // 태그 속성 주변의 비정상적 공백 정규화 (예: "x - tex" → "x-tex", "py - 1.5" → "py-1.5")
-  // HTML 태그 내부의 속성값에서만 적용 (수식 텍스트의 "1.65 - 1.2" 공백 보존)
-  clean = clean.replace(/<[^>]+>/g, (tag) => {
-    return tag.replace(/(\w)\s*-\s*(\w)/g, '$1-$2');
-  });
-
-  const katexHtmlRegex = /<(div|span)\b[^>]*?class=["'](?:formula-scroll-container|katex|inline|katex-display|katex-error)["'][\s\S]*?<\/\s*\1\s*>/gi;
-  clean = clean.replace(katexHtmlRegex, (htmlBlock) => {
-    const annotMatch = htmlBlock.match(/<annotation[^>]*?encoding=["']?application\/x-tex["']?[^>]*?>([\s\S]*?)<\/annotation>/i);
-    if (annotMatch && annotMatch[1]) {
-      const formula = annotMatch[1].trim().replace(/\\+/g, '\\');
-      return ` $${formula}$ `;
-    }
-    const errMatch = htmlBlock.match(/title=["']KaTeX error:\s*([\s\S]*?)["']/i);
-    if (errMatch && errMatch[1]) {
-      let msg = errMatch[1].trim();
-      const colonIdx = msg.lastIndexOf(':');
-      if (colonIdx !== -1 && colonIdx < msg.length - 1) {
-        msg = msg.substring(colonIdx + 1);
-      }
-      const formula = msg.trim().replace(/\\+/g, '\\');
-      return ` $${formula}$ `;
-    }
-    return '';
-  });
-
-  // [🚨 최후 방어선] annotation 포함된 잔존 KaTeX HTML 잔해 일괄 수식 추출
-  clean = clean.replace(/<[^>]*?(?:katex|formula-scroll|katex-display)[^>]*>[\s\S]*?<\/\s*(?:div|span)\s*>/gi, (htmlBlock) => {
-    const annotMatch = htmlBlock.match(/<\s*annotation[^>]*?encoding\s*=\s*["']?application\/x-tex["']?[^>]*?>([\s\S]*?)<\/\s*annotation\s*>/i);
-    if (annotMatch && annotMatch[1]) {
-      const formula = annotMatch[1].trim().replace(/\\+/g, '\\');
-      return ` $${formula}$ `;
-    }
-    return '';
-  });
-
-  // [🚨 태그 완전 붕괴 대응] 잔해 KaTeX/MathML 태그 단편 일괄 제거
-  clean = clean.replace(/<\s*\/?\s*(?:div|span|annotation|semantics|math|mrow|msub|msup|mfrac|msqrt|msubsup|mo|mi|mn|mtext|mspace|mstyle|mtd|mtr|mtable)\b[^>]*>/gi, '');
-
-  clean = healLatexFormulas(clean);
-
-  clean = clean.replace(/<[^>]+>/gi, '');
-  
-  return clean.trim();
-};
 
 
 function parseMarkdownTable(questionText) {
@@ -1986,9 +1705,9 @@ export default function App() {
     const inputIds = Object.keys(q.answers || {});
     if (inputIds.length === 0) return null;
 
-    const isOverviewReview = (q.question.startsWith("[개요 복습]") || q.mixedType === "overview" || q.subtype === "개요") && !!q.comparisonTableData;
+    const isOverview = isOverviewReview(q);
     let filteredInputIds = inputIds;
-    if (isOverviewReview) {
+    if (isOverview) {
       const secondTableInputs = [];
       if (q.comparisonTableData && q.comparisonTableData.rows) {
         q.comparisonTableData.rows.forEach(row => {
@@ -2202,7 +1921,7 @@ export default function App() {
                   </div>
                   {combGrading?.reason && (
                     <div className="mt-1 text-slate-400">
-                      <span className="font-bold text-slate-300 font-bold text-slate-300">피드백:</span> {combGrading.reason}
+                      <span className="font-bold text-slate-300">피드백:</span> {combGrading.reason}
                     </div>
                   )}
                 </div>
@@ -3415,18 +3134,13 @@ export default function App() {
 
   const getReviewTotalScore = () => {
     let total = 0;
-    const scoredIndices = [];
-    aiQuestions.forEach((_, i) => {
-      scoredIndices.push(i);
-    });
-    const M = scoredIndices.length;
+    const M = aiQuestions.length;
     if (M === 0) return 0;
     const baseWeight = Math.floor(100 / M);
     const remainder = 100 - (baseWeight * M);
 
     aiQuestions.forEach((q, idx) => {
-      const sIdx = scoredIndices.indexOf(idx);
-      const W = sIdx !== -1 ? (sIdx < remainder ? (baseWeight + 1) : baseWeight) : 0;
+      const W = idx < remainder ? (baseWeight + 1) : baseWeight;
       const isMC = q.type === '객관식' || (q.options && q.options.length > 0);
 
       if (isMC) {
@@ -3505,18 +3219,13 @@ export default function App() {
 
   const getExamTotalScore = () => {
     let total = 0;
-    const scoredIndices = [];
-    examQuestions.forEach((_, i) => {
-      scoredIndices.push(i);
-    });
-    const M = scoredIndices.length;
+    const M = examQuestions.length;
     if (M === 0) return 0;
     const baseWeight = Math.floor(100 / M);
     const remainder = 100 - (baseWeight * M);
 
     examQuestions.forEach((q, idx) => {
-      const sIdx = scoredIndices.indexOf(idx);
-      const W = sIdx !== -1 ? (sIdx < remainder ? (baseWeight + 1) : baseWeight) : 0;
+      const W = idx < remainder ? (baseWeight + 1) : baseWeight;
       const isMC = q.type === '객관식' || (q.options && q.options.length > 0);
 
       if (isMC) {
@@ -4074,212 +3783,114 @@ export default function App() {
   const [acronymKeywordIndices, setAcronymKeywordIndices] = useState({});
   const [expandedAcronymIds, setExpandedAcronymIds] = useState({});
 
-  useEffect(() => {
-    console.log('[SyncAcronyms] useEffect triggered. Acronyms count:', formulaAcronyms?.length, 'aiQuestions:', aiQuestions?.length, 'examQuestions:', examQuestions?.length);
-    if (!formulaAcronyms || formulaAcronyms.length === 0) return;
+const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
+  if (!questions || questions.length === 0) return { updated: questions, changed: false };
+  
+  let changed = false;
+  const cleanTitle = (ac) => (ac.title || '').trim().toLowerCase().replace(/\s+/g, '');
+  const getKeywords = (str) => {
+    return (str || '').toLowerCase()
+      .replace(/[^a-z0-9가-힣\s]/g, '')
+      .split(/\s+/)
+      .filter(w => w.length > 1);
+  };
 
-    let aiChanged = false;
-    let examChanged = false;
-
-    if (aiQuestions && aiQuestions.length > 0) {
-      const updatedAi = aiQuestions.map((q, idx) => {
-        if (q.type === '주관식 (앞글자)' || q.mixedType === 'acronym') {
-          // Find the best matched card using a multi-layered matching strategy
-          let matchedCard = null;
+  const updated = questions.map((q) => {
+    if (q.type === '주관식 (앞글자)' || q.mixedType === 'acronym') {
+      let matchedCard = null;
+      
+      // 1. Try exact ID matching first
+      matchedCard = formulaAcronyms.find(ac => 
+        (q.originalId && String(ac.id) === String(q.originalId)) || 
+        (q.topic_id && String(ac.id) === String(q.topic_id))
+      );
+      
+      // 2. If not found, try text/title matching
+      if (!matchedCard) {
+        const cleanQ = (q.question || '').trim().toLowerCase().replace(/\s+/g, '');
+        
+        // Try exact title matching
+        matchedCard = formulaAcronyms.find(ac => cleanTitle(ac) === cleanQ);
+        
+        // Try substring containment matching
+        if (!matchedCard && cleanQ) {
+          matchedCard = formulaAcronyms.find(ac => {
+            const ct = cleanTitle(ac);
+            return ct && (ct.includes(cleanQ) || cleanQ.includes(ct));
+          });
+        }
+        
+        // Try keyword overlap matching
+        if (!matchedCard) {
+          let bestScore = -1;
+          let bestCard = null;
+          const qKws = getKeywords(q.question);
           
-          // 1. Try exact ID matching first
-          matchedCard = formulaAcronyms.find(ac => 
-            (q.originalId && String(ac.id) === String(q.originalId)) || 
-            (q.topic_id && String(ac.id) === String(q.topic_id))
-          );
-          
-          // 2. If not found, try text/title matching
-          if (!matchedCard) {
-            const cleanTitle = (ac) => (ac.title || '').trim().toLowerCase().replace(/\s+/g, '');
-            const cleanQ = (q.question || '').trim().toLowerCase().replace(/\s+/g, '');
-            
-            // Try exact title matching
-            matchedCard = formulaAcronyms.find(ac => cleanTitle(ac) === cleanQ);
-            
-            // Try substring containment matching
-            if (!matchedCard && cleanQ) {
-              matchedCard = formulaAcronyms.find(ac => {
-                const ct = cleanTitle(ac);
-                return ct && (ct.includes(cleanQ) || cleanQ.includes(ct));
-              });
-            }
-            
-            // Try keyword overlap matching
-            if (!matchedCard) {
-              let bestScore = -1;
-              let bestCard = null;
+          if (qKws.length > 0) {
+            formulaAcronyms.forEach(ac => {
+              const acKws = getKeywords(ac.title);
+              if (acKws.length === 0) return;
               
-              const getKeywords = (str) => {
-                return (str || '').toLowerCase()
-                  .replace(/[^a-z0-9가-힣\s]/g, '')
-                  .split(/\s+/)
-                  .filter(w => w.length > 1);
-              };
-              
-              const qKws = getKeywords(q.question);
-              
-              if (qKws.length > 0) {
-                formulaAcronyms.forEach(ac => {
-                  const acKws = getKeywords(ac.title);
-                  if (acKws.length === 0) return;
-                  
-                  let matches = 0;
-                  qKws.forEach(qw => {
-                    if (acKws.some(aw => aw.includes(qw) || qw.includes(aw))) {
-                      matches++;
-                    }
-                  });
-                  const score = matches / Math.min(qKws.length, acKws.length);
-                  if (score > bestScore) {
-                    bestScore = score;
-                    bestCard = ac;
-                  }
-                });
-                
-                if (bestCard && bestScore >= 0.3) {
-                  matchedCard = bestCard;
+              let matches = 0;
+              qKws.forEach(qw => {
+                if (acKws.some(aw => aw.includes(qw) || qw.includes(aw))) {
+                  matches++;
                 }
+              });
+              const score = matches / Math.min(qKws.length, acKws.length);
+              if (score > bestScore) {
+                bestScore = score;
+                bestCard = ac;
               }
-            }
-          }
-
-          console.log(`[SyncAcronyms] Q${idx+1} matching detail: questionText="${q.question}", originalId="${q.originalId}", topic_id="${q.topic_id}" => matchedCardTitle="${matchedCard ? matchedCard.title : 'NONE'}"`);
-
-          if (matchedCard) {
-            const parsed = parseAcronymContent(matchedCard.content);
-            const acronymChanged = q.acronym !== parsed.acronym;
-            const sentenceChanged = q.sentence !== parsed.sentence;
-            const rowsChanged = JSON.stringify(q.correctRows) !== JSON.stringify(parsed.rows);
+            });
             
-            console.log(`[SyncAcronyms] Q${idx+1} comparison: acronymChanged=${acronymChanged}, sentenceChanged=${sentenceChanged}, rowsChanged=${rowsChanged}`);
-            console.log(`[SyncAcronyms] Q${idx+1} correctRows inside question:`, q.correctRows);
-            console.log(`[SyncAcronyms] Q${idx+1} parsed rows from card:`, parsed.rows);
-
-            if (acronymChanged || sentenceChanged || rowsChanged) {
-              aiChanged = true;
-              const blankRows = parsed.rows.map(() => ['', '']);
-              return {
-                ...q,
-                acronym: parsed.acronym,
-                sentence: parsed.sentence,
-                correctRows: parsed.rows,
-                tableData: {
-                  headers: ['두', '내용 (암기단어 : 설명)'],
-                  rows: blankRows
-                },
-                explanation: matchedCard.content
-              };
+            if (bestCard && bestScore >= 0.3) {
+              matchedCard = bestCard;
             }
           }
         }
-        return q;
-      });
-      if (aiChanged) {
-        console.log('[SyncAcronyms] Dispatching _setAiQuestions update!');
-        _setAiQuestions(updatedAi);
+      }
+
+      if (matchedCard) {
+        const parsed = parseAcronymContent(matchedCard.content);
+        const acronymChanged = q.acronym !== parsed.acronym;
+        const sentenceChanged = q.sentence !== parsed.sentence;
+        const rowsChanged = JSON.stringify(q.correctRows) !== JSON.stringify(parsed.rows);
+
+        if (acronymChanged || sentenceChanged || rowsChanged) {
+          changed = true;
+          const blankRows = parsed.rows.map(() => ['', '']);
+          return {
+            ...q,
+            acronym: parsed.acronym,
+            sentence: parsed.sentence,
+            correctRows: parsed.rows,
+            tableData: {
+              headers: ['두', '내용 (암기단어 : 설명)'],
+              rows: blankRows
+            },
+            explanation: matchedCard.content
+          };
+        }
       }
     }
+    return q;
+  });
 
-    if (examQuestions && examQuestions.length > 0) {
-      const updatedExam = examQuestions.map((q, idx) => {
-        if (q.type === '주관식 (앞글자)' || q.mixedType === 'acronym') {
-          // Find the best matched card using a multi-layered matching strategy
-          let matchedCard = null;
-          
-          // 1. Try exact ID matching first
-          matchedCard = formulaAcronyms.find(ac => 
-            (q.originalId && String(ac.id) === String(q.originalId)) || 
-            (q.topic_id && String(ac.id) === String(q.topic_id))
-          );
-          
-          // 2. If not found, try text/title matching
-          if (!matchedCard) {
-            const cleanTitle = (ac) => (ac.title || '').trim().toLowerCase().replace(/\s+/g, '');
-            const cleanQ = (q.question || '').trim().toLowerCase().replace(/\s+/g, '');
-            
-            // Try exact title matching
-            matchedCard = formulaAcronyms.find(ac => cleanTitle(ac) === cleanQ);
-            
-            // Try substring containment matching
-            if (!matchedCard && cleanQ) {
-              matchedCard = formulaAcronyms.find(ac => {
-                const ct = cleanTitle(ac);
-                return ct && (ct.includes(cleanQ) || cleanQ.includes(ct));
-              });
-            }
-            
-            // Try keyword overlap matching
-            if (!matchedCard) {
-              let bestScore = -1;
-              let bestCard = null;
-              
-              const getKeywords = (str) => {
-                return (str || '').toLowerCase()
-                  .replace(/[^a-z0-9가-힣\s]/g, '')
-                  .split(/\s+/)
-                  .filter(w => w.length > 1);
-              };
-              
-              const qKws = getKeywords(q.question);
-              
-              if (qKws.length > 0) {
-                formulaAcronyms.forEach(ac => {
-                  const acKws = getKeywords(ac.title);
-                  if (acKws.length === 0) return;
-                  
-                  let matches = 0;
-                  qKws.forEach(qw => {
-                    if (acKws.some(aw => aw.includes(qw) || qw.includes(aw))) {
-                      matches++;
-                    }
-                  });
-                  const score = matches / Math.min(qKws.length, acKws.length);
-                  if (score > bestScore) {
-                    bestScore = score;
-                    bestCard = ac;
-                  }
-                });
-                
-                if (bestCard && bestScore >= 0.3) {
-                  matchedCard = bestCard;
-                }
-              }
-            }
-          }
+  return { updated, changed };
+};
 
-          if (matchedCard) {
-            const parsed = parseAcronymContent(matchedCard.content);
-            const acronymChanged = q.acronym !== parsed.acronym;
-            const sentenceChanged = q.sentence !== parsed.sentence;
-            const rowsChanged = JSON.stringify(q.correctRows) !== JSON.stringify(parsed.rows);
-            
-            if (acronymChanged || sentenceChanged || rowsChanged) {
-              examChanged = true;
-              const blankRows = parsed.rows.map(() => ['', '']);
-              return {
-                ...q,
-                acronym: parsed.acronym,
-                sentence: parsed.sentence,
-                correctRows: parsed.rows,
-                tableData: {
-                  headers: ['두', '내용 (암기단어 : 설명)'],
-                  rows: blankRows
-                },
-                explanation: matchedCard.content
-              };
-            }
-          }
-        }
-        return q;
-      });
-      if (examChanged) {
-        setExamQuestions(updatedExam);
-      }
+  useEffect(() => {
+    if (!formulaAcronyms || formulaAcronyms.length === 0) return;
+
+    const { updated: updatedAi, changed: aiChanged } = syncQuestionsWithAcronyms(aiQuestions, formulaAcronyms);
+    if (aiChanged) {
+      _setAiQuestions(updatedAi);
+    }
+
+    const { updated: updatedExam, changed: examChanged } = syncQuestionsWithAcronyms(examQuestions, formulaAcronyms);
+    if (examChanged) {
+      setExamQuestions(updatedExam);
     }
   }, [formulaAcronyms, aiQuestions, examQuestions]);
   const [formulaRevealed, setFormulaRevealed] = useState(() => {
@@ -8234,53 +7845,6 @@ export default function App() {
               mixedType: 'overview',
               originalId: item.id
             };
-          } else if (item.mixedType === 'image') {
-            let specificQuestion = '[그림 암기 복습] 아래 제시된 공학 그림/그래프 자료가 나타내는 핵심 공학 주제(개념명)와 공학적 의미(또는 설명)를 서술하시오.';
-            try {
-              const qRes = await fetch(`${API_BASE}/api/image-standards/generate-question`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  title: item.title,
-                  analysis: item.analysis || '',
-                  intuitive: item.intuitive || ''
-                })
-              });
-              if (qRes.ok) {
-                const qBody = await qRes.json();
-                if (qBody && qBody.success && qBody.question) {
-                  specificQuestion = qBody.question;
-                }
-              }
-            } catch (e) {
-              console.warn('Failed to generate specific question, using fallback:', e);
-            }
-
-            const explanationHtml = `
-              <div class="space-y-3 text-left">
-                <div class="bg-slate-900/40 border border-slate-800/60 p-3.5 rounded-xl text-slate-200">
-                  <span class="text-[10px] text-slate-400 font-black block mb-1.5 uppercase tracking-wider">📊 그림/그래프 공학적 분석</span>
-                  <p class="font-bold text-white leading-relaxed select-text">${item.analysis || ''}</p>
-                </div>
-                <div class="bg-violet-950/15 border border-violet-500/10 p-3.5 rounded-xl text-slate-355">
-                  <span class="text-[10px] text-violet-400 font-extrabold block mb-1.5 uppercase tracking-wider">💡 직관적 본질 (비유)</span>
-                  <p class="text-slate-300 leading-relaxed select-text">${item.intuitive || ''}</p>
-                </div>
-              </div>
-            `;
-            return {
-              id: `mixed_q_${qIdx}`,
-              type: '주관식 (그림)',
-              subtype: '그림',
-              question: specificQuestion,
-              imageSrc: item.base64Images?.[0] || item.base64Image,
-              imageSrcs: item.base64Images || (item.base64Image ? [item.base64Image] : []),
-              answer: item.title,
-              concept: item.title,
-              explanation: explanationHtml,
-              mixedType: 'image',
-              originalId: item.id
-            };
           } else {
             const parsed = parseAcronymContent(item.content);
             const blankRows = parsed.rows.map(() => {
@@ -8415,7 +7979,7 @@ export default function App() {
         newSid = existingSid || getOrCreateSessionId(topicId, finalScheduleId, finalReviewRound);
         localStorage.setItem(`anti_session_id_${topicId}_${finalScheduleId || '9999'}`, newSid);
       } else {
-        newSid = renewSessionId(topicId, finalScheduleId, finalReviewRound);
+        newSid = getOrCreateSessionId(topicId, finalScheduleId, finalReviewRound);
         localStorage.setItem(`anti_session_id_${topicId}_${finalScheduleId || '9999'}`, newSid);
       }
       setReviewSessionId(newSid);
@@ -8602,7 +8166,7 @@ export default function App() {
     if (!selectedTopic) return;
 
     // Renew session ID for a fresh retry round to bypass server solved-overwrite protection
-    const newSid = renewSessionId(selectedTopic.id, selectedTopic.schedule_id, selectedTopic.review_round);
+    const newSid = getOrCreateSessionId(selectedTopic.id, selectedTopic.schedule_id, selectedTopic.review_round);
     setReviewSessionId(newSid);
 
     const isReadOnly = !!selectedTopic.isReadOnly;
@@ -18702,7 +18266,7 @@ ${itemsStr}
                                 );
                               })()}
                               {!isRevd ? (
-                                !((q.question.startsWith("[개요 복습]") || q.mixedType === "overview" || q.subtype === "개요") && q.comparisonTableData) && (
+                                !isOverviewReview(q) && (
                                   <button
                                     onClick={async () => {
                                       if (gradingLoading[idx]) return;
@@ -18717,8 +18281,8 @@ ${itemsStr}
                                   </button>
                                 )
                               ) : (() => {
-                                const isOverviewReview = (q.question.startsWith("[개요 복습]") || q.mixedType === "overview" || q.subtype === "개요") && !!q.comparisonTableData;
-                                if (isOverviewReview) {
+                                const isOverview = isOverviewReview(q);
+                                if (isOverview) {
                                   return (
                                     <div className="mt-2.5 pt-2.5 border-t border-slate-800/40 text-left">
                                       {renderCardTutorChat(rKey, q)}
@@ -22141,7 +21705,7 @@ ${itemsStr}
                                 );
                               })()}
                               {!examRevealed[idx] ? (
-                                !((q.question.startsWith("[개요 복습]") || q.mixedType === "overview" || q.subtype === "개요") && q.comparisonTableData) && (
+                                !isOverviewReview(q) && (
                                   <button
                                     onClick={async () => {
                                       if (gradingLoading[idx]) return;
@@ -22156,8 +21720,8 @@ ${itemsStr}
                                   </button>
                                 )
                               ) : (() => {
-                                const isOverviewReview = (q.question.startsWith("[개요 복습]") || q.mixedType === "overview" || q.subtype === "개요") && !!q.comparisonTableData;
-                                if (isOverviewReview) {
+                                const isOverview = isOverviewReview(q);
+                                if (isOverview) {
                                   return (
                                     <div className="mt-2.5 pt-2.5 border-t border-slate-800/40 text-left">
                                       {renderCardTutorChat(eKey, q)}
