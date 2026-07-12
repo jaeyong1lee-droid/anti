@@ -325,8 +325,6 @@ export function FloatingMemorization({
     }));
   };
 
-  if (!isVisible) return null;
-
   const [usePopout, setUsePopout] = useState(() => {
     if (!isDesktop) return false;
     return localStorage.getItem('anti_use_popout_memo') !== 'false';
@@ -339,6 +337,8 @@ export function FloatingMemorization({
   };
 
   const activeUsePopout = usePopout && isDesktop;
+
+  if (!isVisible) return null;
 
   const content = (
     <div className="floating-memorization-popup w-full h-full flex flex-col overflow-hidden text-slate-100 bg-slate-950">
