@@ -5887,7 +5887,7 @@ export default function App() {
         chatHistory
       };
 
-      const delay = 2500;
+      const delay = 30000;
 
       const delayDebounceFn = setTimeout(() => {
         console.log(`[Auto-Sync] Sending POST request to server... key fields: topicId=${selectedTopic.id}, scheduleId=${selectedTopic.schedule_id}`);
@@ -5949,7 +5949,7 @@ export default function App() {
             savedExamScroll: examBodyRef.current?.scrollTop || 0
           })
         }).catch(e => console.warn('종합평가 세션 자동 동기화 실패:', e));
-      }, 2500); // 2.5-second debounce to prevent spamming server on rapid clicks
+      }, 30000); // 30-second debounce to prevent spamming server on rapid clicks
 
       return () => clearTimeout(delayDebounceFn);
     }
@@ -6111,7 +6111,7 @@ export default function App() {
     autoSaveTimeoutRef.current = setTimeout(() => {
       console.log('[Auto-Save] Running debounced save...');
       forceSaveActiveSessions().catch(err => console.warn('Debounced save failed:', err));
-    }, 2500);
+    }, 30000);
   };
 
   const refreshActiveReviewSession = async () => {
