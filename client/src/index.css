@@ -1057,7 +1057,8 @@ div[class*="overflow-y-auto"] {
   /* Enable horizontal scroll on tables with scroll chaining protection (overscroll-behavior-x: contain) to prevent page wiggle */
   .table-quiz-container,
   .overflow-x-auto,
-  .overflow-auto {
+  .overflow-auto,
+  .markdown-table-container {
     overflow-x: auto;
     max-width: 100% !important;
     touch-action: pan-x pan-y;
@@ -1066,7 +1067,8 @@ div[class*="overflow-y-auto"] {
 
   .table-quiz-container *,
   .overflow-x-auto *,
-  .overflow-auto * {
+  .overflow-auto *,
+  .markdown-table-container * {
     touch-action: pan-x pan-y;
   }
 
@@ -1080,13 +1082,15 @@ div[class*="overflow-y-auto"] {
 
   .table-quiz-container::-webkit-scrollbar,
   .overflow-x-auto::-webkit-scrollbar,
-  .overflow-auto::-webkit-scrollbar {
+  .overflow-auto::-webkit-scrollbar,
+  .markdown-table-container::-webkit-scrollbar {
     display: block !important;
     height: 4px !important;
   }
   .table-quiz-container::-webkit-scrollbar-thumb,
   .overflow-x-auto::-webkit-scrollbar-thumb,
-  .overflow-auto::-webkit-scrollbar-thumb {
+  .overflow-auto::-webkit-scrollbar-thumb,
+  .markdown-table-container::-webkit-scrollbar-thumb {
     background: rgba(156, 163, 175, 0.4) !important;
     border-radius: 2px !important;
   }
