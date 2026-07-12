@@ -151,7 +151,12 @@ export const PopoutWindow = ({ title, onClose, children, initWidth = 720, initHe
 
     const onWindowLoad = () => {
       if (isCleanedUp) return;
-      setupContainer();
+      try {
+        const loc = newWindow.location;
+        if (loc && loc.href && loc.href !== 'about:blank' && loc.pathname !== 'blank') {
+          setupContainer();
+        }
+      } catch (e) {}
     };
 
     newWindow.addEventListener('load', onWindowLoad);
@@ -159,7 +164,13 @@ export const PopoutWindow = ({ title, onClose, children, initWidth = 720, initHe
     // Fallback: poll because window.open with local files might already be loaded or fast
     checkInterval = setInterval(() => {
       try {
-        if (newWindow.document && newWindow.document.readyState === 'complete') {
+        const loc = newWindow.location;
+        if (newWindow.document && 
+            newWindow.document.readyState === 'complete' &&
+            loc &&
+            loc.href &&
+            loc.href !== 'about:blank' &&
+            loc.pathname !== 'blank') {
           clearInterval(checkInterval);
           setupContainer();
         }
