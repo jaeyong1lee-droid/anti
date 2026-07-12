@@ -704,7 +704,7 @@ export const healCorruptedKatexHtml = (text) => {
   let cleaned = text.replace(/\u200b/g, '');
   
   const cleanAndSplitFormula = (formula) => {
-    let clean = formula.trim().replace(/\\+/g, '\\');
+    let clean = (formula || '').trim().replace(/\\+/g, '\\');
     clean = clean.replace(/&#x27;/g, "'")
                  .replace(/&quot;/g, '"')
                  .replace(/&lt;/g, '<')
