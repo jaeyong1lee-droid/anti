@@ -1217,3 +1217,29 @@ pre, code, pre *, code *, .whitespace-pre-wrap pre, .whitespace-pre-wrap code {
   font-variant-numeric: tabular-nums !important;
   line-height: 1.45 !important;
 }
+
+/* --- 모바일 세로보기 화면 반응형 아스키 흐름도 전용 최적화 --- */
+pre {
+  white-space: pre-wrap !important;
+  word-break: break-all !important;
+  max-width: 100% !important;
+  overflow-x: hidden !important;
+}
+
+@media (max-width: 768px) {
+  /* 모바일 기기에서는 아스키 아트의 글자 크기를 컴팩트하게 조절하여 상자가 불필요하게 가로로 찌그러지거나 잘리는 현상 방지 */
+  pre {
+    font-size: 10px !important;
+    line-height: 1.25 !important;
+    overflow-x: hidden !important;
+  }
+}
+
+@media (max-width: 480px) {
+  /* 초소형 핸드폰 기기 세로보기용 */
+  pre {
+    font-size: 8px !important;
+    line-height: 1.2 !important;
+  }
+}
+
