@@ -1253,11 +1253,12 @@ router.get('/mixed/random-flow-question', async (req, res) => {
   try {
     await ensureSessionTable();
     
-    // 1. Get active review topic list (topic_ids of schedules in 'pending' status)
+    // 1. Get active review schedules (status = 'pending')
     const pendingSchedules = await dbQuery.all(
-      `SELECT DISTINCT topic_id FROM schedules WHERE status = 'pending'`
+      `SELECT id, topic_id FROM schedules WHERE status = 'pending'`
     );
     const pendingTopicIds = new Set(pendingSchedules.map(s => Number(s.topic_id)));
+    const pendingScheduleIds = new Set(pendingSchedules.map(s => Number(s.id)));
     
     // 2. Fetch all stored review sessions
     const allSessions = await dbQuery.all(
@@ -1289,23 +1290,34 @@ router.get('/mixed/random-flow-question', async (req, res) => {
       }
     };
     
-    // 3. Filter for sessions that belong to pending review topics
+    // 3. Filter for sessions that belong to pending review topics or schedules
     for (const session of allSessions) {
       if (!session.value) continue;
       
-      let topicId = null;
-      let isPendingTopic = false;
+      let isPending = false;
+      let associatedTopicId = null;
       
       const topicMatch = session.key.match(/review_questions_topic_(\d+)/);
+      const schedMatch = session.key.match(/review_questions_schedule_(\d+)/);
+      
       if (topicMatch) {
-        topicId = Number(topicMatch[1]);
-        if (pendingTopicIds.has(topicId)) {
-          isPendingTopic = true;
+        associatedTopicId = Number(topicMatch[1]);
+        if (pendingTopicIds.has(associatedTopicId)) {
+          isPending = true;
+        }
+      } else if (schedMatch) {
+        const scheduleId = Number(schedMatch[1]);
+        if (pendingScheduleIds.has(scheduleId)) {
+          isPending = true;
+          const schedObj = pendingSchedules.find(s => Number(s.id) === scheduleId);
+          if (schedObj) {
+            associatedTopicId = Number(schedObj.topic_id);
+          }
         }
       }
       
-      if (isPendingTopic) {
-        const extracted = extractFlowQuestions(session.value, topicId);
+      if (isPending) {
+        const extracted = extractFlowQuestions(session.value, associatedTopicId);
         if (extracted.length > 0) {
           flowQuestions.push(...extracted);
         }
@@ -1324,8 +1336,16 @@ router.get('/mixed/random-flow-question', async (req, res) => {
       
       let topicId = null;
       const topicMatch = session.key.match(/review_questions_topic_(\d+)/);
+      const schedMatch = session.key.match(/review_questions_schedule_(\d+)/);
+      
       if (topicMatch) {
         topicId = Number(topicMatch[1]);
+      } else if (schedMatch) {
+        const scheduleId = Number(schedMatch[1]);
+        const schedObj = await dbQuery.get(`SELECT topic_id FROM schedules WHERE id = ?`, [scheduleId]);
+        if (schedObj) {
+          topicId = Number(schedObj.topic_id);
+        }
       }
       
       const extracted = extractFlowQuestions(session.value, topicId);

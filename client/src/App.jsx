@@ -15692,7 +15692,8 @@ ${itemsStr}
             let restoreSuccess = false;
 
             // 1. If server session exists, restore from server (database takes absolute priority)
-            if (resData && resData.success && resData.data && resData.data.questions && resData.data.questions.length > 0) {
+            const minLen = topicId.startsWith('mixed_') ? 11 : 1;
+            if (resData && resData.success && resData.data && resData.data.questions && resData.data.questions.length >= minLen) {
               const server = resData.data;
               console.log('[Mount Restore] Server review session found. Syncing latest state from DB.');
               updateSyncTime(new Date());
