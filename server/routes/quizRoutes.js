@@ -127,6 +127,7 @@ function assembleFinalCalculationQuestions(questions, topic) {
 }
 
 function mergeSplitFlowchartQuestions(questions) {
+  if (!Array.isArray(questions)) return [];
   const merged = [];
   let skipNext = false;
   
@@ -141,12 +142,22 @@ function mergeSplitFlowchartQuestions(questions) {
     
     // Check if curr has flowchart and next is table quiz with empty/undefined/short question
     if (
+      curr &&
+      typeof curr === 'object' &&
       next &&
-      curr.question &&
+      typeof next === 'object' &&
+      typeof curr.question === 'string' &&
       (curr.question.includes('┌') || curr.question.includes('▼') || curr.question.includes('흐름도')) &&
       (curr.type === '주관식 (단답형)' || curr.type === '주관식 (표채우기)') &&
       (next.type === '주관식 (표채우기)' || next.subtype === '표채우기') &&
-      (!next.question || next.question === 'undefined' || next.question.trim().length < 20 || next.question.includes('빈칸 구분') || next.question.includes('입력 답안'))
+      (!next.question || 
+       next.question === 'undefined' || 
+       (typeof next.question === 'string' && 
+        (next.question.trim().length < 20 || 
+         next.question.includes('빈칸 구분') || 
+         next.question.includes('입력 답안'))
+       )
+      )
     ) {
       console.log(`[Flowchart Merger] Merging split flowchart question at index ${i} and ${i + 1}`);
       const mergedQuestion = {
