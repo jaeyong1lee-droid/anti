@@ -1026,7 +1026,7 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
 
       const parts = content.split(`(${letter})`);
       return (
-        <div className="flex items-center gap-1.5 flex-wrap my-0.5 select-text w-full h-auto whitespace-pre-wrap break-all">
+        <div className="flex items-center gap-1.5 flex-wrap my-0.5 select-text w-full h-auto whitespace-pre-wrap break-all flowchart-text-force">
           <span>{parts[0]}</span>
           <input
             type="text"
@@ -1034,7 +1034,7 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
             onChange={handleChange}
             disabled={isGraded}
             placeholder={`(${letter}) 입력`}
-            className={`px-2 py-0.5 rounded border bg-slate-950 text-white text-[13px] sm:text-[14px] focus:outline-none focus:ring-1 focus:ring-indigo-500 flex-grow flex-1 min-w-[140px] inline-block font-bold ${
+            className={`px-2 py-0.5 rounded border bg-slate-950 text-white text-[13px] sm:text-[14px] flowchart-text-force focus:outline-none focus:ring-1 focus:ring-indigo-500 flex-grow flex-1 min-w-[140px] inline-block font-bold ${
               isGraded
                 ? isCorrect
                   ? 'border-emerald-500 text-emerald-300 font-bold bg-emerald-950/20'
@@ -1053,7 +1053,7 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
     }
 
     return (
-      <div className="w-full h-auto whitespace-pre-wrap break-all">
+      <div className="w-full h-auto whitespace-pre-wrap break-all flowchart-text-force">
         <LatexRenderer text={content} katexLoaded={katexLoaded} enableAddFormula={true} questionKey={questionKey} />
       </div>
     );

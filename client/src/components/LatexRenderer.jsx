@@ -91,18 +91,18 @@ const parseAndRenderFlowchart = (flowchartText, katexLoaded, questionKey) => {
   });
 
   return (
-    <div className="w-full flex flex-col items-center gap-1.5 select-text my-2.5">
+    <div className="w-full flex flex-col items-center gap-1.5 select-text my-2.5 flowchart-text-force">
       {cleanItems.map((item, idx) => {
         if (item.type === 'box') {
           const title = item.content[0] || '';
           const bodyLines = item.content.slice(1);
           return (
             <div key={idx} className="w-full h-auto min-h-fit border border-indigo-500/20 bg-slate-900/60 p-2.5 rounded-xl text-left leading-relaxed shadow-sm flex flex-col gap-0.5">
-              <div className="font-bold text-[13px] sm:text-[14px] text-indigo-400 mb-0.5 w-full h-auto whitespace-pre-wrap break-all">
+              <div className="font-bold text-[13px] sm:text-[14px] flowchart-text-force text-indigo-400 mb-0.5 w-full h-auto whitespace-pre-wrap break-all">
                 <LatexRenderer text={title} katexLoaded={katexLoaded} enableAddFormula={true} questionKey={questionKey} />
               </div>
               {bodyLines.map((bl, bIdx) => (
-                <div key={bIdx} className="text-[13px] sm:text-[14px] text-slate-300 pl-1.5 border-l border-slate-700/50 my-0.5 w-full h-auto whitespace-pre-wrap break-all">
+                <div key={bIdx} className="text-[13px] sm:text-[14px] flowchart-text-force text-slate-300 pl-1.5 border-l border-slate-700/50 my-0.5 w-full h-auto whitespace-pre-wrap break-all">
                   <LatexRenderer text={bl} katexLoaded={katexLoaded} enableAddFormula={true} questionKey={questionKey} />
                 </div>
               ))}
@@ -116,11 +116,11 @@ const parseAndRenderFlowchart = (flowchartText, katexLoaded, questionKey) => {
                 const bodyLines = box.content.slice(1);
                 return (
                   <div key={bIdx} className="flex-1 w-full h-auto min-h-fit border border-indigo-500/20 bg-slate-900/60 p-2.5 rounded-xl text-left leading-relaxed shadow-sm flex flex-col gap-0.5">
-                    <div className="font-bold text-[13px] sm:text-[14px] text-indigo-400 mb-0.5 w-full h-auto whitespace-pre-wrap break-all">
+                    <div className="font-bold text-[13px] sm:text-[14px] flowchart-text-force text-indigo-400 mb-0.5 w-full h-auto whitespace-pre-wrap break-all">
                       <LatexRenderer text={title} katexLoaded={katexLoaded} enableAddFormula={true} questionKey={questionKey} />
                     </div>
                     {bodyLines.map((bl, blIdx) => (
-                      <div key={blIdx} className="text-[13px] sm:text-[14px] text-slate-300 pl-1.5 border-l border-slate-700/50 my-0.5 w-full h-auto whitespace-pre-wrap break-all">
+                      <div key={blIdx} className="text-[13px] sm:text-[14px] flowchart-text-force text-slate-300 pl-1.5 border-l border-slate-700/50 my-0.5 w-full h-auto whitespace-pre-wrap break-all">
                         <LatexRenderer text={bl} katexLoaded={katexLoaded} enableAddFormula={true} questionKey={questionKey} />
                       </div>
                     ))}
@@ -131,7 +131,7 @@ const parseAndRenderFlowchart = (flowchartText, katexLoaded, questionKey) => {
           );
         } else {
           return (
-            <div key={idx} className="text-indigo-400 font-extrabold text-[13px] sm:text-[14px] my-0.5 select-none">
+            <div key={idx} className="text-indigo-400 font-extrabold text-[13px] sm:text-[14px] flowchart-text-force my-0.5 select-none">
               ▼
             </div>
           );
