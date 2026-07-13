@@ -1016,7 +1016,7 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
             onChange={handleChange}
             disabled={isGraded}
             placeholder={`(${letter}) 입력`}
-            className={`px-2 py-0.5 rounded border bg-slate-950 text-white text-[13px] focus:outline-none focus:ring-1 focus:ring-indigo-500 w-[140px] inline-block font-bold ${
+            className={`px-2 py-0.5 rounded border bg-slate-950 text-white text-[13px] focus:outline-none focus:ring-1 focus:ring-indigo-500 flex-grow flex-1 min-w-[140px] inline-block font-bold ${
               isGraded
                 ? isCorrect
                   ? 'border-emerald-500 text-emerald-300 font-bold bg-emerald-950/20'
