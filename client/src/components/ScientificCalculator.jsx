@@ -2489,6 +2489,12 @@ export function ScientificCalculator() {
   };
 
   const handleLcdClick = (e) => {
+    // If the user has selected a range of text (dragged), do not reset the cursor position
+    const selection = window.getSelection();
+    if (selection && !selection.isCollapsed) {
+      return;
+    }
+
     const target = e.target.closest('[data-index]');
     if (target) {
       const idx = parseInt(target.getAttribute('data-index'), 10);
