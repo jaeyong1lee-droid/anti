@@ -1008,7 +1008,7 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
 
       const parts = content.split(`(${letter})`);
       return (
-        <div className="flex items-center gap-1.5 flex-wrap my-1 select-text w-full h-auto whitespace-pre-wrap break-all">
+        <div className="flex items-center gap-1.5 flex-wrap my-0.5 select-text w-full h-auto whitespace-pre-wrap break-all">
           <span>{parts[0]}</span>
           <input
             type="text"
@@ -1048,12 +1048,12 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
           const title = item.content[0] || '';
           const bodyLines = item.content.slice(1);
           return (
-            <div key={idx} className="w-full h-auto min-h-fit border border-indigo-500/30 bg-slate-900/80 p-3.5 rounded-xl text-left leading-relaxed shadow-md flex flex-col gap-1">
-              <div className="font-bold text-[14px] text-indigo-400 mb-1.5 w-full h-auto whitespace-pre-wrap break-all">
+            <div key={idx} className="w-full h-auto min-h-fit border border-indigo-500/30 bg-slate-900/80 p-2.5 rounded-xl text-left leading-relaxed shadow-md flex flex-col gap-0.5">
+              <div className="font-bold text-[14px] text-indigo-400 mb-0.5 w-full h-auto whitespace-pre-wrap break-all">
                 {renderLineContent(title)}
               </div>
               {bodyLines.map((bl, bIdx) => (
-                <div key={bIdx} className="text-[13px] text-slate-200 pl-1.5 border-l border-slate-700/50 my-1 w-full h-auto whitespace-pre-wrap break-all">
+                <div key={bIdx} className="text-[13px] text-slate-200 pl-1.5 border-l border-slate-700/50 my-0.5 w-full h-auto whitespace-pre-wrap break-all">
                   {renderLineContent(bl)}
                 </div>
               ))}

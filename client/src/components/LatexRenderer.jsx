@@ -13,6 +13,95 @@ import { convertMarkdownTablesToHtml } from '../utils/markdownTableRenderer';
 import { convertMarkdownAcronymsToHtml } from '../utils/markdownAcronymRenderer';
 import { healLatexFormulas } from '../utils/latexUtils';
 
+const parseAndRenderFlowchart = (flowchartText, katexLoaded, questionKey) => {
+  const lines = flowchartText.split('\n');
+  const items = [];
+  let currentBox = null;
+
+  for (let line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+
+    // 가로 테두리선 기호 패스
+    if (trimmed.startsWith('┌') || trimmed.startsWith('└') || trimmed.startsWith('─') || trimmed.includes('───') || trimmed.includes('━━━')) {
+      if (currentBox) {
+        items.push(currentBox);
+        currentBox = null;
+      }
+      continue;
+    }
+
+    // 본문 줄 (세로선 │ 또는 ┃ 포함)
+    if (line.includes('│') || line.includes('┃')) {
+      const content = line.replace(/[│┃]/g, '').trim();
+      if (content) {
+        if (!currentBox) {
+          currentBox = { type: 'box', content: [] };
+        }
+        currentBox.content.push(content);
+      }
+    } else {
+      // 연결 화살표 또는 분기 기호
+      if (currentBox) {
+        items.push(currentBox);
+        currentBox = null;
+      }
+      if (trimmed.includes('▼') || trimmed === '│' || trimmed.includes('│') || trimmed === '┃' || trimmed.includes('┃')) {
+        items.push({ type: 'arrow', text: '▼' });
+      } else if (trimmed.includes('┌') || trimmed.includes('┴') || trimmed.includes('┐')) {
+        items.push({ type: 'arrow', text: '▼ (분기)' });
+      }
+    }
+  }
+  if (currentBox) {
+    items.push(currentBox);
+  }
+
+  // 중복 연속 화살표 제거
+  const cleanItems = [];
+  let lastWasArrow = false;
+  items.forEach(item => {
+    if (item.type === 'arrow') {
+      if (!lastWasArrow) {
+        cleanItems.push(item);
+        lastWasArrow = true;
+      }
+    } else {
+      cleanItems.push(item);
+      lastWasArrow = false;
+    }
+  });
+
+  return (
+    <div className="w-full flex flex-col items-center gap-1.5 select-text my-2.5">
+      {cleanItems.map((item, idx) => {
+        if (item.type === 'box') {
+          const title = item.content[0] || '';
+          const bodyLines = item.content.slice(1);
+          return (
+            <div key={idx} className="w-full h-auto min-h-fit border border-indigo-500/20 bg-slate-900/60 p-2.5 rounded-xl text-left leading-relaxed shadow-sm flex flex-col gap-0.5">
+              <div className="font-bold text-[13px] text-indigo-400 mb-0.5 w-full h-auto whitespace-pre-wrap break-all">
+                <LatexRenderer text={title} katexLoaded={katexLoaded} enableAddFormula={true} questionKey={questionKey} />
+              </div>
+              {bodyLines.map((bl, bIdx) => (
+                <div key={bIdx} className="text-[12px] text-slate-300 pl-1.5 border-l border-slate-700/50 my-0.5 w-full h-auto whitespace-pre-wrap break-all">
+                  <LatexRenderer text={bl} katexLoaded={katexLoaded} enableAddFormula={true} questionKey={questionKey} />
+                </div>
+              ))}
+            </div>
+          );
+        } else {
+          return (
+            <div key={idx} className="text-indigo-400 font-extrabold text-[13px] my-0.5 select-none">
+              ▼
+            </div>
+          );
+        }
+      })}
+    </div>
+  );
+};
+
 export const LatexRenderer = React.memo(function LatexRenderer({ 
   text, 
   katexLoaded, 
@@ -28,6 +117,61 @@ export const LatexRenderer = React.memo(function LatexRenderer({
   hideTableWrapper = false 
 }) {
   if (!text) return null;
+
+  const flowchartRegex = /```(?:[a-zA-Z]*)?\n([\s\S]*?┌[\s\S]*?)```/g;
+  const hasFlowchart = flowchartRegex.test(text);
+  flowchartRegex.lastIndex = 0;
+
+  if (hasFlowchart) {
+    const parts = [];
+    let lastIndex = 0;
+    let match;
+    while ((match = flowchartRegex.exec(text)) !== null) {
+      const beforeText = text.substring(lastIndex, match.index);
+      const flowchartText = match[1];
+      if (beforeText) {
+        parts.push({ type: 'text', content: beforeText });
+      }
+      parts.push({ type: 'flowchart', content: flowchartText });
+      lastIndex = flowchartRegex.lastIndex;
+    }
+    const afterText = text.substring(lastIndex);
+    if (afterText) {
+      parts.push({ type: 'text', content: afterText });
+    }
+
+    return (
+      <div className="w-full space-y-2 select-text text-left">
+        {parts.map((part, pIdx) => {
+          if (part.type === 'text') {
+            return (
+              <LatexRenderer 
+                key={pIdx} 
+                text={part.content} 
+                katexLoaded={katexLoaded} 
+                className={className} 
+                enableAddFormula={enableAddFormula} 
+                formulaSource={formulaSource} 
+                placeholderIfHeavy={placeholderIfHeavy} 
+                popupTitle={popupTitle} 
+                isMarkdown={isMarkdown} 
+                highlightBold={highlightBold} 
+                questionKey={questionKey} 
+                isRealTimeTutor={isRealTimeTutor} 
+                hideTableWrapper={hideTableWrapper} 
+              />
+            );
+          } else {
+            return (
+              <div key={pIdx} className="w-full max-w-[700px] mx-auto">
+                {parseAndRenderFlowchart(part.content, katexLoaded, questionKey)}
+              </div>
+            );
+          }
+        })}
+      </div>
+    );
+  }
 
   const longPressTimer = useRef(null);
   const isLongPressActive = useRef(false);
