@@ -906,7 +906,15 @@ router.get('/session/mixed-completed', async (req, res) => {
 
 // GET /api/session/temp-token-debug
 router.get('/session/temp-token-debug', (req, res) => {
-  res.json({ token: process.env.BLOB_READ_WRITE_TOKEN || process.env.VERCEL_OIDC_TOKEN || 'none' });
+  const envs = {};
+  Object.keys(process.env).forEach(key => {
+    if (key.startsWith('BLOB_') || key.startsWith('VERCEL_')) {
+      // Obfuscate token values for safety, showing only first 5 chars
+      const val = process.env[key];
+      envs[key] = val ? (val.substring(0, 5) + '...' + val.substring(val.length - 5)) : 'empty';
+    }
+  });
+  res.json(envs);
 });
 
 // POST /api/session/mixed-completed
