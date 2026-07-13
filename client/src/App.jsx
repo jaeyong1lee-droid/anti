@@ -2155,49 +2155,24 @@ export default function App() {
         <span className="font-extrabold text-amber-400 text-[14px] sm:text-[16px]">💡 빈칸별 상세 피드백:</span>
 
         {/* 전체 모범 답안 (전체 플로우) 맨 처음 한 번만 노출 */}
-        {(() => {
-          const { questionText } = parseQuestionTable(q, selectedTopic?.title || '');
-          const isFlow = questionText.includes('┌──') || questionText.includes('▼') || questionText.includes('```') || questionText.includes('흐름도') || questionText.includes('플로우차트');
-          const cleanText = isFlow 
-            ? questionText.replace(/\r/g, '')
-            : questionText.replace(/\r/g, '').replace(/[ \t]+/g, ' ');
-
-          const flowchartRegex = /```(?:[a-zA-Z]*)?\n([\s\S]*?┌[\s\S]*?)```/g;
-          const match = flowchartRegex.exec(cleanText || '');
-          flowchartRegex.lastIndex = 0;
-
-          if (match) {
-            const flowchartText = match[1];
-            return (
-              <div className="p-3.5 bg-slate-900/60 rounded-xl border border-emerald-500/30 text-left my-2 w-full overflow-hidden">
-                <span className="text-[13px] font-black text-emerald-400 block mb-2">📋 모범 완성 흐름도 전체 플로우</span>
-                {renderCompleteFlowchart(flowchartText, katexLoaded, q)}
-              </div>
-            );
-          }
-
-          // 흐름도가 아닌 일반 퀴즈 테이블 모범 답안
-          return (
-            <div className="p-3 bg-slate-900/60 rounded-xl border border-indigo-500/20 text-left my-2 w-full">
-              <span className="text-[13px] font-black text-indigo-400 block mb-2">📋 모범 정답 전체 목록</span>
-              <div className="space-y-1.5">
-                {filteredInputIds.map((inputId) => {
-                  const correctAnswer = q.answers?.[inputId] || '';
-                  const inputIdx = inputIds.indexOf(inputId);
-                  const inputLetter = String.fromCharCode(65 + (inputIdx !== -1 ? inputIdx : 0));
-                  return (
-                    <div key={inputId} className="text-[14px] sm:text-[16px] text-slate-200 flex items-baseline gap-1.5">
-                      <span className="font-extrabold text-indigo-400 shrink-0">({inputLetter})</span>
-                      <span className="font-semibold select-text">
-                        <LatexRenderer text={correctAnswer} katexLoaded={katexLoaded} className="inline" />
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })()}
+        <div className="p-3 bg-slate-900/60 rounded-xl border border-indigo-500/20 text-left my-2 w-full">
+          <span className="text-[13px] font-black text-indigo-400 block mb-2">📋 모범 정답 전체 목록</span>
+          <div className="space-y-1.5">
+            {filteredInputIds.map((inputId) => {
+              const correctAnswer = q.answers?.[inputId] || '';
+              const inputIdx = inputIds.indexOf(inputId);
+              const inputLetter = String.fromCharCode(65 + (inputIdx !== -1 ? inputIdx : 0));
+              return (
+                <div key={inputId} className="text-[14px] sm:text-[16px] text-slate-200 flex items-baseline gap-1.5">
+                  <span className="font-extrabold text-indigo-400 shrink-0">({inputLetter})</span>
+                  <span className="font-semibold select-text">
+                    <LatexRenderer text={correctAnswer} katexLoaded={katexLoaded} className="inline" />
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
 
         <div className="divide-y divide-slate-800/80 mt-1">
           {filteredInputIds.map((inputId) => {
