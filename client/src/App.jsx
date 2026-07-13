@@ -8105,7 +8105,8 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
           const checkRes = await fetch(`${API_BASE}/api/session/review?topicId=${topicId}&scheduleId=${finalScheduleId || ''}&sessionId=${activeSid}`);
           if (checkRes.ok) {
             const checkData = await checkRes.json();
-            if (checkData.success && checkData.data && checkData.data.questions && checkData.data.questions.length > 0) {
+            const minLen = topicId.startsWith('mixed_') ? 11 : 1;
+            if (checkData.success && checkData.data && checkData.data.questions && checkData.data.questions.length >= minLen) {
               restoredData = checkData.data;
             }
           }
@@ -9183,6 +9184,74 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
             };
           }
         }));
+        
+        let flowQuestion = null;
+        try {
+          const flowRes = await fetch(`${API_BASE}/api/mixed/random-flow-question`);
+          if (flowRes.ok) {
+            const flowData = await flowRes.json();
+            if (flowData && flowData.success && flowData.question) {
+              flowQuestion = flowData.question;
+            }
+          }
+        } catch (e) {
+          console.warn('Failed to fetch random flow question:', e);
+        }
+
+        if (!flowQuestion) {
+          flowQuestion = {
+            id: 'mixed_q_10',
+            type: '주관식 (표채우기)',
+            subtype: '표채우기',
+            question: `[평사투영 암반사면안정 해석 절차]
+아래 흐름도 빈칸에 들어갈 올바른 분석 단계를 서술하시오.
+
+\`\`\`
+┌──────────────────────────────────────────────┐
+│           1단계: 불연속면 조사 및 분석         │
+└──────────────────────┬───────────────────────┘
+                       ▼
+┌──────────────────────────────────────────────┐
+│       2단계: 평사투영망 상에 불연속면 투영     │
+└──────────────────────┬───────────────────────┘
+                       ▼
+┌──────────────────────────────────────────────┐
+│           3단계: [INPUT_1] 영역 설정          │
+└──────────────────────┬───────────────────────┘
+                       ▼
+┌──────────────────────────────────────────────┐
+│       4단계: 사면의 경사면 평사투영 투영        │
+└──────────────────────┬───────────────────────┘
+                       ▼
+┌──────────────────────────────────────────────┐
+│       5단계: 위험 영역 내 교점 분석          │
+│          - [INPUT_2] 파괴: 교점이 위험선 내  │
+│          - 전도 파괴: 극점이 전도 영역 내    │
+└──────────────────────────────────────────────┘
+\`\`\``,
+            tableData: {
+              headers: ['구분', '내용'],
+              rows: [
+                ['3단계 분석 영역', '[INPUT_1]'],
+                ['5단계 위험 분석', '[INPUT_2]']
+              ]
+            },
+            answers: {
+              INPUT_1: '위험',
+              INPUT_2: '평면'
+            },
+            explanation: `평사투영법을 이용한 암반 사면의 안정성 해석 절차:
+1단계: 불연속면(절리, 단층 등)의 방향성(주향/경사)을 현장 조사하여 통계 분석합니다.
+2단계: 조사된 불연속면의 극점(Pole) 또는 대원(Great Circle)을 평사투영망(Stereonet) 상에 투영합니다.
+3단계: 사면의 방향과 경사각을 기준으로 파괴가 발생할 수 있는 '위험 영역(Daylight Envelope 및 마찰각 원)'을 설정합니다.
+4단계: 사면의 실제 경사면을 투영하여 안정성 검토 기준선이 형성됩니다.
+5단계: 위험 영역 내에 불연속면의 교점 또는 극점이 위치하는지 분석하여 평면파괴(교점이 위험선 내에 위치) 또는 전도파괴(극점이 전도 영역에 위치) 가능성을 판정합니다.`,
+            mixedType: 'overview'
+          };
+        }
+
+        flowQuestion.id = 'mixed_q_10';
+        questions.push(flowQuestion);
         
         const activeSid = `sess_mixed_${referenceDate}`;
         setReviewSessionId(activeSid);
