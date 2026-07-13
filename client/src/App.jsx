@@ -1048,6 +1048,16 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
       };
 
       const parts = content.split(`(${letter})`);
+      const answerVal = q?.answers?.[inputId] || '';
+      let rightText = parts[1] || '';
+      if (answerVal) {
+        const cleanRight = rightText.trim();
+        const cleanAns = answerVal.trim();
+        if (cleanRight.includes(cleanAns) || cleanAns.includes(cleanRight)) {
+          rightText = rightText.replace(cleanAns, '').trim();
+        }
+      }
+
       return (
         <div className="flex items-center gap-1.5 flex-wrap my-0.5 select-text w-full h-auto whitespace-pre-wrap break-all flowchart-text-force">
           <span>{parts[0]}</span>
@@ -1065,7 +1075,7 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
                 : 'border-indigo-500/50'
             }`}
           />
-          <span>{parts[1]}</span>
+          <span>{rightText}</span>
           {isGraded && (
             <button
               type="button"
