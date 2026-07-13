@@ -927,6 +927,133 @@ function parseQuestionTable(q, topicTitle) {
 }
 
 
+const renderMobileFlowchart = (flowchartText) => {
+  const lines = flowchartText.split('\n');
+  const items = [];
+  let currentBox = null;
+
+  for (let line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+
+    // 가로 테두리선 기호 패스
+    if (trimmed.startsWith('┌') || trimmed.startsWith('└') || trimmed.startsWith('─') || trimmed.includes('───') || trimmed.includes('━━━')) {
+      if (currentBox) {
+        items.push(currentBox);
+        currentBox = null;
+      }
+      continue;
+    }
+
+    // 본문 줄 (세로선 │ 또는 ┃ 포함)
+    if (line.includes('│') || line.includes('┃')) {
+      const content = line.replace(/[│┃]/g, '').trim();
+      if (content) {
+        if (!currentBox) {
+          currentBox = { type: 'box', content: [] };
+        }
+        currentBox.content.push(content);
+      }
+    } else {
+      // 연결 화살표 또는 분기 기호
+      if (currentBox) {
+        items.push(currentBox);
+        currentBox = null;
+      }
+      if (trimmed.includes('▼') || trimmed === '│' || trimmed.includes('│') || trimmed === '┃' || trimmed.includes('┃')) {
+        items.push({ type: 'arrow', text: '▼' });
+      } else if (trimmed.includes('┌') || trimmed.includes('┴') || trimmed.includes('┐')) {
+        items.push({ type: 'arrow', text: '▼ (분기)' });
+      }
+    }
+  }
+  if (currentBox) {
+    items.push(currentBox);
+  }
+
+  // 중복되는 연속 화살표 제거 및 정돈
+  const cleanItems = [];
+  let lastWasArrow = false;
+  items.forEach(item => {
+    if (item.type === 'arrow') {
+      if (!lastWasArrow) {
+        cleanItems.push(item);
+        lastWasArrow = true;
+      }
+    } else {
+      cleanItems.push(item);
+      lastWasArrow = false;
+    }
+  });
+
+  return (
+    <div className="w-full flex flex-col items-center gap-2 select-text my-3">
+      {cleanItems.map((item, idx) => {
+        if (item.type === 'box') {
+          const title = item.content[0] || '';
+          const bodyLines = item.content.slice(1);
+          return (
+            <div key={idx} className="w-full border border-indigo-500/30 bg-slate-900/80 p-3.5 rounded-xl text-left leading-relaxed shadow-md">
+              <div className="font-bold text-[14px] text-indigo-400 mb-1.5">{title}</div>
+              {bodyLines.map((bl, bIdx) => (
+                <div key={bIdx} className="text-[13px] text-slate-200 pl-1.5 border-l border-slate-700/50 my-1">{bl}</div>
+              ))}
+            </div>
+          );
+        } else {
+          return (
+            <div key={idx} className="text-indigo-400 font-extrabold text-[15px] my-1 select-none">
+              ▼
+            </div>
+          );
+        }
+      })}
+    </div>
+  );
+};
+
+const renderResponsiveContent = (text, katexLoaded, questionKey, isMarkdown) => {
+  const flowchartRegex = /```(?:[a-zA-Z]*)?\n([\s\S]*?┌──[\s\S]*?)```/g;
+  const hasFlowchart = flowchartRegex.test(text);
+  flowchartRegex.lastIndex = 0;
+
+  if (!hasFlowchart) {
+    return <LatexRenderer text={text} katexLoaded={katexLoaded} isMarkdown={isMarkdown} enableAddFormula={true} questionKey={questionKey} />;
+  }
+
+  const parts = [];
+  let lastIndex = 0;
+  let match;
+  while ((match = flowchartRegex.exec(text)) !== null) {
+    const beforeText = text.substring(lastIndex, match.index);
+    const flowchartText = match[1];
+    parts.push({ type: 'text', content: beforeText });
+    parts.push({ type: 'flowchart', content: flowchartText });
+    lastIndex = flowchartRegex.lastIndex;
+  }
+  const afterText = text.substring(lastIndex);
+  if (afterText) {
+    parts.push({ type: 'text', content: afterText });
+  }
+
+  return (
+    <>
+      <div className="hidden sm:block w-full">
+        <LatexRenderer text={text} katexLoaded={katexLoaded} isMarkdown={isMarkdown} enableAddFormula={true} questionKey={questionKey} />
+      </div>
+      <div className="block sm:hidden w-full space-y-2 select-text text-left">
+        {parts.map((part, pIdx) => {
+          if (part.type === 'text') {
+            return <LatexRenderer key={pIdx} text={part.content} katexLoaded={katexLoaded} isMarkdown={isMarkdown} enableAddFormula={true} questionKey={questionKey} />;
+          } else {
+            return <div key={pIdx}>{renderMobileFlowchart(part.content)}</div>;
+          }
+        })}
+      </div>
+    </>
+  );
+};
+
 const renderQuestionContent = (q, topicTitle, katexLoaded, topicId = null, pdfName = null, topicCategory = null, pdfjsLoaded = false, showImage = false, totalCount = 0, questionKey = "", questionIdx = null) => {
   const { questionText, tableData, referenceTableData } = parseQuestionTable(q, topicTitle);
   const isFlowchart = questionText.includes('┌──') || questionText.includes('▼') || questionText.includes('```') || questionText.includes('흐름도') || questionText.includes('플로우차트');
@@ -1039,7 +1166,7 @@ const renderQuestionContent = (q, topicTitle, katexLoaded, topicId = null, pdfNa
       <div className="space-y-3 w-full">
         {!(resolvedCategory === '계산' && showImage) && (
           <div className="text-[14px] sm:text-[16px] font-bold text-white leading-relaxed text-left w-full whitespace-pre-line">
-            <LatexRenderer text={mainText} katexLoaded={katexLoaded} enableAddFormula={true} questionKey={questionKey} />
+            {renderResponsiveContent(mainText, katexLoaded, questionKey, false)}
           </div>
         )}
         {renderImageElement()}
@@ -1082,7 +1209,7 @@ const renderQuestionContent = (q, topicTitle, katexLoaded, topicId = null, pdfNa
     <>
       {!(resolvedCategory === '계산' && showImage) && (
         <div className="text-[14px] sm:text-[16px] font-bold text-white leading-relaxed text-left w-full whitespace-pre-line">
-          <LatexRenderer text={cleanQuestionText} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} questionKey={questionKey} />
+          {renderResponsiveContent(cleanQuestionText, katexLoaded, questionKey, true)}
         </div>
       )}
       {renderImageElement()}
