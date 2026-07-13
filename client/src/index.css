@@ -1209,3 +1209,11 @@ div[class*="overflow-y-auto"] {
   }
 }
 
+/* --- Monospace Font Fix for ASCII Flowcharts & Code Blocks --- */
+pre, code, pre *, code *, .whitespace-pre-wrap pre, .whitespace-pre-wrap code {
+  font-family: 'Consolas', 'Monaco', 'Courier New', 'Nanum Gothic Coding', monospace !important;
+  letter-spacing: 0px !important;
+  word-spacing: 0px !important;
+  font-variant-numeric: tabular-nums !important;
+  line-height: 1.45 !important;
+}
