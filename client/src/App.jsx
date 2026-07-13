@@ -3983,13 +3983,36 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
   };
 
   const setAiQuestions = (val) => {
+    const swapFlowchartToSeventh = (questions) => {
+      if (!Array.isArray(questions) || questions.length < 7) {
+        return questions;
+      }
+      
+      const flowchartIdx = questions.findIndex(q => {
+        const qText = q.question || '';
+        return qText.includes('┌──') || qText.includes('▼') || qText.includes('플로우차트') || qText.includes('흐름도');
+      });
+
+      if (flowchartIdx !== -1 && flowchartIdx !== 6) {
+        console.log(`[SwapFlowchart] Swapping flowchart question from index ${flowchartIdx} to index 6 (7th question)`);
+        const copy = [...questions];
+        const temp = copy[6];
+        copy[6] = copy[flowchartIdx];
+        copy[flowchartIdx] = temp;
+        return copy;
+      }
+      return questions;
+    };
+
     if (typeof val === 'function') {
       _setAiQuestions(prev => {
         const computed = val(prev);
-        return restoreQuestionImages(computed);
+        const restored = restoreQuestionImages(computed);
+        return swapFlowchartToSeventh(restored);
       });
     } else {
-      _setAiQuestions(restoreQuestionImages(val));
+      const restored = restoreQuestionImages(val);
+      _setAiQuestions(swapFlowchartToSeventh(restored));
     }
   };
 
