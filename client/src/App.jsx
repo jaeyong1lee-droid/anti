@@ -3983,73 +3983,13 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
   };
 
   const setAiQuestions = (val) => {
-    const injectMockFlowchart = (questions) => {
-      const isFlowchartTopic = selectedTopic && 
-        (selectedTopic.id === 37 || 
-         selectedTopic.title?.includes('흙막이') || 
-         selectedTopic.title?.includes('가설'));
-
-      if (isFlowchartTopic && Array.isArray(questions) && questions.length >= 7) {
-        const copy = [...questions];
-        copy[6] = {
-          ...copy[6],
-          question: `다음 흙막이 설계 흐름도를 보고 빈칸 (A), (B), (C), (D)에 들어갈 올바른 설계 단계명과 구체적인 설계 세부 활동의 조합을 고르시오.
-
-\`\`\`
-[START: 기초 자료 조사]
- - 지반조사(토질, 지하수위)
- - 주변 환경 조사(인접 구조물, 매설물, 허용 변위량)
-      │
-      ▼
-[ ( A ) ] 
- - ( B )
- - 주변 환경에 따른 공법 제약 사항 도출
-      │
-      ▼
-[굴착 깊이 및 지반 조건에 따른 공법 1차 선정]
- - 굴착 깊이(H) 및 지반 특성(사질토/점성토) 고려
- - 차수성 필요 여부 판단
-      │
-      ▼
-[ ( C ) ]
- - ( D )
- - 벽체 강성 및 지지구조(Strut, Anchor) 설계
-      │
-      ▼
-[경제성 및 시공성 최적화]
- - 공기, 민원, 장비 반입성 검토
-      │
-      ▼
-[최종 공법 결정 및 설계]
- - 계측 계획 수립 및 유지 시공 계획
-      │
-      ▼
-[END: 설계 완료]
-\`\`\``,
-          options: [
-            '① (A) 주변 지반 영향성 및 제약 조건 검토\n(B) 허용 변위량 산정 및 벽체 강성(EI) 요구 수준 결정\n(C) 수리학적 안정성 및 구조적 적합성 검토\n(D) 보일링/파이핑 검토 및 근입 깊이(Df) 산정',
-            '② (A) 기초 자료 조사 및 주변 환경 검토\n(B) 굴착 깊이 산정 및 지반 조건 1차 선정\n(C) 지반 계측 설계 및 유지 관리 검토\n(D) 히빙 안정성 및 벽체 강성 검토',
-            '③ (A) 주변 지반 영향성 및 제약 조건 검토\n(B) 보일링/파이핑 검토 및 근입 깊이(Df) 산정\n(C) 수리학적 안정성 및 구조적 적합성 검토\n(D) 허용 변위량 산정 및 벽체 강성(EI) 요구 수준 결정',
-            '④ (A) 공법 및 지지체 구조 검토\n(B) 계측 계획 및 유지 시공 관리\n(C) 경제성 및 시공성 최적화\n(D) 허용 변위량 산정 및 지반 강성 판단'
-          ],
-          answer: '① (A) 주변 지반 영향성 및 제약 조건 검토\n(B) 허용 변위량 산정 및 벽체 강성(EI) 요구 수준 결정\n(C) 수리학적 안정성 및 구조적 적합성 검토\n(D) 보일링/파이핑 검토 및 근입 깊이(Df) 산정',
-          explanation: '올바른 가설 흙막이 설계 흐름은 다음과 같습니다:\n1. (A) 주변 지반 영향성 및 제약 조건 검토 단계에서는 (B) 허용 변위량 산정 및 벽체 강성(EI) 요구 수준 결정을 우선 검토합니다.\n2. 1차 공법 선정 후 진행되는 (C) 수리학적 안정성 및 구조적 적합성 검토 단계에서는 (D) 보일링/파이핑 검토 및 근입 깊이(Df) 산정을 통해 벽체 근입 깊이 및 지지 구조를 정교하게 설계합니다.',
-          type: '객관식'
-        };
-        return copy;
-      }
-      return questions;
-    };
-
     if (typeof val === 'function') {
       _setAiQuestions(prev => {
         const computed = val(prev);
-        const restored = restoreQuestionImages(computed);
-        return injectMockFlowchart(restored);
+        return restoreQuestionImages(computed);
       });
     } else {
-      const restored = restoreQuestionImages(val);
-      _setAiQuestions(injectMockFlowchart(restored));
+      _setAiQuestions(restoreQuestionImages(val));
     }
   };
 
