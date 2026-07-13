@@ -707,8 +707,9 @@ export function ScientificCalculator() {
     setCursorPosition(0);
   };
 
-  const handleCopyFormula = () => {
-    if (!calcInput) {
+  const handleCopyFormula = (textToCopy) => {
+    const text = textToCopy !== undefined ? textToCopy : calcInput;
+    if (!text) {
       setStatusMessage('Empty Formula');
       // Clear message after 1.5 seconds
       setTimeout(() => {
@@ -718,7 +719,7 @@ export function ScientificCalculator() {
     }
 
     // Convert formula to proper LaTeX representation wrapped in $...$
-    const latexFormula = convertToLatex(calcInput);
+    const latexFormula = convertToLatex(text);
 
     const childDoc = inputRef.current ? inputRef.current.ownerDocument : document;
     const childWindow = childDoc.defaultView || window;
@@ -1804,6 +1805,32 @@ export function ScientificCalculator() {
     }
   };
 
+  const getSelectionIndices = () => {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return null;
+    const range = selection.getRangeAt(0);
+    const getElementIndex = (node) => {
+      let curr = node;
+      while (curr && curr !== document.body) {
+        if (curr.nodeType === Node.ELEMENT_NODE && curr.hasAttribute('data-index')) {
+          return parseInt(curr.getAttribute('data-index'), 10);
+        }
+        curr = curr.parentNode;
+      }
+      return null;
+    };
+    const startIdx = getElementIndex(range.startContainer);
+    const endIdx = getElementIndex(range.endContainer);
+    if (startIdx !== null && endIdx !== null) {
+      return {
+        minIdx: Math.min(startIdx, endIdx),
+        maxIdx: Math.max(startIdx, endIdx) + 1,
+        selection
+      };
+    }
+    return null;
+  };
+
   const handleKeyDown = (e) => {
     if (e.key === 'Enter') {
       handleEqual();
@@ -1824,11 +1851,28 @@ export function ScientificCalculator() {
       handleDpad('right');
     } else if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
       e.preventDefault();
-      handleCopyFormula();
+      const sel = getSelectionIndices();
+      if (sel) {
+        const selectedText = calcInput.substring(sel.minIdx, sel.maxIdx);
+        handleCopyFormula(selectedText);
+      } else {
+        handleCopyFormula();
+      }
     } else if ((e.ctrlKey || e.metaKey) && e.key === 'x') {
       e.preventDefault();
-      handleCopyFormula();
-      handleClear();
+      const sel = getSelectionIndices();
+      if (sel) {
+        const selectedText = calcInput.substring(sel.minIdx, sel.maxIdx);
+        handleCopyFormula(selectedText);
+        const before = calcInput.substring(0, sel.minIdx);
+        const after = calcInput.substring(sel.maxIdx);
+        setCalcInput(before + after);
+        setCursorPosition(sel.minIdx);
+        sel.selection.removeAllRanges();
+      } else {
+        handleCopyFormula();
+        handleClear();
+      }
     } else if (e.key === 'Backspace' || e.key === 'Delete') {
       e.preventDefault();
       if (calcResult) {
@@ -1836,30 +1880,13 @@ export function ScientificCalculator() {
         setCursorPosition(calcInput.length);
         return;
       }
-      const selection = window.getSelection();
-      if (selection && selection.rangeCount > 0 && !selection.isCollapsed) {
-        const range = selection.getRangeAt(0);
-        const getElementIndex = (node) => {
-          let curr = node;
-          while (curr && curr !== document.body) {
-            if (curr.nodeType === Node.ELEMENT_NODE && curr.hasAttribute('data-index')) {
-              return parseInt(curr.getAttribute('data-index'), 10);
-            }
-            curr = curr.parentNode;
-          }
-          return null;
-        };
-        const startIdx = getElementIndex(range.startContainer);
-        const endIdx = getElementIndex(range.endContainer);
-        if (startIdx !== null && endIdx !== null) {
-          const minIdx = Math.min(startIdx, endIdx);
-          const maxIdx = Math.max(startIdx, endIdx) + 1;
-          const before = calcInput.substring(0, minIdx);
-          const after = calcInput.substring(maxIdx);
-          setCalcInput(before + after);
-          setCursorPosition(minIdx);
-          selection.removeAllRanges();
-        }
+      const sel = getSelectionIndices();
+      if (sel) {
+        const before = calcInput.substring(0, sel.minIdx);
+        const after = calcInput.substring(sel.maxIdx);
+        setCalcInput(before + after);
+        setCursorPosition(sel.minIdx);
+        sel.selection.removeAllRanges();
       } else {
         handleBackspace();
       }
