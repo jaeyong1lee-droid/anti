@@ -2987,9 +2987,12 @@ router.post('/schedules/:id/complete', async (req, res) => {
 
   try {
     let schedule = null;
-    if (tId && rRound !== undefined) {
+    const parsedTId = tId ? parseInt(tId, 10) : null;
+    const parsedRRound = rRound !== undefined ? parseInt(rRound, 10) : undefined;
+
+    if (parsedTId && !isNaN(parsedTId) && parsedRRound !== undefined && !isNaN(parsedRRound)) {
       const checkSql = `SELECT * FROM schedules WHERE topic_id = ? AND review_round = ?`;
-      schedule = await dbQuery.get(checkSql, [tId, parseInt(rRound, 10)]);
+      schedule = await dbQuery.get(checkSql, [parsedTId, parsedRRound]);
     }
     if (!schedule && scheduleId && scheduleId !== '9999') {
       const checkSql = `SELECT * FROM schedules WHERE id = ?`;
@@ -3192,7 +3195,7 @@ router.post('/quiz/submit', async (req, res) => {
     // 다음 회차 자동 생성
     if (isPassed && !isBonus && schedule.review_round !== 99) {
       const baseDate = referenceDate ? new Date(referenceDate) : new Date();
-      await scheduleNextReviewRound(topic_id, schedule.review_round, baseDate);
+      await scheduleNextReviewRound(topicIdInt, schedule.review_round, baseDate);
     }
 
     res.json({
@@ -3218,9 +3221,12 @@ router.post('/schedules/:id/reset', async (req, res) => {
 
   try {
     let schedule = null;
-    if (tId && rRound !== undefined) {
+    const parsedTId = tId ? parseInt(tId, 10) : null;
+    const parsedRRound = rRound !== undefined ? parseInt(rRound, 10) : undefined;
+
+    if (parsedTId && !isNaN(parsedTId) && parsedRRound !== undefined && !isNaN(parsedRRound)) {
       const checkSql = `SELECT * FROM schedules WHERE topic_id = ? AND review_round = ?`;
-      schedule = await dbQuery.get(checkSql, [tId, parseInt(rRound, 10)]);
+      schedule = await dbQuery.get(checkSql, [parsedTId, parsedRRound]);
     }
     if (!schedule && scheduleId && scheduleId !== '9999') {
       const checkSql = `SELECT * FROM schedules WHERE id = ?`;
@@ -3274,9 +3280,12 @@ router.put('/schedules/:id/score', async (req, res) => {
 
   try {
     let schedule = null;
-    if (tId && rRound !== undefined) {
+    const parsedTId = tId ? parseInt(tId, 10) : null;
+    const parsedRRound = rRound !== undefined ? parseInt(rRound, 10) : undefined;
+
+    if (parsedTId && !isNaN(parsedTId) && parsedRRound !== undefined && !isNaN(parsedRRound)) {
       const checkSql = `SELECT * FROM schedules WHERE topic_id = ? AND review_round = ?`;
-      schedule = await dbQuery.get(checkSql, [tId, parseInt(rRound, 10)]);
+      schedule = await dbQuery.get(checkSql, [parsedTId, parsedRRound]);
     }
     if (!schedule && scheduleId && scheduleId !== 9999) {
       const checkSql = `SELECT * FROM schedules WHERE id = ?`;
