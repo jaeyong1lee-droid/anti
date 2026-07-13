@@ -1016,7 +1016,7 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
             onChange={handleChange}
             disabled={isGraded}
             placeholder={`(${letter}) 입력`}
-            className={`px-2 py-0.5 rounded border bg-slate-950 text-white text-[13px] focus:outline-none focus:ring-1 focus:ring-indigo-500 flex-grow flex-1 min-w-[140px] inline-block font-bold ${
+            className={`px-2 py-0.5 rounded border bg-slate-950 text-white text-[14px] sm:text-[16px] focus:outline-none focus:ring-1 focus:ring-indigo-500 flex-grow flex-1 min-w-[140px] inline-block font-bold ${
               isGraded
                 ? isCorrect
                   ? 'border-emerald-500 text-emerald-300 font-bold bg-emerald-950/20'
@@ -1026,8 +1026,8 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
           />
           <span>{parts[1]}</span>
           {isGraded && (
-            <span className={`text-[11px] font-extrabold ${isCorrect ? 'text-emerald-400' : 'text-rose-400'} ml-1`}>
-              {isCorrect ? '✓' : `✗ (정답: ${q.answers?.[inputId] || ''})`}
+            <span className={`text-[13px] sm:text-[15px] font-extrabold ${isCorrect ? 'text-emerald-400' : 'text-rose-400'} ml-1`}>
+              {isCorrect ? '✓' : '✗'}
             </span>
           )}
         </div>
@@ -1049,11 +1049,11 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
           const bodyLines = item.content.slice(1);
           return (
             <div key={idx} className="w-full h-auto min-h-fit border border-indigo-500/30 bg-slate-900/80 p-2.5 rounded-xl text-left leading-relaxed shadow-md flex flex-col gap-0.5">
-              <div className="font-bold text-[14px] text-indigo-400 mb-0.5 w-full h-auto whitespace-pre-wrap break-all">
+              <div className="font-bold text-[14px] sm:text-[16px] text-indigo-400 mb-0.5 w-full h-auto whitespace-pre-wrap break-all">
                 {renderLineContent(title)}
               </div>
               {bodyLines.map((bl, bIdx) => (
-                <div key={bIdx} className="text-[13px] text-slate-200 pl-1.5 border-l border-slate-700/50 my-0.5 w-full h-auto whitespace-pre-wrap break-all">
+                <div key={bIdx} className="text-[14px] sm:text-[16px] text-slate-200 pl-1.5 border-l border-slate-700/50 my-0.5 w-full h-auto whitespace-pre-wrap break-all">
                   {renderLineContent(bl)}
                 </div>
               ))}
@@ -1061,7 +1061,7 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
           );
         } else {
           return (
-            <div key={idx} className="text-indigo-400 font-extrabold text-[15px] my-1 select-none">
+            <div key={idx} className="text-indigo-400 font-extrabold text-[14px] sm:text-[16px] my-1 select-none">
               ▼
             </div>
           );
@@ -1935,6 +1935,27 @@ export default function App() {
     return (
       <div className="mt-4 pt-3 border-t border-current/10 space-y-3">
         <span className="font-extrabold text-amber-400 text-[14px] sm:text-[16px]">💡 빈칸별 상세 피드백:</span>
+
+        {/* 전체 모범 답안 (전체 플로우) 맨 처음 한 번만 노출 */}
+        <div className="p-3 bg-slate-900/60 rounded-xl border border-indigo-500/20 text-left my-2">
+          <span className="text-[13px] font-black text-indigo-400 block mb-2">📋 모범 정답 전체 플로우 목록</span>
+          <div className="space-y-1.5">
+            {filteredInputIds.map((inputId) => {
+              const correctAnswer = q.answers?.[inputId] || '';
+              const inputIdx = inputIds.indexOf(inputId);
+              const inputLetter = String.fromCharCode(65 + (inputIdx !== -1 ? inputIdx : 0));
+              return (
+                <div key={inputId} className="text-[14px] sm:text-[16px] text-slate-200 flex items-baseline gap-1.5">
+                  <span className="font-extrabold text-indigo-400 shrink-0">({inputLetter})</span>
+                  <span className="font-semibold select-text">
+                    <LatexRenderer text={correctAnswer} katexLoaded={katexLoaded} className="inline" />
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
         <div className="divide-y divide-slate-800/80 mt-1">
           {filteredInputIds.map((inputId) => {
             const value = activeAnswers[`${idx}_${inputId}`] || '';
@@ -2018,14 +2039,7 @@ export default function App() {
                   <span className="text-slate-100 mr-1.5 font-bold">정답:</span>
                   <div className="text-slate-100 font-semibold mt-1">
                     <LatexRenderer 
-                      text={
-                        (() => {
-                          if (gradingResult?.suggestedModelAnswer) {
-                            return gradingResult.suggestedModelAnswer;
-                          }
-                          return correctAnswer;
-                        })()
-                      } 
+                      text={correctAnswer} 
                       katexLoaded={katexLoaded} 
                       isMarkdown={true} 
                       highlightBold={true} 
