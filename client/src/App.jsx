@@ -1096,12 +1096,16 @@ const renderResponsiveContent = (text, katexLoaded, questionKey, isMarkdown, que
   }
 
   return (
-    <div className="w-full space-y-2 select-text text-left max-w-[700px] mx-auto">
+    <div className="w-full space-y-2 select-text text-left">
       {parts.map((part, pIdx) => {
         if (part.type === 'text') {
           return <LatexRenderer key={pIdx} text={part.content} katexLoaded={katexLoaded} isMarkdown={isMarkdown} enableAddFormula={true} questionKey={questionKey} />;
         } else {
-          return <div key={pIdx}>{renderMobileFlowchart(part.content, katexLoaded, questionKey, questionIdx, tableAnswers, setTableAnswers, revealed, tableGradingResults, q)}</div>;
+          return (
+            <div key={pIdx} className="w-full max-w-[700px] mx-auto">
+              {renderMobileFlowchart(part.content, katexLoaded, questionKey, questionIdx, tableAnswers, setTableAnswers, revealed, tableGradingResults, q)}
+            </div>
+          );
         }
       })}
     </div>
