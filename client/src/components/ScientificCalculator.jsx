@@ -510,8 +510,11 @@ const convertFromLatex = (str) => {
   // Reverse ^{val} to ^(val)
   result = result.replace(/\^{([^}]+)}/g, '^($1)');
 
-  // Reverse _{val} to _(val) (or just _val if it's alphanumeric/greek)
-  result = result.replace(/_{([^}]+)}/g, '_$1');
+  // Reverse _{val} to _(val)
+  result = result.replace(/_{([^}]+)}/g, '_($1)');
+
+  // Normalize any remaining _val (without braces or parentheses) to _(val)
+  result = result.replace(/_(?!\()([a-zA-Z0-9\u0370-\u03ff]+)/g, '_($1)');
 
   // Reverse operators
   result = result.replaceAll('\\times', '×');
@@ -1568,6 +1571,9 @@ export function ScientificCalculator() {
       if (!expr.trim()) return '';
       
       let processedExpr = expr;
+      // Convert parenthesized subscripts _(...) back to flat subscripts _... for evaluation
+      processedExpr = processedExpr.replace(/_\(([^)]+)\)/g, '_$1');
+
       if (!isInternal && processedExpr.trim().startsWith('=')) {
         processedExpr = processedExpr.trim().substring(1);
       }
@@ -1816,6 +1822,13 @@ export function ScientificCalculator() {
     } else if (e.key === 'ArrowRight') {
       e.preventDefault();
       handleDpad('right');
+    } else if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
+      e.preventDefault();
+      handleCopyFormula();
+    } else if ((e.ctrlKey || e.metaKey) && e.key === 'x') {
+      e.preventDefault();
+      handleCopyFormula();
+      handleClear();
     } else if (e.key === 'Backspace' || e.key === 'Delete') {
       e.preventDefault();
       if (calcResult) {
@@ -2698,7 +2711,7 @@ export function ScientificCalculator() {
             setCursorPosition(e.target.selectionStart);
           }}
           onPaste={handlePaste}
-          className="absolute opacity-0 pointer-events-none w-0 h-0"
+          className="absolute opacity-0 w-[1px] h-[1px] -left-[9999px]"
         />
       </div>
     );
