@@ -7,8 +7,17 @@ import dotenv from 'dotenv';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Load environment variables from server/.env
 dotenv.config({ path: path.resolve(__dirname, '.env') });
+
+// Sanitize BLOB_READ_WRITE_TOKEN to handle copy-paste pollution (e.g. including prefix or quotes)
+if (process.env.BLOB_READ_WRITE_TOKEN) {
+  let token = process.env.BLOB_READ_WRITE_TOKEN.trim();
+  const tokenIdx = token.indexOf('vercel_blob_rw_');
+  if (tokenIdx !== -1) {
+    token = token.substring(tokenIdx);
+  }
+  process.env.BLOB_READ_WRITE_TOKEN = token.replace(/['"]+$/g, '').trim();
+}
 
 const connectionString = process.env.DATABASE_URL || 
                          process.env.POSTGRES_URL || 
