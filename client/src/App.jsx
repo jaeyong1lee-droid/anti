@@ -1041,20 +1041,15 @@ const renderResponsiveContent = (text, katexLoaded, questionKey, isMarkdown) => 
   }
 
   return (
-    <>
-      <div className="hidden sm:block w-full">
-        <LatexRenderer text={text} katexLoaded={katexLoaded} isMarkdown={isMarkdown} enableAddFormula={true} questionKey={questionKey} />
-      </div>
-      <div className="block sm:hidden w-full space-y-2 select-text text-left">
-        {parts.map((part, pIdx) => {
-          if (part.type === 'text') {
-            return <LatexRenderer key={pIdx} text={part.content} katexLoaded={katexLoaded} isMarkdown={isMarkdown} enableAddFormula={true} questionKey={questionKey} />;
-          } else {
-            return <div key={pIdx}>{renderMobileFlowchart(part.content, katexLoaded, questionKey)}</div>;
-          }
-        })}
-      </div>
-    </>
+    <div className="w-full space-y-2 select-text text-left max-w-[700px] mx-auto">
+      {parts.map((part, pIdx) => {
+        if (part.type === 'text') {
+          return <LatexRenderer key={pIdx} text={part.content} katexLoaded={katexLoaded} isMarkdown={isMarkdown} enableAddFormula={true} questionKey={questionKey} />;
+        } else {
+          return <div key={pIdx}>{renderMobileFlowchart(part.content, katexLoaded, questionKey)}</div>;
+        }
+      })}
+    </div>
   );
 };
 
