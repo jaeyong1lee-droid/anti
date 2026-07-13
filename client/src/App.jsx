@@ -1184,36 +1184,27 @@ const renderCompleteFlowchart = (flowchartText, katexLoaded, q) => {
   });
 
   const renderLineContent = (content) => {
-    const inputRegex = /\[(INPUT_\d+)\]/g;
-    if (!inputRegex.test(content)) {
+    const targetRegex = /\(([A-F])\)/g;
+    if (!targetRegex.test(content)) {
       return <LatexRenderer text={content} katexLoaded={katexLoaded} enableAddFormula={true} />;
     }
 
-    inputRegex.lastIndex = 0;
+    targetRegex.lastIndex = 0;
     const parts = [];
     let lastIndex = 0;
     let match;
-    const allInputIds = [];
-    
-    // 전체 inputId들의 순서를 찾아 레터(A, B, C...) 구하기
-    const fullTextRegex = /\[(INPUT_\d+)\]/g;
-    let tempMatch;
-    while ((tempMatch = fullTextRegex.exec(flowchartText)) !== null) {
-      allInputIds.push(tempMatch[1]);
-    }
-    const uniqueInputIds = Array.from(new Set(allInputIds));
 
-    while ((match = inputRegex.exec(content)) !== null) {
+    while ((match = targetRegex.exec(content)) !== null) {
       const beforeText = content.substring(lastIndex, match.index);
       if (beforeText) {
         parts.push({ type: 'text', text: beforeText });
       }
-      const inputId = match[1];
-      const inputIdx = uniqueInputIds.indexOf(inputId);
-      const letter = String.fromCharCode(65 + (inputIdx !== -1 ? inputIdx : 0));
+      const letter = match[1];
+      const letterIdx = letter.charCodeAt(0) - 65;
+      const inputId = `INPUT_${letterIdx + 1}`;
       const answerVal = q.answers?.[inputId] || '';
       parts.push({ type: 'answer', letter, text: answerVal });
-      lastIndex = inputRegex.lastIndex;
+      lastIndex = targetRegex.lastIndex;
     }
     const afterText = content.substring(lastIndex);
     if (afterText) {
@@ -1221,7 +1212,7 @@ const renderCompleteFlowchart = (flowchartText, katexLoaded, q) => {
     }
 
     return (
-      <div className="flex items-baseline gap-1 flex-wrap my-0.5 select-text w-full h-auto whitespace-pre-wrap break-all">
+      <div className="flex items-baseline gap-1 flex-wrap my-0.5 select-text w-full h-auto whitespace-pre-wrap break-all flowchart-text-force">
         {parts.map((p, pIdx) => {
           if (p.type === 'text') {
             return <span key={pIdx}>{p.text}</span>;
@@ -1239,18 +1230,18 @@ const renderCompleteFlowchart = (flowchartText, katexLoaded, q) => {
   };
 
   return (
-    <div className="w-full flex flex-col items-center gap-2 select-text my-3">
+    <div className="w-full flex flex-col items-center gap-2 select-text my-3 flowchart-text-force">
       {cleanItems.map((item, idx) => {
         if (item.type === 'box') {
           const title = item.content[0] || '';
           const bodyLines = item.content.slice(1);
           return (
             <div key={idx} className="w-full h-auto min-h-fit border border-emerald-500/30 bg-slate-900/60 p-2.5 rounded-xl text-left leading-relaxed shadow-sm flex flex-col gap-0.5">
-              <div className="font-bold text-[14px] sm:text-[16px] text-emerald-400 mb-0.5 w-full h-auto whitespace-pre-wrap break-all">
+              <div className="font-bold text-[13px] sm:text-[14px] flowchart-text-force text-emerald-400 mb-0.5 w-full h-auto whitespace-pre-wrap break-all">
                 {renderLineContent(title)}
               </div>
               {bodyLines.map((bl, bIdx) => (
-                <div key={bIdx} className="text-[14px] sm:text-[16px] text-slate-200 pl-1.5 border-l border-slate-700/50 my-0.5 w-full h-auto whitespace-pre-wrap break-all">
+                <div key={bIdx} className="text-[13px] sm:text-[14px] flowchart-text-force text-slate-200 pl-1.5 border-l border-slate-700/50 my-0.5 w-full h-auto whitespace-pre-wrap break-all">
                   {renderLineContent(bl)}
                 </div>
               ))}
@@ -1264,11 +1255,11 @@ const renderCompleteFlowchart = (flowchartText, katexLoaded, q) => {
                 const bodyLines = box.content.slice(1);
                 return (
                   <div key={bIdx} className="flex-1 w-full h-auto min-h-fit border border-emerald-500/30 bg-slate-900/60 p-2.5 rounded-xl text-left leading-relaxed shadow-sm flex flex-col gap-0.5">
-                    <div className="font-bold text-[14px] sm:text-[16px] text-emerald-400 mb-0.5 w-full h-auto whitespace-pre-wrap break-all">
+                    <div className="font-bold text-[13px] sm:text-[14px] flowchart-text-force text-emerald-400 mb-0.5 w-full h-auto whitespace-pre-wrap break-all">
                       {renderLineContent(title)}
                     </div>
                     {bodyLines.map((bl, blIdx) => (
-                      <div key={blIdx} className="text-[14px] sm:text-[16px] text-slate-200 pl-1.5 border-l border-slate-700/50 my-0.5 w-full h-auto whitespace-pre-wrap break-all">
+                      <div key={blIdx} className="text-[13px] sm:text-[14px] flowchart-text-force text-slate-200 pl-1.5 border-l border-slate-700/50 my-0.5 w-full h-auto whitespace-pre-wrap break-all">
                         {renderLineContent(bl)}
                       </div>
                     ))}
@@ -1279,7 +1270,7 @@ const renderCompleteFlowchart = (flowchartText, katexLoaded, q) => {
           );
         } else {
           return (
-            <div key={idx} className="text-emerald-400 font-extrabold text-[14px] sm:text-[16px] my-1 select-none">
+            <div key={idx} className="text-emerald-400 font-extrabold text-[13px] sm:text-[14px] flowchart-text-force my-1 select-none">
               ▼
             </div>
           );
@@ -2155,24 +2146,49 @@ export default function App() {
         <span className="font-extrabold text-amber-400 text-[14px] sm:text-[16px]">💡 빈칸별 상세 피드백:</span>
 
         {/* 전체 모범 답안 (전체 플로우) 맨 처음 한 번만 노출 */}
-        <div className="p-3 bg-slate-900/60 rounded-xl border border-indigo-500/20 text-left my-2 w-full">
-          <span className="text-[13px] font-black text-indigo-400 block mb-2">📋 모범 정답 전체 목록</span>
-          <div className="space-y-1.5">
-            {filteredInputIds.map((inputId) => {
-              const correctAnswer = q.answers?.[inputId] || '';
-              const inputIdx = inputIds.indexOf(inputId);
-              const inputLetter = String.fromCharCode(65 + (inputIdx !== -1 ? inputIdx : 0));
-              return (
-                <div key={inputId} className="text-[14px] sm:text-[16px] text-slate-200 flex items-baseline gap-1.5">
-                  <span className="font-extrabold text-indigo-400 shrink-0">({inputLetter})</span>
-                  <span className="font-semibold select-text">
-                    <LatexRenderer text={correctAnswer} katexLoaded={katexLoaded} className="inline" />
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+        {(() => {
+          const { questionText } = parseQuestionTable(q, selectedTopic?.title || '');
+          const isFlow = questionText.includes('┌──') || questionText.includes('▼') || questionText.includes('```') || questionText.includes('흐름도') || questionText.includes('플로우차트');
+          const cleanText = isFlow 
+            ? questionText.replace(/\r/g, '')
+            : questionText.replace(/\r/g, '').replace(/[ \t]+/g, ' ');
+
+          const flowchartRegex = /```(?:[a-zA-Z]*)?\n([\s\S]*?┌[\s\S]*?)```/g;
+          const match = flowchartRegex.exec(cleanText || '');
+          flowchartRegex.lastIndex = 0;
+
+          if (match) {
+            const flowchartText = match[1];
+            return (
+              <div className="p-3.5 bg-slate-900/60 rounded-xl border border-emerald-500/30 text-left my-2 w-full overflow-hidden">
+                <span className="text-[13px] font-black text-emerald-400 block mb-2">📋 모범 완성 흐름도 전체 플로우</span>
+                {renderCompleteFlowchart(flowchartText, katexLoaded, q)}
+              </div>
+            );
+          }
+
+          // 흐름도가 아닌 일반 퀴즈 테이블 모범 답안
+          return (
+            <div className="p-3 bg-slate-900/60 rounded-xl border border-indigo-500/20 text-left my-2 w-full">
+              <span className="text-[13px] font-black text-indigo-400 block mb-2">📋 모범 정답 전체 목록</span>
+              <div className="space-y-1.5">
+                {filteredInputIds.map((inputId) => {
+                  const correctAnswer = q.answers?.[inputId] || '';
+                  const inputIdx = inputIds.indexOf(inputId);
+                  const inputLetter = String.fromCharCode(65 + (inputIdx !== -1 ? inputIdx : 0));
+                  return (
+                    <div key={inputId} className="text-[14px] sm:text-[16px] text-slate-200 flex items-baseline gap-1.5">
+                      <span className="font-extrabold text-indigo-400 shrink-0">({inputLetter})</span>
+                      <span className="font-semibold select-text">
+                        <LatexRenderer text={correctAnswer} katexLoaded={katexLoaded} className="inline" />
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
 
         <div className="divide-y divide-slate-800/80 mt-1">
           {filteredInputIds.map((inputId) => {
