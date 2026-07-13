@@ -2167,27 +2167,8 @@ export default function App() {
             );
           }
 
-          // 흐름도가 아닌 일반 퀴즈 테이블 모범 답안
-          return (
-            <div className="p-3 bg-slate-900/60 rounded-xl border border-indigo-500/20 text-left my-2 w-full">
-              <span className="text-[13px] font-black text-indigo-400 block mb-2">📋 모범 정답 전체 목록</span>
-              <div className="space-y-1.5">
-                {filteredInputIds.map((inputId) => {
-                  const correctAnswer = q.answers?.[inputId] || '';
-                  const inputIdx = inputIds.indexOf(inputId);
-                  const inputLetter = String.fromCharCode(65 + (inputIdx !== -1 ? inputIdx : 0));
-                  return (
-                    <div key={inputId} className="text-[14px] sm:text-[16px] text-slate-200 flex items-baseline gap-1.5">
-                      <span className="font-extrabold text-indigo-400 shrink-0">({inputLetter})</span>
-                      <span className="font-semibold select-text">
-                        <LatexRenderer text={correctAnswer} katexLoaded={katexLoaded} className="inline" />
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          );
+          // 흐름도가 아닌 일반 퀴즈 테이블 모범 답안은 개별 빈칸 피드백에서 보이기 때문에 전체 목록은 표시하지 않음
+          return null;
         })()}
 
         <div className="divide-y divide-slate-800/80 mt-1">
