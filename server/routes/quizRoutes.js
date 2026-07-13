@@ -3142,16 +3142,18 @@ router.post('/quiz/submit', async (req, res) => {
       [finalStatus, now, scoreVal, correctVal, totalVal, targetScheduleId]
     );
 
-    // 복습 데이터 세션 보존 (questions, chatHistory는 제외하여 데이터량 최소화)
+    // 복습 데이터 세션 보존 (완료된 복습을 다시 조회할 수 있도록 questions와 chatHistory를 포함하여 저장)
     if (questions && questions.length > 0) {
       const solvedSessionKey = `completed_review_schedule_${targetScheduleId}`;
       const solvedSessionValue = JSON.stringify({ 
+        questions: questions || [],
         selectedAnswers: selectedAnswers || {}, 
         revealedQuestions: revealedQuestions || {},
         tableAnswers: tableAnswers || {},
         tableGradingResults: tableGradingResults || {},
         tutorAnswers: tutorAnswers || {},
-        tutorInputText: tutorInputText || {}
+        tutorInputText: tutorInputText || {},
+        chatHistory: chatHistory || []
       });
       await ensureSessionTable();
       await dbQuery.run(
