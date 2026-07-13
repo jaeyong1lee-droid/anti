@@ -717,7 +717,7 @@ router.get('/session/images', async (req, res) => {
                 const extension = mimeType.split('/')[1] || 'png';
                 const fileName = getFormulaBlobFileName(item, idx, extension);
                 try {
-                  const blob = await put(fileName, buffer, { access: 'private' });
+                  const blob = await put(fileName, buffer, { access: 'public' });
                   return blob.url;
                 } catch (uploadErr) {
                   console.error(`[Self-Healing] Upload failed: ${uploadErr.message}`);
@@ -818,20 +818,33 @@ router.get('/session/images/proxy', async (req, res) => {
     // 4. Fallback to @vercel/blob SDK get method as a last resort
     console.log('[Proxy] Falling back to @vercel/blob SDK get method');
     const token = process.env.BLOB_READ_WRITE_TOKEN || process.env.VERCEL_OIDC_TOKEN;
-    const blob = await get(imageUrl, { token, access: 'private' });
-    const contentType = (blob.headers && typeof blob.headers.get === 'function' ? blob.headers.get('content-type') : null) || 'image/png';
-    res.setHeader('Content-Type', contentType);
-    res.setHeader('Cache-Control', 'public, max-age=31536000');
-
-    const stream = blob.stream || blob.body;
-    if (stream && typeof stream.pipe === 'function') {
-      stream.pipe(res);
-    } else if (stream) {
-      const arrayBuffer = await new Response(stream).arrayBuffer();
-      res.send(Buffer.from(arrayBuffer));
-    } else {
-      res.status(404).send('Not found');
+    if (!token) {
+      console.warn('[Proxy Error] No token available for @vercel/blob SDK get. Redirecting to direct URL as fallback.');
+      return res.redirect(imageUrl);
     }
+    
+    try {
+      const blob = await get(imageUrl, { token, access: 'private' });
+      if (blob) {
+        const contentType = (blob.headers && typeof blob.headers.get === 'function' ? blob.headers.get('content-type') : null) || 'image/png';
+        res.setHeader('Content-Type', contentType);
+        res.setHeader('Cache-Control', 'public, max-age=31536000');
+
+        const stream = blob.stream || blob.body;
+        if (stream && typeof stream.pipe === 'function') {
+          return stream.pipe(res);
+        } else if (stream) {
+          const arrayBuffer = await new Response(stream).arrayBuffer();
+          return res.send(Buffer.from(arrayBuffer));
+        }
+      }
+    } catch (sdkErr) {
+      console.error('[Proxy Error] SDK get failed:', sdkErr.message);
+    }
+    
+    // Ultimate fallback: redirect directly to the Vercel Blob URL
+    console.log('[Proxy] Ultimate fallback: redirecting directly to imageUrl');
+    return res.redirect(imageUrl);
   } catch (err) {
     console.error('Proxy image error:', err);
     res.status(500).send('Internal server error');
@@ -855,6 +868,10 @@ router.post('/session/images', async (req, res) => {
         }
 
         if (imgStr && imgStr.startsWith('data:image/')) {
+          if (!process.env.BLOB_READ_WRITE_TOKEN && !process.env.VERCEL_OIDC_TOKEN) {
+            console.warn('[Upload Warning] No Vercel Blob token configured locally. Storing image as raw base64 data.');
+            return imgStr;
+          }
           const match = imgStr.match(/^data:(image\/[^;]+);base64,(.+)$/);
           if (match) {
             const mimeType = match[1];
@@ -863,8 +880,13 @@ router.post('/session/images', async (req, res) => {
             const extension = mimeType.split('/')[1] || 'png';
             const fileName = getFormulaBlobFileName(item, idx, extension);
             console.log(`Uploading formula image to Vercel Blob: ${fileName}`);
-            const blob = await put(fileName, buffer, { access: 'private' });
-            return blob.url;
+            try {
+              const blob = await put(fileName, buffer, { access: 'public' });
+              return blob.url;
+            } catch (uploadErr) {
+              console.error(`[Upload Error] Local Vercel Blob upload failed: ${uploadErr.message}. Falling back to base64.`);
+              return imgStr;
+            }
           }
         }
         return imgStr;
@@ -904,18 +926,6 @@ router.get('/session/mixed-completed', async (req, res) => {
   }
 });
 
-// GET /api/session/temp-token-debug
-router.get('/session/temp-token-debug', (req, res) => {
-  const envs = {};
-  Object.keys(process.env).forEach(key => {
-    if (key.startsWith('BLOB_') || key.startsWith('VERCEL_')) {
-      // Obfuscate token values for safety, showing only first 5 chars
-      const val = process.env[key];
-      envs[key] = val ? (val.substring(0, 5) + '...' + val.substring(val.length - 5)) : 'empty';
-    }
-  });
-  res.json(envs);
-});
 
 // POST /api/session/mixed-completed
 router.post('/session/mixed-completed', async (req, res) => {
