@@ -718,6 +718,9 @@ export const TableQuiz = React.memo(function TableQuiz({
     const percentWidths = widths.map(w => (w / totalWidth) * 100);
     const targetColStartWidth = thElements[idx] ? thElements[idx].getBoundingClientRect().width : 140;
 
+    const doc = tableRef.current ? tableRef.current.ownerDocument : document;
+    const targetWindow = doc.defaultView || window;
+
     const container = tableRef.current.closest('.table-quiz-container');
     const startScrollLeft = container ? container.scrollLeft : 0;
     const startX = isTouch ? e.touches[0].clientX : e.clientX;
@@ -726,7 +729,7 @@ export const TableQuiz = React.memo(function TableQuiz({
       container.scrollLeft = startScrollLeft;
       container.style.overflowX = 'hidden';
       container.style.touchAction = 'none';
-      document.body.style.touchAction = 'none';
+      doc.body.style.touchAction = 'none';
     }
 
     const doResize = (ev) => {
@@ -737,7 +740,7 @@ export const TableQuiz = React.memo(function TableQuiz({
       const currentX = isTouch ? ev.touches[0].clientX : ev.clientX;
       const deltaX = currentX - startX;
 
-      const isMobile = window.innerWidth < 768;
+      const isMobile = targetWindow.innerWidth < 768;
       if (isMobile) {
         const newWidth = Math.max(idx === 0 ? 50 : 60, targetColStartWidth + deltaX);
         
@@ -796,23 +799,23 @@ export const TableQuiz = React.memo(function TableQuiz({
       if (isTouch && container) {
         container.style.overflowX = '';
         container.style.touchAction = '';
-        document.body.style.touchAction = '';
+        doc.body.style.touchAction = '';
       }
       if (isTouch) {
-        window.removeEventListener('touchmove', doResize);
-        window.removeEventListener('touchend', stopResize);
+        targetWindow.removeEventListener('touchmove', doResize);
+        targetWindow.removeEventListener('touchend', stopResize);
       } else {
-        window.removeEventListener('mousemove', doResize);
-        window.removeEventListener('mouseup', stopResize);
+        targetWindow.removeEventListener('mousemove', doResize);
+        targetWindow.removeEventListener('mouseup', stopResize);
       }
     };
 
     if (isTouch) {
-      window.addEventListener('touchmove', doResize, { passive: false });
-      window.addEventListener('touchend', stopResize);
+      targetWindow.addEventListener('touchmove', doResize, { passive: false });
+      targetWindow.addEventListener('touchend', stopResize);
     } else {
-      window.addEventListener('mousemove', doResize);
-      window.addEventListener('mouseup', stopResize);
+      targetWindow.addEventListener('mousemove', doResize);
+      targetWindow.addEventListener('mouseup', stopResize);
     }
   }, [colCount]);
 
