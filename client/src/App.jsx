@@ -2156,7 +2156,7 @@ export default function App() {
 
         {/* 전체 모범 답안 (전체 플로우) 맨 처음 한 번만 노출 */}
         {(() => {
-          const { questionText } = parseQuestionTable(q, topicTitle);
+          const { questionText } = parseQuestionTable(q, selectedTopic?.title || '');
           const isFlow = questionText.includes('┌──') || questionText.includes('▼') || questionText.includes('```') || questionText.includes('흐름도') || questionText.includes('플로우차트');
           const cleanText = isFlow 
             ? questionText.replace(/\r/g, '')
