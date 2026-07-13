@@ -4487,6 +4487,31 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
   };
 
   const setAiQuestions = (val) => {
+    const patchFlowchartQuestions = (questionsList) => {
+      if (!Array.isArray(questionsList)) return questionsList;
+      return questionsList.map(q => {
+        if (!q || !q.question) return q;
+        const qText = q.question;
+        const isFlowchart = qText.includes('┌──') || qText.includes('▼') || qText.includes('플로우차트') || qText.includes('흐름도');
+        
+        if (isFlowchart && qText.includes('다음 흐름도')) {
+          let title = '';
+          const bracketMatch = qText.match(/\[([^\]]+)\]/);
+          if (bracketMatch) {
+            title = bracketMatch[1].trim();
+          }
+          if (!title && q.concept) {
+            title = q.concept;
+          }
+          if (title) {
+            const patchedText = qText.replace('다음 흐름도', `다음 [${title}] 흐름도`);
+            return { ...q, question: patchedText };
+          }
+        }
+        return q;
+      });
+    };
+
     const swapFlowchartToSeventh = (questions) => {
       if (!Array.isArray(questions) || questions.length < 7) {
         return questions;
@@ -4516,11 +4541,13 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
     if (typeof val === 'function') {
       _setAiQuestions(prev => {
         const computed = val(prev);
-        const restored = restoreQuestionImages(computed);
+        const patched = patchFlowchartQuestions(computed);
+        const restored = restoreQuestionImages(patched);
         return swapFlowchartToSeventh(restored);
       });
     } else {
-      const restored = restoreQuestionImages(val);
+      const patched = patchFlowchartQuestions(val);
+      const restored = restoreQuestionImages(patched);
       _setAiQuestions(swapFlowchartToSeventh(restored));
     }
   };
