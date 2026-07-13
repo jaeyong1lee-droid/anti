@@ -9,6 +9,7 @@ import * as fileUtils from '../utils/fileUtils.js';
 import { generateFallbackQuestions } from '../fallback_generator.js';
 import { GENERATION_STANDARDS, generationStandardsList } from '../plugins/generationStandards.js';
 import { ENGINEERING_STANDARDS, standardsList as engineeringStandardsList } from '../plugins/engineeringStandards.js';
+import { FLOWCHART_QUIZ_GENERATION_PROMPT } from '../plugins/flowchartQuizPlugin.js';
 import * as ocrPlugin from '../plugins/calculationPlugin.js';
 import pdfParse from 'pdf-parse';
 
@@ -1022,6 +1023,8 @@ ${activeGenerationStandards}
 
 [🚨 지반공학 표준 이론 및 계산 기준]:
 ${activeEngineeringStandards}
+
+${FLOWCHART_QUIZ_GENERATION_PROMPT}
 
 ---------------------------------------------------------
 [문제 생성 태스크 시작]:
