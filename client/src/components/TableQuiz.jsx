@@ -350,6 +350,9 @@ export const TableQuiz = React.memo(function TableQuiz({
     const percentWidths = widths.map(w => (w / totalWidth) * 100);
     const targetColStartWidth = thElements[idx] ? thElements[idx].getBoundingClientRect().width : 140;
 
+    const doc = compTableRef.current ? compTableRef.current.ownerDocument : document;
+    const targetWindow = doc.defaultView || window;
+
     const container = compTableRef.current.closest('.table-quiz-container');
     const startScrollLeft = container ? container.scrollLeft : 0;
     const startX = isTouch ? e.touches[0].clientX : e.clientX;
@@ -366,7 +369,7 @@ export const TableQuiz = React.memo(function TableQuiz({
       const currentX = isTouch ? ev.touches[0].clientX : ev.clientX;
       const deltaX = currentX - startX;
 
-      const isMobile = window.innerWidth < 768;
+      const isMobile = targetWindow.innerWidth < 768;
       if (isMobile) {
         const newWidth = Math.max(idx === 0 ? 50 : 60, targetColStartWidth + deltaX);
         setCompMobileColWidths(prev => {
@@ -421,20 +424,20 @@ export const TableQuiz = React.memo(function TableQuiz({
         container.style.overflowX = 'auto';
       }
       if (isTouch) {
-        window.removeEventListener('touchmove', doResize);
-        window.removeEventListener('touchend', stopResize);
+        targetWindow.removeEventListener('touchmove', doResize);
+        targetWindow.removeEventListener('touchend', stopResize);
       } else {
-        window.removeEventListener('mousemove', doResize);
-        window.removeEventListener('mouseup', stopResize);
+        targetWindow.removeEventListener('mousemove', doResize);
+        targetWindow.removeEventListener('mouseup', stopResize);
       }
     };
 
     if (isTouch) {
-      window.addEventListener('touchmove', doResize, { passive: false });
-      window.addEventListener('touchend', stopResize);
+      targetWindow.addEventListener('touchmove', doResize, { passive: false });
+      targetWindow.addEventListener('touchend', stopResize);
     } else {
-      window.addEventListener('mousemove', doResize);
-      window.addEventListener('mouseup', stopResize);
+      targetWindow.addEventListener('mousemove', doResize);
+      targetWindow.addEventListener('mouseup', stopResize);
     }
   }, [compColCount]);
 
@@ -538,9 +541,10 @@ export const TableQuiz = React.memo(function TableQuiz({
   };
 
   useEffect(() => {
+    const currentWin = tableRef.current ? (tableRef.current.ownerDocument.defaultView || window) : window;
     const handleResize = () => {
-      setIsMobileView(window.innerWidth < 768);
-      const isMobilePortrait = window.innerWidth < 768 && window.innerHeight > window.innerWidth;
+      setIsMobileView(currentWin.innerWidth < 768);
+      const isMobilePortrait = currentWin.innerWidth < 768 && currentWin.innerHeight > currentWin.innerWidth;
       const isMixedTableOrOverview = q.mixedType === 'overview' || q.mixedType === 'table';
       if (isMixedTableOrOverview) {
         if (isMobilePortrait) {
@@ -577,10 +581,10 @@ export const TableQuiz = React.memo(function TableQuiz({
       }
     };
 
-    window.addEventListener('resize', handleResize);
+    currentWin.addEventListener('resize', handleResize);
     handleResize();
 
-    return () => window.removeEventListener('resize', handleResize);
+    return () => currentWin.removeEventListener('resize', handleResize);
   }, [colCount, q.mixedType]);
 
   const [mobileColWidths, setMobileColWidths] = useState(() => {
@@ -1076,10 +1080,10 @@ export const TableQuiz = React.memo(function TableQuiz({
           className={`table-quiz-table w-full table-fixed text-center border-collapse text-[14px] sm:text-[16px] min-w-full ${
             colCount === 2 ? 'sm:min-w-[600px]' : 'sm:min-w-[700px]'
           } ${isMainFloated ? 'h-full' : ''}`}
-        style={isMobileView ? {
-          '--table-width': colCount === 2 ? '100%' : `max(100%, ${mobileColWidths.reduce((sum, w) => sum + parseInt(w || '0', 10), 0)}px)`,
+        style={{
+          '--table-width': isMobileView ? (colCount === 2 ? '100%' : `max(100%, ${mobileColWidths.reduce((sum, w) => sum + parseInt(w || '0', 10), 0)}px)`) : '100%',
           minWidth: '0px'
-        } : undefined}
+        }}
       >
         <colgroup>
           {colWidths.map((w, idx) => (
@@ -1427,10 +1431,10 @@ export const TableQuiz = React.memo(function TableQuiz({
           <table 
             ref={compTableRef}
             className={`table-quiz-table w-full table-fixed text-center border-collapse text-[14px] sm:text-[16px] min-w-full ${isCompFloated ? 'h-full' : ''}`}
-            style={isMobileView ? {
-              '--table-width': compColCount === 2 ? '100%' : `max(100%, ${compMobileColWidths.reduce((sum, w) => sum + parseInt(w || '0', 10), 0)}px)`,
+            style={{
+              '--table-width': isMobileView ? (compColCount === 2 ? '100%' : `max(100%, ${compMobileColWidths.reduce((sum, w) => sum + parseInt(w || '0', 10), 0)}px)`) : '100%',
               minWidth: '0px'
-            } : undefined}
+            }}
           >
           <colgroup>
             {compColWidths.map((w, idx) => (
