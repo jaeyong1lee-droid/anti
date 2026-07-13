@@ -1034,7 +1034,7 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
             onChange={handleChange}
             disabled={isGraded}
             placeholder={`(${letter}) 입력`}
-            className={`px-2 py-0.5 rounded border bg-slate-950 text-white text-[14px] sm:text-[16px] focus:outline-none focus:ring-1 focus:ring-indigo-500 flex-grow flex-1 min-w-[140px] inline-block font-bold ${
+            className={`px-2 py-0.5 rounded border bg-slate-950 text-white text-[13px] sm:text-[14px] focus:outline-none focus:ring-1 focus:ring-indigo-500 flex-grow flex-1 min-w-[140px] inline-block font-bold ${
               isGraded
                 ? isCorrect
                   ? 'border-emerald-500 text-emerald-300 font-bold bg-emerald-950/20'
@@ -1044,7 +1044,7 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
           />
           <span>{parts[1]}</span>
           {isGraded && (
-            <span className={`text-[13px] sm:text-[15px] font-extrabold ${isCorrect ? 'text-emerald-400' : 'text-rose-400'} ml-1`}>
+            <span className={`text-[12px] sm:text-[13px] font-extrabold ${isCorrect ? 'text-emerald-400' : 'text-rose-400'} ml-1`}>
               {isCorrect ? '✓' : '✗'}
             </span>
           )}
@@ -1067,11 +1067,11 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
           const bodyLines = item.content.slice(1);
           return (
             <div key={idx} className="w-full h-auto min-h-fit border border-indigo-500/30 bg-slate-900/80 p-2.5 rounded-xl text-left leading-relaxed shadow-md flex flex-col gap-0.5">
-              <div className="font-bold text-[14px] sm:text-[16px] text-indigo-400 mb-0.5 w-full h-auto whitespace-pre-wrap break-all">
+              <div className="font-bold text-[13px] sm:text-[14px] text-indigo-400 mb-0.5 w-full h-auto whitespace-pre-wrap break-all">
                 {renderLineContent(title)}
               </div>
               {bodyLines.map((bl, bIdx) => (
-                <div key={bIdx} className="text-[14px] sm:text-[16px] text-slate-200 pl-1.5 border-l border-slate-700/50 my-0.5 w-full h-auto whitespace-pre-wrap break-all">
+                <div key={bIdx} className="text-[13px] sm:text-[14px] text-slate-200 pl-1.5 border-l border-slate-700/50 my-0.5 w-full h-auto whitespace-pre-wrap break-all">
                   {renderLineContent(bl)}
                 </div>
               ))}
@@ -1085,11 +1085,11 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
                 const bodyLines = box.content.slice(1);
                 return (
                   <div key={bIdx} className="flex-1 w-full h-auto min-h-fit border border-indigo-500/30 bg-slate-900/80 p-2.5 rounded-xl text-left leading-relaxed shadow-md flex flex-col gap-0.5">
-                    <div className="font-bold text-[14px] sm:text-[16px] text-indigo-400 mb-0.5 w-full h-auto whitespace-pre-wrap break-all">
+                    <div className="font-bold text-[13px] sm:text-[14px] text-indigo-400 mb-0.5 w-full h-auto whitespace-pre-wrap break-all">
                       {renderLineContent(title)}
                     </div>
                     {bodyLines.map((bl, blIdx) => (
-                      <div key={blIdx} className="text-[14px] sm:text-[16px] text-slate-200 pl-1.5 border-l border-slate-700/50 my-0.5 w-full h-auto whitespace-pre-wrap break-all">
+                      <div key={blIdx} className="text-[13px] sm:text-[14px] text-slate-200 pl-1.5 border-l border-slate-700/50 my-0.5 w-full h-auto whitespace-pre-wrap break-all">
                         {renderLineContent(bl)}
                       </div>
                     ))}
@@ -1100,7 +1100,7 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
           );
         } else {
           return (
-            <div key={idx} className="text-indigo-400 font-extrabold text-[14px] sm:text-[16px] my-1 select-none">
+            <div key={idx} className="text-indigo-400 font-extrabold text-[13px] sm:text-[14px] my-1 select-none">
               ▼
             </div>
           );

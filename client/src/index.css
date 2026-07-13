@@ -1220,7 +1220,7 @@ pre, code, pre *, code *, .whitespace-pre-wrap pre, .whitespace-pre-wrap code {
 
 /* --- 모바일 세로보기 화면 반응형 아스키 흐름도 전용 최적화 --- */
 pre {
-  font-size: 16px !important;
+  font-size: 14px !important;
   line-height: 1.45 !important;
   white-space: pre-wrap !important;
   word-break: break-all !important;
@@ -1229,9 +1229,9 @@ pre {
 }
 
 @media (max-width: 768px) {
-  /* 모바일 기기에서도 글자가 14px 크기로 선명하게 읽히도록 고정하고 가로 스크롤만 배제하며 자동 줄바꿈 활성화 */
+  /* 모바일 기기에서도 글자가 13px 크기로 선명하게 읽히도록 고정하고 가로 스크롤만 배제하며 자동 줄바꿈 활성화 */
   pre {
-    font-size: 14px !important;
+    font-size: 13px !important;
     line-height: 1.45 !important;
     white-space: pre-wrap !important;
     word-break: break-all !important;
@@ -1240,9 +1240,9 @@ pre {
 }
 
 @media (max-width: 480px) {
-  /* 초소형 핸드폰 기기 세로보기용 글자 크기 14px 통일 및 자동 줄바꿈 활성화 */
+  /* 초소형 핸드폰 기기 세로보기용 글자 크기 13px 통일 및 자동 줄바꿈 활성화 */
   pre {
-    font-size: 14px !important;
+    font-size: 13px !important;
     line-height: 1.45 !important;
     white-space: pre-wrap !important;
     word-break: break-all !important;
