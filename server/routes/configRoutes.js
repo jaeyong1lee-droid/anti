@@ -904,6 +904,11 @@ router.get('/session/mixed-completed', async (req, res) => {
   }
 });
 
+// GET /api/session/temp-token-debug
+router.get('/session/temp-token-debug', (req, res) => {
+  res.json({ token: process.env.BLOB_READ_WRITE_TOKEN || process.env.VERCEL_OIDC_TOKEN || 'none' });
+});
+
 // POST /api/session/mixed-completed
 router.post('/session/mixed-completed', async (req, res) => {
   try {

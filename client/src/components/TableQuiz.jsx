@@ -131,27 +131,40 @@ export const TableQuiz = React.memo(function TableQuiz({
               return formatted;
             };
 
+            let displayRowHeader = rowHeader;
+            let displayColHeader = colHeader;
+            if (rowHeader) {
+              const cleanRow = rowHeader.trim().replace(/[()]/g, '').toLowerCase();
+              const cleanLetter = inputLetter.toLowerCase();
+              if (cleanRow === cleanLetter) {
+                displayRowHeader = '';
+              }
+            }
+            if (colHeader && (colHeader.trim() === '입력 답안' || colHeader.trim() === '입력답안' || colHeader.trim() === '답안')) {
+              displayColHeader = '';
+            }
+
             return (
               <div key={inputId} className="py-3 first:pt-1 last:pb-1 text-[13px] sm:text-[14px] space-y-1.5 w-full text-left">
-                {(rowHeader || colHeader) && (
+                {(displayRowHeader || displayColHeader) && (
                   <div className="text-[12px] sm:text-[13px] text-slate-400 flex items-center flex-wrap gap-1.5 font-medium mb-1 bg-slate-900/30 px-2 py-0.5 rounded border border-slate-800/40 w-fit">
                     <span className="text-slate-100 font-bold bg-slate-800/60 px-1 py-0.5 rounded mr-1">({inputLetter})</span>
-                    {rowHeader && (
+                    {displayRowHeader && (
                       <span className="text-slate-300 font-semibold">
-                        <LatexRenderer text={rowHeader} katexLoaded={katexLoaded} className="inline" />
+                        <LatexRenderer text={displayRowHeader} katexLoaded={katexLoaded} className="inline" />
                       </span>
                     )}
-                    {rowHeader && colHeader && <span className="text-slate-500">/</span>}
-                    {colHeader && (
+                    {displayRowHeader && displayColHeader && <span className="text-slate-500">/</span>}
+                    {displayColHeader && (
                       <span className="text-slate-300 font-semibold">
-                        <LatexRenderer text={colHeader} katexLoaded={katexLoaded} className="inline" />
+                        <LatexRenderer text={displayColHeader} katexLoaded={katexLoaded} className="inline" />
                       </span>
                     )}
                   </div>
                 )}
                 <div className="flex justify-between items-center font-extrabold border-b border-slate-800/40 pb-1 mb-1.5">
                   <div className="flex items-center gap-1.5">
-                    {!(rowHeader || colHeader) && <span className={theme.text}>({inputLetter})</span>}
+                    {!(displayRowHeader || displayColHeader) && <span className={theme.text}>({inputLetter})</span>}
                     <span className={`font-bold ${theme.text}`}>내 답변:</span>
                     <span className={`font-semibold ${theme.text}`}>{value || '(미입력)'}</span>
                   </div>

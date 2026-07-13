@@ -203,6 +203,18 @@ export function ImageTabList({ formulaImages, setFormulaImages, handleSaveFormul
   const [refreshingId, setRefreshingId] = useState(null);
   const [collapsedIds, setCollapsedIds] = useState({});
 
+  const getFullImageUrl = (url) => {
+    if (!url) return '';
+    if (url.startsWith('data:image/') || url.startsWith('http://') || url.startsWith('https://')) {
+      return url;
+    }
+    if (url.startsWith('/')) {
+      const base = API_BASE ? (API_BASE.endsWith('/') ? API_BASE.slice(0, -1) : API_BASE) : '';
+      return `${base}${url}`;
+    }
+    return url;
+  };
+
   const toggleCollapse = (id) => {
     setCollapsedIds(prev => ({
       ...prev,
