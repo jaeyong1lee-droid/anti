@@ -1220,26 +1220,26 @@ pre, code, pre *, code *, .whitespace-pre-wrap pre, .whitespace-pre-wrap code {
 
 /* --- 모바일 세로보기 화면 반응형 아스키 흐름도 전용 최적화 --- */
 pre {
-  white-space: pre-wrap !important;
-  word-break: break-all !important;
+  white-space: pre !important;
   max-width: 100% !important;
   overflow-x: hidden !important;
 }
 
 @media (max-width: 768px) {
-  /* 모바일 기기에서는 아스키 아트의 글자 크기를 컴팩트하게 조절하여 상자가 불필요하게 가로로 찌그러지거나 잘리는 현상 방지 */
+  /* 모바일 기기에서도 글자가 13px 크기로 선명하게 읽히도록 고정하고 가로 스크롤만 배제 */
   pre {
-    font-size: 10px !important;
-    line-height: 1.25 !important;
+    font-size: 13px !important;
+    line-height: 1.45 !important;
     overflow-x: hidden !important;
   }
 }
 
 @media (max-width: 480px) {
-  /* 초소형 핸드폰 기기 세로보기용 */
+  /* 초소형 핸드폰 기기 세로보기용 글자 크기 13px 통일 */
   pre {
-    font-size: 8px !important;
-    line-height: 1.2 !important;
+    font-size: 13px !important;
+    line-height: 1.45 !important;
+    overflow-x: hidden !important;
   }
 }
 
