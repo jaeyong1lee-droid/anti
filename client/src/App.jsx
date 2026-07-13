@@ -930,7 +930,19 @@ function parseQuestionTable(q, topicTitle) {
 const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, questionIdx, tableAnswers, setTableAnswers, revealed, tableGradingResults, q) => {
   const lines = flowchartText.split('\n');
   const items = [];
-  let currentBox = null;
+  let currentBoxes = null;
+
+  const flushBoxes = () => {
+    if (currentBoxes && currentBoxes.length > 0) {
+      const validBoxes = currentBoxes.filter(b => b.content.length > 0);
+      if (validBoxes.length === 1) {
+        items.push(validBoxes[0]);
+      } else if (validBoxes.length > 1) {
+        items.push({ type: 'branch', boxes: validBoxes });
+      }
+      currentBoxes = null;
+    }
+  };
 
   for (let line of lines) {
     const trimmed = line.trim();
@@ -938,28 +950,36 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
 
     // 가로 테두리선 기호 패스
     if (trimmed.startsWith('┌') || trimmed.startsWith('└') || trimmed.startsWith('─') || trimmed.includes('───') || trimmed.includes('━━━')) {
-      if (currentBox) {
-        items.push(currentBox);
-        currentBox = null;
-      }
+      flushBoxes();
       continue;
     }
 
     // 본문 줄 (세로선 │ 또는 ┃ 포함)
     if (line.includes('│') || line.includes('┃')) {
-      const content = line.replace(/[│┃]/g, '').trim();
-      if (content) {
-        if (!currentBox) {
-          currentBox = { type: 'box', content: [] };
-        }
-        currentBox.content.push(content);
+      const rawParts = line.split(/[│┃]/);
+      let cols = [];
+      if (rawParts.length > 2) {
+        cols = rawParts.slice(1, rawParts.length - 1).map(c => c.trim());
+      } else if (rawParts.length === 2) {
+        cols = [rawParts[0].trim(), rawParts[1].trim()].filter(Boolean);
+      } else {
+        cols = [line.trim()];
       }
+
+      if (!currentBoxes) {
+        currentBoxes = [];
+      }
+      while (currentBoxes.length < cols.length) {
+        currentBoxes.push({ type: 'box', content: [] });
+      }
+      cols.forEach((colContent, colIdx) => {
+        if (colContent && currentBoxes[colIdx]) {
+          currentBoxes[colIdx].content.push(colContent);
+        }
+      });
     } else {
       // 연결 화살표 또는 분기 기호
-      if (currentBox) {
-        items.push(currentBox);
-        currentBox = null;
-      }
+      flushBoxes();
       if (trimmed.includes('▼') || trimmed === '│' || trimmed.includes('│') || trimmed === '┃' || trimmed.includes('┃')) {
         items.push({ type: 'arrow', text: '▼' });
       } else if (trimmed.includes('┌') || trimmed.includes('┴') || trimmed.includes('┐')) {
@@ -967,9 +987,7 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
       }
     }
   }
-  if (currentBox) {
-    items.push(currentBox);
-  }
+  flushBoxes();
 
   // 중복되는 연속 화살표 제거 및 정돈
   const cleanItems = [];
@@ -1057,6 +1075,27 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
                   {renderLineContent(bl)}
                 </div>
               ))}
+            </div>
+          );
+        } else if (item.type === 'branch') {
+          return (
+            <div key={idx} className="w-full flex flex-col sm:flex-row gap-3 items-stretch justify-center">
+              {item.boxes.map((box, bIdx) => {
+                const title = box.content[0] || '';
+                const bodyLines = box.content.slice(1);
+                return (
+                  <div key={bIdx} className="flex-1 w-full h-auto min-h-fit border border-indigo-500/30 bg-slate-900/80 p-2.5 rounded-xl text-left leading-relaxed shadow-md flex flex-col gap-0.5">
+                    <div className="font-bold text-[14px] sm:text-[16px] text-indigo-400 mb-0.5 w-full h-auto whitespace-pre-wrap break-all">
+                      {renderLineContent(title)}
+                    </div>
+                    {bodyLines.map((bl, blIdx) => (
+                      <div key={blIdx} className="text-[14px] sm:text-[16px] text-slate-200 pl-1.5 border-l border-slate-700/50 my-0.5 w-full h-auto whitespace-pre-wrap break-all">
+                        {renderLineContent(bl)}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
             </div>
           );
         } else {
