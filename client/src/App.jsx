@@ -927,7 +927,7 @@ function parseQuestionTable(q, topicTitle) {
 }
 
 
-const renderMobileFlowchart = (flowchartText) => {
+const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey) => {
   const lines = flowchartText.split('\n');
   const items = [];
   let currentBox = null;
@@ -994,9 +994,13 @@ const renderMobileFlowchart = (flowchartText) => {
           const bodyLines = item.content.slice(1);
           return (
             <div key={idx} className="w-full border border-indigo-500/30 bg-slate-900/80 p-3.5 rounded-xl text-left leading-relaxed shadow-md">
-              <div className="font-bold text-[14px] text-indigo-400 mb-1.5">{title}</div>
+              <div className="font-bold text-[14px] text-indigo-400 mb-1.5">
+                <LatexRenderer text={title} katexLoaded={katexLoaded} enableAddFormula={true} questionKey={questionKey} />
+              </div>
               {bodyLines.map((bl, bIdx) => (
-                <div key={bIdx} className="text-[13px] text-slate-200 pl-1.5 border-l border-slate-700/50 my-1">{bl}</div>
+                <div key={bIdx} className="text-[13px] text-slate-200 pl-1.5 border-l border-slate-700/50 my-1">
+                  <LatexRenderer text={bl} katexLoaded={katexLoaded} enableAddFormula={true} questionKey={questionKey} />
+                </div>
               ))}
             </div>
           );
@@ -1046,7 +1050,7 @@ const renderResponsiveContent = (text, katexLoaded, questionKey, isMarkdown) => 
           if (part.type === 'text') {
             return <LatexRenderer key={pIdx} text={part.content} katexLoaded={katexLoaded} isMarkdown={isMarkdown} enableAddFormula={true} questionKey={questionKey} />;
           } else {
-            return <div key={pIdx}>{renderMobileFlowchart(part.content)}</div>;
+            return <div key={pIdx}>{renderMobileFlowchart(part.content, katexLoaded, questionKey)}</div>;
           }
         })}
       </div>
