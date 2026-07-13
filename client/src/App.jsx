@@ -927,7 +927,7 @@ function parseQuestionTable(q, topicTitle) {
 }
 
 
-const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey) => {
+const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, questionIdx, tableAnswers, setTableAnswers, revealed, tableGradingResults, q) => {
   const lines = flowchartText.split('\n');
   const items = [];
   let currentBox = null;
@@ -986,6 +986,61 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey) => {
     }
   });
 
+  const renderLineContent = (content) => {
+    const letterMatch = content.match(/\(([A-F])\)/);
+    if (letterMatch && tableAnswers && setTableAnswers) {
+      const letter = letterMatch[1];
+      const letterIdx = letter.charCodeAt(0) - 65;
+      const inputId = `INPUT_${letterIdx + 1}`;
+      const inputKey = `${questionIdx}_${inputId}`;
+      const val = tableAnswers[inputKey] || '';
+
+      const isGraded = revealed || (tableGradingResults?.[inputKey] !== undefined);
+      const gradingResult = tableGradingResults?.[inputKey];
+      const isCorrect = gradingResult ? gradingResult.isCorrect : false;
+
+      const handleChange = (e) => {
+        setTableAnswers(prev => ({
+          ...prev,
+          [inputKey]: e.target.value
+        }));
+      };
+
+      const parts = content.split(`(${letter})`);
+      return (
+        <div className="flex items-center gap-1.5 flex-wrap my-1 select-text w-full h-auto whitespace-pre-wrap break-all">
+          <span>{parts[0]}</span>
+          <input
+            type="text"
+            value={val}
+            onChange={handleChange}
+            disabled={isGraded}
+            placeholder={`(${letter}) 입력`}
+            className={`px-2 py-0.5 rounded border bg-slate-950 text-white text-[13px] focus:outline-none focus:ring-1 focus:ring-indigo-500 w-[140px] inline-block font-bold ${
+              isGraded
+                ? isCorrect
+                  ? 'border-emerald-500 text-emerald-300 font-bold bg-emerald-950/20'
+                  : 'border-rose-500 text-rose-300 font-bold bg-rose-950/20'
+                : 'border-indigo-500/50'
+            }`}
+          />
+          <span>{parts[1]}</span>
+          {isGraded && (
+            <span className={`text-[11px] font-extrabold ${isCorrect ? 'text-emerald-400' : 'text-rose-400'} ml-1`}>
+              {isCorrect ? '✓' : `✗ (정답: ${q.answers?.[inputId] || ''})`}
+            </span>
+          )}
+        </div>
+      );
+    }
+
+    return (
+      <div className="w-full h-auto whitespace-pre-wrap break-all">
+        <LatexRenderer text={content} katexLoaded={katexLoaded} enableAddFormula={true} questionKey={questionKey} />
+      </div>
+    );
+  };
+
   return (
     <div className="w-full flex flex-col items-center gap-2 select-text my-3">
       {cleanItems.map((item, idx) => {
@@ -993,13 +1048,13 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey) => {
           const title = item.content[0] || '';
           const bodyLines = item.content.slice(1);
           return (
-            <div key={idx} className="w-full border border-indigo-500/30 bg-slate-900/80 p-3.5 rounded-xl text-left leading-relaxed shadow-md">
-              <div className="font-bold text-[14px] text-indigo-400 mb-1.5">
-                <LatexRenderer text={title} katexLoaded={katexLoaded} enableAddFormula={true} questionKey={questionKey} />
+            <div key={idx} className="w-full h-auto min-h-fit border border-indigo-500/30 bg-slate-900/80 p-3.5 rounded-xl text-left leading-relaxed shadow-md flex flex-col gap-1">
+              <div className="font-bold text-[14px] text-indigo-400 mb-1.5 w-full h-auto whitespace-pre-wrap break-all">
+                {renderLineContent(title)}
               </div>
               {bodyLines.map((bl, bIdx) => (
-                <div key={bIdx} className="text-[13px] text-slate-200 pl-1.5 border-l border-slate-700/50 my-1">
-                  <LatexRenderer text={bl} katexLoaded={katexLoaded} enableAddFormula={true} questionKey={questionKey} />
+                <div key={bIdx} className="text-[13px] text-slate-200 pl-1.5 border-l border-slate-700/50 my-1 w-full h-auto whitespace-pre-wrap break-all">
+                  {renderLineContent(bl)}
                 </div>
               ))}
             </div>
@@ -1016,7 +1071,7 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey) => {
   );
 };
 
-const renderResponsiveContent = (text, katexLoaded, questionKey, isMarkdown) => {
+const renderResponsiveContent = (text, katexLoaded, questionKey, isMarkdown, questionIdx, tableAnswers, setTableAnswers, revealed, tableGradingResults, q) => {
   const flowchartRegex = /```(?:[a-zA-Z]*)?\n([\s\S]*?┌[\s\S]*?)```/g;
   const hasFlowchart = flowchartRegex.test(text);
   flowchartRegex.lastIndex = 0;
@@ -1046,14 +1101,30 @@ const renderResponsiveContent = (text, katexLoaded, questionKey, isMarkdown) => 
         if (part.type === 'text') {
           return <LatexRenderer key={pIdx} text={part.content} katexLoaded={katexLoaded} isMarkdown={isMarkdown} enableAddFormula={true} questionKey={questionKey} />;
         } else {
-          return <div key={pIdx}>{renderMobileFlowchart(part.content, katexLoaded, questionKey)}</div>;
+          return <div key={pIdx}>{renderMobileFlowchart(part.content, katexLoaded, questionKey, questionIdx, tableAnswers, setTableAnswers, revealed, tableGradingResults, q)}</div>;
         }
       })}
     </div>
   );
 };
 
-const renderQuestionContent = (q, topicTitle, katexLoaded, topicId = null, pdfName = null, topicCategory = null, pdfjsLoaded = false, showImage = false, totalCount = 0, questionKey = "", questionIdx = null) => {
+const renderQuestionContent = (
+  q, 
+  topicTitle, 
+  katexLoaded, 
+  topicId = null, 
+  pdfName = null, 
+  topicCategory = null, 
+  pdfjsLoaded = false, 
+  showImage = false, 
+  totalCount = 0, 
+  questionKey = "", 
+  questionIdx = null,
+  tableAnswers = null,
+  setTableAnswers = null,
+  revealed = false,
+  tableGradingResults = null
+) => {
   const { questionText, tableData, referenceTableData } = parseQuestionTable(q, topicTitle);
   const isFlowchart = questionText.includes('┌──') || questionText.includes('▼') || questionText.includes('```') || questionText.includes('흐름도') || questionText.includes('플로우차트');
   const cleanQuestionText = isFlowchart 
@@ -1165,7 +1236,7 @@ const renderQuestionContent = (q, topicTitle, katexLoaded, topicId = null, pdfNa
       <div className="space-y-3 w-full">
         {!(resolvedCategory === '계산' && showImage) && (
           <div className="text-[14px] sm:text-[16px] font-bold text-white leading-relaxed text-left w-full whitespace-pre-line">
-            {renderResponsiveContent(mainText, katexLoaded, questionKey, false)}
+            {renderResponsiveContent(mainText, katexLoaded, questionKey, false, questionIdx, tableAnswers, setTableAnswers, revealed, tableGradingResults, q)}
           </div>
         )}
         {renderImageElement()}
@@ -1208,7 +1279,7 @@ const renderQuestionContent = (q, topicTitle, katexLoaded, topicId = null, pdfNa
     <>
       {!(resolvedCategory === '계산' && showImage) && (
         <div className="text-[14px] sm:text-[16px] font-bold text-white leading-relaxed text-left w-full whitespace-pre-line">
-          {renderResponsiveContent(cleanQuestionText, katexLoaded, questionKey, true)}
+          {renderResponsiveContent(cleanQuestionText, katexLoaded, questionKey, true, questionIdx, tableAnswers, setTableAnswers, revealed, tableGradingResults, q)}
         </div>
       )}
       {renderImageElement()}
@@ -18141,7 +18212,7 @@ ${itemsStr}
                           </div>
                         </div>
 
-                        {renderQuestionContent(q, selectedTopic?.title, katexLoaded, selectedTopic?.id, selectedTopic?.pdf_name, selectedTopic?.category, pdfjsLoaded, idx === 0, aiQuestions.length, "", idx)}
+                        {renderQuestionContent(q, selectedTopic?.title, katexLoaded, selectedTopic?.id, selectedTopic?.pdf_name, selectedTopic?.category, pdfjsLoaded, idx === 0, aiQuestions.length, "", idx, tableAnswers, setTableAnswers, revealedQuestions[idx], tableGradingResults)}
 
 
 
@@ -21645,7 +21716,11 @@ ${itemsStr}
                         examQuestions.findIndex(x => (x.topic_id || examTopic?.id) === (q.topic_id || examTopic?.id)) === idx,
                         examQuestions.filter(x => (x.topic_id || examTopic?.id) === (q.topic_id || examTopic?.id)).length,
                         "",
-                        idx
+                        idx,
+                        examTableAnswers,
+                        setExamTableAnswers,
+                        !!examRevealed[idx],
+                        examTableGradingResults
                       )}
 
                       {/* MC Options */}

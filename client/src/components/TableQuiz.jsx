@@ -30,6 +30,7 @@ export const TableQuiz = React.memo(function TableQuiz({
   }
 
   const isOverviewReview = isOverviewReviewHelper(q);
+  const isFlowchart = q.question?.includes('┌') || q.question?.includes('▼') || q.question?.includes('흐름도') || q.question?.includes('플로우차트');
 
   const getTableInputIds = () => {
     const firstTableInputs = [];
@@ -1726,9 +1727,9 @@ export const TableQuiz = React.memo(function TableQuiz({
   return (
     <div ref={containerRef} className="w-full">
       {floatedStyleTag}
-      {mainTableTitle}
-      {mainTablePlaceholder}
-      {mainTable}
+      {!isFlowchart && mainTableTitle}
+      {!isFlowchart && mainTablePlaceholder}
+      {!isFlowchart && mainTable}
  
        {isOverviewReview && !isFirstTableGraded && (
          <div className="mt-3.5 mb-5 select-none flex justify-center w-full">
