@@ -1017,7 +1017,7 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey) => {
 };
 
 const renderResponsiveContent = (text, katexLoaded, questionKey, isMarkdown) => {
-  const flowchartRegex = /```(?:[a-zA-Z]*)?\n([\s\S]*?┌──[\s\S]*?)```/g;
+  const flowchartRegex = /```(?:[a-zA-Z]*)?\n([\s\S]*?┌[\s\S]*?)```/g;
   const hasFlowchart = flowchartRegex.test(text);
   flowchartRegex.lastIndex = 0;
 
