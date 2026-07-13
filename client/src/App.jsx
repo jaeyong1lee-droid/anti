@@ -6887,7 +6887,7 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
       const res = await fetch(`${API_BASE}/api/schedules/${scheduleId}/complete`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ referenceDate })
+        body: JSON.stringify({ referenceDate, topic_id: topicId, review_round: round })
       });
       const data = await res.json();
 
@@ -6948,7 +6948,7 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
       const scoreRes = await fetch(`${API_BASE}/api/schedules/${scheduleId}/score`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ score: updatedScore })
+        body: JSON.stringify({ score: updatedScore, topic_id: selectedTopic.id, review_round: selectedTopic.review_round })
       });
 
       if (saveSessionRes.ok && scoreRes.ok) {
@@ -7372,6 +7372,7 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
         body: JSON.stringify({
           schedule_id: sId || 9999,
           topic_id: selectedTopic.id,
+          review_round: selectedTopic.review_round || sRound,
           total: totalMC,
           correctCount: correctMC,
           score: scoreMC,
@@ -7540,10 +7541,12 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
   };
 
   // Reset completed schedule back to pending
-  const handleResetReview = async (scheduleId, topicTitle, round) => {
+  const handleResetReview = async (scheduleId, topicTitle, round, topicId = null) => {
     try {
       const res = await fetch(`${API_BASE}/api/schedules/${scheduleId}/reset`, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topic_id: topicId, review_round: round })
       });
       const data = await res.json();
 
@@ -7670,7 +7673,7 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
       pressTimer = setTimeout(() => {
         isLong = true;
         if (window.confirm(`[${topicTitle}] ${round}회차 복습을 취소하고 대기 상태로 되돌리시겠습니까?`)) {
-          handleResetReview(schedId, topicTitle, round);
+          handleResetReview(schedId, topicTitle, round, topicId);
         }
       }, 700);
     };
@@ -9112,6 +9115,8 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
       if (isReadOnly && currentRefreshScheduleId && currentRefreshScheduleId !== 9999) {
         const resetRes = await fetch(`${API_BASE}/api/schedules/${currentRefreshScheduleId}/reset`, {
           method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ topic_id: currentRefreshTopicId, review_round: selectedTopic.review_round })
         });
         if (!resetRes.ok) {
           showNotification('복습 상태 초기화에 실패했습니다.', 'error');

@@ -2981,11 +2981,20 @@ async function scheduleNextReviewRound(topicId, currentRound, baseDate = new Dat
 // POST /api/schedules/:id/complete -> Complete a standard review round
 router.post('/schedules/:id/complete', async (req, res) => {
   const scheduleId = req.params.id;
-  const { referenceDate } = req.body;
+  const { referenceDate, topic_id, topicId, review_round, reviewRound } = req.body;
+  const tId = topic_id || topicId;
+  const rRound = review_round !== undefined ? review_round : reviewRound;
 
   try {
-    const checkSql = `SELECT * FROM schedules WHERE id = ?`;
-    const schedule = await dbQuery.get(checkSql, [scheduleId]);
+    let schedule = null;
+    if (tId && rRound !== undefined) {
+      const checkSql = `SELECT * FROM schedules WHERE topic_id = ? AND review_round = ?`;
+      schedule = await dbQuery.get(checkSql, [tId, parseInt(rRound, 10)]);
+    }
+    if (!schedule && scheduleId && scheduleId !== '9999') {
+      const checkSql = `SELECT * FROM schedules WHERE id = ?`;
+      schedule = await dbQuery.get(checkSql, [scheduleId]);
+    }
 
     if (!schedule) {
       return res.status(404).json({ error: '해당 복습 일정을 찾을 수 없습니다.' });
@@ -3001,7 +3010,7 @@ router.post('/schedules/:id/complete', async (req, res) => {
       SET status = 'completed', completed_at = ? 
       WHERE id = ?
     `;
-    await dbQuery.run(updateSql, [nowTimestamp, scheduleId]);
+    await dbQuery.run(updateSql, [nowTimestamp, schedule.id]);
 
     // 복습 완료 시 다음 회차 자동 생성 (망각곡선 주기 기반)
     if (schedule.review_round !== 99) {
@@ -3023,7 +3032,7 @@ router.post('/schedules/:id/complete', async (req, res) => {
 
 // POST /api/quiz/submit -> Submit quiz results and update schedule score
 router.post('/quiz/submit', async (req, res) => {
-  const { schedule_id, topic_id, total, correctCount, score, isPassed, isBonus, questions, selectedAnswers, revealedQuestions, tableAnswers, tableGradingResults, referenceDate, tutorAnswers, tutorInputText, chatHistory } = req.body;
+  const { schedule_id, topic_id, review_round, reviewRound, total, correctCount, score, isPassed, isBonus, questions, selectedAnswers, revealedQuestions, tableAnswers, tableGradingResults, referenceDate, tutorAnswers, tutorInputText, chatHistory } = req.body;
 
   if (!schedule_id || !topic_id) {
     return res.status(400).json({ error: 'schedule_id와 topic_id는 필수입니다.' });
@@ -3031,6 +3040,7 @@ router.post('/quiz/submit', async (req, res) => {
 
   const topicIdInt = parseInt(topic_id, 10);
   let scheduleIdInt = parseInt(schedule_id, 10);
+  const rRound = review_round !== undefined ? review_round : reviewRound;
 
   if (isNaN(topicIdInt) || isNaN(scheduleIdInt)) {
     return res.status(400).json({ error: '유효한 topic_id와 schedule_id가 아닙니다.' });
@@ -3040,6 +3050,7 @@ router.post('/quiz/submit', async (req, res) => {
 
   try {
     let targetScheduleId = scheduleIdInt;
+    let schedule = null;
 
     if (isBonus) {
       let existingBonus = null;
@@ -3069,8 +3080,18 @@ router.post('/quiz/submit', async (req, res) => {
         targetScheduleId = existingBonus.id;
       }
     } else {
-      // 임시 ID(9999)이거나 없는 경우, pending 상태인 복습 일정을 찾아서 반영
-      if (scheduleIdInt === 9999 || !scheduleIdInt) {
+      // Prioritize standard lookup by topic_id and review_round (Absolute Standard Rule 3)
+      if (topicIdInt && rRound !== undefined) {
+        schedule = await dbQuery.get(
+          `SELECT * FROM schedules WHERE topic_id = ? AND review_round = ?`,
+          [topicIdInt, parseInt(rRound, 10)]
+        );
+        if (schedule) {
+          targetScheduleId = schedule.id;
+        }
+      }
+
+      if (!schedule && (scheduleIdInt === 9999 || !scheduleIdInt)) {
         const pendingSchedule = await dbQuery.get(
           `SELECT id FROM schedules WHERE topic_id = ? AND status = 'pending' ORDER BY review_round ASC LIMIT 1`,
           [topicIdInt]
@@ -3100,7 +3121,9 @@ router.post('/quiz/submit', async (req, res) => {
     targetScheduleId = parseInt(targetScheduleId, 10);
 
     // 1. 해당 일정 존재 여부 확인
-    const schedule = await dbQuery.get('SELECT * FROM schedules WHERE id = ?', [targetScheduleId]);
+    if (!schedule) {
+      schedule = await dbQuery.get('SELECT * FROM schedules WHERE id = ?', [targetScheduleId]);
+    }
     if (!schedule) {
       return res.status(404).json({ error: '해당 복습 일정을 찾을 수 없습니다.' });
     }
@@ -3200,10 +3223,20 @@ router.post('/quiz/submit', async (req, res) => {
 // POST /api/schedules/:id/reset -> Reset completed review back to pending
 router.post('/schedules/:id/reset', async (req, res) => {
   const scheduleId = req.params.id;
+  const { topic_id, topicId, review_round, reviewRound } = req.body;
+  const tId = topic_id || topicId;
+  const rRound = review_round !== undefined ? review_round : reviewRound;
 
   try {
-    const checkSql = `SELECT * FROM schedules WHERE id = ?`;
-    const schedule = await dbQuery.get(checkSql, [scheduleId]);
+    let schedule = null;
+    if (tId && rRound !== undefined) {
+      const checkSql = `SELECT * FROM schedules WHERE topic_id = ? AND review_round = ?`;
+      schedule = await dbQuery.get(checkSql, [tId, parseInt(rRound, 10)]);
+    }
+    if (!schedule && scheduleId && scheduleId !== '9999') {
+      const checkSql = `SELECT * FROM schedules WHERE id = ?`;
+      schedule = await dbQuery.get(checkSql, [scheduleId]);
+    }
 
     if (!schedule) {
       return res.status(404).json({ error: '해당 복습 일정을 찾을 수 없습니다.' });
@@ -3217,7 +3250,7 @@ router.post('/schedules/:id/reset', async (req, res) => {
       SET status = ?, completed_at = NULL, score = NULL, correct_count = NULL, total_count = NULL
       WHERE id = ?
     `;
-    await dbQuery.run(updateSql, [targetStatus, scheduleId]);
+    await dbQuery.run(updateSql, [targetStatus, schedule.id]);
 
     const nextRound = schedule.review_round + 1;
     const deleteSql = `
@@ -3242,15 +3275,24 @@ router.post('/schedules/:id/reset', async (req, res) => {
 // PUT /api/schedules/:id/score -> Manually update schedule score
 router.put('/schedules/:id/score', async (req, res) => {
   const scheduleId = Number(req.params.id) || req.params.id;
-  const { score } = req.body;
+  const { score, topic_id, topicId, review_round, reviewRound } = req.body;
+  const tId = topic_id || topicId;
+  const rRound = review_round !== undefined ? review_round : reviewRound;
 
   if (score === undefined || score === null || isNaN(Number(score)) || Number(score) < 0 || Number(score) > 100) {
     return res.status(400).json({ error: '점수는 0에서 100 사이의 숫자여야 합니다.' });
   }
 
   try {
-    const checkSql = `SELECT * FROM schedules WHERE id = ?`;
-    const schedule = await dbQuery.get(checkSql, [scheduleId]);
+    let schedule = null;
+    if (tId && rRound !== undefined) {
+      const checkSql = `SELECT * FROM schedules WHERE topic_id = ? AND review_round = ?`;
+      schedule = await dbQuery.get(checkSql, [tId, parseInt(rRound, 10)]);
+    }
+    if (!schedule && scheduleId && scheduleId !== 9999) {
+      const checkSql = `SELECT * FROM schedules WHERE id = ?`;
+      schedule = await dbQuery.get(checkSql, [scheduleId]);
+    }
 
     if (!schedule) {
       return res.status(404).json({ error: '해당 복습 일정을 찾을 수 없습니다.' });
@@ -3268,7 +3310,7 @@ router.put('/schedules/:id/score', async (req, res) => {
       SET score = ?, status = ?
       WHERE id = ?
     `;
-    await dbQuery.run(updateSql, [targetScore, newStatus, scheduleId]);
+    await dbQuery.run(updateSql, [targetScore, newStatus, schedule.id]);
 
     res.json({
       success: true,
