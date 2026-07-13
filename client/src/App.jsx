@@ -2156,8 +2156,14 @@ export default function App() {
 
         {/* 전체 모범 답안 (전체 플로우) 맨 처음 한 번만 노출 */}
         {(() => {
+          const { questionText } = parseQuestionTable(q, topicTitle);
+          const isFlow = questionText.includes('┌──') || questionText.includes('▼') || questionText.includes('```') || questionText.includes('흐름도') || questionText.includes('플로우차트');
+          const cleanText = isFlow 
+            ? questionText.replace(/\r/g, '')
+            : questionText.replace(/\r/g, '').replace(/[ \t]+/g, ' ');
+
           const flowchartRegex = /```(?:[a-zA-Z]*)?\n([\s\S]*?┌[\s\S]*?)```/g;
-          const match = flowchartRegex.exec(q.text || '');
+          const match = flowchartRegex.exec(cleanText || '');
           flowchartRegex.lastIndex = 0;
 
           if (match) {
