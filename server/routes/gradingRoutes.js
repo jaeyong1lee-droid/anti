@@ -604,8 +604,18 @@ ${otherQs.map((q, i) => `기존 문제 ${i + 1}: ${q.question || '없음'}`).joi
         formatRequirement = `{"type": "객관식 (4지선다)", "question": "질문", "tableData": null, "options": ["보기1", "보기2", "보기3", "보기4"], "answer": "정답보기", "explanation": "해설"}`;
       }
 
+      let flowchartDuplicationPrompt = '';
+      if (isFlowchartQ) {
+        flowchartDuplicationPrompt = `
+[🚨 흐름도 문제 재생성 특수 철칙]:
+1. 이번에 새로 생성하는 흐름도 퀴즈는 반드시 기존 문제의 빈칸 (A), (B), (C), (D)가 뚫렸던 박스 위치(예: 기존에 2번째와 4번째 박스가 뚫려 있었다면, 이번에는 1번째와 3번째 혹은 3번째와 5번째 박스를 뚫어야 함)를 완전히 피해서 **전혀 다른 상자의 위치에 빈칸을 무작위로 배치**하여 새로 만들어야 합니다.
+2. 기입해야 하는 세부 내용(INPUT 정답) 역시 기존의 빈칸 개념이 아닌, 전혀 다른 단계의 지식 키워드를 묻도록 질문 대상을 교체하십시오.
+`;
+      }
+
       const prompt = `당신은 기술사 시험 출제위원입니다.
 ${duplicatePreventionPrompt}
+${flowchartDuplicationPrompt}
 [토픽 제목]: ${topic.title}
 [기초 소스 문제]:
 - 질문: ${currentQuestion?.question}
