@@ -1407,9 +1407,12 @@ const renderQuestionContent = (
           </div>
           {imgs.map((src, index) => {
             const cleanSrc = typeof src === 'string' ? src.replace(/\s+/g, '').replace(/\$/g, '').trim() : src;
+            const fullSrc = (typeof cleanSrc === 'string' && cleanSrc.startsWith('/'))
+              ? `${API_BASE.endsWith('/') ? API_BASE.slice(0, -1) : API_BASE}${cleanSrc}`
+              : cleanSrc;
             return (
               <div key={index} className="w-full overflow-hidden rounded-xl border border-slate-800 bg-slate-950/40 p-2 flex items-center justify-center max-h-[340px]">
-                <img src={cleanSrc} className="max-h-[320px] object-contain rounded-lg max-w-full" alt={`첨부 그림 ${index + 1}`} />
+                <img src={fullSrc} className="max-h-[320px] object-contain rounded-lg max-w-full" alt={`첨부 그림 ${index + 1}`} />
               </div>
             );
           })}

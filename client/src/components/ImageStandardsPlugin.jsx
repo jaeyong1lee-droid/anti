@@ -444,7 +444,7 @@ export function ImageTabList({ formulaImages, setFormulaImages, handleSaveFormul
                   {(img.base64Images || [img.base64Image]).filter(Boolean).map((src, index) => (
                     <div key={index} className="overflow-hidden rounded-xl border border-slate-800 bg-slate-950/40 p-2 flex items-center justify-center max-h-[340px] w-full select-none">
                       <img
-                        src={src}
+                        src={getFullImageUrl(src)}
                         className="max-h-[320px] object-contain rounded-lg max-w-full hover:scale-[1.02] transition-transform duration-300"
                         alt={`${img.title} - ${index + 1}`}
                       />
