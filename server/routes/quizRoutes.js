@@ -126,7 +126,49 @@ function assembleFinalCalculationQuestions(questions, topic) {
   return finalQuestions.slice(0, 4);
 }
 
+function mergeSplitFlowchartQuestions(questions) {
+  const merged = [];
+  let skipNext = false;
+  
+  for (let i = 0; i < questions.length; i++) {
+    if (skipNext) {
+      skipNext = false;
+      continue;
+    }
+    
+    const curr = questions[i];
+    const next = questions[i + 1];
+    
+    // Check if curr has flowchart and next is table quiz with empty/undefined/short question
+    if (
+      next &&
+      curr.question &&
+      (curr.question.includes('┌') || curr.question.includes('▼') || curr.question.includes('흐름도')) &&
+      (curr.type === '주관식 (단답형)' || curr.type === '주관식 (표채우기)') &&
+      (next.type === '주관식 (표채우기)' || next.subtype === '표채우기') &&
+      (!next.question || next.question === 'undefined' || next.question.trim().length < 20 || next.question.includes('빈칸 구분') || next.question.includes('입력 답안'))
+    ) {
+      console.log(`[Flowchart Merger] Merging split flowchart question at index ${i} and ${i + 1}`);
+      const mergedQuestion = {
+        ...next,
+        type: '주관식 (표채우기)',
+        subtype: '표채우기',
+        question: curr.question // Use the flowchart diagram and prompt from curr
+      };
+      merged.push(mergedQuestion);
+      skipNext = true; // Skip next since we merged it
+    } else {
+      merged.push(curr);
+    }
+  }
+  
+  return merged;
+}
+
 function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) {
+  // Merge split flowchart questions first to prevent separate render cards
+  questions = mergeSplitFlowchartQuestions(questions);
+
   let qIntro = questions.find(q => q.type === '주관식 (개요)');
   let qFormula = questions.find(q => q.type === '주관식 (공식)');
   
