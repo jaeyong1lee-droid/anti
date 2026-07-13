@@ -3984,10 +3984,15 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
 
   const setAiQuestions = (val) => {
     const injectMockFlowchart = (questions) => {
-      if (Array.isArray(questions) && questions.length >= 7) {
+      const isFlowchartTopic = selectedTopic && 
+        (selectedTopic.id === 37 || 
+         selectedTopic.title?.includes('흙막이') || 
+         selectedTopic.title?.includes('가설'));
+
+      if (isFlowchartTopic && Array.isArray(questions) && questions.length >= 7) {
         const copy = [...questions];
         copy[6] = {
-          id: 'mock_flowchart_quiz_q7',
+          ...copy[6],
           question: `다음 흙막이 설계 흐름도를 보고 빈칸 (A), (B), (C), (D)에 들어갈 올바른 설계 단계명과 구체적인 설계 세부 활동의 조합을 고르시오.
 
 \`\`\`
@@ -4028,7 +4033,8 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
             '④ (A) 공법 및 지지체 구조 검토\n(B) 계측 계획 및 유지 시공 관리\n(C) 경제성 및 시공성 최적화\n(D) 허용 변위량 산정 및 지반 강성 판단'
           ],
           answer: '① (A) 주변 지반 영향성 및 제약 조건 검토\n(B) 허용 변위량 산정 및 벽체 강성(EI) 요구 수준 결정\n(C) 수리학적 안정성 및 구조적 적합성 검토\n(D) 보일링/파이핑 검토 및 근입 깊이(Df) 산정',
-          explanation: '올바른 가설 흙막이 설계 흐름은 다음과 같습니다:\n1. (A) 주변 지반 영향성 및 제약 조건 검토 단계에서는 (B) 허용 변위량 산정 및 벽체 강성(EI) 요구 수준 결정을 우선 검토합니다.\n2. 1차 공법 선정 후 진행되는 (C) 수리학적 안정성 및 구조적 적합성 검토 단계에서는 (D) 보일링/파이핑 검토 및 근입 깊이(Df) 산정을 통해 벽체 근입 깊이 및 지지 구조를 정교하게 설계합니다.'
+          explanation: '올바른 가설 흙막이 설계 흐름은 다음과 같습니다:\n1. (A) 주변 지반 영향성 및 제약 조건 검토 단계에서는 (B) 허용 변위량 산정 및 벽체 강성(EI) 요구 수준 결정을 우선 검토합니다.\n2. 1차 공법 선정 후 진행되는 (C) 수리학적 안정성 및 구조적 적합성 검토 단계에서는 (D) 보일링/파이핑 검토 및 근입 깊이(Df) 산정을 통해 벽체 근입 깊이 및 지지 구조를 정교하게 설계합니다.',
+          type: '객관식'
         };
         return copy;
       }
