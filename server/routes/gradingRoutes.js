@@ -8,6 +8,7 @@ import { generateFallbackQuestions } from '../fallback_generator.js';
 import { gradeSubjective, GRADING_STANDARDS, gradingStandardsList } from '../plugins/gradingPlugin.js';
 import { ENGINEERING_STANDARDS, standardsList as engineeringStandardsList } from '../plugins/engineeringStandards.js';
 import { GENERATION_STANDARDS, generationStandardsList } from '../plugins/generationStandards.js';
+import { FLOWCHART_QUIZ_GENERATION_PROMPT } from '../plugins/flowchartQuizPlugin.js';
 import * as ocrPlugin from '../plugins/calculationPlugin.js';
 
 const router = express.Router();
@@ -523,6 +524,12 @@ ${otherQs.map((q, i) => `기존 문제 ${i + 1}: ${q.question || '없음'}`).joi
       let targetType = '객관식 (4지선다)';
       let targetSubtype = '';
       const currentType = currentQuestion?.type || '';
+      const isFlowchartQ = !!(
+        (currentQuestion?.question || '').includes('┌──') ||
+        (currentQuestion?.question || '').includes('▼') ||
+        (currentQuestion?.question || '').includes('플로우차트') ||
+        (currentQuestion?.question || '').includes('흐름도')
+      );
 
       if (targetTypeSelection === 'mc') {
         targetType = '객관식 (4지선다)';
@@ -533,7 +540,9 @@ ${otherQs.map((q, i) => `기존 문제 ${i + 1}: ${q.question || '없음'}`).joi
       } else if (targetTypeSelection === 'table') {
         targetType = '주관식 (표채우기)';
       } else {
-        if (currentType.includes('개요')) targetType = '주관식 (개요)';
+        if (isFlowchartQ) {
+          targetType = '주관식 (단답형)';
+        } else if (currentType.includes('개요')) targetType = '주관식 (개요)';
         else if (currentType.includes('공식')) targetType = '주관식 (공식)';
         else if (currentType.includes('표채우기') || currentQuestion?.tableData) targetType = '주관식 (표채우기)';
         else if (currentType.includes('단답형') || currentType.includes('단답')) {
@@ -600,6 +609,9 @@ ${typeRequirement}
 ${GENERATION_STANDARDS}
 ${LATEX_PROMPT_INSTRUCTIONS}
 ${ENGINEERING_STANDARDS}
+
+${isFlowchartQ ? FLOWCHART_QUIZ_GENERATION_PROMPT : ''}
+
 오직 순수 JSON 데이터만 반환하십시오.
 [응답 포맷]:
 ${formatRequirement}`;
