@@ -1017,6 +1017,13 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
       const gradingResult = tableGradingResults?.[inputKey];
       const isCorrect = gradingResult ? gradingResult.isCorrect : false;
 
+      const handleChange = (e) => {
+        setTableAnswers(prev => ({
+          ...prev,
+          [inputKey]: e.target.value
+        }));
+      };
+
       const handleKeyDown = async (e) => {
         if (e.key === 'Enter') {
           e.preventDefault();
