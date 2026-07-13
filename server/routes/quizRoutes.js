@@ -3133,22 +3133,11 @@ router.post('/quiz/submit', async (req, res) => {
     const correctVal = correctCount !== undefined ? correctCount : null;
     const totalVal = total !== undefined ? total : null;
 
-    const today = fileUtils.getLocalDateString();
-    const isEarlyReview = !isBonus && (schedule.planned_date > today);
-
-    if (isEarlyReview) {
-      // 예정일보다 빠른 복습: 상태는 pending으로 두되, score 등의 데이터는 갱신
-      await dbQuery.run(
-        `UPDATE schedules SET status = 'pending', completed_at = NULL, score = ?, correct_count = ?, total_count = ? WHERE id = ?`,
-        [scoreVal, correctVal, totalVal, targetScheduleId]
-      );
-    } else {
-      const finalStatus = isPassed ? 'completed' : 'failed';
-      await dbQuery.run(
-        `UPDATE schedules SET status = ?, completed_at = ?, score = ?, correct_count = ?, total_count = ? WHERE id = ?`,
-        [finalStatus, now, scoreVal, correctVal, totalVal, targetScheduleId]
-      );
-    }
+    const finalStatus = isPassed ? 'completed' : 'failed';
+    await dbQuery.run(
+      `UPDATE schedules SET status = ?, completed_at = ?, score = ?, correct_count = ?, total_count = ? WHERE id = ?`,
+      [finalStatus, now, scoreVal, correctVal, totalVal, targetScheduleId]
+    );
 
     // 복습 데이터 세션 보존 (questions, chatHistory는 제외하여 데이터량 최소화)
     if (questions && questions.length > 0) {
