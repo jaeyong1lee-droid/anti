@@ -23,6 +23,8 @@ const LATEX_PROMPT_INSTRUCTIONS = `
 
 function cleanQuizQuestion(q) {
   if (!q) return q;
+  const isFlowchart = q.includes('┌──') || q.includes('▼') || q.includes('```') || q.includes('흐름도') || q.includes('플로우차트');
+  if (isFlowchart) return q.trim();
   return q.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
@@ -541,7 +543,7 @@ ${otherQs.map((q, i) => `기존 문제 ${i + 1}: ${q.question || '없음'}`).joi
         targetType = '주관식 (표채우기)';
       } else {
         if (isFlowchartQ) {
-          targetType = '주관식 (단답형)';
+          targetType = '주관식 (표채우기)';
         } else if (currentType.includes('개요')) targetType = '주관식 (개요)';
         else if (currentType.includes('공식')) targetType = '주관식 (공식)';
         else if (currentType.includes('표채우기') || currentQuestion?.tableData) targetType = '주관식 (표채우기)';
@@ -578,7 +580,10 @@ ${otherQs.map((q, i) => `기존 문제 ${i + 1}: ${q.question || '없음'}`).joi
 
       let typeRequirement = '';
       let formatRequirement = '';
-      if (targetType === '주관식 (개요)') {
+      if (isFlowchartQ) {
+        typeRequirement = `[주관식 (표채우기) 유형으로 아스키 흐름도 문제를 생성하십시오]`;
+        formatRequirement = `{"type": "주관식 (표채우기)", "question": "질문(마크다운 고정폭 코드블록으로 감싼 아스키 흐름도 포함)", "tableData": {"headers": ["빈칸 구분", "입력 답안"], "rows": [["(A)", "[INPUT_1]"], ["(B)", "[INPUT_2]"], ["(C)", "[INPUT_3]"], ["(D)", "[INPUT_4]"]]}, "answers": {"INPUT_1": "(A)정답", "INPUT_2": "(B)정답", "INPUT_3": "(C)정답", "INPUT_4": "(D)정답"}, "explanation": "해설"}`;
+      } else if (targetType === '주관식 (개요)') {
         typeRequirement = `[주관식 (개요) 유형으로 생성하십시오]`;
         formatRequirement = `{"type": "주관식 (개요)", "question": "질문", "concept": "개요", "formula": "", "structure": ""}`;
       } else if (targetType === '주관식 (공식)') {

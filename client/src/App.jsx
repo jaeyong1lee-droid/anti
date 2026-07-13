@@ -929,7 +929,10 @@ function parseQuestionTable(q, topicTitle) {
 
 const renderQuestionContent = (q, topicTitle, katexLoaded, topicId = null, pdfName = null, topicCategory = null, pdfjsLoaded = false, showImage = false, totalCount = 0, questionKey = "", questionIdx = null) => {
   const { questionText, tableData, referenceTableData } = parseQuestionTable(q, topicTitle);
-  const cleanQuestionText = questionText.replace(/\r/g, '').replace(/[ \t]+/g, ' ');
+  const isFlowchart = questionText.includes('┌──') || questionText.includes('▼') || questionText.includes('```') || questionText.includes('흐름도') || questionText.includes('플로우차트');
+  const cleanQuestionText = isFlowchart 
+    ? questionText.replace(/\r/g, '')
+    : questionText.replace(/\r/g, '').replace(/[ \t]+/g, ' ');
   
   const conditionMatch = cleanQuestionText.match(/\[\s*조건\s*\]/);
 
@@ -1079,7 +1082,7 @@ const renderQuestionContent = (q, topicTitle, katexLoaded, topicId = null, pdfNa
     <>
       {!(resolvedCategory === '계산' && showImage) && (
         <div className="text-[14px] sm:text-[16px] font-bold text-white leading-relaxed text-left w-full whitespace-pre-line">
-          <LatexRenderer text={cleanQuestionText} katexLoaded={katexLoaded} enableAddFormula={true} questionKey={questionKey} />
+          <LatexRenderer text={cleanQuestionText} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} questionKey={questionKey} />
         </div>
       )}
       {renderImageElement()}
