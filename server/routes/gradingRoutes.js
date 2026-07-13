@@ -530,7 +530,11 @@ ${otherQs.map((q, i) => `기존 문제 ${i + 1}: ${q.question || '없음'}`).joi
         (currentQuestion?.question || '').includes('┌──') ||
         (currentQuestion?.question || '').includes('▼') ||
         (currentQuestion?.question || '').includes('플로우차트') ||
-        (currentQuestion?.question || '').includes('흐름도')
+        (currentQuestion?.question || '').includes('흐름도') ||
+        (currentQuestion?.question || '').includes('메커니즘') ||
+        (currentQuestion?.question || '').includes('절차') ||
+        (currentQuestion?.question || '').includes('순서') ||
+        (currentQuestion?.question || '').includes('과정')
       );
 
       if (targetTypeSelection === 'mc') {
