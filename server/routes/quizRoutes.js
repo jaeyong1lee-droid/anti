@@ -3256,6 +3256,50 @@ router.post('/schedules/:id/reset', async (req, res) => {
     `;
     await dbQuery.run(deleteSql, [schedule.topic_id, nextRound]);
 
+    // 복습 취소 시, 기존 완료된 복습 세션 기록을 다시 활성 세션(Active Session)으로 복구하여 데이터 유실 방지
+    try {
+      const solvedSessionKey = `completed_review_schedule_${schedule.id}`;
+      const completedSession = await dbQuery.get(
+        'SELECT value FROM app_session WHERE key = ?',
+        [solvedSessionKey]
+      );
+      if (completedSession && completedSession.value) {
+        const data = JSON.parse(completedSession.value);
+        const activeStateKey = `review_questions_topic_${schedule.topic_id}`;
+        const activeQuestionsKey = `${activeStateKey}_q`;
+
+        const activeStateValue = JSON.stringify({
+          sessionId: 'legacy_default',
+          selectedAnswers: data.selectedAnswers || {},
+          revealedQuestions: data.revealedQuestions || {},
+          tableAnswers: data.tableAnswers || {},
+          tableGradingResults: data.tableGradingResults || {},
+          tutorAnswers: data.tutorAnswers || {},
+          tutorInputText: data.tutorInputText || {},
+          chatHistory: data.chatHistory || []
+        });
+
+        await dbQuery.run(
+          `INSERT INTO app_session (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)
+           ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=CURRENT_TIMESTAMP`,
+          [activeStateKey, activeStateValue]
+        );
+
+        if (data.questions && data.questions.length > 0) {
+          await dbQuery.run(
+            `INSERT INTO app_session (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)
+             ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=CURRENT_TIMESTAMP`,
+            [activeQuestionsKey, JSON.stringify(data.questions)]
+          );
+        }
+
+        // 복구 후 완료 상태용 세션 키는 깔끔하게 정리
+        await dbQuery.run('DELETE FROM app_session WHERE key = ?', [solvedSessionKey]);
+      }
+    } catch (restoreErr) {
+      console.warn('[Session Restore] Failed to restore active session from completed session:', restoreErr.message);
+    }
+
     res.json({
       message: `${schedule.review_round}회차 복습이 리셋되었습니다.`,
       schedule_id: scheduleId,
