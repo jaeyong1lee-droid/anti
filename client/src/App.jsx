@@ -927,7 +927,7 @@ function parseQuestionTable(q, topicTitle) {
 }
 
 
-const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, questionIdx, tableAnswers, setTableAnswers, revealed, tableGradingResults, q, gradeSingleTableCell, cellGradingLoading) => {
+const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, questionIdx, tableAnswers, setTableAnswers, revealed, tableGradingResults, q, gradeSingleTableCell, cellGradingLoading, onSubmit) => {
   const lines = flowchartText.split('\n');
   const items = [];
   let currentBoxes = null;
@@ -1017,11 +1017,27 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
       const gradingResult = tableGradingResults?.[inputKey];
       const isCorrect = gradingResult ? gradingResult.isCorrect : false;
 
-      const handleChange = (e) => {
-        setTableAnswers(prev => ({
-          ...prev,
-          [inputKey]: e.target.value
-        }));
+      const handleKeyDown = async (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          if (isGraded) {
+            if (gradeSingleTableCell && !cellGradingLoading?.[inputKey]) {
+              await gradeSingleTableCell(questionIdx, q, inputId);
+            }
+          } else {
+            const doc = e.target.ownerDocument || document;
+            const container = e.target.closest('.my-3') || doc;
+            const inputs = Array.from(container.querySelectorAll('input[type="text"]'));
+            const currentIdx = inputs.indexOf(e.target);
+            if (currentIdx !== -1 && currentIdx < inputs.length - 1) {
+              inputs[currentIdx + 1].focus();
+            } else if (currentIdx === inputs.length - 1) {
+              if (onSubmit) {
+                await onSubmit();
+              }
+            }
+          }
+        }
       };
 
       const parts = content.split(`(${letter})`);
@@ -1032,6 +1048,7 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
             type="text"
             value={val}
             onChange={handleChange}
+            onKeyDown={handleKeyDown}
             placeholder={`(${letter}) 입력`}
             className={`px-2 py-0.5 rounded border bg-slate-950 text-white text-[13px] sm:text-[14px] flowchart-text-force focus:outline-none focus:ring-1 focus:ring-indigo-500 flex-grow flex-1 min-w-[140px] inline-block font-bold ${
               isGraded
@@ -1298,7 +1315,7 @@ const renderCompleteFlowchart = (flowchartText, katexLoaded, q) => {
   );
 };
 
-const renderResponsiveContent = (text, katexLoaded, questionKey, isMarkdown, questionIdx, tableAnswers, setTableAnswers, revealed, tableGradingResults, q, gradeSingleTableCell, cellGradingLoading) => {
+const renderResponsiveContent = (text, katexLoaded, questionKey, isMarkdown, questionIdx, tableAnswers, setTableAnswers, revealed, tableGradingResults, q, gradeSingleTableCell, cellGradingLoading, onSubmit) => {
   const flowchartRegex = /```(?:[a-zA-Z]*)?\n([\s\S]*?┌[\s\S]*?)```/g;
   const hasFlowchart = flowchartRegex.test(text);
   flowchartRegex.lastIndex = 0;
@@ -1330,7 +1347,7 @@ const renderResponsiveContent = (text, katexLoaded, questionKey, isMarkdown, que
         } else {
           return (
             <div key={pIdx} className="w-full max-w-[700px] mx-auto">
-              {renderMobileFlowchart(part.content, katexLoaded, questionKey, questionIdx, tableAnswers, setTableAnswers, revealed, tableGradingResults, q, gradeSingleTableCell, cellGradingLoading)}
+              {renderMobileFlowchart(part.content, katexLoaded, questionKey, questionIdx, tableAnswers, setTableAnswers, revealed, tableGradingResults, q, gradeSingleTableCell, cellGradingLoading, onSubmit)}
             </div>
           );
         }
@@ -1356,7 +1373,8 @@ const renderQuestionContent = (
   revealed = false,
   tableGradingResults = null,
   gradeSingleTableCell = null,
-  cellGradingLoading = null
+  cellGradingLoading = null,
+  onSubmit = null
 ) => {
   const { questionText, tableData, referenceTableData } = parseQuestionTable(q, topicTitle);
   const isFlowchart = questionText.includes('┌──') || questionText.includes('▼') || questionText.includes('```') || questionText.includes('흐름도') || questionText.includes('플로우차트');
@@ -1469,7 +1487,7 @@ const renderQuestionContent = (
       <div className="space-y-3 w-full">
         {!(resolvedCategory === '계산' && showImage) && (
           <div className="text-[14px] sm:text-[16px] font-bold text-white leading-relaxed text-left w-full whitespace-pre-line">
-            {renderResponsiveContent(mainText, katexLoaded, questionKey, false, questionIdx, tableAnswers, setTableAnswers, revealed, tableGradingResults, q, gradeSingleTableCell, cellGradingLoading)}
+            {renderResponsiveContent(mainText, katexLoaded, questionKey, false, questionIdx, tableAnswers, setTableAnswers, revealed, tableGradingResults, q, gradeSingleTableCell, cellGradingLoading, onSubmit)}
           </div>
         )}
         {renderImageElement()}
@@ -1512,7 +1530,7 @@ const renderQuestionContent = (
     <>
       {!(resolvedCategory === '계산' && showImage) && (
         <div className="text-[14px] sm:text-[16px] font-bold text-white leading-relaxed text-left w-full whitespace-pre-line">
-          {renderResponsiveContent(cleanQuestionText, katexLoaded, questionKey, true, questionIdx, tableAnswers, setTableAnswers, revealed, tableGradingResults, q, gradeSingleTableCell, cellGradingLoading)}
+          {renderResponsiveContent(cleanQuestionText, katexLoaded, questionKey, true, questionIdx, tableAnswers, setTableAnswers, revealed, tableGradingResults, q, gradeSingleTableCell, cellGradingLoading, onSubmit)}
         </div>
       )}
       {renderImageElement()}
@@ -18470,7 +18488,30 @@ ${itemsStr}
                           </div>
                         </div>
 
-                        {renderQuestionContent(q, selectedTopic?.title, katexLoaded, selectedTopic?.id, selectedTopic?.pdf_name, selectedTopic?.category, pdfjsLoaded, idx === 0, aiQuestions.length, "", idx, tableAnswers, setTableAnswers, revealedQuestions[idx], tableGradingResults, gradeSingleTableCell, cellGradingLoading)}
+                        {renderQuestionContent(
+                          q, 
+                          selectedTopic?.title, 
+                          katexLoaded, 
+                          selectedTopic?.id, 
+                          selectedTopic?.pdf_name, 
+                          selectedTopic?.category, 
+                          pdfjsLoaded, 
+                          idx === 0, 
+                          aiQuestions.length, 
+                          "", 
+                          idx, 
+                          tableAnswers, 
+                          setTableAnswers, 
+                          revealedQuestions[idx], 
+                          tableGradingResults, 
+                          gradeSingleTableCell, 
+                          cellGradingLoading,
+                          async () => {
+                            if (gradingLoading[idx]) return;
+                            await gradeTableQuestion(idx, q);
+                            setRevealedQuestions(prev => ({ ...prev, [idx]: true }));
+                          }
+                        )}
 
 
 
