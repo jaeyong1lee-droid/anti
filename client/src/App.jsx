@@ -294,13 +294,9 @@ const parseOverviewContent = (content) => {
   if (!content) return result;
 
   // [자가 복구 필터] 백엔드 치화 과정에서 뭉개져 사라진 행 간 개행 및 마크다운 테이블 개행 전면 복원
-  let healedContent = content;
-  if (typeof healedContent === 'string') {
-    // 1단계: 뭉개져서 한 줄로 합쳐진 개요/메커니즘/비교표/의미/직관적 행 경계에 개행 삽입
-    healedContent = healedContent.replace(/\|\s*(개요\(\d+~\d+자\)|개요|메커니즘|비교표|비교|장단점|의미|한계성|직관적의미|직관적)\s*\|/gi, '\n| $1 |');
-    // 2단계: 테이블 내부의 뭉개진 파이프라인 개행 복원 (특정 키워드 의존성 완전 제거, 개행 횡단 매칭 차단)
-    healedContent = healedContent.replace(/\|[ \t]*\|/g, '\n|');
-  }
+  let healedContent = typeof content === 'string' ? content : String(content || '');
+  healedContent = healedContent.replace(/\|\s*(개요\(\d+~\d+자\)|개요|메커니즘|비교표|비교|장단점|의미|한계성|직관적의미|직관적)\s*\|/gi, '\n| $1 |');
+  healedContent = healedContent.replace(/\|[ \t]*\|/g, '\n|');
 
   const lines = healedContent.split('\n');
   let currentKey = null;
@@ -685,7 +681,8 @@ const clientExtractVariables = (mathContent) => {
 
 function parseMarkdownTable(questionText) {
   if (!questionText) return null;
-  const lines = questionText.split('\n');
+  const cleanText = typeof questionText === 'string' ? questionText : String(questionText);
+  const lines = cleanText.split('\n');
   let startIdx = -1;
   let endIdx = -1;
 
@@ -834,7 +831,11 @@ function normalizeSingleLineTable(text) {
 
 // ── 질문 내 표 파싱 유틸리티 ──────────────────
 function parseQuestionTable(q, topicTitle) {
+  if (!q) return { questionText: '', tableData: null, referenceTableData: null };
   let questionText = q.question || '';
+  if (typeof questionText !== 'string') {
+    questionText = String(questionText);
+  }
   questionText = normalizeSingleLineTable(questionText);
   let tableData = q.tableData || null;
   let referenceTableData = null;
@@ -928,7 +929,8 @@ function parseQuestionTable(q, topicTitle) {
 
 
 const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, questionIdx, tableAnswers, setTableAnswers, revealed, tableGradingResults, q, gradeSingleTableCell, cellGradingLoading, onSubmit, renderCardTutorChat) => {
-  const lines = flowchartText.split('\n');
+  const text = typeof flowchartText === 'string' ? flowchartText : '';
+  const lines = text.split('\n');
   const items = [];
   let currentBoxes = null;
 
