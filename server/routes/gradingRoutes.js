@@ -296,6 +296,25 @@ router.post('/question/regenerate', async (req, res) => {
       (currentQuestion?.question || '').includes('플로우차트') ||
       (currentQuestion?.question || '').includes('흐름도')
     );
+
+    // 믹스복습이든 일반 복습이든 해당 문항의 실제 원본 토픽 ID 구하기 및 교재 텍스트 조회
+    const finalTopicId = (isMixedId && currentQuestion?.originalTopicId) ? currentQuestion.originalTopicId : topicId;
+    let fileText = '';
+    let topicTitle = '';
+    if (finalTopicId) {
+      const topic = await dbQuery.get(
+        `SELECT id, title, keywords, pdf_name, category, pdf_url, extracted_text, 
+                (CASE WHEN extracted_text IS NULL OR extracted_text = '' THEN pdf_data ELSE NULL END) AS pdf_data 
+         FROM topics WHERE id = ?`, 
+        [finalTopicId]
+      );
+      if (topic) {
+        topicTitle = topic.title;
+        fileText = await getTopicText(topic, fileUtils, ocrPlugin, pdfParse);
+        fileText = fileUtils.smartTruncate(fileText, 25000);
+      }
+    }
+
     if ((topicId && String(topicId).startsWith('mixed_')) || currentQuestion?.mixedType) {
       mixedType = currentQuestion?.mixedType;
       const qText = currentQuestion?.question || '';
@@ -464,7 +483,10 @@ ${FLOWCHART_QUIZ_GENERATION_PROMPT}
 [응답 포맷]:
 {"type": "주관식 (표채우기)", "question": "질문(마크다운 고정폭 코드블록으로 감싼 아스키 흐름도 포함)", "tableData": {"headers": ["빈칸 구분", "입력 답안"], "rows": [["(A)", "[INPUT_1]"], ["(B)", "[INPUT_2]"], ["(C)", "[INPUT_3]"], ["(D)", "[INPUT_4]"]]}, "answers": {"INPUT_1": "(A)정답", "INPUT_2": "(B)정답", "INPUT_3": "(C)정답", "INPUT_4": "(D)정답"}, "explanation": "해설"}`;
 
-        userPrompt = `[기초 소스 문제]:
+        userPrompt = `[토픽 원본 학습자료]:
+${fileText || '없음'}
+
+[기초 소스 문제]:
 - 질문: ${currentQuestion?.question}
 - 유형: 주관식 (표채우기)
 - 기존 정답: ${prevAnswers || ''}
