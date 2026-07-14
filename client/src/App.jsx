@@ -13154,7 +13154,13 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
         let cleanLine = line.trim();
         if (cleanLine.startsWith('|')) cleanLine = cleanLine.substring(1);
         if (cleanLine.endsWith('|')) cleanLine = cleanLine.substring(0, cleanLine.length - 1);
-        const parts = cleanLine.split('|').map(p => p.trim());
+        const parts = cleanLine.split('|').map(p => {
+          if (!p) return '';
+          let res = p;
+          if (res.startsWith(' ')) res = res.substring(1);
+          if (res.endsWith(' ')) res = res.substring(0, res.length - 1);
+          return res;
+        });
         if (parts.length < 3) continue;
         const col1 = parts[0];
         const col2 = parts[1];
