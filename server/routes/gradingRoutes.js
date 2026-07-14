@@ -869,7 +869,7 @@ ${ENGINEERING_STANDARDS}
 
   } catch (error) {
     console.error('Regeneration error:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: error.message, stack: error.stack });
   } finally {
     if (progressTimer) clearInterval(progressTimer);
   }

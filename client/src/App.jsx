@@ -10170,6 +10170,7 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
       if (!res.ok) {
         console.error('[변환] 서버 에러:', data);
         stopProgressPolling('서버 오류 발생', 100, false);
+        window.alert(`[변환 오류]\n메시지: ${data.error || '없음'}\n\n상세 스택:\n${data.stack || '정보 없음'}`);
         showNotification(data.error || `서버 오류 (HTTP ${res.status})`, 'error');
         return;
       }
