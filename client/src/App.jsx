@@ -1062,8 +1062,6 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
       }
 
       const isGradedSingle = tableGradingResults?.[inputKey] !== undefined;
-      const gradingResult = tableGradingResults?.[inputKey];
-      const isCorrect = gradingResult ? gradingResult.isCorrect : false;
 
       return (
         <div className="flex items-center gap-1.5 flex-wrap my-0.5 select-text w-full h-auto whitespace-pre-wrap break-all flowchart-text-force">
