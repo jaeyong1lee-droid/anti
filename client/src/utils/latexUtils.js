@@ -403,9 +403,26 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   // [🚨 한글 텍스트 수식 탈출 필터 (CJK Math Escape) 🚨]
   // 달러 기호($) 내에 한글과 수식 기호가 함께 묶여 있는 경우, 한글 부분을 달러 기호 바깥으로 탈출시켜 
   // KaTeX 내부 렌더링에 따른 한글 폰트 거대화 버그 및 유니코드 수식 경고를 근본적으로 해결합니다.
-  processed = processed.replace(/\$([\uAC00-\uD7A3\s]+)([_a-zA-Z0-9'\^{\}\\\(\)\+\-\*\/=<>\.,]+)\$/g, (match, p1, p2) => `${p1} $${p2}$`);
-  processed = processed.replace(/\$([_a-zA-Z0-9'\^{\}\\\(\)\+\-\*\/=<>\.,]+)([\uAC00-\uD7A3\s]+)\$/g, (match, p1, p2) => `$${p1}$ ${p2}`);
-  processed = processed.replace(/\$([_a-zA-Z0-9'\^{\}\\\(\)\+\-\*\/=<>\.,]+)([\uAC00-\uD7A3\s]+)([_a-zA-Z0-9'\^{\}\\\(\)\+\-\*\/=<>\.,]+)\$/g, (match, p1, p2, p3) => `$${p1}$ ${p2} $${p3}$`);
+  if (processed.includes('$')) {
+    processed = processed.replace(/\$((?:[^\$\n])+?)\$/g, (match, mathContent) => {
+      if (!/[\uAC00-\uD7A3]/.test(mathContent)) {
+        return match;
+      }
+      const tokens = mathContent.split(/([\uAC00-\uD7A3\s]+)/);
+      const rebuilt = tokens.map(token => {
+        if (!token) return '';
+        const hasCjk = /[\uAC00-\uD7A3]/.test(token);
+        if (hasCjk) {
+          return token;
+        } else {
+          const trimmed = token.trim();
+          if (!trimmed) return token;
+          return ` $${trimmed}$ `;
+        }
+      }).join('');
+      return rebuilt.replace(/\s+/g, ' ').trim();
+    });
+  }
 
   processed = healCorruptedKatexHtml(processed);
   // Normalize dashes (en-dash, em-dash, math minus) to standard hyphens
