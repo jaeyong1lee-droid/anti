@@ -288,7 +288,16 @@ router.post('/question/regenerate', async (req, res) => {
   }
 
   try {
-    if ((topicId && String(topicId).startsWith('mixed_')) || currentQuestion?.mixedType) {
+    const isMixedId = topicId && String(topicId).startsWith('mixed_');
+    const isFlowchartQ = !!(
+      (currentQuestion?.question || '').includes('┌──') ||
+      (currentQuestion?.question || '').includes('▼') ||
+      (currentQuestion?.question || '').includes('플로우차트') ||
+      (currentQuestion?.question || '').includes('흐름도')
+    );
+    const shouldBypassMixedRegen = isMixedId && isFlowchartQ && currentQuestion?.originalTopicId;
+
+    if (((topicId && String(topicId).startsWith('mixed_')) || currentQuestion?.mixedType) && !shouldBypassMixedRegen) {
       let mixedType = currentQuestion?.mixedType;
       const qText = currentQuestion?.question || '';
       
@@ -509,10 +518,11 @@ ${otherQs.map((q, i) => `기존 문제 ${i + 1}: ${q.question || '없음'}`).joi
     );
 
     if (mode === 'review') {
-      if (!topicId) {
+      const finalTopicId = (isMixedId && currentQuestion?.originalTopicId) ? currentQuestion.originalTopicId : topicId;
+      if (!finalTopicId) {
         return res.status(400).json({ error: '토픽 ID가 제공되지 않았습니다.' });
       }
-      const topic = await dbQuery.get(`SELECT id, title, keywords, pdf_name, category, pdf_url, extracted_text FROM topics WHERE id = ?`, [topicId]);
+      const topic = await dbQuery.get(`SELECT id, title, keywords, pdf_name, category, pdf_url, extracted_text FROM topics WHERE id = ?`, [finalTopicId]);
       if (!topic) {
         return res.status(404).json({ error: '토픽을 찾을 수 없습니다.' });
       }
@@ -675,7 +685,7 @@ ${formatRequirement}`;
       const validatedQ = await validateAndHealQuestion(healedQ, localCallLLM, topic.title, topic.keywords, fileText);
       const finalValidatedQ = healQuizQuestionObject({
         ...validatedQ,
-        topic_id: Number(topicId),
+        topic_id: Number(finalTopicId),
         category: topic.category
       });
       if (progressId) {
