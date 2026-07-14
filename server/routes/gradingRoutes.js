@@ -298,13 +298,20 @@ router.post('/question/regenerate', async (req, res) => {
     );
 
     // 믹스복습이든 일반 복습이든 해당 문항의 실제 원본 토픽 ID 구하기 및 교재 텍스트 조회
-    const finalTopicId = (isMixedId && currentQuestion?.originalTopicId) ? currentQuestion.originalTopicId : topicId;
+    let finalTopicId = (isMixedId && currentQuestion?.originalTopicId) ? currentQuestion.originalTopicId : topicId;
+    if (isMixedId && !finalTopicId && currentQuestion?.topic_id) {
+      finalTopicId = currentQuestion.topic_id;
+    }
+
     let fileText = '';
     let topicTitle = '';
-    if (finalTopicId) {
+
+    // finalTopicId가 정수형 숫자일 때만 안전하게 DB 조회 수행 (PostgreSQL 형변환 에러 방지)
+    const isNumericId = finalTopicId && !isNaN(Number(finalTopicId));
+    if (isNumericId) {
       const topic = await dbQuery.get(
         `SELECT id, title, keywords, pdf_name, category, pdf_url, extracted_text FROM topics WHERE id = ?`, 
-        [finalTopicId]
+        [Number(finalTopicId)]
       );
       if (topic) {
         topicTitle = topic.title;
@@ -869,7 +876,7 @@ ${ENGINEERING_STANDARDS}
 
   } catch (error) {
     console.error('Regeneration error:', error);
-    res.status(500).json({ error: error.message, stack: error.stack });
+    res.status(500).json({ error: error.message });
   } finally {
     if (progressTimer) clearInterval(progressTimer);
   }
