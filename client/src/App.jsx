@@ -1026,17 +1026,18 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
   flushBoxes();
 
   // 중복되는 연속 화살표 제거 및 정돈
+  // 중복되는 연속 화살표 제거, 누락된 화살표 자동 삽입 및 정돈
   const cleanItems = [];
-  let lastWasArrow = false;
   items.forEach(item => {
     if (item.type === 'arrow') {
-      if (!lastWasArrow) {
+      if (cleanItems.length === 0 || cleanItems[cleanItems.length - 1].type !== 'arrow') {
         cleanItems.push(item);
-        lastWasArrow = true;
       }
     } else {
+      if (cleanItems.length > 0 && cleanItems[cleanItems.length - 1].type !== 'arrow') {
+        cleanItems.push({ type: 'arrow', text: '▼' });
+      }
       cleanItems.push(item);
-      lastWasArrow = false;
     }
   });
 
