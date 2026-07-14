@@ -303,9 +303,7 @@ router.post('/question/regenerate', async (req, res) => {
     let topicTitle = '';
     if (finalTopicId) {
       const topic = await dbQuery.get(
-        `SELECT id, title, keywords, pdf_name, category, pdf_url, extracted_text, 
-                (CASE WHEN extracted_text IS NULL OR extracted_text = '' THEN pdf_data ELSE NULL END) AS pdf_data 
-         FROM topics WHERE id = ?`, 
+        `SELECT id, title, keywords, pdf_name, category, pdf_url, extracted_text FROM topics WHERE id = ?`, 
         [finalTopicId]
       );
       if (topic) {
