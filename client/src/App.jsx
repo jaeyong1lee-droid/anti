@@ -1314,7 +1314,6 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
         feedbackList.sort((a, b) => a.letter.localeCompare(b.letter));
 
         if (feedbackList.length === 0) return null;
-        if (isNATMFlowchart(questionIdx, q)) return null;
 
         return (
           <div className="w-full mt-4 p-3 border border-slate-800 bg-slate-950/80 rounded-xl space-y-3.5 text-left animate-fade-in select-text">
