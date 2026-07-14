@@ -1570,7 +1570,7 @@ const renderResponsiveContent = (text, katexLoaded, questionKey, isMarkdown, que
           return <LatexRenderer key={pIdx} text={part.content} katexLoaded={katexLoaded} isMarkdown={isMarkdown} enableAddFormula={true} questionKey={questionKey} />;
         } else {
           return (
-            <div key={pIdx} className="w-full max-w-[700px] mx-auto">
+            <div key={pIdx} className="w-full max-w-none">
               {renderMobileFlowchart(part.content, katexLoaded, questionKey, questionIdx, tableAnswers, setTableAnswers, revealed, tableGradingResults, q, gradeSingleTableCell, cellGradingLoading, onSubmit, renderCardTutorChat)}
             </div>
           );
