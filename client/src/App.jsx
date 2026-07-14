@@ -931,7 +931,7 @@ function parseQuestionTable(q, topicTitle) {
 const getActualLettersMap = (text) => {
   const map = {};
   if (typeof text !== 'string') return map;
-  const regex = /\(([A-F])\)/g;
+  const regex = /[\(\[]([A-F])[\)\]]/g;
   let match;
   let idx = 1;
   while ((match = regex.exec(text)) !== null) {
@@ -944,17 +944,21 @@ const getActualLettersMap = (text) => {
 
 const cleanFlowchartCorrectAnswer = (correctAnswer, letter) => {
   if (typeof correctAnswer !== 'string' || !correctAnswer) return correctAnswer;
-  const lines = correctAnswer.split('\n');
+  const lines = correctAnswer.split('\n').map(l => l.trim()).filter(Boolean);
   const markerRegex = new RegExp('\\(' + letter + '\\)', 'i');
   const targetLine = lines.find(line => markerRegex.test(line));
   if (targetLine) {
     let clean = targetLine.replace(markerRegex, '');
-    clean = clean.replace(/^[#\s\-*\+\d\.\:]+/, '').trim();
+    clean = clean.replace(/^[#\s\-*\+\d\.\:\[\]]+/, '').trim();
+    clean = clean.replace(/[\[\]]+$/, '').trim();
     return clean;
   }
-  let cleanAll = correctAnswer.replace(markerRegex, '');
-  cleanAll = cleanAll.replace(/^[#\s\-*\+\d\.\:]+/, '').trim();
-  return cleanAll;
+  if (lines.length > 0) {
+    let firstLine = lines[0];
+    let clean = firstLine.replace(/^[#\s\-*\+\d\.\:\[\]\(a-zA-Z\)]+/, '').trim();
+    return clean;
+  }
+  return correctAnswer;
 };
 
 
@@ -1245,8 +1249,8 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
               const letter = actualLettersMap[inputId] || String.fromCharCode(65 + letterIdx);
               const result = tableGradingResults[key];
               if (result) {
-                const rawCorrectAnswer = q?.answers?.[inputId] || '';
-                const cleanedAns = cleanFlowchartCorrectAnswer(rawCorrectAnswer, letter);
+                const rawAns = q?.answers?.[inputId] || result?.correctAnswer || result?.suggestedModelAnswer || '';
+                const cleanedAns = cleanFlowchartCorrectAnswer(rawAns, letter);
                 feedbackList.push({
                   ...result,
                   letter,
