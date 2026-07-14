@@ -2405,31 +2405,6 @@ export default function App() {
       <div className="mt-4 pt-3 border-t border-current/10 space-y-3">
         <span className="font-extrabold text-amber-400 text-[14px] sm:text-[16px]">💡 빈칸별 상세 피드백:</span>
 
-        {/* 전체 모범 답안 (전체 플로우) 맨 처음 한 번만 노출 */}
-        {(() => {
-          const { questionText } = parseQuestionTable(q, selectedTopic?.title || '');
-          const isFlow = questionText.includes('┌──') || questionText.includes('▼') || questionText.includes('```') || questionText.includes('흐름도') || questionText.includes('플로우차트');
-          const cleanText = isFlow 
-            ? questionText.replace(/\r/g, '')
-            : questionText.replace(/\r/g, '').replace(/[ \t]+/g, ' ');
-
-          const flowchartRegex = /```(?:[a-zA-Z]*)?\n([\s\S]*?┌[\s\S]*?)```/g;
-          const match = flowchartRegex.exec(cleanText || '');
-          flowchartRegex.lastIndex = 0;
-
-          if (match) {
-            const flowchartText = match[1];
-            return (
-              <div className="p-3.5 bg-slate-900/60 rounded-xl border border-emerald-500/30 text-left my-2 w-full overflow-hidden">
-                <span className="text-[13px] font-black text-emerald-400 block mb-2">📋 모범 완성 흐름도 전체 플로우</span>
-                {renderCompleteFlowchart(flowchartText, katexLoaded, q)}
-              </div>
-            );
-          }
-
-          // 흐름도가 아닌 일반 퀴즈 테이블 모범 답안은 개별 빈칸 피드백에서 보이기 때문에 전체 목록은 표시하지 않음
-          return null;
-        })()}
 
         <div className="divide-y divide-slate-800/80 mt-1">
           {filteredInputIds.map((inputId) => {
