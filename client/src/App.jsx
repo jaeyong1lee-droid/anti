@@ -19868,14 +19868,12 @@ ${itemsStr}
         </div>
       </div>
       )}
-      {/* 💡 힌트 보기 모달 (Hint Modal) */}
+      {/* 💡 힌트 보기 모달 (Hint Modal) -> Non-blocking 팝업으로 재설계 */}
       {showHintModal && (
-        <div className="fixed inset-0 z-[200] overflow-y-auto flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm transition-all duration-300 animate-fade-in" onClick={() => setShowHintModal(false)}>
-          <div 
-            className="w-full max-w-md bg-slateCustom-900 border border-white/20 rounded-2xl overflow-hidden shadow-2xl p-6 space-y-4 animate-scale-up text-left" 
-            style={{ transform: `translate(${hintModalPos.x}px, ${hintModalPos.y}px)` }}
-            onClick={(e) => e.stopPropagation()}
-          >
+        <div 
+          className="fixed right-4 top-24 z-[200] w-full max-w-sm bg-slateCustom-900 border border-white/20 rounded-2xl overflow-hidden shadow-2xl p-5 space-y-3 animate-scale-up text-left" 
+          style={{ transform: `translate(${hintModalPos.x}px, ${hintModalPos.y}px)` }}
+        >
             {/* Modal Header */}
             <div 
               className="flex items-center justify-between pb-2 border-b border-slate-800 cursor-move select-none"
@@ -19924,8 +19922,8 @@ ${itemsStr}
               </button>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
       {/* ⚙️ 공학 기준 통합 관리 모달 (Engineering Standards Management Modal) */}
       {showManageStandardsModal && (
