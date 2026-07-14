@@ -928,6 +928,22 @@ function parseQuestionTable(q, topicTitle) {
 }
 
 
+const cleanFlowchartCorrectAnswer = (correctAnswer, letter) => {
+  if (typeof correctAnswer !== 'string' || !correctAnswer) return correctAnswer;
+  const lines = correctAnswer.split('\n');
+  const markerRegex = new RegExp('\\(' + letter + '\\)', 'i');
+  const targetLine = lines.find(line => markerRegex.test(line));
+  if (targetLine) {
+    let clean = targetLine.replace(markerRegex, '');
+    clean = clean.replace(/^[#\s\-*\+\d\.\:]+/, '').trim();
+    return clean;
+  }
+  let cleanAll = correctAnswer.replace(markerRegex, '');
+  cleanAll = cleanAll.replace(/^[#\s\-*\+\d\.\:]+/, '').trim();
+  return cleanAll;
+};
+
+
 const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, questionIdx, tableAnswers, setTableAnswers, revealed, tableGradingResults, q, gradeSingleTableCell, cellGradingLoading, onSubmit, renderCardTutorChat) => {
   const text = typeof flowchartText === 'string' ? flowchartText : '';
   const lines = text.split('\n');
@@ -1213,7 +1229,8 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
               const result = tableGradingResults[key];
               if (result) {
                 const inputId = `INPUT_${letterIdx + 1}`;
-                const correctAnswer = q?.answers?.[inputId] || '';
+                const rawCorrectAnswer = q?.answers?.[inputId] || '';
+                const correctAnswer = cleanFlowchartCorrectAnswer(rawCorrectAnswer, letter);
                 feedbackList.push({
                   letter,
                   userVal: tableAnswers?.[key] || '',
