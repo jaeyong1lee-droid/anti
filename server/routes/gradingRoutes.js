@@ -471,7 +471,7 @@ router.post('/question/regenerate', async (req, res) => {
 6. **[동적 tableData/answers 스키마]**: 뚫어낸 빈칸의 개수(총 6개)에 맞추어 tableData의 rows와 answers의 INPUT도 정확히 6개(INPUT_1부터 INPUT_6까지)로 동적 구성하여 JSON을 출력하십시오.
 7. **[🚨 상자 내부 기술사급 상세 내용 기입 철칙 - 간소화 금지]**: 
    - 각 단계별 박스 내부의 텍스트 설명은 대충 명사 몇 개로 단순 요약 나열하는 것을 절대 금지합니다.
-8. **[질문 지문에 토픽 제목 필수 명시]**: 질문("question" 필드) 텍스트를 작성할 때 단순히 "다음 흐름도를 보고"라고 작성하는 것을 절대 금지하며, 반드시 해당 토픽의 구체적인 제목/주제명을 포함한 "다음 [토픽명] 흐름도를 보고..." 형식으로 질문 지문을 작성해야 합니다.
+8. **[질문 지문에 토픽 제목 필수 명시]**: 질문("question" 필드) 텍스트를 작성할 때 "[(A)] 흐름도" 나 "다음 흐름도" 처럼 대충 플레이스홀더를 채우는 것을 절대 금지합니다. 반드시 실제 토픽 명칭인 "[ ${topicTitle || '지반공학 설계 절차'} ]" 을 사용하여, "다음 [ ${topicTitle || '지반공학 설계 절차'} ] 절차 흐름도를 보고..." 형식으로 질문 지문을 작성해야 합니다.
 `;
 
         systemPrompt = `당신은 기술사 시험 출제위원입니다.
@@ -525,6 +525,11 @@ ${GENERATION_STANDARDS}`;
         parsed.subtype = '표채우기';
         parsed.explanation = content;
         parsed.mixedType = 'table';
+        if (parsed.question && topicTitle) {
+          parsed.question = parsed.question
+            .replace(/다음\s*\[?\(A\)\]?\s*흐름도/g, `다음 [${topicTitle}] 절차 흐름도`)
+            .replace(/다음\s*흐름도/g, `다음 [${topicTitle}] 절차 흐름도`);
+        }
       } else if (mixedType === 'table') {
         parsed.type = '주관식 (표채우기)';
         parsed.subtype = '표채우기';
