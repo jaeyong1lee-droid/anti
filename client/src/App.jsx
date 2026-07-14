@@ -1084,6 +1084,11 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
               }`}
             />
           </div>
+          {isGradedSingle && !isCorrect && (
+            <span className="text-[11px] font-extrabold text-rose-400 select-none shrink-0">
+              (정답: {answerVal})
+            </span>
+          )}
           <span>{rightText}</span>
         </div>
       );
@@ -1126,6 +1131,11 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
         if (gradeSingleTableCell && !cellGradingLoading?.[bi.inputKey]) {
           await gradeSingleTableCell(questionIdx, q, bi.inputId);
         }
+      }
+
+      // 채점 완료 후 전체 피드백 및 정답 목록(isRevd)이 노출되도록 활성화
+      if (typeof setRevealedQuestions === 'function') {
+        setRevealedQuestions(prev => ({ ...prev, [questionIdx]: true }));
       }
     };
 
