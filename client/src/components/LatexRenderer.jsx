@@ -159,22 +159,8 @@ export const LatexRenderer = React.memo(function LatexRenderer({
   if (!text) return null;
 
   let parsedText = text;
-  if (typeof parsedText === 'string') {
-    if (forceInline) {
-      parsedText = parsedText.replace(/\$\$/g, '$');
-    }
-    // [🚨 아스키 흐름도 동적 코드블록 감싸기 필터 (Auto Codeblock Wrap) 🚨]
-    // AI가 마크다운 코드블록(```) 감싸기를 빠뜨리고 아스키 흐름도 기호만 보낸 경우,
-    // 실시간으로 이를 감지하여 강제로 코드블록을 씌워 parseAndRenderFlowchart가 예쁜 리액트 박스로 렌더링하게 합니다.
-    const isFlowchartRawText = parsedText.includes('┌') && (parsedText.includes('│') || parsedText.includes('┃')) && !parsedText.includes('```');
-    if (isFlowchartRawText) {
-      const flowIndex = parsedText.indexOf('┌');
-      if (flowIndex !== -1) {
-        const before = parsedText.substring(0, flowIndex);
-        const flowBody = parsedText.substring(flowIndex);
-        parsedText = `${before}\n\`\`\`\n${flowBody}\n\`\`\``;
-      }
-    }
+  if (forceInline && typeof parsedText === 'string') {
+    parsedText = parsedText.replace(/\$\$/g, '$');
   }
 
   const flowchartRegex = /```(?:[a-zA-Z]*)?\n([\s\S]*?┌[\s\S]*?)```/g;

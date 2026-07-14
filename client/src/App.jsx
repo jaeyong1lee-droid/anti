@@ -4494,7 +4494,20 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
       if (!Array.isArray(questionsList)) return questionsList;
       return questionsList.map(q => {
         if (!q || !q.question) return q;
-        const qText = q.question;
+        let qText = q.question;
+        
+        // [🚨 아스키 흐름도 백틱 코드블록 동적 감싸기 보정 🚨]
+        const isFlowchartRaw = qText.includes('┌') && (qText.includes('│') || qText.includes('┃')) && !qText.includes('```');
+        if (isFlowchartRaw) {
+          const flowIndex = qText.indexOf('┌');
+          if (flowIndex !== -1) {
+            const before = qText.substring(0, flowIndex);
+            const flowBody = qText.substring(flowIndex);
+            qText = `${before}\n\`\`\`\n${flowBody}\n\`\`\``;
+            q = { ...q, question: qText };
+          }
+        }
+
         const isFlowchart = qText.includes('┌──') || qText.includes('▼') || qText.includes('플로우차트') || qText.includes('흐름도');
         
         if (isFlowchart) {
