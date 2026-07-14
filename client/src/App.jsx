@@ -951,8 +951,12 @@ const cleanAttachmentText = (str) => {
 };
 
 
-const isNATMFlowchart = (idx, q) => {
-  if (idx === 6 || idx === 7) return true;
+const isNATMFlowchart = (idx, q, isExam = false) => {
+  if (isExam) {
+    if (idx === 10) return true;
+  } else {
+    if (idx === 6 || idx === 7) return true;
+  }
   const text = q?.question_text || q?.question || q?.content || '';
   if (text.includes('NATM') && (text.includes('흐름도') || text.includes('플로우차트') || text.includes('┌──'))) {
     return true;
@@ -981,7 +985,7 @@ const cleanFlowchartCorrectAnswer = (correctAnswer, letter) => {
 };
 
 
-const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, questionIdx, tableAnswers, setTableAnswers, revealed, tableGradingResults, q, gradeSingleTableCell, cellGradingLoading, onSubmit, renderCardTutorChat) => {
+const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, questionIdx, tableAnswers, setTableAnswers, revealed, tableGradingResults, q, gradeSingleTableCell, cellGradingLoading, onSubmit, renderCardTutorChat, isExam = false) => {
   const text = typeof flowchartText === 'string' ? flowchartText : '';
   const lines = text.split('\n');
   const items = [];
@@ -1359,7 +1363,7 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
       })()}
 
       {/* 💬 흐름도 하단 전용 AI 튜터 질문 대화창 */}
-      {renderCardTutorChat && !isNATMFlowchart(questionIdx, q) && (
+      {renderCardTutorChat && !isNATMFlowchart(questionIdx, q, isExam) && (
         <div className="w-full mt-1.5 pt-1.5 border-t border-slate-800/40 text-left">
           {renderCardTutorChat(questionKey, q)}
         </div>
@@ -1539,7 +1543,7 @@ const renderCompleteFlowchart = (flowchartText, katexLoaded, q) => {
   );
 };
 
-const renderResponsiveContent = (text, katexLoaded, questionKey, isMarkdown, questionIdx, tableAnswers, setTableAnswers, revealed, tableGradingResults, q, gradeSingleTableCell, cellGradingLoading, onSubmit, renderCardTutorChat) => {
+const renderResponsiveContent = (text, katexLoaded, questionKey, isMarkdown, questionIdx, tableAnswers, setTableAnswers, revealed, tableGradingResults, q, gradeSingleTableCell, cellGradingLoading, onSubmit, renderCardTutorChat, isExam = false) => {
   const flowchartRegex = /```(?:[a-zA-Z]*)?\n([\s\S]*?┌[\s\S]*?)```/g;
   const hasFlowchart = flowchartRegex.test(text);
   flowchartRegex.lastIndex = 0;
@@ -1571,7 +1575,7 @@ const renderResponsiveContent = (text, katexLoaded, questionKey, isMarkdown, que
         } else {
           return (
             <div key={pIdx} className="w-full max-w-none">
-              {renderMobileFlowchart(part.content, katexLoaded, questionKey, questionIdx, tableAnswers, setTableAnswers, revealed, tableGradingResults, q, gradeSingleTableCell, cellGradingLoading, onSubmit, renderCardTutorChat)}
+              {renderMobileFlowchart(part.content, katexLoaded, questionKey, questionIdx, tableAnswers, setTableAnswers, revealed, tableGradingResults, q, gradeSingleTableCell, cellGradingLoading, onSubmit, renderCardTutorChat, isExam)}
             </div>
           );
         }
@@ -1599,7 +1603,8 @@ const renderQuestionContent = (
   gradeSingleTableCell = null,
   cellGradingLoading = null,
   onSubmit = null,
-  renderCardTutorChat = null
+  renderCardTutorChat = null,
+  isExam = false
 ) => {
   const { questionText, tableData, referenceTableData } = parseQuestionTable(q, topicTitle);
   const isFlowchart = questionText.includes('┌──') || questionText.includes('▼') || questionText.includes('```') || questionText.includes('흐름도') || questionText.includes('플로우차트');
@@ -1608,13 +1613,13 @@ const renderQuestionContent = (
     : questionText.replace(/\r/g, '').replace(/[ \t]+/g, ' ');
   
   const conditionMatch = cleanQuestionText.match(/\[\s*조건\s*\]/);
-
+ 
   const resolvedCategory = q.category || topicCategory;
   const resolvedPdfName = q.pdf_name || pdfName || '';
   const resolvedTopicId = q.topic_id || topicId;
-
+ 
   const isImageTopic = resolvedCategory === '계산';
-
+ 
   const renderImageElement = () => {
     const imgs = q.imageSrcs || (q.imageSrc ? [q.imageSrc] : []);
     if (imgs.length > 0) {
@@ -1637,7 +1642,7 @@ const renderQuestionContent = (
         </div>
       );
     }
-
+ 
     const isImageQuestion = q.mixedType === 'image' || q.subtype === '그림' || q.type === '주관식 (그림)';
     if (!isImageQuestion) {
       if (resolvedCategory !== '계산' || !resolvedTopicId || !showImage) {
@@ -1646,7 +1651,7 @@ const renderQuestionContent = (
     } else {
       if (!resolvedTopicId) return null;
     }
-
+ 
     return (
       <div className="mt-3 flex flex-col items-center w-full">
         <div className="text-[11px] text-indigo-400 font-extrabold mb-1 select-none flex items-center gap-1.5 w-full justify-start">
@@ -1715,7 +1720,7 @@ const renderQuestionContent = (
       <div className="space-y-3 w-full">
         {!(resolvedCategory === '계산' && showImage) && (
           <div className="text-[14px] sm:text-[16px] font-bold text-white leading-relaxed text-left w-full whitespace-pre-line">
-            {renderResponsiveContent(mainText, katexLoaded, questionKey, false, questionIdx, tableAnswers, setTableAnswers, revealed, tableGradingResults, q, gradeSingleTableCell, cellGradingLoading, onSubmit, renderCardTutorChat)}
+            {renderResponsiveContent(mainText, katexLoaded, questionKey, false, questionIdx, tableAnswers, setTableAnswers, revealed, tableGradingResults, q, gradeSingleTableCell, cellGradingLoading, onSubmit, renderCardTutorChat, isExam)}
           </div>
         )}
         {renderImageElement()}
@@ -1758,7 +1763,7 @@ const renderQuestionContent = (
     <>
       {!(resolvedCategory === '계산' && showImage) && (
         <div className="text-[14px] sm:text-[16px] font-bold text-white leading-relaxed text-left w-full whitespace-pre-line">
-          {renderResponsiveContent(cleanQuestionText, katexLoaded, questionKey, true, questionIdx, tableAnswers, setTableAnswers, revealed, tableGradingResults, q, gradeSingleTableCell, cellGradingLoading, onSubmit, renderCardTutorChat)}
+          {renderResponsiveContent(cleanQuestionText, katexLoaded, questionKey, true, questionIdx, tableAnswers, setTableAnswers, revealed, tableGradingResults, q, gradeSingleTableCell, cellGradingLoading, onSubmit, renderCardTutorChat, isExam)}
         </div>
       )}
       {renderImageElement()}
@@ -19383,7 +19388,7 @@ ${itemsStr}
                                 );
                               })()}
                               {!isRevd ? (
-                                !isOverviewReview(q) && (
+                                !isOverviewReview(q) && !isNATMFlowchart(idx, q, false) && (
                                   <button
                                     onClick={async () => {
                                       if (gradingLoading[idx]) return;
@@ -19406,7 +19411,7 @@ ${itemsStr}
                                     </div>
                                   );
                                 }
-                                if (isNATMFlowchart(idx, q)) {
+                                if (isNATMFlowchart(idx, q, false)) {
                                   return null;
                                 }
                                 return (
@@ -19429,7 +19434,7 @@ ${itemsStr}
                                 );
                               })()}
                             </div>
-                          ) : (q.type !== '주관식 (표채우기)' && q.subtype !== '표채우기' && !isNATMFlowchart(idx, q)) ? (
+                          ) : (q.type !== '주관식 (표채우기)' && q.subtype !== '표채우기' && !isNATMFlowchart(idx, q, false)) ? (
                             <div className="space-y-3 w-full animate-fade-in">
                               <div className={`p-0 sm:p-4 rounded-none sm:rounded-xl border-0 sm:border space-y-3 text-left transition-all ${getSubjectiveContainerClasses(idx, isRevd)}`}>
                                 <div className="space-y-1">
@@ -22535,7 +22540,8 @@ ${itemsStr}
                         gradeSingleTableCell,
                         cellGradingLoading,
                         null,
-                        renderCardTutorChat
+                        renderCardTutorChat,
+                        true
                       )}
 
                       {/* MC Options */}
@@ -22841,7 +22847,7 @@ ${itemsStr}
                                 );
                               })()}
                               {!examRevealed[idx] ? (
-                                !isOverviewReview(q) && (
+                                !isOverviewReview(q) && !isNATMFlowchart(idx, q, true) && (
                                   <button
                                     onClick={async () => {
                                       if (gradingLoading[idx]) return;
@@ -22864,7 +22870,7 @@ ${itemsStr}
                                     </div>
                                   );
                                 }
-                                if (isNATMFlowchart(idx, q)) {
+                                if (isNATMFlowchart(idx, q, true)) {
                                   return null;
                                 }
                                 return (
@@ -22887,7 +22893,7 @@ ${itemsStr}
                                 );
                               })()}
                             </div>
-                          ) : (q.type !== '주관식 (표채우기)' && q.subtype !== '표채우기') ? (
+                          ) : (q.type !== '주관식 (표채우기)' && q.subtype !== '표채우기' && !isNATMFlowchart(idx, q, true)) ? (
                             <div className="space-y-3 w-full animate-fade-in">
                               <div className={`p-0 sm:p-4 rounded-none sm:rounded-xl border-0 sm:border space-y-3 text-left transition-all ${getSubjectiveContainerClasses(idx, !!examRevealed[idx])}`}>
                                 <div className="space-y-1">
@@ -23008,7 +23014,7 @@ ${itemsStr}
                                   </div>
                                 )}
                               </div>
-                              {!examRevealed[idx] ? (
+                              {!examRevealed[idx] && !isNATMFlowchart(idx, q, true) ? (
                                 <button
                                   onClick={async () => {
                                     if (gradingLoading[idx]) return;
