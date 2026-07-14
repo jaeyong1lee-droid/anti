@@ -1081,33 +1081,6 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
                   : 'border-indigo-500/50'
               }`}
             />
-            <button
-              type="button"
-              onClick={async (e) => {
-                e.stopPropagation();
-                if (gradeSingleTableCell && !cellGradingLoading?.[inputKey]) {
-                  await gradeSingleTableCell(questionIdx, q, inputId);
-                }
-              }}
-              disabled={cellGradingLoading?.[inputKey]}
-              className={`inline-flex items-center justify-center transition-all cursor-pointer outline-none focus:outline-none select-none shrink-0 ${
-                isGradedSingle
-                  ? isCorrect
-                    ? 'text-emerald-400 hover:scale-120 text-[14px] sm:text-[16px] font-extrabold bg-transparent border-0'
-                    : 'text-rose-400 hover:scale-120 text-[14px] sm:text-[16px] font-extrabold bg-transparent border-0'
-                  : 'bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white text-[10px] px-1.5 py-0.5 rounded font-black border border-indigo-500/30'
-              }`}
-              title={isGradedSingle ? "클릭하여 이 빈칸 재평가" : "이 빈칸 채점 제출"}
-            >
-              {cellGradingLoading?.[inputKey] ? (
-                <svg className="animate-spin h-3.5 w-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-              ) : (
-                isGradedSingle ? (isCorrect ? '✓' : '✗') : '제출'
-              )}
-            </button>
           </div>
           <span>{rightText}</span>
         </div>
@@ -1121,49 +1094,101 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
     );
   };
 
+  const renderSingleBox = (box, boxKeyIdx) => {
+    const title = box.content[0] || '';
+    const bodyLines = box.content.slice(1);
+
+    // 1) 이 상자 내부에 존재하는 모든 빈칸 수집
+    const boxInputs = [];
+    box.content.forEach(line => {
+      const match = line.match(/\(([A-F])\)/);
+      if (match) {
+        const letter = match[1];
+        const letterIdx = letter.charCodeAt(0) - 65;
+        const inputId = `INPUT_${letterIdx + 1}`;
+        const inputKey = `${questionIdx}_${inputId}`;
+        boxInputs.push({ letter, inputId, inputKey });
+      }
+    });
+
+    const isAllGraded = boxInputs.length > 0 && boxInputs.every(bi => revealed || (tableGradingResults?.[bi.inputKey] !== undefined));
+    const isAllCorrect = boxInputs.length > 0 && boxInputs.every(bi => tableGradingResults?.[bi.inputKey]?.isCorrect);
+    const isAnyLoading = boxInputs.some(bi => cellGradingLoading?.[bi.inputKey]);
+
+    const handleBoxSubmit = async (e) => {
+      e.stopPropagation();
+      if (isAnyLoading) return;
+      
+      // 상자 안의 모든 빈칸 순차적 제출
+      for (const bi of boxInputs) {
+        if (gradeSingleTableCell && !cellGradingLoading?.[bi.inputKey]) {
+          await gradeSingleTableCell(questionIdx, q, bi.inputId);
+        }
+      }
+    };
+
+    return (
+      <div key={boxKeyIdx} className="w-full h-auto min-h-fit border border-indigo-500/30 bg-slate-900/80 p-3 rounded-xl text-left leading-relaxed shadow-md flex items-center justify-between gap-3 select-text">
+        {/* 왼쪽: 본문 및 입력 필드 영역 */}
+        <div className="flex-grow flex flex-col gap-0.5 min-w-0">
+          <div className="font-bold text-[13px] sm:text-[14px] text-indigo-400 mb-0.5 w-full h-auto whitespace-pre-wrap break-all">
+            {renderLineContent(title)}
+          </div>
+          {bodyLines.map((bl, bIdx) => (
+            <div key={bIdx} className="text-[13px] sm:text-[14px] text-slate-200 pl-1.5 border-l border-slate-700/50 my-0.5 w-full h-auto whitespace-pre-wrap break-all">
+              {renderLineContent(bl)}
+            </div>
+          ))}
+        </div>
+
+        {/* 오른쪽: 상자 전용 통합 제출 버튼 */}
+        {boxInputs.length > 0 && (
+          <button
+            type="button"
+            onClick={handleBoxSubmit}
+            disabled={isAnyLoading}
+            className={`px-3 py-1.5 text-[11px] font-black rounded border transition-all duration-200 select-none cursor-pointer outline-none focus:outline-none flex items-center justify-center shrink-0 min-w-[50px] shadow-none ${
+              isAllGraded
+                ? isAllCorrect
+                  ? 'border-emerald-500/30 text-emerald-400 bg-transparent hover:scale-105'
+                  : 'border-rose-500/30 text-rose-400 bg-transparent hover:scale-105'
+                : 'border-slate-700 bg-transparent text-white hover:bg-slate-800/40 hover:border-slate-600 active:scale-95'
+            }`}
+            title={isAllGraded ? "클릭하여 이 상자 내 모든 빈칸 재평가" : "이 상자의 모든 빈칸 채점 제출"}
+          >
+            {isAnyLoading ? (
+              <svg className="animate-spin h-3.5 w-3.5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            ) : (
+              isAllGraded ? (isAllCorrect ? '✓' : '✗') : '제출'
+            )}
+          </button>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="w-full flex flex-col items-center gap-2 select-text my-3">
       {cleanItems.map((item, idx) => {
         if (item.type === 'box') {
-          const title = item.content[0] || '';
-          const bodyLines = item.content.slice(1);
+          return renderSingleBox(item, idx);
+        } else if (item.type === 'branch') {
           return (
-            <div key={idx} className="w-full h-auto min-h-fit border border-indigo-500/30 bg-slate-900/80 p-2.5 rounded-xl text-left leading-relaxed shadow-md flex flex-col gap-0.5">
-              <div className="font-bold text-[13px] sm:text-[14px] text-indigo-400 mb-0.5 w-full h-auto whitespace-pre-wrap break-all">
-                {renderLineContent(title)}
-              </div>
-              {bodyLines.map((bl, bIdx) => (
-                <div key={bIdx} className="text-[13px] sm:text-[14px] text-slate-200 pl-1.5 border-l border-slate-700/50 my-0.5 w-full h-auto whitespace-pre-wrap break-all">
-                  {renderLineContent(bl)}
+            <div key={idx} className="w-full flex flex-col sm:flex-row gap-3 items-stretch justify-center">
+              {item.boxes.map((box, bIdx) => (
+                <div key={bIdx} className="flex-1 w-full flex">
+                  {renderSingleBox(box, `${idx}_${bIdx}`)}
                 </div>
               ))}
             </div>
           );
-        } else if (item.type === 'branch') {
-          return (
-            <div key={idx} className="w-full flex flex-col sm:flex-row gap-3 items-stretch justify-center">
-              {item.boxes.map((box, bIdx) => {
-                const title = box.content[0] || '';
-                const bodyLines = box.content.slice(1);
-                return (
-                  <div key={bIdx} className="flex-1 w-full h-auto min-h-fit border border-indigo-500/30 bg-slate-900/80 p-2.5 rounded-xl text-left leading-relaxed shadow-md flex flex-col gap-0.5">
-                    <div className="font-bold text-[13px] sm:text-[14px] text-indigo-400 mb-0.5 w-full h-auto whitespace-pre-wrap break-all">
-                      {renderLineContent(title)}
-                    </div>
-                    {bodyLines.map((bl, blIdx) => (
-                      <div key={blIdx} className="text-[13px] sm:text-[14px] text-slate-200 pl-1.5 border-l border-slate-700/50 my-0.5 w-full h-auto whitespace-pre-wrap break-all">
-                        {renderLineContent(bl)}
-                      </div>
-                    ))}
-                  </div>
-                );
-              })}
-            </div>
-          );
         } else {
           return (
-            <div key={idx} className="text-indigo-400 font-extrabold text-[13px] sm:text-[14px] my-1 select-none">
-              ▼
+            <div key={idx} className="text-slate-500 text-xs my-0.5 select-none font-bold">
+              {item.text || '▼'}
             </div>
           );
         }
