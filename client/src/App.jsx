@@ -952,14 +952,18 @@ const cleanAttachmentText = (str) => {
 
 
 const isNATMFlowchart = (idx, q, isExam = false) => {
-  if (isExam) {
-    if (idx === 10) return true;
-  } else {
-    if (idx === 6 || idx === 7) return true;
+  if (q?.id === 'mixed_q_10') {
+    return true;
   }
   const text = q?.question_text || q?.question || q?.content || '';
-  if (text.includes('NATM') && (text.includes('흐름도') || text.includes('플로우차트') || text.includes('┌──'))) {
+  const isNATMText = text.includes('NATM') && (text.includes('흐름도') || text.includes('플로우차트') || text.includes('┌──'));
+  if (isNATMText) {
     return true;
+  }
+  if (isExam) {
+    if (idx === 10 && (text.includes('┌──') || text.includes('▼') || text.includes('흐름도') || text.includes('플로우차트'))) return true;
+  } else {
+    if ((idx === 6 || idx === 7) && (text.includes('┌──') || text.includes('▼') || text.includes('흐름도') || text.includes('플로우차트'))) return true;
   }
   return false;
 };
