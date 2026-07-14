@@ -1040,6 +1040,36 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
     }
   });
 
+  let expectedBoxNum = 1;
+  const fixTitleSequence = (boxObj) => {
+    if (!boxObj || !boxObj.content || boxObj.content.length === 0) return;
+    const title = boxObj.content[0];
+    const match = title.match(/\[(\d+|\*)\]/);
+    if (match) {
+      const numStr = match[1];
+      if (numStr === '*') {
+        boxObj.content[0] = title.replace(`[${numStr}]`, `[${expectedBoxNum}]`);
+        expectedBoxNum++;
+      } else {
+        const num = parseInt(numStr, 10);
+        if (num < expectedBoxNum) {
+          boxObj.content[0] = title.replace(`[${numStr}]`, `[${expectedBoxNum}]`);
+          expectedBoxNum++;
+        } else {
+          expectedBoxNum = num + 1;
+        }
+      }
+    }
+  };
+
+  cleanItems.forEach(item => {
+    if (item.type === 'box') {
+      fixTitleSequence(item);
+    } else if (item.type === 'branch' && Array.isArray(item.boxes)) {
+      item.boxes.forEach(b => fixTitleSequence(b));
+    }
+  });
+
   const renderLineContent = (content) => {
     const letterMatch = content.match(/\(([A-F])\)/);
     if (letterMatch && tableAnswers && setTableAnswers) {
