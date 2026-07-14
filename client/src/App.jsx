@@ -1084,11 +1084,6 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
               }`}
             />
           </div>
-          {isGradedSingle && !isCorrect && (
-            <span className="text-[11px] font-extrabold text-rose-400 select-none shrink-0">
-              (정답: {answerVal})
-            </span>
-          )}
           <span>{rightText}</span>
         </div>
       );
@@ -1217,9 +1212,12 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
               const letter = String.fromCharCode(65 + letterIdx);
               const result = tableGradingResults[key];
               if (result) {
+                const inputId = `INPUT_${letterIdx + 1}`;
+                const correctAnswer = q?.answers?.[inputId] || '';
                 feedbackList.push({
                   letter,
                   userVal: tableAnswers?.[key] || '',
+                  correctAnswer,
                   ...result
                 });
               }
@@ -1264,10 +1262,10 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
                       <LatexRenderer text={formatGradingReason(item.reason)} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} />
                     </div>
                   )}
-                  {!item.isCorrect && item.suggestedModelAnswer && (
+                  {(item.correctAnswer || item.suggestedModelAnswer) && (
                     <div className="text-[12px] sm:text-[13px] text-slate-400 mt-1.5 pt-1.5 border-t border-slate-800/40 pl-6">
-                      <span className="font-extrabold text-slate-300">💡 모범 답안: </span>
-                      <span className="text-slate-200">{item.suggestedModelAnswer}</span>
+                      <span className="font-extrabold text-slate-300">💡 모범 정답: </span>
+                      <span className="text-slate-200 font-bold">{item.correctAnswer || item.suggestedModelAnswer}</span>
                     </div>
                   )}
                 </div>
