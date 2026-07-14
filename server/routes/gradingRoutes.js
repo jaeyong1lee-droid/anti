@@ -296,9 +296,7 @@ router.post('/question/regenerate', async (req, res) => {
       (currentQuestion?.question || '').includes('플로우차트') ||
       (currentQuestion?.question || '').includes('흐름도')
     );
-    const shouldBypassMixedRegen = isFlowchartQ;
-
-    if (((topicId && String(topicId).startsWith('mixed_')) || currentQuestion?.mixedType) && !shouldBypassMixedRegen) {
+    if ((topicId && String(topicId).startsWith('mixed_')) || currentQuestion?.mixedType) {
       mixedType = currentQuestion?.mixedType;
       const qText = currentQuestion?.question || '';
       
@@ -321,7 +319,7 @@ router.post('/question/regenerate', async (req, res) => {
         mixedType = currentQuestion?.acronym ? 'acronym' : 'table';
       }
 
-      if (mixedType === 'image' || mixedType === 'overview') {
+      if ((mixedType === 'image' || mixedType === 'overview') && !isFlowchartQ) {
         if (progressTimer) {
           clearInterval(progressTimer);
           stopBackendProgressTimer(progressId, 100, '성공적으로 재출제했습니다!', true);
