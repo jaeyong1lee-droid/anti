@@ -295,7 +295,7 @@ router.post('/question/regenerate', async (req, res) => {
       (currentQuestion?.question || '').includes('플로우차트') ||
       (currentQuestion?.question || '').includes('흐름도')
     );
-    const shouldBypassMixedRegen = isMixedId && isFlowchartQ && currentQuestion?.originalTopicId;
+    const shouldBypassMixedRegen = isFlowchartQ;
 
     if (((topicId && String(topicId).startsWith('mixed_')) || currentQuestion?.mixedType) && !shouldBypassMixedRegen) {
       let mixedType = currentQuestion?.mixedType;
