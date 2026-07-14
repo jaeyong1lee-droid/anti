@@ -154,6 +154,7 @@ div[class*="overflow-y-auto"] {
 /* Improve KaTeX formula font rendering for Korean text */
 .katex {
   font-family: 'KaTeX_Main', 'Pretendard', 'Malgun Gothic', sans-serif !important;
+  font-size: 1em !important;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -874,9 +875,8 @@ div[class*="overflow-y-auto"] {
   line-height: 1.6 !important;
 }
 
-/* Enforce slightly larger base size (1.21em) for formulas to visually match the body text weight and height */
 .tutor-msg-text .katex, .tutor-response-content .katex {
-  font-size: 1.21em !important;
+  font-size: 1em !important;
 }
 
 /* Retain structural bold styling for headings and bold texts to maintain layout hierarchy */
