@@ -288,6 +288,7 @@ router.post('/question/regenerate', async (req, res) => {
   }
 
   try {
+    let mixedType = currentQuestion?.mixedType;
     const isMixedId = topicId && String(topicId).startsWith('mixed_');
     const isFlowchartQ = !!(
       (currentQuestion?.question || '').includes('┌──') ||
@@ -298,7 +299,7 @@ router.post('/question/regenerate', async (req, res) => {
     const shouldBypassMixedRegen = isFlowchartQ;
 
     if (((topicId && String(topicId).startsWith('mixed_')) || currentQuestion?.mixedType) && !shouldBypassMixedRegen) {
-      let mixedType = currentQuestion?.mixedType;
+      mixedType = currentQuestion?.mixedType;
       const qText = currentQuestion?.question || '';
       
       // Robust auto-detect or heal mixedType based on title prefix or unique fields
