@@ -928,6 +928,20 @@ function parseQuestionTable(q, topicTitle) {
 }
 
 
+const getActualLettersMap = (text) => {
+  const map = {};
+  if (typeof text !== 'string') return map;
+  const regex = /\(([A-F])\)/g;
+  let match;
+  let idx = 1;
+  while ((match = regex.exec(text)) !== null) {
+    map[`INPUT_${idx}`] = match[1].toUpperCase();
+    idx++;
+  }
+  return map;
+};
+
+
 const cleanFlowchartCorrectAnswer = (correctAnswer, letter) => {
   if (typeof correctAnswer !== 'string' || !correctAnswer) return correctAnswer;
   const lines = correctAnswer.split('\n');
@@ -1220,22 +1234,24 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
       {/* 📝 각 동적 상자 칸 채점 피드백 누적 출력 영역 */}
       {(() => {
         const feedbackList = [];
+        const actualLettersMap = getActualLettersMap(flowchartText);
+
         if (tableGradingResults) {
           Object.keys(tableGradingResults).forEach(key => {
             const parts = key.split('_');
             if (parts.length === 3 && parts[0] === String(questionIdx) && parts[1] === 'INPUT') {
               const letterIdx = parseInt(parts[2]) - 1;
-              const letter = String.fromCharCode(65 + letterIdx);
+              const inputId = `INPUT_${letterIdx + 1}`;
+              const letter = actualLettersMap[inputId] || String.fromCharCode(65 + letterIdx);
               const result = tableGradingResults[key];
               if (result) {
-                const inputId = `INPUT_${letterIdx + 1}`;
                 const rawCorrectAnswer = q?.answers?.[inputId] || '';
-                const correctAnswer = cleanFlowchartCorrectAnswer(rawCorrectAnswer, letter);
+                const cleanedAns = cleanFlowchartCorrectAnswer(rawCorrectAnswer, letter);
                 feedbackList.push({
+                  ...result,
                   letter,
                   userVal: tableAnswers?.[key] || '',
-                  correctAnswer,
-                  ...result
+                  correctAnswer: cleanedAns || result?.correctAnswer || result?.suggestedModelAnswer || ''
                 });
               }
             }
