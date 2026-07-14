@@ -966,21 +966,21 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
   let text = typeof flowchartText === 'string' ? flowchartText : '';
 
   if (text.includes('안정 (굴착 단계 진입)') && text.includes('불안정 평가 구간')) {
-    const inputMatches = [...text.matchAll(/INPUT_?(\d+(?:_\d+)?)/gi)];
-    const inputs = inputMatches.map(m => `INPUT_${m[1]}`);
-    const inputE = inputs[0] || 'INPUT_5';
-    const inputF = inputs[1] || 'INPUT_6';
-    
-    text = `
-┌──────────────────────────────────────────────────────────┐
-│ [4] 수치해석적 변위 제어 및 지보재 최적화 설계           │
-│ - 3차원 FEM/FDM을 활용한 굴착 단계별 응력-변위 해석      │
-└──────────────────────────────────────────────────────────┘
-                            ▼
-┌──────────────────────────────────────────────────────────┐
-│ [*] 터널 안정성 평가 및 계측 관리 계획 수립             │
-│ - 허용 변위 기준 도출 및 보강 대책 수립                  │
-└──────────────────────────────────────────────────────────┘
+    const targetIdx = text.indexOf('안정 (굴착 단계 진입)');
+    if (targetIdx !== -1) {
+      let cutIdx = targetIdx;
+      while (cutIdx > 0 && text[cutIdx] !== '\n') {
+        cutIdx--;
+      }
+      
+      const prevBorderIdx = text.lastIndexOf('┘', cutIdx);
+      if (prevBorderIdx !== -1) {
+        cutIdx = prevBorderIdx + 1;
+      }
+
+      const headerText = text.substring(0, cutIdx).trim();
+      
+      text = headerText + `
                             ▼
 ┌──────────────────────────────┬───────────────────────────┐
 │ [5] 안정 (굴착 단계 진입)    │ [6] 불안정 평가 구간      │
@@ -988,10 +988,11 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
 └──────────────────────────────┴───────────────────────────┘
                                             ▼
                               ┌────────────────────────────┐
-                              │ [ (${inputE.replace('INPUT_', '')}) 입력 ]               │
-                              │ - (${inputF.replace('INPUT_', '')}) 입력                 │
+                              │ [ (E) 입력 ]               │
+                              │ - (F) 입력                 │
                               └────────────────────────────┘
 `;
+    }
   }
 
   const lines = text.split('\n');
