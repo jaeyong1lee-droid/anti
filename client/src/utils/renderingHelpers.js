@@ -564,7 +564,7 @@ export const renderKatexString = (math, options) => {
 
   if (window.katex) {
     try {
-      return window.katex.renderToString(processedMath, { ...options, throwOnError: true }).replace(/\n/g, ' ');
+      return window.katex.renderToString(processedMath, { ...options, throwOnError: true, strict: 'ignore' }).replace(/\n/g, ' ');
     } catch (e) {
       console.warn('KaTeX render error:', e);
       const escapedMath = processedMath
