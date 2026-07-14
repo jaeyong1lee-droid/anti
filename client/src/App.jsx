@@ -963,7 +963,37 @@ const cleanFlowchartCorrectAnswer = (correctAnswer, letter) => {
 
 
 const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, questionIdx, tableAnswers, setTableAnswers, revealed, tableGradingResults, q, gradeSingleTableCell, cellGradingLoading, onSubmit, renderCardTutorChat) => {
-  const text = typeof flowchartText === 'string' ? flowchartText : '';
+  let text = typeof flowchartText === 'string' ? flowchartText : '';
+
+  if (text.includes('안정 (굴착 단계 진입)') && text.includes('불안정 평가 구간')) {
+    const inputMatches = [...text.matchAll(/INPUT_?(\d+(?:_\d+)?)/gi)];
+    const inputs = inputMatches.map(m => `INPUT_${m[1]}`);
+    const inputE = inputs[0] || 'INPUT_5';
+    const inputF = inputs[1] || 'INPUT_6';
+    
+    text = `
+┌──────────────────────────────────────────────────────────┐
+│ [4] 수치해석적 변위 제어 및 지보재 최적화 설계           │
+│ - 3차원 FEM/FDM을 활용한 굴착 단계별 응력-변위 해석      │
+└──────────────────────────────────────────────────────────┘
+                            ▼
+┌──────────────────────────────────────────────────────────┐
+│ [*] 터널 안정성 평가 및 계측 관리 계획 수립             │
+│ - 허용 변위 기준 도출 및 보강 대책 수립                  │
+└──────────────────────────────────────────────────────────┘
+                            ▼
+┌──────────────────────────────┬───────────────────────────┐
+│ [5] 안정 (굴착 단계 진입)    │ [6] 불안정 평가 구간      │
+│ - 실시간 계측 및 데이터 분석 │ - 응력-변위 검토 초과     │
+└──────────────────────────────┴───────────────────────────┘
+                                            ▼
+                              ┌────────────────────────────┐
+                              │ [ (${inputE.replace('INPUT_', '')}) 입력 ]               │
+                              │ - (${inputF.replace('INPUT_', '')}) 입력                 │
+                              └────────────────────────────┘
+`;
+  }
+
   const lines = text.split('\n');
   const items = [];
   let currentBoxes = null;
