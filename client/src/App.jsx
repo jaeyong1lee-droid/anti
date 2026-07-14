@@ -1109,7 +1109,7 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
 
     return (
       <div className="w-full h-auto whitespace-pre-wrap break-all flowchart-text-force">
-        <LatexRenderer text={content} katexLoaded={katexLoaded} enableAddFormula={true} questionKey={questionKey} />
+        <LatexRenderer text={content} katexLoaded={katexLoaded} enableAddFormula={true} questionKey={questionKey} forceInline={true} />
       </div>
     );
   };
@@ -1241,7 +1241,7 @@ const renderCompleteFlowchart = (flowchartText, katexLoaded, q) => {
   const renderLineContent = (content) => {
     const targetRegex = /\(([A-F])\)/g;
     if (!targetRegex.test(content)) {
-      return <LatexRenderer text={content} katexLoaded={katexLoaded} enableAddFormula={true} />;
+      return <LatexRenderer text={content} katexLoaded={katexLoaded} enableAddFormula={true} forceInline={true} />;
     }
 
     targetRegex.lastIndex = 0;
@@ -1275,7 +1275,7 @@ const renderCompleteFlowchart = (flowchartText, katexLoaded, q) => {
             return (
               <span key={pIdx} className="font-extrabold text-emerald-400 border-b-2 border-emerald-500/40 bg-emerald-950/20 px-1.5 py-0.5 rounded mx-1 select-text">
                 <span className="text-emerald-500/80 mr-1 select-none">({p.letter})</span>
-                <LatexRenderer text={p.text} katexLoaded={katexLoaded} className="inline font-bold" />
+                <LatexRenderer text={p.text} katexLoaded={katexLoaded} className="inline font-bold" forceInline={true} />
               </span>
             );
           }
