@@ -951,6 +951,16 @@ const cleanAttachmentText = (str) => {
 };
 
 
+const isNATMFlowchart = (idx, q) => {
+  if (idx === 6 || idx === 7) return true;
+  const text = q?.question_text || q?.question || q?.content || '';
+  if (text.includes('NATM') && (text.includes('흐름도') || text.includes('플로우차트') || text.includes('┌──'))) {
+    return true;
+  }
+  return false;
+};
+
+
 const cleanFlowchartCorrectAnswer = (correctAnswer, letter) => {
   if (typeof correctAnswer !== 'string' || !correctAnswer) return correctAnswer;
   const lines = correctAnswer.split('\n').map(l => l.trim()).filter(Boolean);
@@ -1304,6 +1314,7 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
         feedbackList.sort((a, b) => a.letter.localeCompare(b.letter));
 
         if (feedbackList.length === 0) return null;
+        if (isNATMFlowchart(questionIdx, q)) return null;
 
         return (
           <div className="w-full mt-4 p-3 border border-slate-800 bg-slate-950/80 rounded-xl space-y-3.5 text-left animate-fade-in select-text">
@@ -19400,7 +19411,7 @@ ${itemsStr}
                                     </div>
                                   );
                                 }
-                                if (idx === 7) {
+                                if (isNATMFlowchart(idx, q)) {
                                   return (
                                     <div className="mt-2.5 pt-2.5 border-t border-slate-800/40 text-left">
                                       {renderCardTutorChat(rKey, q)}
@@ -22862,7 +22873,7 @@ ${itemsStr}
                                     </div>
                                   );
                                 }
-                                if (idx === 7) {
+                                if (isNATMFlowchart(idx, q)) {
                                   return (
                                     <div className="mt-2.5 pt-2.5 border-t border-slate-800/40 text-left">
                                       {renderCardTutorChat(eKey, q)}
