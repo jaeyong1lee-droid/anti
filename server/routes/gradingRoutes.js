@@ -430,7 +430,48 @@ router.post('/question/regenerate', async (req, res) => {
       let systemPrompt = "당신은 지반공학 기술사 시험 전문 출제위원 및 튜터입니다.";
       let userPrompt = "";
 
-      if (mixedType === 'table') {
+      if (isFlowchartQ) {
+        const prevAnswers = Object.values(currentQuestion?.answers || {}).join(', ');
+        const flowchartDuplicationPrompt = `
+[🚨 흐름도 문제 재생성 특수 철칙 (내용 및 빈칸 셔플링 강제)]:
+1. **[페어형 빈칸 출제 의무화]**: 이번 재생성 문제에서는 흐름도 전체 상자 개수의 **정확히 40% 계산 후 소수점 이하 올림(Ceil)**에 해당하는 상자 개수(예: 총 3개 상자인 경우 **2개 상자**, 총 7개 상자인 경우 **3개 상자**)를 비워야 합니다. 비울 때는 반드시 선택한 상자의 **"단계 제목"과 "세부 내용" 세트를 통째로 비우십시오.** 
+   - 이로 인해 빈칸 기호는 알파벳 순서대로 **(A), (B), (C), (D) ...** 형태로 순차적으로 뚫리게 됩니다. (빈칸 수량 유동적)
+2. **[🚨 이웃한 상자 연속 빈칸 처리 엄격 금지 (No Consecutive Blanks)]**: 
+   - 이웃한 상자 단계를 연달아 비우는 것은 절대로 금지됩니다. 상자는 무조건 최소 한 단계 이상 띄어서 띄엄띄엄 비워져야 합니다.
+3. **[🚨 [2, 4, 마지막] 고착화 완전 금지 및 대체 무작위 조합 사용]**:
+   - 항상 [2번 상자, 4번 상자, 마지막 상자]만 빈칸으로 뚫는 고질적인 패턴 모방 고착화 현상을 완전히 금지합니다.
+   - 이번 재생성에서는 반드시 연속하지 않는 다른 상자 조합을 무작위로 새로 선택하여 비우십시오.
+4. **[🚨 70자 가로폭 닫힌 박스 규격 원상복구]**: 모든 상자의 크기는 가로 폭을 **정확히 동일한 70칸 너비**로 통일하여 닫힌 박스(Closed Box) 형태를 취하게 하십시오. 한글은 2자, 영어/기호/공백은 1자로 정밀 계산하여 세로선을 칼정렬해야 합니다.
+5. **[기존 빈칸 및 정답의 100% 원천 배제]**: 
+   - 기존의 빈칸 정답들은 다음과 같습니다: [ ${prevAnswers || '없음'} ]
+   - 이번 재생성에서는 **기존에 뚫려 있던 위 단계 정답 단어들을 절대로 정답 타겟으로 삼지 마십시오.** 즉, 이전 문제에서 비워두었던 상자는 이번 문제에서는 설명 텍스트를 고스란히 복원해 두고, **이전에 비어있지 않고 차있던 상자 중 M개를 새로 골라 빈칸으로 비워야 합니다.**
+6. **[동적 tableData/answers 스키마]**: 뚫어낸 빈칸의 개수(총 6개)에 맞추어 tableData의 rows와 answers의 INPUT도 정확히 6개(INPUT_1부터 INPUT_6까지)로 동적 구성하여 JSON을 출력하십시오.
+7. **[🚨 상자 내부 기술사급 상세 내용 기입 철칙 - 간소화 금지]**: 
+   - 각 단계별 박스 내부의 텍스트 설명은 대충 명사 몇 개로 단순 요약 나열하는 것을 절대 금지합니다.
+8. **[질문 지문에 토픽 제목 필수 명시]**: 질문("question" 필드) 텍스트를 작성할 때 단순히 "다음 흐름도를 보고"라고 작성하는 것을 절대 금지하며, 반드시 해당 토픽의 구체적인 제목/주제명을 포함한 "다음 [토픽명] 흐름도를 보고..." 형식으로 질문 지문을 작성해야 합니다.
+`;
+
+        systemPrompt = `당신은 기술사 시험 출제위원입니다.
+${flowchartDuplicationPrompt}
+[출제 요구사항]:
+반드시 기초 문제를 변형/응용하여 새로운 문제를 출제하십시오.
+[주관식 (표채우기) 유형으로 아스키 흐름도 문제를 생성하십시오]
+${GENERATION_STANDARDS}
+${LATEX_PROMPT_INSTRUCTIONS}
+${ENGINEERING_STANDARDS}
+${FLOWCHART_QUIZ_GENERATION_PROMPT}
+
+오직 순수 JSON 데이터만 반환하십시오.
+[응답 포맷]:
+{"type": "주관식 (표채우기)", "question": "질문(마크다운 고정폭 코드블록으로 감싼 아스키 흐름도 포함)", "tableData": {"headers": ["빈칸 구분", "입력 답안"], "rows": [["(A)", "[INPUT_1]"], ["(B)", "[INPUT_2]"], ["(C)", "[INPUT_3]"], ["(D)", "[INPUT_4]"]]}, "answers": {"INPUT_1": "(A)정답", "INPUT_2": "(B)정답", "INPUT_3": "(C)정답", "INPUT_4": "(D)정답"}, "explanation": "해설"}`;
+
+        userPrompt = `[기초 소스 문제]:
+- 질문: ${currentQuestion?.question}
+- 유형: 주관식 (표채우기)
+- 기존 정답: ${prevAnswers || ''}
+
+위 데이터를 바탕으로 JSON 포맷으로 재출제해 주십시오.`;
+      } else if (mixedType === 'table') {
         systemPrompt = `당신은 지반공학 기술사 시험 전문 튜터이자 출제위원입니다.
 제시된 비교/대비 표 데이터를 기반으로, 수험생이 학습할 수 있는 참신한 표 빈칸 채우기(Table Quiz) 문항을 새로 구성하여 출제해 주십시오.
 ${GENERATION_STANDARDS}
@@ -444,7 +485,7 @@ ${GENERATION_STANDARDS}`;
         userPrompt = `[원본 두문자 암기법 정보]:\n${content}\n\n위 데이터를 바탕으로 JSON 포맷으로 재출제해 주십시오.`;
       }
 
-      const response = await localCallLLM(systemPrompt, userPrompt, null, mixedType === 'table' ? 'mixed_table_regen' : 'mixed_acronym_regen', { temperature: 1.0 });
+      const response = await localCallLLM(systemPrompt, userPrompt, null, isFlowchartQ ? 'flowchart_quiz_gen' : (mixedType === 'table' ? 'mixed_table_regen' : 'mixed_acronym_regen'), { temperature: 1.0 });
       let parsed = {};
       try {
         const cleanJson = response.replace(/```json/g, '').replace(/```/g, '').trim();
@@ -453,7 +494,12 @@ ${GENERATION_STANDARDS}`;
         throw new Error('AI 응답 파싱 실패');
       }
 
-      if (mixedType === 'table') {
+      if (isFlowchartQ) {
+        parsed.type = '주관식 (표채우기)';
+        parsed.subtype = '표채우기';
+        parsed.explanation = content;
+        parsed.mixedType = 'table';
+      } else if (mixedType === 'table') {
         parsed.type = '주관식 (표채우기)';
         parsed.subtype = '표채우기';
         parsed.explanation = content;
@@ -474,11 +520,11 @@ ${GENERATION_STANDARDS}`;
       const finalQuestion = {
         ...currentQuestion,
         ...parsed,
-        mixedType
+        mixedType: isFlowchartQ ? 'table' : mixedType
       };
 
       // Clean up mismatched properties during conversion to avoid corruption
-      if (mixedType === 'table') {
+      if (isFlowchartQ || mixedType === 'table') {
         delete finalQuestion.acronym;
         delete finalQuestion.sentence;
         delete finalQuestion.correctRows;
