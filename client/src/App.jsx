@@ -27335,12 +27335,28 @@ ${itemsStr}
             <span className="flex items-center gap-1.5">
               💬 AI 튜터 질문하기
             </span>
-            <button
-              onClick={() => setSelectionPopup(prev => ({ ...prev, show: false }))}
-              className="text-slate-400 hover:text-slate-100 text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full hover:bg-slate-800 transition-all cursor-pointer border-none bg-transparent"
-            >
-              ✕
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(selectionPopup.text);
+                    showNotification('대상 문구가 복사되었습니다.', 'success');
+                  } catch (err) {
+                    showNotification('복사에 실패했습니다.', 'warning');
+                  }
+                }}
+                className="text-slate-400 hover:text-slate-100 text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full hover:bg-slate-800 transition-all cursor-pointer border-none bg-transparent"
+                title="대상 문구 복사"
+              >
+                <Copy size={11} />
+              </button>
+              <button
+                onClick={() => setSelectionPopup(prev => ({ ...prev, show: false }))}
+                className="text-slate-400 hover:text-slate-100 text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full hover:bg-slate-800 transition-all cursor-pointer border-none bg-transparent"
+              >
+                ✕
+              </button>
+            </div>
           </div>
 
           {/* Selected Text Preview */}
