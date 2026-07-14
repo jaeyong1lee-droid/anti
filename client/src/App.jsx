@@ -1484,6 +1484,7 @@ const renderCompleteFlowchart = (flowchartText, katexLoaded, q) => {
       }
       const letter = match[1];
       const letterIdx = letter.charCodeAt(0) - 65;
+      const inputId = `INPUT_${letterIdx + 1}`;
       const rawAnswerVal = q.answers?.[inputId] || '';
       const answerVal = cleanAttachmentText(rawAnswerVal);
       parts.push({ type: 'answer', letter, text: answerVal });
