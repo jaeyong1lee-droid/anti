@@ -1316,20 +1316,16 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
         if (feedbackList.length === 0) return null;
 
         return (
-          <div className="w-full mt-4 p-3 border border-slate-800 bg-slate-950/80 rounded-xl space-y-3.5 text-left animate-fade-in select-text">
+          <div className="w-full mt-4 p-0 space-y-3 text-left animate-fade-in select-text">
             <div className="text-[12px] font-black text-indigo-400 flex items-center gap-1.5 border-b border-slate-800/60 pb-1.5 mb-2">
               <span>📝 개별 상자 채점 피드백</span>
               <span className="text-[10px] text-slate-500 font-medium">({feedbackList.length}개 완료)</span>
             </div>
-            <div className="space-y-3.5">
+            <div className="space-y-1">
               {feedbackList.map((item, fIdx) => (
                 <div 
                   key={fIdx} 
-                  className={`p-3 rounded-lg border leading-relaxed text-[13px] sm:text-[14px] ${
-                    item.isCorrect 
-                      ? 'border-emerald-500/20 bg-emerald-950/10 text-emerald-300' 
-                      : 'border-rose-500/20 bg-rose-950/10 text-rose-300'
-                  }`}
+                  className="py-3 px-0 border-b border-slate-800/50 leading-relaxed text-[13px] sm:text-[14px] text-slate-200"
                 >
                   <div className="font-extrabold flex items-center justify-between gap-2 mb-1">
                     <span className="flex items-center gap-1.5">
@@ -1345,14 +1341,14 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
                     </span>
                   </div>
                   {item.reason && (
-                    <div className="text-[12px] sm:text-[13px] text-slate-200 mt-1 leading-relaxed pl-6">
+                    <div className="text-[12px] sm:text-[13px] text-slate-300 mt-1.5 leading-relaxed pl-6">
                       <LatexRenderer text={formatGradingReason(item.reason)} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} />
                     </div>
                   )}
                   {(item.correctAnswer || item.suggestedModelAnswer) && (
-                    <div className="text-[12px] sm:text-[13px] text-slate-400 mt-1.5 pt-1.5 border-t border-slate-800/40 pl-6">
-                      <span className="font-extrabold text-slate-300">💡 모범 정답: </span>
-                      <span className="text-slate-200 font-bold">{item.correctAnswer || item.suggestedModelAnswer}</span>
+                    <div className="text-[12px] sm:text-[13px] text-slate-400 mt-1.5 pt-1.5 border-t border-slate-800/30 pl-6">
+                      <span className="font-extrabold text-slate-400">💡 모범 정답: </span>
+                      <span className="text-slate-350 font-bold">{item.correctAnswer || item.suggestedModelAnswer}</span>
                     </div>
                   )}
                 </div>
