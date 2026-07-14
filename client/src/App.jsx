@@ -942,6 +942,15 @@ const getActualLettersMap = (text) => {
 };
 
 
+const cleanAttachmentText = (str) => {
+  if (typeof str !== 'string') return str;
+  return str
+    .replace(/\(?\s*첨부\s*\d+\s*\)?/gi, '')
+    .replace(/\[\s*첨부\s*\d+\s*\]/gi, '')
+    .trim();
+};
+
+
 const cleanFlowchartCorrectAnswer = (correctAnswer, letter) => {
   if (typeof correctAnswer !== 'string' || !correctAnswer) return correctAnswer;
   const lines = correctAnswer.split('\n').map(l => l.trim()).filter(Boolean);
@@ -951,14 +960,14 @@ const cleanFlowchartCorrectAnswer = (correctAnswer, letter) => {
     let clean = targetLine.replace(markerRegex, '');
     clean = clean.replace(/^[#\s\-*\+\d\.\:\[\]]+/, '').trim();
     clean = clean.replace(/[\[\]]+$/, '').trim();
-    return clean;
+    return cleanAttachmentText(clean);
   }
   if (lines.length > 0) {
     let firstLine = lines[0];
     let clean = firstLine.replace(/^[#\s\-*\+\d\.\:\[\]\(a-zA-Z\)]+/, '').trim();
-    return clean;
+    return cleanAttachmentText(clean);
   }
-  return correctAnswer;
+  return cleanAttachmentText(correctAnswer);
 };
 
 
@@ -988,7 +997,7 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
 └──────────────────────────────┴───────────────────────────┘
                                             ▼
                               ┌────────────────────────────┐
-                              │ [ (E) 입력 ]               │
+                              │ [8] (E) 입력               │
                               │ - (F) 입력                 │
                               └────────────────────────────┘
 `;
@@ -1475,8 +1484,8 @@ const renderCompleteFlowchart = (flowchartText, katexLoaded, q) => {
       }
       const letter = match[1];
       const letterIdx = letter.charCodeAt(0) - 65;
-      const inputId = `INPUT_${letterIdx + 1}`;
-      const answerVal = q.answers?.[inputId] || '';
+      const rawAnswerVal = q.answers?.[inputId] || '';
+      const answerVal = cleanAttachmentText(rawAnswerVal);
       parts.push({ type: 'answer', letter, text: answerVal });
       lastIndex = targetRegex.lastIndex;
     }
