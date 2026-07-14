@@ -99,11 +99,11 @@ const parseAndRenderFlowchart = (flowchartText, katexLoaded, questionKey) => {
           return (
             <div key={idx} className="w-full h-auto min-h-fit border border-indigo-500/20 bg-slate-900/60 p-2.5 rounded-xl text-left leading-relaxed shadow-sm flex flex-col gap-0.5">
               <div className="font-bold text-[13px] sm:text-[14px] flowchart-text-force text-indigo-400 mb-0.5 w-full h-auto whitespace-pre-wrap break-all">
-                <LatexRenderer text={title} katexLoaded={katexLoaded} enableAddFormula={true} questionKey={questionKey} />
+                <LatexRenderer text={title} katexLoaded={katexLoaded} enableAddFormula={true} questionKey={questionKey} forceInline={true} />
               </div>
               {bodyLines.map((bl, bIdx) => (
                 <div key={bIdx} className="text-[13px] sm:text-[14px] flowchart-text-force text-slate-300 pl-1.5 border-l border-slate-700/50 my-0.5 w-full h-auto whitespace-pre-wrap break-all">
-                  <LatexRenderer text={bl} katexLoaded={katexLoaded} enableAddFormula={true} questionKey={questionKey} />
+                  <LatexRenderer text={bl} katexLoaded={katexLoaded} enableAddFormula={true} questionKey={questionKey} forceInline={true} />
                 </div>
               ))}
             </div>
@@ -117,11 +117,11 @@ const parseAndRenderFlowchart = (flowchartText, katexLoaded, questionKey) => {
                 return (
                   <div key={bIdx} className="flex-1 w-full h-auto min-h-fit border border-indigo-500/20 bg-slate-900/60 p-2.5 rounded-xl text-left leading-relaxed shadow-sm flex flex-col gap-0.5">
                     <div className="font-bold text-[13px] sm:text-[14px] flowchart-text-force text-indigo-400 mb-0.5 w-full h-auto whitespace-pre-wrap break-all">
-                      <LatexRenderer text={title} katexLoaded={katexLoaded} enableAddFormula={true} questionKey={questionKey} />
+                      <LatexRenderer text={title} katexLoaded={katexLoaded} enableAddFormula={true} questionKey={questionKey} forceInline={true} />
                     </div>
                     {bodyLines.map((bl, blIdx) => (
                       <div key={blIdx} className="text-[13px] sm:text-[14px] flowchart-text-force text-slate-300 pl-1.5 border-l border-slate-700/50 my-0.5 w-full h-auto whitespace-pre-wrap break-all">
-                        <LatexRenderer text={bl} katexLoaded={katexLoaded} enableAddFormula={true} questionKey={questionKey} />
+                        <LatexRenderer text={bl} katexLoaded={katexLoaded} enableAddFormula={true} questionKey={questionKey} forceInline={true} />
                       </div>
                     ))}
                   </div>
@@ -153,20 +153,26 @@ export const LatexRenderer = React.memo(function LatexRenderer({
   highlightBold = false, 
   questionKey = "", 
   isRealTimeTutor = false, 
-  hideTableWrapper = false 
+  hideTableWrapper = false,
+  forceInline = false
 }) {
   if (!text) return null;
 
+  let parsedText = text;
+  if (forceInline && typeof parsedText === 'string') {
+    parsedText = parsedText.replace(/\$\$/g, '$');
+  }
+
   const flowchartRegex = /```(?:[a-zA-Z]*)?\n([\s\S]*?┌[\s\S]*?)```/g;
-  const hasFlowchart = flowchartRegex.test(text);
+  const hasFlowchart = flowchartRegex.test(parsedText);
   flowchartRegex.lastIndex = 0;
 
   if (hasFlowchart) {
     const parts = [];
     let lastIndex = 0;
     let match;
-    while ((match = flowchartRegex.exec(text)) !== null) {
-      const beforeText = text.substring(lastIndex, match.index);
+    while ((match = flowchartRegex.exec(parsedText)) !== null) {
+      const beforeText = parsedText.substring(lastIndex, match.index);
       const flowchartText = match[1];
       if (beforeText) {
         parts.push({ type: 'text', content: beforeText });
@@ -174,7 +180,7 @@ export const LatexRenderer = React.memo(function LatexRenderer({
       parts.push({ type: 'flowchart', content: flowchartText });
       lastIndex = flowchartRegex.lastIndex;
     }
-    const afterText = text.substring(lastIndex);
+    const afterText = parsedText.substring(lastIndex);
     if (afterText) {
       parts.push({ type: 'text', content: afterText });
     }
@@ -344,7 +350,7 @@ export const LatexRenderer = React.memo(function LatexRenderer({
     return healLatexFormulas(val);
   };
 
-  let renderText = cleanAndSanitizeMathText(text);
+  let renderText = cleanAndSanitizeMathText(parsedText);
   if (typeof renderText === 'string') {
     renderText = renderText.replace(/INPUT_?(\d+)/gi, (match, p1) => {
       const num = parseInt(p1, 10);
