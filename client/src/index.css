@@ -1020,15 +1020,16 @@ div[class*="overflow-y-auto"] {
 
   /* 2-column table adjustments on mobile: prevent horizontal scrolling, wrap text naturally */
   .markdown-table-2col {
-    table-layout: auto !important;
+    table-layout: fixed !important;
     width: 100% !important;
+    min-width: 100% !important;
   }
   .markdown-table-2col th:first-child,
   .markdown-table-2col td:first-child {
     position: static !important; /* disable sticky since table fits 100% width and doesn't scroll */
-    width: 32% !important;
-    min-width: 60px !important;
-    max-width: 250px !important;
+    width: 60px !important;
+    min-width: 50px !important;
+    max-width: 80px !important;
     white-space: normal !important;
     word-break: keep-all !important;
     background-color: rgba(15, 23, 42, 0.75) !important;
@@ -1036,10 +1037,9 @@ div[class*="overflow-y-auto"] {
   }
   .markdown-table-2col th:not(:first-child),
   .markdown-table-2col td:not(:first-child) {
-    width: 68% !important;
-    min-width: 68% !important;
+    width: calc(100% - 60px) !important;
     white-space: normal !important;
-    word-break: break-word !important;
+    word-break: break-all !important;
     text-align: left !important;
     padding: 8px 10px !important;
   }
