@@ -1313,7 +1313,7 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
       })()}
 
       {/* 💬 흐름도 하단 전용 AI 튜터 질문 대화창 */}
-      {renderCardTutorChat && (
+      {renderCardTutorChat && questionIdx !== 7 && (
         <div className="w-full mt-1.5 pt-1.5 border-t border-slate-800/40 text-left">
           {renderCardTutorChat(questionKey, q)}
         </div>
@@ -19520,13 +19520,15 @@ ${itemsStr}
                                         </div>
                                       </div>
                                     )}
-                                    <div className="mt-2.5 pt-2.5 border-0 sm:border-t sm:border-current/10 text-left">
-                                      {renderCardTutorChat(rKey, q)}
-                                    </div>
+                                    {idx !== 7 && (
+                                      <div className="mt-2.5 pt-2.5 border-0 sm:border-t sm:border-current/10 text-left">
+                                        {renderCardTutorChat(rKey, q)}
+                                      </div>
+                                    )}
                                   </div>
                                 )}
                               </div>
-                              {!isRevd ? (
+                              {!isRevd && idx !== 7 ? (
                                 <button
                                   onClick={async () => {
                                     if (gradingLoading[idx]) return;
