@@ -399,32 +399,7 @@ const healCorruptedKatexHtml = (text) => {
 export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = null, forceInline = false) {
   if (!text || typeof text !== 'string') return text;
 
-  let processed = text;
-  // [🚨 한글 텍스트 수식 탈출 필터 (CJK Math Escape) 🚨]
-  // 달러 기호($) 내에 한글과 수식 기호가 함께 묶여 있는 경우, 한글 부분을 달러 기호 바깥으로 탈출시켜 
-  // KaTeX 내부 렌더링에 따른 한글 폰트 거대화 버그 및 유니코드 수식 경고를 근본적으로 해결합니다.
-  if (processed.includes('$')) {
-    processed = processed.replace(/\$((?:[^\$\n])+?)\$/g, (match, mathContent) => {
-      if (!/[\uAC00-\uD7A3]/.test(mathContent)) {
-        return match;
-      }
-      const tokens = mathContent.split(/([\uAC00-\uD7A3\s]+)/);
-      const rebuilt = tokens.map(token => {
-        if (!token) return '';
-        const hasCjk = /[\uAC00-\uD7A3]/.test(token);
-        if (hasCjk) {
-          return token;
-        } else {
-          const trimmed = token.trim();
-          if (!trimmed) return token;
-          return ` $${trimmed}$ `;
-        }
-      }).join('');
-      return rebuilt.replace(/\s+/g, ' ').trim();
-    });
-  }
-
-  processed = healCorruptedKatexHtml(processed);
+  let processed = healCorruptedKatexHtml(text);
   // Normalize dashes (en-dash, em-dash, math minus) to standard hyphens
   processed = processed.replace(/[–—−]/g, '-');
 
