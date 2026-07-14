@@ -1038,11 +1038,23 @@ export function FloatingMemorization({
                                       />
                                     </td>
                                     <td className="p-1 border-r border-slate-850">
-                                      <input
-                                        type="text"
+                                      <textarea
+                                        ref={(el) => {
+                                          if (el) {
+                                            el.style.height = 'auto';
+                                            el.style.height = `${el.scrollHeight}px`;
+                                          }
+                                        }}
                                         value={rowVal.word}
                                         onChange={(e) => handleUpdateAcronymRowCell(ac.id, rIdx, 'word', e.target.value)}
-                                        className="w-full bg-transparent border-0 text-slate-200 font-bold focus:outline-none p-0 text-[14px]"
+                                        onKeyDown={(e) => {
+                                          e.stopPropagation();
+                                          if (e.key === 'Enter') {
+                                            e.preventDefault();
+                                          }
+                                        }}
+                                        rows={1}
+                                        className="w-full bg-transparent border-0 text-slate-200 font-bold focus:outline-none p-0 text-[14px] resize-none overflow-hidden"
                                       />
                                     </td>
                                     <td className="p-1 border-r border-slate-850">
@@ -1055,6 +1067,7 @@ export function FloatingMemorization({
                                         }}
                                         value={rowVal.description}
                                         onChange={(e) => handleUpdateAcronymRowCell(ac.id, rIdx, 'description', e.target.value)}
+                                        onKeyDown={(e) => e.stopPropagation()}
                                         rows={1}
                                         className="w-full bg-transparent border-0 text-slate-300 focus:outline-none p-0 text-[14px] resize-none overflow-hidden"
                                       />
