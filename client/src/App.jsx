@@ -1363,7 +1363,7 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
       })()}
 
       {/* 💬 흐름도 하단 전용 AI 튜터 질문 대화창 */}
-      {renderCardTutorChat && questionIdx !== 7 && (
+      {renderCardTutorChat && !isNATMFlowchart(questionIdx, q) && (
         <div className="w-full mt-1.5 pt-1.5 border-t border-slate-800/40 text-left">
           {renderCardTutorChat(questionKey, q)}
         </div>
@@ -19411,11 +19411,7 @@ ${itemsStr}
                                   );
                                 }
                                 if (isNATMFlowchart(idx, q)) {
-                                  return (
-                                    <div className="mt-2.5 pt-2.5 border-t border-slate-800/40 text-left">
-                                      {renderCardTutorChat(rKey, q)}
-                                    </div>
-                                  );
+                                  return null;
                                 }
                                 return (
                                   <div className={`p-0 sm:p-4 rounded-none sm:rounded-xl border-0 sm:border space-y-3 text-left transition-all ${getTableContainerClasses(idx, q, isRevd)}`}>
@@ -22873,11 +22869,7 @@ ${itemsStr}
                                   );
                                 }
                                 if (isNATMFlowchart(idx, q)) {
-                                  return (
-                                    <div className="mt-2.5 pt-2.5 border-t border-slate-800/40 text-left">
-                                      {renderCardTutorChat(eKey, q)}
-                                    </div>
-                                  );
+                                  return null;
                                 }
                                 return (
                                   <div className={`p-0 sm:p-4 rounded-none sm:rounded-xl border-0 sm:border space-y-3 text-left transition-all ${getTableContainerClasses(idx, q, !!examRevealed[idx])}`}>
