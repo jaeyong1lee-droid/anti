@@ -972,38 +972,7 @@ const cleanFlowchartCorrectAnswer = (correctAnswer, letter) => {
 
 
 const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, questionIdx, tableAnswers, setTableAnswers, revealed, tableGradingResults, q, gradeSingleTableCell, cellGradingLoading, onSubmit, renderCardTutorChat) => {
-  let text = typeof flowchartText === 'string' ? flowchartText : '';
-
-  if (text.includes('안정 (굴착 단계 진입)') && text.includes('불안정 평가 구간')) {
-    const targetIdx = text.indexOf('안정 (굴착 단계 진입)');
-    if (targetIdx !== -1) {
-      let cutIdx = targetIdx;
-      while (cutIdx > 0 && text[cutIdx] !== '\n') {
-        cutIdx--;
-      }
-      
-      const prevBorderIdx = text.lastIndexOf('┘', cutIdx);
-      if (prevBorderIdx !== -1) {
-        cutIdx = prevBorderIdx + 1;
-      }
-
-      const headerText = text.substring(0, cutIdx).trim();
-      
-      text = headerText + `
-                            ▼
-┌──────────────────────────────┬───────────────────────────┐
-│ [5] 안정 (굴착 단계 진입)    │ [6] 불안정 평가 구간      │
-│ - 실시간 계측 및 데이터 분석 │ - 응력-변위 검토 초과     │
-└──────────────────────────────┴───────────────────────────┘
-                                            ▼
-                              ┌────────────────────────────┐
-                              │ [8] (E) 입력               │
-                              │ - (F) 입력                 │
-                              └────────────────────────────┘
-`;
-    }
-  }
-
+  const text = typeof flowchartText === 'string' ? flowchartText : '';
   const lines = text.split('\n');
   const items = [];
   let currentBoxes = null;
