@@ -1106,6 +1106,24 @@ const localParseHtmlTable = (htmlStr) => {
 
 export function healQuizQuestionObject(q) {
   if (q && typeof q === 'object') {
+    if (q.question && typeof q.question === 'string') {
+      // 1. MIT 방식 명칭 노출 방지 사후 보정
+      if (q.question.includes('MIT 방식의')) {
+        q.question = q.question.replace(/MIT\s*방식의\s*/g, '');
+      }
+      if (q.question.includes('MIT 방식')) {
+        q.question = q.question.replace(/MIT\s*방식\s*/g, '');
+      }
+      
+      // 2. p' q 공식 누락 문제 실시간 복원
+      if (q.question.includes("평균 응력 $p'$ 와 축차응력 $q$ 가 각각 다음과 같을 때") && !q.question.includes('=')) {
+        q.question = q.question.replace(
+          "평균 응력 $p'$ 와 축차응력 $q$ 가 각각 다음과 같을 때",
+          "평균 유효응력 $p' = \\frac{\\sigma'_1 + \\sigma'_3}{2}$ 와 축차응력 $q = \\frac{\\sigma_1 - \\sigma_3}{2}$ 가 각각 정의될 때"
+        );
+      }
+    }
+
     if (q.question && (!q.tableData || !q.tableData.headers || !q.tableData.rows)) {
       const parsed = parseQuestionTableText(q.question);
       if (parsed.tableData) {
