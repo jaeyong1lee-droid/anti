@@ -1051,10 +1051,13 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
       const answerVal = q?.answers?.[inputId] || '';
       let rightText = parts[1] || '';
       if (answerVal) {
-        const cleanRight = rightText.trim();
-        const cleanAns = answerVal.trim();
-        if (cleanRight.includes(cleanAns) || cleanAns.includes(cleanRight)) {
-          rightText = rightText.replace(cleanAns, '').trim();
+        const escapedAns = answerVal.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+        const regexStr = escapedAns.trim().replace(/[\s\xa0\u200b]+/g, '[\\s\\xa0\\u200b]*');
+        try {
+          const ansRegex = new RegExp(regexStr, 'gi');
+          rightText = rightText.replace(ansRegex, '').trim();
+        } catch (e) {
+          rightText = rightText.replace(answerVal.trim(), '').trim();
         }
       }
 
@@ -4494,19 +4497,62 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
         const qText = q.question;
         const isFlowchart = qText.includes('┌──') || qText.includes('▼') || qText.includes('플로우차트') || qText.includes('흐름도');
         
-        if (isFlowchart && qText.includes('다음 흐름도')) {
-          let title = '';
-          const bracketMatch = qText.match(/\[([^\]]+)\]/);
-          if (bracketMatch) {
-            title = bracketMatch[1].trim();
+        if (isFlowchart) {
+          let patchedQ = q;
+          
+          if (qText.includes('다음 흐름도')) {
+            let title = '';
+            const bracketMatch = qText.match(/\[([^\]]+)\]/);
+            if (bracketMatch) {
+              title = bracketMatch[1].trim();
+            }
+            if (!title && q.concept) {
+              title = q.concept;
+            }
+            if (title) {
+              const patchedText = qText.replace('다음 흐름도', `다음 [${title}] 흐름도`);
+              patchedQ = { ...patchedQ, question: patchedText };
+            }
           }
-          if (!title && q.concept) {
-            title = q.concept;
+          
+          const boxCount = (patchedQ.question.match(/┌/g) || []).length;
+          if (boxCount === 3) {
+            const ansE = patchedQ.answers?.INPUT_5 || '';
+            const ansF = patchedQ.answers?.INPUT_6 || '';
+            
+            if (ansE || ansF) {
+              let restoredQuestion = patchedQ.question;
+              restoredQuestion = restoredQuestion
+                .replace(/\[\s*\(E\)\s*\]/g, `[ ${ansE} ]`)
+                .replace(/\[\s*\(E\) 입력\s*\]/g, `[ ${ansE} ]`)
+                .replace(/\(\s*E\s*\)/g, ansE)
+                .replace(/-\s*\(F\)/g, `- ${ansF}`)
+                .replace(/-\s*\(F\) 입력/g, `- ${ansF}`)
+                .replace(/\(\s*F\s*\)/g, ansF);
+                
+              const newAnswers = { ...patchedQ.answers };
+              delete newAnswers.INPUT_5;
+              delete newAnswers.INPUT_6;
+              
+              const newRows = patchedQ.tableData?.rows 
+                ? patchedQ.tableData.rows.filter(row => row[0] !== '(E)' && row[0] !== '(F)') 
+                : [];
+                
+              const newTableData = {
+                ...patchedQ.tableData,
+                rows: newRows
+              };
+              
+              patchedQ = {
+                ...patchedQ,
+                question: restoredQuestion,
+                answers: newAnswers,
+                tableData: newTableData
+              };
+            }
           }
-          if (title) {
-            const patchedText = qText.replace('다음 흐름도', `다음 [${title}] 흐름도`);
-            return { ...q, question: patchedText };
-          }
+          
+          return patchedQ;
         }
         return q;
       });
