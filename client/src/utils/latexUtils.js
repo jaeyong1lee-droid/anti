@@ -396,7 +396,7 @@ const healCorruptedKatexHtml = (text) => {
 };
 
 // 3. 메인 레이아웃 및 수식 복구 마스터 함수
-export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = null) {
+export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = null, forceInline = false) {
   if (!text || typeof text !== 'string') return text;
 
   let processed = healCorruptedKatexHtml(text);
@@ -646,7 +646,7 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
     const elevateToDisplay = new Array(parts.length).fill(false);
 
     let idx = 1;
-    while (idx < parts.length) {
+    while (idx < parts.length && !forceInline) {
       if (isRelation[idx]) {
         const group = [idx];
         let nextIdx = idx + 2;

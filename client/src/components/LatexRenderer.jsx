@@ -347,7 +347,7 @@ export const LatexRenderer = React.memo(function LatexRenderer({
 
   // 0.5) 연수공식/이론유도 내 지반단위중량 기호 y(\y) 그리크 감마(\gamma) 자가치유 규칙 탑재
   const healFormulas = (val) => {
-    return healLatexFormulas(val);
+    return healLatexFormulas(val, false, null, forceInline);
   };
 
   let renderText = cleanAndSanitizeMathText(parsedText);
