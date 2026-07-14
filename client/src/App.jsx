@@ -3476,7 +3476,7 @@ export default function App() {
 
     const promises = inputs.map(async (inputId) => {
       const userAnswer = activeAnswers[`${qIdx}_${inputId}`] || '';
-      const correctAnswer = q.answers[inputId] || '';
+      const correctAnswer = q?.answers?.[inputId] || '';
       
       let rowHeader = '';
       let colHeader = '';
@@ -3671,7 +3671,7 @@ export default function App() {
     startProgressPolling(progressId);
 
     const userAnswer = activeAnswers[key] || '';
-    const correctAnswer = q.answers[inputId] || '';
+    const correctAnswer = q?.answers?.[inputId] || '';
 
     let rowHeader = '';
     let colHeader = '';
