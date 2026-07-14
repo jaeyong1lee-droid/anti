@@ -5325,6 +5325,59 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
   const [hintText, setHintText] = useState(null);
   const [isHintLoading, setIsHintLoading] = useState(false);
   const [showHintModal, setShowHintModal] = useState(false);
+  const [hintModalPos, setHintModalPos] = useState({ x: 0, y: 0 });
+
+  useEffect(() => {
+    if (!showHintModal) {
+      setHintModalPos({ x: 0, y: 0 });
+    }
+  }, [showHintModal]);
+
+  const handleHintHeaderMouseDown = (e) => {
+    if (e.target.closest('button')) return;
+    e.preventDefault();
+    const startX = e.clientX - hintModalPos.x;
+    const startY = e.clientY - hintModalPos.y;
+
+    const handleMouseMove = (moveEvent) => {
+      setHintModalPos({
+        x: moveEvent.clientX - startX,
+        y: moveEvent.clientY - startY
+      });
+    };
+
+    const handleMouseUp = () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
+
+  const handleHintHeaderTouchStart = (e) => {
+    if (e.target.closest('button')) return;
+    const touch = e.touches[0];
+    const startX = touch.clientX - hintModalPos.x;
+    const startY = touch.clientY - hintModalPos.y;
+
+    const handleTouchMove = (moveEvent) => {
+      const moveTouch = moveEvent.touches[0];
+      setHintModalPos({
+        x: moveTouch.clientX - startX,
+        y: moveTouch.clientY - startY
+      });
+    };
+
+    const handleTouchEnd = () => {
+      document.removeEventListener('touchmove', handleTouchMove);
+      document.removeEventListener('touchend', handleTouchEnd);
+    };
+
+    document.addEventListener('touchmove', handleTouchMove);
+    document.addEventListener('touchend', handleTouchEnd);
+  };
+
   const [resetConfirmTarget, setResetConfirmTarget] = useState(null); // { scheduleId, topicTitle, round }
   const [showFullReport, setShowFullReport] = useState(false);
   const [reportText, setReportText] = useState('');
@@ -19818,9 +19871,17 @@ ${itemsStr}
       {/* 💡 힌트 보기 모달 (Hint Modal) */}
       {showHintModal && (
         <div className="fixed inset-0 z-[200] overflow-y-auto flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm transition-all duration-300 animate-fade-in" onClick={() => setShowHintModal(false)}>
-          <div className="w-full max-w-md bg-slateCustom-900 border border-white/20 rounded-2xl overflow-hidden shadow-2xl p-6 space-y-4 animate-scale-up text-left" onClick={(e) => e.stopPropagation()}>
+          <div 
+            className="w-full max-w-md bg-slateCustom-900 border border-white/20 rounded-2xl overflow-hidden shadow-2xl p-6 space-y-4 animate-scale-up text-left" 
+            style={{ transform: `translate(${hintModalPos.x}px, ${hintModalPos.y}px)` }}
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* Modal Header */}
-            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+            <div 
+              className="flex items-center justify-between pb-2 border-b border-slate-800 cursor-move select-none"
+              onMouseDown={handleHintHeaderMouseDown}
+              onTouchStart={handleHintHeaderTouchStart}
+            >
               <div className="flex items-center gap-2">
                 <div className="p-1.5 bg-amber-500/10 text-amber-400 rounded-lg">
                   <Brain size={18} className="text-amber-500 animate-pulse" />
