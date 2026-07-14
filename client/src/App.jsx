@@ -10557,7 +10557,7 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
     }
   };
 
-  const renderCardTutorChat = (key, q) => {
+  function renderCardTutorChat(key, q) {
     const isCollapsed = !!tutorCollapsed[key];
     const hasPanel = !!(tutorAnswers[key]?.text || tutorAnswers[key]?.loading || tutorAnswers[key]?.error);
 
