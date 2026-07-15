@@ -19608,14 +19608,7 @@ ${itemsStr}
                               )}
                             </div>
                           ) : (
-                            !isRevd ? (
-                              <button
-                                onClick={() => setRevealedQuestions(prev => ({ ...prev, [idx]: true }))}
-                                className="w-full py-3 border-2 border-dashed border-slate-600 hover:border-slate-400 rounded-xl text-xs font-bold text-slate-400 hover:text-slate-200 transition-all duration-200"
-                              >
-                                💡 머릿속으로 답안을 구성한 뒤 → 정답 확인
-                              </button>
-                            ) : (
+                            isRevd && (
                               <div className="md:bg-blue-950/40 md:border md:border-blue-500/30 md:rounded-xl md:p-4 p-0 bg-transparent border-0 space-y-2 model-answer-section">
                                 <div className="flex justify-between items-center text-[11px] font-black text-amber-400">
                                   <span>📝 모범 답안</span>
