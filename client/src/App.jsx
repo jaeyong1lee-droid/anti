@@ -3542,7 +3542,29 @@ export default function App() {
 
   const gradeTableQuestion = async (qIdx, q, targetInputs = null) => {
     setGradingLoading(prev => ({ ...prev, [qIdx]: true }));
-    const inputs = targetInputs || Object.keys(q.answers || {});
+    let inputs = targetInputs;
+    if (!inputs) {
+      if (q.answers && Object.keys(q.answers).length > 0) {
+        inputs = Object.keys(q.answers);
+      } else {
+        const isFlowchart = q.question && (q.question.includes('┌──') || q.question.includes('▼') || q.question.includes('플로우차트') || q.question.includes('흐름도'));
+        if (isFlowchart) {
+          const matches = q.question.match(/\(([A-F])\)/g);
+          if (matches) {
+            const ids = matches.map(m => {
+              const letter = m.match(/\(([A-F])\)/)[1];
+              const idx = letter.charCodeAt(0) - 65;
+              return `INPUT_${idx + 1}`;
+            });
+            inputs = Array.from(new Set(ids));
+          } else {
+            inputs = [];
+          }
+        } else {
+          inputs = [];
+        }
+      }
+    }
     const activeAnswers = showExam ? examTableAnswersRef.current : tableAnswersRef.current;
     const activeSetGradingResults = showExam ? setExamTableGradingResults : setTableGradingResults;
     
@@ -3577,6 +3599,17 @@ export default function App() {
             }
           });
         });
+      }
+      if (!rowHeader) {
+        const isFlowchart = q.question && (q.question.includes('┌──') || q.question.includes('▼') || q.question.includes('플로우차트') || q.question.includes('흐름도'));
+        if (isFlowchart) {
+          const match = inputId.match(/INPUT_(\d+)/);
+          if (match) {
+            const index = parseInt(match[1], 10);
+            rowHeader = `(${String.fromCharCode(65 + index - 1)})`;
+            colHeader = '입력 답안';
+          }
+        }
       }
       
       try {
@@ -3772,6 +3805,17 @@ export default function App() {
           }
         });
       });
+    }
+    if (!rowHeader) {
+      const isFlowchart = q.question && (q.question.includes('┌──') || q.question.includes('▼') || q.question.includes('플로우차트') || q.question.includes('흐름도'));
+      if (isFlowchart) {
+        const match = inputId.match(/INPUT_(\d+)/);
+        if (match) {
+          const index = parseInt(match[1], 10);
+          rowHeader = `(${String.fromCharCode(65 + index - 1)})`;
+          colHeader = '입력 답안';
+        }
+      }
     }
 
     try {
