@@ -206,10 +206,12 @@ export async function gradeSubjective({ question, correctAnswer, userAnswer, row
   const userPrompt = `
 - 문제/맥락: ${question || '주관식 빈칸 채우기'}
 ${rowHeader ? `- 표 행 제목 (Row Header): ${rowHeader}` : ''}
-${colHeader ? `- 표 열 제목 (Column Header): ${colHeader}` : ''}
+${colHeader ? `- 표/빈칸 구분 제목 (Column Header): ${colHeader}` : ''}
 ${explanation ? `- 전체 해설 (Explanation): ${explanation}` : ''}
 - 모범 답안: ${targetCorrectAnswer}
 - 사용자의 답안: ${userAnswer}
+
+🚨 **[경고 - 모범 답안 오류 및 모순 검증]**: 제공된 모범 답안(correctAnswer)에 명백한 공학적/과학적 오류(예: CD 삼축시험의 응력경로를 '우하향'으로 서술하는 오류, 또는 물리 법칙에 어긋나는 설명 등)가 포함되어 있다면, 채점관은 절대로 그 오류에 동조하거나 옹호하지 마십시오. 모범 답안을 출제 오류로 무시하고, 지반공학 표준 전공 지식에 따른 진짜 올바른 과학적 원리를 기준으로 사용자의 답안을 독립적으로 채점하십시오. 그리고 정답이 될 수 있도록 오류가 올바르게 수정된 전공 기준 정석 정답을 suggestedModelAnswer로 작성하십시오.
 
 🚨 **[경고 - sycophancy 방지 및 기호 모방 절대 금지]**: suggestedModelAnswer 작성 시 절대 사용자의 답안(userAnswer)에 작성된 임의 수식 기호나 표기법(예: kh', KH, b 등)을 그대로 복사하거나 동조하여 출력하지 마십시오!
 반드시 지반공학/토목공학 전공 서적에 나오는 공인된 표준 학술 기호(예: $k_h$, $k_{h0}$, $k_{v0}$, $B$ 등)를 포함한 완전하고 정교한 표준 공식을 작성해야 합니다.

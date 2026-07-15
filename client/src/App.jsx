@@ -1307,7 +1307,7 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
               const letter = actualLettersMap[inputId] || String.fromCharCode(65 + letterIdx);
               const result = tableGradingResults[key];
               if (result) {
-                const rawAns = q?.answers?.[inputId] || result?.correctAnswer || result?.suggestedModelAnswer || '';
+                const rawAns = result?.suggestedModelAnswer || result?.correctAnswer || q?.answers?.[inputId] || '';
                 const cleanedAns = cleanFlowchartCorrectAnswer(rawAns, letter);
                 feedbackList.push({
                   ...result,
@@ -3540,7 +3540,7 @@ export default function App() {
   const [examShowAnswersState, setExamShowAnswersState] = useState({});
   const [gradingLoading, setGradingLoading] = useState({});
 
-  const gradeTableQuestion = async (qIdx, q, targetInputs = null) => {
+  const gradeTableQuestion = async (qIdx, q, targetInputs = null, isReevaluation = false) => {
     setGradingLoading(prev => ({ ...prev, [qIdx]: true }));
     let inputs = targetInputs;
     if (!inputs) {
@@ -3624,6 +3624,7 @@ export default function App() {
             colHeader,
             explanation: q.explanation || q.answer || '',
             category: showExam ? examTopic?.category : selectedTopic?.category,
+            temperature: isReevaluation ? 0.85 : 0.7,
             progressId
           })
         });
@@ -3769,7 +3770,7 @@ export default function App() {
     setCellGradingLoading(prev => ({ ...prev, [acronymKey]: false, [combKey]: false }));
   };
 
-  const gradeSingleTableCell = async (qIdx, q, inputId) => {
+  const gradeSingleTableCell = async (qIdx, q, inputId, isReevaluation = false) => {
     const key = `${qIdx}_${inputId}`;
     setCellGradingLoading(prev => ({ ...prev, [key]: true }));
 
@@ -3830,6 +3831,7 @@ export default function App() {
           colHeader,
           explanation: q.explanation || q.answer || '',
           category: showExam ? examTopic?.category : selectedTopic?.category,
+          temperature: isReevaluation ? 0.85 : 0.7,
           progressId
         })
       });
@@ -4003,7 +4005,7 @@ export default function App() {
     return Math.round(total * 10) / 10;
   };
 
-  const gradeSubjectiveQuestion = async (qIdx, q) => {
+  const gradeSubjectiveQuestion = async (qIdx, q, isReevaluation = false) => {
     setGradingLoading(prev => ({ ...prev, [qIdx]: true }));
     const activeAnswers = showExam ? examTableAnswersRef.current : tableAnswersRef.current;
     const activeSetGradingResults = showExam ? setExamTableGradingResults : setTableGradingResults;
@@ -4025,6 +4027,7 @@ export default function App() {
           userAnswer,
           explanation: q.explanation || '',
           category: showExam ? examTopic?.category : selectedTopic?.category,
+          temperature: isReevaluation ? 0.85 : 0.7,
           progressId
         })
       });
@@ -18898,9 +18901,9 @@ ${itemsStr}
                                   e.stopPropagation();
                                   if (gradingLoading[idx]) return;
                                   if (q.type === '주관식 (표채우기)' || q.subtype === '표채우기') {
-                                    await gradeTableQuestion(idx, q);
+                                    await gradeTableQuestion(idx, q, null, true);
                                   } else {
-                                    await gradeSubjectiveQuestion(idx, q);
+                                    await gradeSubjectiveQuestion(idx, q, true);
                                   }
                                 }}
                                 className={`px-2.5 py-0.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-[11px] text-slate-350 hover:text-white border border-slate-700 hover:border-slate-500 rounded font-bold cursor-pointer transition-all flex items-center gap-1 shadow-md whitespace-nowrap ${
@@ -19522,7 +19525,7 @@ ${itemsStr}
                                           onClick={async (e) => {
                                             e.stopPropagation();
                                             if (isLoading) return;
-                                            await gradeSubjectiveQuestion(idx, q);
+                                            await gradeSubjectiveQuestion(idx, q, true);
                                             setRevealedQuestions(prev => ({ ...prev, [idx]: true }));
                                           }}
                                           title="클릭 시 이 문항을 재평가합니다"
@@ -22401,9 +22404,9 @@ ${itemsStr}
                                 e.stopPropagation();
                                 if (gradingLoading[idx]) return;
                                 if (q.type === '주관식 (표채우기)' || q.subtype === '표채우기') {
-                                  await gradeTableQuestion(idx, q);
+                                  await gradeTableQuestion(idx, q, null, true);
                                 } else {
-                                  await gradeSubjectiveQuestion(idx, q);
+                                  await gradeSubjectiveQuestion(idx, q, true);
                                 }
                               }}
                               className={`px-2.5 py-0.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-[11px] text-slate-350 hover:text-white border border-slate-700 hover:border-slate-500 rounded font-bold cursor-pointer transition-all flex items-center gap-1 shadow-md whitespace-nowrap ${
@@ -22973,7 +22976,7 @@ ${itemsStr}
                                           onClick={async (e) => {
                                             e.stopPropagation();
                                             if (isLoading) return;
-                                            await gradeSubjectiveQuestion(idx, q);
+                                            await gradeSubjectiveQuestion(idx, q, true);
                                             setExamRevealed(prev => ({ ...prev, [idx]: true }));
                                           }}
                                           title="클릭 시 이 문항을 재평가합니다"

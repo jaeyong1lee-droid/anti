@@ -1201,7 +1201,7 @@ export const TableQuiz = React.memo(function TableQuiz({
                                     }
                                     e.target.blur();
                                     if (gradeSingleTableCell && !cellGradingLoading?.[`${questionIdx}_${inputId}`]) {
-                                      await gradeSingleTableCell(questionIdx, q, inputId);
+                                      await gradeSingleTableCell(questionIdx, q, inputId, !!gradingResult);
                                     }
                                   }
                                 }}
@@ -1217,7 +1217,7 @@ export const TableQuiz = React.memo(function TableQuiz({
                                     e.stopPropagation();
                                     if (isCellLoading) return;
                                     if (gradeSingleTableCell) {
-                                      await gradeSingleTableCell(questionIdx, q, inputId);
+                                      await gradeSingleTableCell(questionIdx, q, inputId, true);
                                     }
                                   }}
                                   title="클릭 시 이 칸만 재평가합니다"
@@ -1540,7 +1540,7 @@ export const TableQuiz = React.memo(function TableQuiz({
                                       }
                                       e.target.blur();
                                       if (gradeSingleTableCell && !cellGradingLoading?.[`${questionIdx}_${inputId}`]) {
-                                        await gradeSingleTableCell(questionIdx, q, inputId);
+                                        await gradeSingleTableCell(questionIdx, q, inputId, !!gradingResult);
                                       }
                                     }
                                   }}
@@ -1556,7 +1556,7 @@ export const TableQuiz = React.memo(function TableQuiz({
                                       e.stopPropagation();
                                       if (isCellLoading) return;
                                       if (gradeSingleTableCell) {
-                                        await gradeSingleTableCell(questionIdx, q, inputId);
+                                        await gradeSingleTableCell(questionIdx, q, inputId, true);
                                       }
                                     }}
                                     title="클릭 시 이 칸만 재평가합니다"

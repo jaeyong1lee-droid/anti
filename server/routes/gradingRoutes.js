@@ -71,7 +71,7 @@ async function getFormattedTopicInstructions(topicId) {
 
 // POST /api/grade-subjective -> AI Subjective Grading
 router.post('/grade-subjective', async (req, res) => {
-  const { question, correctAnswer, userAnswer, rowHeader, colHeader, explanation, category } = req.body;
+  const { question, correctAnswer, userAnswer, rowHeader, colHeader, explanation, category, temperature } = req.body;
   const progressId = req.body.progressId || req.query.progressId;
 
   const dynamicGradingStandards = gradingStandardsList && gradingStandardsList.length > 0
@@ -84,7 +84,8 @@ router.post('/grade-subjective', async (req, res) => {
   let standardsAnalysis = '';
   const localCallLLM = (sys, prompt, img, scenario, opts) => {
     const enrichedPrompt = `[🚨 0단계 AI가 사전 분석한 절대 채점 지침 준수 주의사항]:\n${standardsAnalysis}\n\n${prompt}`;
-    return callLLMWithFailover(sys, enrichedPrompt, img, scenario, { ...opts, temperature: 0.0, progressId });
+    const targetTemp = typeof temperature === 'number' ? temperature : 0.7;
+    return callLLMWithFailover(sys, enrichedPrompt, img, scenario, { ...opts, temperature: targetTemp, progressId });
   };
   if (progressId) {
     standardsAnalysis = await analyzeStandardsBeforeTask(progressId, question || '주관식 채점', dynamicGradingStandards, 'grading');
