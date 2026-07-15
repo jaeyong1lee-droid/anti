@@ -1626,5 +1626,11 @@ export function parseLlmJson(text) {
   }
 
   const escaped = escapeJsonBackslashes(cleaned);
-  return JSON.parse(escaped);
+  try {
+    return JSON.parse(escaped);
+  } catch (err) {
+    console.error("JSON parse error! Raw length:", text.length, "Escaped length:", escaped.length);
+    console.error("Failed string content:\n", escaped);
+    throw err;
+  }
 }

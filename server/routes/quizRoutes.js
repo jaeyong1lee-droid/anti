@@ -2212,13 +2212,52 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 function extractJsonArray(str) {
   if (!str) return null;
   const startIdx = str.indexOf('[');
+  if (startIdx === -1) return null;
+
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+
+  for (let i = startIdx; i < str.length; i++) {
+    const char = str[i];
+    if (escape) {
+      escape = false;
+      continue;
+    }
+    if (char === '\\') {
+      escape = true;
+      continue;
+    }
+    if (char === '"') {
+      inString = !inString;
+      continue;
+    }
+    if (!inString) {
+      if (char === '[') {
+        depth++;
+      } else if (char === ']') {
+        depth--;
+        if (depth === 0) {
+          const jsonSub = str.substring(startIdx, i + 1);
+          try {
+            return parseLlmJson(jsonSub);
+          } catch (e) {
+            console.warn('Failed parsing extracted JSON substring via bracket matching:', e.message);
+            throw e;
+          }
+        }
+      }
+    }
+  }
+
+  // Fallback to original lastIndexOf method if bracket matching didn't close properly
   const endIdx = str.lastIndexOf(']');
-  if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
+  if (endIdx > startIdx) {
     const jsonSub = str.substring(startIdx, endIdx + 1);
     try {
       return parseLlmJson(jsonSub);
     } catch (e) {
-      console.warn('Failed parsing extracted JSON substring via extractJsonArray.');
+      console.warn('Failed parsing extracted JSON substring via extractJsonArray fallback.');
       throw e;
     }
   }
