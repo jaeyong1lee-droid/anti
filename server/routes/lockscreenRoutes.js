@@ -38,7 +38,7 @@ async function getLockscreenCandidates() {
   }
 
   const allTopics = await dbQuery.all(`
-    SELECT id, title, keywords, category FROM topics ORDER BY created_at DESC
+    SELECT id, title, keywords, category, extracted_text FROM topics ORDER BY created_at DESC
   `);
   
   const formulaRow = await dbQuery.get("SELECT value FROM app_session WHERE key = 'formula_images'");
@@ -64,9 +64,19 @@ async function getLockscreenCandidates() {
     return usageA - usageB;
   });
 
+  // Slice to top 10 to keep the prompt clean and focus LLM on least-used candidates
+  const formulaCandidates = sortedFormulas.slice(0, 10);
+  const finalTopicCandidates = sortedTopics.slice(0, 10).map(t => ({
+    id: t.id,
+    title: t.title,
+    keywords: t.keywords,
+    category: t.category,
+    textContent: (t.extracted_text || '').substring(0, 5000)
+  }));
+
   return {
-    formulaCandidates: sortedFormulas,
-    finalTopicCandidates: sortedTopics,
+    formulaCandidates,
+    finalTopicCandidates,
     usageHistory
   };
 }
