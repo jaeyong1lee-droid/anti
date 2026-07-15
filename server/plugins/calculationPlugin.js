@@ -101,7 +101,7 @@ ${ENGINEERING_STANDARDS}
 }
 `;
 
-  const responseText = await callLLMWithFailover(systemInstruction, userPrompt, null, 'formula');
+  const responseText = await callLLMWithFailover(systemInstruction, userPrompt, null, 'formula', { temperature: 0.85 });
   let text = responseText.trim();
   if (text.startsWith('```')) {
     text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
