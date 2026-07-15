@@ -1356,7 +1356,9 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
                   {(item.correctAnswer || item.suggestedModelAnswer) && (
                     <div className="text-[12px] sm:text-[13px] text-slate-400 mt-1.5 pt-1.5 border-t border-slate-800/30 pl-6">
                       <span className="font-extrabold text-slate-400">💡 모범 정답: </span>
-                      <span className="text-slate-350 font-bold">{item.correctAnswer || item.suggestedModelAnswer}</span>
+                      <span className="text-slate-350 font-bold inline-block">
+                        <LatexRenderer text={item.correctAnswer || item.suggestedModelAnswer} katexLoaded={katexLoaded} forceInline={true} />
+                      </span>
                     </div>
                   )}
                 </div>
