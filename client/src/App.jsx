@@ -2426,8 +2426,8 @@ export default function App() {
         <div className="divide-y divide-slate-800/80 mt-1">
           {filteredInputIds.map((inputId) => {
             const value = activeAnswers[`${idx}_${inputId}`] || '';
-            const correctAnswer = q.answers?.[inputId] || '';
             const gradingResult = activeGradingResults?.[`${idx}_${inputId}`];
+            const correctAnswer = gradingResult?.suggestedModelAnswer || q.answers?.[inputId] || '';
             
             const inputIdx = inputIds.indexOf(inputId);
             const inputLetter = String.fromCharCode(65 + (inputIdx !== -1 ? inputIdx : 0));
