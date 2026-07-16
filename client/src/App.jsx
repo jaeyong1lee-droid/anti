@@ -3933,9 +3933,24 @@ export default function App() {
           total += (sumVal / (countVal * 10)) * W;
         }
       } else {
-        const grading = tableGradingResults[`${idx}_INPUT`];
-        if (grading && grading.score !== undefined) {
-          total += (grading.score / 10) * W;
+        const flowchartKeys = Object.keys(tableGradingResults).filter(k => k.startsWith(`${idx}_INPUT_`));
+        if (flowchartKeys.length > 0) {
+          let sumVal = 0;
+          let countVal = flowchartKeys.length;
+          flowchartKeys.forEach(key => {
+            const grading = tableGradingResults[key];
+            if (grading && grading.score !== undefined) {
+              sumVal += grading.score;
+            }
+          });
+          if (countVal > 0) {
+            total += (sumVal / (countVal * 10)) * W;
+          }
+        } else {
+          const grading = tableGradingResults[`${idx}_INPUT`];
+          if (grading && grading.score !== undefined) {
+            total += (grading.score / 10) * W;
+          }
         }
       }
     });
@@ -3996,9 +4011,24 @@ export default function App() {
           total += (sumVal / (countVal * 10)) * W;
         }
       } else {
-        const grading = examTableGradingResults[`${idx}_INPUT`];
-        if (grading && grading.score !== undefined) {
-          total += (grading.score / 10) * W;
+        const flowchartKeys = Object.keys(examTableGradingResults).filter(k => k.startsWith(`${idx}_INPUT_`));
+        if (flowchartKeys.length > 0) {
+          let sumVal = 0;
+          let countVal = flowchartKeys.length;
+          flowchartKeys.forEach(key => {
+            const grading = examTableGradingResults[key];
+            if (grading && grading.score !== undefined) {
+              sumVal += grading.score;
+            }
+          });
+          if (countVal > 0) {
+            total += (sumVal / (countVal * 10)) * W;
+          }
+        } else {
+          const grading = examTableGradingResults[`${idx}_INPUT`];
+          if (grading && grading.score !== undefined) {
+            total += (grading.score / 10) * W;
+          }
         }
       }
     });
@@ -18877,15 +18907,38 @@ ${itemsStr}
                                       );
                                     }
                                   } else {
-                                    const grading = tableGradingResults[`${idx}_INPUT`];
-                                    if (grading && grading.score !== undefined) {
-                                      const questionScore = (grading.score / 10) * W;
-                                      const displayScore = Math.round(questionScore * 100) / 100;
-                                      return (
-                                        <span className="text-[10px] font-black px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 ml-1">
-                                          득점: {displayScore} / {W}점
-                                        </span>
-                                      );
+                                    const flowchartKeys = Object.keys(tableGradingResults).filter(k => k.startsWith(`${idx}_INPUT_`));
+                                    if (flowchartKeys.length > 0) {
+                                      let obtainedVal = 0;
+                                      let hasGradedVal = false;
+                                      flowchartKeys.forEach(key => {
+                                        const grading = tableGradingResults[key];
+                                        if (grading && grading.score !== undefined) {
+                                          obtainedVal += grading.score;
+                                          hasGradedVal = true;
+                                        }
+                                      });
+                                      if (hasGradedVal) {
+                                        const countVal = flowchartKeys.length;
+                                        const questionScore = countVal > 0 ? (obtainedVal / (countVal * 10)) * W : 0;
+                                        const displayScore = Math.round(questionScore * 100) / 100;
+                                        return (
+                                          <span className="text-[10px] font-black px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 ml-1">
+                                            득점: {displayScore} / {W}점
+                                          </span>
+                                        );
+                                      }
+                                    } else {
+                                      const grading = tableGradingResults[`${idx}_INPUT`];
+                                      if (grading && grading.score !== undefined) {
+                                        const questionScore = (grading.score / 10) * W;
+                                        const displayScore = Math.round(questionScore * 100) / 100;
+                                        return (
+                                          <span className="text-[10px] font-black px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 ml-1">
+                                            득점: {displayScore} / {W}점
+                                          </span>
+                                        );
+                                      }
                                     }
                                   }
                                 }
@@ -22380,15 +22433,38 @@ ${itemsStr}
                                     );
                                   }
                                 } else {
-                                  const grading = examTableGradingResults[`${idx}_INPUT`];
-                                  if (grading && grading.score !== undefined) {
-                                    const questionScore = (grading.score / 10) * W;
-                                    const displayScore = Math.round(questionScore * 100) / 100;
-                                    return (
-                                      <span className="text-[10px] font-black px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 ml-1">
-                                        득점: {displayScore} / {W}점
-                                      </span>
-                                    );
+                                  const flowchartKeys = Object.keys(examTableGradingResults).filter(k => k.startsWith(`${idx}_INPUT_`));
+                                  if (flowchartKeys.length > 0) {
+                                    let obtainedVal = 0;
+                                    let hasGradedVal = false;
+                                    flowchartKeys.forEach(key => {
+                                      const grading = examTableGradingResults[key];
+                                      if (grading && grading.score !== undefined) {
+                                        obtainedVal += grading.score;
+                                        hasGradedVal = true;
+                                      }
+                                    });
+                                    if (hasGradedVal) {
+                                      const countVal = flowchartKeys.length;
+                                      const questionScore = countVal > 0 ? (obtainedVal / (countVal * 10)) * W : 0;
+                                      const displayScore = Math.round(questionScore * 100) / 100;
+                                      return (
+                                        <span className="text-[10px] font-black px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 ml-1">
+                                          득점: {displayScore} / {W}점
+                                        </span>
+                                      );
+                                    }
+                                  } else {
+                                    const grading = examTableGradingResults[`${idx}_INPUT`];
+                                    if (grading && grading.score !== undefined) {
+                                      const questionScore = (grading.score / 10) * W;
+                                      const displayScore = Math.round(questionScore * 100) / 100;
+                                      return (
+                                        <span className="text-[10px] font-black px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 ml-1">
+                                          득점: {displayScore} / {W}점
+                                        </span>
+                                      );
+                                    }
                                   }
                                 }
                               }
