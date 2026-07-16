@@ -84,7 +84,7 @@ router.post('/grade-subjective', async (req, res) => {
   let standardsAnalysis = '';
   const localCallLLM = (sys, prompt, img, scenario, opts) => {
     const enrichedPrompt = `[🚨 0단계 AI가 사전 분석한 절대 채점 지침 준수 주의사항]:\n${standardsAnalysis}\n\n${prompt}`;
-    const targetTemp = typeof temperature === 'number' ? temperature : 0.7;
+    const targetTemp = typeof temperature === 'number' ? temperature : 0.85;
     return callLLMWithFailover(sys, enrichedPrompt, img, scenario, { ...opts, temperature: targetTemp, progressId });
   };
   if (progressId) {
