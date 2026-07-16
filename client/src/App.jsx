@@ -7509,8 +7509,18 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
           if (!hasAcronym || hasEmptyRow) {
             unsolvedCount++;
           }
-        } else if (q.tableData || q.comparisonTableData) {
-          const inputIds = Object.keys(q.answers || {});
+        } else if (q.tableData || q.comparisonTableData || (q.answers && Object.keys(q.answers).some(k => k.startsWith('INPUT_')))) {
+          let inputIds = Object.keys(q.answers || {});
+          if (inputIds.length === 0 && q.question) {
+            const matches = q.question.match(/\(([A-F])\)/g);
+            if (matches) {
+              inputIds = matches.map(m => {
+                const letter = m.replace(/[()]/g, '');
+                const letterIdx = letter.charCodeAt(0) - 65;
+                return `INPUT_${letterIdx + 1}`;
+              });
+            }
+          }
           let hasEmpty = false;
           inputIds.forEach(inputId => {
             const val = tableAnswers[`${idx}_${inputId}`];
@@ -7721,8 +7731,18 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
         if (!hasAcronym || hasEmptyRow) {
           unsolvedCount++;
         }
-      } else if (q.tableData || q.comparisonTableData) {
-        const inputIds = Object.keys(q.answers || {});
+      } else if (q.tableData || q.comparisonTableData || (q.answers && Object.keys(q.answers).some(k => k.startsWith('INPUT_')))) {
+        let inputIds = Object.keys(q.answers || {});
+        if (inputIds.length === 0 && q.question) {
+          const matches = q.question.match(/\(([A-F])\)/g);
+          if (matches) {
+            inputIds = matches.map(m => {
+              const letter = m.replace(/[()]/g, '');
+              const letterIdx = letter.charCodeAt(0) - 65;
+              return `INPUT_${letterIdx + 1}`;
+            });
+          }
+        }
         let hasEmpty = false;
         inputIds.forEach(inputId => {
           const val = tableAnswers[`${idx}_${inputId}`];
