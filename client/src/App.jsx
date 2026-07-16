@@ -2571,10 +2571,15 @@ export default function App() {
                   </span>
                 </div>
                 <div className="text-slate-300">내 답변: <span className={`font-semibold ${isCorrect ? 'text-emerald-400' : 'text-rose-400'}`}>{val || '(미입력)'}</span></div>
-                <div className="text-slate-300">모범답안: <span className="font-semibold text-slate-100">{q.acronym}</span></div>
+                <div className="text-slate-300 flex items-start gap-1">
+                  <span>모범답안:</span>
+                  <span className="font-semibold text-slate-100">
+                    <LatexRenderer text={q.acronym} katexLoaded={katexLoaded} forceInline={true} />
+                  </span>
+                </div>
                 {grading?.reason && (
                   <div className="mt-1 text-slate-400">
-                    <span className="font-bold text-slate-300">피드백:</span> {grading.reason}
+                    <span className="font-bold text-slate-300">피드백:</span> <LatexRenderer text={grading.reason} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} className="inline" />
                   </div>
                 )}
               </div>
@@ -2613,16 +2618,18 @@ export default function App() {
                     </span>
                   </div>
                   <div className="text-slate-300">입력내용: <span className={`font-semibold ${isContentCorrect ? 'text-emerald-400' : 'text-rose-400'}`}>{userContent || '(미입력)'}</span></div>
-                  <div className="text-slate-300">
-                    모범답안: {correctRow ? (
-                      <span className="font-semibold text-slate-100">{correctRow.word} : {correctRow.description}</span>
+                  <div className="text-slate-300 flex items-start gap-1">
+                    <span>모범답안:</span> {correctRow ? (
+                      <span className="font-semibold text-slate-100">
+                        <LatexRenderer text={`${correctRow.word} : ${correctRow.description}`} katexLoaded={katexLoaded} forceInline={true} />
+                      </span>
                     ) : (
                       <span className="font-semibold text-rose-400">(올바른 두문자 매칭 필요)</span>
                     )}
                   </div>
                   {combGrading?.reason && (
                     <div className="mt-1 text-slate-400">
-                      <span className="font-bold text-slate-300">피드백:</span> {combGrading.reason}
+                      <span className="font-bold text-slate-300">피드백:</span> <LatexRenderer text={combGrading.reason} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} className="inline" />
                     </div>
                   )}
                 </div>
