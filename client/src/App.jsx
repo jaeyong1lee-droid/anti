@@ -7509,13 +7509,13 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
           if (!hasAcronym || hasEmptyRow) {
             unsolvedCount++;
           }
-        } else if (q.tableData || q.comparisonTableData || (q.answers && Object.keys(q.answers).some(k => k.startsWith('INPUT_')))) {
+        } else if (q.tableData || q.comparisonTableData || (q.answers && Object.keys(q.answers).some(k => k.startsWith('INPUT_'))) || (q.question && /\(([A-F])\)/.test(q.question))) {
           let inputIds = Object.keys(q.answers || {});
           if (inputIds.length === 0 && q.question) {
             const matches = q.question.match(/\(([A-F])\)/g);
             if (matches) {
-              inputIds = matches.map(m => {
-                const letter = m.replace(/[()]/g, '');
+              const uniqueLetters = [...new Set(matches.map(m => m.replace(/[()]/g, '')))];
+              inputIds = uniqueLetters.map(letter => {
                 const letterIdx = letter.charCodeAt(0) - 65;
                 return `INPUT_${letterIdx + 1}`;
               });
@@ -7731,13 +7731,13 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
         if (!hasAcronym || hasEmptyRow) {
           unsolvedCount++;
         }
-      } else if (q.tableData || q.comparisonTableData || (q.answers && Object.keys(q.answers).some(k => k.startsWith('INPUT_')))) {
+      } else if (q.tableData || q.comparisonTableData || (q.answers && Object.keys(q.answers).some(k => k.startsWith('INPUT_'))) || (q.question && /\(([A-F])\)/.test(q.question))) {
         let inputIds = Object.keys(q.answers || {});
         if (inputIds.length === 0 && q.question) {
           const matches = q.question.match(/\(([A-F])\)/g);
           if (matches) {
-            inputIds = matches.map(m => {
-              const letter = m.replace(/[()]/g, '');
+            const uniqueLetters = [...new Set(matches.map(m => m.replace(/[()]/g, '')))];
+            inputIds = uniqueLetters.map(letter => {
               const letterIdx = letter.charCodeAt(0) - 65;
               return `INPUT_${letterIdx + 1}`;
             });
