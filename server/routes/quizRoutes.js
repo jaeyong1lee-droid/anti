@@ -913,10 +913,7 @@ ${activeGenerationStandards}
 ${activeEngineeringStandards}
 `;
 
-    const hollowFirstBox = Math.random() < 0.5;
-    const flowchartSpecificInstruction = hollowFirstBox 
-      ? "이번 흐름도 문제 출제 시, [🚨 1번 상자 빈칸 의무화 지침]: 반드시 1번 상자를 빈칸 [ (A) ] 와 - (B) 로 비워 두고, 2번 상자부터는 완전한 설명과 텍스트로 가득 채워 노출하십시오. (예: [1, 3, 5]번 상자를 비움)" 
-      : "이번 흐름도 문제 출제 시, [🚨 1번 상자 채우기 및 2번 상자 빈칸 의무화 지침]: 반드시 1번 상자는 완전한 텍스트로 채워 힌트 역할을 하게 노출하고, 2번 상자부터 빈칸 [ (A) ] 와 - (B) 로 비워 두십시오. (예: [2, 4, 6]번 상자를 비움)";
+    const flowchartSpecificInstruction = "이번 흐름도 문제 출제 시, [🚨 1번 상자 채우기 및 2번 상자 빈칸 의무화 지침]: 반드시 1번 상자는 완전한 설명 텍스트를 기입하여 힌트 역할을 하게 채워서 노출해야 하며, 절대로 비워서는 안 됩니다. 빈칸은 반드시 2번 상자부터 시작하여 [ (A) ] 와 - (B) 로 비워 두십시오. (예: 총 상자가 5개 또는 6개인 경우 [2, 4, 6]번 상자를 비우고, 7개인 경우 [2, 4, 7]번 상자를 비워 입력칸으로 만드십시오. 첫 번째 박스는 무조건 보여주어야 합니다.)";
 
     // Batch prompts for standard topics (non-calculation) to ensure high-quality technical questions
     const promptBatch1 = `
