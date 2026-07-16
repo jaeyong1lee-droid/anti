@@ -2756,6 +2756,7 @@ ${ENGINEERING_STANDARDS}
         answer: q.answer,
         explanation: q.explanation || '',
         concept: q.concept || '',
+        flowchartIntuitive: q.flowchartIntuitive || null,
         topic_id: topicId
       };
     });
@@ -3210,6 +3211,7 @@ ${ENGINEERING_STANDARDS}
         answer: q.answer,
         explanation: q.explanation || '',
         concept: q.concept || '',
+        flowchartIntuitive: q.flowchartIntuitive || null,
         topic_id: topicId
       };
     });

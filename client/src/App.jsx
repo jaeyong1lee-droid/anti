@@ -1226,6 +1226,63 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
       }
     };
 
+    const isInputBox = boxInputs.length > 0;
+    
+    // Parse step/box number
+    const boxNumMatch = title.match(/\[(\d+|\*)\]/);
+    const boxNum = boxNumMatch ? boxNumMatch[1] : null;
+    
+    let intuitiveText = null;
+    if (q.flowchartIntuitive) {
+      intuitiveText = q.flowchartIntuitive[boxNum] || q.flowchartIntuitive[String(boxNum)];
+    }
+    if (!intuitiveText) {
+      // Fallback heuristics based on title keywords
+      const titleText = title.toLowerCase();
+      if (titleText.includes('조사') || titleText.includes('측정') || titleText.includes('산정') || titleText.includes('시험') || titleText.includes('획득')) {
+        intuitiveText = '기반 자료 조사 및 물리적 상수 획득';
+      } else if (titleText.includes('선정') || titleText.includes('결정') || titleText.includes('공법') || titleText.includes('형식')) {
+        intuitiveText = '적합한 설계 형식 및 최적 공법 선정';
+      } else if (titleText.includes('시뮬레이션') || titleText.includes('해석') || titleText.includes('검토') || titleText.includes('평가') || titleText.includes('계산')) {
+        intuitiveText = '구조 안정성 검토 및 안전율 평가';
+      } else if (titleText.includes('대책') || titleText.includes('하중') || titleText.includes('설치') || titleText.includes('보강')) {
+        intuitiveText = '하중 조건 평가 및 보강 대책 수립';
+      } else {
+        intuitiveText = '지반공학 표준 프로세스 설계 검토';
+      }
+    }
+
+    if (!isInputBox) {
+      return (
+        <div key={boxKeyIdx} className="w-full h-auto min-h-fit border border-indigo-500/30 bg-slate-900/80 p-3 rounded-xl text-left leading-relaxed shadow-md flex items-center justify-between gap-3 select-text">
+          <div className="w-full flex flex-col md:flex-row gap-4 items-stretch">
+            {/* 왼쪽: 본문 영역 */}
+            <div className="flex-1 flex flex-col gap-0.5 min-w-0 md:pr-4 md:border-r border-slate-800/60">
+              <div className="font-bold text-[13px] sm:text-[14px] text-indigo-400 mb-0.5 w-full h-auto whitespace-pre-wrap break-all">
+                {renderLineContent(title)}
+              </div>
+              {bodyLines.map((bl, bIdx) => (
+                <div key={bIdx} className="text-[13px] sm:text-[14px] text-slate-200 pl-1.5 border-l border-slate-700/50 my-0.5 w-full h-auto whitespace-pre-wrap break-all">
+                  {renderLineContent(bl)}
+                </div>
+              ))}
+            </div>
+            {/* 오른쪽: 아주 쉬운 직관적 의미 영역 */}
+            <div className="flex-1 flex items-center justify-start text-[13px] sm:text-[14px] text-amber-300/90 font-medium bg-amber-500/5 rounded-lg p-2.5 border border-amber-500/10 min-w-0">
+              <div className="flex flex-col gap-1 w-full">
+                <span className="text-[11px] text-slate-400 font-extrabold uppercase tracking-wider flex items-center gap-1 select-none">
+                  💡 직관적 의미
+                </span>
+                <span className="leading-relaxed select-text font-semibold break-words">
+                  {intuitiveText}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div key={boxKeyIdx} className="w-full h-auto min-h-fit border border-indigo-500/30 bg-slate-900/80 p-3 rounded-xl text-left leading-relaxed shadow-md flex items-center justify-between gap-3 select-text">
         {/* 왼쪽: 본문 및 입력 필드 영역 */}
