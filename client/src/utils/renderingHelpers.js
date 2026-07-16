@@ -549,7 +549,21 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
 
 export const renderKatexString = (math, options) => {
   if (!math) return '';
-  let processedMath = math.replace(/\\frac\b/g, '\\dfrac');
+
+  // Decode standard HTML entities inside math formula
+  let decoded = math
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&#39;/g, "'")
+    .replace(/&#x27;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>');
+
+  // Self-heal quotes: convert double quote " to double prime '' (which KaTeX supports in math mode)
+  decoded = decoded.replace(/"/g, "''");
+
+  let processedMath = decoded.replace(/\\frac\b/g, '\\dfrac');
   processedMath = processedMath.replace(/\\{2,}%/g, '\\%');
   processedMath = processedMath.replace(/(?<!\\)%/g, '\\%');
 
@@ -824,14 +838,16 @@ export const cleanAndSanitizeMathText = (rawText) => {
                    .replace(/\\lt\b/gi, '<');
 
   cleaned = cleaned.replace(/&amp;lt;/g, '<')
-                   .replace(/&amp;gt;/g, '>')
-                   .replace(/&amp;quot;/g, '"')
-                   .replace(/&amp;apos;/g, "'")
-                   .replace(/&#x27;/g, "'")
-                   .replace(/&quot;/g, '"')
-                   .replace(/&lt;/g, '<')
-                   .replace(/&gt;/g, '>')
-                   .replace(/&amp;/g, '&');
+                    .replace(/&amp;gt;/g, '>')
+                    .replace(/&amp;quot;/g, '"')
+                    .replace(/&amp;apos;/g, "'")
+                    .replace(/&apos;/g, "'")
+                    .replace(/&#39;/g, "'")
+                    .replace(/&#x27;/g, "'")
+                    .replace(/&quot;/g, '"')
+                    .replace(/&lt;/g, '<')
+                    .replace(/&gt;/g, '>')
+                    .replace(/&amp;/g, '&');
    
   cleaned = cleaned.replace(/[–—−]/g, '-');
   
