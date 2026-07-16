@@ -307,11 +307,33 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
 
   finalSubjsShort = finalShorts4;
 
-  let finalSubjsTable = [...subjsTable].slice(0, 2);
-  if (finalSubjsTable.length < 2) {
-    const fallbackTables = fallbackQs.filter(q => (q.type === '주관식 (표채우기)' || q.subtype === '표채우기') && q !== qIntro && q !== qFormula);
-    finalSubjsTable = [...finalSubjsTable, ...fallbackTables].slice(0, 2);
+  let finalSubjsTable = [];
+  const flowcharts = subjsTable.filter(q => q && q.question && (
+    q.question.includes('┌') || q.question.includes('▼') || q.question.includes('흐름도') || q.question.includes('플로우차트')
+  ));
+  const compTables = subjsTable.filter(q => q && !flowcharts.includes(q));
+
+  if (flowcharts.length > 0) {
+    finalSubjsTable.push(flowcharts[0]);
+  } else {
+    const fallbackFlow = fallbackQs.find(q => q && q.question && (
+      q.question.includes('┌') || q.question.includes('▼') || q.question.includes('흐름도') || q.question.includes('플로우차트')
+    ));
+    if (fallbackFlow) {
+      finalSubjsTable.push(fallbackFlow);
+    }
   }
+
+  if (compTables.length > 0) {
+    finalSubjsTable.push(compTables[0]);
+  } else {
+    const fallbackComp = fallbackQs.find(q => q && (q.type === '주관식 (표채우기)' || q.subtype === '표채우기') && !flowcharts.includes(q));
+    if (fallbackComp) {
+      finalSubjsTable.push(fallbackComp);
+    }
+  }
+
+  // Fallback to static default comparison table if we still need more questions to make it 2
   while (finalSubjsTable.length < 2) {
     finalSubjsTable.push({
       type: "주관식 (표채우기)",
@@ -891,6 +913,11 @@ ${activeGenerationStandards}
 ${activeEngineeringStandards}
 `;
 
+    const hollowFirstBox = Math.random() < 0.5;
+    const flowchartSpecificInstruction = hollowFirstBox 
+      ? "이번 흐름도 문제 출제 시, [🚨 1번 상자 빈칸 의무화 지침]: 반드시 1번 상자를 빈칸 [ (A) ] 와 - (B) 로 비워 두고, 2번 상자부터는 완전한 설명과 텍스트로 가득 채워 노출하십시오. (예: [1, 3, 5]번 상자를 비움)" 
+      : "이번 흐름도 문제 출제 시, [🚨 1번 상자 채우기 및 2번 상자 빈칸 의무화 지침]: 반드시 1번 상자는 완전한 텍스트로 채워 힌트 역할을 하게 노출하고, 2번 상자부터 빈칸 [ (A) ] 와 - (B) 로 비워 두십시오. (예: [2, 4, 6]번 상자를 비움)";
+
     // Batch prompts for standard topics (non-calculation) to ensure high-quality technical questions
     const promptBatch1 = `
 [🚨 최우선 절대 준수 법규 (Constitutional Guidelines) - 작업을 시작하기 전에 가장 먼저 확인하고 100% 준수하십시오]:
@@ -907,13 +934,16 @@ ${activeEngineeringStandards}
 
 ${FLOWCHART_QUIZ_GENERATION_PROMPT}
 
+[🚨 이번 회차 흐름도 문제 빈칸 지정 명령 - 매우 중요]:
+${flowchartSpecificInstruction}
+
 ---------------------------------------------------------
 [문제 생성 태스크 시작]:
-위의 절대 지침과 기준 법규를 완전히 숙지한 상태에서, 아래 제공되는 [토픽 제목], [핵심 키워드], [첨부파일 본문 텍스트]를 심층 분석하여, 총 **정확히 6개**의 예상문제(주관식 개요 1개, 주관식 공식 1개, 주관식 단답형 4개)를 생성해 주십시오.
+위의 절대 지침과 기준 법규를 완전히 숙지한 상태에서, 아래 제공되는 [토픽 제목], [핵심 키워드], [첨부파일 본문 텍스트]를 심층 분석하여, 총 **정확히 6개**의 예상문제(주관식 개요 1개, 주관식 공식 1개, 주관식 표채우기(흐름도) 1개, 주관식 단답형 3개)를 생성해 주십시오.
 
 [토픽 제목]: ${topic.title}
 [핵심 키워드]: ${topic.keywords || '제공되지 않음'}
-[첨부파일 본문 텍스트]: ${fileText || '제공되지 않음'}
+[핵심 소스 텍스트]: ${fileText || '제공되지 않음'}
 
 [🚨 토픽 범위 엄격 제한 및 출제 범위 확충 — 최우선 준수사항]:
 - **맹목적으로 [첨부파일 본문 텍스트]의 지엽적인 자구에만 국한하여 문제를 출제하지 마십시오.** 
@@ -939,14 +969,22 @@ ${FLOWCHART_QUIZ_GENERATION_PROMPT}
 - "formula": 오직 대표 LaTeX 공식 1개만 순수하게 작성. 문자열이나 설명 기호는 절대 넣지 마십시오. (예: "$t = \\frac{P - 2C \\sin\\varphi}{\\gamma \\tan\\varphi + \\frac{2S}{D}}$")
 - "structure": 위 formula에서 사용된 각 기호의 정의를 장황하지 않게 줄바꿈(\n)으로 최소한의 명사형 위주로 간단히 작성. (예: "- $t$: 숏크리트 두께\n- $P$: 지반압")
 
-[주관식 (단답형) 문제들]:
-- 개수: 반드시 정확히 4문제를 출제하십시오.
+[3번 문제] 주관식 (표채우기) (아스키 흐름도):
+- 목적: 토픽의 시공/설계 절차, 시험 순서, 또는 단계별 거동 메커니즘을 도식화한 플로우차트 빈칸 채우기 질문.
+- "type" 값: 반드시 "주관식 (표채우기)"
+- 출제 원칙: 
+  * 모든 토픽에 대하여 반드시 아스키 플로우차트 다이어그램(백틱 \`\`\`으로 감싸여진 다이어그램)을 포함한 주관식 (표채우기) 문제로 100% 무조건 출제하십시오.
+  * tableData와 answers 객체 구조를 100% 갖춘 형태로 작성하십시오.
+  * [🚨 이번 회차 흐름도 문제 빈칸 지정 명령 - 매우 중요]: ${flowchartSpecificInstruction}
+  * answers 객체의 각 INPUT 키("INPUT_1"부터 "INPUT_2*M"까지)에 들어갈 정답은 명사형 종결어미로 간결하게 작성하여 수험생이 명료하게 채점받을 수 있게 설계하십시오.
+
+[주관식 (단답형) 문제들 (4, 5, 6번 문제)]:
+- 개수: 반드시 정확히 3문제를 출제하십시오.
 - "type" 값: 기본적으로 "주관식 (단답형)"
 - 🚨 [객관식/선택형 옵션(보기) 제공 절대 금지 규칙 - 극도로 중요!]: 주관식(개요, 공식, 단답형, 표채우기)의 그 어떤 문항에서도 객관식용 보기(options, 예: ①, ②, ③, ④ 등 또는 "options" 필드)를 절대로 설계하거나 기입하여 제공하지 마십시오. 모든 주관식 문항은 오직 서술형 정답만을 요구해야 합니다.
 - 출제 원칙:
-  * **[🚨 플로우차트 문제 무조건 출제 철칙]**: 모든 토픽에 대하여 해당 토픽이 다루는 설계/시공 절차, 시험 순서, 단계별 거동 메커니즘(변형/파괴 전개 과정), 또는 공학적 조치 단계 등의 프로세스 흐름을 어떻게든 도출하여, **단답형 4문제 중 최소 1문항은 반드시 해당 지침에 따른 아스키 플로우차트 주관식 (표채우기) 문제(질문 안에 백틱으로 묶은 플로우차트가 있고, tableData와 answers 객체 구조를 100% 갖춘 형태)로 100% 무조건 출제하십시오. 예외는 존재할 수 없습니다.**
-  * 1~3번째 단답형 문제 (또는 플로우차트 미적용 문항): 단순한 키워드나 용어 명칭만을 단답으로 묻는 문제를 **절대로 출제하지 마십시오.** 1번 문제(주관식 개요) 내용과 일부 중복되거나 유사하더라도 무방하므로, **해당 토픽의 가장 중요하고 핵심적인 공학적 개념(정의, 기본 가정, 또는 주요 공학적 의미/메커니즘 등)**을 깊이 있게 묻는 주관식 서술형 질문으로 출제하십시오.
-  * 4번째 단답형 문제: 해당 토픽과 밀접하게 관계가 있는 **구체적인 공학적 문제 상황이나 시나리오(Engineering Problem/Scenario, 예: 주변 지반 침하, 급격한 변위 발달, 강도 저하, 붕괴 위험 등)**를 지문으로 제시하고, 기술사 관점에서의 **구체적이고 실무적인 공학적 해결책, 공학적 대책 또는 대처 방안(Engineering Solution/Countermeasure)**을 묻는 질문으로 출제하십시오.
+  * 1~2번째 단답형 문제: 단순한 키워드나 용어 명칭만을 단답으로 묻는 문제를 **절대로 출제하지 마십시오.** 1번 문제(주관식 개요) 내용과 일부 중복되거나 유사하더라도 무방하므로, **해당 토픽의 가장 중요하고 핵심적인 공학적 개념(정의, 기본 가정, 또는 주요 공학적 의미/메커니즘 등)**을 깊이 있게 묻는 주관식 서술형 질문으로 출제하십시오.
+  * 3번째 단답형 문제: 해당 토픽과 밀접하게 관계가 있는 **구체적인 공학적 문제 상황이나 시나리오(Engineering Problem/Scenario, 예: 주변 지반 침하, 급격한 변위 발달, 강도 저하, 붕괴 위험 등)**를 지문으로 제시하고, 기술사 관점에서의 **구체적이고 실무적인 공학적 해결책, 공학적 대책 또는 대처 방안(Engineering Solution/Countermeasure)**을 묻는 질문으로 출제하십시오.
   * 정답("answer"): 모범 답안은 단순히 한 단어 키워드가 아니라, 구체적인 공학적 거동 메커니즘과 설계/시공 시 인과관계 대책이 논리적으로 상세히 포함된 서술형(최소 50자에서 최대 120자 내외)으로 명료하게 작성하십시오. 모든 정답의 어미는 반드시 "~다", "~입니다" 등의 평서문을 배제하고, 기술사 시험 답안지 형식인 명사형 종결어미(예: ~함, ~감소, ~방지, ~유도, ~소산, ~확보 등)로 끝나야 합니다. 또한, 이 정답 문장 내에서 채점에 중요도가 가장 높은 필수 공학 키워드들은 반드시 역슬래시 없이 일반 마크다운 강조 기호인 **키워드** 형태로 감싸서 작성해 주십시오. (예: **이중층 두께**, **전단강도 저하** 등)
   * "explanation": 왜 이 답안이 올바른 공학적 대책/이론인지 상세히 설명하십시오.
 
