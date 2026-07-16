@@ -1241,9 +1241,13 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
       const titleText = title.toLowerCase();
       if (titleText.includes('조사') || titleText.includes('측정') || titleText.includes('산정') || titleText.includes('시험') || titleText.includes('획득')) {
         intuitiveText = '기반 자료 조사 및 물리적 상수 획득';
+      } else if (titleText.includes('종료') || titleText.includes('완성') || titleText.includes('완료') || titleText.includes('진입') || titleText.includes('해석 종료')) {
+        intuitiveText = '안정성 최종 확인 및 시공 단계 진입';
       } else if (titleText.includes('선정') || titleText.includes('결정') || titleText.includes('공법') || titleText.includes('형식')) {
         intuitiveText = '적합한 설계 형식 및 최적 공법 선정';
-      } else if (titleText.includes('시뮬레이션') || titleText.includes('해석') || titleText.includes('검토') || titleText.includes('평가') || titleText.includes('계산')) {
+      } else if (titleText.includes('시뮬레이션') || titleText.includes('해석') || titleText.includes('분석') || titleText.includes('거동') || titleText.includes('응력')) {
+        intuitiveText = '지반 구조 해석 및 변위/응력 분석';
+      } else if (titleText.includes('검토') || titleText.includes('평가') || titleText.includes('계산')) {
         intuitiveText = '구조 안정성 검토 및 안전율 평가';
       } else if (titleText.includes('대책') || titleText.includes('하중') || titleText.includes('설치') || titleText.includes('보강')) {
         intuitiveText = '하중 조건 평가 및 보강 대책 수립';
@@ -1268,15 +1272,10 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
               ))}
             </div>
             {/* 오른쪽: 아주 쉬운 직관적 의미 영역 */}
-            <div className="flex-1 flex items-center justify-start text-[13px] sm:text-[14px] text-amber-300/90 font-medium bg-amber-500/5 rounded-lg p-2.5 border border-amber-500/10 min-w-0">
-              <div className="flex flex-col gap-1 w-full">
-                <span className="text-[11px] text-slate-400 font-extrabold uppercase tracking-wider flex items-center gap-1 select-none">
-                  💡 직관적 의미
-                </span>
-                <span className="leading-relaxed select-text font-semibold break-words">
-                  {intuitiveText}
-                </span>
-              </div>
+            <div className="flex-1 flex items-center justify-start bg-amber-500/5 rounded-lg p-2.5 border border-amber-500/10 min-w-0">
+              <span className="leading-relaxed select-text font-semibold break-words text-[13px] sm:text-[15px] text-amber-300/90">
+                {intuitiveText}
+              </span>
             </div>
           </div>
         </div>
