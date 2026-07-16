@@ -1632,47 +1632,38 @@ export function ScientificCalculator() {
       let preProcessed = resolveFractions(processedExpr);
       if (preProcessed.includes('Error')) return 'Error';
       
-      preProcessed = preProcessed.replace(/\^\(\s*\)/g, '^(1)');
+      // Replace built-in words with tokens to prevent them from being split by implicit multiplication or variable substitution
+      const builtInWords = [
+        'sin⁻¹', 'cos⁻¹', 'tan⁻¹',
+        'asinh', 'acosh', 'atanh',
+        'sinh', 'cosh', 'tanh',
+        'asin', 'acos', 'atan',
+        'sin', 'cos', 'tan',
+        'cbrt', 'sqrt', 'log', 'ln', 'exp',
+        'Abs', 'Ans', 'Math', 'pi', 'dx'
+      ];
 
-      preProcessed = preProcessed.replace(/(\d+(\.\d+)?)\s*([a-zA-Z가-힣\u0370-\u03ff_∛\(]|sin⁻¹|cos⁻¹|tan⁻¹)/g, '$1*$3');
-      preProcessed = preProcessed.replace(/([a-zA-Z\u0370-\u03ff])\s*(\d+(\.\d+)?)/g, '$1*$2');
-      preProcessed = preProcessed.replace(/([a-zA-Z\u0370-\u03ff])\s*([a-zA-Z\u0370-\u03ff\(])/g, '$1*$2');
-      preProcessed = preProcessed.replace(/\)\s*([\da-zA-Z가-힣\u0370-\u03ff_∛\(]|sin⁻¹|cos⁻¹|tan⁻¹)/g, ')*$1');
+      let tokenExpr = preProcessed;
+      const tokens = {};
+      builtInWords.forEach((word, index) => {
+        const token = `#${index}#`;
+        tokens[token] = word;
+        tokenExpr = tokenExpr.replaceAll(word, token);
+      });
       
-      preProcessed = preProcessed.replace(/([a-zA-Z\u0370-\u03ff\d\.\)]+)%/g, '($1*0.01)');
+      tokenExpr = tokenExpr.replace(/\^\(\s*\)/g, '^(1)');
+
+      tokenExpr = tokenExpr.replace(/(\d+(\.\d+)?)\s*([a-zA-Z가-힣\u0370-\u03ff_∛\(]|sin⁻¹|cos⁻¹|tan⁻¹)/g, '$1*$3');
+      tokenExpr = tokenExpr.replace(/([a-zA-Z\u0370-\u03ff])\s*(\d+(\.\d+)?)/g, '$1*$2');
+      tokenExpr = tokenExpr.replace(/([a-zA-Z\u0370-\u03ff])\s*([a-zA-Z\u0370-\u03ff\(])/g, '$1*$2');
+      tokenExpr = tokenExpr.replace(/\)\s*([\da-zA-Z가-힣\u0370-\u03ff_∛\(]|sin⁻¹|cos⁻¹|tan⁻¹)/g, ')*$1');
+      
+      tokenExpr = tokenExpr.replace(/([a-zA-Z\u0370-\u03ff\d\.\)]+)%/g, '($1*0.01)');
       
       if (!isInternal) {
-        preProcessed = parseIntegrationAndDerivatives(preProcessed);
-        if (preProcessed === 'Error') return 'Error';
+        tokenExpr = parseIntegrationAndDerivatives(tokenExpr);
+        if (tokenExpr === 'Error') return 'Error';
       }
-      
-      const placeholders = {
-        'sin⁻¹': '__ASIN__',
-        'cos⁻¹': '__ACOS__',
-        'tan⁻¹': '__ATAN__',
-        'sin': '__SIN__',
-        'cos': '__COS__',
-        'tan': '__TAN__',
-        'asin': '__ASIN__',
-        'acos': '__ACOS__',
-        'atan': '__ATAN__',
-        'sinh': '__SINH__',
-        'cosh': '__COSH__',
-        'tanh': '__TANH__',
-        'asinh': '__ASINH__',
-        'acosh': '__ACOSH__',
-        'atanh': '__ATANH__',
-        'ln': '__LN__',
-        'exp': '__EXP__',
-        'sqrt': '__SQRT__',
-        'cbrt': '__CBRT__',
-        'Abs': '__ABS__'
-      };
-
-      let tempExpr = preProcessed;
-      Object.keys(placeholders).forEach(key => {
-        tempExpr = tempExpr.replaceAll(key, placeholders[key]);
-      });
 
       // 1. Build a map of all variables to substitute (existing state variables + any newly detected ones in expression)
       const activeVars = { ...variables };
@@ -1683,7 +1674,7 @@ export function ScientificCalculator() {
       ]);
       
       let match;
-      while ((match = varRegex.exec(tempExpr)) !== null) {
+      while ((match = varRegex.exec(tokenExpr)) !== null) {
         const name = match[0];
         if (!excludedNames.has(name) && isNaN(name) && activeVars[name] === undefined) {
           activeVars[name] = 0;
@@ -1698,14 +1689,16 @@ export function ScientificCalculator() {
         const escapedVar = v.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
         // Word boundary that works safely for English, Greek, numbers, and underscores
         const pattern = `(?<![a-zA-Z\\u0370-\\u03ff0-9_])${escapedVar}(?![a-zA-Z\\u0370-\\u03ff0-9_])`;
-        tempExpr = tempExpr.replace(new RegExp(pattern, 'g'), `(${val})`);
+        tokenExpr = tokenExpr.replace(new RegExp(pattern, 'g'), `(${val})`);
       });
 
-      Object.keys(placeholders).forEach(key => {
-        tempExpr = tempExpr.replaceAll(placeholders[key], key);
+      // Restore tokens back
+      let restoredExpr = tokenExpr;
+      Object.keys(tokens).forEach(token => {
+        restoredExpr = restoredExpr.replaceAll(token, tokens[token]);
       });
       
-      preProcessed = tempExpr;
+      preProcessed = restoredExpr;
       
       preProcessed = preProcessed
         .replace(/×/g, '*')
