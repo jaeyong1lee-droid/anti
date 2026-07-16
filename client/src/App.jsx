@@ -3631,7 +3631,7 @@ export default function App() {
             colHeader,
             explanation: q.explanation || q.answer || '',
             category: showExam ? examTopic?.category : selectedTopic?.category,
-            temperature: isReevaluation ? 0.95 : 0.85,
+            temperature: isReevaluation ? 0.85 : 0.7,
             progressId
           })
         });
@@ -3838,7 +3838,7 @@ export default function App() {
           colHeader,
           explanation: q.explanation || q.answer || '',
           category: showExam ? examTopic?.category : selectedTopic?.category,
-          temperature: isReevaluation ? 0.95 : 0.85,
+          temperature: isReevaluation ? 0.85 : 0.7,
           progressId
         })
       });
@@ -4064,7 +4064,7 @@ export default function App() {
           userAnswer,
           explanation: q.explanation || '',
           category: showExam ? examTopic?.category : selectedTopic?.category,
-          temperature: isReevaluation ? 0.95 : 0.85,
+          temperature: isReevaluation ? 0.85 : 0.7,
           progressId
         })
       });
