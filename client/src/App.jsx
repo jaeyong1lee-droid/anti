@@ -1246,12 +1246,16 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
     if (!intuitiveText) {
       // Fallback heuristics based on title keywords
       const titleText = title.toLowerCase();
-      if (titleText.includes('종료') || titleText.includes('완성') || titleText.includes('완료') || titleText.includes('진입') || titleText.includes('해석 종료')) {
-        intuitiveText = '지반의 구조적 안전성을 최종적으로 판정하고 다음 실무 단계나 시공 단계로 넘어가는 과정입니다. 모든 해석과 검토가 안전 기준을 충족하는지 종합적으로 확인하고 최종적인 설계를 완성하는 단계입니다.';
+      if (titleText.includes('종료') || titleText.includes('완성') || titleText.includes('완료') || titleText.includes('진입') || titleText.includes('해석 종료') || titleText.includes('최종') || titleText.includes('판정') || titleText.includes('반영')) {
+        intuitiveText = '모든 실험과 해석 결과를 바탕으로 지반이 최종적으로 안정한지 판정하고, 이를 실제 구조물 설계 도면과 시공 계획에 최종 반영하여 마무리하는 단계입니다.';
+      } else if (titleText.includes('모델링') || titleText.includes('설정') || titleText.includes('가정') || titleText.includes('경계')) {
+        intuitiveText = '설계할 지반과 기초 구조물의 형태를 컴퓨터나 수식으로 모델링하고, 힘을 받았을 때 지반이 어떻게 파괴될지 예상 영역과 경계를 설정하여 분석을 준비하는 기초 단계입니다.';
       } else if (titleText.includes('대책') || titleText.includes('하중') || titleText.includes('설치') || titleText.includes('보강')) {
         intuitiveText = '지반이나 옹벽에 가해지는 하중(무게나 수압 등)을 계산하고, 지반이 약할 경우 이를 튼튼하게 보강하기 위해 네일, 앵커, 옹벽 설치 등 적절한 대책을 세우는 단계입니다.';
       } else if (titleText.includes('선정') || titleText.includes('결정') || titleText.includes('공법') || titleText.includes('형식')) {
         intuitiveText = '현장 조건과 지반 특성에 가장 잘 맞는 최적의 공법이나 구조물 형식을 최종 결정하는 단계입니다. 안전성과 경제성을 함께 고려하여 지반 개량이나 옹벽, 기초 등의 구체적인 종류를 선택합니다.';
+      } else if (titleText.includes('지지력') || titleText.includes('용량') || titleText.includes('계수') || titleText.includes('극한')) {
+        intuitiveText = '지반이 파괴되기 직전까지 버틸 수 있는 최대 하중인 극한 지지력을 도출하는 단계입니다. 공식에 사용되는 여러 지반 계수들을 계산하여 지반이 하중을 얼마나 견딜 수 있는지 용량을 평가합니다.';
       } else if (titleText.includes('시험') || titleText.includes('실험') || titleText.includes('압밀') || titleText.includes('일축') || titleText.includes('삼축')) {
         intuitiveText = '채취한 흙이나 암석 시료에 압력을 가해 부서지거나 미끄러지는 시점의 전단 강도를 직접 측정하는 단계입니다. 실제 지중에서 발생하는 압력 상태를 모사하여 흙이 견딜 수 있는 힘의 한계를 실험실에서 정밀하게 확인합니다.';
       } else if (titleText.includes('조사') || titleText.includes('측정') || titleText.includes('상수') || titleText.includes('획득')) {
