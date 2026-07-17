@@ -1239,20 +1239,22 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
     if (!intuitiveText) {
       // Fallback heuristics based on title keywords
       const titleText = title.toLowerCase();
-      if (titleText.includes('조사') || titleText.includes('측정') || titleText.includes('산정') || titleText.includes('시험') || titleText.includes('획득')) {
-        intuitiveText = '기반 자료 조사 및 물리적 상수 획득';
-      } else if (titleText.includes('종료') || titleText.includes('완성') || titleText.includes('완료') || titleText.includes('진입') || titleText.includes('해석 종료')) {
-        intuitiveText = '안정성 최종 확인 및 시공 단계 진입';
-      } else if (titleText.includes('선정') || titleText.includes('결정') || titleText.includes('공법') || titleText.includes('형식')) {
-        intuitiveText = '적합한 설계 형식 및 최적 공법 선정';
-      } else if (titleText.includes('시뮬레이션') || titleText.includes('해석') || titleText.includes('분석') || titleText.includes('거동') || titleText.includes('응력')) {
-        intuitiveText = '지반 구조 해석 및 변위/응력 분석';
-      } else if (titleText.includes('검토') || titleText.includes('평가') || titleText.includes('계산')) {
-        intuitiveText = '구조 안정성 검토 및 안전율 평가';
+      if (titleText.includes('종료') || titleText.includes('완성') || titleText.includes('완료') || titleText.includes('진입') || titleText.includes('해석 종료')) {
+        intuitiveText = '지반의 구조적 안전성을 최종적으로 판정하고 다음 실무 단계나 시공 단계로 넘어가는 과정입니다. 모든 해석과 검토가 안전 기준을 충족하는지 종합적으로 확인하고 최종적인 설계를 완성하는 단계입니다.';
       } else if (titleText.includes('대책') || titleText.includes('하중') || titleText.includes('설치') || titleText.includes('보강')) {
-        intuitiveText = '하중 조건 평가 및 보강 대책 수립';
+        intuitiveText = '지반이나 옹벽에 가해지는 하중(무게나 수압 등)을 계산하고, 지반이 약할 경우 이를 튼튼하게 보강하기 위해 네일, 앵커, 옹벽 설치 등 적절한 대책을 세우는 단계입니다.';
+      } else if (titleText.includes('선정') || titleText.includes('결정') || titleText.includes('공법') || titleText.includes('형식')) {
+        intuitiveText = '현장 조건과 지반 특성에 가장 잘 맞는 최적의 공법이나 구조물 형식을 최종 결정하는 단계입니다. 안전성과 경제성을 함께 고려하여 지반 개량이나 옹벽, 기초 등의 구체적인 종류를 선택합니다.';
+      } else if (titleText.includes('시험') || titleText.includes('실험') || titleText.includes('압밀') || titleText.includes('일축') || titleText.includes('삼축')) {
+        intuitiveText = '채취한 흙이나 암석 시료에 압력을 가해 부서지거나 미끄러지는 시점의 전단 강도를 직접 측정하는 단계입니다. 실제 지중에서 발생하는 압력 상태를 모사하여 흙이 견딜 수 있는 힘의 한계를 실험실에서 정밀하게 확인합니다.';
+      } else if (titleText.includes('조사') || titleText.includes('측정') || titleText.includes('상수') || titleText.includes('획득')) {
+        intuitiveText = '지반 조사를 통해 현장의 흙을 직접 채취하거나 시험을 준비하는 단계입니다. 흙의 종류와 상태(예: 모래인지 점토인지, 단단한지 느슨한지)를 파악하고 설계에 필요한 가장 기본적인 물리적 수치들을 확인하는 과정입니다.';
+      } else if (titleText.includes('시뮬레이션') || titleText.includes('해석') || titleText.includes('분석') || titleText.includes('거동') || titleText.includes('응력') || titleText.includes('경로')) {
+        intuitiveText = '컴퓨터 프로그램이나 응력 경로 그래프를 활용해 하중이 가해질 때 지반 내부의 힘(응력)이 어떻게 변하고 움직이는지 모사하는 단계입니다. 힘의 흐름을 분석하여 흙이 어느 경로를 따라 변형되는지 추적합니다.';
+      } else if (titleText.includes('검토') || titleText.includes('평가') || titleText.includes('계산') || titleText.includes('산정')) {
+        intuitiveText = '구조물의 붕괴나 지반 미끄러짐을 막기 위해 안전을 위협하는 힘에 대비하여 지반이 버텨낼 수 있는 저항력의 비율(안전율)을 계산하는 단계입니다. 설계 기준 규격을 만족하여 안심하고 시공할 수 있는지 평가합니다.';
       } else {
-        intuitiveText = '지반공학 표준 프로세스 설계 검토';
+        intuitiveText = '지반공학적 표준 절차에 따라 안전성과 경제성을 충족하는지 순서대로 설계 프로세스를 점검하는 단계입니다.';
       }
     }
 
