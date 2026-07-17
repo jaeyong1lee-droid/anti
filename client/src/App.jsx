@@ -2813,7 +2813,10 @@ export default function App() {
         solved = isExam ? (examAnswers[idx] !== undefined) : (selectedAnswers[idx] !== undefined);
       } else if (q.tableData || q.comparisonTableData) {
         const inputIds = Object.keys(q.answers || {});
-        solved = inputIds.some(inputId => tableAnswers[`${idx}_${inputId}`]);
+        solved = inputIds.some(inputId => {
+          const normalizedId = /^[A-F]$/i.test(inputId) ? `INPUT_${inputId.toUpperCase().charCodeAt(0) - 65 + 1}` : inputId;
+          return tableAnswers[`${idx}_${normalizedId}`];
+        });
       } else {
         solved = !!tableAnswers[`${idx}_INPUT`];
       }
@@ -7528,9 +7531,10 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
           const inputIds = Object.keys(q.answers || {});
           let needsGrading = false;
           inputIds.forEach(inputId => {
-            const val = tableAnswers[`${idx}_${inputId}`];
+            const normalizedId = /^[A-F]$/i.test(inputId) ? `INPUT_${inputId.toUpperCase().charCodeAt(0) - 65 + 1}` : inputId;
+            const val = tableAnswers[`${idx}_${normalizedId}`];
             const hasVal = val !== undefined && val !== null && String(val).trim() !== '';
-            const hasGraded = tableGradingResults[`${idx}_${inputId}`] !== undefined;
+            const hasGraded = tableGradingResults[`${idx}_${normalizedId}`] !== undefined;
             if (hasVal && !hasGraded) {
               needsGrading = true;
             }
@@ -7553,9 +7557,14 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
         setLoadingAI(false);
       }
 
-      let unsolvedCount = 0;
+      const unsolvedNums = [];
       aiQuestions.forEach((q, idx) => {
-        if (q.type === '주관식 (앞글자)') {
+        const isMC = q.options && q.options.length > 0;
+        if (isMC) {
+          if (selectedAnswers[idx] === undefined || selectedAnswers[idx] === '') {
+            unsolvedNums.push(idx + 1);
+          }
+        } else if (q.type === '주관식 (앞글자)') {
           const rowCount = q.tableData?.rows?.length || 0;
           const val = Array.from({ length: rowCount })
             .map((_, rIdx) => (tableAnswers[`${idx}_ROW_${rIdx}_ACRONYM`] || '').trim())
@@ -7570,7 +7579,7 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
             }
           }
           if (!hasAcronym || hasEmptyRow) {
-            unsolvedCount++;
+            unsolvedNums.push(idx + 1);
           }
         } else if (q.tableData || q.comparisonTableData || (q.answers && Object.keys(q.answers).some(k => k.startsWith('INPUT_'))) || (q.question && /\(([A-F])\)/.test(q.question))) {
           let inputIds = Object.keys(q.answers || {});
@@ -7586,19 +7595,33 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
           }
           let hasEmpty = false;
           inputIds.forEach(inputId => {
-            const val = tableAnswers[`${idx}_${inputId}`];
+            const normalizedId = /^[A-F]$/i.test(inputId) ? `INPUT_${inputId.toUpperCase().charCodeAt(0) - 65 + 1}` : inputId;
+            const val = tableAnswers[`${idx}_${normalizedId}`];
             if (val === undefined || val === null || String(val).trim() === '') {
               hasEmpty = true;
             }
           });
           if (hasEmpty) {
-            unsolvedCount++;
+            unsolvedNums.push(idx + 1);
+          }
+        } else {
+          const isEssay = q.type === '주관식 (서술)' || q.subtype === '서술';
+          if (isEssay) {
+            if (!revealedQuestions[idx]) {
+              unsolvedNums.push(idx + 1);
+            }
+          } else {
+            // Regular subjective
+            const val = tableAnswers[`${idx}_INPUT`];
+            if (val === undefined || val === null || String(val).trim() === '') {
+              unsolvedNums.push(idx + 1);
+            }
           }
         }
       });
 
-      if (unsolvedCount > 0) {
-        const confirmComplete = window.confirm("풀지 않은 문제가 있습니다. 완료할까요?");
+      if (unsolvedNums.length > 0) {
+        const confirmComplete = window.confirm(`풀지 않은 문제가 있습니다 (${unsolvedNums.join(', ')}번 문제). 완료할까요?`);
         if (!confirmComplete) return;
       }
 
@@ -7737,9 +7760,10 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
         const inputIds = Object.keys(q.answers || {});
         let needsGrading = false;
         inputIds.forEach(inputId => {
-          const val = tableAnswers[`${idx}_${inputId}`];
+          const normalizedId = /^[A-F]$/i.test(inputId) ? `INPUT_${inputId.toUpperCase().charCodeAt(0) - 65 + 1}` : inputId;
+          const val = tableAnswers[`${idx}_${normalizedId}`];
           const hasVal = val !== undefined && val !== null && String(val).trim() !== '';
-          const hasGraded = tableGradingResults[`${idx}_${inputId}`] !== undefined;
+          const hasGraded = tableGradingResults[`${idx}_${normalizedId}`] !== undefined;
           if (hasVal && !hasGraded) {
             needsGrading = true;
           }
@@ -7770,12 +7794,12 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
     }
 
     // Check for unsolved questions
-    let unsolvedCount = 0;
+    const unsolvedNums = [];
     aiQuestions.forEach((q, idx) => {
       const isMC = q.options && q.options.length > 0;
       if (isMC) {
         if (selectedAnswers[idx] === undefined || selectedAnswers[idx] === '') {
-          unsolvedCount++;
+          unsolvedNums.push(idx + 1);
         }
       } else if (q.type === '주관식 (앞글자)') {
         const rowCount = q.tableData?.rows?.length || 0;
@@ -7792,7 +7816,7 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
           }
         }
         if (!hasAcronym || hasEmptyRow) {
-          unsolvedCount++;
+          unsolvedNums.push(idx + 1);
         }
       } else if (q.tableData || q.comparisonTableData || (q.answers && Object.keys(q.answers).some(k => k.startsWith('INPUT_'))) || (q.question && /\(([A-F])\)/.test(q.question))) {
         let inputIds = Object.keys(q.answers || {});
@@ -7808,32 +7832,33 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
         }
         let hasEmpty = false;
         inputIds.forEach(inputId => {
-          const val = tableAnswers[`${idx}_${inputId}`];
+          const normalizedId = /^[A-F]$/i.test(inputId) ? `INPUT_${inputId.toUpperCase().charCodeAt(0) - 65 + 1}` : inputId;
+          const val = tableAnswers[`${idx}_${normalizedId}`];
           if (val === undefined || val === null || String(val).trim() === '') {
             hasEmpty = true;
           }
         });
         if (hasEmpty) {
-          unsolvedCount++;
+          unsolvedNums.push(idx + 1);
         }
       } else {
         const isEssay = q.type === '주관식 (서술)' || q.subtype === '서술';
         if (isEssay) {
           if (!revealedQuestions[idx]) {
-            unsolvedCount++;
+            unsolvedNums.push(idx + 1);
           }
         } else {
           // Regular subjective
           const val = tableAnswers[`${idx}_INPUT`];
           if (val === undefined || val === null || String(val).trim() === '') {
-            unsolvedCount++;
+            unsolvedNums.push(idx + 1);
           }
         }
       }
     });
 
-    if (unsolvedCount > 0) {
-      const confirmComplete = window.confirm("풀지 않은 문제가 있습니다. 완료할까요?");
+    if (unsolvedNums.length > 0) {
+      const confirmComplete = window.confirm(`풀지 않은 문제가 있습니다 (${unsolvedNums.join(', ')}번 문제). 완료할까요?`);
       if (!confirmComplete) {
         return;
       }
@@ -10757,10 +10782,11 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
         if (inputIds.length > 0) {
           userAttemptInfo += `■ 사용자가 표에 입력한 답안 및 채점 결과:\n`;
           inputIds.forEach(inputId => {
-            const userVal = tableAnswers[`${idx}_${inputId}`] || '(미입력)';
+            const normalizedId = /^[A-F]$/i.test(inputId) ? `INPUT_${inputId.toUpperCase().charCodeAt(0) - 65 + 1}` : inputId;
+            const userVal = tableAnswers[`${idx}_${normalizedId}`] || '(미입력)';
             const correctVal = q.answers[inputId] || '';
-            const grading = tableGradingResults[`${idx}_${inputId}`];
-            const inputNum = inputId.match(/\d+/) ? parseInt(inputId.match(/\d+/)[0], 10) : 1;
+            const grading = tableGradingResults[`${idx}_${normalizedId}`];
+            const inputNum = normalizedId.match(/\d+/) ? parseInt(normalizedId.match(/\d+/)[0], 10) : 1;
             const inputLetter = String.fromCharCode(64 + inputNum);
             
             userAttemptInfo += `- [빈칸 ${inputLetter}] 사용자 입력: "${userVal}" (모범 답안: "${correctVal}")`;
