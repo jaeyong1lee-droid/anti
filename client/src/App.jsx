@@ -7567,6 +7567,7 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
 
       const unsolvedNums = [];
       aiQuestions.forEach((q, idx) => {
+        if (revealedQuestions[idx]) return;
         const isMC = q.options && q.options.length > 0;
         if (isMC) {
           if (selectedAnswers[idx] === undefined || selectedAnswers[idx] === '') {
@@ -7804,6 +7805,7 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
     // Check for unsolved questions
     const unsolvedNums = [];
     aiQuestions.forEach((q, idx) => {
+      if (revealedQuestions[idx]) return;
       const isMC = q.options && q.options.length > 0;
       if (isMC) {
         if (selectedAnswers[idx] === undefined || selectedAnswers[idx] === '') {
