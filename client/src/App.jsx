@@ -965,8 +965,14 @@ const isNATMFlowchart = (idx, q, isExam = false) => {
   } else {
     if ((idx === 6 || idx === 7) && (text.includes('┌──') || text.includes('▼') || text.includes('흐름도') || text.includes('플로우차트'))) return true;
   }
-  return false;
 };
+
+const isFlowchartQuestion = (idx, q, isExam = false) => {
+  if (isNATMFlowchart(idx, q, isExam)) return true;
+  const qText = q?.question || q?.question_text || '';
+  const hasFlowchartSymbols = qText.includes('┌') || qText.includes('▼') || qText.includes('─') || qText.includes('│') || qText.includes('┃') || qText.includes('흐름도') || qText.includes('플로우차트');
+  const hasLetters = /\(([A-F])\)/.test(qText);
+  return hasFlowchartSymbols && hasLetters;
 
 
 const cleanFlowchartCorrectAnswer = (correctAnswer, letter) => {
@@ -7583,7 +7589,7 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
           if (!hasAcronym || hasEmptyRow) {
             unsolvedNums.push(idx + 1);
           }
-        } else if (q.tableData || q.comparisonTableData || (q.answers && Object.keys(q.answers).some(k => k.startsWith('INPUT_'))) || (q.question && /\(([A-F])\)/.test(q.question))) {
+        } else if (q.tableData || q.comparisonTableData || (q.answers && Object.keys(q.answers).some(k => k.startsWith('INPUT_'))) || isFlowchartQuestion(idx, q, false)) {
           let inputIds = Object.keys(q.answers || {});
           if (inputIds.length === 0 && q.question) {
             const matches = q.question.match(/\(([A-F])\)/g);
@@ -7820,7 +7826,7 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
         if (!hasAcronym || hasEmptyRow) {
           unsolvedNums.push(idx + 1);
         }
-      } else if (q.tableData || q.comparisonTableData || (q.answers && Object.keys(q.answers).some(k => k.startsWith('INPUT_'))) || (q.question && /\(([A-F])\)/.test(q.question))) {
+      } else if (q.tableData || q.comparisonTableData || (q.answers && Object.keys(q.answers).some(k => k.startsWith('INPUT_'))) || isFlowchartQuestion(idx, q, false)) {
         let inputIds = Object.keys(q.answers || {});
         if (inputIds.length === 0 && q.question) {
           const matches = q.question.match(/\(([A-F])\)/g);
