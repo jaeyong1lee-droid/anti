@@ -482,7 +482,14 @@ router.get('/topics/:id/html-raw', async (req, res) => {
     let pdfData = topic.pdf_data;
     if (topic.pdf_url && (!pdfData || pdfData.length === 0)) {
       try {
-        const response = await fetch(topic.pdf_url);
+        const headers = {};
+        if (process.env.BLOB_READ_WRITE_TOKEN) {
+          headers['Authorization'] = `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}`;
+        }
+        const response = await fetch(topic.pdf_url, { headers });
+        if (!response.ok) {
+          throw new Error(`Blob fetch failed with status: ${response.status}`);
+        }
         pdfData = Buffer.from(await response.arrayBuffer());
       } catch (fetchErr) {
         console.error(`Failed to lazy load html-raw from URL: ${topic.pdf_url}`, fetchErr);
@@ -557,8 +564,12 @@ router.get('/topics/:id/pdf', async (req, res) => {
     let pdfData = topic.pdf_data;
     if (topic.pdf_url && (!pdfData || pdfData.length === 0)) {
       try {
-        const response = await fetch(topic.pdf_url);
-        if (!response.ok) throw new Error('Blob fetch failed');
+        const headers = {};
+        if (process.env.BLOB_READ_WRITE_TOKEN) {
+          headers['Authorization'] = `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}`;
+        }
+        const response = await fetch(topic.pdf_url, { headers });
+        if (!response.ok) throw new Error(`Blob fetch failed with status: ${response.status}`);
         pdfData = Buffer.from(await response.arrayBuffer());
       } catch (fetchErr) {
         console.error(`Failed to lazy load topic buffer: ${topic.pdf_url}`, fetchErr);

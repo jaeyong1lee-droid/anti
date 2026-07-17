@@ -497,7 +497,12 @@ export async function getTopicText(topic, fileUtils, ocrPlugin, pdfParse) {
         rawPdfName = dbRow.pdf_name;
         if (dbRow.pdf_url && (!pdfData || pdfData.length === 0)) {
           console.log(`Lazy loading PDF/HTML buffer from Vercel Blob URL: ${dbRow.pdf_url}`);
-          const response = await fetch(dbRow.pdf_url);
+          const headers = {};
+          if (process.env.BLOB_READ_WRITE_TOKEN) {
+            headers['Authorization'] = `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}`;
+          }
+          const response = await fetch(dbRow.pdf_url, { headers });
+          if (!response.ok) throw new Error(`Blob fetch failed with status: ${response.status}`);
           pdfData = Buffer.from(await response.arrayBuffer());
         }
         if (topic) {

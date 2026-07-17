@@ -1928,7 +1928,14 @@ router.get('/session/answersheet/report/:id', async (req, res) => {
     let pdfData = report.pdf_data;
     if (report.pdf_url && (!pdfData || pdfData.length === 0)) {
       try {
-        const response = await fetch(report.pdf_url);
+        const headers = {};
+        if (process.env.BLOB_READ_WRITE_TOKEN) {
+          headers['Authorization'] = `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}`;
+        }
+        const response = await fetch(report.pdf_url, { headers });
+        if (!response.ok) {
+          throw new Error(`Blob fetch failed with status: ${response.status}`);
+        }
         pdfData = Buffer.from(await response.arrayBuffer());
       } catch (fetchErr) {
         console.error(`Failed to lazy load answersheet buffer: ${report.pdf_url}`, fetchErr);
