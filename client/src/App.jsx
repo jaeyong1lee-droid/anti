@@ -973,6 +973,7 @@ const isFlowchartQuestion = (idx, q, isExam = false) => {
   const hasFlowchartSymbols = qText.includes('┌') || qText.includes('▼') || qText.includes('─') || qText.includes('│') || qText.includes('┃') || qText.includes('흐름도') || qText.includes('플로우차트');
   const hasLetters = /\(([A-F])\)/.test(qText);
   return hasFlowchartSymbols && hasLetters;
+};
 
 
 const cleanFlowchartCorrectAnswer = (correctAnswer, letter) => {
