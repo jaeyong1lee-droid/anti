@@ -247,6 +247,21 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
     }
   });
 
+  // Separate concept questions and field problem questions
+  const fieldKeywords = ["하자", "대책", "문제점", "시나리오", "현장", "문제 상황", "대처", "countermeasure", "solution", "scenario"];
+  const fieldQs = [];
+  const conceptQs = [];
+
+  finalSubjsShort.forEach(q => {
+    const qText = q.question || '';
+    const isField = fieldKeywords.some(kw => qText.includes(kw));
+    if (isField) {
+      fieldQs.push(q);
+    } else {
+      conceptQs.push(q);
+    }
+  });
+
   const finalShorts3 = [];
   const defaultConceptQs = [
     {
@@ -260,21 +275,28 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
       question: coreSubject + " 설계 시 안전율 확보 및 하중 작용 조건에 따른 검토 사항을 서술하시오.",
       answer: "하중 조건 검토 및 허용 안전율 충족",
       explanation: coreSubject + "의 설계 기준 및 규격 검토 사항입니다."
-    },
-    {
+    }
+  ];
+
+  // We want exactly 2 concept questions:
+  for (let i = 0; i < 2; i++) {
+    if (conceptQs[i]) {
+      finalShorts3.push(conceptQs[i]);
+    } else {
+      finalShorts3.push(defaultConceptQs[i]);
+    }
+  }
+
+  // And exactly 1 field question:
+  if (fieldQs[0]) {
+    finalShorts3.push(fieldQs[0]);
+  } else {
+    finalShorts3.push({
       type: "주관식 (단답형)",
       question: coreSubject + " 적용 시 현장에서 발생할 수 있는 주요 시공 하자 원인과 그 대책을 서술하시오.",
       answer: "현장 시공 하자 원인 식별 및 대책 수립",
       explanation: coreSubject + " 적용 시 현장의 위험 요인 및 예방 대책입니다."
-    }
-  ];
-
-  for (let i = 0; i < 3; i++) {
-    if (finalSubjsShort[i]) {
-      finalShorts3.push(finalSubjsShort[i]);
-    } else {
-      finalShorts3.push(defaultConceptQs[i]);
-    }
+    });
   }
 
   // Extract flowchart and comparison tables
@@ -392,14 +414,14 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
     shuffledMcs[0],             // 3번 객관식 (index 2)
     finalCompTables[0],         // 4번 표채우기 1 (index 3) -> Comparison Table 1
     shuffledMcs[1],             // 5번 객관식 (index 4)
-    finalShorts3[0],            // 6번 주관식 (index 5) -> Short Subjective 1
+    finalShorts3[0],            // 6번 주관식 (index 5) -> Short Subjective 1 (Concept 1)
     finalFlowchart,             // 7번 표채우기 (index 6) -> Flowchart Table
     finalCompTables[1],         // 8번 표채우기 2 (index 7) -> Comparison Table 2
     shuffledMcs[2],             // 9번 객관식 (index 8)
-    finalShorts3[1],            // 10번 주관식 (index 9) -> Short Subjective 2
+    finalShorts3[1],            // 10번 주관식 (index 9) -> Short Subjective 2 (Concept 2)
     shuffledMcs[3],             // 11번 객관식 (index 10)
-    finalShorts3[2],            // 12번 주관식 (index 11) -> Short Subjective 3
-    shuffledMcs[4]              // 13번 객관식 (index 12)
+    shuffledMcs[4],             // 12번 객관식 (index 11)
+    finalShorts3[2]             // 13번 주관식 (index 12) -> Short Subjective 3 (Field/Countermeasure)
   ];
 }
 async function ensureSessionTable() {
