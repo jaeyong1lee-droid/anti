@@ -49,7 +49,13 @@ function cleanQuizQuestion(q) {
 
 function getCoreSubjectFromTitle(title) {
   if (!title) return '';
-  return title.trim();
+  let core = title.trim();
+  // Remove file extensions if any
+  core = core.replace(/\.(pdf|hwp|docx?|txt|xlsx?|pptx?)$/i, '');
+  // Remove document-like suffixes (e.g. 공학 해석 보고서, 공부노트, 요약본 등)
+  const suffixPattern = /(?:\s+|_|-)?(?:공학\s*)?(?:해석\s*)?(?:보고서|보고|노트|요약본|요약|정리|공부노트|공부|자료|파일|본|텍스트|StudyNote|studynote|Study|study)$/i;
+  core = core.replace(suffixPattern, '');
+  return core.trim();
 }
 
 function shuffleMultipleChoice(q) {
@@ -180,6 +186,8 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
   // Merge split flowchart questions first to prevent separate render cards
   questions = mergeSplitFlowchartQuestions(questions);
 
+  const coreSubject = getCoreSubjectFromTitle(topic.title);
+
   let qIntro = questions.find(q => q.type === '주관식 (개요)');
   let qFormula = questions.find(q => q.type === '주관식 (공식)');
   
@@ -202,8 +210,8 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
   } else {
     qIntro = {
       type: "주관식 (개요)",
-      question: `[${topic.title}]의 가장 핵심적인 공학적 정의(개요)와 기본적인 작동 원리를 서술하시오.`,
-      concept: `${topic.title}의 개요와 기본 원리입니다.`,
+      question: `[${coreSubject}]의 가장 핵심적인 공학적 정의(개요)와 기본적인 작동 원리를 서술하시오.`,
+      concept: `${coreSubject}의 개요와 기본 원리입니다.`,
       formula: "",
       structure: ""
     };
@@ -218,8 +226,8 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
   } else {
     qFormula = {
       type: "주관식 (공식)",
-      question: `${topic.title}의 대표적인 설계 공식 명칭을 기술하시오.`,
-      concept: `${topic.title}의 대표 공식입니다.`,
+      question: `${coreSubject}의 대표적인 설계 공식 명칭을 기술하시오.`,
+      concept: `${coreSubject}의 대표 공식입니다.`,
       formula: "",
       structure: ""
     };
@@ -268,21 +276,21 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
   const defaultConceptQs = [
     {
       type: "주관식 (단답형)",
-      question: `${topic.title} 공법/개념의 핵심적인 공학적 의미 및 메커니즘을 설명하시오.`,
+      question: `${coreSubject} 공법/개념의 핵심적인 공학적 의미 및 메커니즘을 설명하시오.`,
       answer: "핵심 메커니즘 및 공학적 의미 확보",
-      explanation: `${topic.title}의 세부 공학적 개념과 현장 실무적인 작동 원리입니다.`
+      explanation: `${coreSubject}의 세부 공학적 개념과 현장 실무적인 작동 원리입니다.`
     },
     {
       type: "주관식 (단답형)",
-      question: `${topic.title} 설계 시 안전율 확보 및 하중 작용 조건에 따른 검토 사항을 서술하시오.`,
+      question: `${coreSubject} 설계 시 안전율 확보 및 하중 작용 조건에 따른 검토 사항을 서술하시오.`,
       answer: "하중 조건 검토 및 허용 안전율 충족",
-      explanation: `${topic.title}의 설계 기준 및 규격 검토 사항입니다.`
+      explanation: `${coreSubject}의 설계 기준 및 규격 검토 사항입니다.`
     },
     {
       type: "주관식 (단답형)",
-      question: `${topic.title}의 장단점을 타 유사 공법과 비교하여 설명하시오.`,
-      answer: "타 유사 공법과의 거동 및 시공성 비교 분석",
-      explanation: `${topic.title}의 공법적 장단점 및 타당성 비교 분석입니다.`
+      question: `${coreSubject}의 장단점을 타 유사 공법/이론과 비교하여 설명하시오.`,
+      answer: "타 유사 공법/이론과의 거동 및 시공성 비교 분석",
+      explanation: `${coreSubject}의 공법적/이론적 장단점 및 타당성 비교 분석입니다.`
     }
   ];
 
@@ -299,9 +307,9 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
   } else {
     finalShorts4.push({
       type: "주관식 (단답형)",
-      question: `${topic.title} 적용 시 현장에서 발생할 수 있는 주요 시공 하자 원인과 그 대책을 서술하시오.`,
+      question: `${coreSubject} 적용 시 현장에서 발생할 수 있는 주요 시공 하자 원인과 그 대책을 서술하시오.`,
       answer: "현장 시공 하자 원인 식별 및 대책 수립",
-      explanation: `${topic.title} 적용 시 현장의 위험 요인 및 예방 대책입니다.`
+      explanation: `${coreSubject} 적용 시 현장의 위험 요인 및 예방 대책입니다.`
     });
   }
 
@@ -382,7 +390,7 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
     const defaultGeotechMcs = [
       {
         type: "객관식 (4지선다)",
-        question: `[${topic.title} 공학적 특성] 토목 및 지반 공사에서 흙과 암반의 투수성 및 배수 설계 시 지하수위 변동이 옹벽 구조물의 배면 토압에 미치는 영향으로 가장 부적절한 것은?`,
+        question: `[${coreSubject} 공학적 특성] 토목 및 지반 공사에서 흙 and 암반의 투수성 및 배수 설계 시 지하수위 변동이 옹벽 구조물의 배면 토압에 미치는 영향으로 가장 부적절한 것은?`,
         options: [
           "지하수위가 상승하면 배면 정수압이 추가되어 옹벽에 작용하는 전주동토압이 증가한다.",
           "지하수위 이하 지반의 흙 단위중량은 수중 단위중량으로 감소하여 토압 자체는 줄어든다.",
@@ -394,7 +402,7 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
       },
       {
         type: "객관식 (4지선다)",
-        question: `[${topic.title} 설계 안전율] 지반 공학적 설계 조건에서 사면 안정 및 기초의 지지력 산정 시 적용되는 안전율(Factor of Safety) 개념에 관한 설명으로 가장 올바르지 않은 것은?`,
+        question: `[${coreSubject} 설계 안전율] 지반 공학적 설계 조건에서 사면 안정 및 기초의 지지력 산정 시 적용되는 안전율(Factor of Safety) 개념에 관한 설명으로 가장 올바르지 않은 것은?`,
         options: [
           "안전율은 지반 정수의 불확실성, 시공 오차, 하중 변동성 등을 고려한 마진이다.",
           "일시적 집중호우나 지진 등의 지진동 작용 시에는 기준 안전율을 상향하여 설계해야 한다.",
@@ -406,12 +414,12 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
       },
       {
         type: "객관식 (4지선다)",
-        question: `[${topic.title} 전단강도] Terzaghi의 유효응력(Effective Stress) 원리를 적용하여 점성토 지반의 전단강도를 해석할 때, 과잉간극수압(Excess Pore Water Pressure)의 소산과 흙의 거동에 관한 설명 중 가장 옳지 않은 것은?`,
+        question: `[${coreSubject} 전단강도] Terzaghi의 유효응력(Effective Stress) 원리를 적용하여 점성토 지반의 전단강도를 해석할 때, 과잉간극수압(Excess Pore Water Pressure)의 소산과 흙의 거동에 관한 설명 중 가장 옳지 않은 것은?`,
         options: [
           "압밀이 진행됨에 따라 과잉간극수압이 소산되고 유효응력이 증가한다.",
           "유효응력이 증가하면 점성토 지반의 전단강도와 전단 저항각이 점진적으로 증가한다.",
           "비배수 상태에서 급속 하중을 재하하면 유효응력의 변화가 즉시 차단되므로 전단강도가 무한대로 상승한다.",
-          "간극수압계(Piezometer)를 활용하여 현장에서 과잉간극수압의 소산 경향을 계측할 수 "
+          "간극수압계(Piezometer)를 활용하여 현장에서 과잉간극수압의 소산 경향을 계측할 수 있다."
         ],
         answer: "비배수 상태에서 급속 하중을 재하하면 유효응력의 변화가 즉시 차단되므로 전단강도가 무한대로 상승한다.",
         explanation: "비배수 상태에서 급속 하중을 가하면 과잉간극수압이 상승하고 유효응력은 증가하지 않거나 감소하여 전단강도가 저하될 수 있으며, 결코 전단강도가 무한대로 상승하지 않습니다."
@@ -882,7 +890,8 @@ ${adjustments.map((a, idx) => `
     const prompt = (topic.category === '계산') ? `
 [문제 생성 태스크 시작]:
 아래 제공되는 정보를 분석하여 총 정확히 4개의 계산 예상문제를 생성해 주십시오.
-[토픽 제목]: ${topic.title}
+[토픽 핵심 주제]: ${coreSubject}
+[토픽 원본 제목]: ${topic.title}
 [핵심 키워드]: ${topic.keywords || '제공되지 않음'}
 [첨부파일 본문 텍스트](HTML 공부노트): ${fileText || '제공되지 않음'}
 
@@ -894,7 +903,8 @@ ${adjustments.map((a, idx) => `
 ` : `
 [문제 생성 태스크 시작]:
 아래 제공되는 정보를 분석하여 총 정확히 13개의 예상문제를 생성해 주십시오. (객관식 5개, 개요 1개, 공식 1개, 표채우기 2개, 단답형 4개)
-[토픽 제목]: ${topic.title}
+[토픽 핵심 주제]: ${coreSubject}
+[토픽 원본 제목]: ${topic.title}
 [첨부파일 본문 텍스트]: ${fileText || '제공되지 않음'}
 `;
 
@@ -936,16 +946,18 @@ ${flowchartSpecificInstruction}
 
 ---------------------------------------------------------
 [문제 생성 태스크 시작]:
-위의 절대 지침과 기준 법규를 완전히 숙지한 상태에서, 아래 제공되는 [토픽 제목], [핵심 키워드], [첨부파일 본문 텍스트]를 심층 분석하여, 총 **정확히 6개**의 예상문제(주관식 개요 1개, 주관식 공식 1개, 주관식 표채우기(흐름도) 1개, 주관식 단답형 3개)를 생성해 주십시오.
+위의 절대 지침과 기준 법규를 완전히 숙지한 상태에서, 아래 제공되는 [토픽 핵심 주제], [핵심 키워드], [첨부파일 본문 텍스트]를 심층 분석하여, 총 **정확히 6개**의 예상문제(주관식 개요 1개, 주관식 공식 1개, 주관식 표채우기(흐름도) 1개, 주관식 단답형 3개)를 생성해 주십시오.
 
-[토픽 제목]: ${topic.title}
+[토픽 핵심 주제]: ${coreSubject}
+[토픽 원본 제목]: ${topic.title}
 [핵심 키워드]: ${topic.keywords || '제공되지 않음'}
 [핵심 소스 텍스트]: ${fileText || '제공되지 않음'}
 
 [🚨 토픽 범위 엄격 제한 및 출제 범위 확충 — 최우선 준수사항]:
 - **맹목적으로 [첨부파일 본문 텍스트]의 지엽적인 자구에만 국한하여 문제를 출제하지 마십시오.** 
-- 만약 첨부파일 내용이 좁거나 단편적이더라도, 해당 **[토픽 제목]**이 다루는 전반적인 표준 학술 이론 및 기술사 시험 범위의 표준 개념에 대해 AI의 풍부한 공학 지식을 활용하여 문제를 적극적이고 넓게 출제하십시오.
-- 단, 다른 대주제 토픽의 개념이나 수식으로 완전히 넘어가 출제하는 것은 여전히 **절대 금지**이며, 모든 질문/정답/해설은 오직 현재 **[토픽 제목]** 범위 내에 머물러야 합니다.
+- 만약 첨부파일 내용이 좁거나 단편적이더라도, 해당 **[토픽 핵심 주제]**가 다루는 전반적인 표준 학술 이론 및 기술사 시험 범위의 표준 개념에 대해 AI의 풍부한 공학 지식을 활용하여 문제를 적극적이고 넓게 출제하십시오.
+- 단, 다른 대주제 토픽의 개념이나 수식으로 완전히 넘어가 출제하는 것은 여전히 **절대 금지**이며, 모든 질문/정답/해설은 오직 현재 **[토픽 핵심 주제]** 범위 내에 머물러야 합니다.
+- **🚨 [토픽 명칭 정제 및 찌꺼기 제거 철칙]**: 문제를 출제할 때 질문 지문에 "공학 해석 보고서", "공부노트", "요약본" 같은 문서 형태를 가리키는 군더되기 찌꺼기 명칭을 그대로 주어로 사용하지 마십시오. 문제 지문에는 오직 순수한 공학 핵심 주제인 **"${coreSubject}"** 명칭만을 활용하여 질문 문장을 다듬으십시오. (예: "~~ 보고서의 장단점을..." (X) -> "~~ 이론의 장단점을..." (O))
 
 [출제 요구사항]:
 반드시 총 6개의 문제를 다음과 같이 구성하여 출제하십시오:
@@ -1064,15 +1076,17 @@ ${activeEngineeringStandards}
 
 ---------------------------------------------------------
 [문제 생성 태스크 시작]:
-위의 절대 지침과 기준 법규를 완전히 숙지한 상태에서, 아래 제공되는 [토픽 제목], [핵심 키워드], [첨부파일 본문 텍스트]를 심층 분석하여, 총 **정확히 2개**의 예상문제(주관식 표채우기 2개)를 생성해 주십시오.
+위의 절대 지침과 기준 법규를 완전히 숙지한 상태에서, 아래 제공되는 [토픽 핵심 주제], [핵심 키워드], [첨부파일 본문 텍스트]를 심층 분석하여, 총 **정확히 2개**의 예상문제(주관식 표채우기 2개)를 생성해 주십시오.
 
-[토픽 제목]: ${topic.title}
+[토픽 핵심 주제]: ${coreSubject}
+[토픽 원본 제목]: ${topic.title}
 [핵심 키워드]: ${topic.keywords || '제공되지 않음'}
 [첨부파일 본문 텍스트]: ${fileText || '제공되지 않음'}
 
 [출제 요구사항]:
 반드시 총 2개의 주관식 (표채우기) 문제를 다음과 같이 구성하여 출제하십시오:
-🚨 **[2개 문항 다각화 원칙 - 극도로 중요!]**: 2개의 표채우기 문제는 반드시 **서로 완전히 다른 비교 대상, 다른 관점, 다른 공학적 측면**을 다루어야 합니다. 동일한 비교 대상을 두 문제에 걸쳐 반복 출제하는 것은 절대 금지합니다. 두 문제 모두 반드시 제공된 [토픽 제목]과 [첨부파일 본문 텍스트]의 범위 내에서만 출제하십시오.
+🚨 **[2개 문항 다각화 원칙 - 극도로 중요!]**: 2개의 표채우기 문제는 반드시 **서로 완전히 다른 비교 대상, 다른 관점, 다른 공학적 측면**을 다루어야 합니다. 동일한 비교 대상을 두 문제에 걸쳐 반복 출제하는 것은 절대 금지합니다. 두 문제 모두 반드시 제공된 [토픽 핵심 주제]와 [첨부파일 본문 텍스트]의 범위 내에서만 출제하십시오.
+- **🚨 [토픽 명칭 정제 및 찌꺼기 제거 철칙]**: 문제를 출제할 때 질문 지문에 "공학 해석 보고서", "공부노트", "요약본" 같은 문서 형태를 가리키는 군더더기 찌꺼기 명칭을 그대로 주어로 사용하지 마십시오. 문제 지문에는 오직 순수한 공학 핵심 주제인 **"${coreSubject}"** 명칭만을 활용하여 질문 문장을 다듬으십시오. (예: "~~ 보고서의 장단점을..." (X) -> "~~ 이론의 장단점을..." (O))
 
 [주관식 (표채우기) 문제 2개]:
 - 목적: 토픽에서 기술사로서 반드시 숙지하고 있어야 하는 가장 핵심적이고 중요한 공학 개념, 메커니즘, 혹은 서로 비교/대비되는 두 공법의 특징을 대조하는 유기적 표(Table) 질문 출제.
@@ -1137,15 +1151,18 @@ ${activeEngineeringStandards}
 
 ---------------------------------------------------------
 [문제 생성 태스크 시작]:
-위의 절대 지침과 기준 법규를 완전히 숙지한 상태에서, 아래 제공되는 [토픽 제목], [핵심 키워드], [첨부파일 본문 텍스트], [이전 회차 오답 정보], [사용자 피드백 지침] 그리고 [사용자 문제 조정 내역]을 심층 분석하여, 총 **정확히 5개**의 예상문제(객관식 4지선다 5개)를 생성해 주십시오.
+위의 절대 지침과 기준 법규를 완전히 숙지한 상태에서, 아래 제공되는 [토픽 핵심 주제], [핵심 키워드], [첨부파일 본문 텍스트], [이전 회차 오답 정보], [사용자 피드백 지침] 그리고 [사용자 문제 조정 내역]을 심층 분석하여, 총 **정확히 5개**의 예상문제(객관식 4지선다 5개)를 생성해 주십시오.
 ${specialInstructions}
 ${weaknessPrompt}
 ${feedbackPrompt}
 ${adjustmentsPrompt}
 
-[토픽 제목]: ${topic.title}
+[토픽 핵심 주제]: ${coreSubject}
+[토픽 원본 제목]: ${topic.title}
 [핵심 키워드]: ${topic.keywords || '제공되지 않음'}
 [첨부파일 본문 텍스트]: ${fileText || '제공되지 않음'}
+
+- **🚨 [토픽 명칭 정제 및 찌꺼기 제거 철칙]**: 문제를 출제할 때 질문 지문에 "공학 해석 보고서", "공부노트", "요약본" 같은 문서 형태를 가리키는 군더더기 찌꺼기 명칭을 그대로 주어로 사용하지 마십시오. 문제 지문에는 오직 순수한 공학 핵심 주제인 **"${coreSubject}"** 명칭만을 활용하여 질문 문장을 다듬으십시오.
 
 [🚨 시험 결과 및 실험 데이터 수치 제시 원칙 — 매우 중요]:
 - 만약 문제가 특정 심도별 시험 결과나 실험 데이터 수치를 해석/분석하여 답안을 채우거나 계산/추론해야 하는 문제인 경우, 분석의 대상이 되는 원본 시험 결과 데이터 테이블을 질문(question) 텍스트 본문 안에 마크다운 표 형태로 반드시 함께 기입하여 보여주십시오.
