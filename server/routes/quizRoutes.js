@@ -206,7 +206,7 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
     qIntro = {
       type: "주관식 (개요)",
       question: "[" + coreSubject + "]의 가장 핵심적인 공학적 정의(개요)와 기본적인 작동 원리를 서술하시오.",
-      concept: coreSubject + "의 개요와 기본 원리입니다.",
+      concept: coreSubject + "의 개요 and 기본 원리입니다.",
       formula: "",
       structure: ""
     };
@@ -262,7 +262,7 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
     }
   });
 
-  const finalShorts3 = [];
+  const finalShorts4 = [];
   const defaultConceptQs = [
     {
       type: "주관식 (단답형)",
@@ -275,23 +275,29 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
       question: coreSubject + " 설계 시 안전율 확보 및 하중 작용 조건에 따른 검토 사항을 서술하시오.",
       answer: "하중 조건 검토 및 허용 안전율 충족",
       explanation: coreSubject + "의 설계 기준 및 규격 검토 사항입니다."
+    },
+    {
+      type: "주관식 (단답형)",
+      question: coreSubject + "의 장단점을 타 유사 공법/이론과 비교하여 설명하시오.",
+      answer: "타 유사 공법/이론과의 거동 및 시공성 비교 분석",
+      explanation: coreSubject + "의 공법적/이론적 장단점 및 타당성 비교 분석입니다."
     }
   ];
 
-  // We want exactly 2 concept questions:
-  for (let i = 0; i < 2; i++) {
+  // We want exactly 3 concept questions:
+  for (let i = 0; i < 3; i++) {
     if (conceptQs[i]) {
-      finalShorts3.push(conceptQs[i]);
+      finalShorts4.push(conceptQs[i]);
     } else {
-      finalShorts3.push(defaultConceptQs[i]);
+      finalShorts4.push(defaultConceptQs[i]);
     }
   }
 
   // And exactly 1 field question:
   if (fieldQs[0]) {
-    finalShorts3.push(fieldQs[0]);
+    finalShorts4.push(fieldQs[0]);
   } else {
-    finalShorts3.push({
+    finalShorts4.push({
       type: "주관식 (단답형)",
       question: coreSubject + " 적용 시 현장에서 발생할 수 있는 주요 시공 하자 원인과 그 대책을 서술하시오.",
       answer: "현장 시공 하자 원인 식별 및 대책 수립",
@@ -347,11 +353,11 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
     });
   }
 
-  // MCQs slot (exactly 5)
+  // MCQs slot (exactly 4)
   let finalMcs = [];
   const uniqueMcQuestions = new Set();
   mcs.forEach(q => {
-    if (finalMcs.length >= 5) return;
+    if (finalMcs.length >= 4) return;
     const cleanQ = (q.question || '').trim();
     if (cleanQ && !uniqueMcQuestions.has(cleanQ)) {
       uniqueMcQuestions.add(cleanQ);
@@ -359,7 +365,7 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
     }
   });
 
-  if (finalMcs.length < 5) {
+  if (finalMcs.length < 4) {
     const defaultGeotechMcs = [
       {
         type: "객관식 (4지선다)",
@@ -392,14 +398,14 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
           "압밀이 진행됨에 따라 과잉간극수압이 소산되고 유효응력이 증가한다.",
           "유효응력이 증가하면 점성토 지반의 전단강도와 전단 저항각이 점진적으로 증가한다.",
           "비배수 상태에서 급속 하중을 재하하면 유효응력의 변화가 즉시 차단되므로 전단강도가 무한대로 상승한다.",
-          "간극수압계(Piezometer)를 활용하여 현장에서 과잉간극수압의 소산 경향을 계측할 수 있다."
+          "간극수압계(Piezometer)를 활용하여 현장에서 과잉간극수압의 소산 경향을 계측할 수..."
         ],
         answer: "비배수 상태에서 급속 하중을 재하하면 유효응력의 변화가 즉시 차단되므로 전단강도가 무한대로 상승한다.",
         explanation: "비배수 상태에서 급속 하중을 가하면 과잉간극수압이 상승하고 유효응력은 증가하지 않거나 감소하여 전단강도가 저하될 수 있으며, 결코 전단강도가 무한대로 상승하지 않습니다."
       }
     ];
 
-    const deficit = 5 - finalMcs.length;
+    const deficit = 4 - finalMcs.length;
     for (let i = 0; i < deficit; i++) {
       finalMcs.push(defaultGeotechMcs[i % defaultGeotechMcs.length]);
     }
@@ -414,14 +420,14 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
     shuffledMcs[0],             // 3번 객관식 (index 2)
     finalCompTables[0],         // 4번 표채우기 1 (index 3) -> Comparison Table 1
     shuffledMcs[1],             // 5번 객관식 (index 4)
-    finalShorts3[0],            // 6번 주관식 (index 5) -> Short Subjective 1 (Concept 1)
+    finalShorts4[0],            // 6번 주관식 (index 5) -> Short Subjective 1 (Concept 1)
     finalFlowchart,             // 7번 표채우기 (index 6) -> Flowchart Table
     finalCompTables[1],         // 8번 표채우기 2 (index 7) -> Comparison Table 2
     shuffledMcs[2],             // 9번 객관식 (index 8)
-    finalShorts3[1],            // 10번 주관식 (index 9) -> Short Subjective 2 (Concept 2)
+    finalShorts4[1],            // 10번 주관식 (index 9) -> Short Subjective 2 (Concept 2)
     shuffledMcs[3],             // 11번 객관식 (index 10)
-    shuffledMcs[4],             // 12번 객관식 (index 11)
-    finalShorts3[2]             // 13번 주관식 (index 12) -> Short Subjective 3 (Field/Countermeasure)
+    finalShorts4[2],            // 12번 주관식 (index 11) -> Short Subjective 3 (Concept 3)
+    finalShorts4[3]             // 13번 주관식 (index 12) -> Short Subjective 4 (Field/Countermeasure)
   ];
 }
 async function ensureSessionTable() {
