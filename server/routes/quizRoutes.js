@@ -275,12 +275,10 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
   ));
   const compTables = subjsTable.filter(q => q && !flowcharts.includes(q));
 
-  if (flowcharts.length > 0) {
-    finalSubjsTable.push(flowcharts[0]);
-  }
-  if (compTables.length > 0) {
-    finalSubjsTable.push(compTables[0]);
-  }
+  // Push all available flowcharts and comparison tables.
+  // This ensures that even if one type is missing, we use the available questions of the other type to fill the slots.
+  flowcharts.forEach(q => finalSubjsTable.push(q));
+  compTables.forEach(q => finalSubjsTable.push(q));
 
   let finalMcs = [];
   const uniqueMcQuestions = new Set();
