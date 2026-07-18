@@ -12664,8 +12664,8 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
 
 
 
-  const handleDragAiSubmit = () => {
-    const qText = selectionPopup.question.trim();
+  const handleDragAiSubmit = (forcedQuestion = null) => {
+    const qText = forcedQuestion ? forcedQuestion.trim() : selectionPopup.question.trim();
     if (!qText) return;
     
     // Construct the prompt
@@ -27838,7 +27838,7 @@ ${itemsStr}
           </div>
 
           {/* Input & Submit */}
-          <div className="flex gap-2 items-center">
+          <div className="flex gap-1.5 items-center">
             <input
               type="text"
               value={selectionPopup.question}
@@ -27848,11 +27848,17 @@ ${itemsStr}
                   handleDragAiSubmit();
                 }
               }}
-              placeholder="문구에 대해 질문을 입력하세요..."
-              className="flex-1 bg-slateCustom-950 border border-slate-850 focus:border-rose-500/50 text-white text-xs rounded-xl px-3 py-2 focus:outline-none transition-all font-bold placeholder-slate-500"
+              placeholder="질문 입력..."
+              className="flex-1 min-w-[90px] bg-slateCustom-950 border border-slate-850 focus:border-rose-500/50 text-white text-xs rounded-xl px-2 py-2 focus:outline-none transition-all font-bold placeholder-slate-500"
             />
             <button
-              onClick={handleDragAiSubmit}
+              onClick={() => handleDragAiSubmit("이 문구의 핵심 개념을 지반공학 기술사 관점에서 초보자도 바로 이해할 수 있게 직관적이고 알기 쉽게 쉽게 설명해줘.")}
+              className="px-2.5 py-2 bg-slate-800 hover:bg-slate-700 text-amber-400 border border-amber-500/30 text-xs font-black rounded-xl transition-all cursor-pointer active:scale-95 flex-shrink-0"
+            >
+              직관
+            </button>
+            <button
+              onClick={() => handleDragAiSubmit()}
               className="px-3.5 py-2 bg-gradient-to-r from-violet-600 to-rose-600 hover:from-violet-500 hover:to-rose-500 text-white text-xs font-extrabold rounded-xl transition-all cursor-pointer active:scale-95 shadow-md border-none flex-shrink-0"
             >
               전송
