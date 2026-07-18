@@ -131,6 +131,19 @@ async function runRestore() {
       }
       console.log(`Successfully restored ${rows.length} rows to ${table}`);
     }
+
+    // Reset PostgreSQL sequences to match restored primary key values
+    console.log('Resetting PostgreSQL sequences to align with imported data...');
+    const serialTables = ['topics', 'answersheet_reports', 'schedules', 'question_feedback', 'question_adjustments'];
+    for (const table of serialTables) {
+      try {
+        await pool.query(`SELECT setval(pg_get_serial_sequence($1, 'id'), COALESCE(MAX(id), 1)) FROM ${table}`, [table]);
+        console.log(`- Sequence reset completed for "${table}"`);
+      } catch (seqErr) {
+        console.warn(`Warning: Could not reset sequence for "${table}":`, seqErr.message);
+      }
+    }
+
     console.log('Database restore completed successfully!');
 
   } catch (err) {

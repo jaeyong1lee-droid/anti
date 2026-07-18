@@ -8,6 +8,7 @@
     "start": "node index.js",
     "dev": "nodemon index.js",
     "db:backup": "node -e \"import('./backupManager.js').then(m => m.runBackup())\"",
+    "db:backup-local": "node backup_sqlite.js",
     "db:restore": "node restore.js",
     "sync-standards": "node scratch/sync_standards_from_prod.mjs",
     "update-db-standards": "node update_db_generation_standards.mjs"

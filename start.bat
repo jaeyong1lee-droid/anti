@@ -10,10 +10,12 @@ set NODE_PORTABLE_DIR=%PROJECT_DIR%.node_portable\node-v20.11.1-win-x64
 set PATH=%NODE_PORTABLE_DIR%;%PATH%
 
 echo [1/3] 백엔드 서버(Port 5000)를 새 창에서 가동합니다...
-start "AntiGravity Backend" cmd /c "cd /d \"%PROJECT_DIR%server\" && node index.js"
+cd /d "%PROJECT_DIR%server"
+start "AntiGravity Backend" cmd /k "node index.js"
 
 echo [2/3] 프론트엔드 서버(Port 3000)를 새 창에서 가동합니다...
-start "AntiGravity Frontend" cmd /c "cd /d \"%PROJECT_DIR%client\" && npm run dev"
+cd /d "%PROJECT_DIR%client"
+start "AntiGravity Frontend" cmd /k "npm run dev"
 
 echo.
 echo [3/3] 잠시 후 웹 브라우저로 로컬 대시보드(http://localhost:3000)를 엽니다...
