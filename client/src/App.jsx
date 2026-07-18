@@ -17315,7 +17315,7 @@ ${itemsStr}
           <div className="landscape-dashboard-right">
             {viewMode === 'dashboard' ? (
           /* DASHBOARD VIEW (Two Column) */
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch lg:h-[calc(100vh-295px)] lg:overflow-hidden">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch lg:h-[calc(100vh-325px)] lg:overflow-hidden">
             
             {/* LEFT: Today's review items list */}
             <section className="lg:col-span-7 space-y-5 flex flex-col lg:h-full lg:min-h-0">
@@ -17702,7 +17702,7 @@ ${itemsStr}
           </div>
         ) : (
           /* TOTAL SPaced Grid TRACKER VIEW */
-          <section className={`min-h-0 flex flex-col ${(isDesktop && !isMobileLandscape) ? 'glass-panel rounded-3xl p-6 md:p-8 border border-slate-800/80 shadow-2xl bg-slateCustom-900/40 h-[calc(100vh-295px)] overflow-hidden' : 'h-full bg-transparent rounded-none p-0 border-0 shadow-none'}`}>
+          <section className={`min-h-0 flex flex-col ${(isDesktop && !isMobileLandscape) ? 'glass-panel rounded-3xl p-6 md:p-8 border border-slate-800/80 shadow-2xl bg-slateCustom-900/40 h-[calc(100vh-325px)] overflow-hidden' : 'h-full bg-transparent rounded-none p-0 border-0 shadow-none'}`}>
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 flex-shrink-0">
               <div className="flex items-center gap-4 flex-wrap">
                 <div className="flex items-center gap-2">
