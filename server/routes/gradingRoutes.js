@@ -14,6 +14,18 @@ import * as ocrPlugin from '../plugins/calculationPlugin.js';
 const router = express.Router();
 const BT = '```';
 
+function getActiveGenerationStandards() {
+  return generationStandardsList && generationStandardsList.length > 0
+    ? generationStandardsList.map((std, idx) => `${idx + 1}. **${std.title}**:\n   - ${std.content}`).join('\n')
+    : GENERATION_STANDARDS;
+}
+
+function getActiveEngineeringStandards() {
+  return engineeringStandardsList && engineeringStandardsList.length > 0
+    ? engineeringStandardsList.map((std, idx) => `${idx + 1}. **${std.title}**:\n   - ${std.content}`).join('\n')
+    : ENGINEERING_STANDARDS;
+}
+
 const LATEX_PROMPT_INSTRUCTIONS = `
 [수학 공식/특수문자 표기 규칙 - 극도로 중요]:
 1. 인라인(글 중간)에 수학 공식이나 물리적 변수(예: kh, kv 등)를 적을 때는 반드시 단일 달러 기호 하나로 감싸서 LaTeX 형식으로 작성하십시오. (예: $k_h$, $k_v$, $\\beta$ 등)
@@ -284,7 +296,7 @@ router.post('/question/regenerate', async (req, res) => {
     return callLLMWithFailover(sys, enrichedPrompt, img, scenario, { ...opts, progressId });
   };
   if (progressId) {
-    standardsAnalysis = '- 문항 재생성을 위해 0단계 사전 지침 분석은 생략하고 즉시 재생성 단계로 진입합니다.';
+    standardsAnalysis = '반드시 아래에 명시된 문제 생성 지침과 지반공학 엔지니어링 표준을 100% 준수하여, 기술사 수준의 깊이 있는 서술형 문항과 답안을 출제하십시오.';
     progressTimer = startBackendProgressTimer(progressId, 1, '1단계: AI 문항 재생성 시작...', 50, 1500, 5);
   }
 
@@ -483,9 +495,9 @@ ${flowchartDuplicationPrompt}
 [출제 요구사항]:
 반드시 기초 문제를 변형/응용하여 새로운 문제를 출제하십시오.
 [주관식 (표채우기) 유형으로 아스키 흐름도 문제를 생성하십시오]
-${GENERATION_STANDARDS}
+${getActiveGenerationStandards()}
 ${LATEX_PROMPT_INSTRUCTIONS}
-${ENGINEERING_STANDARDS}
+${getActiveEngineeringStandards()}
 ${FLOWCHART_QUIZ_GENERATION_PROMPT}
 
 오직 순수 JSON 데이터만 반환하십시오.
@@ -506,14 +518,14 @@ ${fileText || '없음'}
       } else if (mixedType === 'table') {
         systemPrompt = `당신은 지반공학 기술사 시험 전문 튜터이자 출제위원입니다.
 제시된 비교/대비 표 데이터를 기반으로, 수험생이 학습할 수 있는 참신한 표 빈칸 채우기(Table Quiz) 문항을 새로 구성하여 출제해 주십시오.
-${GENERATION_STANDARDS}
-${ENGINEERING_STANDARDS}
+${getActiveGenerationStandards()}
+${getActiveEngineeringStandards()}
 제시된 HTML 테이블 소스를 성실히 반영하여 JSON 포맷으로 재출제해 주십시오.`;
         userPrompt = `[원본 비교 표 HTML]:\n${content}\n\n[기존 문제 질문]:\n${currentQuestion.question || ''}\n\n위 데이터를 바탕으로 JSON 포맷으로 재출제해 주십시오.`;
       } else {
         systemPrompt = `당신은 지반공학 기술사 시험 전문 튜터이자 출제위원입니다.
 제시된 앞글자(두문자) 암기법 데이터를 기반으로 새롭게 두문자 조합 및 연상문장을 반환해 주십시오.
-${GENERATION_STANDARDS}`;
+${getActiveGenerationStandards()}`;
         userPrompt = `[원본 두문자 암기법 정보]:\n${content}\n\n위 데이터를 바탕으로 JSON 포맷으로 재출제해 주십시오.`;
       }
 
@@ -770,9 +782,9 @@ ${flowchartDuplicationPrompt}
 [출제 요구사항]:
 반드시 기초 문제를 변형/응용하여 새로운 문제를 출제하십시오.
 ${typeRequirement}
-${GENERATION_STANDARDS}
+${getActiveGenerationStandards()}
 ${LATEX_PROMPT_INSTRUCTIONS}
-${ENGINEERING_STANDARDS}
+${getActiveEngineeringStandards()}
 
 ${isFlowchartQ ? FLOWCHART_QUIZ_GENERATION_PROMPT : ''}
 
@@ -876,9 +888,9 @@ ${combinedText}
 
 [출제 요구사항]:
 반드시 기초 문제를 변형/응용하여 새로운 문제를 출제하십시오.
-${GENERATION_STANDARDS}
+${getActiveGenerationStandards()}
 ${LATEX_PROMPT_INSTRUCTIONS}
-${ENGINEERING_STANDARDS}
+${getActiveEngineeringStandards()}
 오직 순수 JSON 데이터만 반환하십시오.`;
 
       const responseText = await localCallLLM(null, prompt, null, 'question', { temperature: 1.0 });
@@ -935,7 +947,7 @@ router.post('/question/adjust', async (req, res) => {
   let standardsAnalysis = '';
   if (progressId) {
     const targetQText = currentQuestion ? currentQuestion.question : '의견 조절';
-    standardsAnalysis = await analyzeStandardsBeforeTask(progressId, targetQText, GENERATION_STANDARDS, 'generation');
+    standardsAnalysis = await analyzeStandardsBeforeTask(progressId, targetQText, getActiveGenerationStandards(), 'generation');
     progressTimer = startBackendProgressTimer(progressId, 1, '1단계: AI 의견 반영 조절 시작...', 50, 1500, 5);
   }
 
@@ -989,9 +1001,9 @@ router.post('/question/adjust', async (req, res) => {
 - 기존 정답: ${currentQuestion?.answer || ''}
 
 반드시 사용자 요구사항을 100% 반영하여 수정, 보완, 응용 또는 전면 개편된 새로운 문제 1개를 반환하십시오.
-${GENERATION_STANDARDS}
+${getActiveGenerationStandards()}
 ${LATEX_PROMPT_INSTRUCTIONS}
-${ENGINEERING_STANDARDS}
+${getActiveEngineeringStandards()}
 오직 JSON 객체만 반환하십시오.`;
 
       const responseText = await localCallLLM(null, prompt, null, 'question', { temperature: 1.0 });
@@ -1114,9 +1126,9 @@ ${ENGINEERING_STANDARDS}
 ${combinedText}
 
 반드시 사용자 요구사항을 100% 반영하여 수정, 보완, 응용 또는 전면 개편된 새로운 문제 1개를 반환하십시오.
-${GENERATION_STANDARDS}
+${getActiveGenerationStandards()}
 ${LATEX_PROMPT_INSTRUCTIONS}
-${ENGINEERING_STANDARDS}
+${getActiveEngineeringStandards()}
 오직 JSON 객체만 반환하십시오.`;
 
       const responseText = await localCallLLM(null, prompt, null, 'question', { temperature: 1.0 });
