@@ -202,6 +202,14 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
     delete qIntro.tableData;
     delete qIntro.answers;
     delete qIntro.subtype;
+  } else {
+    qIntro = {
+      type: "주관식 (개요)",
+      question: "[" + coreSubject + "]의 가장 핵심적인 공학적 정의(개요)와 기본적인 작동 원리를 서술하시오.",
+      concept: coreSubject + "의 개요와 기본 원리입니다.",
+      formula: "",
+      structure: ""
+    };
   }
 
   if (qFormula) {
@@ -210,6 +218,14 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
     delete qFormula.tableData;
     delete qFormula.answers;
     delete qFormula.subtype;
+  } else {
+    qFormula = {
+      type: "주관식 (공식)",
+      question: coreSubject + "의 대표적인 설계 공식 명칭을 기술하시오.",
+      concept: coreSubject + "의 대표 공식입니다.",
+      formula: "",
+      structure: ""
+    };
   }
 
   const carryOverShorts = (carryOverQuestions || []).filter(q => (q.type || '').includes('단답형') && q !== qIntro && q !== qFormula);
@@ -220,7 +236,7 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
   const subjsTable = [...questions.filter(q => (q.type === '주관식 (표채우기)' || q.subtype === '표채우기') && q !== qIntro && q !== qFormula), ...carryOverTables];
   const mcs = [...questions.filter(q => (q.type === '객관식 (4지선다)' || (q.options && q.options.length > 0)) && q !== qIntro && q !== qFormula), ...carryOverMcs];
 
-  // No fallback padding for short subjectives - use only AI generated ones
+  // AI-generated short subjectives
   let finalSubjsShort = [];
   const shortSeen = new Set();
   subjsShort.forEach(q => {
@@ -230,24 +246,70 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
       finalSubjsShort.push(q);
     }
   });
-  finalSubjsShort = finalSubjsShort.slice(0, 4);
 
-  // Keep fallback padding ONLY for table-filling questions
-  let finalSubjsTable = [];
+  const finalShorts3 = [];
+  const defaultConceptQs = [
+    {
+      type: "주관식 (단답형)",
+      question: coreSubject + " 공법/개념의 핵심적인 공학적 의미 및 메커니즘을 설명하시오.",
+      answer: "핵심 메커니즘 및 공학적 의미 확보",
+      explanation: coreSubject + "의 세부 공학적 개념과 현장 실무적인 작동 원리입니다."
+    },
+    {
+      type: "주관식 (단답형)",
+      question: coreSubject + " 설계 시 안전율 확보 및 하중 작용 조건에 따른 검토 사항을 서술하시오.",
+      answer: "하중 조건 검토 및 허용 안전율 충족",
+      explanation: coreSubject + "의 설계 기준 및 규격 검토 사항입니다."
+    },
+    {
+      type: "주관식 (단답형)",
+      question: coreSubject + " 적용 시 현장에서 발생할 수 있는 주요 시공 하자 원인과 그 대책을 서술하시오.",
+      answer: "현장 시공 하자 원인 식별 및 대책 수립",
+      explanation: coreSubject + " 적용 시 현장의 위험 요인 및 예방 대책입니다."
+    }
+  ];
+
+  for (let i = 0; i < 3; i++) {
+    if (finalSubjsShort[i]) {
+      finalShorts3.push(finalSubjsShort[i]);
+    } else {
+      finalShorts3.push(defaultConceptQs[i]);
+    }
+  }
+
+  // Extract flowchart and comparison tables
   const flowcharts = subjsTable.filter(q => q && q.question && (
     q.question.includes('┌') || q.question.includes('▼') || q.question.includes('흐름도') || q.question.includes('플로우차트')
   ));
   const compTables = subjsTable.filter(q => q && !flowcharts.includes(q));
 
-  // Push all available first
-  flowcharts.forEach(q => finalSubjsTable.push(q));
-  compTables.forEach(q => finalSubjsTable.push(q));
-
-  // Fallback to dynamic topic comparison table if we need more questions to make it 2
-  while (finalSubjsTable.length < 2) {
-    finalSubjsTable.push({
+  // Flowchart Table slot (exactly 1)
+  let finalFlowchart = flowcharts[0];
+  if (!finalFlowchart) {
+    finalFlowchart = {
       type: "주관식 (표채우기)",
-      question: `다음 ${coreSubject} 관련 핵심 이론 및 공법들의 주요 공학적 특징 비교표 빈칸 (A), (B)에 들어갈 내용을 알맞게 서술하시오.`,
+      question: "다음 " + coreSubject + " 관련 절차 흐름도를 보고 빈칸 (A), (B)에 들어갈 단계를 입력하시오.\n\n```\n┌────────────────────────┐\n│  [1] 대상 공학적 현상 파악  │\n└────────────────────────┘\n            │\n            ▼\n┌────────────────────────┐\n│  [ (A) ]               │\n└────────────────────────┘\n            │\n            ▼\n┌────────────────────────┐\n│  [ (B) ]               │\n└────────────────────────┘\n```",
+      tableData: {
+        headers: ["구분", "내용"],
+        rows: [
+          ["(A)", "[INPUT_1]"],
+          ["(B)", "[INPUT_2]"]
+        ]
+      },
+      answers: {
+        "INPUT_1": coreSubject + " 거동 분석 및 물성치 산정",
+        "INPUT_2": coreSubject + " 대책 설계 및 안정성 검토"
+      },
+      explanation: coreSubject + "의 공학적 설계 및 검토 수행 단계별 절차 흐름도입니다."
+    };
+  }
+
+  // Comparison Tables slot (exactly 2)
+  const finalCompTables = [...compTables];
+  while (finalCompTables.length < 2) {
+    finalCompTables.push({
+      type: "주관식 (표채우기)",
+      question: "다음 " + coreSubject + " 관련 핵심 이론 및 공법들의 주요 공학적 특징 비교표 빈칸 (A), (B)에 들어갈 내용을 알맞게 서술하시오.",
       tableData: {
         headers: ["구분 항목", "비교 기법 A", "비교 기법 B"],
         rows: [
@@ -256,14 +318,14 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
         ]
       },
       answers: {
-        "INPUT_1": `${coreSubject} 거동 제어 및 지반 물성치의 안정성 확보`,
-        "INPUT_2": `${coreSubject} 설계 시 간극수압 상승 또는 국부 변형 리스크`
+        "INPUT_1": coreSubject + " 거동 제어 및 지반 물성치의 안정성 확보",
+        "INPUT_2": coreSubject + " 설계 시 간극수압 상승 또는 국부 변형 리스크"
       },
-      explanation: `${coreSubject} 관련 핵심 설계 기법의 역학적 작동 기전과 실무 적용 시 발생할 수 있는 주요 한계점을 대조하여 정리한 비교표입니다.`
+      explanation: coreSubject + " 관련 핵심 설계 기법의 역학적 작동 기전과 실무 적용 시 발생할 수 있는 주요 한계점을 대조하여 정리한 비교표입니다."
     });
   }
 
-  // No fallback padding for MCQs - use only AI generated ones
+  // MCQs slot (exactly 5)
   let finalMcs = [];
   const uniqueMcQuestions = new Set();
   mcs.forEach(q => {
@@ -275,25 +337,70 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
     }
   });
 
-  const shuffledMcs = shuffleArray([...finalMcs]);
-  const shuffledTables = shuffleArray([...finalSubjsTable]);
-  const shuffledShortsMiddle = shuffleArray([finalSubjsShort[0], finalSubjsShort[1]].filter(Boolean));
+  if (finalMcs.length < 5) {
+    const defaultGeotechMcs = [
+      {
+        type: "객관식 (4지선다)",
+        question: "[" + coreSubject + " 공학적 특성] 토목 및 지반 공사에서 흙 and 암반의 투수성 및 배수 설계 시 지하수위 변동이 옹벽 구조물의 배면 토압에 미치는 영향으로 가장 부적절한 것은?",
+        options: [
+          "지하수위가 상승하면 배면 정수압이 추가되어 옹벽에 작용하는 전주동토압이 증가한다.",
+          "지하수위 이하 지반의 흙 단위중량은 수중 단위중량으로 감소하여 토압 자체는 줄어든다.",
+          "수압과 토압이 동시에 작용할 때 구조물의 전도 및 활동 리스크가 감소한다.",
+          "원활한 배수를 위해 필터재와 유공관을 설계하여 수압 상승을 적극 억제해야 한다."
+        ],
+        answer: "수압과 토압이 동시에 작용할 때 구조물의 전도 및 활동 리스크가 감소한다.",
+        explanation: "배면 수압과 토압이 동시에 작용하면 구조물에 가해지는 횡압력이 급격히 증가하여 전도(Overturning) 및 활동(Sliding) 리스크가 대폭 증가합니다. 따라서 리스크가 감소한다는 설명은 잘못되었습니다."
+      },
+      {
+        type: "객관식 (4지선다)",
+        question: "[" + coreSubject + " 설계 안전율] 지반 공학적 설계 조건에서 사면 안정 및 기초의 지지력 산정 시 적용되는 안전율(Factor of Safety) 개념에 관한 설명으로 가장 올바르지 않은 것은?",
+        options: [
+          "안전율은 지반 정수의 불확실성, 시공 오차, 하중 변동성 등을 고려한 마진이다.",
+          "일시적 집중호우나 지진 등의 지진동 작용 시에는 기준 안전율을 상향하여 설계해야 한다.",
+          "허용응력설계법(ASD)에서는 극한 저항력을 소요 안전율로 나누어 허용력을 산정한다.",
+          "안전율이 1.0 미만인 지반 구조물은 역학적으로 항상 영구히 안정한 상태를 유지한다."
+        ],
+        answer: "안전율이 1.0 미만인 지반 구조물은 역학적으로 항상 영구히 안정한 상태를 유지한다.",
+        explanation: "안전율(F.S)이 1.0 미만이라는 것은 저항력이 작용력보다 작다는 의미이므로 붕괴나 미끄러짐 등의 한계상태에 도달하여 불안정한 상태가 됨을 뜻합니다. 따라서 항상 안전하다는 진술은 잘못되었습니다."
+      },
+      {
+        type: "객관식 (4지선다)",
+        question: "[" + coreSubject + " 전단강도] Terzaghi의 유효응력(Effective Stress) 원리를 적용하여 점성토 지반의 전단강도를 해석할 때, 과잉간극수압(Excess Pore Water Pressure)의 소산과 흙의 거동에 관한 설명 중 가장 옳지 않은 것은?",
+        options: [
+          "압밀이 진행됨에 따라 과잉간극수압이 소산되고 유효응력이 증가한다.",
+          "유효응력이 증가하면 점성토 지반의 전단강도와 전단 저항각이 점진적으로 증가한다.",
+          "비배수 상태에서 급속 하중을 재하하면 유효응력의 변화가 즉시 차단되므로 전단강도가 무한대로 상승한다.",
+          "간극수압계(Piezometer)를 활용하여 현장에서 과잉간극수압의 소산 경향을 계측할 수 있다."
+        ],
+        answer: "비배수 상태에서 급속 하중을 재하하면 유효응력의 변화가 즉시 차단되므로 전단강도가 무한대로 상승한다.",
+        explanation: "비배수 상태에서 급속 하중을 가하면 과잉간극수압이 상승하고 유효응력은 증가하지 않거나 감소하여 전단강도가 저하될 수 있으며, 결코 전단강도가 무한대로 상승하지 않습니다."
+      }
+    ];
 
+    const deficit = 5 - finalMcs.length;
+    for (let i = 0; i < deficit; i++) {
+      finalMcs.push(defaultGeotechMcs[i % defaultGeotechMcs.length]);
+    }
+  }
+
+  const shuffledMcs = shuffleArray([...finalMcs]);
+
+  // Fixed 13 questions returned list layout
   return [
     qIntro,                     // 1번 주관식 (index 0)
     qFormula,                   // 2번 주관식 (index 1)
     shuffledMcs[0],             // 3번 객관식 (index 2)
-    shuffledTables[0],          // 4번 표채우기 (index 3)
+    finalCompTables[0],         // 4번 표채우기 1 (index 3) -> Comparison Table 1
     shuffledMcs[1],             // 5번 객관식 (index 4)
-    shuffledShortsMiddle[0],    // 6번 주관식 (index 5)
-    shuffledMcs[2],             // 7번 객관식 (index 6)
-    shuffledTables[1],          // 8번 표채우기 (index 7)
-    shuffledMcs[3],             // 9번 객관식 (index 8)
-    shuffledShortsMiddle[1],    // 10번 주관식 (index 9)
-    shuffledMcs[4],             // 11번 객관식 (index 10)
-    finalSubjsShort[2],         // 12번 주관식 (index 11)
-    finalSubjsShort[3]          // 13번 주관식 (index 12)
-  ].filter(Boolean);
+    finalShorts3[0],            // 6번 주관식 (index 5) -> Short Subjective 1
+    finalFlowchart,             // 7번 표채우기 (index 6) -> Flowchart Table
+    finalCompTables[1],         // 8번 표채우기 2 (index 7) -> Comparison Table 2
+    shuffledMcs[2],             // 9번 객관식 (index 8)
+    finalShorts3[1],            // 10번 주관식 (index 9) -> Short Subjective 2
+    shuffledMcs[3],             // 11번 객관식 (index 10)
+    finalShorts3[2],            // 12번 주관식 (index 11) -> Short Subjective 3
+    shuffledMcs[4]              // 13번 객관식 (index 12)
+  ];
 }
 async function ensureSessionTable() {
   try {
