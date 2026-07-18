@@ -14941,6 +14941,8 @@ ${itemsStr}
     }
 
     const cleaned = (loadedData || []).map(healAnswersheetQuestionObject);
+    // Auto-sort by answersheet_report_id in ascending order
+    cleaned.sort((a, b) => (a.answersheet_report_id || 0) - (b.answersheet_report_id || 0));
     latestAnswersheetQuestionsRef.current = cleaned;
     setAnswersheetQuestions(cleaned);
 
@@ -14951,6 +14953,10 @@ ${itemsStr}
   const handleSaveAnswersheetQuestions = async (qs = answersheetQuestions, showToast = true) => {
     try {
       const healedQs = Array.isArray(qs) ? qs.map(healAnswersheetQuestionObject) : qs;
+      if (Array.isArray(healedQs)) {
+        // Auto-sort by answersheet_report_id in ascending order
+        healedQs.sort((a, b) => (a.answersheet_report_id || 0) - (b.answersheet_report_id || 0));
+      }
       latestAnswersheetQuestionsRef.current = healedQs;
       setAnswersheetQuestions(healedQs);
       
@@ -17307,10 +17313,10 @@ ${itemsStr}
           <div className="landscape-dashboard-right">
             {viewMode === 'dashboard' ? (
           /* DASHBOARD VIEW (Two Column) */
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch lg:h-[calc(100vh-270px)] lg:overflow-hidden">
             
             {/* LEFT: Today's review items list */}
-            <section className="lg:col-span-7 space-y-5">
+            <section className="lg:col-span-7 space-y-5 flex flex-col lg:h-full lg:min-h-0">
               <div className="flex justify-between items-center flex-wrap gap-3">
                 <div className="flex items-center gap-3 flex-wrap">
                   <div className="flex items-center gap-2">
@@ -17365,7 +17371,7 @@ ${itemsStr}
                 </div>
               ) : (
                 /* Card List */
-                <div className="space-y-4 md:max-h-[calc(100vh-300px)] md:overflow-y-auto md:pr-2 custom-vertical-scrollbar">
+                <div className="space-y-4 lg:flex-1 lg:min-h-0 lg:overflow-y-auto md:max-h-[calc(100vh-300px)] overflow-y-auto md:pr-2 custom-vertical-scrollbar">
                   {todayReviews.map((item) => {
                     if (item.isBonus && hiddenBonusTopicIds.includes(item.topic_id)) {
                       return null;
@@ -17514,7 +17520,7 @@ ${itemsStr}
             </section>
 
             {/* RIGHT: Today's study registration form */}
-            <section className="hidden lg:block w-full lg:col-span-5 glass-panel rounded-3xl p-5 md:p-6 border border-slate-800/80 shadow-xl mt-6 lg:mt-0">
+            <section className="hidden lg:block w-full lg:col-span-5 glass-panel rounded-3xl p-5 md:p-6 border border-slate-800/80 shadow-xl mt-6 lg:mt-0 lg:h-full lg:overflow-y-auto">
               <div className="flex items-center gap-2 mb-6">
                 <PlusCircle size={20} className="text-brand-400" />
                 <h2 className="text-lg font-bold text-white">오늘 공부한 토픽 등록</h2>
