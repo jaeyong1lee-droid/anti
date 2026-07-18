@@ -1160,7 +1160,7 @@ let parsedArray = null;
     } else {
       // Parallel batches for standard topics to ensure 100% same layout and quality
       const [batch1Text, batch2Text, batch3Text] = await Promise.all([
-        localCallLLM(systemInstruction, promptBatch1, null, 'question', { temperature: 1.0, preferredModel: 'gemini-3.0-flash' }),
+        localCallLLM(systemInstruction, promptBatch1, null, 'question', { temperature: 1.0, preferredModel: 'gemini-3.5-flash' }),
         localCallLLM(systemInstruction, promptBatch2, null, 'question', { temperature: 1.0, preferredModel: 'gemini-3.5-flash' }),
         localCallLLM(systemInstruction, promptBatch3, null, 'question', { temperature: 1.0, preferredModel: 'gemini-3.1-flash-lite' })
       ]);
