@@ -17313,7 +17313,7 @@ ${itemsStr}
           <div className="landscape-dashboard-right">
             {viewMode === 'dashboard' ? (
           /* DASHBOARD VIEW (Two Column) */
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch lg:h-[calc(100vh-270px)] lg:overflow-hidden">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch lg:h-[calc(100vh-390px)] lg:overflow-hidden">
             
             {/* LEFT: Today's review items list */}
             <section className="lg:col-span-7 space-y-5 flex flex-col lg:h-full lg:min-h-0">
