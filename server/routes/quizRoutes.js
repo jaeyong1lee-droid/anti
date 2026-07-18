@@ -53,8 +53,13 @@ function getCoreSubjectFromTitle(title) {
   // Remove file extensions if any
   core = core.replace(/\.(pdf|hwp|docx?|txt|xlsx?|pptx?)$/i, '');
   // Remove document-like suffixes (e.g. 공학 해석 보고서, 공부노트, 요약본 등)
-  const suffixPattern = /(?:\s+|_|-)?(?:공학\s*)?(?:해석\s*)?(?:보고서|보고|노트|요약본|요약|정리|공부노트|공부|자료|파일|본|텍스트|StudyNote|studynote|Study|study)$/i;
+  const suffixPattern = /(?:\s+|_|-)?(?:공학\s*)?(?:해석\s*)?(?:보고서|보고|노트|요약본|요약|정리|공부노트|공부|자료|파일|본|텍스트|StudyNote|studynote|Study|study|문제|과제|질문)$/i;
   core = core.replace(suffixPattern, '');
+  
+  // Remove trailing definition, concept, occurrence, method, theory terms to keep it pure engineering subject
+  const conceptPattern = /(?:\s*및\s*|\s+)?(?:정의\s*및\s*발생\s*조건|정의\s*및\s*발생조건|정의\s*및\s*발생\s*메커니즘|정의|발생\s*조건|발생조건|개념|이론|공법)$/i;
+  core = core.replace(conceptPattern, '');
+  
   return core.trim();
 }
 
@@ -1033,6 +1038,12 @@ ${LATEX_PROMPT_INSTRUCTIONS}
     "explanation": "해당 개념의 학술적/공학적 의미에 대한 상세 설명 2"
   },
   {
+    "type": "주관식 (단답형)",
+    "question": "해당 토픽과 관련된 구체적인 공학적 현장 문제 상황(시나리오)을 제시하고 대처/방지 방안(해결 대책)을 요구하는 질문 3",
+    "answer": "문제 상황에 대처하기 위한 구체적인 공학적 대안 또는 대책 서술형 답안 3",
+    "explanation": "제안한 공학적 대책의 타당성 및 작동 메커니즘 설명 3"
+  },
+  {
     "type": "주관식 (표채우기)",
     "question": "다음 [OOO 분석/설계 절차] 흐름도를 보고 빈칸 (A), (B)에 들어갈 올바른 단계를 입력하시오 (마크다운 고정폭 코드블록으로 감싼 아스키 흐름도 포함)",
     "tableData": {
@@ -1051,12 +1062,6 @@ ${LATEX_PROMPT_INSTRUCTIONS}
       "INPUT_4": "(D)의 올바른 정답 문구"
     },
     "explanation": "전체 흐름도의 공학적 해설 및 각 단계별 상세 설명"
-  },
-  {
-    "type": "주관식 (단답형)",
-    "question": "해당 토픽과 관련된 구체적인 공학적 현장 문제 상황(시나리오)을 제시하고 대처/방지 방안(해결 대책)을 요구하는 질문 4",
-    "answer": "문제 상황에 대처하기 위한 구체적인 공학적 대안 또는 대책 서술형 답안 4",
-    "explanation": "제안한 공학적 대책의 타당성 및 작동 메커니즘 설명 4"
   }
 ]
 `;
