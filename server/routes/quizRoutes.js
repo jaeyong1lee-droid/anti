@@ -278,9 +278,9 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
     },
     {
       type: "주관식 (단답형)",
-      question: coreSubject + "에 내포된 한계점 및 이를 극복하기 위한 공학적 대안을 서술하시오.",
-      answer: "공학적 설계 마진 확보 및 현장 계측 관리",
-      explanation: coreSubject + "의 한계점 극복 방안 설명입니다."
+      question: coreSubject + " 관련 설계/해석 및 대책 수립 시 공학적으로 유의해야 할 주요 사항에 대하여 서술하시오.",
+      answer: "지반 상태 정밀 평가 및 공학적 인자 설계 반영",
+      explanation: coreSubject + " 관련 설계/해석 및 적용 시 유의사항 설명입니다."
     }
   ];
 
@@ -299,9 +299,9 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
   } else {
     finalShorts4.push({
       type: "주관식 (단답형)",
-      question: coreSubject + " 실무 적용 시 발생할 수 있는 주요 시공 하자(또는 문제점) 원인과 그 대책을 서술하시오.",
-      answer: "시공 품질 리스크 관리 및 방지 대책 수립",
-      explanation: coreSubject + " 적용 시 현장의 위험 요인 및 예방 대책입니다."
+      question: coreSubject + " 현상 또는 공법 적용 시 발생할 수 있는 주요 문제점(또는 위해 요인)과 공학적 대안에 대하여 서술하시오.",
+      answer: "지반 거동 제어 및 공학적 방지 대책 수립",
+      explanation: coreSubject + " 관련 발생 가능한 문제점과 예방 대책 설명입니다."
     });
   }
 
@@ -986,9 +986,15 @@ ${LATEX_PROMPT_INSTRUCTIONS}
   },
   {
     "type": "주관식 (단답형)",
-    "question": "해당 토픽과 관련된 구체적인 공학적 현장 문제 상황(시나리오)을 제시하고 대처/방지 방안(해결 대책)을 요구하는 질문 3",
-    "answer": "문제 상황에 대처하기 위한 구체적인 공학적 대안 또는 대책 서술형 답안 3",
-    "explanation": "제안한 공학적 대책의 타당성 및 작동 메커니즘 설명 3"
+    "question": "토픽의 또 다른 중요 세부 개념, 원리 또는 장단점을 묻는 서술형 질문 3",
+    "answer": "세부 개념이나 거동 특성을 요약한 1줄 서술형 답안 문구 3",
+    "explanation": "해당 개념의 학술적/공학적 의미에 대한 상세 설명 3"
+  },
+  {
+    "type": "주관식 (단답형)",
+    "question": "해당 토픽과 관련된 구체적인 공학적 현장 문제 상황(시나리오)을 제시하고 대처/방지 방안(해결 대책)을 요구하는 질문 4",
+    "answer": "문제 상황에 대처하기 위한 구체적인 공학적 대안 또는 대책 서술형 답안 4",
+    "explanation": "제안한 공학적 대책의 타당성 및 작동 메커니즘 설명 4"
   },
   {
     "type": "주관식 (표채우기)",
