@@ -18684,13 +18684,16 @@ ${itemsStr}
               )}
               {selectedTopic && (
                 <button
-                onClick={() => { 
+                onClick={async () => { 
                   if (selectedTopic?.id) {
                     const deleteUrl = selectedTopic.schedule_id
                       ? `${API_BASE}/api/session/review/topic/${selectedTopic.id}?scheduleId=${selectedTopic.schedule_id}`
                       : `${API_BASE}/api/session/review/topic/${selectedTopic.id}`;
-                    fetch(deleteUrl, { method: 'DELETE' })
-                      .catch(e => console.warn('세션 초기화 실패:', e));
+                    try {
+                      await fetch(deleteUrl, { method: 'DELETE' });
+                    } catch (e) {
+                      console.warn('세션 초기화 실패:', e);
+                    }
 
                     // Remove both schedule-specific and topic-specific progress keys and session IDs to guarantee complete cleanup
                     const activeSid = reviewSessionId || 'legacy_default';
@@ -19985,13 +19988,16 @@ ${itemsStr}
                           AI
                         </button>
                         <button
-                          onClick={() => { 
+                          onClick={async () => { 
                             if (selectedTopic?.id) {
                               const deleteUrl = selectedTopic.schedule_id
                                 ? `${API_BASE}/api/session/review/topic/${selectedTopic.id}?scheduleId=${selectedTopic.schedule_id}`
                                 : `${API_BASE}/api/session/review/topic/${selectedTopic.id}`;
-                              fetch(deleteUrl, { method: 'DELETE' })
-                                .catch(e => console.warn('세션 초기화 실패:', e));
+                              try {
+                                await fetch(deleteUrl, { method: 'DELETE' });
+                              } catch (e) {
+                                console.warn('세션 초기화 실패:', e);
+                              }
 
                               // Remove both schedule-specific and topic-specific progress keys and session IDs to guarantee complete cleanup
                               const sId = selectedTopic.schedule_id;
@@ -22127,10 +22133,13 @@ ${itemsStr}
               </button>
 
               <button
-                onClick={() => {
+                onClick={async () => {
                   if (window.confirm("종합평가를 완전히 종료하고 결과 리포트를 저장하시겠습니까?")) {
-                    fetch(`${API_BASE}/api/session/exam`, { method: 'DELETE' })
-                      .catch(e => console.warn('세션 삭제 실패:', e));
+                    try {
+                      await fetch(`${API_BASE}/api/session/exam`, { method: 'DELETE' });
+                    } catch (e) {
+                      console.warn('세션 삭제 실패:', e);
+                    }
                     setShowExam(false); setExamQuestions([]); setExamRevealed({}); setExamAnswers({}); setExamTopic(null); setExamOptionExplanations({}); setExamTableAnswers({}); setExamTableGradingResults({}); setShowAnswersState({}); setExamShowAnswersState({});
                   }
                 }}
@@ -22284,10 +22293,13 @@ ${itemsStr}
                 닫기
               </button>
               <button
-                onClick={() => {
+                onClick={async () => {
                   if (window.confirm("종합평가를 종료하시겠습니까? (재개 시 새 문제가 생성됩니다)")) {
-                    fetch(`${API_BASE}/api/session/exam`, { method: 'DELETE' })
-                      .catch(e => console.warn('세션 삭제 실패:', e));
+                    try {
+                      await fetch(`${API_BASE}/api/session/exam`, { method: 'DELETE' });
+                    } catch (e) {
+                      console.warn('세션 삭제 실패:', e);
+                    }
                     setShowExam(false); setExamQuestions([]); setExamRevealed({}); setExamAnswers({}); setExamTopic(null); setExamOptionExplanations({}); setExamTableAnswers({}); setExamTableGradingResults({}); setShowAnswersState({}); setExamShowAnswersState({});
                   }
                 }}
@@ -23477,10 +23489,13 @@ ${itemsStr}
                           <span>닫기</span>
                         </button>
                         <button
-                          onClick={() => {
+                          onClick={async () => {
                             if (window.confirm("종합평가를 종료하시겠습니까? (재개 시 새 문제가 생성됩니다)")) {
-                              fetch(`${API_BASE}/api/session/exam`, { method: 'DELETE' })
-                                .catch(e => console.warn('세션 삭제 실패:', e));
+                              try {
+                                await fetch(`${API_BASE}/api/session/exam`, { method: 'DELETE' });
+                              } catch (e) {
+                                console.warn('세션 삭제 실패:', e);
+                              }
                               setShowExam(false); setExamQuestions([]); setExamRevealed({}); setExamAnswers({}); setExamTopic(null); setExamOptionExplanations({}); setExamTableAnswers({}); setExamTableGradingResults({}); setShowAnswersState({}); setExamShowAnswersState({});
                             }
                           }}
