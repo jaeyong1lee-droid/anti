@@ -194,38 +194,37 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
   const coreSubject = getCoreSubjectFromTitle(topic.title);
 
   let qIntro = questions.find(q => q.type === '주관식 (개요)');
-  let qFormula = questions.find(q => q.type === '주관식 (공식)');
-  
-  if (qIntro) {
+  if (!qIntro) {
+    qIntro = {
+      type: "주관식 (개요)",
+      question: "[" + coreSubject + "]의 가장 핵심적인 공학적 정의(개요)와 기본적인 작동 원리를 서술하시오.",
+      concept: coreSubject + "의 개요 및 기본 원리입니다.",
+      formula: "",
+      structure: ""
+    };
+  } else {
     qIntro = { ...qIntro };
     qIntro.type = '주관식 (개요)';
     delete qIntro.tableData;
     delete qIntro.answers;
     delete qIntro.subtype;
-  } else {
-    qIntro = {
-      type: "주관식 (개요)",
-      question: "[" + coreSubject + "]의 가장 핵심적인 공학적 정의(개요)와 기본적인 작동 원리를 서술하시오.",
-      concept: coreSubject + "의 개요 and 기본 원리입니다.",
+  }
+
+  let qFormula = questions.find(q => q.type === '주관식 (공식)');
+  if (!qFormula) {
+    qFormula = {
+      type: "주관식 (공식)",
+      question: coreSubject + " 관련 설계/해석 공식 또는 대표 이론적 관계식에 대하여 서술하시오.",
+      concept: coreSubject + "의 기본 공식/관계식입니다.",
       formula: "",
       structure: ""
     };
-  }
-
-  if (qFormula) {
+  } else {
     qFormula = { ...qFormula };
     qFormula.type = '주관식 (공식)';
     delete qFormula.tableData;
     delete qFormula.answers;
     delete qFormula.subtype;
-  } else {
-    qFormula = {
-      type: "주관식 (공식)",
-      question: coreSubject + "의 대표적인 설계 공식 명칭을 기술하시오.",
-      concept: coreSubject + "의 대표 공식입니다.",
-      formula: "",
-      structure: ""
-    };
   }
 
   const carryOverShorts = (carryOverQuestions || []).filter(q => (q.type || '').includes('단답형') && q !== qIntro && q !== qFormula);
@@ -263,24 +262,25 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
   });
 
   const finalShorts4 = [];
+  // Dynamic generic fallbacks instead of hardcoded geotech-specific questions
   const defaultConceptQs = [
     {
       type: "주관식 (단답형)",
-      question: coreSubject + " 공법/개념의 핵심적인 공학적 의미 및 메커니즘을 설명하시오.",
-      answer: "핵심 메커니즘 및 공학적 의미 확보",
-      explanation: coreSubject + "의 세부 공학적 개념과 현장 실무적인 작동 원리입니다."
+      question: coreSubject + "의 공학적 개념과 핵심 작동 메커니즘을 설명하시오.",
+      answer: coreSubject + " 메커니즘 및 공학적 의미 분석",
+      explanation: coreSubject + "의 핵심 개념 설명입니다."
     },
     {
       type: "주관식 (단답형)",
-      question: coreSubject + " 설계 시 안전율 확보 및 하중 작용 조건에 따른 검토 사항을 서술하시오.",
-      answer: "하중 조건 검토 및 허용 안전율 충족",
-      explanation: coreSubject + "의 설계 기준 및 규격 검토 사항입니다."
+      question: coreSubject + " 관련 이론/공법을 설계 시 적용할 때 주요 고려사항에 대하여 기술하시오.",
+      answer: "하중 및 현장 지반 변동성 검토",
+      explanation: coreSubject + " 설계 시 검토 항목 설명입니다."
     },
     {
       type: "주관식 (단답형)",
-      question: coreSubject + "의 장단점을 타 유사 공법/이론과 비교하여 설명하시오.",
-      answer: "타 유사 공법/이론과의 거동 및 시공성 비교 분석",
-      explanation: coreSubject + "의 공법적/이론적 장단점 및 타당성 비교 분석입니다."
+      question: coreSubject + "에 내포된 한계점 및 이를 극복하기 위한 공학적 대안을 서술하시오.",
+      answer: "공학적 설계 마진 확보 및 현장 계측 관리",
+      explanation: coreSubject + "의 한계점 극복 방안 설명입니다."
     }
   ];
 
@@ -299,8 +299,8 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
   } else {
     finalShorts4.push({
       type: "주관식 (단답형)",
-      question: coreSubject + " 적용 시 현장에서 발생할 수 있는 주요 시공 하자 원인과 그 대책을 서술하시오.",
-      answer: "현장 시공 하자 원인 식별 및 대책 수립",
+      question: coreSubject + " 실무 적용 시 발생할 수 있는 주요 시공 하자(또는 문제점) 원인과 그 대책을 서술하시오.",
+      answer: "시공 품질 리스크 관리 및 방지 대책 수립",
       explanation: coreSubject + " 적용 시 현장의 위험 요인 및 예방 대책입니다."
     });
   }
@@ -337,9 +337,9 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
   while (finalCompTables.length < 2) {
     finalCompTables.push({
       type: "주관식 (표채우기)",
-      question: "다음 " + coreSubject + " 관련 핵심 이론 및 공법들의 주요 공학적 특징 비교표 빈칸 (A), (B)에 들어갈 내용을 알맞게 서술하시오.",
+      question: "다음 " + coreSubject + " 관련 핵심 이론/공법들의 주요 공학적 특징 비교표 빈칸 (A), (B)에 들어갈 내용을 알맞게 서술하시오.",
       tableData: {
-        headers: ["구분 항목", "비교 기법 A", "비교 기법 B"],
+        headers: ["구분 항목", "비교 대상 A", "비교 대상 B"],
         rows: [
           ["주요 작동 및 역학적 기전", "[INPUT_1]", "지반 응력 소산 및 매개 변수 분석"],
           ["실무 한계 및 유의사항", "초기 시공 조건 및 장비 진입성 한계", "[INPUT_2]"]
@@ -369,39 +369,15 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
     const defaultGeotechMcs = [
       {
         type: "객관식 (4지선다)",
-        question: "[" + coreSubject + " 공학적 특성] 토목 및 지반 공사에서 흙 and 암반의 투수성 및 배수 설계 시 지하수위 변동이 옹벽 구조물의 배면 토압에 미치는 영향으로 가장 부적절한 것은?",
+        question: "[" + coreSubject + " 공학적 특성] " + coreSubject + " 분석 및 해석 과정에서 발생할 수 있는 매개변수 변동이 안정성 검토에 미치는 영향으로 가장 부적절한 것은?",
         options: [
-          "지하수위가 상승하면 배면 정수압이 추가되어 옹벽에 작용하는 전주동토압이 증가한다.",
-          "지하수위 이하 지반의 흙 단위중량은 수중 단위중량으로 감소하여 토압 자체는 줄어든다.",
-          "수압과 토압이 동시에 작용할 때 구조물의 전도 및 활동 리스크가 감소한다.",
-          "원활한 배수를 위해 필터재와 유공관을 설계하여 수압 상승을 적극 억제해야 한다."
+          "지반 물성치의 변동성이 크면 설계 안전 마진을 상향하여 대응해야 한다.",
+          "적절한 현장 조사가 누락될 경우 과도하게 과소/과대 설계될 리스크가 있다.",
+          "모든 영향 인자를 정량화할 수 없으므로 현장 계측 및 피드백이 불필요하다.",
+          "설계 조건 변경에 따른 구조물의 안정성 저하 가능성을 항시 검증하여야 한다."
         ],
-        answer: "수압과 토압이 동시에 작용할 때 구조물의 전도 및 활동 리스크가 감소한다.",
-        explanation: "배면 수압과 토압이 동시에 작용하면 구조물에 가해지는 횡압력이 급격히 증가하여 전도(Overturning) 및 활동(Sliding) 리스크가 대폭 증가합니다. 따라서 리스크가 감소한다는 설명은 잘못되었습니다."
-      },
-      {
-        type: "객관식 (4지선다)",
-        question: "[" + coreSubject + " 설계 안전율] 지반 공학적 설계 조건에서 사면 안정 및 기초의 지지력 산정 시 적용되는 안전율(Factor of Safety) 개념에 관한 설명으로 가장 올바르지 않은 것은?",
-        options: [
-          "안전율은 지반 정수의 불확실성, 시공 오차, 하중 변동성 등을 고려한 마진이다.",
-          "일시적 집중호우나 지진 등의 지진동 작용 시에는 기준 안전율을 상향하여 설계해야 한다.",
-          "허용응력설계법(ASD)에서는 극한 저항력을 소요 안전율로 나누어 허용력을 산정한다.",
-          "안전율이 1.0 미만인 지반 구조물은 역학적으로 항상 영구히 안정한 상태를 유지한다."
-        ],
-        answer: "안전율이 1.0 미만인 지반 구조물은 역학적으로 항상 영구히 안정한 상태를 유지한다.",
-        explanation: "안전율(F.S)이 1.0 미만이라는 것은 저항력이 작용력보다 작다는 의미이므로 붕괴나 미끄러짐 등의 한계상태에 도달하여 불안정한 상태가 됨을 뜻합니다. 따라서 항상 안전하다는 진술은 잘못되었습니다."
-      },
-      {
-        type: "객관식 (4지선다)",
-        question: "[" + coreSubject + " 전단강도] Terzaghi의 유효응력(Effective Stress) 원리를 적용하여 점성토 지반의 전단강도를 해석할 때, 과잉간극수압(Excess Pore Water Pressure)의 소산과 흙의 거동에 관한 설명 중 가장 옳지 않은 것은?",
-        options: [
-          "압밀이 진행됨에 따라 과잉간극수압이 소산되고 유효응력이 증가한다.",
-          "유효응력이 증가하면 점성토 지반의 전단강도와 전단 저항각이 점진적으로 증가한다.",
-          "비배수 상태에서 급속 하중을 재하하면 유효응력의 변화가 즉시 차단되므로 전단강도가 무한대로 상승한다.",
-          "간극수압계(Piezometer)를 활용하여 현장에서 과잉간극수압의 소산 경향을 계측할 수..."
-        ],
-        answer: "비배수 상태에서 급속 하중을 재하하면 유효응력의 변화가 즉시 차단되므로 전단강도가 무한대로 상승한다.",
-        explanation: "비배수 상태에서 급속 하중을 가하면 과잉간극수압이 상승하고 유효응력은 증가하지 않거나 감소하여 전단강도가 저하될 수 있으며, 결코 전단강도가 무한대로 상승하지 않습니다."
+        answer: "모든 영향 인자를 정량화할 수 없으므로 현장 계측 및 피드백이 불필요하다.",
+        explanation: "지반 공학 설계의 불확실성을 극복하기 위해서 현장 계측 및 유지관리 단계에서의 피드백은 매우 필수적입니다."
       }
     ];
 
@@ -804,7 +780,7 @@ router.post('/topics/:id/ai-questions', async (req, res) => {
       weaknessPrompt = `
 [이전 회차 오답 정보 및 출제 지침]:
 아래 오답들은 사용자가 이전 회차에서 틀린 문제입니다.
-이번에 생성할 5개의 객관식 문제 중 앞의 ${carryOverQuestions.length}개 문제(6번부터 ${5 + carryOverQuestions.length}번)는 반드시 아래 오답의 변형 문제로 출제하십시오:
+이번에 생성할 4개의 객관식 문제 중 앞의 ${carryOverQuestions.length}개 문제(5번부터 ${4 + carryOverQuestions.length}번)는 반드시 아래 오답의 변형 문제로 출제하십시오:
 ${carryOverQuestions.map((q, idx) => `
 오답 문제 ${idx + 1}:
 - 질문: ${q.question}
@@ -922,7 +898,7 @@ ${flowchartSpecificInstruction}
 
 ---------------------------------------------------------
 [문제 생성 태스크 시작]:
-위의 절대 지침과 기준 법규를 완전히 숙지한 상태에서, 아래 제공되는 [토픽 핵심 주제], [핵심 키워드], [첨부파일 본문 텍스트]를 심층 분석하여, 총 **정확히 6개**의 예상문제(주관식 개요 1개, 주관식 공식 1개, 주관식 표채우기(흐름도) 1개, 주관식 단답형 3개)를 생성해 주십시오.
+위의 절대 지침과 기준 법규를 완전히 숙지한 상태에서, 아래 제공되는 [토픽 핵심 주제], [핵심 키워드], [첨부파일 본문 텍스트]를 심층 분석하여, 총 **정확히 7개**의 예상문제(주관식 개요 1개, 주관식 공식 1개, 주관식 표채우기(흐름도) 1개, 주관식 단답형 4개)를 생성해 주십시오.
 
 [토픽 핵심 주제]: ${coreSubject}
 [토픽 원본 제목]: ${topic.title}
@@ -963,8 +939,8 @@ ${flowchartSpecificInstruction}
   * [🚨 이번 회차 흐름도 문제 빈칸 지정 명령 - 매우 중요]: ${flowchartSpecificInstruction}
   * answers 객체의 각 INPUT 키("INPUT_1"부터 "INPUT_2*M"까지)에 들어갈 정답은 명사형 종결어미로 간결하게 작성하여 수험생이 명료하게 채점받을 수 있게 설계하십시오.
 
-[주관식 (단답형) 문제들 (4, 5, 6번 문제)]:
-- 개수: 반드시 정확히 3문제를 출제하십시오.
+[주관식 (단답형) 문제들 (4, 5, 6, 7번 문제)]:
+- 개수: 반드시 정확히 4문제를 출제하십시오.
 - "type" 값: 반드시 "주관식 (단답형)"
 - 🚨 [객관식/선택형 옵션(보기) 제공 절대 금지 규칙 - 극도로 중요!]: 주관식(개요, 공식, 단답형, 표채우기)의 그 어떤 문항에서도 객관식용 보기(options, 예: ①, ②, ③, ④ 등 또는 "options" 필드)를 절대로 설계하거나 기입하여 제공하지 마십시오. 모든 주관식 문항은 오직 서술형 정답만을 요구해야 합니다.
 - 출제 원칙:
@@ -1127,7 +1103,7 @@ ${activeEngineeringStandards}
 
 ---------------------------------------------------------
 [문제 생성 태스크 시작]:
-위의 절대 지침과 기준 법규를 완전히 숙지한 상태에서, 아래 제공되는 [토픽 핵심 주제], [핵심 키워드], [첨부파일 본문 텍스트], [이전 회차 오답 정보], [사용자 피드백 지침] 그리고 [사용자 문제 조정 내역]을 심층 분석하여, 총 **정확히 5개**의 예상문제(객관식 4지선다 5개)를 생성해 주십시오.
+위의 절대 지침과 기준 법규를 완전히 숙지한 상태에서, 아래 제공되는 [토픽 핵심 주제], [핵심 키워드], [첨부파일 본문 텍스트], [이전 회차 오답 정보], [사용자 피드백 지침] 그리고 [사용자 문제 조정 내역]을 심층 분석하여, 총 **정확히 4개**의 예상문제(객관식 4지선다 4개)를 생성해 주십시오.
 ${specialInstructions}
 ${weaknessPrompt}
 ${feedbackPrompt}
@@ -1145,11 +1121,11 @@ ${adjustmentsPrompt}
 - **🚨 [표 작성 개행 규칙 - 극도로 중요!]**: 마크다운 표의 각 행은 반드시 실제 줄바꿈 문자(\\n)를 사용하여 각각 다른 줄에 작성되어야 합니다.
 
 [출제 요구사항]:
-반드시 총 5개의 객관식 문제를 다음과 같이 구성하여 출제하십시오:
+반드시 총 4개의 객관식 문제를 다음과 같이 구성하여 출제하십시오:
 
 - 목적: 토픽의 상세한 원리, 메커니즘, 장단점 등을 다각도로 평가하는 고난도 4지선다형 질문.
 - "type" 값: 반드시 "객관식 (4지선다)"
-- [계산문제 비중 조건 - 매우 중요]: 전체 5개의 객관식 문제 중, 반드시 정확히 2개의 문제는 공학적 수치 판단이나 정량적 분석 능력을 평가하는 문제로 출제하십시오. 단, 질문 지문에 공식이나 수치를 미리 제시한 뒤 "이 값을 대입하여 계산하시오" 식의 기계적 계산 문제는 절대로 출제하지 마십시오.
+- [계산문제 비중 조건 - 매우 중요]: 전체 4개의 객관식 문제 중, 반드시 정확히 2개의 문제는 공학적 수치 판단이나 정량적 분석 능력을 평가하는 문제로 출제하십시오. 단, 질문 지문에 공식이나 수치를 미리 제시한 뒤 "이 값을 대입하여 계산하시오" 식의 기계적 계산 문제는 절대로 출제하지 마십시오.
 - [핵심 관통 질문 원칙]: 모든 객관식 문제는 해당 토픽의 가장 본질적인 공학적 메커니즘, 거동 원리, 설계 판단 근거를 관통하는 질문이어야 합니다.
 - 🚨 [객관식 정밀성 및 정답 일치 조건 - 극도로 중요!]: 모든 객관식 계산 문제나 수치/공학적 판단 문제를 출제할 때, 계산으로 도출된 정확한 정답 수치나 조건이 4개의 보기(options) 중 반드시 정확히 1개로 존재해야 합니다.
 - 🚨 [공식 및 공식 수치 범위 노출 절대 금지 규칙 - 극도로 중요!]: 문제 질문(question) 본문 내에 문제를 해결하는 데 필요한 공학 수식 자체나 수식의 특정 수치 범위를 **절대로 직접 텍스트로 적어 제공하지 마십시오.**
