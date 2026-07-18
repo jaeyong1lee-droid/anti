@@ -243,24 +243,23 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
   flowcharts.forEach(q => finalSubjsTable.push(q));
   compTables.forEach(q => finalSubjsTable.push(q));
 
-  // Fallback to static default comparison table if we need more questions to make it 2
+  // Fallback to dynamic topic comparison table if we need more questions to make it 2
   while (finalSubjsTable.length < 2) {
     finalSubjsTable.push({
       type: "주관식 (표채우기)",
-      question: "터널 굴착면 상부의 보강 공법인 강관다단 그라우팅과 천단 훠폴링 공법의 비교표 빈칸 (A), (B)에 들어갈 공학적 설명을 기술하시오.",
+      question: `다음 ${coreSubject} 관련 핵심 이론 및 공법들의 주요 공학적 특징 비교표 빈칸 (A), (B)에 들어갈 내용을 알맞게 서술하시오.`,
       tableData: {
-        headers: ["비교 항목", "강관다단 그라우팅 공법", "천단 훠폴링 (Forepoling) 공법"],
+        headers: ["구분 항목", "비교 기법 A", "비교 기법 B"],
         rows: [
-          ["보강재 규격 및 특성", "대구경 강관 주입재 가압 그라우팅", "[INPUT_1]"],
-          ["주요 역할 및 역학적 기전", "[INPUT_2]", "천단 낙석 방지 및 국부 붕괴 방지"],
-          ["시공 길이 및 범위", "10m ~ 15m (중첩 시공 필요)", "3m ~ 6m 내외"]
+          ["주요 작동 및 역학적 기전", "[INPUT_1]", "지반 응력 소산 및 매개 변수 분석"],
+          ["실무 한계 및 유의사항", "초기 시공 조건 및 장비 진입성 한계", "[INPUT_2]"]
         ]
       },
       answers: {
-        "INPUT_1": "소구경 강봉 또는 이형철근 주입",
-        "INPUT_2": "터널 상부 종방향 아치 형성 및 차수"
+        "INPUT_1": `${coreSubject} 거동 제어 및 지반 물성치의 안정성 확보`,
+        "INPUT_2": `${coreSubject} 설계 시 간극수압 상승 또는 국부 변형 리스크`
       },
-      explanation: "강관다단 그라우팅은 대구경 강관 and 가압 주입을 통해 천단부에 종방향 아치를 형성하고 차수 효과를 극대화하는 반면, 훠폴링은 소구경 보강재로 천단의 국부 탈락 및 낙석 방지에 초점을 둡니다."
+      explanation: `${coreSubject} 관련 핵심 설계 기법의 역학적 작동 기전과 실무 적용 시 발생할 수 있는 주요 한계점을 대조하여 정리한 비교표입니다.`
     });
   }
 
