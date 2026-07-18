@@ -194,15 +194,7 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
   const coreSubject = getCoreSubjectFromTitle(topic.title);
 
   let qIntro = questions.find(q => q.type === '주관식 (개요)');
-  if (!qIntro) {
-    qIntro = {
-      type: "주관식 (개요)",
-      question: "[" + coreSubject + "]의 가장 핵심적인 공학적 정의(개요)와 기본적인 작동 원리를 서술하시오.",
-      concept: coreSubject + "의 개요 및 기본 원리입니다.",
-      formula: "",
-      structure: ""
-    };
-  } else {
+  if (qIntro) {
     qIntro = { ...qIntro };
     qIntro.type = '주관식 (개요)';
     delete qIntro.tableData;
@@ -211,15 +203,7 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
   }
 
   let qFormula = questions.find(q => q.type === '주관식 (공식)');
-  if (!qFormula) {
-    qFormula = {
-      type: "주관식 (공식)",
-      question: coreSubject + " 관련 설계/해석 공식 또는 대표 이론적 관계식에 대하여 서술하시오.",
-      concept: coreSubject + "의 기본 공식/관계식입니다.",
-      formula: "",
-      structure: ""
-    };
-  } else {
+  if (qFormula) {
     qFormula = { ...qFormula };
     qFormula.type = '주관식 (공식)';
     delete qFormula.tableData;
@@ -235,7 +219,7 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
   const subjsTable = [...questions.filter(q => (q.type === '주관식 (표채우기)' || q.subtype === '표채우기') && q !== qIntro && q !== qFormula), ...carryOverTables];
   const mcs = [...questions.filter(q => (q.type === '객관식 (4지선다)' || (q.options && q.options.length > 0)) && q !== qIntro && q !== qFormula), ...carryOverMcs];
 
-  // AI-generated short subjectives
+  // AI-generated short subjectives (remove duplicates)
   let finalSubjsShort = [];
   const shortSeen = new Set();
   subjsShort.forEach(q => {
@@ -261,49 +245,8 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
     }
   });
 
-  const finalShorts4 = [];
-  // Dynamic generic fallbacks instead of hardcoded geotech-specific questions
-  const defaultConceptQs = [
-    {
-      type: "주관식 (단답형)",
-      question: coreSubject + "의 공학적 개념과 핵심 작동 메커니즘을 설명하시오.",
-      answer: coreSubject + " 메커니즘 및 공학적 의미 분석",
-      explanation: coreSubject + "의 핵심 개념 설명입니다."
-    },
-    {
-      type: "주관식 (단답형)",
-      question: coreSubject + " 관련 이론/공법을 설계 시 적용할 때 주요 고려사항에 대하여 기술하시오.",
-      answer: "하중 및 현장 지반 변동성 검토",
-      explanation: coreSubject + " 설계 시 검토 항목 설명입니다."
-    },
-    {
-      type: "주관식 (단답형)",
-      question: coreSubject + " 관련 설계/해석 및 대책 수립 시 공학적으로 유의해야 할 주요 사항에 대하여 서술하시오.",
-      answer: "지반 상태 정밀 평가 및 공학적 인자 설계 반영",
-      explanation: coreSubject + " 관련 설계/해석 및 적용 시 유의사항 설명입니다."
-    }
-  ];
-
-  // We want exactly 3 concept questions:
-  for (let i = 0; i < 3; i++) {
-    if (conceptQs[i]) {
-      finalShorts4.push(conceptQs[i]);
-    } else {
-      finalShorts4.push(defaultConceptQs[i]);
-    }
-  }
-
-  // And exactly 1 field question:
-  if (fieldQs[0]) {
-    finalShorts4.push(fieldQs[0]);
-  } else {
-    finalShorts4.push({
-      type: "주관식 (단답형)",
-      question: coreSubject + " 현상 또는 공법 적용 시 발생할 수 있는 주요 문제점(또는 위해 요인)과 공학적 대안에 대하여 서술하시오.",
-      answer: "지반 거동 제어 및 공학적 방지 대책 수립",
-      explanation: coreSubject + " 관련 발생 가능한 문제점과 예방 대책 설명입니다."
-    });
-  }
+  // Collect concept questions first, then field questions
+  const finalShorts4 = [...conceptQs, ...fieldQs];
 
   // Extract flowchart and comparison tables
   const flowcharts = subjsTable.filter(q => q && q.question && (
@@ -312,80 +255,21 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
   const compTables = subjsTable.filter(q => q && !flowcharts.includes(q));
 
   // Flowchart Table slot (exactly 1)
-  let finalFlowchart = flowcharts[0];
-  if (!finalFlowchart) {
-    finalFlowchart = {
-      type: "주관식 (표채우기)",
-      question: "다음 " + coreSubject + " 관련 절차 흐름도를 보고 빈칸 (A), (B)에 들어갈 단계를 입력하시오.\n\n```\n┌────────────────────────┐\n│  [1] 대상 공학적 현상 파악  │\n└────────────────────────┘\n            │\n            ▼\n┌────────────────────────┐\n│  [ (A) ]               │\n└────────────────────────┘\n            │\n            ▼\n┌────────────────────────┐\n│  [ (B) ]               │\n└────────────────────────┘\n```",
-      tableData: {
-        headers: ["구분", "내용"],
-        rows: [
-          ["(A)", "[INPUT_1]"],
-          ["(B)", "[INPUT_2]"]
-        ]
-      },
-      answers: {
-        "INPUT_1": coreSubject + " 거동 분석 및 물성치 산정",
-        "INPUT_2": coreSubject + " 대책 설계 및 안정성 검토"
-      },
-      explanation: coreSubject + "의 공학적 설계 및 검토 수행 단계별 절차 흐름도입니다."
-    };
-  }
+  const finalFlowchart = flowcharts[0] || subjsTable.find(q => q !== qIntro && q !== qFormula);
 
   // Comparison Tables slot (exactly 2)
-  const finalCompTables = [...compTables];
-  while (finalCompTables.length < 2) {
-    finalCompTables.push({
-      type: "주관식 (표채우기)",
-      question: "다음 " + coreSubject + " 관련 핵심 이론/공법들의 주요 공학적 특징 비교표 빈칸 (A), (B)에 들어갈 내용을 알맞게 서술하시오.",
-      tableData: {
-        headers: ["구분 항목", "비교 대상 A", "비교 대상 B"],
-        rows: [
-          ["주요 작동 및 역학적 기전", "[INPUT_1]", "지반 응력 소산 및 매개 변수 분석"],
-          ["실무 한계 및 유의사항", "초기 시공 조건 및 장비 진입성 한계", "[INPUT_2]"]
-        ]
-      },
-      answers: {
-        "INPUT_1": coreSubject + " 거동 제어 및 지반 물성치의 안정성 확보",
-        "INPUT_2": coreSubject + " 설계 시 간극수압 상승 또는 국부 변형 리스크"
-      },
-      explanation: coreSubject + " 관련 핵심 설계 기법의 역학적 작동 기전과 실무 적용 시 발생할 수 있는 주요 한계점을 대조하여 정리한 비교표입니다."
-    });
-  }
+  const finalCompTables = compTables.filter(q => q !== finalFlowchart);
 
   // MCQs slot (exactly 4)
   let finalMcs = [];
   const uniqueMcQuestions = new Set();
   mcs.forEach(q => {
-    if (finalMcs.length >= 4) return;
     const cleanQ = (q.question || '').trim();
     if (cleanQ && !uniqueMcQuestions.has(cleanQ)) {
       uniqueMcQuestions.add(cleanQ);
       finalMcs.push(shuffleMultipleChoice(q));
     }
   });
-
-  if (finalMcs.length < 4) {
-    const defaultGeotechMcs = [
-      {
-        type: "객관식 (4지선다)",
-        question: "[" + coreSubject + " 공학적 특성] " + coreSubject + " 분석 및 해석 과정에서 발생할 수 있는 매개변수 변동이 안정성 검토에 미치는 영향으로 가장 부적절한 것은?",
-        options: [
-          "지반 물성치의 변동성이 크면 설계 안전 마진을 상향하여 대응해야 한다.",
-          "적절한 현장 조사가 누락될 경우 과도하게 과소/과대 설계될 리스크가 있다.",
-          "모든 영향 인자를 정량화할 수 없으므로 현장 계측 및 피드백이 불필요하다.",
-          "설계 조건 변경에 따른 구조물의 안정성 저하 가능성을 항시 검증하여야 한다."
-        ],
-        answer: "모든 영향 인자를 정량화할 수 없으므로 현장 계측 및 피드백이 불필요하다.",
-        explanation: "지반 공학 설계의 불확실성을 극복하기 위해서 현장 계측 및 유지관리 단계에서의 피드백은 매우 필수적입니다."
-      }
-    ];
-
-    const deficit = 4 - finalMcs.length;
-    for (let i = 0; i < deficit; i++) {
-      finalMcs.push(defaultGeotechMcs[i % defaultGeotechMcs.length]);
-    }
-  }
 
   const shuffledMcs = shuffleArray([...finalMcs]);
 
@@ -404,7 +288,7 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
     shuffledMcs[3],             // 11번 객관식 (index 10)
     finalShorts4[2],            // 12번 주관식 (index 11) -> Short Subjective 3 (Concept 3)
     finalShorts4[3]             // 13번 주관식 (index 12) -> Short Subjective 4 (Field/Countermeasure)
-  ];
+  ].filter(Boolean);
 }
 async function ensureSessionTable() {
   try {
