@@ -410,6 +410,25 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   // Normalize dashes (en-dash, em-dash, math minus) to standard hyphens
   processed = processed.replace(/[–—−]/g, '-');
 
+  // [Self-Healing] Convert plain English geotechnical math variables (e.g. sigma_v0 ', sigma_v, tau, etc.) to standard LaTeX ($...$)
+  const plainGreekLetters = 'sigma|tau|phi|gamma|alpha|beta|theta|epsilon|Delta';
+  const plainGreekRegex = new RegExp(`(?<![\\\\a-zA-Z$])(${plainGreekLetters})(?:\\s*')?(?:_([a-zA-Z0-9{}]+))?(?:\\s*')?(?![a-zA-Z0-9$_])`, 'g');
+  processed = processed.replace(plainGreekRegex, (match, name, sub) => {
+    let latexName = '\\' + name.toLowerCase();
+    if (name === 'Delta') latexName = '\\Delta';
+    
+    const hasPrime = match.includes("'");
+    let latexStr = latexName;
+    if (sub) {
+      const cleanSub = sub.length > 1 ? `{${sub}}` : sub;
+      latexStr += `_${cleanSub}`;
+    }
+    if (hasPrime) {
+      latexStr += "'";
+    }
+    return `$${latexStr}$`;
+  });
+
 
   // [Self-Healing] Remove space between backslash and Greek commands (including trailing alphanumeric characters)
   const greekSubscriptFullLetters = 'alpha|beta|gamma|sigma|tau|phi|theta|epsilon|pi|delta|omega|mu|lambda|psi|rho|eta|nu|xi|zeta|chi|upsilon|kappa';
