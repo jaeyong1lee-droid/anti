@@ -617,6 +617,7 @@ ${otherQs.map((q, i) => `기존 문제 ${i + 1}: ${q.question || '없음'}`).joi
       let targetType = '객관식 (4지선다)';
       let targetSubtype = '';
       const currentType = currentQuestion?.type || '';
+      const idx = typeof questionIdx !== 'undefined' ? Number(questionIdx) : -1;
       const isFlowchartQ = !!(
         (currentQuestion?.question || '').includes('┌──') ||
         (currentQuestion?.question || '').includes('▼') ||
@@ -632,8 +633,16 @@ ${otherQs.map((q, i) => `기존 문제 ${i + 1}: ${q.question || '없음'}`).joi
         targetType = '객관식 (4지선다)';
       } else if (targetTypeSelection === 'subj') {
         targetType = '주관식 (단답형)';
-        const rand = Math.floor(Math.random() * 2);
-        targetSubtype = rand === 0 ? '12번형태' : '13번형태';
+        if (idx === 12) {
+          targetSubtype = '13번형태';
+        } else if (idx === 11 || idx === 5 || idx === 9) {
+          targetSubtype = '12번형태';
+        } else {
+          const qText = currentQuestion?.question || '';
+          const fieldKeywords = ["하자", "대책", "문제점", "시나리오", "현장", "문제 상황", "대처", "countermeasure", "solution", "scenario"];
+          const isField = fieldKeywords.some(kw => qText.includes(kw));
+          targetSubtype = isField ? '13번형태' : '12번형태';
+        }
       } else if (targetTypeSelection === 'table') {
         targetType = '주관식 (표채우기)';
       } else {
@@ -644,8 +653,16 @@ ${otherQs.map((q, i) => `기존 문제 ${i + 1}: ${q.question || '없음'}`).joi
         else if (currentType.includes('표채우기') || currentQuestion?.tableData) targetType = '주관식 (표채우기)';
         else if (currentType.includes('단답형') || currentType.includes('단답')) {
           targetType = '주관식 (단답형)';
-          const rand = Math.floor(Math.random() * 2);
-          targetSubtype = rand === 0 ? '12번형태' : '13번형태';
+          if (idx === 12) {
+            targetSubtype = '13번형태';
+          } else if (idx === 11 || idx === 5 || idx === 9) {
+            targetSubtype = '12번형태';
+          } else {
+            const qText = currentQuestion?.question || '';
+            const fieldKeywords = ["하자", "대책", "문제점", "시나리오", "현장", "문제 상황", "대처", "countermeasure", "solution", "scenario"];
+            const isField = fieldKeywords.some(kw => qText.includes(kw));
+            targetSubtype = isField ? '13번형태' : '12번형태';
+          }
         } else {
           targetType = '객관식 (4지선다)';
         }
@@ -688,7 +705,19 @@ ${otherQs.map((q, i) => `기존 문제 ${i + 1}: ${q.question || '없음'}`).joi
         typeRequirement = `[주관식 (표채우기) 유형으로 생성하십시오]`;
         formatRequirement = `{"type": "주관식 (표채우기)", "question": "질문", "tableData": {"headers": ["구분", "비교1", "비교2"], "rows": [["항목", "[INPUT_1]", "[INPUT_2]"]]}, "answers": {"INPUT_1": "답1", "INPUT_2": "답2"}, "explanation": "해설"}`;
       } else if (targetType === '주관식 (단답형)') {
-        typeRequirement = `[주관식 (단답형) ${targetSubtype} 유형으로 생성하십시오]`;
+        let subtypeInstruction = '';
+        if (targetSubtype === '12번형태') {
+          subtypeInstruction = `
+- **12번형태 (개념 및 거동원리 중심)**:
+  * 토픽의 핵심적인 공학적 정의, 역학적 거동 메커니즘, 장단점 비교, 타 공법/이론과의 공학적 차이점 등 학술적/이론적 개념에 대해 심층 분석을 요구하는 서술형 질문으로 출제해야 합니다.
+  * 지문에 현장 위해 상황이나 문제 대책 수립을 요구하지 마시고, 이론적/역학적 거동 원리에 온전히 집중하여 출제하십시오.`;
+        } else {
+          subtypeInstruction = `
+- **13번형태 (현장 하자/위해 시나리오 및 실무 대책 중심)**:
+  * 해당 공법/이론 적용 시 현장에서 발생할 수 있는 구체적인 시공 하자, 지반 붕괴, 균열 등의 위해/하자 문제 상황(시나리오)을 지문으로 제시하십시오.
+  * 이를 해결하거나 예방하기 위한 기술사 관점의 구체적이고 실무적인 공학적 대책/대처 방안 수립을 요구하는 질문으로 출제해야 합니다.`;
+        }
+        typeRequirement = `[주관식 (단답형) ${targetSubtype} 유형으로 생성하십시오]${subtypeInstruction}`;
         formatRequirement = `{"type": "주관식 (단답형)", "question": "질문", "answer": "답안", "explanation": "해설"}`;
       } else {
         typeRequirement = `[객관식 4지선다 유형으로 생성하십시오]`;
