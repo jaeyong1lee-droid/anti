@@ -169,6 +169,7 @@ export async function callLLMWithFailover(systemInstruction, userPrompt, image =
       executionList.push({ key: k.key, label: k.label, model: 'grok-2', type: 'grok' });
     } else {
       const geminiFallbacks = [
+        options.preferredModel,
         globalPreferredModel,
         'gemini-3.1-flash-lite',
         'gemini-3.5-flash',
