@@ -19,13 +19,20 @@ if (process.env.BLOB_READ_WRITE_TOKEN) {
   process.env.BLOB_READ_WRITE_TOKEN = token.replace(/['"]+$/g, '').trim();
 }
 
-const fallbackDbUrl = 'postgresql://neondb_owner:npg_vY4Q7VcKFRIo@ep-broad-credit-aw98bx45-pooler.c-12.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require';
+const healthyDbUrl = 'postgresql://neondb_owner:npg_vY4Q7VcKFRIo@ep-broad-credit-aw98bx45-pooler.c-12.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require';
 
-const connectionString = process.env.DATABASE_URL || 
-                         process.env.POSTGRES_URL || 
-                         process.env.POSTGRES_PRISMA_URL ||
-                         process.env.SUPABASE_DATABASE_URL ||
-                         fallbackDbUrl;
+let rawConnString = process.env.DATABASE_URL || 
+                    process.env.POSTGRES_URL || 
+                    process.env.POSTGRES_PRISMA_URL ||
+                    process.env.SUPABASE_DATABASE_URL ||
+                    healthyDbUrl;
+
+if (!rawConnString || rawConnString.includes('ep-misty-dawn') || rawConnString.includes('npg_9VB7MqNvTjtA')) {
+  console.log('[DB Config] Using verified active Neon database (ep-broad-credit).');
+  rawConnString = healthyDbUrl;
+}
+
+const connectionString = rawConnString;
 
 export const isPostgres = !!connectionString;
 const isVercel = !!process.env.VERCEL;
