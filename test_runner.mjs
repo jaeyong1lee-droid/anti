@@ -1,6 +1,7 @@
 import https from 'https';
 import http from 'http';
 import { convertMarkdownToHtml } from './client/src/utils/renderingHelpers.js';
+import { processAiTutorDiagrams } from './client/src/components/AiTutorDiagramPlugin.js';
 
 console.log('=====================================================================');
 console.log(' 🤖 ANTIGRAVITY AUTOMATED MASTER REGRESSION TEST SUITE ');
@@ -89,38 +90,38 @@ async function runTests() {
     failed++;
   }
 
-  console.log('\n[3/4] Testing Diagram & Flowchart Rendering Engine...');
+  console.log('\n[3/4] Testing Isolated AI Tutor Diagram Plugin (processAiTutorDiagrams)...');
   
   // Test A: < svg with space (AI Tutor output format)
-  const testSvgSpaceInput = '``` < svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1100"><defs></defs><rect width="100" height="100"/></svg>\n```';
-  const svgHtml = convertMarkdownToHtml(testSvgSpaceInput, false, false, true);
+  const testSvgSpaceInput = '``` < svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1100"><defs></defs><rect fill=\'\'#868e96\'\' width="100" height="100"/></svg>\n```';
+  const svgHtml = processAiTutorDiagrams(testSvgSpaceInput);
   if (svgHtml.includes('<svg') && svgHtml.includes('rect') && !svgHtml.includes('ParseError')) {
-    console.log('  ✅ [PASS] SVG Graphic Renderer (< svg with space converted to clean vector SVG)');
+    console.log('  ✅ [PASS] AI Tutor SVG Graphic Renderer (< svg with space & escaped quotes converted to clean SVG)');
     passed++;
   } else {
-    console.log('  ❌ [FAIL] SVG Graphic Renderer failed on < svg with space');
+    console.log('  ❌ [FAIL] AI Tutor SVG Graphic Renderer failed on < svg with space');
     failed++;
   }
 
   // Test B: TikZ Flowchart Rendering
-  const testTikzInput = '```latex\n\\begin{tikzpicture}\n\\node (box1) {1단계: 기초 침하 검토};\n\\node (box2) {2단계: 지질 조사};\n\\end{tikzpicture}\n```';
-  const tikzHtml = convertMarkdownToHtml(testTikzInput, false, false, true);
+  const testTikzInput = '```latex\n\\begin{document}\n\\begin{tikzpicture}\n\\node (box1) {1단계: 기초 침하 검토};\n\\node (box2) {2단계: 지질 조사};\n\\end{tikzpicture}\n\\end{document}\n```';
+  const tikzHtml = processAiTutorDiagrams(testTikzInput);
   if (tikzHtml.includes('1단계: 기초 침하 검토') && tikzHtml.includes('▼')) {
-    console.log('  ✅ [PASS] TikZ Flowchart Engine (LaTeX TikZ converted to 2D flowchart step cards)');
+    console.log('  ✅ [PASS] AI Tutor TikZ Flowchart Engine (LaTeX TikZ converted to 2D flowchart step cards)');
     passed++;
   } else {
-    console.log('  ❌ [FAIL] TikZ Flowchart Engine failed to convert TikZ code into step cards');
+    console.log('  ❌ [FAIL] AI Tutor TikZ Flowchart Engine failed to convert TikZ code into step cards');
     failed++;
   }
 
   // Test C: Mermaid Flowchart Rendering
-  const testMermaidInput = '```mermaid\ngraph TD;\n  A[1단계: 지반 분류] --> B[2단계: 토압 산정];\n```';
-  const mermaidHtml = convertMarkdownToHtml(testMermaidInput, false, false, true);
-  if (mermaidHtml.includes('1단계: 지반 분류') && mermaidHtml.includes('▼')) {
-    console.log('  ✅ [PASS] Mermaid Flowchart Engine (Mermaid graph converted to 2D flowchart step cards)');
+  const testMermaidInput = '```\ngraph TD\n  Core["지반 탄성계수 (Es) 측정 및 평가 프로세스"]\n  Lab["1. 실내 시험"]\n```';
+  const mermaidHtml = processAiTutorDiagrams(testMermaidInput);
+  if (mermaidHtml.includes('지반 탄성계수 (Es) 측정 및 평가 프로세스') && mermaidHtml.includes('▼')) {
+    console.log('  ✅ [PASS] AI Tutor Mermaid Flowchart Engine (Mermaid graph converted to 2D flowchart step cards)');
     passed++;
   } else {
-    console.log('  ❌ [FAIL] Mermaid Flowchart Engine failed to convert graph into step cards');
+    console.log('  ❌ [FAIL] AI Tutor Mermaid Flowchart Engine failed to convert graph into step cards');
     failed++;
   }
 

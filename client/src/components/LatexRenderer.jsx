@@ -141,6 +141,8 @@ const parseAndRenderFlowchart = (flowchartText, katexLoaded, questionKey) => {
   );
 };
 
+import { processAiTutorDiagrams } from './AiTutorDiagramPlugin';
+
 export const LatexRenderer = React.memo(function LatexRenderer({ 
   text, 
   katexLoaded, 
@@ -159,6 +161,9 @@ export const LatexRenderer = React.memo(function LatexRenderer({
   if (!text) return null;
 
   let parsedText = text;
+  if (isRealTimeTutor || formulaSource === 'tutor') {
+    parsedText = processAiTutorDiagrams(parsedText);
+  }
   if (forceInline && typeof parsedText === 'string') {
     parsedText = parsedText.replace(/\$\$/g, '$');
   }
