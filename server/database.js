@@ -227,18 +227,21 @@ export const dbQuery = {
   }
 };
 
+let isDbSchemaEnsured = false;
+
 // Initialize schema
 export async function initDatabase() {
+  if (isDbSchemaEnsured) return;
   try {
     if (isPostgres) {
       try {
         console.log('Verifying Cloud PostgreSQL connection...');
-        // Execute a quick probe query with retry to ensure database is responsive
+        const retries = isVercel ? 2 : 5;
+        const delay = isVercel ? 200 : 2000;
         await executeWithRetry(async () => {
           await pgPool.query('SELECT NOW()');
-        }, 5, 3000); // 5 retries, 3 seconds delay each to allow Neon compute to wake up
+        }, retries, delay);
 
-        
         // 1. topics table: stores studied topics and raw PDF data as a BYTEA
         await pgPool.query(`
           CREATE TABLE IF NOT EXISTS topics (
@@ -334,9 +337,11 @@ export async function initDatabase() {
           throw pgInitError; // Keep failing on Vercel as SQLite is disabled there
         }
         console.error('PostgreSQL connection failed at startup. Keeping PostgreSQL active to retry and connect to the Neon cloud database: ', pgInitError.message);
+        isDbSchemaEnsured = true;
       }
     } else {
       await initSQLiteTables();
+      isDbSchemaEnsured = true;
     }
   } catch (error) {
     console.error('Failed to initialize database tables:', error);
