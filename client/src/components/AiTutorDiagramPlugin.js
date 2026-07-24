@@ -109,6 +109,9 @@ export function processAiTutorDiagrams(text) {
     return '';
   });
 
+  // Clean leftover LaTeX standalone commands
+  processed = processed.replace(/\\end\{document\}/gi, '').replace(/\\begin\{document\}/gi, '');
+
   // --------------------------------------------------------------------------
   // 3. Process Mermaid / Graph Flowchart Code Blocks (graph TD, flowchart TD, multiline nodes)
   // --------------------------------------------------------------------------
