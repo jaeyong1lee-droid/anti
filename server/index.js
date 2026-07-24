@@ -37,6 +37,75 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
+// Database and Server Startup state
+let isInitialized = false;
+let initPromise = null;
+
+export async function ensureDbInitialized() {
+  if (isInitialized) return;
+  if (!initPromise) {
+    initPromise = (async () => {
+      try {
+        console.log('[Startup] Initializing Database connection...');
+        await initDatabase();
+        
+        try {
+          await dbQuery.run(`
+            CREATE TABLE IF NOT EXISTS app_session (
+              key TEXT PRIMARY KEY,
+              value TEXT,
+              updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+          `);
+          console.log('[Startup] app_session table ensured.');
+        } catch (e) {
+          console.warn('[Startup] ensureSessionTable warning:', e.message);
+        }
+
+        try {
+          console.log('[Startup] Syncing saved standards from database...');
+          await initializeAllStandards();
+        } catch (e) {
+          console.warn('[Startup] initializeAllStandards warning:', e.message);
+        }
+
+        try {
+          console.log('[Startup] Loading saved preferred model configuration...');
+          await loadPreferredModel();
+        } catch (e) {
+          console.warn('[Startup] loadPreferredModel warning:', e.message);
+        }
+
+        if (!process.env.VERCEL) {
+          try {
+            startBackupScheduler();
+          } catch (e) {
+            console.warn('[Startup] startBackupScheduler warning:', e.message);
+          }
+        }
+
+        isInitialized = true;
+      } catch (error) {
+        console.error('[CRITICAL STARTUP ERROR] Database connection failed:', error);
+        initPromise = null;
+        throw error;
+      }
+    })();
+  }
+  await initPromise;
+}
+
+// Request middleware to guarantee DB initialization BEFORE any route is matched
+app.use(async (req, res, next) => {
+  try {
+    await ensureDbInitialized();
+    next();
+  } catch (err) {
+    console.error('[Middleware DB Init Error]:', err);
+    res.status(500).json({ error: 'Database initialization failed', details: err.message });
+  }
+});
+
 // Request Logger
 app.use((req, res, next) => {
   console.log(`[${new Date().toLocaleTimeString()}] ${req.method} ${req.url}`);
@@ -194,75 +263,6 @@ async function initializeAllStandards() {
   await syncStandard('generationStandards.js', 'generation_standards', generationStandardsList, updateLiveGenerationStandards);
   await syncStandard('lockscreenStandards.js', 'lockscreen_standards', lockscreenStandardsList, updateLiveLockscreenStandards);
 }
-
-// Database and Server Startup state
-let isInitialized = false;
-let initPromise = null;
-
-export async function ensureDbInitialized() {
-  if (isInitialized) return;
-  if (!initPromise) {
-    initPromise = (async () => {
-      try {
-        console.log('[Startup] Initializing Database connection...');
-        await initDatabase();
-        
-        try {
-          await dbQuery.run(`
-            CREATE TABLE IF NOT EXISTS app_session (
-              key TEXT PRIMARY KEY,
-              value TEXT,
-              updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-          `);
-          console.log('[Startup] app_session table ensured.');
-        } catch (e) {
-          console.warn('[Startup] ensureSessionTable warning:', e.message);
-        }
-
-        try {
-          console.log('[Startup] Syncing saved standards from database...');
-          await initializeAllStandards();
-        } catch (e) {
-          console.warn('[Startup] initializeAllStandards warning:', e.message);
-        }
-
-        try {
-          console.log('[Startup] Loading saved preferred model configuration...');
-          await loadPreferredModel();
-        } catch (e) {
-          console.warn('[Startup] loadPreferredModel warning:', e.message);
-        }
-
-        if (!process.env.VERCEL) {
-          try {
-            startBackupScheduler();
-          } catch (e) {
-            console.warn('[Startup] startBackupScheduler warning:', e.message);
-          }
-        }
-
-        isInitialized = true;
-      } catch (error) {
-        console.error('[CRITICAL STARTUP ERROR] Database connection failed:', error);
-        initPromise = null;
-        throw error;
-      }
-    })();
-  }
-  await initPromise;
-}
-
-// Request middleware to guarantee DB initialization BEFORE any route is matched
-app.use(async (req, res, next) => {
-  try {
-    await ensureDbInitialized();
-    next();
-  } catch (err) {
-    console.error('[Middleware DB Init Error]:', err);
-    res.status(500).json({ error: 'Database initialization failed', details: err.message });
-  }
-});
 
 if (!process.env.VERCEL) {
   ensureDbInitialized().then(() => {
