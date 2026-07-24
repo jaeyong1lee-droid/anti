@@ -251,19 +251,15 @@ export const dbQuery = {
 };
 
 let isDbSchemaEnsured = false;
-
 // Initialize schema
 export async function initDatabase() {
   if (isDbSchemaEnsured) return;
+  isDbSchemaEnsured = true;
   try {
     if (isPostgres && pgPool) {
       try {
         console.log('Verifying Cloud PostgreSQL connection...');
-        const retries = isVercel ? 1 : 2;
-        const delay = isVercel ? 200 : 1000;
-        await executeWithRetry(async () => {
-          await pgPool.query('SELECT NOW()');
-        }, retries, delay);
+        await pgPool.query('SELECT NOW()');
 
         // 1. topics table: stores studied topics and raw PDF data as a BYTEA
         await pgPool.query(`
@@ -327,13 +323,15 @@ export async function initDatabase() {
         await pgPool.query(`
           CREATE TABLE IF NOT EXISTS question_adjustments (
             id SERIAL PRIMARY KEY,
-            topic_id INTEGER NOT NULL REFERENCES topics(id) ON DELETE CASCADE,
+            topic_id INTEGER REFERENCES topics(id) ON DELETE CASCADE,
             question_text TEXT NOT NULL,
-            adjusted_text TEXT NOT NULL,
-            user_feedback TEXT NOT NULL,
+            original_type TEXT,
+            adjusted_type TEXT,
+            user_note TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
           )
         `);
+
         console.log('Cloud PostgreSQL database tables initialized successfully.');
         await migrateSchedulesTable();
 
