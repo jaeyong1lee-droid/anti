@@ -22,8 +22,8 @@ cd /d "%PROJECT_DIR%client"
 start "AntiGravity Frontend" cmd /k "npm run dev"
 
 echo.
-echo 잠시 후 웹 브라우저로 로컬 대시보드(http://localhost:3000)를 엽니다...
-timeout /t 3 /nobreak >nul
+echo 잠시 후 백엔드 및 프론트엔드 서버 준비 완료 후 브라우저를 엽니다 (5초 대기)...
+timeout /t 5 /nobreak >nul
 start http://localhost:3000
 
 echo.
