@@ -344,6 +344,12 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
   const tableBlocks = [];
   let tempText = mdText || '';
 
+  // Auto-heal missing braces for multi-character subscripts (e.g. T_max -> T_{max}, Q_ug -> Q_{ug})
+  tempText = tempText.replace(/([a-zA-Z0-9_\}\)]+)_([a-zA-Z0-9]{2,})\b/g, (m, base, sub) => {
+    if (base.endsWith('\\')) return m;
+    return `${base}_{${sub}}`;
+  });
+
   // Auto-break numbered list items that appear inline without newlines (e.g. "... F.S. 2. 블록... 3. 최종...")
   tempText = tempText.replace(/([^\n])\s+((?:[2-9]\d*|[②-⑳])(?:\.|\))\s+)/g, '$1\n$2');
 
@@ -682,6 +688,13 @@ export const renderKatexString = (math, options) => {
   processedMath = processedMath.replace(/(?<!\\)%/g, '\\%');
 
   let cleaned = processedMath.trim();
+  
+  // Auto-heal missing braces for multi-character subscripts (e.g. T_max -> T_{max}, Q_ug -> Q_{ug})
+  cleaned = cleaned.replace(/([a-zA-Z0-9_\}\)]+)_([a-zA-Z0-9]{2,})\b/g, (m, base, sub) => {
+    if (base.endsWith('\\')) return m;
+    return `${base}_{${sub}}`;
+  });
+
   if (cleaned.startsWith('$$') && cleaned.endsWith('$$')) {
     cleaned = cleaned.substring(2, cleaned.length - 2).trim();
   } else if (cleaned.startsWith('$') && cleaned.endsWith('$')) {
