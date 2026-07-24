@@ -341,12 +341,13 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
   const tableBlocks = [];
   let tempText = mdText || '';
 
-  // SVG Graphic rendering shield: Render raw or code block <svg ...></svg> directly as a rendered vector graphic
-  tempText = tempText.replace(/(?:```[a-zA-Z0-9_-]*\s*)?(?:\$xml\s*|\$)?(?:&lt;svg|<svg)[\s\S]*?(?:&lt;\/svg&gt;|<\/svg>)\$?(?:\s*```)?/gi, (match) => {
+  // SVG Graphic rendering shield: Render raw or code block <svg ...></svg> (with or without spaces in < svg) directly as a rendered vector graphic
+  tempText = tempText.replace(/(?:```[a-zA-Z0-9_-]*\s*)?(?:\$xml\s*|\$)?(?:&lt;\s*svg|<[ \t]*svg)[\s\S]*?(?:&lt;\/\s*svg&gt;|<\/[ \t]*svg>)\$?(?:\s*```)?/gi, (match) => {
     let cleanSvg = match.replace(/^```[a-zA-Z0-9_-]*\s*/i, '').replace(/```\s*$/, '')
                         .replace(/^\$xml\s*/i, '').replace(/^\$/, '').replace(/\$$/, '')
                         .replace(/&lt;/g, '<').replace(/&gt;/g, '>')
-                        .replace(/&amp;/g, '&').replace(/&quot;/g, '"');
+                        .replace(/&amp;/g, '&').replace(/&quot;/g, '"')
+                        .replace(/<\s+svg/gi, '<svg');
     const svgMatch = cleanSvg.match(/<svg[\s\S]*?<\/svg>/i);
     if (svgMatch) {
       const placeholder = `___HTML_TABLE_${placeholderIndex}___`;
@@ -358,13 +359,17 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
     return match;
   });
 
-  // Protect and convert markdown code blocks (``` ... ```) to styled pre/code blocks or rendered SVG
+  // Protect and convert markdown code blocks (``` ... ```) to styled pre/code blocks, TikZ flowcharts, Mermaid flowcharts, or rendered SVG
   const codeBlocks = [];
   let codeBlockIndex = 0;
   tempText = tempText.replace(/```([a-zA-Z0-9_-]*)\r?\n([\s\S]*?)\r?\n```/gi, (match, lang, code) => {
     let cleanCode = code.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').replace(/&quot;/g, '"');
-    if (cleanCode.includes('<svg') || (lang && (lang.toLowerCase() === 'xml' || lang.toLowerCase() === 'svg'))) {
-      const svgMatch = cleanCode.match(/<svg[\s\S]*?<\/svg>/i);
+    const lowerLang = (lang || '').toLowerCase();
+    
+    // 1. SVG Code Block
+    if (cleanCode.includes('<svg') || cleanCode.includes('< svg') || lowerLang === 'xml' || lowerLang === 'svg') {
+      const normalizedCode = cleanCode.replace(/<\s+svg/gi, '<svg');
+      const svgMatch = normalizedCode.match(/<svg[\s\S]*?<\/svg>/i);
       if (svgMatch) {
         const placeholder = `___CODE_BLOCK_${codeBlockIndex}___`;
         const styledHtml = `<div class="my-4 w-full flex flex-col items-center justify-center p-4 rounded-2xl bg-white text-slate-900 border border-indigo-500/30 shadow-xl overflow-x-auto select-text">${svgMatch[0]}</div>`;
@@ -373,6 +378,74 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
         return placeholder;
       }
     }
+
+    // 2. TikZ Flowchart Code Block (\begin{tikzpicture} or tikz)
+    if (cleanCode.includes('\\begin{tikzpicture}') || cleanCode.includes('documentclass[tikz]') || lowerLang === 'tikz' || lowerLang === 'latex') {
+      const nodeMatches = [...cleanCode.matchAll(/\\node\s*(?:\[[^\]]*\])?\s*(?:\([^)]*\))?\s*\{([\s\S]*?)\};/gi)];
+      const stepItems = [];
+      nodeMatches.forEach(m => {
+        let nodeText = m[1]
+          .replace(/%.*$/gm, '')
+          .replace(/\\small|\\large|\\textbf|\\textit|\\font=[^\n]*/gi, '')
+          .replace(/\\\\/g, ' ')
+          .replace(/[{}]/g, '')
+          .trim();
+        if (nodeText && !nodeText.toLowerCase().includes('standalone') && !nodeText.toLowerCase().includes('document')) {
+          stepItems.push(nodeText);
+        }
+      });
+
+      if (stepItems.length > 0) {
+        let cardsHtml = '<div class="w-full my-4 flex flex-col items-center gap-2 select-text font-sans">';
+        stepItems.forEach((step, sIdx) => {
+          cardsHtml += `<div class="w-full bg-slate-900/80 border border-indigo-500/30 p-3 rounded-xl text-left shadow-md flex flex-col gap-1">`;
+          cardsHtml += `<div class="font-bold text-indigo-300 text-xs flex items-center gap-1.5"><span class="w-4 h-4 rounded-full bg-indigo-500/20 text-indigo-400 text-[10px] flex items-center justify-center font-black">${sIdx + 1}</span>${step}</div>`;
+          cardsHtml += `</div>`;
+          if (sIdx < stepItems.length - 1) {
+            cardsHtml += `<div class="text-indigo-400 font-extrabold text-xs">▼</div>`;
+          }
+        });
+        cardsHtml += '</div>';
+
+        const placeholder = `___CODE_BLOCK_${codeBlockIndex}___`;
+        codeBlocks.push({ placeholder, content: cardsHtml });
+        codeBlockIndex++;
+        return placeholder;
+      }
+    }
+
+    // 3. Mermaid / Graph Flowchart Code Block
+    if (lowerLang === 'mermaid' || cleanCode.includes('graph TD') || cleanCode.includes('graph LR') || cleanCode.includes('flowchart TD')) {
+      const nodeMatches = [...cleanCode.matchAll(/(?:([A-Za-z0-9_-]+)\s*\[(?:["']?)(.*?)(?:["']?)\])/gi)];
+      const stepItems = [];
+      const seen = new Set();
+      nodeMatches.forEach(m => {
+        const text = m[2].trim();
+        if (text && !seen.has(text)) {
+          seen.add(text);
+          stepItems.push(text);
+        }
+      });
+
+      if (stepItems.length > 0) {
+        let cardsHtml = '<div class="w-full my-4 flex flex-col items-center gap-2 select-text font-sans">';
+        stepItems.forEach((step, sIdx) => {
+          cardsHtml += `<div class="w-full bg-slate-900/80 border border-emerald-500/30 p-3 rounded-xl text-left shadow-md flex flex-col gap-1">`;
+          cardsHtml += `<div class="font-bold text-emerald-300 text-xs flex items-center gap-1.5"><span class="w-4 h-4 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] flex items-center justify-center font-black">${sIdx + 1}</span>${step}</div>`;
+          cardsHtml += `</div>`;
+          if (sIdx < stepItems.length - 1) {
+            cardsHtml += `<div class="text-emerald-400 font-extrabold text-xs">▼</div>`;
+          }
+        });
+        cardsHtml += '</div>';
+
+        const placeholder = `___CODE_BLOCK_${codeBlockIndex}___`;
+        codeBlocks.push({ placeholder, content: cardsHtml });
+        codeBlockIndex++;
+        return placeholder;
+      }
+    }
+
     const placeholder = `___CODE_BLOCK_${codeBlockIndex}___`;
     const styledHtml = `<pre class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-4 overflow-x-auto my-3 font-mono text-xs text-slate-300 leading-relaxed select-text" style="white-space: pre; font-family: monospace;">${code}</pre>`;
     codeBlocks.push({ placeholder, content: styledHtml });

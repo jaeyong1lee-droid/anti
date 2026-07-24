@@ -89,15 +89,38 @@ async function runTests() {
     failed++;
   }
 
-  console.log('\n[3/4] Testing SVG Graphic Rendering Engine...');
-  const testSvgInput = '```xml\n$xml <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1100"><defs></defs><rect width="100" height="100"/></svg>\n```';
-  const renderedHtml = convertMarkdownToHtml(testSvgInput, false, false, true);
-
-  if (renderedHtml.includes('<svg') && renderedHtml.includes('rect') && !renderedHtml.includes('ParseError')) {
-    console.log('  ✅ [PASS] SVG Graphic Renderer (Clean Vector SVG output without KaTeX error)');
+  console.log('\n[3/4] Testing Diagram & Flowchart Rendering Engine...');
+  
+  // Test A: < svg with space (AI Tutor output format)
+  const testSvgSpaceInput = '``` < svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1100"><defs></defs><rect width="100" height="100"/></svg>\n```';
+  const svgHtml = convertMarkdownToHtml(testSvgSpaceInput, false, false, true);
+  if (svgHtml.includes('<svg') && svgHtml.includes('rect') && !svgHtml.includes('ParseError')) {
+    console.log('  ✅ [PASS] SVG Graphic Renderer (< svg with space converted to clean vector SVG)');
     passed++;
   } else {
-    console.log('  ❌ [FAIL] SVG Graphic Renderer failed to produce inline SVG container');
+    console.log('  ❌ [FAIL] SVG Graphic Renderer failed on < svg with space');
+    failed++;
+  }
+
+  // Test B: TikZ Flowchart Rendering
+  const testTikzInput = '```latex\n\\begin{tikzpicture}\n\\node (box1) {1단계: 기초 침하 검토};\n\\node (box2) {2단계: 지질 조사};\n\\end{tikzpicture}\n```';
+  const tikzHtml = convertMarkdownToHtml(testTikzInput, false, false, true);
+  if (tikzHtml.includes('1단계: 기초 침하 검토') && tikzHtml.includes('▼')) {
+    console.log('  ✅ [PASS] TikZ Flowchart Engine (LaTeX TikZ converted to 2D flowchart step cards)');
+    passed++;
+  } else {
+    console.log('  ❌ [FAIL] TikZ Flowchart Engine failed to convert TikZ code into step cards');
+    failed++;
+  }
+
+  // Test C: Mermaid Flowchart Rendering
+  const testMermaidInput = '```mermaid\ngraph TD;\n  A[1단계: 지반 분류] --> B[2단계: 토압 산정];\n```';
+  const mermaidHtml = convertMarkdownToHtml(testMermaidInput, false, false, true);
+  if (mermaidHtml.includes('1단계: 지반 분류') && mermaidHtml.includes('▼')) {
+    console.log('  ✅ [PASS] Mermaid Flowchart Engine (Mermaid graph converted to 2D flowchart step cards)');
+    passed++;
+  } else {
+    console.log('  ❌ [FAIL] Mermaid Flowchart Engine failed to convert graph into step cards');
     failed++;
   }
 

@@ -418,8 +418,10 @@ export function FloatingMemorization({
   }, [formulaOverviews, formulaTables, formulaAcronyms, formulaImages]);
 
   // Local editing states for cells and overviews inside the popup
-  const [localActiveEditCell, setLocalActiveEditCell] = useState(null); // { tableId, type, rIdx, colIdx }
+  const [localActiveEditCell, setLocalActiveEditCell] = useState(null);
   const [localEditingCellValue, setLocalEditingCellValue] = useState('');
+  const [localActiveOverviewCell, setLocalActiveOverviewCell] = useState(null);
+  const [localOverviewCellValue, setLocalOverviewCellValue] = useState('');
   const [localExpandedOverviewIds, setLocalExpandedOverviewIds] = useState({});
   const [localEditingOverviewId, setLocalEditingOverviewId] = useState(null);
   const [localEditingOverviewText, setLocalEditingOverviewText] = useState('');
@@ -1373,17 +1375,64 @@ export function FloatingMemorization({
                                             {rows.map((row, rIdx) => (
                                               <tr key={rIdx} className="border-b border-slate-800 last:border-b-0 hover:bg-slate-900/20 group">
                                                 {row.map((cell, cIdx) => {
+                                                  const isEditing = localActiveOverviewCell && localActiveOverviewCell.ovId === ov.id && localActiveOverviewCell.rIdx === rIdx && localActiveOverviewCell.cIdx === cIdx;
                                                   const isHeader = cIdx === 0;
-                                                  if (isHeader) {
-                                                    return (
-                                                      <td key={cIdx} className="p-2 sm:p-2.5 border-r border-slate-800 font-extrabold text-slate-300 select-text whitespace-normal break-words align-middle text-left bg-slate-950/20">
-                                                        <LatexRenderer text={cell} katexLoaded={katexLoaded} />
-                                                      </td>
-                                                    );
-                                                  }
                                                   return (
-                                                    <td key={cIdx} className="p-2 sm:p-2.5 border-r border-slate-800 last:border-r-0 text-slate-200 select-text whitespace-normal break-words align-middle text-center">
-                                                      <LatexRenderer text={cell} katexLoaded={katexLoaded} />
+                                                    <td 
+                                                      key={cIdx} 
+                                                      className={`p-2 sm:p-2.5 border-r border-slate-800 last:border-r-0 cursor-pointer whitespace-normal break-words align-middle ${isHeader ? 'font-extrabold text-slate-300 bg-slate-950/20 text-left' : 'text-slate-200 text-center'}`}
+                                                      onClick={() => {
+                                                        if (!isEditing) {
+                                                          setLocalActiveOverviewCell({ ovId: ov.id, rIdx, cIdx });
+                                                          setLocalOverviewCellValue(cell);
+                                                        }
+                                                      }}
+                                                    >
+                                                      {isEditing ? (
+                                                        <input
+                                                          type="text"
+                                                          value={localOverviewCellValue}
+                                                          onChange={(e) => setLocalOverviewCellValue(e.target.value)}
+                                                          onBlur={async () => {
+                                                            const updatedRows = rows.map((r, i) => i === rIdx ? r.map((cellVal, j) => j === cIdx ? localOverviewCellValue : cellVal) : r);
+                                                            const newCompTableMd = rebuildMarkdownTable(headers, updatedRows, '<br>');
+                                                            let newContent = ov.content;
+                                                            let replaced = false;
+                                                            const lines = ov.content.split('\n');
+                                                            const compIdx = lines.findIndex(line => line.trim().match(/^\|\s*(비교표|비교|장단점)\s*\|/i));
+                                                            if (compIdx !== -1) {
+                                                              const line = lines[compIdx].trim();
+                                                              const match = line.match(/^(\|\s*(비교표|비교|장단점)\s*\|)(.*)\|$/i);
+                                                              if (match) {
+                                                                lines[compIdx] = `${match[1]} ${newCompTableMd.trim()} |`;
+                                                                newContent = lines.join('\n');
+                                                                replaced = true;
+                                                              }
+                                                            }
+                                                            if (!replaced) {
+                                                              const match = ov.content.match(/^([\s\S]*\|\s*(비교표|비교|장단점)\s*\|)(.*?)(?=\s*\|\s*(공학적 의미\/한계성|공학적 의미 및 한계성|의미\/한계성|직관적의미|직관적)\s*\||$)/i);
+                                                              if (match) {
+                                                                let nestedPart = match[3].trim();
+                                                                if (nestedPart.endsWith('|')) nestedPart = nestedPart.slice(0, -1).trim();
+                                                                newContent = ov.content.replace(nestedPart, newCompTableMd.trim());
+                                                              }
+                                                            }
+                                                            const updated = formulaOverviews.map(item => item.id === ov.id ? { ...item, content: newContent } : item);
+                                                            setFormulaOverviews(updated);
+                                                            await handleSaveFormulaOverviews(updated, false);
+                                                            setLocalActiveOverviewCell(null);
+                                                          }}
+                                                          onKeyDown={(e) => {
+                                                            if (e.key === 'Enter') {
+                                                              e.target.blur();
+                                                            }
+                                                          }}
+                                                          className="w-full text-center bg-slateCustom-950 border border-slate-700 text-slate-200 focus:outline-none p-1 text-[14px] md:text-[16px] rounded font-bold"
+                                                          autoFocus
+                                                        />
+                                                      ) : (
+                                                        <LatexRenderer text={cell} katexLoaded={katexLoaded} />
+                                                      )}
                                                     </td>
                                                   );
                                                 })}
