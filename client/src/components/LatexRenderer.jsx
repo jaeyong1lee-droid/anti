@@ -14,8 +14,49 @@ import { convertMarkdownAcronymsToHtml } from '../utils/markdownAcronymRenderer'
 import { healLatexFormulas } from '../utils/latexUtils';
 
 const parseAndRenderFlowchart = (flowchartText, katexLoaded, questionKey) => {
-  const lines = flowchartText.split('\n');
   const items = [];
+
+  // SVG/XML fallback parser: convert raw <svg>/<text> markup into dynamic flowchart cards
+  if (flowchartText.includes('<svg') || flowchartText.includes('&lt;svg') || flowchartText.includes('<text')) {
+    const cleanText = flowchartText
+      .replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+      .replace(/&amp;/g, '&').replace(/&quot;/g, '"');
+    const textMatches = [...cleanText.matchAll(/<text[^>]*>(.*?)<\/text>/gi)];
+    if (textMatches.length > 0) {
+      const extractedLines = textMatches.map(m => m[1].replace(/<[^>]+>/g, '').trim()).filter(Boolean);
+      for (let i = 0; i < extractedLines.length; i += 2) {
+        const boxContent = [extractedLines[i]];
+        if (extractedLines[i + 1]) boxContent.push(extractedLines[i + 1]);
+        items.push({ type: 'box', content: boxContent });
+        if (i + 2 < extractedLines.length) {
+          items.push({ type: 'arrow', text: '▼' });
+        }
+      }
+      return (
+        <div className="w-full flex flex-col items-center gap-1.5 select-text my-2.5 flowchart-text-force">
+          {items.map((item, idx) => {
+            if (item.type === 'box') {
+              const title = item.content[0] || '';
+              const bodyLines = item.content.slice(1);
+              return (
+                <div key={idx} className="w-full h-auto min-h-fit border border-indigo-500/20 bg-slate-900/60 p-2.5 rounded-xl text-left leading-relaxed shadow-sm flex flex-col gap-0.5">
+                  <div className="font-semibold text-indigo-200 text-sm">{title}</div>
+                  {bodyLines.map((lineText, bIdx) => (
+                    <div key={bIdx} className="text-slate-300 text-xs pl-2 border-l border-indigo-500/30">{lineText}</div>
+                  ))}
+                </div>
+              );
+            }
+            return (
+              <div key={idx} className="text-indigo-400 font-bold text-xs my-0.5">▼</div>
+            );
+          })}
+        </div>
+      );
+    }
+  }
+
+  const lines = flowchartText.split('\n');
   let currentBoxes = null;
 
   const flushBoxes = () => {
