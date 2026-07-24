@@ -171,16 +171,16 @@ app.use('/api', quizRoutes);
 app.use('/api', gradingRoutes);
 app.use('/api/lockscreen', lockscreenRoutes);
 
-// Static Client Asset Serving for Production deployments
+// Static Client Asset Serving for Production deployments (standalone Node mode only)
 const clientBuildPath = path.resolve(__dirname, '../client/dist');
-if (fs.existsSync(clientBuildPath)) {
+if (!process.env.VERCEL && fs.existsSync(clientBuildPath)) {
   console.log(`[Static Serving] Serving production build assets from: ${clientBuildPath}`);
   app.use(express.static(clientBuildPath));
   app.get('*', (req, res) => {
     res.sendFile(path.join(clientBuildPath, 'index.html'));
   });
 } else {
-  console.log('[Static Serving] Production build folder not found. Local server started in API mode.');
+  console.log('[Static Serving] Running in Vercel or API mode.');
 }
 
 import { updateLiveEngineeringStandards, standardsList } from './plugins/engineeringStandards.js';
