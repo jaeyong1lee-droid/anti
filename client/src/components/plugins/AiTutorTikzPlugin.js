@@ -80,7 +80,8 @@ function renderTikzVectorSvgCard(stepItems, title = 'LaTeX TikZ Realtime Vector 
     </div>
     <span class="text-[10px] font-extrabold bg-emerald-950/80 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-full uppercase tracking-wider">⚡ Realtime Vector</span>
   </div>
-  <svg width="100%" viewBox="0 0 800 ${svgHeight}" xmlns="http://www.w3.org/2000/svg">
+  <div class="w-full svg-scroll-container select-text">
+    <svg width="100%" viewBox="0 0 800 ${svgHeight}" xmlns="http://www.w3.org/2000/svg" style="min-width: 750px; width: 100%; height: auto; display: block;">
     <defs>
       <marker id="tikz-arrowhead" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
         <path d="M 0 1 L 10 5 L 0 9 z" fill="#94a3b8" />
@@ -91,6 +92,7 @@ function renderTikzVectorSvgCard(stepItems, title = 'LaTeX TikZ Realtime Vector 
     </defs>
     ${svgElements}
   </svg>
+  </div>
 </div>\n
 `;
 }

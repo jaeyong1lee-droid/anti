@@ -45,6 +45,40 @@ export function renderAiTutorSvg(text) {
       const cardTitle = isMohrApparatus ? 'DYNAMIC INLINE SVG APPARATUS & MOHR CIRCLE' : 'Realtime Vector Graphic Render';
       const badgeText = isMohrApparatus ? 'Geotechnical Simulation' : '⚡ Realtime Vector';
 
+      // Transform white background & dark text into sleek Dark Mode (#0f172a / #f8fafc)
+      let darkSvg = svgMatch[0]
+        .replace(/fill=["']#(?:ffffff|fff|f8f9fa|fafafa|f1f5f9)["']/gi, 'fill="#0f172a"')
+        .replace(/fill=["']white["']/gi, 'fill="#0f172a"')
+        .replace(/background(?:-color)?:\s*#(?:ffffff|fff|f8f9fa|fafafa)/gi, 'background-color: #0f172a')
+        .replace(/background(?:-color)?:\s*white/gi, 'background-color: #0f172a')
+        .replace(/<text\b([^>]*?)\bfill=["']#(?:000000|000|111827|0f172a|1e293b|334155)["']/gi, '<text$1fill="#f8fafc"')
+        .replace(/<text\b([^>]*?)\bfill=["']black["']/gi, '<text$1fill="#f8fafc"')
+        // Remove formula surrounding window box <rect> (stroke/rx box) so math text floats in open space
+        .replace(/<rect\b([^>]*?)(?:stroke=["'][^"']+["']|rx=["'][^"']+["'])([^>]*?)>/gi, (match) => {
+          if (match.includes('width="800"') || match.includes('width="100%"') || match.includes('width="730"') || match.includes('height="600"')) return match;
+          return match.replace(/fill=["'][^"']+["']/gi, 'fill="none"').replace(/stroke=["'][^"']+["']/gi, 'stroke="none"');
+        })
+        // Position math formula text at the very bottom of the SVG canvas (y=520) underneath all drawings
+        .replace(/(<text\b[^>]*?\by=["'](\d+)["'][^>]*?>[\s\S]*?<\/text>)/gi, (m) => {
+          if (m.includes('sigma') || m.includes('\\sigma') || m.includes('=')) {
+            return m.replace(/y=["']\d+["']/i, 'y="520"');
+          }
+          return m;
+        });
+
+      // Inject global dark halo style tag into SVG to guarantee text never overlaps any lines
+      darkSvg = darkSvg.replace(/<svg\b([^>]*?)>/i, (match, attrs) => {
+        return `<svg${attrs}><style>text { paint-order: stroke fill !important; stroke: #0f172a !important; stroke-width: 10px !important; stroke-linejoin: round !important; stroke-linecap: round !important; }</style>`;
+      });
+
+      // Enforce fixed drawing size & horizontal scrollbar when width exceeds container
+      const vbMatch = darkSvg.match(/viewBox=["']\s*\d+\s+\d+\s+(\d+)\s+\d+["']/i);
+      const minWidth = vbMatch ? Math.max(parseInt(vbMatch[1], 10), 750) : 800;
+      darkSvg = darkSvg.replace(/<svg\b([^>]*?)>/i, (m, attrs) => {
+        let cleanAttrs = attrs.replace(/\bstyle=["'][^"']*["']/gi, '');
+        return `<svg${cleanAttrs} style="min-width: ${minWidth}px; width: 100%; height: auto; display: block;">`;
+      });
+
       return `\n<div class="my-6 w-full max-w-5xl mx-auto bg-[#0b0f19] rounded-2xl p-6 border border-slate-800 shadow-2xl overflow-x-auto select-text font-sans">
   <div class="flex items-center justify-between border-b border-slate-800/80 pb-4 mb-4">
     <div class="flex items-center gap-2">
@@ -53,7 +87,9 @@ export function renderAiTutorSvg(text) {
     </div>
     <span class="text-[10px] font-extrabold bg-indigo-950/80 text-indigo-400 border border-indigo-500/30 px-3 py-1 rounded-full uppercase tracking-wider">${badgeText}</span>
   </div>
-  ${svgMatch[0]}
+  <div class="w-full svg-scroll-container select-text">
+    ${darkSvg}
+  </div>
 </div>\n`;
     }
     return match;
