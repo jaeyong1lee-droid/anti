@@ -174,7 +174,22 @@ export const LatexRenderer = React.memo(function LatexRenderer({
   }
 
   const flowchartRegex = /```(?:[a-zA-Z]*)?\n([\s\S]*?┌[\s\S]*?)```/g;
-  const hasFlowchart = flowchartRegex.test(parsedText);
+  
+  const isActualFlowchartBlock = (blockText) => {
+    if (!blockText) return false;
+    // 사용자의 엄격 지침: 단계별 플로우 차트는 [1], [2], [A], [1단계] 등 단계를 나타내는 표식이 반드시 포함되어야만 단계별 플로우 차트로 인식함
+    const hasExplicitStepMarkers = /\[\s*(?:\d+|[A-Za-z]|\*)\s*\]|\[.*?\d+.*?단계\]|\[.*?단계\]|\[.*?절차\]|\[.*?순서\]|\[.*?단계별.*?\]/i.test(blockText);
+    return hasExplicitStepMarkers;
+  };
+
+  let hasFlowchart = false;
+  let tempMatch;
+  while ((tempMatch = flowchartRegex.exec(parsedText)) !== null) {
+    if (isActualFlowchartBlock(tempMatch[1])) {
+      hasFlowchart = true;
+      break;
+    }
+  }
   flowchartRegex.lastIndex = 0;
 
   if (hasFlowchart) {
@@ -187,7 +202,11 @@ export const LatexRenderer = React.memo(function LatexRenderer({
       if (beforeText) {
         parts.push({ type: 'text', content: beforeText });
       }
-      parts.push({ type: 'flowchart', content: flowchartText });
+      if (isActualFlowchartBlock(flowchartText)) {
+        parts.push({ type: 'flowchart', content: flowchartText });
+      } else {
+        parts.push({ type: 'text', content: match[0] });
+      }
       lastIndex = flowchartRegex.lastIndex;
     }
     const afterText = parsedText.substring(lastIndex);

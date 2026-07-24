@@ -104,6 +104,12 @@ export function renderAiTutorTikz(text) {
   processed = processed.replace(tikzRegex, (match) => {
     let cleanTikz = match.replace(/^```[a-zA-Z0-9_-]*\s*/i, '').replace(/```\s*$/, '');
     
+    // If the block is an ASCII Art diagram (contains ASCII/Unicode drawing characters without actual \\begin{tikzpicture} or \\node commands), preserve as ASCII Art
+    const isAsciiArt = /[━┃┌┐└┘├┤╋┿┼┴░▒▓█╲]|\/ *\\|\\ *\/|<-|->|\[지표면\]|\[굴착저면\]/i.test(cleanTikz) && !cleanTikz.includes('\\begin{tikzpicture}') && !cleanTikz.includes('\\node');
+    if (isAsciiArt) {
+      return match;
+    }
+
     const nodeMatches = [...cleanTikz.matchAll(/\\node\s*(?:\[[\s\S]*?\])?\s*(?:\([\s\S]*?\))?\s*\{([\s\S]*?)\};|([A-Za-z0-9_-]+)\s*\["([\s\S]*?)"\]/gi)];
     const stepItems = [];
     const seen = new Set();

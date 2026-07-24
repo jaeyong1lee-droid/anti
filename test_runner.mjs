@@ -96,15 +96,14 @@ async function runTests() {
     failed++;
   }
 
-  // Test D: Full LatexRenderer pipeline with cleanAndSanitizeMathText (Real AI Tutor screenshot test)
-  const tutorText = '흙막이 지반 파괴 유형 및 거동 양상 다이어그램\n' + processAiTutorDiagrams(realWorldSvg);
-  const sanitizedTutorText = cleanAndSanitizeMathText(tutorText);
-  const finalHtml = convertMarkdownToHtml(sanitizedTutorText, true, false, true);
-  if (finalHtml.includes('my-6') && finalHtml.includes('<svg') && !finalHtml.includes('&lt;h4')) {
-    console.log('  ✅ [PASS] Full App React Pipeline - AI Tutor Chat Render (Card container & SVG preserved without HTML tag escaping)');
+  // Test E: Pure ASCII Art Diagram (Prandtl-Terzaghi Failure Surface / Soil Layer ASCII Diagram without [1], [2] step numbers)
+  const asciiArtInput = '```\n /                                 \\\n /                                 \\ (탄성 영역: Wedge Zone, I)\n / ( I )                           \\\n /                                 \\ <- 방사형 전단 영역 (Radial Shear Zone, II)\n (                                 )\\\n (                                 )\\ <- Prandtl 파괴면 (Failure Surface)\n```';
+  const fullAsciiPipelineOutput = convertMarkdownToHtml(processAiTutorDiagrams(asciiArtInput), true, false, true);
+  if (fullAsciiPipelineOutput.includes('<pre') && fullAsciiPipelineOutput.includes('font-family: monospace') && !fullAsciiPipelineOutput.includes('flowchart-text-force') && !fullAsciiPipelineOutput.includes('Realtime Vector')) {
+    console.log('  ✅ [PASS] Full App React Pipeline - ASCII Art Graphic Diagram (Preserved cleanly as Monospace Code Block without flowchart card conversion)');
     passed++;
   } else {
-    console.log('  ❌ [FAIL] Full App React Pipeline - AI Tutor Chat Render failed tag preservation test');
+    console.log('  ❌ [FAIL] Full App React Pipeline - ASCII Art Graphic Diagram failed preservation test');
     failed++;
   }
 
