@@ -106,15 +106,19 @@ export function sanitizeAiTutorKatexText(rawText) {
 
   let text = rawText;
 
-  // 1. Unescape Wgt / Wlt and escaped quotes from LLM text stream
+  // 1. Unescape Wgt / Wlt, \gt / \lt, ₩gt / ₩lt and escaped quotes from LLM text stream
   text = text
+    .replace(/\\gt|\\\\gt|\\gt;|₩gt/g, '>')
+    .replace(/\\lt|\\\\lt|\\lt;|₩lt/g, '<')
     .replace(/Wgt/g, '>')
     .replace(/Wlt/g, '<')
     .replace(/&gt;/g, '>')
     .replace(/&lt;/g, '<')
     .replace(/&quot;/g, '"')
     .replace(/''#/g, '"#')
-    .replace(/''/g, '"');
+    .replace(/''/g, '"')
+    .replace(/<\s+\//g, '</')
+    .replace(/<\s+([a-zA-Z0-9_-]+)/g, '<$1');
 
   // 2. Shield Hex Color Codes (#e7f5ff, #868e96, #343a40, #f8f9fa, etc.) from KaTeX
   text = text.replace(/(fill|stroke|color|background-color):\s*#([a-fA-F0-9]{3,8})/gi, '$1: __HEXCOLOR_$2__');

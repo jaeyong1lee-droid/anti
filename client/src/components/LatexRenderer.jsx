@@ -460,7 +460,7 @@ export const LatexRenderer = React.memo(function LatexRenderer({
   }, [isHeavy, text]);
 
   let processedText = renderText;
-  if (typeof processedText === 'string' && !isHeavy) {
+  if (typeof processedText === 'string' && !isHeavy && !isRealTimeTutor && formulaSource !== 'tutor') {
     processedText = processedText.replace(/<div[^>]*>/gi, '').replace(/<\/div>/gi, '');
     if (!processedText.includes('\n')) {
       processedText = processedText.replace(/([가-힣a-zA-Z0-9])다\.\s+/g, '$1다.\n\n');
