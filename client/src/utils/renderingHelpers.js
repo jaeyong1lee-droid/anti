@@ -344,6 +344,27 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
   const tableBlocks = [];
   let tempText = mdText || '';
 
+  // Auto-break numbered list items that appear inline without newlines (e.g. "... F.S. 2. 블록... 3. 최종...")
+  tempText = tempText.replace(/([^\n])\s+((?:[2-9]\d*|[②-⑳])(?:\.|\))\s+)/g, '$1\n$2');
+
+  // Auto-prefix "1. " if an unnumbered content line is immediately followed by a "2. " item
+  const rawLinesBeforeMath = tempText.split('\n');
+  const processedLinesBeforeMath = [];
+  const markerCheckForPrefix = /^(?:[ \t]*(?:\*|-|•)[ \t]+|(\d+)\.\s+|(\d+\))\s*|([a-zA-Z가-힣]\))\s*|([①-⑳])\s*)/;
+  for (let i = 0; i < rawLinesBeforeMath.length; i++) {
+    const line = rawLinesBeforeMath[i];
+    const nextLine = rawLinesBeforeMath[i + 1] || '';
+    if (/^\s*(?:2\.|2\)|②)\s+/.test(nextLine.trim())) {
+      const trimmed = line.trim();
+      if (trimmed && !markerCheckForPrefix.test(trimmed) && !trimmed.startsWith('#') && !trimmed.startsWith('•')) {
+        processedLinesBeforeMath.push('1. ' + line);
+        continue;
+      }
+    }
+    processedLinesBeforeMath.push(line);
+  }
+  tempText = processedLinesBeforeMath.join('\n');
+
   // Shield pre-rendered diagram card divs (<div class="my-6...) or SVG containers
   tempText = tempText.replace(/(<div[^>]*class="[^"]*my-6[^"]*"[^>]*>[\s\S]*?<\/div>\s*<\/div>|<div[^>]*class="[^"]*my-6[^"]*"[^>]*>[\s\S]*?<\/div>)/gi, (match) => {
     const placeholder = `___HTML_TABLE_${placeholderIndex}___`;
@@ -516,11 +537,31 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
   // Render dividers
   tempText = tempText.replace(/^[ \t]*(?:\*\*\*|\* \* \*|---|---|===)[ \t]*$/gm, '<hr style="border: 0; border-top: 1px solid rgba(255, 255, 255, 0.1); margin: 0 0 1.0rem 0;" />');
 
+  // Auto-break numbered list items that appear inline without newlines (e.g. "... F.S. 2. 블록... 3. 최종...")
+  tempText = tempText.replace(/([^\n])\s+((?:[2-9]\d*|[②-⑳])(?:\.|\))\s+)/g, '$1\n$2');
+
+  // Auto-prefix "1. " if an unnumbered content line is immediately followed by "2. "
+  const rawLines = tempText.split('\n');
+  const processedLines = [];
+  const listMarkerCheckRegex = /^(?:[ \t]*(?:\*|-|•)[ \t]+|(\d+)\.\s+|(\d+\))\s*|([a-zA-Z가-힣]\))\s*|([①-⑳])\s*)/;
+  for (let i = 0; i < rawLines.length; i++) {
+    const line = rawLines[i];
+    const nextLine = rawLines[i + 1] || '';
+    if (/^\s*(?:2\.|2\)|②)\s+/.test(nextLine.trim())) {
+      const trimmed = line.trim();
+      if (trimmed && !listMarkerCheckRegex.test(trimmed) && !trimmed.startsWith('#') && !trimmed.startsWith('•')) {
+        processedLines.push('1. ' + line);
+        continue;
+      }
+    }
+    processedLines.push(line);
+  }
+
   // Render list items
-  const lines = tempText.split('\n');
+  const lines = processedLines;
   const renderedLines = [];
   let currentListBlock = null;
-  const listMarkerRegex = /^(?:[ \t]*(?:\*|-|•)[ \t]+|(\d+)\.\s+|(\d+\))\s*|([a-zA-Z가-힣]\))\s*|([①-⑳])\s*)/;
+  const listMarkerRegex = listMarkerCheckRegex;
 
   for (let idx = 0; idx < lines.length; idx++) {
     const line = lines[idx];
@@ -534,6 +575,14 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
       let displayMarker = '';
       if (isBullet) {
         displayMarker = '• ';
+      } else if (match[1]) {
+        displayMarker = match[1] + '. ';
+      } else if (match[2]) {
+        displayMarker = match[2] + ') ';
+      } else if (match[3]) {
+        displayMarker = match[3] + ') ';
+      } else if (match[4]) {
+        displayMarker = match[4] + ' ';
       }
       
       const contentWithoutMarker = line.replace(listMarkerRegex, '');
