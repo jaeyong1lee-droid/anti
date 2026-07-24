@@ -12,6 +12,9 @@ import {
 import { convertMarkdownTablesToHtml } from '../utils/markdownTableRenderer';
 import { convertMarkdownAcronymsToHtml } from '../utils/markdownAcronymRenderer';
 import { healLatexFormulas } from '../utils/latexUtils';
+import { renderAiTutorSvg } from './plugins/AiTutorSvgPlugin';
+import { renderAiTutorMermaid } from './plugins/AiTutorMermaidPlugin';
+import { renderAiTutorTikz } from './plugins/AiTutorTikzPlugin';
 
 const parseAndRenderFlowchart = (flowchartText, katexLoaded, questionKey) => {
   const items = [];
@@ -162,7 +165,9 @@ export const LatexRenderer = React.memo(function LatexRenderer({
 
   let parsedText = text;
   if (isRealTimeTutor || formulaSource === 'tutor') {
-    parsedText = processAiTutorDiagrams(parsedText);
+    parsedText = renderAiTutorSvg(parsedText);
+    parsedText = renderAiTutorTikz(parsedText);
+    parsedText = renderAiTutorMermaid(parsedText);
   }
   if (forceInline && typeof parsedText === 'string') {
     parsedText = parsedText.replace(/\$\$/g, '$');
