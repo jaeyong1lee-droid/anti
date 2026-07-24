@@ -34,7 +34,7 @@ async function runTests() {
   const kstDate = new Date(Date.now() + 9 * 3600 * 1000).toISOString().split('T')[0];
   const endpoints = [
     { name: 'Topics List', path: '/api/topics', check: d => Array.isArray(d) && d.length > 0 },
-    { name: 'Dashboard Reviews', path: `/api/dashboard?date=${kstDate}`, check: d => d && d.success === true },
+    { name: 'Dashboard Reviews', path: `/api/dashboard?date=${kstDate}`, check: d => d && Array.isArray(d.reviews) },
     { name: 'Lockscreen Setting', path: '/api/options/lockscreen_quiz_enabled', check: d => d && d.value !== undefined },
     { name: 'Preferred Model Setting', path: '/api/preferred-model', check: d => d && d.model !== undefined },
     { name: 'Question Feedback', path: '/api/question-feedback/all', check: d => d && d.success === true }
