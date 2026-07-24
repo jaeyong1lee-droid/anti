@@ -106,22 +106,22 @@ async function runTests() {
   // Test B: Multiline TikZ Flowchart Rendering (matching Screenshot 3)
   const testTikzInput = '```latex\n\\documentclass[tikz, border=10pt]{standalone}\n\\usepackage{tikz}\n\\begin{document}\n\\begin{tikzpicture}[\n  node distance = 1.2cm,\n  corebox/.style={rectangle, rounded corners=6pt}\n]\n\\node (box1) {1단계: 테르자기 지지력 검토};\n\\node (box2) {2단계: 파괴 메커니즘 분석};\n\\end{tikzpicture}\n\\end{document}\n```';
   const tikzHtml = processAiTutorDiagrams(testTikzInput);
-  if (tikzHtml.includes('1단계: 테르자기 지지력 검토') && tikzHtml.includes('▼')) {
-    console.log('  ✅ [PASS] AI Tutor TikZ Flowchart Engine (LaTeX TikZ converted to 2D flowchart step cards)');
+  if (tikzHtml.includes('1단계: 테르자기 지지력 검토') && tikzHtml.includes('svg')) {
+    console.log('  ✅ [PASS] AI Tutor TikZ Flowchart Engine (LaTeX TikZ converted to Realtime Vector SVG Flowchart)');
     passed++;
   } else {
-    console.log('  ❌ [FAIL] AI Tutor TikZ Flowchart Engine failed to convert TikZ code into step cards');
+    console.log('  ❌ [FAIL] AI Tutor TikZ Flowchart Engine failed to convert TikZ code into vector flowchart');
     failed++;
   }
 
   // Test C: Multiline Mermaid Flowchart Rendering (matching Screenshot 2)
   const testMermaidInput = '```\ngraph TD\n  %% 스타일 정의\n  classDef core fill:#e7f5ff,stroke:#1c7ed6\n  Core["테르자기(Terzaghi) 극한지력 기본 공식\n  * q_u = c * N_c + q * N_q"]: :::core\n  P1["1. 지지력 공식의 항별 공학적 의미"]\n```';
   const mermaidHtml = processAiTutorDiagrams(testMermaidInput);
-  if (mermaidHtml.includes('테르자기(Terzaghi) 극한지력 기본 공식') && mermaidHtml.includes('▼')) {
-    console.log('  ✅ [PASS] AI Tutor Mermaid Flowchart Engine (Multiline Mermaid graph converted to 2D flowchart step cards)');
+  if (mermaidHtml.includes('테르자기(Terzaghi) 극한지력 기본 공식') && mermaidHtml.includes('svg')) {
+    console.log('  ✅ [PASS] AI Tutor Mermaid Flowchart Engine (Multiline Mermaid graph converted to Realtime Vector SVG Flowchart)');
     passed++;
   } else {
-    console.log('  ❌ [FAIL] AI Tutor Mermaid Flowchart Engine failed to convert graph into step cards');
+    console.log('  ❌ [FAIL] AI Tutor Mermaid Flowchart Engine failed to convert graph into vector flowchart');
     failed++;
   }
 
