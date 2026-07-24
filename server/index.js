@@ -195,45 +195,86 @@ async function initializeAllStandards() {
   await syncStandard('lockscreenStandards.js', 'lockscreen_standards', lockscreenStandardsList, updateLiveLockscreenStandards);
 }
 
-// Database and Server Startup
-async function startServer() {
+// Database and Server Startup state
+let isInitialized = false;
+let initPromise = null;
+
+export async function ensureDbInitialized() {
+  if (isInitialized) return;
+  if (!initPromise) {
+    initPromise = (async () => {
+      try {
+        console.log('[Startup] Initializing Database connection...');
+        await initDatabase();
+        
+        try {
+          await dbQuery.run(`
+            CREATE TABLE IF NOT EXISTS app_session (
+              key TEXT PRIMARY KEY,
+              value TEXT,
+              updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+          `);
+          console.log('[Startup] app_session table ensured.');
+        } catch (e) {
+          console.warn('[Startup] ensureSessionTable warning:', e.message);
+        }
+
+        try {
+          console.log('[Startup] Syncing saved standards from database...');
+          await initializeAllStandards();
+        } catch (e) {
+          console.warn('[Startup] initializeAllStandards warning:', e.message);
+        }
+
+        try {
+          console.log('[Startup] Loading saved preferred model configuration...');
+          await loadPreferredModel();
+        } catch (e) {
+          console.warn('[Startup] loadPreferredModel warning:', e.message);
+        }
+
+        if (!process.env.VERCEL) {
+          try {
+            startBackupScheduler();
+          } catch (e) {
+            console.warn('[Startup] startBackupScheduler warning:', e.message);
+          }
+        }
+
+        isInitialized = true;
+      } catch (error) {
+        console.error('[CRITICAL STARTUP ERROR] Database connection failed:', error);
+        initPromise = null;
+        throw error;
+      }
+    })();
+  }
+  await initPromise;
+}
+
+// Request middleware to guarantee DB initialization BEFORE any route is matched
+app.use(async (req, res, next) => {
   try {
-    console.log('[Startup] Initializing SQLite/PostgreSQL Database connection...');
-    await initDatabase();
-    
-    // Ensure app_session table exists once at startup (bypasses per-request DDL check)
-    try {
-      await dbQuery.run(`
-        CREATE TABLE IF NOT EXISTS app_session (
-          key TEXT PRIMARY KEY,
-          value TEXT,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-      `);
-      console.log('[Startup] app_session table ensured.');
-    } catch (e) {
-      console.warn('[Startup] ensureSessionTable warning:', e.message);
-    }
+    await ensureDbInitialized();
+    next();
+  } catch (err) {
+    console.error('[Middleware DB Init Error]:', err);
+    res.status(500).json({ error: 'Database initialization failed', details: err.message });
+  }
+});
 
-    console.log('[Startup] Syncing saved standards from database...');
-    await initializeAllStandards();
-    console.log('[Startup] Loading saved preferred model configuration...');
-    await loadPreferredModel();
-    
-    // Start automated DB backup cron job
-    startBackupScheduler();
-
+if (!process.env.VERCEL) {
+  ensureDbInitialized().then(() => {
     app.listen(PORT, () => {
       console.log(`================================================`);
       console.log(`  Antigravity Server is running on port ${PORT}`);
       console.log(`  Mode: ${process.env.NODE_ENV || 'development'}`);
       console.log(`================================================`);
     });
-  } catch (error) {
-    console.error('[CRITICAL STARTUP ERROR] Server failed to start:', error);
-    process.exit(1);
-  }
+  }).catch((err) => {
+    console.error('Failed to start standalone server:', err);
+  });
 }
 
-startServer();
 export default app;
