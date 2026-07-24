@@ -92,21 +92,21 @@ async function runTests() {
 
   console.log('\n[3/4] Testing Isolated AI Tutor Diagram Plugin (processAiTutorDiagrams)...');
   
-  // Test A: < svg with space (AI Tutor output format)
-  const testSvgSpaceInput = '``` < svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1100"><defs></defs><rect fill=\'\'#868e96\'\' width="100" height="100"/></svg>\n```';
-  const svgHtml = processAiTutorDiagrams(testSvgSpaceInput);
-  if (svgHtml.includes('<svg') && svgHtml.includes('rect') && !svgHtml.includes('ParseError')) {
-    console.log('  ✅ [PASS] AI Tutor SVG Graphic Renderer (< svg with space & escaped quotes converted to clean SVG)');
+  // Test A: Wgt/Wlt & xmlns SVG (matching Screenshot 1)
+  const testSvgRealInput = 'xmlns=\'\'http://www.w3.org/2000/svg\'\' viewBox=\'\'0 0 800 1150\'\' style=\'\'background-color: #f8f9fa; font-family: Malgun Gothic;\'\'Wgt Wlt defsWgt Wlt linearGradient id=\'\'boxGrad\'\' x1=\'\'0%\'\' x2=\'\'100%\'\'Wgt Wlt stop offset=\'\'0%\'\' stop-color=\'\'#ffffff\'\' /Wgt Wlt /linearGradientWgt Wlt /svgWgt';
+  const svgHtml = processAiTutorDiagrams(testSvgRealInput);
+  if (svgHtml.includes('<svg') && svgHtml.includes('linearGradient')) {
+    console.log('  ✅ [PASS] AI Tutor SVG Graphic Renderer (Wgt/Wlt & xmlns SVG converted cleanly without KaTeX error)');
     passed++;
   } else {
-    console.log('  ❌ [FAIL] AI Tutor SVG Graphic Renderer failed on < svg with space');
+    console.log('  ❌ [FAIL] AI Tutor SVG Graphic Renderer failed on Wgt/Wlt & xmlns SVG');
     failed++;
   }
 
-  // Test B: TikZ Flowchart Rendering
-  const testTikzInput = '```latex\n\\begin{document}\n\\begin{tikzpicture}\n\\node (box1) {1단계: 기초 침하 검토};\n\\node (box2) {2단계: 지질 조사};\n\\end{tikzpicture}\n\\end{document}\n```';
+  // Test B: Multiline TikZ Flowchart Rendering (matching Screenshot 3)
+  const testTikzInput = '```latex\n\\documentclass[tikz, border=10pt]{standalone}\n\\usepackage{tikz}\n\\begin{document}\n\\begin{tikzpicture}[\n  node distance = 1.2cm,\n  corebox/.style={rectangle, rounded corners=6pt}\n]\n\\node (box1) {1단계: 테르자기 지지력 검토};\n\\node (box2) {2단계: 파괴 메커니즘 분석};\n\\end{tikzpicture}\n\\end{document}\n```';
   const tikzHtml = processAiTutorDiagrams(testTikzInput);
-  if (tikzHtml.includes('1단계: 기초 침하 검토') && tikzHtml.includes('▼')) {
+  if (tikzHtml.includes('1단계: 테르자기 지지력 검토') && tikzHtml.includes('▼')) {
     console.log('  ✅ [PASS] AI Tutor TikZ Flowchart Engine (LaTeX TikZ converted to 2D flowchart step cards)');
     passed++;
   } else {
@@ -114,11 +114,11 @@ async function runTests() {
     failed++;
   }
 
-  // Test C: Mermaid Flowchart Rendering
-  const testMermaidInput = '```\ngraph TD\n  Core["지반 탄성계수 (Es) 측정 및 평가 프로세스"]\n  Lab["1. 실내 시험"]\n```';
+  // Test C: Multiline Mermaid Flowchart Rendering (matching Screenshot 2)
+  const testMermaidInput = '```\ngraph TD\n  %% 스타일 정의\n  classDef core fill:#e7f5ff,stroke:#1c7ed6\n  Core["테르자기(Terzaghi) 극한지력 기본 공식\n  * q_u = c * N_c + q * N_q"]: :::core\n  P1["1. 지지력 공식의 항별 공학적 의미"]\n```';
   const mermaidHtml = processAiTutorDiagrams(testMermaidInput);
-  if (mermaidHtml.includes('지반 탄성계수 (Es) 측정 및 평가 프로세스') && mermaidHtml.includes('▼')) {
-    console.log('  ✅ [PASS] AI Tutor Mermaid Flowchart Engine (Mermaid graph converted to 2D flowchart step cards)');
+  if (mermaidHtml.includes('테르자기(Terzaghi) 극한지력 기본 공식') && mermaidHtml.includes('▼')) {
+    console.log('  ✅ [PASS] AI Tutor Mermaid Flowchart Engine (Multiline Mermaid graph converted to 2D flowchart step cards)');
     passed++;
   } else {
     console.log('  ❌ [FAIL] AI Tutor Mermaid Flowchart Engine failed to convert graph into step cards');
