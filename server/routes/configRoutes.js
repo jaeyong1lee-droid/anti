@@ -793,7 +793,12 @@ router.get('/session/images', async (req, res) => {
                 const extension = mimeType.split('/')[1] || 'png';
                 const fileName = getFormulaBlobFileName(item, idx, extension);
                 try {
-                  const blob = await put(fileName, buffer, { access: 'public' });
+                  let blob;
+                  try {
+                    blob = await put(fileName, buffer, { access: 'private' });
+                  } catch (pErr) {
+                    blob = await put(fileName, buffer, { access: 'public' });
+                  }
                   return blob.url;
                 } catch (uploadErr) {
                   console.error(`[Self-Healing] Upload failed: ${uploadErr.message}`);
@@ -957,7 +962,12 @@ router.post('/session/images', async (req, res) => {
             const fileName = getFormulaBlobFileName(item, idx, extension);
             console.log(`Uploading formula image to Vercel Blob: ${fileName}`);
             try {
-              const blob = await put(fileName, buffer, { access: 'public' });
+              let blob;
+              try {
+                blob = await put(fileName, buffer, { access: 'private' });
+              } catch (pErr) {
+                blob = await put(fileName, buffer, { access: 'public' });
+              }
               return blob.url;
             } catch (uploadErr) {
               console.error(`[Upload Error] Local Vercel Blob upload failed: ${uploadErr.message}. Falling back to base64.`);
