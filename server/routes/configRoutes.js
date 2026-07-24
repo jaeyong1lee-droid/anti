@@ -13,6 +13,7 @@ function updateLiveValidationStandards(newList) {
 }
 import { updateLiveGenerationStandards, generationStandardsList } from '../plugins/generationStandards.js';
 import { updateLiveLockscreenStandards, lockscreenStandardsList } from '../plugins/lockscreenStandards.js';
+import { updateLiveOtherStandards, otherStandardsList } from '../plugins/otherStandards.js';
 import { healFormulaQuestionObject, healAnswersheetQuestionObject, healQuizQuestionObject, parseLlmJson, healLatexFormulas, LATEX_CHAT_PROMPT_INSTRUCTIONS } from '../utils/latexUtils.js';
 import { defaultAcronyms, generateAcronymTutorResponse } from '../plugins/acronymsPlugin.js';
 import { defaultOverviews, generateOverviewTutorResponse } from '../plugins/overviewsPlugin.js';
@@ -159,6 +160,23 @@ export const USER_CONVENTIONS = "";
 `;
     } else if (fileName === 'gradingStandardsList.js') {
       codeContent += `export let gradingStandardsList = ${JSON.stringify(list, null, 2)};
+`;
+    } else if (fileName === 'otherStandards.js') {
+      codeContent += `export let otherStandardsList = ${JSON.stringify(list, null, 2)};
+
+export let OTHER_STANDARDS = assembleOtherStandardsPrompt(otherStandardsList);
+
+export function assembleOtherStandardsPrompt(list) {
+  if (!Array.isArray(list) || list.length === 0) {
+    return "- 등록된 기타 지침 기준이 없습니다.";
+  }
+  return list.map((std, idx) => \`\${idx + 1}. **\${std.title}**:\\n   - \${std.content}\`).join('\\n');
+}
+
+export function updateLiveOtherStandards(newList) {
+  otherStandardsList = newList;
+  OTHER_STANDARDS = assembleOtherStandardsPrompt(newList);
+}
 `;
     }
     
@@ -493,6 +511,64 @@ router.post('/lockscreen-standards', async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     console.error('POST /api/lockscreen-standards error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/other-standards
+router.get('/other-standards', async (req, res) => {
+  try {
+    let dbList = [];
+    try {
+      const row = await dbQuery.get("SELECT value FROM app_session WHERE key = 'other_standards'");
+      if (row && row.value) {
+        dbList = JSON.parse(row.value);
+      }
+    } catch (dbErr) {
+      console.error('Failed to read other standards from database:', dbErr.message);
+    }
+    const fileIsNewer = await checkIsFileNewer('otherStandards.js', 'other_standards');
+    const merged = mergeStandards(otherStandardsList, dbList, fileIsNewer);
+    if (JSON.stringify(merged) !== JSON.stringify(dbList)) {
+      try {
+        await saveSessionValue('other_standards', JSON.stringify(merged));
+        console.log('[Sync] Automatically synced other standards to database.');
+      } catch (saveErr) {
+        console.error('Failed to auto-save merged other standards to database:', saveErr.message);
+      }
+    }
+    updateLiveOtherStandards(merged);
+    res.json({ standards: merged });
+  } catch (err) {
+    console.error('GET /api/other-standards error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/other-standards
+router.post('/other-standards', async (req, res) => {
+  try {
+    const { standards } = req.body;
+    if (!Array.isArray(standards)) {
+      return res.status(400).json({ error: 'standards must be an array' });
+    }
+
+    const stamped = stampUpdatedStandards(standards, otherStandardsList);
+    updateLiveOtherStandards(stamped);
+
+    try {
+      await saveSessionValue('other_standards', JSON.stringify(stamped));
+      console.log('Successfully saved other standards to database.');
+    } catch (dbErr) {
+      console.error('Failed to save other standards to database:', dbErr.message);
+    }
+
+    await writeStandardToFile('otherStandards.js', stamped);
+    pushStandardToProduction('other-standards', stamped).catch(() => {});
+    await purgeAllQuizCaches();
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('POST /api/other-standards error:', err);
     res.status(500).json({ error: err.message });
   }
 });

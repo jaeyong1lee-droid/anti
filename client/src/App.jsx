@@ -5494,6 +5494,15 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
   const [editingLockscreenContent, setEditingLockscreenContent] = useState('');
   const [isSavingLockscreenStandardsList, setIsSavingLockscreenStandardsList] = useState(false);
   const [isLoadingLockscreenStandardsList, setIsLoadingLockscreenStandardsList] = useState(false);
+
+  const [showManageOtherStandardsModal, setShowManageOtherStandardsModal] = useState(false);
+  const [showEditOtherStandardModal, setShowEditOtherStandardModal] = useState(false);
+  const [otherStandardsList, setOtherStandardsList] = useState([]);
+  const [editingOtherStandard, setEditingOtherStandard] = useState(null);
+  const [editingOtherTitle, setEditingOtherTitle] = useState('');
+  const [editingOtherContent, setEditingOtherContent] = useState('');
+  const [isSavingOtherStandardsList, setIsSavingOtherStandardsList] = useState(false);
+  const [isLoadingOtherStandardsList, setIsLoadingOtherStandardsList] = useState(false);
   
   const [showManageTopicInstructionsModal, setShowManageTopicInstructionsModal] = useState(false);
   const [showEditTopicInstructionModal, setShowEditTopicInstructionModal] = useState(false);
@@ -12339,6 +12348,109 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
     }
   };
 
+  const handleOpenManageOtherStandardsModal = async () => {
+    setShowManageOtherStandardsModal(true);
+    setIsLoadingOtherStandardsList(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/other-standards`);
+      if (!res.ok) throw new Error('기타 지침 데이터를 불러오지 못했습니다.');
+      const data = await res.json();
+      setOtherStandardsList(data.standards || []);
+    } catch (err) {
+      console.error(err);
+      showNotification(err.message, 'error');
+    } finally {
+      setIsLoadingOtherStandardsList(false);
+    }
+  };
+
+  const handleDeleteOtherStandard = async (id) => {
+    if (!window.confirm('정말 이 기타 지침을 삭제하시겠습니까?')) return;
+    const updatedList = otherStandardsList.filter(s => s.id !== id);
+    setIsSavingOtherStandardsList(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/other-standards`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ standards: updatedList })
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || '삭제 저장에 실패했습니다.');
+      }
+      setOtherStandardsList(updatedList);
+      showNotification('기타 지침이 삭제되었습니다.', 'success');
+    } catch (err) {
+      console.error(err);
+      showNotification(err.message, 'error');
+    } finally {
+      setIsSavingOtherStandardsList(false);
+    }
+  };
+
+  const handleOpenAddOtherStandardModal = () => {
+    setEditingOtherStandard(null);
+    setEditingOtherTitle('');
+    setEditingOtherContent('');
+    setShowEditOtherStandardModal(true);
+  };
+
+  const handleOpenEditOtherStandardModal = (std) => {
+    setEditingOtherStandard(std);
+    setEditingOtherTitle(std.title || '');
+    setEditingOtherContent(std.content || '');
+    setShowEditOtherStandardModal(true);
+  };
+
+  const handleSaveEditOtherStandard = async () => {
+    if (!editingOtherTitle.trim()) {
+      showNotification('제목을 입력해주세요.', 'error');
+      return;
+    }
+    if (!editingOtherContent.trim()) {
+      showNotification('내용을 입력해주세요.', 'error');
+      return;
+    }
+
+    let updatedList;
+    if (editingOtherStandard) {
+      updatedList = otherStandardsList.map(s => 
+        s.id === editingOtherStandard.id 
+          ? { ...s, title: editingOtherTitle, content: editingOtherContent } 
+          : s
+      );
+    } else {
+      const newId = 'user_other_' + Math.random().toString(36).substring(2, 9);
+      const newStd = {
+        id: newId,
+        title: editingOtherTitle,
+        content: editingOtherContent
+      };
+      updatedList = [...otherStandardsList, newStd];
+    }
+
+    setIsSavingOtherStandardsList(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/other-standards`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ standards: updatedList })
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || '저장에 실패했습니다.');
+      }
+      setOtherStandardsList(updatedList);
+      showNotification('기타 지침이 저장되었습니다.', 'success');
+      setShowEditOtherStandardModal(false);
+    } catch (err) {
+      console.error(err);
+      showNotification(err.message, 'error');
+    } finally {
+      setIsSavingOtherStandardsList(false);
+    }
+  };
+
   const handleVerifyPin = async (e) => {
     if (e) e.preventDefault();
     if (!pinInput.trim()) {
@@ -17528,9 +17640,9 @@ ${itemsStr}
                 <h2 className="text-lg font-bold text-white">오늘 공부한 토픽 등록</h2>
               </div>
 
-              <form onSubmit={handleRegisterTopic} className="space-y-5">
+              <form onSubmit={handleRegisterTopic} className="space-y-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">
+                  <label className="block text-xs font-bold text-slate-400 mb-1 uppercase tracking-wider">
                     토픽 제목 <span className="text-rose-500">*</span>
                   </label>
                   <div className="relative">
@@ -17539,7 +17651,7 @@ ${itemsStr}
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
                       placeholder="예: B-Tree와 B+Tree 구조 및 비교"
-                      className="w-full bg-slateCustom-900/90 border border-slate-800 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 outline-none transition-all duration-200"
+                      className="w-full bg-slateCustom-900/90 border border-slate-800 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 outline-none transition-all duration-200"
                       required
                     />
                     {suggestTitleLoading && (
@@ -17552,14 +17664,14 @@ ${itemsStr}
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">
+                  <label className="block text-xs font-bold text-slate-400 mb-1 uppercase tracking-wider">
                     토픽 구분
                   </label>
-                  <div className="flex bg-slateCustom-900/60 p-1.5 rounded-xl border border-slate-800 gap-1.5 w-full">
+                  <div className="flex bg-slateCustom-900/60 p-1 rounded-xl border border-slate-800 gap-1 w-full">
                     <button
                       type="button"
                       onClick={() => setCategory('일반')}
-                      className={`flex-1 py-2 text-center text-xs font-extrabold rounded-lg transition-all duration-200 cursor-pointer select-none ${
+                      className={`flex-1 py-1.5 text-center text-xs font-extrabold rounded-lg transition-all duration-200 cursor-pointer select-none ${
                         category === '일반'
                           ? 'bg-gradient-to-r from-brand-600 to-indigo-600 text-white shadow-md'
                           : 'text-slate-400 hover:text-slate-200 hover:bg-slateCustom-900/40'
@@ -17570,7 +17682,7 @@ ${itemsStr}
                     <button
                       type="button"
                       onClick={() => setCategory('계산')}
-                      className={`flex-1 py-2 text-center text-xs font-extrabold rounded-lg transition-all duration-200 cursor-pointer select-none ${
+                      className={`flex-1 py-1.5 text-center text-xs font-extrabold rounded-lg transition-all duration-200 cursor-pointer select-none ${
                         category === '계산'
                           ? 'bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white shadow-md'
                           : 'text-slate-400 hover:text-slate-200 hover:bg-slateCustom-900/40'
@@ -17583,7 +17695,7 @@ ${itemsStr}
 
                 {category === '계산' && (
                   <div>
-                    <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">
+                    <label className="block text-xs font-bold text-slate-400 mb-1 uppercase tracking-wider">
                       계산문제 업로드
                     </label>
                     
@@ -17621,23 +17733,23 @@ ${itemsStr}
                             }
                           }
                         }}
-                        className="border border-dashed border-slate-800 rounded-xl p-4 text-center cursor-pointer flex flex-col items-center justify-center transition-all duration-200 bg-slateCustom-900/30 hover:bg-slateCustom-900/50 hover:border-violet-500/50 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 min-h-[120px]"
+                        className="border border-dashed border-slate-800 rounded-xl p-2.5 text-center cursor-pointer flex flex-col items-center justify-center transition-all duration-200 bg-slateCustom-900/30 hover:bg-slateCustom-900/50 hover:border-violet-500/50 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 min-h-[90px]"
                       >
                         {calculationImagePreviews.length === 0 ? (
                           <>
-                            <Copy size={20} className="text-slate-500 mb-1.5" />
+                            <Copy size={18} className="text-slate-500 mb-1" />
                             <p className="text-xs font-bold text-slate-300">클립보드 스크린샷</p>
-                            <p className="text-[10px] text-slate-500 mt-1">클릭 후 Ctrl+V로 붙여넣기</p>
+                            <p className="text-[10px] text-slate-500 mt-0.5">클릭 후 Ctrl+V로 붙여넣기</p>
                           </>
                         ) : (
-                          <div className="flex flex-col items-center gap-3.5 w-full">
-                            <div className="flex flex-wrap items-center justify-center gap-3">
+                          <div className="flex flex-col items-center gap-2 w-full">
+                            <div className="flex flex-wrap items-center justify-center gap-2">
                               {calculationImagePreviews.map((preview, idx) => (
                                 <div key={idx} className="relative group shrink-0" onClick={(e) => e.stopPropagation()}>
                                   <img 
                                     src={preview} 
                                     alt={`Pasted ${idx}`} 
-                                    className="h-16 w-auto object-contain rounded-lg border border-slate-700 bg-slate-950/80 shadow-md" 
+                                    className="h-12 w-auto object-contain rounded-lg border border-slate-700 bg-slate-950/80 shadow-md" 
                                   />
                                   <button
                                     type="button"
@@ -17660,7 +17772,7 @@ ${itemsStr}
                   </div>
                 )}
 
-                <div className="space-y-1.5">
+                <div className="space-y-1">
                   <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">
                     HTML 코딩 직접 입력
                   </label>
@@ -17674,25 +17786,25 @@ ${itemsStr}
                       }
                     }}
                     onBlur={(e) => handleSuggestTitleFromHtml(e.target.value)}
-                    rows={6}
+                    rows={3}
                     placeholder="HTML 코드 내용을 여기에 직접 붙여넣거나 코딩하여 토픽 자료로 등록하세요."
-                    className="w-full bg-slateCustom-900/90 border border-slate-800 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 rounded-xl px-4 py-3 text-xs font-mono text-slate-100 placeholder-slate-500 outline-none transition-all duration-200 resize-none"
+                    className="w-full bg-slateCustom-900/90 border border-slate-800 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 rounded-xl px-3.5 py-2.5 text-xs font-mono text-slate-100 placeholder-slate-500 outline-none transition-all duration-200 resize-none"
                   />
                 </div>
 
                 <button 
                   type="submit" 
                   disabled={submitLoading}
-                  className="w-full bg-gradient-to-r from-brand-600 to-indigo-600 text-white rounded-xl py-3.5 font-black text-sm hover:from-brand-500 hover:to-indigo-500 transition-all duration-300 shadow-lg shadow-brand-950/40 border border-brand-500/20 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed glow-purple-hover"
+                  className="w-full bg-gradient-to-r from-brand-600 to-indigo-600 text-white rounded-xl py-3 font-black text-xs hover:from-brand-500 hover:to-indigo-500 transition-all duration-300 shadow-lg shadow-brand-950/40 border border-brand-500/20 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed glow-purple-hover mt-2"
                 >
                   {submitLoading ? (
                     <>
-                      <RefreshCw className="animate-spin" size={16} />
+                      <RefreshCw className="animate-spin" size={15} />
                       토픽 등록 스케줄링 중...
                     </>
                   ) : (
                     <>
-                      <PlusCircle size={16} />
+                      <PlusCircle size={15} />
                       오늘 공부 토픽으로 등록
                     </>
                   )}
@@ -17778,6 +17890,14 @@ ${itemsStr}
                   className="hidden md:flex items-center justify-center px-3 py-1.5 rounded-xl border border-indigo-500/20 bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 hover:border-indigo-500/30 transition-all active:scale-98 text-[11px] font-black cursor-pointer shadow-md"
                 >
                   <span>락스크린</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleOpenManageOtherStandardsModal}
+                  className="hidden md:flex items-center justify-center px-3 py-1.5 rounded-xl border border-purple-500/20 bg-purple-500/10 text-purple-400 hover:bg-purple-500/20 hover:border-purple-500/30 transition-all active:scale-98 text-[11px] font-black cursor-pointer shadow-md"
+                >
+                  <span>기타</span>
                 </button>
               </div>
               
@@ -21200,6 +21320,181 @@ ${itemsStr}
                 className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer flex items-center gap-1.5"
               >
                 {isSavingLockscreenStandardsList ? (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>저장 중...</span>
+                  </>
+                ) : (
+                  <span>지침 저장 💾</span>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ⚙️ 기타 지침 통합 관리 모달 (Other Standards Management Modal) */}
+      {showManageOtherStandardsModal && (
+        <div className="fixed inset-0 z-[200] overflow-y-auto flex items-center justify-center p-4 bg-black/45 backdrop-blur-sm transition-all duration-300 animate-fade-in" onClick={() => setShowManageOtherStandardsModal(false)}>
+          <div className="w-full max-w-4xl bg-slateCustom-900 border border-white/20 rounded-2xl overflow-hidden shadow-2xl p-6 space-y-4 animate-scale-up text-left" onClick={(e) => e.stopPropagation()}>
+            
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-purple-500/10 text-purple-400 rounded-lg">
+                  <Sliders size={18} className="text-purple-500 animate-pulse" />
+                </div>
+                <h3 className="text-sm font-extrabold text-white">⚙️ 기타 프롬프트 및 시스템 지침 통합 관리</h3>
+              </div>
+              <button
+                onClick={() => setShowManageOtherStandardsModal(false)}
+                className="w-6 h-6 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-200 flex items-center justify-center transition-all cursor-pointer"
+              >
+                <X size={14} />
+              </button>
+            </div>
+
+            {/* Modal Sub-Header Info */}
+            <div className="bg-purple-950/30 border border-purple-500/20 rounded-xl p-3 text-xs text-purple-300 space-y-1">
+              💡 AI 튜터, 채점관 및 시스템 전반에 반영되는 **기타 지침 기준 목록**입니다. 등록된 모든 지침 항목은 AI의 시스템 프롬프트 및 채점/생성 기준과 합쳐져 실시간 적용됩니다.
+            </div>
+
+            {/* Standards List Container */}
+            <div className="max-h-[60vh] overflow-y-auto space-y-3 pr-1 custom-vertical-scrollbar">
+              {isLoadingOtherStandardsList ? (
+                <div className="py-12 text-center flex flex-col items-center justify-center gap-2">
+                  <div className="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+                  <span className="text-xs text-purple-400 font-bold animate-pulse">서버에서 기타 지침 데이터를 로드하는 중입니다...</span>
+                </div>
+              ) : otherStandardsList.length === 0 ? (
+                <div className="py-12 text-center bg-slate-950/40 rounded-xl border border-dashed border-slate-800 text-slate-500 text-xs font-semibold">
+                  등록된 기타 지침이 없습니다. 새로운 지침을 추가해보세요.
+                </div>
+              ) : (
+                otherStandardsList.map((std, idx) => (
+                  <div key={std.id || idx} className="bg-slate-950/60 border border-slate-800/80 hover:border-purple-500/40 rounded-xl p-4 transition-all duration-200 space-y-2 group">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="w-5 h-5 rounded-full bg-purple-500/10 text-purple-400 text-[10px] font-black flex items-center justify-center border border-purple-500/20">
+                          {idx + 1}
+                        </span>
+                        <h4 className="text-xs font-bold text-slate-100 group-hover:text-purple-300 transition-colors">
+                          {std.title}
+                        </h4>
+                      </div>
+                      <div className="flex items-center gap-1.5 opacity-80 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => handleOpenEditOtherStandardModal(std)}
+                          className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-purple-400 rounded-lg text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1 active:scale-95"
+                          title="지침 수정"
+                        >
+                          <Edit3 size={11} />
+                          <span>수정</span>
+                        </button>
+                        <button
+                          onClick={() => handleDeleteOtherStandard(std.id)}
+                          className="px-2.5 py-1 bg-rose-950/40 hover:bg-rose-900/60 text-rose-400 border border-rose-500/20 rounded-lg text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1 active:scale-95"
+                          title="지침 삭제"
+                        >
+                          <Trash2 size={11} />
+                          <span>삭제</span>
+                        </button>
+                      </div>
+                    </div>
+                    <p className="text-xs text-slate-300 leading-relaxed font-mono whitespace-pre-wrap bg-slate-900/50 p-3 rounded-lg border border-slate-800/40">
+                      {std.content}
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Modal Footer Controls */}
+            <div className="flex items-center justify-between pt-3 border-t border-slate-800">
+              <button
+                onClick={handleOpenAddOtherStandardModal}
+                className="px-3.5 py-2 bg-purple-950/60 hover:bg-purple-900/60 text-purple-300 border border-purple-500/30 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 active:scale-95 shadow-sm"
+              >
+                <span>➕ 신규 기타 지침 추가</span>
+              </button>
+              <button
+                onClick={() => setShowManageOtherStandardsModal(false)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer"
+              >
+                닫기
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* ✏️ 기타 지침 추가/수정 서브 모달 (Other Standard Add/Edit Sub-Modal) */}
+      {showEditOtherStandardModal && (
+        <div className="fixed inset-0 z-[210] overflow-y-auto flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-all duration-300 animate-fade-in" onClick={() => setShowEditOtherStandardModal(false)}>
+          <div className="w-full max-w-2xl bg-slateCustom-900 border border-white/20 rounded-2xl overflow-hidden shadow-2xl p-6 space-y-4 animate-scale-up text-left" onClick={(e) => e.stopPropagation()}>
+            
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-purple-500/10 text-purple-400 rounded-lg">
+                  <Sliders size={18} className="text-purple-500" />
+                </div>
+                <h3 className="text-sm font-extrabold text-white">
+                  {editingOtherStandard ? '✏️ 기타 지침 수정' : '➕ 신규 기타 지침 추가'}
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowEditOtherStandardModal(false)}
+                className="w-6 h-6 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-200 flex items-center justify-center transition-all cursor-pointer"
+              >
+                <X size={14} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="py-2 space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-black text-slate-400">지침 제목 (Standard Title)</label>
+                <input
+                  type="text"
+                  value={editingOtherTitle}
+                  onChange={(e) => setEditingOtherTitle(e.target.value)}
+                  onFocus={(e) => e.target.select()}
+                  placeholder="예: 기타 시스템 프롬프트 및 사용자 지침"
+                  className="w-full bg-slate-950/60 border border-slate-800 focus:border-purple-500/80 rounded-xl px-3 py-2.5 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-purple-500 transition-all font-semibold"
+                  disabled={isSavingOtherStandardsList}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-black text-slate-400">지침 세부 내용 (Prompt Instruction Text)</label>
+                <textarea
+                  value={editingOtherContent}
+                  onChange={(e) => setEditingOtherContent(e.target.value)}
+                  onFocus={(e) => e.target.select()}
+                  placeholder="예: AI 튜터 및 채점관은 기타 요구사항 및 특수 지침이 있을 경우 본 기타 지침 항목에 기재된 모든 내용들을 최우선적으로 존중하여 반영하십시오."
+                  className="w-full h-80 bg-slate-950/60 border border-slate-800 focus:border-purple-500/80 rounded-xl p-3 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-purple-500 transition-all font-mono leading-relaxed resize-none"
+                  disabled={isSavingOtherStandardsList}
+                />
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">
+              <button
+                onClick={() => setShowEditOtherStandardModal(false)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer"
+                disabled={isSavingOtherStandardsList}
+              >
+                취소
+              </button>
+              <button
+                onClick={handleSaveEditOtherStandard}
+                disabled={isSavingOtherStandardsList}
+                className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer flex items-center gap-1.5"
+              >
+                {isSavingOtherStandardsList ? (
                   <>
                     <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                     <span>저장 중...</span>

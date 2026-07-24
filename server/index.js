@@ -188,6 +188,7 @@ import { updateLiveGradingStandards } from './plugins/gradingPlugin.js';
 import { gradingStandardsList } from './plugins/gradingStandardsList.js';
 import { updateLiveGenerationStandards, generationStandardsList } from './plugins/generationStandards.js';
 import { updateLiveLockscreenStandards, lockscreenStandardsList } from './plugins/lockscreenStandards.js';
+import { updateLiveOtherStandards, otherStandardsList } from './plugins/otherStandards.js';
 
 import { saveSessionValue } from './services/aiService.js';
 
@@ -243,6 +244,7 @@ async function initializeAllStandards() {
     updateLiveGradingStandards(gradingStandardsList);
     updateLiveGenerationStandards(generationStandardsList);
     updateLiveLockscreenStandards(lockscreenStandardsList);
+    updateLiveOtherStandards(otherStandardsList);
     return;
   }
 
@@ -271,6 +273,7 @@ async function initializeAllStandards() {
   await syncStandard('gradingStandardsList.js', 'grading_standards', gradingStandardsList, updateLiveGradingStandards);
   await syncStandard('generationStandards.js', 'generation_standards', generationStandardsList, updateLiveGenerationStandards);
   await syncStandard('lockscreenStandards.js', 'lockscreen_standards', lockscreenStandardsList, updateLiveLockscreenStandards);
+  await syncStandard('otherStandards.js', 'other_standards', otherStandardsList, updateLiveOtherStandards);
 }
 
 if (!process.env.VERCEL) {
