@@ -341,10 +341,35 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
   const tableBlocks = [];
   let tempText = mdText || '';
 
-  // Protect and convert markdown code blocks (``` ... ```) to styled pre/code blocks
+  // SVG Graphic rendering shield: Render raw or code block <svg ...></svg> directly as a rendered vector graphic
+  tempText = tempText.replace(/(?:&lt;svg|<svg)[\s\S]*?(?:&lt;\/svg&gt;|<\/svg>)/gi, (match) => {
+    let cleanSvg = match.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').replace(/&quot;/g, '"');
+    const svgMatch = cleanSvg.match(/<svg[\s\S]*?<\/svg>/i);
+    if (svgMatch) {
+      const placeholder = `___HTML_TABLE_${placeholderIndex}___`;
+      const styledHtml = `<div class="my-4 w-full flex flex-col items-center justify-center p-4 rounded-2xl bg-white text-slate-900 border border-indigo-500/30 shadow-xl overflow-x-auto select-text">${svgMatch[0]}</div>`;
+      tableBlocks.push({ placeholder, content: styledHtml });
+      placeholderIndex++;
+      return placeholder;
+    }
+    return match;
+  });
+
+  // Protect and convert markdown code blocks (``` ... ```) to styled pre/code blocks or rendered SVG
   const codeBlocks = [];
   let codeBlockIndex = 0;
   tempText = tempText.replace(/```([a-zA-Z0-9_-]*)\n([\s\S]*?)\n```/g, (match, lang, code) => {
+    let cleanCode = code.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').replace(/&quot;/g, '"');
+    if (cleanCode.includes('<svg') || (lang && (lang.toLowerCase() === 'xml' || lang.toLowerCase() === 'svg'))) {
+      const svgMatch = cleanCode.match(/<svg[\s\S]*?<\/svg>/i);
+      if (svgMatch) {
+        const placeholder = `___CODE_BLOCK_${codeBlockIndex}___`;
+        const styledHtml = `<div class="my-4 w-full flex flex-col items-center justify-center p-4 rounded-2xl bg-white text-slate-900 border border-indigo-500/30 shadow-xl overflow-x-auto select-text">${svgMatch[0]}</div>`;
+        codeBlocks.push({ placeholder, content: styledHtml });
+        codeBlockIndex++;
+        return placeholder;
+      }
+    }
     const placeholder = `___CODE_BLOCK_${codeBlockIndex}___`;
     const styledHtml = `<pre class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-4 overflow-x-auto my-3 font-mono text-xs text-slate-300 leading-relaxed select-text" style="white-space: pre; font-family: monospace;">${code}</pre>`;
     codeBlocks.push({ placeholder, content: styledHtml });
