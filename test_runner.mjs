@@ -1,5 +1,5 @@
 import { processAiTutorDiagrams } from './client/src/components/AiTutorDiagramPlugin.js';
-import { convertMarkdownToHtml } from './client/src/utils/renderingHelpers.js';
+import { convertMarkdownToHtml, cleanAndSanitizeMathText } from './client/src/utils/renderingHelpers.js';
 
 const fetch = globalThis.fetch;
 const BASE_URL = process.env.TEST_URL || 'https://anti.vercel.app';
@@ -93,6 +93,18 @@ async function runTests() {
     passed++;
   } else {
     console.log('  ❌ [FAIL] Full App React Pipeline - Mermaid Flowchart failed in convertMarkdownToHtml');
+    failed++;
+  }
+
+  // Test D: Full LatexRenderer pipeline with cleanAndSanitizeMathText (Real AI Tutor screenshot test)
+  const tutorText = '흙막이 지반 파괴 유형 및 거동 양상 다이어그램\n' + processAiTutorDiagrams(realWorldSvg);
+  const sanitizedTutorText = cleanAndSanitizeMathText(tutorText);
+  const finalHtml = convertMarkdownToHtml(sanitizedTutorText, true, false, true);
+  if (finalHtml.includes('my-6') && finalHtml.includes('<svg') && !finalHtml.includes('&lt;h4')) {
+    console.log('  ✅ [PASS] Full App React Pipeline - AI Tutor Chat Render (Card container & SVG preserved without HTML tag escaping)');
+    passed++;
+  } else {
+    console.log('  ❌ [FAIL] Full App React Pipeline - AI Tutor Chat Render failed tag preservation test');
     failed++;
   }
 
