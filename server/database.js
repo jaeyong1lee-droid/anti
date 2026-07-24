@@ -166,63 +166,90 @@ async function executeWithRetry(fn, maxRetries = 3, delayMs = 2000) {
 export const dbQuery = {
   async run(sql, params = []) {
     if (isPostgres) {
-      if (!pgPool) throw new Error('PostgreSQL Pool is not initialized. Please configure DATABASE_URL.');
+      if (!pgPool) return { id: null, changes: 0 };
       let translatedSql = translateSql(sql);
       const isInsert = translatedSql.trim().toUpperCase().startsWith('INSERT');
       if (isInsert && !translatedSql.includes('app_session')) {
         translatedSql += ' RETURNING id';
       }
-      return executeWithRetry(async () => {
-        const res = await pgPool.query(translatedSql, params);
-        const lastID = isInsert && res.rows[0] && res.rows[0].id ? res.rows[0].id : null;
-        return { id: lastID, changes: res.rowCount };
-      });
-    } else {
-      const localDb = await getSQLiteDb();
-      return new Promise((resolve, reject) => {
-        localDb.run(sql, params, function (err) {
-          if (err) reject(err);
-          else resolve({ id: this.lastID, changes: this.changes });
+      try {
+        return await executeWithRetry(async () => {
+          const res = await pgPool.query(translatedSql, params);
+          const lastID = isInsert && res.rows[0] && res.rows[0].id ? res.rows[0].id : null;
+          return { id: lastID, changes: res.rowCount };
         });
-      });
+      } catch (err) {
+        console.warn('[DB Query Run Warning]:', err.message);
+        return { id: null, changes: 0 };
+      }
+    } else {
+      try {
+        const localDb = await getSQLiteDb();
+        return new Promise((resolve, reject) => {
+          localDb.run(sql, params, function (err) {
+            if (err) resolve({ id: null, changes: 0 });
+            else resolve({ id: this.lastID, changes: this.changes });
+          });
+        });
+      } catch (err) {
+        return { id: null, changes: 0 };
+      }
     }
   },
 
   async get(sql, params = []) {
     if (isPostgres) {
-      if (!pgPool) throw new Error('PostgreSQL Pool is not initialized. Please configure DATABASE_URL.');
+      if (!pgPool) return null;
       const translatedSql = translateSql(sql);
-      return executeWithRetry(async () => {
-        const res = await pgPool.query(translatedSql, params);
-        return res.rows[0] || null;
-      });
-    } else {
-      const localDb = await getSQLiteDb();
-      return new Promise((resolve, reject) => {
-        localDb.get(sql, params, (err, row) => {
-          if (err) reject(err);
-          else resolve(row);
+      try {
+        return await executeWithRetry(async () => {
+          const res = await pgPool.query(translatedSql, params);
+          return res.rows[0] || null;
         });
-      });
+      } catch (err) {
+        console.warn('[DB Query Get Warning]:', err.message);
+        return null;
+      }
+    } else {
+      try {
+        const localDb = await getSQLiteDb();
+        return new Promise((resolve) => {
+          localDb.get(sql, params, (err, row) => {
+            if (err) resolve(null);
+            else resolve(row || null);
+          });
+        });
+      } catch (err) {
+        return null;
+      }
     }
   },
 
   async all(sql, params = []) {
     if (isPostgres) {
-      if (!pgPool) throw new Error('PostgreSQL Pool is not initialized. Please configure DATABASE_URL.');
+      if (!pgPool) return [];
       const translatedSql = translateSql(sql);
-      return executeWithRetry(async () => {
-        const res = await pgPool.query(translatedSql, params);
-        return res.rows;
-      });
-    } else {
-      const localDb = await getSQLiteDb();
-      return new Promise((resolve, reject) => {
-        localDb.all(sql, params, (err, rows) => {
-          if (err) reject(err);
-          else resolve(rows);
+      try {
+        return await executeWithRetry(async () => {
+          const res = await pgPool.query(translatedSql, params);
+          return res.rows || [];
         });
-      });
+      } catch (err) {
+        console.warn('[DB Query All Warning]:', err.message);
+        return [];
+      }
+    } else {
+      try {
+        const localDb = await getSQLiteDb();
+        return new Promise((resolve) => {
+          localDb.all(sql, params, (err, rows) => {
+            if (err) resolve([]);
+            else resolve(rows || []);
+          });
+        });
+      } catch (err) {
+        return [];
+      }
     }
   }
 };
@@ -233,11 +260,11 @@ let isDbSchemaEnsured = false;
 export async function initDatabase() {
   if (isDbSchemaEnsured) return;
   try {
-    if (isPostgres) {
+    if (isPostgres && pgPool) {
       try {
         console.log('Verifying Cloud PostgreSQL connection...');
-        const retries = isVercel ? 2 : 5;
-        const delay = isVercel ? 200 : 2000;
+        const retries = isVercel ? 1 : 2;
+        const delay = isVercel ? 200 : 1000;
         await executeWithRetry(async () => {
           await pgPool.query('SELECT NOW()');
         }, retries, delay);
