@@ -237,6 +237,15 @@ async function checkIsFileNewer(fileName, dbKey) {
 }
 
 async function initializeAllStandards() {
+  if (process.env.VERCEL) {
+    // In Vercel serverless environment, instantly load in-memory standards to eliminate network latency
+    updateLiveEngineeringStandards(standardsList);
+    updateLiveGradingStandards(gradingStandardsList);
+    updateLiveGenerationStandards(generationStandardsList);
+    updateLiveLockscreenStandards(lockscreenStandardsList);
+    return;
+  }
+
   const syncStandard = async (fileName, dbKey, fileList, updateFn) => {
     try {
       let dbList = [];
