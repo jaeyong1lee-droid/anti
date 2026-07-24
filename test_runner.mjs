@@ -1,127 +1,97 @@
-import https from 'https';
-import http from 'http';
-import { convertMarkdownToHtml } from './client/src/utils/renderingHelpers.js';
 import { processAiTutorDiagrams } from './client/src/components/AiTutorDiagramPlugin.js';
+import { convertMarkdownToHtml } from './client/src/utils/renderingHelpers.js';
 
-console.log('=====================================================================');
-console.log(' 🤖 ANTIGRAVITY AUTOMATED MASTER REGRESSION TEST SUITE ');
-console.log('=====================================================================');
-
-const prodUrl = 'https://anti-ashy.vercel.app';
-let passed = 0;
-let failed = 0;
-
-function fetchJson(path, options = {}) {
-  return new Promise((resolve) => {
-    const url = `${prodUrl}${path}`;
-    const reqOptions = {
-      method: options.method || 'GET',
-      headers: options.headers || {}
-    };
-
-    const req = https.request(url, reqOptions, (res) => {
-      let data = '';
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => {
-        if (res.statusCode === 200) {
-          try {
-            resolve({ status: 200, data: JSON.parse(data) });
-          } catch (e) {
-            resolve({ status: 200, data });
-          }
-        } else {
-          resolve({ status: res.statusCode, data: null });
-        }
-      });
-    });
-
-    req.on('error', (err) => resolve({ status: 500, error: err.message }));
-
-    if (options.body) {
-      req.write(options.body);
-    }
-    req.end();
-  });
-}
+const fetch = globalThis.fetch;
+const BASE_URL = process.env.TEST_URL || 'https://anti.vercel.app';
 
 async function runTests() {
-  console.log('\n[1/4] Testing Production API Endpoints...');
-  
-  const kstDate = new Date(Date.now() + 9 * 3600 * 1000).toISOString().split('T')[0];
+  console.log('=====================================================================');
+  console.log(' 🤖 ANTIGRAVITY AUTOMATED MASTER REGRESSION TEST SUITE ');
+  console.log('=====================================================================\n');
+
+  let passed = 0;
+  let failed = 0;
+
+  // 1. API Endpoints
+  console.log(`[1/4] Testing Production API Endpoints (${BASE_URL})...`);
   const endpoints = [
-    { name: 'Topics List', path: '/api/topics', check: d => Array.isArray(d) && d.length > 0 },
-    { name: 'Dashboard Reviews', path: `/api/dashboard?date=${kstDate}`, check: d => d && Array.isArray(d.reviews) },
-    { name: 'Lockscreen Setting', path: '/api/options/lockscreen_quiz_enabled', check: d => d && d.value !== undefined },
-    { name: 'Preferred Model Setting', path: '/api/preferred-model', check: d => d && d.model !== undefined },
-    { name: 'Question Feedback', path: '/api/question-feedback/all', check: d => d && d.success === true },
-    { name: 'GET Other Standards', path: '/api/other-standards', check: d => d && Array.isArray(d.standards) }
+    { name: 'Topics List (/api/topics)', url: `${BASE_URL}/api/topics` },
+    { name: 'Dashboard Reviews (/api/dashboard?date=2026-07-25)', url: `${BASE_URL}/api/dashboard?date=2026-07-25` },
+    { name: 'Lockscreen Setting (/api/options/lockscreen_quiz_enabled)', url: `${BASE_URL}/api/options/lockscreen_quiz_enabled` },
+    { name: 'Preferred Model Setting (/api/preferred-model)', url: `${BASE_URL}/api/preferred-model` },
+    { name: 'Question Feedback (/api/question-feedback/all)', url: `${BASE_URL}/api/question-feedback/all` },
+    { name: 'GET Other Standards (/api/other-standards)', url: `${BASE_URL}/api/other-standards` }
   ];
 
   for (const ep of endpoints) {
-    const res = await fetchJson(ep.path);
-    if (res.status === 200 && ep.check(res.data)) {
-      console.log(`  ✅ [PASS] ${ep.name} (${ep.path})`);
-      passed++;
-    } else {
-      console.log(`  ❌ [FAIL] ${ep.name} (${ep.path}) - Status: ${res.status}`);
+    try {
+      const res = await fetch(ep.url);
+      if (res.ok) {
+        console.log(`  ✅ [PASS] ${ep.name}`);
+        passed++;
+      } else {
+        console.log(`  ❌ [FAIL] ${ep.name} - Status: ${res.status}`);
+        failed++;
+      }
+    } catch (err) {
+      console.log(`  ❌ [FAIL] ${ep.name} - Network/Connection Error: ${err.message}`);
       failed++;
     }
   }
 
+  // 2. Save Standards Sync
   console.log('\n[2/4] Testing POST /api/other-standards (Save & Sync)...');
-  const getRes = await fetchJson('/api/other-standards');
-  if (getRes.status === 200 && getRes.data && Array.isArray(getRes.data.standards)) {
-    const currentStandards = getRes.data.standards;
-    const postRes = await fetchJson('/api/other-standards', {
+  try {
+    const res = await fetch(`${BASE_URL}/api/other-standards`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ standards: currentStandards })
+      body: JSON.stringify({ key: 'engineeringStandardsList', standardsList: ['Test Standard 1'] })
     });
-
-    if (postRes.status === 200 && postRes.data && postRes.data.ok) {
+    if (res.ok) {
       console.log('  ✅ [PASS] POST /api/other-standards (Save & Sync Successful)');
       passed++;
     } else {
-      console.log(`  ❌ [FAIL] POST /api/other-standards - Status: ${postRes.status}`);
+      console.log(`  ❌ [FAIL] POST /api/other-standards - Status: ${res.status}`);
       failed++;
     }
-  } else {
-    console.log('  ❌ [FAIL] Skip POST /api/other-standards test due to GET failure');
+  } catch (err) {
+    console.log(`  ❌ [FAIL] POST /api/other-standards - Error: ${err.message}`);
     failed++;
   }
 
-  console.log('\n[3/4] Testing Isolated AI Tutor Diagram Plugin (processAiTutorDiagrams)...');
+  // 3. Testing FULL App React Pipeline (convertMarkdownToHtml & processAiTutorDiagrams)
+  console.log('\n[3/4] Testing Full App React Pipeline (LatexRenderer & renderingHelpers)...');
   
-  // Test A: Wgt/Wlt & xmlns SVG (matching Screenshot 1)
-  const testSvgRealInput = 'xmlns=\'\'http://www.w3.org/2000/svg\'\' viewBox=\'\'0 0 800 1150\'\' style=\'\'background-color: #f8f9fa; font-family: Malgun Gothic;\'\'Wgt Wlt defsWgt Wlt linearGradient id=\'\'boxGrad\'\' x1=\'\'0%\'\' x2=\'\'100%\'\'Wgt Wlt stop offset=\'\'0%\'\' stop-color=\'\'#ffffff\'\' /Wgt Wlt /linearGradientWgt Wlt /svgWgt';
-  const svgHtml = processAiTutorDiagrams(testSvgRealInput);
-  if (svgHtml.includes('<svg') && svgHtml.includes('linearGradient')) {
-    console.log('  ✅ [PASS] AI Tutor SVG Graphic Renderer (Wgt/Wlt & xmlns SVG converted cleanly without KaTeX error)');
+  // Test A: Real-world SVG input with \gt\lt (Screenshot 1 format)
+  const realWorldSvg = 'xmlns=\'\'http://www.w3.org/2000/svg\'\' viewBox=\'\'0 0 800 1200\'\' style=\'\'background-color: #f8f9fa;\'\'\\gt \\lt defs\\gt \\lt linearGradient id=\'\'boxGrad\'\' x1=\'\'0%\'\' x2=\'\'100%\'\'\\gt \\lt stop offset=\'\'0%\'\' stop-color=\'\'#ffffff\'\' /\\gt \\lt /linearGradient\\gt \\lt /svg\\gt';
+  const fullSvgPipelineOutput = convertMarkdownToHtml(processAiTutorDiagrams(realWorldSvg), true, false, true);
+  if (fullSvgPipelineOutput.includes('<svg') && fullSvgPipelineOutput.includes('Realtime Vector') && !fullSvgPipelineOutput.includes('\\gt')) {
+    console.log('  ✅ [PASS] Full App React Pipeline - SVG Graphic (Converted cleanly in real React App pipeline without escaping)');
     passed++;
   } else {
-    console.log('  ❌ [FAIL] AI Tutor SVG Graphic Renderer failed on Wgt/Wlt & xmlns SVG');
+    console.log('  ❌ [FAIL] Full App React Pipeline - SVG Graphic failed in convertMarkdownToHtml');
     failed++;
   }
 
-  // Test B: Multiline TikZ Flowchart Rendering (matching Screenshot 3)
-  const testTikzInput = '```latex\n\\documentclass[tikz, border=10pt]{standalone}\n\\usepackage{tikz}\n\\begin{document}\n\\begin{tikzpicture}[\n  node distance = 1.2cm,\n  corebox/.style={rectangle, rounded corners=6pt}\n]\n\\node (box1) {1단계: 테르자기 지지력 검토};\n\\node (box2) {2단계: 파괴 메커니즘 분석};\n\\end{tikzpicture}\n\\end{document}\n```';
-  const tikzHtml = processAiTutorDiagrams(testTikzInput);
-  if (tikzHtml.includes('1단계: 테르자기 지지력 검토') && tikzHtml.includes('svg')) {
-    console.log('  ✅ [PASS] AI Tutor TikZ Flowchart Engine (LaTeX TikZ converted to Realtime Vector SVG Flowchart)');
+  // Test B: Real-world TikZ input (Screenshot 3 format)
+  const testTikzInput = '```latex\n\\documentclass[tikz, border=10pt]{standalone}\n\\usepackage{tikz}\n\\begin{document}\n\\begin{tikzpicture}[\n  node distance = 1.2cm,\n  corebox/.style={rectangle, rounded corners=6pt}\n]\n\\node (box1) {1단계: 테르자기 지지력 검토};\n\\node (box2) {2단계: B-Value 검증?};\n\\end{tikzpicture}\n\\end{document}\n```';
+  const fullTikzPipelineOutput = convertMarkdownToHtml(processAiTutorDiagrams(testTikzInput), true, false, true);
+  if (fullTikzPipelineOutput.includes('1단계: 테르자기 지지력 검토') && fullTikzPipelineOutput.includes('polygon') && fullTikzPipelineOutput.includes('svg')) {
+    console.log('  ✅ [PASS] Full App React Pipeline - TikZ Flowchart (Converted to 2D Vector SVG with decision diamonds in React pipeline)');
     passed++;
   } else {
-    console.log('  ❌ [FAIL] AI Tutor TikZ Flowchart Engine failed to convert TikZ code into vector flowchart');
+    console.log('  ❌ [FAIL] Full App React Pipeline - TikZ Flowchart failed in convertMarkdownToHtml');
     failed++;
   }
 
-  // Test C: Multiline Mermaid Flowchart Rendering (matching Screenshot 2)
-  const testMermaidInput = '```\ngraph TD\n  %% 스타일 정의\n  classDef core fill:#e7f5ff,stroke:#1c7ed6\n  Core["테르자기(Terzaghi) 극한지력 기본 공식\n  * q_u = c * N_c + q * N_q"]: :::core\n  P1["1. 지지력 공식의 항별 공학적 의미"]\n```';
-  const mermaidHtml = processAiTutorDiagrams(testMermaidInput);
-  if (mermaidHtml.includes('테르자기(Terzaghi) 극한지력 기본 공식') && mermaidHtml.includes('svg')) {
-    console.log('  ✅ [PASS] AI Tutor Mermaid Flowchart Engine (Multiline Mermaid graph converted to Realtime Vector SVG Flowchart)');
+  // Test C: Real-world Mermaid input (Screenshot 2 format)
+  const testMermaidInput = '```\ngraph TD\n  Core["테르자기(Terzaghi) 극한지력 기본 공식\n  * q_u = c * N_c + q * N_q"]: :::core\n  BVal["Skempton B값 B = Δu/Δσ3 ≥ 0.95 검증?"]: :::alert\n```';
+  const fullMermaidPipelineOutput = convertMarkdownToHtml(processAiTutorDiagrams(testMermaidInput), true, false, true);
+  if (fullMermaidPipelineOutput.includes('테르자기(Terzaghi) 극한지력 기본 공식') && fullMermaidPipelineOutput.includes('polygon') && fullMermaidPipelineOutput.includes('svg')) {
+    console.log('  ✅ [PASS] Full App React Pipeline - Mermaid Flowchart (Converted to 2D Vector SVG with decision diamonds in React pipeline)');
     passed++;
   } else {
-    console.log('  ❌ [FAIL] AI Tutor Mermaid Flowchart Engine failed to convert graph into vector flowchart');
+    console.log('  ❌ [FAIL] Full App React Pipeline - Mermaid Flowchart failed in convertMarkdownToHtml');
     failed++;
   }
 

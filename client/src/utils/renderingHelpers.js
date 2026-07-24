@@ -2,6 +2,9 @@
 // Markdown, KaTeX LaTeX, and HTML Iframe Rendering Helper Utilities
 // ============================================================================
 import { healLatexFormulas } from './latexUtils.js';
+import { renderAiTutorSvg } from '../components/plugins/AiTutorSvgPlugin.js';
+import { renderAiTutorMermaid } from '../components/plugins/AiTutorMermaidPlugin.js';
+import { renderAiTutorTikz } from '../components/plugins/AiTutorTikzPlugin.js';
 
 
 export const formatGradingReason = (reason) => {
@@ -367,13 +370,11 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
     const lowerLang = (lang || '').toLowerCase();
     
     // 1. SVG Code Block
-    if (cleanCode.includes('<svg') || cleanCode.includes('< svg') || lowerLang === 'xml' || lowerLang === 'svg') {
-      const normalizedCode = cleanCode.replace(/<\s+svg/gi, '<svg');
-      const svgMatch = normalizedCode.match(/<svg[\s\S]*?<\/svg>/i);
-      if (svgMatch) {
+    if (cleanCode.includes('<svg') || cleanCode.includes('< svg') || lowerLang === 'xml' || lowerLang === 'svg' || cleanCode.includes('xmlns=')) {
+      const renderedSvg = renderAiTutorSvg(cleanCode);
+      if (renderedSvg !== cleanCode) {
         const placeholder = `___CODE_BLOCK_${codeBlockIndex}___`;
-        const styledHtml = `<div class="my-4 w-full flex flex-col items-center justify-center p-4 rounded-2xl bg-white text-slate-900 border border-indigo-500/30 shadow-xl overflow-x-auto select-text">${svgMatch[0]}</div>`;
-        codeBlocks.push({ placeholder, content: styledHtml });
+        codeBlocks.push({ placeholder, content: renderedSvg });
         codeBlockIndex++;
         return placeholder;
       }
@@ -381,34 +382,10 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
 
     // 2. TikZ Flowchart Code Block (\begin{tikzpicture} or tikz)
     if (cleanCode.includes('\\begin{tikzpicture}') || cleanCode.includes('documentclass[tikz]') || lowerLang === 'tikz' || lowerLang === 'latex') {
-      const nodeMatches = [...cleanCode.matchAll(/\\node\s*(?:\[[^\]]*\])?\s*(?:\([^)]*\))?\s*\{([\s\S]*?)\};/gi)];
-      const stepItems = [];
-      nodeMatches.forEach(m => {
-        let nodeText = m[1]
-          .replace(/%.*$/gm, '')
-          .replace(/\\small|\\large|\\textbf|\\textit|\\font=[^\n]*/gi, '')
-          .replace(/\\\\/g, ' ')
-          .replace(/[{}]/g, '')
-          .trim();
-        if (nodeText && !nodeText.toLowerCase().includes('standalone') && !nodeText.toLowerCase().includes('document')) {
-          stepItems.push(nodeText);
-        }
-      });
-
-      if (stepItems.length > 0) {
-        let cardsHtml = '<div class="w-full my-4 flex flex-col items-center gap-2 select-text font-sans">';
-        stepItems.forEach((step, sIdx) => {
-          cardsHtml += `<div class="w-full bg-slate-900/80 border border-indigo-500/30 p-3 rounded-xl text-left shadow-md flex flex-col gap-1">`;
-          cardsHtml += `<div class="font-bold text-indigo-300 text-xs flex items-center gap-1.5"><span class="w-4 h-4 rounded-full bg-indigo-500/20 text-indigo-400 text-[10px] flex items-center justify-center font-black">${sIdx + 1}</span>${step}</div>`;
-          cardsHtml += `</div>`;
-          if (sIdx < stepItems.length - 1) {
-            cardsHtml += `<div class="text-indigo-400 font-extrabold text-xs">▼</div>`;
-          }
-        });
-        cardsHtml += '</div>';
-
+      const renderedTikz = renderAiTutorTikz(cleanCode);
+      if (renderedTikz !== cleanCode) {
         const placeholder = `___CODE_BLOCK_${codeBlockIndex}___`;
-        codeBlocks.push({ placeholder, content: cardsHtml });
+        codeBlocks.push({ placeholder, content: renderedTikz });
         codeBlockIndex++;
         return placeholder;
       }
@@ -416,31 +393,10 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
 
     // 3. Mermaid / Graph Flowchart Code Block
     if (lowerLang === 'mermaid' || cleanCode.includes('graph TD') || cleanCode.includes('graph LR') || cleanCode.includes('flowchart TD')) {
-      const nodeMatches = [...cleanCode.matchAll(/(?:([A-Za-z0-9_-]+)\s*\[(?:["']?)(.*?)(?:["']?)\])/gi)];
-      const stepItems = [];
-      const seen = new Set();
-      nodeMatches.forEach(m => {
-        const text = m[2].trim();
-        if (text && !seen.has(text)) {
-          seen.add(text);
-          stepItems.push(text);
-        }
-      });
-
-      if (stepItems.length > 0) {
-        let cardsHtml = '<div class="w-full my-4 flex flex-col items-center gap-2 select-text font-sans">';
-        stepItems.forEach((step, sIdx) => {
-          cardsHtml += `<div class="w-full bg-slate-900/80 border border-emerald-500/30 p-3 rounded-xl text-left shadow-md flex flex-col gap-1">`;
-          cardsHtml += `<div class="font-bold text-emerald-300 text-xs flex items-center gap-1.5"><span class="w-4 h-4 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] flex items-center justify-center font-black">${sIdx + 1}</span>${step}</div>`;
-          cardsHtml += `</div>`;
-          if (sIdx < stepItems.length - 1) {
-            cardsHtml += `<div class="text-emerald-400 font-extrabold text-xs">▼</div>`;
-          }
-        });
-        cardsHtml += '</div>';
-
+      const renderedMermaid = renderAiTutorMermaid(cleanCode);
+      if (renderedMermaid !== cleanCode) {
         const placeholder = `___CODE_BLOCK_${codeBlockIndex}___`;
-        codeBlocks.push({ placeholder, content: cardsHtml });
+        codeBlocks.push({ placeholder, content: renderedMermaid });
         codeBlockIndex++;
         return placeholder;
       }
