@@ -36,6 +36,7 @@ import {
   Calendar, 
   List, 
   Activity,
+  BarChart2,
   FileText, 
   FileCode,
   Sparkles, 
@@ -928,15 +929,29 @@ function parseQuestionTable(q, topicTitle) {
 }
 
 
-const getActualLettersMap = (text) => {
+const getActualLettersMap = (text, q = null) => {
   const map = {};
   if (typeof text !== 'string') return map;
-  const regex = /[\(\[]([A-F])[\)\]]/g;
+  const regex = /[\(\[]([A-F])[\)\]](?:\s*입력)?/g;
   let match;
   let idx = 1;
+  const seen = new Set();
   while ((match = regex.exec(text)) !== null) {
-    map[`INPUT_${idx}`] = match[1].toUpperCase();
-    idx++;
+    const letter = match[1].toUpperCase();
+    const fullMatch = match[0];
+    
+    const inputId = `INPUT_${idx}`;
+    const hasAnswerKey = q?.answers?.[inputId] !== undefined;
+    const hasRowEntry = q?.tableData?.rows?.some(row => row[0] && row[0].includes(`(${letter})`));
+    const isExplicitInputBlank = fullMatch.includes('입력') || text.includes(`빈칸 (${letter})`) || text.includes(`(${letter}) 입력`);
+    
+    const isActualBlank = q ? (hasAnswerKey || hasRowEntry || isExplicitInputBlank) : (isExplicitInputBlank || ['A','B','C','D'].includes(letter));
+
+    if (isActualBlank && !seen.has(letter)) {
+      seen.add(letter);
+      map[inputId] = letter;
+      idx++;
+    }
   }
   return map;
 };
@@ -1111,6 +1126,21 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
       const letter = letterMatch[1];
       const letterIdx = letter.charCodeAt(0) - 65;
       const inputId = `INPUT_${letterIdx + 1}`;
+      
+      // Validate whether this letter is an actual blank in the question answers or rows
+      const hasAnswerKey = q?.answers?.[inputId] !== undefined;
+      const hasRowEntry = q?.tableData?.rows?.some(row => row[0] && row[0].includes(`(${letter})`));
+      const isQuestionPromptBlank = q?.question && (q.question.includes(`(${letter}) 입력`) || q.question.includes(`빈칸 (${letter})`));
+      const isActualBlank = hasAnswerKey || hasRowEntry || isQuestionPromptBlank;
+
+      if (!isActualBlank) {
+        return (
+          <div className="w-full h-auto whitespace-pre-wrap break-all flowchart-text-force">
+            <LatexRenderer text={content} katexLoaded={katexLoaded} enableAddFormula={true} questionKey={questionKey} forceInline={true} />
+          </div>
+        );
+      }
+
       const inputKey = `${questionIdx}_${inputId}`;
       const val = tableAnswers[inputKey] || '';
 
@@ -1166,7 +1196,7 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
 
       return (
         <div className="flex items-center gap-1.5 flex-wrap my-0.5 select-text w-full h-auto whitespace-pre-wrap break-all flowchart-text-force">
-          <span>{parts[0]}</span>
+          <LatexRenderer text={parts[0]} katexLoaded={katexLoaded} forceInline={true} />
           <div className="flex items-center gap-1.5 flex-grow flex-1 min-w-[170px] relative">
             <input
               type="text"
@@ -1183,7 +1213,7 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
               }`}
             />
           </div>
-          <span>{rightText}</span>
+          <LatexRenderer text={rightText} katexLoaded={katexLoaded} forceInline={true} />
         </div>
       );
     }
@@ -1365,7 +1395,7 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
       {/* 📝 각 동적 상자 칸 채점 피드백 누적 출력 영역 */}
       {(() => {
         const feedbackList = [];
-        const actualLettersMap = getActualLettersMap(flowchartText);
+        const actualLettersMap = getActualLettersMap(flowchartText, q);
 
         if (tableGradingResults) {
           Object.keys(tableGradingResults).forEach(key => {
@@ -16314,6 +16344,151 @@ ${itemsStr}
     : 0;
   const totalScheduleCount = Array.isArray(allTopics) ? allTopics.length * 6 : 0;
   const overallProgressPercent = totalScheduleCount > 0 ? Math.round((totalCompletedCount / totalScheduleCount) * 100) : 0;
+
+  // 회차별 (1일, 4일, 7일, 14일, 35일, 60일) 막대그래프 달성률 통계
+  const roundStats = useMemo(() => {
+    const defaultLabels = ['1회차 (1일)', '2회차 (4일)', '3회차 (7일)', '4회차 (14일)', '5회차 (35일)', '6회차 (60일)'];
+    const defaultColors = [
+      'from-blue-600 to-cyan-500',
+      'from-cyan-600 to-teal-500',
+      'from-emerald-600 to-green-500',
+      'from-amber-600 to-yellow-500',
+      'from-violet-600 to-purple-500',
+      'from-fuchsia-600 to-pink-500'
+    ];
+
+    if (!Array.isArray(allTopics) || allTopics.length === 0) {
+      return [1, 2, 3, 4, 5, 6].map(r => ({
+        round: r,
+        label: defaultLabels[r - 1],
+        completed: 0,
+        total: 0,
+        percent: 0,
+        color: defaultColors[r - 1]
+      }));
+    }
+
+    const totalTopics = allTopics.length;
+    const roundCounts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
+
+    allTopics.forEach(t => {
+      if (Array.isArray(t.schedules)) {
+        t.schedules.forEach(s => {
+          if (s && s.status === 'completed' && s.review_round >= 1 && s.review_round <= 6) {
+            roundCounts[s.review_round] = (roundCounts[s.review_round] || 0) + 1;
+          }
+        });
+      }
+    });
+
+    return [1, 2, 3, 4, 5, 6].map(r => {
+      const comp = roundCounts[r] || 0;
+      const pct = Math.min(100, Math.round((comp / totalTopics) * 100));
+      return {
+        round: r,
+        label: defaultLabels[r - 1],
+        completed: comp,
+        total: totalTopics,
+        percent: pct,
+        color: defaultColors[r - 1]
+      };
+    });
+  }, [allTopics]);
+
+  // 최근 10일간 제출 및 채점 문제 수 세로막대형 그래프 통계 데이터
+  const recent10DaysStats = useMemo(() => {
+    const days = [];
+    const today = new Date(referenceDate || new Date());
+    
+    for (let i = 9; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0];
+      const displayLabel = `${d.getMonth() + 1}.${d.getDate() < 10 ? '0' : ''}${d.getDate()}`;
+      days.push({
+        dateStr,
+        label: displayLabel,
+        isToday: i === 0,
+        count: 0
+      });
+    }
+
+    if (Array.isArray(allTopics)) {
+      allTopics.forEach(t => {
+        if (Array.isArray(t.schedules)) {
+          t.schedules.forEach(s => {
+            if (s && s.status === 'completed' && s.completed_at) {
+              const compDate = String(s.completed_at).split('T')[0];
+              const target = days.find(d => d.dateStr === compDate);
+              if (target) {
+                target.count += 1;
+              }
+            }
+          });
+        }
+      });
+    }
+
+    const maxCount = Math.max(5, ...days.map(d => d.count));
+
+    return days.map(d => {
+      const ratio = maxCount > 0 ? d.count / maxCount : 0;
+      const heightPercent = Math.min(100, Math.max(10, Math.round(ratio * 100)));
+      
+      // 🎨 5단계 고대비 명확한 컬러 스펙트럼 (레드/주황/초록/청록/남색)
+      let barGradient = 'from-slate-800 to-slate-600';
+      let textColor = 'text-slate-500';
+      let badgeBg = 'bg-slate-900 text-slate-400 border-slate-700';
+      let levelLabel = '0개';
+
+      if (d.count === 0) {
+        barGradient = 'from-slate-800 to-slate-600';
+        textColor = 'text-slate-500';
+        badgeBg = 'bg-slate-950 text-slate-500 border-slate-800';
+        levelLabel = '0개';
+      } else if (ratio >= 0.8 || d.count >= 15) {
+        // 🔥 Level 5: 15개 이상 (최다 - 강렬한 크림슨 레드)
+        barGradient = 'from-red-600 via-rose-500 to-pink-400';
+        textColor = 'text-red-400';
+        badgeBg = 'bg-red-950/80 text-red-300 border-red-500/40';
+        levelLabel = '최다';
+      } else if (ratio >= 0.55 || d.count >= 10) {
+        // 🟧 Level 4: 10~14개 (많음 - 비비드 오렌지)
+        barGradient = 'from-orange-600 via-amber-500 to-yellow-300';
+        textColor = 'text-orange-400';
+        badgeBg = 'bg-orange-950/80 text-orange-300 border-orange-500/40';
+        levelLabel = '많음';
+      } else if (ratio >= 0.35 || d.count >= 6) {
+        // 🟩 Level 3: 6~9개 (보통 - 에메랄드 그린)
+        barGradient = 'from-emerald-600 via-green-500 to-lime-300';
+        textColor = 'text-emerald-400';
+        badgeBg = 'bg-emerald-950/80 text-emerald-300 border-emerald-500/40';
+        levelLabel = '보통';
+      } else if (ratio >= 0.18 || d.count >= 3) {
+        // 🟦 Level 2: 3~5개 (조금 - 일렉트릭 사이언)
+        barGradient = 'from-cyan-600 via-sky-500 to-blue-300';
+        textColor = 'text-cyan-400';
+        badgeBg = 'bg-cyan-950/80 text-cyan-300 border-cyan-500/40';
+        levelLabel = '조금';
+      } else {
+        // 🟪 Level 1: 1~2개 (소량 - 딥 사파이어 인디고)
+        barGradient = 'from-indigo-700 via-blue-600 to-violet-400';
+        textColor = 'text-indigo-400';
+        badgeBg = 'bg-indigo-950/80 text-indigo-300 border-indigo-500/40';
+        levelLabel = '소량';
+      }
+
+      return {
+        ...d,
+        heightPercent,
+        barGradient,
+        textColor,
+        badgeBg,
+        levelLabel
+      };
+    });
+  }, [allTopics, referenceDate]);
+
   const isModalOpen = !!(selectedTopic || showExam || showFormulaExam || showTheoryExam);
 
   // ── Restore active modal data on mount after all functions are defined
@@ -17810,6 +17985,148 @@ ${itemsStr}
                   )}
                 </button>
               </form>
+
+              {/* 📊 오른쪽 패널 하단 실시간 대시보드 현황 카드 */}
+              <div className="mt-6 pt-5 border-t border-slate-800/80 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                    <BarChart2 size={14} className="text-brand-400" />
+                    <span>복습 대시보드 현황</span>
+                  </h3>
+                  <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-brand-950/60 text-brand-300 border border-brand-500/20">
+                    진행률 {overallProgressPercent}%
+                  </span>
+                </div>
+
+                {/* 3대 지표 미니 카드 */}
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="bg-slateCustom-900/80 p-2.5 rounded-xl border border-slate-800 shadow-md">
+                    <div className="text-[10px] font-bold text-slate-400">총 토픽</div>
+                    <div className="text-sm font-black text-white mt-0.5">{allTopics.length}개</div>
+                  </div>
+                  <div className="bg-slateCustom-900/80 p-2.5 rounded-xl border border-slate-800 shadow-md">
+                    <div className="text-[10px] font-bold text-slate-400">오늘 복습</div>
+                    <div className="text-sm font-black text-brand-400 mt-0.5">{todayReviews.length}개</div>
+                  </div>
+                  <div className="bg-slateCustom-900/80 p-2.5 rounded-xl border border-slate-800 shadow-md">
+                    <div className="text-[10px] font-bold text-slate-400">완료율</div>
+                    <div className="text-sm font-black text-emerald-400 mt-0.5">{overallProgressPercent}%</div>
+                  </div>
+                </div>
+
+                {/* 📊 최근 10일간 제출 및 채점 문제 수 (세로막대형 그래프) */}
+                <div className="bg-slateCustom-900/90 p-2.5 rounded-2xl border border-slate-800/90 shadow-md space-y-2">
+                  <div className="flex items-center justify-between px-1">
+                    <span className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                      <BarChart2 size={14} className="text-brand-400" />
+                      <span>최근 10일간 제출/채점 수</span>
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-medium">최근 10일 통계</span>
+                  </div>
+
+                  {/* 세로막대형 그래프 캔버스 영역 (타이트하게 조절) */}
+                  <div className="h-36 bg-slate-950/90 rounded-xl border border-slate-800/80 px-2 pt-2 pb-1 flex items-end justify-between gap-1 relative overflow-hidden">
+                    {/* 배경 보조 눈금선 */}
+                    <div className="absolute inset-0 flex flex-col justify-between px-2 pt-3 pb-5 pointer-events-none opacity-20">
+                      <div className="border-b border-slate-700 w-full" />
+                      <div className="border-b border-slate-700 w-full" />
+                      <div className="border-b border-slate-700 w-full" />
+                    </div>
+
+                    {/* 10개 일자별 세로막대 기둥 */}
+                    {recent10DaysStats.map((item, idx) => (
+                      <div key={idx} className="flex-1 flex flex-col items-center h-full justify-end group z-10">
+                        {/* 수량 라벨 */}
+                        <span className={`text-[9px] font-black mb-0.5 transition-all ${
+                          item.isToday ? `${item.textColor} scale-110 font-black` : `${item.textColor} group-hover:scale-105`
+                        }`}>
+                          {item.count}개
+                        </span>
+
+                        {/* 세로 막대기 */}
+                        <div className="w-full max-w-[26px] bg-slate-900 rounded-t-md overflow-hidden flex items-end h-[85px] p-0.5 border border-slate-800/60 shadow-inner">
+                          <div 
+                            className={`w-full rounded-t-sm transition-all duration-500 ease-out bg-gradient-to-t ${item.barGradient} ${
+                              item.isToday ? 'shadow-lg shadow-red-500/30 ring-1 ring-white/50' : 'group-hover:brightness-125'
+                            }`}
+                            style={{ height: `${item.heightPercent}%` }}
+                          />
+                        </div>
+
+                        {/* X축 일자 라벨 (바닥에 딱 맞춰 타이트 배치) */}
+                        <span className={`text-[9px] font-bold mt-0.5 whitespace-nowrap ${
+                          item.isToday ? 'text-brand-300 font-extrabold underline decoration-brand-500 underline-offset-1' : 'text-slate-400'
+                        }`}>
+                          {item.isToday ? '오늘' : item.label}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 📊 회차별 (1일, 4일, 7일, 14일, 35일, 60일) 복습 달성률 막대그래프 */}
+                <div className="bg-slateCustom-900/90 p-3.5 rounded-2xl border border-slate-800/90 shadow-md space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                      <Activity size={14} className="text-brand-400" />
+                      <span>회차별 복습 달성률 막대그래프</span>
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-medium">1일 · 4일 · 7일 · 14일 · 35일 · 60일</span>
+                  </div>
+
+                  <div className="space-y-2 pt-1">
+                    {roundStats.map((item) => (
+                      <div key={item.round} className="space-y-1">
+                        <div className="flex justify-between items-center text-[10.5px]">
+                          <span className="font-bold text-slate-300">{item.label}</span>
+                          <span className="font-black text-brand-300">
+                            {item.completed}/{item.total}개 ({item.percent}%)
+                          </span>
+                        </div>
+                        <div className="w-full bg-slate-950/90 rounded-full h-2 overflow-hidden border border-slate-800/80">
+                          <div 
+                            className={`h-full rounded-full bg-gradient-to-r ${item.color} transition-all duration-500 ease-out shadow-sm`}
+                            style={{ width: `${item.percent}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-2 pt-1">
+                  <div className="text-[11px] font-bold text-slate-400 flex items-center justify-between">
+                    <span>최근 학습 토픽 ({allTopics.slice(0, 5).length}개)</span>
+                    <button 
+                      type="button"
+                      onClick={() => setViewMode('grid')}
+                      className="text-[10px] font-bold text-brand-400 hover:text-brand-300 transition-colors cursor-pointer select-none"
+                    >
+                      전체보기 →
+                    </button>
+                  </div>
+                  <div className="space-y-1.5 max-h-[240px] overflow-y-auto pr-1 custom-vertical-scrollbar">
+                    {allTopics.slice(0, 5).map((t, idx) => (
+                      <div 
+                        key={t.id || idx}
+                        onClick={() => handleOpenTopicDetails(t)}
+                        className="p-2.5 rounded-xl bg-slateCustom-900/70 border border-slate-800/80 hover:border-brand-500/40 transition-all flex items-center justify-between cursor-pointer group shadow-sm hover:shadow-md"
+                      >
+                        <div className="min-w-0 flex-1 pr-2">
+                          <div className="text-xs font-bold text-slate-200 group-hover:text-brand-300 truncate">
+                            {t.title}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5 font-medium">
+                            {t.category || '일반'} • 등록일: {t.created_at ? String(t.created_at).split('T')[0] : '오늘'}
+                          </div>
+                        </div>
+                        <span className="text-[10px] px-2 py-0.5 rounded-lg bg-violet-950/60 text-violet-300 border border-violet-500/20 font-bold shrink-0">
+                          상세
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
             </section>
           </div>
         ) : (

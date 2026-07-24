@@ -287,6 +287,11 @@ function replaceRoots(str) {
 export function healInvertedDelimiters(text) {
   if (!text || typeof text !== 'string') return text;
 
+  // Do not run inverted delimiter swap if text contains HTML tags or vector cards to prevent adding leading $ to text
+  if (/<[a-z][\s\S]*?>/i.test(text) || text.includes('Realtime Vector') || text.includes('<svg') || text.includes('xmlns=')) {
+    return text;
+  }
+
   const hasFormulaCommands = (str) => {
     // Check if it has backslash/won commands or common math notations
     const rx = /(?:₩|\\)(?:Delta|sigma|gamma|cdot|tau|pi|theta|alpha|beta|phi|omega|mu|lambda|rho|nu|times|frac|dfrac|le|ge|ne|neq|sqrt|sum|int|partial|sin|cos|tan)\b|[+\-*/=<>_^]|\b[a-zA-Z]_[a-zA-Z0-9]\b/i;
