@@ -1,7 +1,7 @@
 // ============================================================================
 // Markdown, KaTeX LaTeX, and HTML Iframe Rendering Helper Utilities
 // ============================================================================
-import { healLatexFormulas } from './latexUtils';
+import { healLatexFormulas } from './latexUtils.js';
 
 
 export const formatGradingReason = (reason) => {
@@ -342,8 +342,9 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
   let tempText = mdText || '';
 
   // SVG Graphic rendering shield: Render raw or code block <svg ...></svg> directly as a rendered vector graphic
-  tempText = tempText.replace(/(?:\$xml\s*|\$)?(?:&lt;svg|<svg)[\s\S]*?(?:&lt;\/svg&gt;|<\/svg>)\$?/gi, (match) => {
-    let cleanSvg = match.replace(/^\$xml\s*/i, '').replace(/^\$/, '').replace(/\$$/, '')
+  tempText = tempText.replace(/(?:```[a-zA-Z0-9_-]*\s*)?(?:\$xml\s*|\$)?(?:&lt;svg|<svg)[\s\S]*?(?:&lt;\/svg&gt;|<\/svg>)\$?(?:\s*```)?/gi, (match) => {
+    let cleanSvg = match.replace(/^```[a-zA-Z0-9_-]*\s*/i, '').replace(/```\s*$/, '')
+                        .replace(/^\$xml\s*/i, '').replace(/^\$/, '').replace(/\$$/, '')
                         .replace(/&lt;/g, '<').replace(/&gt;/g, '>')
                         .replace(/&amp;/g, '&').replace(/&quot;/g, '"');
     const svgMatch = cleanSvg.match(/<svg[\s\S]*?<\/svg>/i);
@@ -360,7 +361,7 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
   // Protect and convert markdown code blocks (``` ... ```) to styled pre/code blocks or rendered SVG
   const codeBlocks = [];
   let codeBlockIndex = 0;
-  tempText = tempText.replace(/```([a-zA-Z0-9_-]*)\n([\s\S]*?)\n```/g, (match, lang, code) => {
+  tempText = tempText.replace(/```([a-zA-Z0-9_-]*)\r?\n([\s\S]*?)\r?\n```/gi, (match, lang, code) => {
     let cleanCode = code.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').replace(/&quot;/g, '"');
     if (cleanCode.includes('<svg') || (lang && (lang.toLowerCase() === 'xml' || lang.toLowerCase() === 'svg'))) {
       const svgMatch = cleanCode.match(/<svg[\s\S]*?<\/svg>/i);
