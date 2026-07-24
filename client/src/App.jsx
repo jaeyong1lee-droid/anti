@@ -17988,32 +17988,6 @@ ${itemsStr}
 
               {/* 📊 오른쪽 패널 하단 실시간 대시보드 현황 카드 */}
               <div className="mt-6 pt-5 border-t border-slate-800/80 space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-                    <BarChart2 size={14} className="text-brand-400" />
-                    <span>복습 대시보드 현황</span>
-                  </h3>
-                  <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-brand-950/60 text-brand-300 border border-brand-500/20">
-                    진행률 {overallProgressPercent}%
-                  </span>
-                </div>
-
-                {/* 3대 지표 미니 카드 */}
-                <div className="grid grid-cols-3 gap-2 text-center">
-                  <div className="bg-slateCustom-900/80 p-2.5 rounded-xl border border-slate-800 shadow-md">
-                    <div className="text-[10px] font-bold text-slate-400">총 토픽</div>
-                    <div className="text-sm font-black text-white mt-0.5">{allTopics.length}개</div>
-                  </div>
-                  <div className="bg-slateCustom-900/80 p-2.5 rounded-xl border border-slate-800 shadow-md">
-                    <div className="text-[10px] font-bold text-slate-400">오늘 복습</div>
-                    <div className="text-sm font-black text-brand-400 mt-0.5">{todayReviews.length}개</div>
-                  </div>
-                  <div className="bg-slateCustom-900/80 p-2.5 rounded-xl border border-slate-800 shadow-md">
-                    <div className="text-[10px] font-bold text-slate-400">완료율</div>
-                    <div className="text-sm font-black text-emerald-400 mt-0.5">{overallProgressPercent}%</div>
-                  </div>
-                </div>
-
                 {/* 📊 최근 10일간 제출 및 채점 문제 수 (세로막대형 그래프) */}
                 <div className="bg-slateCustom-900/90 p-2.5 rounded-2xl border border-slate-800/90 shadow-md space-y-2">
                   <div className="flex items-center justify-between px-1">
@@ -18059,36 +18033,6 @@ ${itemsStr}
                         }`}>
                           {item.isToday ? '오늘' : item.label}
                         </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* 📊 회차별 (1일, 4일, 7일, 14일, 35일, 60일) 복습 달성률 막대그래프 */}
-                <div className="bg-slateCustom-900/90 p-3.5 rounded-2xl border border-slate-800/90 shadow-md space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
-                      <Activity size={14} className="text-brand-400" />
-                      <span>회차별 복습 달성률 막대그래프</span>
-                    </span>
-                    <span className="text-[10px] text-slate-400 font-medium">1일 · 4일 · 7일 · 14일 · 35일 · 60일</span>
-                  </div>
-
-                  <div className="space-y-2 pt-1">
-                    {roundStats.map((item) => (
-                      <div key={item.round} className="space-y-1">
-                        <div className="flex justify-between items-center text-[10.5px]">
-                          <span className="font-bold text-slate-300">{item.label}</span>
-                          <span className="font-black text-brand-300">
-                            {item.completed}/{item.total}개 ({item.percent}%)
-                          </span>
-                        </div>
-                        <div className="w-full bg-slate-950/90 rounded-full h-2 overflow-hidden border border-slate-800/80">
-                          <div 
-                            className={`h-full rounded-full bg-gradient-to-r ${item.color} transition-all duration-500 ease-out shadow-sm`}
-                            style={{ width: `${item.percent}%` }}
-                          ></div>
-                        </div>
                       </div>
                     ))}
                   </div>

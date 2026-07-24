@@ -63,14 +63,44 @@ async function runTests() {
   // 3. Testing FULL App React Pipeline (convertMarkdownToHtml & processAiTutorDiagrams)
   console.log('\n[3/4] Testing Full App React Pipeline (LatexRenderer & renderingHelpers)...');
   
-  // Test A: Real-world SVG input with \gt\lt (Screenshot 1 format)
-  const realWorldSvg = 'xmlns=\'\'http://www.w3.org/2000/svg\'\' viewBox=\'\'0 0 800 1200\'\' style=\'\'background-color: #f8f9fa;\'\'\\gt \\lt defs\\gt \\lt linearGradient id=\'\'boxGrad\'\' x1=\'\'0%\'\' x2=\'\'100%\'\'\\gt \\lt stop offset=\'\'0%\'\' stop-color=\'\'#ffffff\'\' /\\gt \\lt /linearGradient\\gt \\lt /svg\\gt';
-  const fullSvgPipelineOutput = convertMarkdownToHtml(processAiTutorDiagrams(realWorldSvg), true, false, true);
-  if (fullSvgPipelineOutput.includes('<svg') && fullSvgPipelineOutput.includes('Realtime Vector') && !fullSvgPipelineOutput.includes('\\gt')) {
-    console.log('  ✅ [PASS] Full App React Pipeline - SVG Graphic (Converted cleanly in real React App pipeline without escaping)');
+  // Test A: 100% Real-World AI Tutor Chat Message Pipeline Test (Screenshot Exact Format)
+  const realAiTutorResponse = `해 드립니다.
+
+아래의 SVG 코드를 복사하여 \`.svg\` 확장자로 저장한 뒤 웹 브라우저에서 열어보시면, 랭킨 토압의 주동·수동 상태와 벽체 배면의 토압 분포를 정밀한 도해로 확인하실 수 있습니다.
+
+**1. 랭킨 주동·수동 상태 및 토압 분포 SVG 도해**
+
+\`\`\`xml
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="100%" height="100%">
+  <defs>
+    <linearGradient id="wallGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#475569"/>
+      <stop offset="100%" stop-color="#1e293b"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="800" height="600" fill="#0f172a"/>
+  <path d="M 100 100 L 700 500" stroke="#38bdf8" stroke-width="3"/>
+  <text x="400" y="580" fill="#94a3b8" text-anchor="middle">[ 랭킨(Rankine) 토압 이론 및 배면 토압 분포 도해 ]</text>
+</svg>
+\`\`\``;
+
+  // 100% Real-world AI Tutor Component Pipeline Execution
+  const step1Diagrams = processAiTutorDiagrams(realAiTutorResponse);
+  const step2Sanitized = cleanAndSanitizeMathText(step1Diagrams);
+  const finalRenderedHtml = convertMarkdownToHtml(step2Sanitized, true, false, true);
+
+  const hasOuterCardContainer = finalRenderedHtml.includes('bg-[#0b0f19]') && finalRenderedHtml.includes('rounded-2xl');
+  const hasUnescapedHeaderTag = finalRenderedHtml.includes('<h4 class="text-xs') && !finalRenderedHtml.includes('&lt;h4');
+  const hasValidInnerSvgGraphic = finalRenderedHtml.includes('<svg') && finalRenderedHtml.includes('</svg>') && finalRenderedHtml.includes('<path d=') && finalRenderedHtml.includes('<rect');
+  const hasNoMathCorruption = !finalRenderedHtml.includes('<svg$') && !finalRenderedHtml.includes('___INLINE_MATH_');
+
+  const isRealTutorPipelineSuccess = hasOuterCardContainer && hasUnescapedHeaderTag && hasValidInnerSvgGraphic && hasNoMathCorruption;
+
+  if (isRealTutorPipelineSuccess) {
+    console.log('  ✅ [PASS] Full App React Pipeline - Real AI Tutor Chat Message (100% Environment Match: Inner SVG <path>, <rect> & HTML card preserved without escaping or math dollar corruption)');
     passed++;
   } else {
-    console.log('  ❌ [FAIL] Full App React Pipeline - SVG Graphic failed in convertMarkdownToHtml');
+    console.log('  ❌ [FAIL] Full App React Pipeline - Real AI Tutor Chat Message failed strict environment match test');
     failed++;
   }
 

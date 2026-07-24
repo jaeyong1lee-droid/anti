@@ -29,7 +29,7 @@ export function renderAiTutorSvg(text) {
     let cleanSvg = match
       .replace(/^```[a-zA-Z0-9_-]*\s*/i, '').replace(/```\s*$/, '')
       .replace(/^\$xml\s*/i, '').replace(/^\$ SVG\s*/i, '').replace(/^\$/, '')
-      .replace(/<\s+svg/gi, '<svg');
+      .replace(/<\s*svg[\$a-zA-Z0-9_-]*/gi, '<svg');
 
     if (!cleanSvg.trim().startsWith('<svg') && cleanSvg.includes('xmlns=')) {
       const xmlnsIdx = cleanSvg.indexOf('xmlns=');

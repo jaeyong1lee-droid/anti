@@ -379,7 +379,7 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
                         .replace(/^\$xml\s*/i, '').replace(/^\$/, '').replace(/\$$/, '')
                         .replace(/&lt;/g, '<').replace(/&gt;/g, '>')
                         .replace(/&amp;/g, '&').replace(/&quot;/g, '"')
-                        .replace(/<\s+svg/gi, '<svg');
+                        .replace(/<\s*svg[\$a-zA-Z0-9_-]*/gi, '<svg');
     const svgMatch = cleanSvg.match(/<svg[\s\S]*?<\/svg>/i);
     if (svgMatch) {
       const placeholder = `___HTML_TABLE_${placeholderIndex}___`;
