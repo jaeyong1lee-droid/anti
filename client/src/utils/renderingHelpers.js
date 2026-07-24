@@ -342,8 +342,10 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
   let tempText = mdText || '';
 
   // SVG Graphic rendering shield: Render raw or code block <svg ...></svg> directly as a rendered vector graphic
-  tempText = tempText.replace(/(?:&lt;svg|<svg)[\s\S]*?(?:&lt;\/svg&gt;|<\/svg>)/gi, (match) => {
-    let cleanSvg = match.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').replace(/&quot;/g, '"');
+  tempText = tempText.replace(/(?:\$xml\s*|\$)?(?:&lt;svg|<svg)[\s\S]*?(?:&lt;\/svg&gt;|<\/svg>)\$?/gi, (match) => {
+    let cleanSvg = match.replace(/^\$xml\s*/i, '').replace(/^\$/, '').replace(/\$$/, '')
+                        .replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+                        .replace(/&amp;/g, '&').replace(/&quot;/g, '"');
     const svgMatch = cleanSvg.match(/<svg[\s\S]*?<\/svg>/i);
     if (svgMatch) {
       const placeholder = `___HTML_TABLE_${placeholderIndex}___`;
@@ -838,6 +840,9 @@ export const cleanAndSanitizeMathText = (rawText) => {
   
   let cleaned = healCorruptedKatexHtml(rawText);
   cleaned = cleanCorruptedFormula(cleaned);
+  cleaned = cleaned.replace(/\$xml\s*&lt;svg/gi, '<svg')
+                   .replace(/\$xml\s*<svg/gi, '<svg')
+                   .replace(/\$xml\s*/gi, '');
 
   cleaned = cleaned.replace(/&amp;#gt;/gi, '>')
                    .replace(/&amp;#lt;/gi, '<')

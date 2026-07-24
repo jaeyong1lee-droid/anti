@@ -21388,7 +21388,7 @@ ${itemsStr}
                           className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-purple-400 rounded-lg text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1 active:scale-95"
                           title="지침 수정"
                         >
-                          <Edit3 size={11} />
+                          <Edit2 size={11} />
                           <span>수정</span>
                         </button>
                         <button
