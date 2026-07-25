@@ -449,6 +449,11 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   processed = processed.replace(deltaGreekRegex, '\\Delta \\$1');
   processed = processed.replace(/\\\s*Delta\s*([a-zA-Z])\b/gi, '\\Delta $1');
 
+  // [Self-Healing] Fix inner spaces in dollar math delimiters (e.g. $ 0.6$ -> $0.6$, $ 2q $ -> $2q$, $ A = ... $ -> $A = ...$)
+  processed = processed.replace(/\$\s+([^\$\n]+?)\s+\$/g, '$$1$')
+                       .replace(/\$\s+([^\$\n]+?)\$/g, '$$1$')
+                       .replace(/\$([^\$\n]+?)\s+\$/g, '$$1$');
+
   // [🚨 KaTeX HTML 블록 최우선 복원 필터 🚨]
   // 텍스트 내부에 들어있는 KaTeX HTML 사전 렌더링 블록을 감지하여
   // 그 내부에 들어있는 원본 LaTeX 수식 문자열(annotation encoding="application/x-tex")을 추출한 뒤,
@@ -1567,6 +1572,21 @@ export const LATEX_CHAT_PROMPT_INSTRUCTIONS = `
 18. 🚨 [달러 기호 매칭 오류 및 이탈 방지 규칙]: 리스트 기호나 숫자가 포함된 번호 매기기(예: "1) 연성 벽체...", "2) 고강성...")가 포함된 문단 내에서 공식들을 나열할 때, 각 공식들은 개별적으로 완벽히 수식 기호($)로 열고 닫혀 있어야 합니다. 절대로 여는 수식 기호가 없는 상태에서 닫는 수식 기호만 배치하거나, 혹은 어설프게 매칭되어 한글 제목 전체가 수식 영역 안으로 빨려 들어가지 않도록 극도로 유의하십시오.
     - ❌ [절대 금지 오류 예시]: d_{H,max1} = ... $ 2) CIP 공법 적용 시: $ d_{H,max2} = ... (중간 한글 제목이 달러 기호에 갇히는 형태는 렌더링을 완전히 망가뜨립니다.)
 20. 🚨 [수식 변수 및 아래첨자 결합 유지 규칙]: 수학 기호나 공식 내에서 물리량 변수 기호와 그 아래첨자(예: Nc, Df, kh 등)는 절대로 중간에 달러 기호($ 또는 $$)를 끼워 넣어서 서로 다른 블록으로 쪼개서 출력하지 마십시오. 반드시 수식 전체를 감싸서 하나의 수식 블록 내에 모두 포함시켜야 합니다. (예: $N_c$ (O) / N$_c$ (X), $\\text{N}_c$ (O) / \\text{N}$$_c (X))
+21. 🚨 [TikZ 및 2D 벡터 플로우차트 / 순서도 출력 절대 철칙 - 극도로 중요!]:
+    - 수험생이 TikZ, 플로우차트, 순서도, 프로세스 도해 생성을 요청하거나 TikZ 표현을 묻는 경우, 절대로 텍스트 형태의 [1단계], [2단계] 박스 나열이나 텍스트 아트를 출력하지 마십시오!
+    - 반드시 마크다운 latex 코드 블록을 사용하여 표준 TikZ 코드 형식으로 작성하십시오:
+      \`\`\`latex
+      \\documentclass[tikz, border=10pt]{standalone}
+      \\usepackage{tikz}
+      \\begin{document}
+      \\begin{tikzpicture}[node distance=1.2cm]
+        \\node (box1) {[1] 현장 조사 및 지반 매개변수 산정};
+        \\node (box2) [below of=box1] {[2] 토압 및 수압 산정};
+        \\draw[->] (box1) -- (box2);
+      \\end{tikzpicture}
+      \\end{document}
+      \`\`\`
+    - 시스템이 이 \`\`\`latex ... \`\`\` 코드 블록을 감지하면 즉시 결정 다이아몬드 및 연결 화살표가 포함된 선명한 고품질 2D 벡터 TikZ SVG 카드로 자동 변환하여 렌더링합니다.
 `;
 // Trigger redeployment with clean UTF-8 BOM-less encoding.
 

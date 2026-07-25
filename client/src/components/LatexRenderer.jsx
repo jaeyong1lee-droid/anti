@@ -177,6 +177,10 @@ export const LatexRenderer = React.memo(function LatexRenderer({
   
   const isActualFlowchartBlock = (blockText) => {
     if (!blockText) return false;
+    // 🚨 TikZ, SVG, Mermaid, LaTeX 코드 블록은 절대로 텍스트 다이내믹 박스 플로우차트로 오인 변환 금지!
+    if (blockText.includes('\\begin{tikzpicture}') || blockText.includes('documentclass') || blockText.includes('<svg') || blockText.includes('graph TD') || blockText.includes('flowchart TD')) {
+      return false;
+    }
     // 사용자의 엄격 지침: 단계별 플로우 차트는 [1], [2], [A], [1단계] 등 단계를 나타내는 표식이 반드시 포함되어야만 단계별 플로우 차트로 인식함
     const hasExplicitStepMarkers = /\[\s*(?:\d+|[A-Za-z]|\*)\s*\]|\[.*?\d+.*?단계\]|\[.*?단계\]|\[.*?절차\]|\[.*?순서\]|\[.*?단계별.*?\]/i.test(blockText);
     return hasExplicitStepMarkers;
