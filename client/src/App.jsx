@@ -20014,12 +20014,8 @@ ${itemsStr}
                                 )
                               ) : (() => {
                                 const isOverview = isOverviewReview(q);
-                                if (isOverview) {
-                                  return (
-                                    <div className="mt-2.5 pt-2.5 border-t border-slate-800/40 text-left">
-                                      {renderCardTutorChat(rKey, q)}
-                                    </div>
-                                  );
+                                if (isOverview || isNATMFlowchart(idx, q)) {
+                                  return null;
                                 }
                                 return (
                                   <div className={`p-0 sm:p-4 rounded-none sm:rounded-xl border-0 sm:border space-y-3 text-left transition-all ${getTableContainerClasses(idx, q, isRevd)}`}>
@@ -23670,12 +23666,8 @@ ${itemsStr}
                                 )
                               ) : (() => {
                                 const isOverview = isOverviewReview(q);
-                                if (isOverview) {
-                                  return (
-                                    <div className="mt-2.5 pt-2.5 border-t border-slate-800/40 text-left">
-                                      {renderCardTutorChat(eKey, q)}
-                                    </div>
-                                  );
+                                if (isOverview || isNATMFlowchart(idx, q)) {
+                                  return null;
                                 }
                                 return (
                                   <div className={`p-0 sm:p-4 rounded-none sm:rounded-xl border-0 sm:border space-y-3 text-left transition-all ${getTableContainerClasses(idx, q, !!examRevealed[idx])}`}>

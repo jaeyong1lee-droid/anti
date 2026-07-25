@@ -1786,11 +1786,13 @@ export const TableQuiz = React.memo(function TableQuiz({
                       {matchedInputs.map(({ inputId, letter, index }) => {
                         const value = tableAnswers[`${questionIdx}_${inputId}`] || '';
                         const correctAnswer = q.answers?.[inputId] || '';
-                        const gradingResult = tableGradingResults?.[`${questionIdx}_${inputId}`];
+                        const gradingResult = tableGradingResults ? tableGradingResults[`${questionIdx}_${inputId}`] : null;
+                        const cellResult = gradingResult;
                         const isCorrect = gradingResult 
                           ? gradingResult.isCorrect 
                           : (normalize(value) === normalize(correctAnswer));
-                        const isCellGraded = revealed || (tableGradingResults && tableGradingResults[`${questionIdx}_${inputId}`] !== undefined);
+                        const isUnsubmittedEmpty = cellResult && (cellResult.reason === '답안이 비어 있습니다.' || cellResult.score === 0) && (!value || !value.trim());
+                        const isCellGraded = revealed || (cellResult !== undefined && cellResult !== null && !isUnsubmittedEmpty);
                         const theme = isCellGraded ? getTableScoreColorTheme(gradingResult, isCorrect, value) : null;
 
                         return (
