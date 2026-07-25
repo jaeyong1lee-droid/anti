@@ -12361,6 +12361,109 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
     }
   };
 
+  const handleOpenManageEngineeringStandardsModal = async () => {
+    setShowManageEngineeringStandardsModal(true);
+    setIsLoadingEngineeringStandardsList(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/engineering-standards`);
+      if (!res.ok) throw new Error('기타 공학 지침 데이터를 불러오지 못했습니다.');
+      const data = await res.json();
+      setEngineeringStandardsList(data.standards || []);
+    } catch (err) {
+      console.error(err);
+      showNotification(err.message, 'error');
+    } finally {
+      setIsLoadingEngineeringStandardsList(false);
+    }
+  };
+
+  const handleDeleteEngineeringStandard = async (id) => {
+    if (!window.confirm('정말 이 기타 공학 지침을 삭제하시겠습니까?')) return;
+    const updatedList = engineeringStandardsList.filter(s => s.id !== id);
+    setIsSavingEngineeringStandardsList(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/engineering-standards`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ standards: updatedList })
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || '삭제 저장에 실패했습니다.');
+      }
+      setEngineeringStandardsList(updatedList);
+      showNotification('기타 공학 지침이 삭제되었습니다.', 'success');
+    } catch (err) {
+      console.error(err);
+      showNotification(err.message, 'error');
+    } finally {
+      setIsSavingEngineeringStandardsList(false);
+    }
+  };
+
+  const handleOpenAddEngineeringStandardModal = () => {
+    setEditingEngineeringStandard(null);
+    setEditingEngineeringTitle('');
+    setEditingEngineeringContent('');
+    setShowEditEngineeringStandardModal(true);
+  };
+
+  const handleOpenEditEngineeringStandardModal = (std) => {
+    setEditingEngineeringStandard(std);
+    setEditingEngineeringTitle(std.title || '');
+    setEditingEngineeringContent(std.content || '');
+    setShowEditEngineeringStandardModal(true);
+  };
+
+  const handleSaveEditEngineeringStandard = async () => {
+    if (!editingEngineeringTitle.trim()) {
+      showNotification('제목을 입력해주세요.', 'error');
+      return;
+    }
+    if (!editingEngineeringContent.trim()) {
+      showNotification('내용을 입력해주세요.', 'error');
+      return;
+    }
+
+    let updatedList;
+    if (editingEngineeringStandard) {
+      updatedList = engineeringStandardsList.map(s => 
+        s.id === editingEngineeringStandard.id 
+          ? { ...s, title: editingEngineeringTitle, content: editingEngineeringContent } 
+          : s
+      );
+    } else {
+      const newId = 'user_engineering_' + Math.random().toString(36).substring(2, 9);
+      const newStd = {
+        id: newId,
+        title: editingEngineeringTitle,
+        content: editingEngineeringContent
+      };
+      updatedList = [...engineeringStandardsList, newStd];
+    }
+
+    setIsSavingEngineeringStandardsList(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/engineering-standards`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ standards: updatedList })
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || '저장에 실패했습니다.');
+      }
+      setEngineeringStandardsList(updatedList);
+      showNotification('기타 공학 지침이 저장되었습니다.', 'success');
+      setShowEditEngineeringStandardModal(false);
+    } catch (err) {
+      console.error(err);
+      showNotification(err.message, 'error');
+    } finally {
+      setIsSavingEngineeringStandardsList(false);
+    }
+  };
+
   const handleVerifyPin = async (e) => {
     if (e) e.preventDefault();
     if (!pinInput.trim()) {
@@ -17802,6 +17905,15 @@ ${itemsStr}
                 >
                   <span>락스크린</span>
                 </button>
+
+                <button
+                  type="button"
+                  onClick={handleOpenManageEngineeringStandardsModal}
+                  className="hidden md:flex items-center justify-center px-3 py-1.5 rounded-xl border border-purple-500/20 bg-purple-500/10 text-purple-400 hover:bg-purple-500/20 hover:border-purple-500/30 transition-all active:scale-98 text-[11px] font-black cursor-pointer shadow-md"
+                  title="지침에 없는 기타/내부 공학 지침 통합 관리"
+                >
+                  <span>기타</span>
+                </button>
               </div>
               
               {/* Search bar inside allTopics view */}
@@ -20107,6 +20219,62 @@ ${itemsStr}
                     >
                       <span>calc</span>
                     </button>
+                    {/* 🏠 메인화면 나가기 버튼 */}
+                    <button
+                      onClick={() => {
+                        savedQuizScroll.current = quizBodyRef.current?.scrollTop || 0;
+                        setSelectedTopic(null);
+                        setActiveTab('allTopics');
+                      }}
+                      className="px-2.5 py-1 text-[10px] font-black rounded-lg transition-all cursor-pointer active:scale-95 shadow-md flex items-center justify-center bg-slateCustom-900 text-emerald-400 hover:text-emerald-300 border border-slate-800/80 hover:bg-slate-800/50"
+                      title="메인 화면으로 나가기"
+                    >
+                      <span>메인</span>
+                    </button>
+
+                    {/* ⚡ API 선택 버튼 + 미니팝업 */}
+                    <div className="relative flex items-center mr-0.5">
+                      <button
+                        onClick={() => setShowApiSelectMiniPopup(prev => !prev)}
+                        className="px-2.5 py-1 text-[10px] font-black rounded-lg transition-all cursor-pointer active:scale-95 shadow-md flex items-center justify-center bg-slateCustom-900 text-sky-400 hover:text-sky-300 border border-slate-800/80 hover:bg-slate-800/50"
+                        title="AI 모델 API 선택 팝업 열기"
+                      >
+                        <span>API</span>
+                      </button>
+                      {showApiSelectMiniPopup && (
+                        <>
+                          <div className="fixed inset-0 z-[200]" onClick={() => setShowApiSelectMiniPopup(false)} />
+                          <div className="absolute right-0 top-full mt-1.5 z-[201] bg-slate-900 border border-slate-700/60 rounded-xl shadow-2xl overflow-hidden min-w-[140px] p-1 animate-fadeIn space-y-1">
+                            <div className="px-2.5 py-1 text-[9px] font-extrabold text-slate-400 border-b border-slate-800">
+                              ⚡ API 모델 선택
+                            </div>
+                            {[
+                              { label: '3.5 Flash Lite', value: 'gemini-3.5-flash-lite' },
+                              { label: '3.6 Flash', value: 'gemini-3.6-flash' },
+                              { label: '3.1 Flash Lite', value: 'gemini-3.1-flash-lite' },
+                              { label: 'Grok 2', value: 'grok-2' }
+                            ].map((m) => (
+                              <button
+                                key={m.value}
+                                onClick={() => {
+                                  handleSelectPreferredModel(m.value);
+                                  setShowApiSelectMiniPopup(false);
+                                }}
+                                className={`flex items-center justify-between w-full px-2.5 py-1.5 rounded-lg text-xs font-black transition-colors cursor-pointer ${
+                                  preferredModel === m.value 
+                                    ? 'bg-sky-950/80 text-sky-300 border border-sky-700/50' 
+                                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                                }`}
+                              >
+                                <span>{m.label}</span>
+                                {preferredModel === m.value && <span className="text-[10px]">✓</span>}
+                              </button>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
+
                     <button
                       onClick={async () => {
                         if (window.confirm("튜터 대화 기록과 저장된 캐시 찌꺼기를 모두 삭제하시겠습니까?")) {
