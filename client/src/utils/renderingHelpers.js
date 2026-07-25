@@ -534,13 +534,36 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
   // Auto-break numbered list items that appear inline without newlines (e.g. "... F.S. 2. 블록... 3. 최종...")
   tempText = tempText.replace(/([^\n])\s+((?:[2-9]\d*|[②-⑳])(?:\.|\))\s+)/g, '$1\n$2');
 
-  // Auto-prefix "1. " if an unnumbered content line is immediately followed by "2. "
   const rawLines = tempText.split('\n');
+
+  // Deduplicate consecutive identical section headers (e.g. repeated "1. 지반의 강도 정수 결정:")
+  const deduplicatedLines = [];
+  let prevHeaderTag = '';
+  for (let idx = 0; idx < rawLines.length; idx++) {
+    const curLine = rawLines[idx];
+    const curTrimmed = curLine.replace(/<[^>]+>/g, '').trim();
+
+    const headerMatch = curTrimmed.match(/^(?:\d+[\.\)]|[①-⑳]|[•\*\-])?\s*([가-힣a-zA-Z0-9_\s\(\)\,\'\"]+:)$/);
+    if (headerMatch) {
+      const headerTag = headerMatch[1].replace(/\s+/g, '');
+      if (headerTag === prevHeaderTag) {
+        // Skip consecutive duplicate header line!
+        continue;
+      }
+      prevHeaderTag = headerTag;
+    } else if (curTrimmed !== '') {
+      if (!curTrimmed.startsWith('•') && !curTrimmed.startsWith('*') && !curTrimmed.startsWith('-')) {
+        prevHeaderTag = '';
+      }
+    }
+    deduplicatedLines.push(curLine);
+  }
+
   const processedLines = [];
   const listMarkerCheckRegex = /^(?:[ \t]*(?:\*|-|•)[ \t]+|(\d+)\.\s+|(\d+\))\s*|([a-zA-Z가-힣]\))\s*|([①-⑳])\s*)/;
-  for (let i = 0; i < rawLines.length; i++) {
-    const line = rawLines[i];
-    const nextLine = rawLines[i + 1] || '';
+  for (let i = 0; i < deduplicatedLines.length; i++) {
+    const line = deduplicatedLines[i];
+    const nextLine = deduplicatedLines[i + 1] || '';
     const trimmed = line.trim();
 
     // Auto-prefix bullet '• ' for standalone section headers (e.g. "시험의 장단점", "적용 분야", "개요") without markers
