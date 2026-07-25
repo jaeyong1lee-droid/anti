@@ -2,9 +2,6 @@
 // Markdown, KaTeX LaTeX, and HTML Iframe Rendering Helper Utilities
 // ============================================================================
 import { healLatexFormulas } from './latexUtils.js';
-import { renderAiTutorSvg } from '../components/plugins/AiTutorSvgPlugin.js';
-import { renderAiTutorMermaid } from '../components/plugins/AiTutorMermaidPlugin.js';
-import { renderAiTutorTikz } from '../components/plugins/AiTutorTikzPlugin.js';
 import { convertMarkdownTablesToHtml } from './markdownTableRenderer.js';
 
 
@@ -395,64 +392,10 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
     return placeholder;
   });
 
-  // SVG Graphic rendering shield: Render raw or code block <svg ...></svg> directly as a rendered vector graphic
-  tempText = tempText.replace(/(?:```(?:xml|svg)?\s*)?(?:&lt;\s*svg|<[ \t]*svg)([\s\S]*?(?:&lt;\/\s*svg&gt;|<\/[ \t]*svg>))((?:(?!```)[\s\S])*?)(?:```\s*|$)/gi, (match) => {
-    if (match.includes('diagram-card-content') || match.includes('toggleDiagramCard') || match.includes('my-6 w-full max-w-')) {
-      return match;
-    }
-    let cleanSvg = match
-      .replace(/&lt;/g, '<').replace(/&gt;/g, '>')
-      .replace(/&amp;/g, '&').replace(/&quot;/g, '"');
-    const rendered = renderAiTutorSvg(cleanSvg);
-    if (rendered !== cleanSvg) {
-      const placeholder = `___HTML_TABLE_${placeholderIndex}___`;
-      tableBlocks.push({ placeholder, content: rendered });
-      placeholderIndex++;
-      return placeholder;
-    }
-    return match;
-  });
-
-  // Protect and convert markdown code blocks (``` ... ```) to styled pre/code blocks, TikZ flowcharts, Mermaid flowcharts, or rendered SVG
+  // Protect and convert markdown code blocks (``` ... ```) to styled pre/code blocks
   const codeBlocks = [];
   let codeBlockIndex = 0;
   tempText = tempText.replace(/```([a-zA-Z0-9_-]*)\r?\n([\s\S]*?)\r?\n```/gi, (match, lang, code) => {
-    let cleanCode = code.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').replace(/&quot;/g, '"');
-    const lowerLang = (lang || '').toLowerCase();
-    
-    // 1. SVG Code Block
-    if (cleanCode.includes('<svg') || cleanCode.includes('< svg') || lowerLang === 'xml' || lowerLang === 'svg' || cleanCode.includes('xmlns=')) {
-      const renderedSvg = renderAiTutorSvg(cleanCode);
-      if (renderedSvg !== cleanCode) {
-        const placeholder = `___CODE_BLOCK_${codeBlockIndex}___`;
-        codeBlocks.push({ placeholder, content: renderedSvg });
-        codeBlockIndex++;
-        return placeholder;
-      }
-    }
-
-    // 2. TikZ Flowchart Code Block (\begin{tikzpicture} or tikz)
-    if (cleanCode.includes('\\begin{tikzpicture}') || cleanCode.includes('documentclass[tikz]') || lowerLang === 'tikz' || lowerLang === 'latex') {
-      const renderedTikz = renderAiTutorTikz(cleanCode);
-      if (renderedTikz !== cleanCode) {
-        const placeholder = `___CODE_BLOCK_${codeBlockIndex}___`;
-        codeBlocks.push({ placeholder, content: renderedTikz });
-        codeBlockIndex++;
-        return placeholder;
-      }
-    }
-
-    // 3. Mermaid / Graph Flowchart Code Block
-    if (lowerLang === 'mermaid' || cleanCode.includes('graph TD') || cleanCode.includes('graph LR') || cleanCode.includes('flowchart TD')) {
-      const renderedMermaid = renderAiTutorMermaid(cleanCode);
-      if (renderedMermaid !== cleanCode) {
-        const placeholder = `___CODE_BLOCK_${codeBlockIndex}___`;
-        codeBlocks.push({ placeholder, content: renderedMermaid });
-        codeBlockIndex++;
-        return placeholder;
-      }
-    }
-
     const placeholder = `___CODE_BLOCK_${codeBlockIndex}___`;
     const styledHtml = `<pre class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-4 overflow-x-auto my-3 font-mono text-xs text-slate-300 leading-relaxed select-text" style="white-space: pre; font-family: monospace;">${code}</pre>`;
     codeBlocks.push({ placeholder, content: styledHtml });
@@ -962,11 +905,6 @@ export const cleanAndSanitizeMathText = (rawText) => {
 
   // 1. Process diagram plugins FIRST into HTML cards
   let textToSanitize = rawText;
-  if (textToSanitize.includes('<svg') || textToSanitize.includes('\\begin{tikzpicture}') || textToSanitize.includes('```mermaid') || textToSanitize.includes('```latex')) {
-    textToSanitize = renderAiTutorSvg(textToSanitize);
-    textToSanitize = renderAiTutorTikz(textToSanitize);
-    textToSanitize = renderAiTutorMermaid(textToSanitize);
-  }
 
   // 1.5 Clean any leaked orphan card headers from older cached chat history messages
   if (textToSanitize.includes('<h4 class="text-xs font-black') || textToSanitize.includes('window.toggleDiagramCard')) {

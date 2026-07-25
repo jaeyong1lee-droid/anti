@@ -82,36 +82,36 @@ async function runTests() {
   const finalRenderedHtml = convertMarkdownToHtml(step2Sanitized, true, false, true);
   console.log('\n[3/4] Testing Modular Rendering Engines (SVG, ASCII, TikZ, Mermaid, KaTeX)...');
 
-  // 🎨 1. SVG Engine Test (renderAiTutorSvg in AiTutorSvgPlugin.js)
+  // 🎨 1. SVG Engine Test (Disabled / Completely Removed)
   const rawSvgInput = `<svg width="200" height="100"><text x="10" y="30">SVG Test</text></svg>`;
   const svgOutput = renderAiTutorSvg(rawSvgInput);
-  if (svgOutput.includes('<svg') && svgOutput.includes('SVG Test') && svgOutput.includes('my-6') && svgOutput.includes('diagram-card-content hidden') && svgOutput.includes('▼ 펼치기')) {
-    console.log('  ✅ [PASS] 🎨 [SVG Engine] AiTutorSvgPlugin.js -> Card Render with Top-Right Expand/Collapse Toggle (Default Closed)');
+  if (svgOutput === rawSvgInput) {
+    console.log('  ✅ [PASS] 🎨 [SVG Engine] SVG plugin completely disabled and raw text preserved as requested');
     passed++;
   } else {
-    console.log('  ❌ [FAIL] 🎨 [SVG Engine] AiTutorSvgPlugin.js test failed');
+    console.log('  ❌ [FAIL] 🎨 [SVG Engine] SVG plugin test failed');
     failed++;
   }
 
-  // 📐 2. TikZ Engine Test (renderAiTutorTikz in AiTutorTikzPlugin.js)
+  // 📐 2. TikZ Engine Test (Disabled / Completely Removed)
   const tikzInput = '```latex\n\\begin{tikzpicture}\n\\node {1단계: 테르자기 지지력};\n\\end{tikzpicture}\n```';
   const tikzOutput = renderAiTutorTikz(tikzInput);
-  if (tikzOutput.includes('1단계: 테르자기 지지력') && tikzOutput.includes('svg') && tikzOutput.includes('diagram-card-content hidden') && tikzOutput.includes('▼ 펼치기')) {
-    console.log('  ✅ [PASS] 📐 [TikZ Engine] AiTutorTikzPlugin.js -> Card Render with Top-Right Expand/Collapse Toggle (Default Closed)');
+  if (tikzOutput === tikzInput) {
+    console.log('  ✅ [PASS] 📐 [TikZ Engine] TikZ plugin completely disabled and raw text preserved as requested');
     passed++;
   } else {
-    console.log('  ❌ [FAIL] 📐 [TikZ Engine] AiTutorTikzPlugin.js test failed');
+    console.log('  ❌ [FAIL] 📐 [TikZ Engine] TikZ plugin test failed');
     failed++;
   }
 
-  // 🧜 3. Mermaid Engine Test (renderAiTutorMermaid in AiTutorMermaidPlugin.js)
+  // 🧜 3. Mermaid Engine Test (Disabled / Completely Removed)
   const mermaidInput = '```mermaid\ngraph TD\n  A["테르자기 극한지력"] --> B["B-Value 검증"]\n```';
   const mermaidOutput = renderAiTutorMermaid(mermaidInput);
-  if (mermaidOutput.includes('테르자기 극한지력') && mermaidOutput.includes('svg') && mermaidOutput.includes('diagram-card-content hidden') && mermaidOutput.includes('▼ 펼치기')) {
-    console.log('  ✅ [PASS] 🧜 [Mermaid Engine] AiTutorMermaidPlugin.js -> Card Render with Top-Right Expand/Collapse Toggle (Default Closed)');
+  if (mermaidOutput === mermaidInput) {
+    console.log('  ✅ [PASS] 🧜 [Mermaid Engine] Mermaid plugin completely disabled and raw text preserved as requested');
     passed++;
   } else {
-    console.log('  ❌ [FAIL] 🧜 [Mermaid Engine] AiTutorMermaidPlugin.js test failed');
+    console.log('  ❌ [FAIL] 🧜 [Mermaid Engine] Mermaid plugin test failed');
     failed++;
   }
 
@@ -147,10 +147,10 @@ async function runTests() {
   const renderedTableHtml = convertMarkdownToHtml(cleanAndSanitizeMathText(sampleTableMarkdown), true, false, true);
   const hasCleanTableTitle = renderedTableHtml.includes('지반 조건별 비교 개요') && !renderedTableHtml.includes('📊 --');
   const hasValidHtmlTableStructure = renderedTableHtml.includes('<table class="markdown-table') && renderedTableHtml.includes('사질토 지반 (Sand)');
-  const hasToggleButtonAndHiddenState = renderedTableHtml.includes('markdown-table-container hidden') && renderedTableHtml.includes('▼ 펼치기');
+  const hasCleanTableWithoutHidden = renderedTableHtml.includes('markdown-table-container') && !renderedTableHtml.includes('hidden') && !renderedTableHtml.includes('▼ 펼치기');
 
-  if (hasCleanTableTitle && hasValidHtmlTableStructure && hasToggleButtonAndHiddenState) {
-    console.log('  ✅ [PASS] 📊 [Markdown Table Engine] Table Parsing & Top-Right Expand/Collapse Toggle (Default Closed)');
+  if (hasCleanTableTitle && hasValidHtmlTableStructure && hasCleanTableWithoutHidden) {
+    console.log('  ✅ [PASS] 📊 [Markdown Table Engine] Table Parsing & Always Expanded Layout (No Toggle Button)');
     passed++;
   } else {
     console.log('  ❌ [FAIL] 📊 [Markdown Table Engine] Markdown Table test failed');

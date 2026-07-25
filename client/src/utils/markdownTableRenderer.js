@@ -162,13 +162,10 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false,
   html += `<button data-title="${safeTitleForDataAttr}" onclick="if(window.__handleTableConfirmRequest) { window.__handleTableConfirmRequest(this.closest('.table-export-wrapper').querySelector('table').outerHTML, this.getAttribute('data-title')) }" class="p-1.5 bg-slate-900 hover:bg-rose-600 border border-slate-700/50 rounded-lg text-slate-200 hover:text-white transition-all cursor-pointer flex items-center justify-center shadow-md select-none hover:scale-105 active:scale-95" title="필수암기 표로 내보내기" style="outline: none;">`;
   html += `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="inline-block"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>`;
   html += `</button>`;
-  html += `<button onclick="window.toggleDiagramCard &amp;&amp; window.toggleDiagramCard(this)" class="text-xs font-bold bg-slate-800/90 hover:bg-slate-700 text-slate-300 border border-slate-700/80 px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer select-none">`;
-  html += `<span class="toggle-label">▼ 펼치기</span>`;
-  html += `</button>`;
   html += `</div>`;
   html += `</div>`;
 
-  html += `<div class="markdown-table-container hidden w-full overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40">`;
+  html += `<div class="markdown-table-container w-full overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40">`;
   html += `<table class="${tableClass} w-full table-auto text-center border-collapse text-[14px] sm:text-[15px] min-w-full">`;
   html += `<thead>`;
   html += `<tr class="bg-slate-900/80 text-slate-350 border-b border-slate-800">`;
