@@ -568,6 +568,15 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
 
   for (let idx = 0; idx < lines.length; idx++) {
     const line = lines[idx];
+
+    // Self-healing: Strip unnecessary bullets from regular narrative sentences (e.g. "• 특히,", "• 이는 ", "• 삼축압축시험은")
+    const narrativeSentenceRegex = /^[ \t]*[•\*\-][ \t]+(특히|이는|따라서|또한|다만|결국|삼축압축시험은|이\s*시험은|본\s*시험은|비배수\s*시험|배수\s*시험|CU\s*|UU\s*|CD\s*)\b/;
+    if (narrativeSentenceRegex.test(line.trim())) {
+      const cleanLine = line.replace(/^[ \t]*[•\*\-][ \t]+/, '');
+      renderedLines.push(cleanLine);
+      continue;
+    }
+
     const match = line.match(listMarkerRegex);
 
     if (match) {
