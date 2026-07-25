@@ -4905,43 +4905,6 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
             }
           }
           
-          const boxCount = (patchedQ.question.match(/┌/g) || []).length;
-          if (boxCount === 3) {
-            const ansE = patchedQ.answers?.INPUT_5 || '';
-            const ansF = patchedQ.answers?.INPUT_6 || '';
-            
-            if (ansE || ansF) {
-              let restoredQuestion = patchedQ.question;
-              restoredQuestion = restoredQuestion
-                .replace(/\[\s*\(E\)\s*\]/g, `[ ${ansE} ]`)
-                .replace(/\[\s*\(E\) 입력\s*\]/g, `[ ${ansE} ]`)
-                .replace(/\(\s*E\s*\)/g, ansE)
-                .replace(/-\s*\(F\)/g, `- ${ansF}`)
-                .replace(/-\s*\(F\) 입력/g, `- ${ansF}`)
-                .replace(/\(\s*F\s*\)/g, ansF);
-                
-              const newAnswers = { ...patchedQ.answers };
-              delete newAnswers.INPUT_5;
-              delete newAnswers.INPUT_6;
-              
-              const newRows = patchedQ.tableData?.rows 
-                ? patchedQ.tableData.rows.filter(row => row[0] !== '(E)' && row[0] !== '(F)') 
-                : [];
-                
-              const newTableData = {
-                ...patchedQ.tableData,
-                rows: newRows
-              };
-              
-              patchedQ = {
-                ...patchedQ,
-                question: restoredQuestion,
-                answers: newAnswers,
-                tableData: newTableData
-              };
-            }
-          }
-          
           return patchedQ;
         }
         return q;
