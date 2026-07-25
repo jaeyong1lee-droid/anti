@@ -5539,6 +5539,7 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
   const [editingEngineeringContent, setEditingEngineeringContent] = useState('');
   const [isSavingEngineeringStandardsList, setIsSavingEngineeringStandardsList] = useState(false);
   const [isLoadingEngineeringStandardsList, setIsLoadingEngineeringStandardsList] = useState(false);
+  const [engineeringStandardsPage, setEngineeringStandardsPage] = useState(1);
 
   const [showApiSelectMiniPopup, setShowApiSelectMiniPopup] = useState(false);
   
@@ -12374,6 +12375,7 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
 
   const handleOpenManageEngineeringStandardsModal = async () => {
     setShowManageEngineeringStandardsModal(true);
+    setEngineeringStandardsPage(1);
     setIsLoadingEngineeringStandardsList(true);
     try {
       const res = await fetch(`${API_BASE}/api/engineering-standards`);
@@ -21448,59 +21450,111 @@ ${itemsStr}
                   <span className="text-[10px] text-purple-400 font-bold animate-pulse">서버에서 기타 공학 지침 데이터를 로드하는 중입니다...</span>
                 </div>
               ) : (
-                <div className="overflow-x-auto max-h-[65vh] overflow-y-auto custom-vertical-scrollbar border border-slate-800 rounded-xl">
-                  <table className="w-full text-xs text-slate-300 divide-y divide-slate-800">
-                    <thead className="bg-slate-950/60 font-black text-slate-400 select-none">
-                      <tr>
-                        <th className="px-4 py-3 text-left w-12">번호</th>
-                        <th className="px-4 py-3 text-left w-48">지침 제목</th>
-                        <th className="px-4 py-3 text-left">지침 내용 요약</th>
-                        <th className="px-4 py-3 text-center w-36">관리</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-800 bg-slate-900/20">
-                      {engineeringStandardsList.length === 0 ? (
-                        <tr>
-                          <td colSpan={4} className="px-4 py-8 text-center text-slate-500 font-semibold">
-                            등록된 기타 공학 지침이 없습니다. 새로운 지침을 추가해보세요.
-                          </td>
-                        </tr>
-                      ) : (
-                        engineeringStandardsList.map((std, index) => (
-                          <tr key={std.id || index} className="hover:bg-slate-800/30 transition-colors">
-                            <td className="px-4 py-3 font-semibold text-slate-500">{index + 1}</td>
-                            <td className="px-4 py-3 font-bold text-white whitespace-nowrap overflow-hidden text-ellipsis max-w-[190px]" title={std.title}>
-                              {std.title}
-                            </td>
-                            <td className="px-4 py-3 text-slate-400 max-w-[300px] overflow-hidden text-ellipsis whitespace-nowrap" title={std.content}>
-                              {std.content ? std.content.trim().replace(/\n/g, ' ').slice(0, 100) + (std.content.trim().length > 100 ? '...' : '') : ''}
-                            </td>
-                            <td className="px-4 py-3 text-center">
-                              <div className="flex justify-center gap-1.5">
-                                <button
-                                  type="button"
-                                  onClick={() => handleOpenEditEngineeringStandardModal(std)}
-                                  className="px-2 py-1 bg-purple-600/10 border border-purple-500/20 hover:bg-purple-600/20 hover:border-purple-500/40 text-purple-400 rounded-lg transition-all text-[10px] font-black cursor-pointer active:scale-95 flex items-center gap-1"
-                                  disabled={isSavingEngineeringStandardsList}
-                                >
-                                  <span>✏️ 수정</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleDeleteEngineeringStandard(std.id)}
-                                  className="px-2 py-1 bg-rose-600/10 border border-rose-500/20 hover:bg-rose-600/20 hover:border-rose-500/40 text-rose-400 rounded-lg transition-all text-[10px] font-black cursor-pointer active:scale-95 flex items-center gap-1"
-                                  disabled={isSavingEngineeringStandardsList}
-                                >
-                                  <span>❌ 삭제</span>
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))
+                (() => {
+                  const itemsPerPage = 7;
+                  const totalPages = Math.ceil(engineeringStandardsList.length / itemsPerPage) || 1;
+                  const validPage = Math.min(Math.max(1, engineeringStandardsPage), totalPages);
+                  const pagedStandards = engineeringStandardsList.slice((validPage - 1) * itemsPerPage, validPage * itemsPerPage);
+
+                  return (
+                    <div className="space-y-3">
+                      <div className="overflow-x-auto border border-slate-800 rounded-xl">
+                        <table className="w-full text-xs text-slate-300 divide-y divide-slate-800">
+                          <thead className="bg-slate-950/60 font-black text-slate-400 select-none">
+                            <tr>
+                              <th className="px-4 py-3 text-left w-12">번호</th>
+                              <th className="px-4 py-3 text-left w-48">지침 제목</th>
+                              <th className="px-4 py-3 text-left">지침 내용 요약</th>
+                              <th className="px-4 py-3 text-center w-36">관리</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-800 bg-slate-900/20">
+                            {engineeringStandardsList.length === 0 ? (
+                              <tr>
+                                <td colSpan={4} className="px-4 py-8 text-center text-slate-500 font-semibold">
+                                  등록된 기타 공학 지침이 없습니다. 새로운 지침을 추가해보세요.
+                                </td>
+                              </tr>
+                            ) : (
+                              pagedStandards.map((std, index) => {
+                                const realIndex = (validPage - 1) * itemsPerPage + index;
+                                return (
+                                  <tr key={std.id || realIndex} className="hover:bg-slate-800/30 transition-colors">
+                                    <td className="px-4 py-3 font-semibold text-slate-500">{realIndex + 1}</td>
+                                    <td className="px-4 py-3 font-bold text-white whitespace-nowrap overflow-hidden text-ellipsis max-w-[190px]" title={std.title}>
+                                      {std.title}
+                                    </td>
+                                    <td className="px-4 py-3 text-slate-400 max-w-[300px] overflow-hidden text-ellipsis whitespace-nowrap" title={std.content}>
+                                      {std.content ? std.content.trim().replace(/\n/g, ' ').slice(0, 100) + (std.content.trim().length > 100 ? '...' : '') : ''}
+                                    </td>
+                                    <td className="px-4 py-3 text-center">
+                                      <div className="flex justify-center gap-1.5">
+                                        <button
+                                          type="button"
+                                          onClick={() => handleOpenEditEngineeringStandardModal(std)}
+                                          className="px-2 py-1 bg-purple-600/10 border border-purple-500/20 hover:bg-purple-600/20 hover:border-purple-500/40 text-purple-400 rounded-lg transition-all text-[10px] font-black cursor-pointer active:scale-95 flex items-center gap-1"
+                                          disabled={isSavingEngineeringStandardsList}
+                                        >
+                                          <span>✏️ 수정</span>
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleDeleteEngineeringStandard(std.id)}
+                                          className="px-2 py-1 bg-rose-600/10 border border-rose-500/20 hover:bg-rose-600/20 hover:border-rose-500/40 text-rose-400 rounded-lg transition-all text-[10px] font-black cursor-pointer active:scale-95 flex items-center gap-1"
+                                          disabled={isSavingEngineeringStandardsList}
+                                        >
+                                          <span>❌ 삭제</span>
+                                        </button>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                );
+                              })
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* 📄 페이지네이션 바 (Pagination Control Bar) */}
+                      {totalPages > 1 && (
+                        <div className="flex items-center justify-center gap-1.5 pt-1.5 select-none">
+                          <button
+                            type="button"
+                            onClick={() => setEngineeringStandardsPage(prev => Math.max(1, prev - 1))}
+                            disabled={validPage === 1}
+                            className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer"
+                          >
+                            ◀ 이전
+                          </button>
+
+                          {Array.from({ length: totalPages }, (_, i) => i + 1).map(pNum => (
+                            <button
+                              key={pNum}
+                              type="button"
+                              onClick={() => setEngineeringStandardsPage(pNum)}
+                              className={`px-3 py-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                                validPage === pNum
+                                  ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30'
+                                  : 'bg-slate-800/80 text-slate-400 hover:bg-slate-700 hover:text-slate-200'
+                              }`}
+                            >
+                              {pNum}
+                            </button>
+                          ))}
+
+                          <button
+                            type="button"
+                            onClick={() => setEngineeringStandardsPage(prev => Math.min(totalPages, prev + 1))}
+                            disabled={validPage === totalPages}
+                            className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer"
+                          >
+                            다음 ▶
+                          </button>
+                        </div>
                       )}
-                    </tbody>
-                  </table>
-                </div>
+                    </div>
+                  );
+                })()
               )}
             </div>
 
