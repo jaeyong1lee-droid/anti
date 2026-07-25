@@ -73,8 +73,16 @@ function mergeStandards(fileList, dbList, fileIsNewer = false) {
     }
     return merged;
   } else {
-    // DB is newer: trust DB completely (including deletions of default standards in the UI)
-    return dbList;
+    // DB is newer, but ensure any NEW default items in fileList that don't exist in dbList are appended
+    const dbIds = new Set(dbList.map(item => item.id));
+    const merged = [...dbList];
+
+    for (const fileItem of fileList || []) {
+      if (!dbIds.has(fileItem.id)) {
+        merged.unshift(fileItem);
+      }
+    }
+    return merged;
   }
 }
 
