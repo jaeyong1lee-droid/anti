@@ -79,7 +79,7 @@ function renderMermaidVectorSvgCard(stepItems, title = 'Mermaid Realtime Vector 
       <h4 class="text-xs font-black text-slate-200 tracking-tight uppercase">${escapeXmlText(title)}</h4>
       <span class="text-[10px] font-extrabold bg-emerald-950/80 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-full uppercase tracking-wider">⚡ Realtime Vector</span>
     </div>
-    <button onclick="const content=this.closest('.my-6').querySelector('.diagram-card-content'); const isHidden=content.classList.toggle('hidden'); this.querySelector('.toggle-label').textContent=isHidden?'▼ 펼치기':'▲ 접기';" class="text-xs font-bold bg-slate-800/90 hover:bg-slate-700 text-slate-300 border border-slate-700/80 px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer select-none">
+    <button onclick="window.__toggleDiagramCard &amp;&amp; window.__toggleDiagramCard(this)" class="text-xs font-bold bg-slate-800/90 hover:bg-slate-700 text-slate-300 border border-slate-700/80 px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer select-none">
       <span class="toggle-label">▼ 펼치기</span>
     </button>
   </div>

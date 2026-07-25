@@ -962,10 +962,18 @@ export const cleanCorruptedFormula = (formula) => {
 export const cleanAndSanitizeMathText = (rawText) => {
   if (!rawText || typeof rawText !== 'string') return rawText || '';
 
-  // Shield pre-rendered diagram card divs (<div class="my-6...) from math sanitizer corruption
+  // 1. Process diagram plugins FIRST into HTML cards
+  let textToSanitize = rawText;
+  if (textToSanitize.includes('<svg') || textToSanitize.includes('\\begin{tikzpicture}') || textToSanitize.includes('```mermaid') || textToSanitize.includes('```latex')) {
+    textToSanitize = renderAiTutorSvg(textToSanitize);
+    textToSanitize = renderAiTutorTikz(textToSanitize);
+    textToSanitize = renderAiTutorMermaid(textToSanitize);
+  }
+
+  // 2. Shield pre-rendered diagram card divs (<div class="my-6...) from math sanitizer corruption
   const diagramCards = [];
   let cardIndex = 0;
-  let cleaned = rawText.replace(/(<div[^>]*class=["'][^"']*my-6[^"']*["'][^>]*>[\s\S]*?<\/svg>\s*(?:<\/div>\s*)+|<div[^>]*class=["'][^"']*my-6[^"']*["'][^>]*>[\s\S]*?<\/div>\s*<\/div>|<div[^>]*class=["'][^"']*my-6[^"']*["'][^>]*>[\s\S]*?<\/div>)/gi, (match) => {
+  let cleaned = textToSanitize.replace(/(<div[^>]*class=["'][^"']*(?:my-6|table-export-wrapper)[^"']*["'][\s\S]*?<\/svg>\s*(?:<\/div>\s*)+|<div[^>]*class=["'][^"']*(?:my-6|table-export-wrapper)[^"']*["'][\s\S]*?<\/div>\s*<\/div>|<div[^>]*class=["'][^"']*(?:my-6|table-export-wrapper)[^"']*["'][\s\S]*?<\/div>)/gi, (match) => {
     const placeholder = `___DIAGRAM_CARD_${cardIndex}___`;
     diagramCards.push({ placeholder, content: match });
     cardIndex++;

@@ -164,7 +164,7 @@ export const LatexRenderer = React.memo(function LatexRenderer({
   if (!text) return null;
 
   let parsedText = text;
-  if (isRealTimeTutor || formulaSource === 'tutor') {
+  if (typeof parsedText === 'string' && (parsedText.includes('```') || parsedText.includes('<svg') || parsedText.includes('\\begin{tikzpicture}'))) {
     parsedText = renderAiTutorSvg(parsedText);
     parsedText = renderAiTutorTikz(parsedText);
     parsedText = renderAiTutorMermaid(parsedText);
