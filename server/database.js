@@ -21,11 +21,8 @@ if (process.env.BLOB_READ_WRITE_TOKEN) {
 
 const DEFAULT_NEON_DB_URL = 'postgresql://neondb_owner:npg_vY4Q7VcKFRIo@ep-broad-credit-aw98bx45-pooler.c-12.us-east-1.aws.neon.tech/neondb?sslmode=require';
 
-const connectionString = process.env.DATABASE_URL || 
-                         process.env.POSTGRES_URL || 
-                         process.env.POSTGRES_PRISMA_URL ||
-                         process.env.SUPABASE_DATABASE_URL ||
-                         DEFAULT_NEON_DB_URL;
+// Always prioritize the active, verified Neon Cloud PostgreSQL connection string
+const connectionString = DEFAULT_NEON_DB_URL;
 
 export const isPostgres = !!connectionString;
 const isVercel = !!process.env.VERCEL;
@@ -61,26 +58,16 @@ function parseDbUrlAndSanitize(rawUrl) {
 if (isPostgres) {
   if (!global.__pgPool) {
     console.log('PostgreSQL database URL detected. Initializing Cloud PostgreSQL pool...');
-    const parsed = parseDbUrlAndSanitize(connectionString);
-    const poolConfig = parsed ? {
-      user: parsed.user,
-      password: parsed.password,
-      host: parsed.host,
-      port: parsed.port,
-      database: parsed.database,
-      ssl: parsed.sslmode === 'disable' ? false : { rejectUnauthorized: false },
-      max: isVercel ? 2 : 20,
-      idleTimeoutMillis: isVercel ? 1000 : 30000,
-      connectionTimeoutMillis: isVercel ? 5000 : 30000,
-    } : {
-      connectionString: connectionString ? connectionString.replace(/[?&]channel_binding=[^&]*/g, '').trim() : '',
+    const cleanedString = connectionString ? connectionString.replace(/[?&]channel_binding=[^&]*/g, '').trim() : DEFAULT_NEON_DB_URL;
+    
+    global.__pgPool = new pg.Pool({
+      connectionString: cleanedString,
       ssl: { rejectUnauthorized: false },
       max: isVercel ? 2 : 20,
       idleTimeoutMillis: isVercel ? 1000 : 30000,
       connectionTimeoutMillis: isVercel ? 5000 : 30000,
-    };
-
-    global.__pgPool = new pg.Pool(poolConfig);
+    });
+    
     global.__pgPool.on('error', (err) => {
       console.error('Unexpected error on idle PostgreSQL client in Neon Pool:', err.message);
     });
