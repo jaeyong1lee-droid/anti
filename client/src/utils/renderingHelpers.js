@@ -395,41 +395,15 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
     return placeholder;
   });
 
-  // SVG Graphic rendering shield: Render raw or code block <svg ...></svg> (with or without spaces in < svg) directly as a rendered vector graphic
-  tempText = tempText.replace(/(?:```[a-zA-Z0-9_-]*\s*)?(?:\$xml\s*|\$)?(?:&lt;\s*svg|<[ \t]*svg)[\s\S]*?(?:&lt;\/\s*svg&gt;|<\/[ \t]*svg>)\$?(?:\s*```)?/gi, (match) => {
-    let cleanSvg = match.replace(/^```[a-zA-Z0-9_-]*\s*/i, '').replace(/```\s*$/, '')
-                        .replace(/^\$xml\s*/i, '').replace(/^\$/, '').replace(/\$$/, '')
-                        .replace(/&lt;/g, '<').replace(/&gt;/g, '>')
-                        .replace(/&amp;/g, '&').replace(/&quot;/g, '"')
-                        .replace(/<\s*svg[\$a-zA-Z0-9_-]*/gi, '<svg');
-    const svgMatch = cleanSvg.match(/<svg[\s\S]*?<\/svg>/i);
-    if (svgMatch) {
+  // SVG Graphic rendering shield: Render raw or code block <svg ...></svg> directly as a rendered vector graphic
+  tempText = tempText.replace(/(?:```(?:xml|svg)?\s*)?(?:&lt;\s*svg|<[ \t]*svg)([\s\S]*?(?:&lt;\/\s*svg&gt;|<\/[ \t]*svg>))([\s\S]*?)(?:```\s*|$)/gi, (match) => {
+    let cleanSvg = match
+      .replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+      .replace(/&amp;/g, '&').replace(/&quot;/g, '"');
+    const rendered = renderAiTutorSvg(cleanSvg);
+    if (rendered !== cleanSvg) {
       const placeholder = `___HTML_TABLE_${placeholderIndex}___`;
-      let darkSvg = svgMatch[0]
-        .replace(/fill=["']#(?:ffffff|fff|f8f9fa|fafafa|f1f5f9)["']/gi, 'fill="#0f172a"')
-        .replace(/fill=["']white["']/gi, 'fill="#0f172a"')
-        .replace(/background(?:-color)?:\s*#(?:ffffff|fff|f8f9fa|fafafa)/gi, 'background-color: #0f172a')
-        .replace(/background(?:-color)?:\s*white/gi, 'background-color: #0f172a')
-        .replace(/<text\b([^>]*?)\bfill=["']#(?:000000|000|111827|0f172a|1e293b|334155)["']/gi, '<text$1fill="#f8fafc"')
-        .replace(/<text\b([^>]*?)\bfill=["']black["']/gi, '<text$1fill="#f8fafc"')
-        .replace(/<rect\b([^>]*?)(?:stroke=["'][^"']+["']|rx=["'][^"']+["'])([^>]*?)>/gi, (match) => {
-          if (match.includes('width="800"') || match.includes('width="100%"') || match.includes('width="730"') || match.includes('height="600"')) return match;
-          return match.replace(/fill=["'][^"']+["']/gi, 'fill="none"').replace(/stroke=["'][^"']+["']/gi, 'stroke="none"');
-        });
-
-      darkSvg = darkSvg.replace(/<svg\b([^>]*?)>/i, (match, attrs) => {
-        return `<svg${attrs}><style>text { paint-order: stroke fill !important; stroke: #0f172a !important; stroke-width: 10px !important; stroke-linejoin: round !important; stroke-linecap: round !important; }</style>`;
-      });
-
-      const vbMatch = darkSvg.match(/viewBox=["']\s*\d+\s+\d+\s+(\d+)\s+\d+["']/i);
-      const minWidth = vbMatch ? Math.max(parseInt(vbMatch[1], 10), 750) : 800;
-      darkSvg = darkSvg.replace(/<svg\b([^>]*?)>/i, (m, attrs) => {
-        let cleanAttrs = attrs.replace(/\bstyle=["'][^"']*["']/gi, '');
-        return `<svg${cleanAttrs} style="min-width: ${minWidth}px; width: 100%; height: auto; display: block;">`;
-      });
-
-      const styledHtml = `<div class="my-6 w-full max-w-5xl mx-auto bg-[#0b0f19] rounded-2xl p-6 border border-slate-800 shadow-2xl overflow-x-auto select-text font-sans flex flex-col items-center justify-center"><div class="w-full svg-scroll-container select-text">${darkSvg}</div></div>`;
-      tableBlocks.push({ placeholder, content: styledHtml });
+      tableBlocks.push({ placeholder, content: rendered });
       placeholderIndex++;
       return placeholder;
     }
