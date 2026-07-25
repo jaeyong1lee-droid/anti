@@ -582,10 +582,9 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
     processedLines.push(line);
   }
 
-  // Render list items
+  // Render list items (Clean direct single-pass rendering to avoid line duplication)
   const lines = processedLines;
   const renderedLines = [];
-  let currentListBlock = null;
   const listMarkerRegex = listMarkerCheckRegex;
 
   for (let idx = 0; idx < lines.length; idx++) {
@@ -593,9 +592,6 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
     const match = line.match(listMarkerRegex);
 
     if (match) {
-      if (currentListBlock) {
-        renderedLines.push(currentListBlock.outerStyleStart + currentListBlock.content.join('\n') + '</div>');
-      }
       const isBullet = line.trim().startsWith('*') || line.trim().startsWith('-') || line.trim().startsWith('•');
       let displayMarker = '';
       if (isBullet) {
@@ -613,37 +609,14 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
       const contentWithoutMarker = line.replace(listMarkerRegex, '');
       const lineHi = isMarkdown ? '1.5' : '1.4';
 
-      if (!currentListBlock) {
-        currentListBlock = {
-          outerStyleStart: `<div class="section-paragraph-block" style="margin-top: 0.3rem; margin-bottom: 0.3rem; padding-left: 0.25rem; text-indent: 0; color: #ffffff; line-height: ${lineHi};">`,
-          content: [displayMarker + contentWithoutMarker]
-        };
-      } else {
-        currentListBlock.content.push(displayMarker + contentWithoutMarker);
-      }
-    } else if (line.trim() === '' || /^___(?:BLOCK|INLINE)_MATH_\d+___$/.test(line.trim())) {
-      const isMathPlaceholder = /^___(?:BLOCK|INLINE)_MATH_\d+___$/.test(line.trim());
-      if (isMathPlaceholder && currentListBlock) {
-        currentListBlock.content.push(line);
-      } else {
-        if (currentListBlock) {
-          renderedLines.push(currentListBlock.outerStyleStart + currentListBlock.content.join('\n') + '</div>');
-          currentListBlock = null;
-        }
-        renderedLines.push(isMathPlaceholder ? line : '');
-      }
+      renderedLines.push(
+        `<div class="section-paragraph-line" style="margin-top: 0.2rem; margin-bottom: 0.25rem; padding-left: 0.5rem; text-indent: 0; color: #ffffff; line-height: ${lineHi};">${displayMarker}${contentWithoutMarker}</div>`
+      );
     } else {
-      if (currentListBlock) {
-        currentListBlock.content.push(line);
-      } else {
-        renderedLines.push(line);
-      }
+      renderedLines.push(line);
     }
   }
 
-  if (currentListBlock) {
-    renderedLines.push(currentListBlock.outerStyleStart + currentListBlock.content.join('\n') + '</div>');
-  }
   tempText = renderedLines.join('\n');
 
   if (isMarkdown) {
