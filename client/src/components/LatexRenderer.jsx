@@ -2,9 +2,6 @@ import React, { useRef, useState, useEffect } from 'react';
 import { Brain } from 'lucide-react';
 import { 
   convertMarkdownToHtml, 
-  wrapMechanismProcedureAssumptionsHtml,
-  wrapSymbolDefinitionsHtml,
-  wrapFollowingListItemsHtml,
   renderKatexString, 
   getSelectionTextWithLatex, 
   handleOpenHtmlAnswerPopup,
@@ -12,6 +9,7 @@ import {
   isHeavyHtml,
   cleanAndSanitizeMathText
 } from '../utils/renderingHelpers';
+import { applyAllDynamicWrappers } from './plugins/DynamicWrapperPlugin';
 import { convertMarkdownTablesToHtml } from '../utils/markdownTableRenderer';
 import { convertMarkdownAcronymsToHtml } from '../utils/markdownAcronymRenderer';
 import { healLatexFormulas } from '../utils/latexUtils';
@@ -521,9 +519,7 @@ export const LatexRenderer = React.memo(function LatexRenderer({
     const shouldHideRemarks = isMixedReview || (formulaSource === 'tutor' && !hideTableWrapper);
     cleanedText = convertMarkdownTablesToHtml(cleanedText, hideTableWrapper, shouldHideRemarks);
     cleanedText = convertMarkdownAcronymsToHtml(cleanedText);
-    cleanedText = wrapMechanismProcedureAssumptionsHtml(cleanedText);
-    cleanedText = wrapSymbolDefinitionsHtml(cleanedText);
-    cleanedText = wrapFollowingListItemsHtml(cleanedText);
+    cleanedText = applyAllDynamicWrappers(cleanedText);
   }
 
   // Tutor panels (isMarkdown=true) use rich markdown-to-HTML conversion.
