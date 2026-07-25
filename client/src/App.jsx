@@ -21443,53 +21443,55 @@ ${itemsStr}
             {/* Modal Body */}
             <div className="py-2">
               {isLoadingEngineeringStandardsList ? (
-                <div className="py-12 text-center space-y-2">
-                  <div className="inline-block w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
-                  <p className="text-xs text-purple-400 font-bold animate-pulse">서버에서 기타 공학 지침 데이터를 로드하는 중입니다...</p>
+                <div className="flex flex-col items-center justify-center py-16 gap-2 w-full">
+                  <div className="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+                  <span className="text-[10px] text-purple-400 font-bold animate-pulse">서버에서 기타 공학 지침 데이터를 로드하는 중입니다...</span>
                 </div>
               ) : (
-                <div className="max-h-[50vh] overflow-y-auto pr-1 space-y-2 custom-vertical-scrollbar border border-slate-800/80 rounded-xl bg-slate-950/40 p-2">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="border-b border-slate-800 text-[11px] font-black text-slate-400 bg-slate-900/60">
-                        <th className="py-2.5 px-3 w-12 text-center">#</th>
-                        <th className="py-2.5 px-3 w-48">지침 제목</th>
-                        <th className="py-2.5 px-3">지침 내용 (Prompt Content)</th>
-                        <th className="py-2.5 px-3 w-24 text-center">관리</th>
+                <div className="overflow-x-auto border border-slate-800 rounded-xl">
+                  <table className="w-full text-xs text-slate-300 divide-y divide-slate-800">
+                    <thead className="bg-slate-950/60 font-black text-slate-400 select-none">
+                      <tr>
+                        <th className="px-4 py-3 text-left w-12">번호</th>
+                        <th className="px-4 py-3 text-left w-48">지침 제목</th>
+                        <th className="px-4 py-3 text-left">지침 내용 요약</th>
+                        <th className="px-4 py-3 text-center w-36">관리</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-800/50 text-xs">
+                    <tbody className="divide-y divide-slate-800 bg-slate-900/20">
                       {engineeringStandardsList.length === 0 ? (
                         <tr>
-                          <td colSpan={4} className="py-8 text-center text-slate-500 font-semibold">
+                          <td colSpan={4} className="px-4 py-8 text-center text-slate-500 font-semibold">
                             등록된 기타 공학 지침이 없습니다. 새로운 지침을 추가해보세요.
                           </td>
                         </tr>
                       ) : (
                         engineeringStandardsList.map((std, index) => (
-                          <tr key={std.id || index} className="hover:bg-slate-800/40 transition-colors">
-                            <td className="py-3 px-3 text-center text-slate-500 font-mono text-[11px]">{index + 1}</td>
-                            <td className="py-3 px-3 font-extrabold text-purple-300 align-top">
+                          <tr key={std.id || index} className="hover:bg-slate-800/30 transition-colors">
+                            <td className="px-4 py-3 font-semibold text-slate-500">{index + 1}</td>
+                            <td className="px-4 py-3 font-bold text-white whitespace-nowrap overflow-hidden text-ellipsis max-w-[190px]" title={std.title}>
                               {std.title}
                             </td>
-                            <td className="py-3 px-3 text-slate-300 font-mono text-[11px] whitespace-pre-wrap leading-relaxed align-top max-w-xl">
-                              {std.content}
+                            <td className="px-4 py-3 text-slate-400 max-w-[300px] overflow-hidden text-ellipsis whitespace-nowrap" title={std.content}>
+                              {std.content ? std.content.trim().replace(/\n/g, ' ').slice(0, 100) + (std.content.trim().length > 100 ? '...' : '') : ''}
                             </td>
-                            <td className="py-3 px-3 text-center align-top">
-                              <div className="flex items-center justify-center gap-1.5">
+                            <td className="px-4 py-3 text-center">
+                              <div className="flex justify-center gap-1.5">
                                 <button
+                                  type="button"
                                   onClick={() => handleOpenEditEngineeringStandardModal(std)}
-                                  className="px-2 py-1 bg-purple-950/60 hover:bg-purple-900/80 text-purple-300 border border-purple-800/60 rounded-lg text-[10px] font-bold transition-all active:scale-95 cursor-pointer"
-                                  title="수정"
+                                  className="px-2 py-1 bg-purple-600/10 border border-purple-500/20 hover:bg-purple-600/20 hover:border-purple-500/40 text-purple-400 rounded-lg transition-all text-[10px] font-black cursor-pointer active:scale-95 flex items-center gap-1"
+                                  disabled={isSavingEngineeringStandardsList}
                                 >
-                                  수정
+                                  <span>✏️ 수정</span>
                                 </button>
                                 <button
+                                  type="button"
                                   onClick={() => handleDeleteEngineeringStandard(std.id)}
-                                  className="px-2 py-1 bg-rose-950/60 hover:bg-rose-900/80 text-rose-400 border border-rose-800/60 rounded-lg text-[10px] font-bold transition-all active:scale-95 cursor-pointer"
-                                  title="삭제"
+                                  className="px-2 py-1 bg-rose-600/10 border border-rose-500/20 hover:bg-rose-600/20 hover:border-rose-500/40 text-rose-400 rounded-lg transition-all text-[10px] font-black cursor-pointer active:scale-95 flex items-center gap-1"
+                                  disabled={isSavingEngineeringStandardsList}
                                 >
-                                  삭제
+                                  <span>❌ 삭제</span>
                                 </button>
                               </div>
                             </td>
