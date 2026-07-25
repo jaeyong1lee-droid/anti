@@ -3259,6 +3259,28 @@ export default function App() {
   const progressIntervalRef = useRef(null);
   const loadingTopicLockRef = useRef(false);
 
+  // AI 수행 중단/취소 처리 핸들러
+  const handleCancelAiTask = useCallback(() => {
+    if (progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current);
+      progressIntervalRef.current = null;
+    }
+    if (window.currentAiAbortController) {
+      try {
+        window.currentAiAbortController.abort();
+      } catch (err) {
+        console.error('Failed to abort fetch controller:', err);
+      }
+      window.currentAiAbortController = null;
+    }
+    setShowAiProgress(false);
+    setAiProgressPercent(0);
+    setAiProgressMessage('');
+    if (typeof showToast === 'function') {
+      showToast('⚠️ AI 작업 수행이 취소되었습니다.', 'error');
+    }
+  }, [showToast]);
+
   // Real-Time Global AI Tutor States
   const [isRealTimeTutorOpen, setIsRealTimeTutorOpen] = useState(() => {
     try {
@@ -16971,21 +16993,32 @@ ${itemsStr}
 
       {/* Floating AI Progress Popup (Hidden on Mobile View) */}
       {showAiProgress && isDesktop && !isMobileLandscape && (
-        <div className="fixed bottom-6 right-6 z-[9999] max-w-sm w-[90vw] sm:w-96 rounded-2xl bg-slate-950/90 border border-violet-500/40 p-4 shadow-2xl shadow-violet-950/50 flex flex-col gap-3 backdrop-blur-xl animate-fade-in-up">
+        <div className="fixed bottom-6 right-6 z-[9999] max-w-sm w-[90vw] sm:w-96 rounded-2xl bg-slate-950/95 border border-violet-500/40 p-4 shadow-2xl shadow-violet-950/50 flex flex-col gap-3 backdrop-blur-xl animate-fade-in-up">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-violet-950 border border-violet-500/20 text-violet-400 rounded-xl flex items-center justify-center">
+            <div className="p-2.5 bg-violet-950 border border-violet-500/20 text-violet-400 rounded-xl flex items-center justify-center shrink-0">
               <svg className="animate-spin h-5 w-5 text-violet-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[10px] font-black text-violet-400 uppercase tracking-widest">AI TASK PROGRESS</p>
+              <div className="flex items-center justify-between gap-1">
+                <p className="text-[10px] font-black text-violet-400 uppercase tracking-widest">AI TASK PROGRESS</p>
+                <button
+                  type="button"
+                  onClick={handleCancelAiTask}
+                  className="px-2 py-0.5 bg-rose-600/30 hover:bg-rose-600 text-rose-300 hover:text-white rounded-md text-[11px] font-bold border border-rose-500/40 transition-all flex items-center gap-1 shrink-0 active:scale-95 shadow-sm cursor-pointer select-none"
+                  title="진행 중인 AI 작업 중단 및 취소"
+                >
+                  <X size={12} />
+                  <span>취소</span>
+                </button>
+              </div>
               <h5 className="text-xs font-extrabold text-white truncate mt-0.5" title={aiProgressMessage}>
                 {aiProgressMessage}
               </h5>
             </div>
-            <div className="text-right">
+            <div className="text-right shrink-0">
               <span className="text-xs font-black text-violet-400">{aiProgressPercent}%</span>
             </div>
           </div>
