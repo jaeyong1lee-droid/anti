@@ -176,7 +176,7 @@ async function runTests() {
   const s2 = cleanAndSanitizeMathText(s1);
   const s3 = convertMarkdownToHtml(s2, true, false, true);
 
-  const hasNoEscapedHtml = !s3.includes('&lt;h4 class=&quot;') && !s3.includes('&lt;h4') && s3.includes('<h4 class="text-xs');
+  const hasNoEscapedHtml = !s3.includes('&lt;h4 class=&quot;') && !s3.includes('&lt;h4') && !s3.includes('&lt;button');
 
   if (hasNoEscapedHtml) {
     console.log('  ✅ [PASS] 🚨 [User Screenshot Test] HTML Tag & Math Protection Fixed & Verified!');

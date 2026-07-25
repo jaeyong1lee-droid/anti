@@ -454,6 +454,11 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
                        .replace(/\$\s+([^\$\n]+?)\$/g, (match, g1) => `$${g1.trim()}$`)
                        .replace(/\$([^\$\n]+?)\s+\$/g, (match, g1) => `$${g1.trim()}$`);
 
+  // [Self-Healing] Fix invalid math commands inside \\text{} block (e.g. \\text{\\sum Resisting} -> \\sum \\text{Resisting})
+  processed = processed.replace(/\\text\s*\{\s*(\\sum|\\prod|\\int|\\lim|\\Delta|\\alpha|\\beta|\\gamma|\\theta)\s*([^}]+)\}/gi, (m, cmd, textPart) => {
+    return `${cmd} \\text{${textPart.trim()}}`;
+  });
+
   // [🚨 KaTeX HTML 블록 최우선 복원 필터 🚨]
   // 텍스트 내부에 들어있는 KaTeX HTML 사전 렌더링 블록을 감지하여
   // 그 내부에 들어있는 원본 LaTeX 수식 문자열(annotation encoding="application/x-tex")을 추출한 뒤,

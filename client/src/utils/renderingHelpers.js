@@ -938,6 +938,12 @@ export const cleanCorruptedFormula = (formula) => {
   if (!formula || typeof formula !== 'string') return formula;
   
   let cleaned = formula;
+
+  // Heal \text{\sum ...} -> \sum \text{...}
+  cleaned = cleaned.replace(/\\text\s*\{\s*(\\sum|\\prod|\\int|\\lim|\\Delta|\\alpha|\\beta|\\gamma|\\theta)\s*([^}]+)\}/gi, (m, cmd, textPart) => {
+    return `${cmd} \\text{${textPart.trim()}}`;
+  });
+
   if (cleaned.includes('color:#cc0000') || cleaned.includes('math mode at position')) {
     const match = cleaned.match(/color:#cc0000"\s*>\s*([^<]+?)\s*<\s*\/\s*span\s*>/i) ||
                   cleaned.match(/color:#cc0000"\s*&gt;\s*([^&]+?)\s*&lt;\s*\/\s*span\s*&gt;/i);
@@ -985,15 +991,59 @@ export const cleanAndSanitizeMathText = (rawText) => {
     textToSanitize = renderAiTutorMermaid(textToSanitize);
   }
 
+  // 1.5 Clean any leaked orphan card headers from older cached chat history messages
+  if (textToSanitize.includes('<h4 class="text-xs font-black') || textToSanitize.includes('window.toggleDiagramCard')) {
+    textToSanitize = textToSanitize
+      .replace(/⚡?\s*<h4 class=["']text-xs font-black[^"']*["']>[\s\S]*?<\/h4>\s*(?:⚡\s*실시간 벡터)?/gi, '')
+      .replace(/<button onclick=["']window\.toggleDiagramCard[\s\S]*?<\/button>/gi, '');
+  }
+
   // 2. Shield pre-rendered diagram card divs (<div class="my-6...) from math sanitizer corruption
   const diagramCards = [];
   let cardIndex = 0;
-  let cleaned = textToSanitize.replace(/(<div[^>]*class=["'][^"']*(?:my-6|table-export-wrapper)[^"']*["'][\s\S]*?<\/svg>\s*(?:<\/div>\s*)+|<div[^>]*class=["'][^"']*(?:my-6|table-export-wrapper)[^"']*["'][\s\S]*?<\/div>\s*<\/div>|<div[^>]*class=["'][^"']*(?:my-6|table-export-wrapper)[^"']*["'][\s\S]*?<\/div>)/gi, (match) => {
-    const placeholder = `___DIAGRAM_CARD_${cardIndex}___`;
-    diagramCards.push({ placeholder, content: match });
-    cardIndex++;
-    return placeholder;
-  });
+  
+  let cleaned = '';
+  const cardStartRegex = /<div[^>]*class=["'][^"']*(?:my-6|table-export-wrapper)[^"']*["']/gi;
+  let match;
+  let lastIndex = 0;
+
+  while ((match = cardStartRegex.exec(textToSanitize)) !== null) {
+    const startIndex = match.index;
+    cleaned += textToSanitize.substring(lastIndex, startIndex);
+
+    let depth = 0;
+    let end = -1;
+    const divTagRegex = /<\/?div\b[^>]*>/gi;
+    divTagRegex.lastIndex = startIndex;
+    let tagMatch;
+
+    while ((tagMatch = divTagRegex.exec(textToSanitize)) !== null) {
+      if (tagMatch[0].startsWith('</')) {
+        depth--;
+      } else {
+        depth++;
+      }
+
+      if (depth === 0) {
+        end = tagMatch.index + tagMatch[0].length;
+        break;
+      }
+    }
+
+    if (end !== -1) {
+      const fullCard = textToSanitize.substring(startIndex, end);
+      const placeholder = `___DIAGRAM_CARD_${cardIndex}___`;
+      diagramCards.push({ placeholder, content: fullCard });
+      cardIndex++;
+      cleaned += placeholder;
+      lastIndex = end;
+      cardStartRegex.lastIndex = end;
+    } else {
+      lastIndex = startIndex;
+      break;
+    }
+  }
+  cleaned += textToSanitize.substring(lastIndex);
   
   cleaned = healCorruptedKatexHtml(cleaned);
   cleaned = cleanCorruptedFormula(cleaned);

@@ -46,7 +46,7 @@ function renderTikzVectorSvgCard(stepItems, title = 'LaTeX TikZ Realtime Vector 
     <div class="flex items-center gap-2">
       <span class="text-base">⚡</span>
       <h4 class="text-xs font-black text-slate-200 tracking-tight uppercase">${escapeXmlText(title.replace(/\$/g, ''))}</h4>
-      <span class="text-[10px] font-extrabold bg-emerald-950/80 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-full uppercase tracking-wider">⚡ Realtime Vector</span>
+      <span class="text-[10px] font-extrabold bg-emerald-950/80 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-full uppercase tracking-wider">⚡ TikZ 2D 벡터 순서도</span>
     </div>
     <button onclick="window.toggleDiagramCard &amp;&amp; window.toggleDiagramCard(this)" class="text-xs font-bold bg-slate-800/90 hover:bg-slate-700 text-slate-300 border border-slate-700/80 px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer select-none">
       <span class="toggle-label">▼ 펼치기</span>
@@ -267,6 +267,7 @@ function renderTikzVectorSvgCard(stepItems, title = 'LaTeX TikZ Realtime Vector 
 
 export function renderAiTutorTikz(text) {
   if (!text || typeof text !== 'string') return text || '';
+  if (text.includes('diagram-card-content') || text.includes('LaTeX TikZ Realtime Vector') || text.includes('___DIAGRAM_CARD_')) return text;
 
   let processed = text;
 

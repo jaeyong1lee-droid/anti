@@ -5,6 +5,7 @@
 
 export function renderAiTutorSvg(text) {
   if (!text || typeof text !== 'string') return text || '';
+  if (text.includes('diagram-card-content') || text.includes('Realtime Vector Graphic Render') || text.includes('___DIAGRAM_CARD_')) return text;
   
   let processed = text;
 
@@ -22,8 +23,8 @@ export function renderAiTutorSvg(text) {
     .replace(/<\s+\//g, '</')
     .replace(/<\s+([a-zA-Z0-9_-]+)/g, '<$1');
 
-  // Match SVG graphic blocks
-  const svgRegex = /(?:```[a-zA-Z0-9_-]*\s*)?(?:\$xml|\$|\$ SVG|SVG)?\s*(?:<[ \t]*svg|xmlns=["']http:\/\/www\.w3\.org\/2000\/svg["'])[\s\S]*?(?:<\/[ \t]*svg>|<\/svg>|(?=```\s*$|$))/gi;
+  // Match SVG graphic blocks including any trailing code block labels
+  const svgRegex = /(?:```[a-zA-Z0-9_-]*\s*)?(?:<[ \t]*svg|xmlns=["']http:\/\/www\.w3\.org\/2000\/svg["'])[\s\S]*?(?:```\s*$|$)/gi;
   
   processed = processed.replace(svgRegex, (match) => {
     let cleanSvg = match
@@ -41,30 +42,89 @@ export function renderAiTutorSvg(text) {
 
     const svgMatch = cleanSvg.match(/<svg[\s\S]*?<\/svg>/i);
     if (svgMatch) {
-      const isMohrApparatus = cleanSvg.includes('Mohr') || cleanSvg.includes('Apparatus') || cleanSvg.includes('모어') || cleanSvg.includes('삼축');
-      const cardTitle = isMohrApparatus ? 'DYNAMIC INLINE SVG APPARATUS & MOHR CIRCLE' : 'Realtime Vector Graphic Render';
-      const badgeText = isMohrApparatus ? 'Geotechnical Simulation' : '⚡ Realtime Vector';
+      let baseSvgContent = svgMatch[0];
+      const endSvgIdx = cleanSvg.indexOf('</svg>');
+      
+      // Embed any orphan text labels after </svg> inside code block directly INTO the SVG drawing canvas!
+      if (endSvgIdx !== -1) {
+        const orphanLabelText = cleanSvg.substring(endSvgIdx + 6).trim();
+        if (orphanLabelText) {
+          const orphanLines = orphanLabelText
+            .split(/\r?\n/)
+            .map(l => l.trim())
+            .filter(l => l && !l.startsWith('```') && !l.startsWith('<div') && !l.startsWith('</div'));
 
-      // Transform white background & dark text into sleek Dark Mode (#0f172a / #f8fafc)
-      let darkSvg = svgMatch[0]
+          if (orphanLines.length > 0) {
+            let viewW = 850;
+            let viewH = 450;
+            const viewBoxMatch = baseSvgContent.match(/viewBox=["']\s*\d+\s+\d+\s+(\d+)\s+(\d+)\s*["']/i);
+            if (viewBoxMatch && viewBoxMatch[1] && viewBoxMatch[2]) {
+              viewW = Math.max(parseInt(viewBoxMatch[1], 10), 850);
+              viewH = parseInt(viewBoxMatch[2], 10);
+            }
+
+            const legendBoxH = orphanLines.length * 28 + 20;
+            const newViewH = viewH + legendBoxH + 30;
+
+            let legendGroup = `\n<!-- Integrated SVG Diagram Legend -->\n<g id="integrated-legend" transform="translate(40, ${viewH + 15})">\n`;
+            legendGroup += `  <rect x="0" y="0" width="${viewW - 80}" height="${legendBoxH}" fill="#0b1120" stroke="#334155" stroke-width="1.5" rx="10" />\n`;
+
+            let textY = 25;
+            orphanLines.forEach(line => {
+              const cleanLineStr = line.replace(/\$/g, '');
+              legendGroup += `  <text x="20" y="${textY}" fill="#38bdf8" font-size="13px" font-weight="bold">${cleanLineStr}</text>\n`;
+              textY += 28;
+            });
+            legendGroup += `</g>\n`;
+
+            // Expand viewBox height & height attribute so the legend box is 100% inside the SVG!
+            if (viewBoxMatch) {
+              baseSvgContent = baseSvgContent.replace(/viewBox=["'][^"']+["']/i, `viewBox="0 0 ${viewW} ${newViewH}"`);
+            }
+            baseSvgContent = baseSvgContent.replace(/height=["']\d+["']/i, `height="${newViewH}"`);
+            baseSvgContent = baseSvgContent.replace(/<\/svg>/i, `${legendGroup}</svg>`);
+          }
+        }
+      }
+
+      const isMohrApparatus = cleanSvg.includes('Mohr') || cleanSvg.includes('Apparatus') || cleanSvg.includes('모어') || cleanSvg.includes('삼축');
+      const cardTitle = isMohrApparatus ? 'DYNAMIC INLINE SVG APPARATUS & MOHR CIRCLE' : '실시간 SVG 그래픽 도해';
+      const badgeText = isMohrApparatus ? '지반공학 시뮬레이션' : '실시간 벡터';
+
+      // Transform white background & dark text/lines into sleek Dark Mode (#0f172a / #f8fafc / #cbd5e1)
+      let darkSvg = baseSvgContent
         .replace(/fill=["']#(?:ffffff|fff|f8f9fa|fafafa|f1f5f9)["']/gi, 'fill="#0f172a"')
-        .replace(/fill=["']white["']/gi, 'fill="#0f172a"')
-        .replace(/background(?:-color)?:\s*#(?:ffffff|fff|f8f9fa|fafafa)/gi, 'background-color: #0f172a')
+        .replace(/fill=["'](?:white|#ffffff|#fff|#FFFFFF)["']/gi, 'fill="#0f172a"')
+        .replace(/background(?:-color)?:\s*#(?:ffffff|fff|f8f9fa|fafafa|FFFFFF)/gi, 'background-color: #0f172a')
         .replace(/background(?:-color)?:\s*white/gi, 'background-color: #0f172a')
-        .replace(/<text\b([^>]*?)\bfill=["']#(?:000000|000|111827|0f172a|1e293b|334155)["']/gi, '<text$1fill="#f8fafc"')
-        .replace(/<text\b([^>]*?)\bfill=["']black["']/gi, '<text$1fill="#f8fafc"')
-        // Remove formula surrounding window box <rect> (stroke/rx box) so math text floats in open space
+        // Transform dark/brown/orange text fills to bright white/yellow (#f8fafc / #fde047)
+        .replace(/<text\b([^>]*?)\bfill=["']#(?:000000|000|111827|0f172a|1e293b|334155|475569|64748b)["']/gi, '<text$1fill="#f8fafc"')
+        .replace(/<text\b([^>]*?)\bfill=["']#(?:d97706|b45309|92400e|78350f|c2410c|9a3412)["']/gi, '<text$1fill="#fde047"')
+        .replace(/<text\b([^>]*?)\bfill=["'](?:black|darkgray|navy|darkorange|brown)["']/gi, '<text$1fill="#f8fafc"')
+        // Add fill="#f8fafc" to any <text> that doesn't have a fill attribute
+        .replace(/<text\b((?:(?!fill=)[^>])*)>/gi, '<text fill="#f8fafc"$1>')
+        // Transform dark line/path strokes (#000, #1e293b, #334155, black) to bright silver/slate (#cbd5e1)
+        .replace(/stroke=["']#(?:000000|000|111827|0f172a|1e293b|334155|475569|64748b)["']/gi, 'stroke="#cbd5e1"')
+        .replace(/stroke=["'](?:black|darkgray)["']/gi, 'stroke="#cbd5e1"')
+        // Remove formula surrounding window box <rect> (stroke/rx box) so math text floats in open space while keeping dark background panels
         .replace(/<rect\b([^>]*?)(?:stroke=["'][^"']+["']|rx=["'][^"']+["'])([^>]*?)>/gi, (match) => {
-          if (match.includes('width="800"') || match.includes('width="100%"') || match.includes('width="730"') || match.includes('height="600"')) return match;
+          if (match.includes('width="850"') || match.includes('width="800"') || match.includes('width="100%"') || match.includes('width="730"') || match.includes('height="600"') || match.includes('height="480"')) return match;
           return match.replace(/fill=["'][^"']+["']/gi, 'fill="none"').replace(/stroke=["'][^"']+["']/gi, 'stroke="none"');
         });
 
-      // Inject halo stroke attributes directly onto <text> tags so no <style> tag ever leaks
-      darkSvg = darkSvg.replace(/<text\b/gi, '<text paint-order="stroke fill" stroke="#0f172a" stroke-width="10px" stroke-linejoin="round" stroke-linecap="round"');
-
-      // Enforce fixed drawing size & horizontal scrollbar when width exceeds container
-      const vbMatch = darkSvg.match(/viewBox=["']\s*\d+\s+\d+\s+(\d+)\s+\d+["']/i);
-      const minWidth = vbMatch ? Math.max(parseInt(vbMatch[1], 10), 750) : 800;
+      // Expand viewBox width to at least 850px to prevent right-side text clipping
+      const vbMatch = darkSvg.match(/viewBox=["']\s*(\d+)\s+(\d+)\s+(\d+)\s+(\d+)["']/i);
+      let minWidth = 850;
+      if (vbMatch && vbMatch[3]) {
+        const origW = parseInt(vbMatch[3], 10);
+        if (origW < 850) {
+          minWidth = 850;
+          darkSvg = darkSvg.replace(/viewBox=["'][^"']+["']/i, `viewBox="${vbMatch[1]} ${vbMatch[2]} 850 ${vbMatch[4]}"`);
+        } else {
+          minWidth = origW;
+        }
+      }
+      
       darkSvg = darkSvg.replace(/<svg\b([^>]*?)>/i, (m, attrs) => {
         let cleanAttrs = attrs.replace(/\bstyle=["'][^"']*["']/gi, '');
         return `<svg${cleanAttrs} style="min-width: ${minWidth}px; width: 100%; height: auto; display: block;">`;
