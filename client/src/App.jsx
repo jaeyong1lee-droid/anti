@@ -20230,25 +20230,25 @@ ${itemsStr}
                     >
                       <span>calc</span>
                     </button>
-                    {/* 🏠 메인화면 나가기 버튼 */}
+                    {/* 🏠 메인화면 나가기 버튼 (핸드폰 세로보기 전용) */}
                     <button
                       onClick={() => {
                         savedQuizScroll.current = quizBodyRef.current?.scrollTop || 0;
                         setSelectedTopic(null);
                         setActiveTab('allTopics');
                       }}
-                      className="px-2.5 py-1 text-[10px] font-black rounded-lg transition-all cursor-pointer active:scale-95 shadow-md flex items-center justify-center bg-slateCustom-900 text-emerald-400 hover:text-emerald-300 border border-slate-800/80 hover:bg-slate-800/50"
-                      title="메인 화면으로 나가기"
+                      className="px-2.5 py-1 text-[10px] font-black rounded-lg transition-all cursor-pointer active:scale-95 shadow-md flex md:hidden items-center justify-center bg-slateCustom-900 text-emerald-400 hover:text-emerald-300 border border-slate-800/80 hover:bg-slate-800/50"
+                      title="메인 화면으로 나가기 (모바일 전용)"
                     >
                       <span>메인</span>
                     </button>
 
-                    {/* ⚡ API 선택 버튼 + 미니팝업 */}
-                    <div className="relative flex items-center mr-0.5">
+                    {/* ⚡ API 선택 버튼 + 미니팝업 (핸드폰 세로보기 전용) */}
+                    <div className="relative flex md:hidden items-center mr-0.5">
                       <button
                         onClick={() => setShowApiSelectMiniPopup(prev => !prev)}
                         className="px-2.5 py-1 text-[10px] font-black rounded-lg transition-all cursor-pointer active:scale-95 shadow-md flex items-center justify-center bg-slateCustom-900 text-sky-400 hover:text-sky-300 border border-slate-800/80 hover:bg-slate-800/50"
-                        title="AI 모델 API 선택 팝업 열기"
+                        title="AI 모델 API 선택 팝업 열기 (모바일 전용)"
                       >
                         <span>API</span>
                       </button>
