@@ -1578,7 +1578,7 @@ export const LATEX_CHAT_PROMPT_INSTRUCTIONS = `
     - ❌ [절대 금지 오류 예시]: d_{H,max1} = ... $ 2) CIP 공법 적용 시: $ d_{H,max2} = ... (중간 한글 제목이 달러 기호에 갇히는 형태는 렌더링을 완전히 망가뜨립니다.)
 20. 🚨 [수식 변수 및 아래첨자 결합 유지 규칙]: 수학 기호나 공식 내에서 물리량 변수 기호와 그 아래첨자(예: Nc, Df, kh 등)는 절대로 중간에 달러 기호($ 또는 $$)를 끼워 넣어서 서로 다른 블록으로 쪼개서 출력하지 마십시오. 반드시 수식 전체를 감싸서 하나의 수식 블록 내에 모두 포함시켜야 합니다. (예: $N_c$ (O) / N$_c$ (X), $\\text{N}_c$ (O) / \\text{N}$$_c (X))
 21. 🚨 [SVG, TikZ, Mermaid 그래픽 코드 출력 절대 금지]:
-    - 어떠한 경우에도 답변에 SVG `<svg>`, TikZ `\\begin{tikzpicture}`, Mermaid `graph TD` 등의 그래픽 코드 블록을 작성하거나 출력하지 마십시오.
+    - 어떠한 경우에도 답변에 SVG \`<svg>\`, TikZ \`\\\\begin{tikzpicture}\`, Mermaid \`graph TD\` 등의 그래픽 코드 블록을 작성하거나 출력하지 마십시오.
     - 지반공학 원리나 절차를 설명할 때는 오직 정제된 한글 문장, 마크다운 비교표, 그리고 일반 수식($)만 사용하여 설명하십시오. 임의로 아스키 아트나 그래픽 코드를 생성하여 답변을 어지럽히는 행위를 엄격히 금지합니다.
 `;
 // Trigger redeployment with clean UTF-8 BOM-less encoding.
