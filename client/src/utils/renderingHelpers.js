@@ -648,7 +648,42 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
 
   tempText = wrapMechanismProcedureAssumptionsHtml(tempText);
   tempText = wrapSymbolDefinitionsHtml(tempText);
+  tempText = wrapFollowingListItemsHtml(tempText);
   return tempText;
+}
+
+export function wrapFollowingListItemsHtml(text) {
+  if (!text || typeof text !== 'string') return text;
+
+  // Match '다음과 같은', '아래와 같은', '다음과 같이', '아래와 같이', '주요 특징' etc. followed by 2 or more bullet/list items
+  const followingListSectionRegex = /(?:^|<br\/>|\n|<p>)[ \t]*(?:<div[^>]*>|<p>)?\s*(?:[•\*\-]\s*|#{1,6}\s*|\[|\*\*)?\s*([^\n<]*(?:다음과\s*같은|아래와\s*같은|다음과\s*같이|아래와\s*같이|다음\s*항목|아래\s*항목|주요\s*특징|특징은\s*다음|사항은\s*다음|다음과\s*같음)[^\n<]*)\s*[:\]\*\*,\.]*[ \t]*(?:<\/div>|<\/p>|<br\/>|\n)+\s*((?:(?:<div[^>]*>|<p>)?\s*(?:[•\*\-]\s*|\d+[\.\)]\s+)[^\n<]*[\s\S]*?(?:<\/div>|<\/p>|<br\/>|\n)){2,})/gi;
+
+  return text.replace(followingListSectionRegex, (fullMatch, headerTitle, listBlock) => {
+    if (fullMatch.includes('___HTML_TABLE_') || fullMatch.includes('___CODE_BLOCK_') || fullMatch.includes('flowchart-text-force') || /<table/i.test(fullMatch)) {
+      return fullMatch;
+    }
+
+    const rawLines = listBlock.split(/(?:<\/p>|<\/div>|<br\/>|\n)+/);
+    const itemBoxes = [];
+
+    rawLines.forEach((line) => {
+      const stripped = line.replace(/<[^>]+>/g, '').trim();
+      if (!stripped) return;
+
+      const content = stripped.replace(/^(?:[•\*\-]\s*|\d+[\.\)]\s*)/, '').trim();
+      if (content && !/^[-–—\s]+$/.test(content) && content !== '--' && content !== '---') {
+        itemBoxes.push(
+          `<div class="flex items-start gap-2.5 p-2.5 my-1.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-emerald-500/40 shadow-sm text-left select-text"><span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 mt-2 shadow-sm shadow-emerald-400/50"></span><div class="flex-1 text-[13px] sm:text-[14px] text-slate-100 leading-relaxed break-words">${line.includes(':') ? content.replace(/^([^:]+:)/, '<strong class="text-amber-300 font-bold">$1</strong>') : content}</div></div>`
+        );
+      }
+    });
+
+    if (itemBoxes.length < 2) return fullMatch;
+
+    const titleClean = headerTitle.replace(/<[^>]+>/g, '').replace(/^[#\*\-•\[\]\s]+/, '').replace(/[#\*\-•\[\]\s]+$/, '').trim();
+
+    return `<div class="my-3.5 p-3.5 rounded-2xl bg-slate-950/80 border border-emerald-500/30 shadow-md text-left"><div class="flex items-center gap-2 mb-2.5 pb-2 border-b border-emerald-500/20 text-emerald-400 text-xs sm:text-sm font-extrabold select-none"><span class="text-base">📌</span><span>${titleClean || '핵심 요약 목록'}</span></div><div class="space-y-1.5">${itemBoxes.join('')}</div></div>`;
+  });
 }
 
 export function wrapSymbolDefinitionsHtml(text) {
