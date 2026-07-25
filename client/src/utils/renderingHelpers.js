@@ -588,12 +588,15 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
       }
       
       const contentWithoutMarker = line.replace(listMarkerRegex, '');
-      const marginVal = isMarkdown ? '0.5rem' : '0.2rem';
-      const paddingVal = isMarkdown ? '1.25rem' : '1rem';
+      const marginVal = '1.25rem';
       const lineHi = isMarkdown ? '1.6' : '1.5';
       
+      // Auto-add top spacing if this is a main numbered section header (e.g. "1. 강도 정수 결정:")
+      const isSubHeader = /^\s*(?:\d+[\.\)]|[①-⑳])\s+[^\n]+:?$/.test(line.trim());
+      const topSpace = isSubHeader ? '1.5rem' : '0.5rem';
+
       currentListBlock = {
-        outerStyleStart: `<div style="margin-top: ${marginVal}; margin-bottom: ${marginVal}; padding-left: 0.5rem; text-indent: 0; color: #ffffff; line-height: ${lineHi};">`,
+        outerStyleStart: `<div class="section-paragraph-block" style="margin-top: ${topSpace}; margin-bottom: ${marginVal}; padding-left: 0.5rem; text-indent: 0; color: #ffffff; line-height: ${lineHi};">`,
         content: [displayMarker + contentWithoutMarker]
       };
     } else if (line.trim() === '' || /^___(?:BLOCK|INLINE)_MATH_\d+___$/.test(line.trim())) {
@@ -611,7 +614,12 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
       if (currentListBlock) {
         currentListBlock.content.push(line);
       } else {
-        renderedLines.push(line);
+        const isHeaderLine = /^\s*(?:\d+[\.\)]|[①-⑳]|[•\*\-])?\s*[^\n]+:$/.test(line.trim());
+        if (isHeaderLine) {
+          renderedLines.push(`<div style="margin-top: 1.25rem; margin-bottom: 0.5rem; font-weight: 700;">${line}</div>`);
+        } else {
+          renderedLines.push(line);
+        }
       }
     }
   }
@@ -622,7 +630,7 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
   tempText = renderedLines.join('\n');
 
   if (isMarkdown) {
-    tempText = tempText.replace(/\n\n/g, '<div style="height: 1.2rem;"></div>');
+    tempText = tempText.replace(/\n\n/g, '<div style="height: 1.25rem;"></div>');
     tempText = tempText.replace(/\n/g, '<br/>');
   } else {
     tempText = tempText.replace(/\n\n/g, '<div style="height: 0.6rem;"></div>');
