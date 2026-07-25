@@ -3035,6 +3035,7 @@ export default function App() {
   const [editingTopicId, setEditingTopicId] = useState(null);
   const [editingTitleText, setEditingTitleText] = useState('');
   const [preferredModel, setPreferredModel] = useState('gemini-3.1-flash-lite');
+  const [showModelMenu, setShowModelMenu] = useState(false);
   const [isLockscreenQuizEnabled, setIsLockscreenQuizEnabled] = useState(() => {
     return localStorage.getItem('anti_lockscreen_quiz_enabled') === 'true';
   });
@@ -11641,10 +11642,10 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
     }
   };
 
-  const handleTogglePreferredModel = async () => {
-    const nextModel = preferredModel === 'gemini-3.1-flash-lite' ? 'gemini-3.5-flash' : 'gemini-3.1-flash-lite';
-    setPreferredModel(nextModel);
-    localStorage.setItem('anti_preferred_model', nextModel);
+  const handleSelectPreferredModel = async (modelName) => {
+    setPreferredModel(modelName);
+    localStorage.setItem('anti_preferred_model', modelName);
+    setShowModelMenu(false);
 
     try {
       const response = await fetch(`${API_BASE}/api/preferred-model`, {
@@ -11652,13 +11653,17 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ model: nextModel })
+        body: JSON.stringify({ model: modelName })
       });
       if (!response.ok) {
         throw new Error(`Server returned ${response.status}`);
       }
+      showNotification(`API 모델이 ${
+        modelName === 'gemini-3.6-flash' ? '3.6 FLASH' : modelName === 'gemini-3.5-lite' ? '3.5 LITE' : '3.5 FLASH'
+      }로 변경되었습니다.`, 'success');
     } catch (error) {
       console.warn('Failed to sync preferred model to server:', error);
+      showNotification('모델 변경 실패: ' + error.message, 'error');
     }
   };
 
@@ -18038,17 +18043,71 @@ ${itemsStr}
                   <span>기준</span>
                 </button>
 
-                <button
-                  type="button"
-                  onClick={handleTogglePreferredModel}
-                  className={`flex items-center justify-center px-3 py-1.5 rounded-xl border transition-all active:scale-98 text-[11px] font-black cursor-pointer shadow-md select-none ${
-                    preferredModel === 'gemini-3.5-flash'
-                      ? 'border-cyan-500/20 bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20 hover:border-cyan-500/30'
-                      : 'border-emerald-500/20 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 hover:border-emerald-500/30'
-                  }`}
-                >
-                  <span>{preferredModel === 'gemini-3.5-flash' ? '3.5' : '3.1'}</span>
-                </button>
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setShowModelMenu(!showModelMenu)}
+                    className={`flex items-center justify-center px-3 py-1.5 rounded-xl border transition-all active:scale-98 text-[11px] font-black cursor-pointer shadow-md select-none ${
+                      preferredModel.includes('3.6')
+                        ? 'border-indigo-500/20 bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 hover:border-indigo-500/30'
+                        : preferredModel.includes('3.5-lite') || preferredModel.includes('3.1-flash-lite')
+                        ? 'border-emerald-500/20 bg-[#10b981]/10 text-emerald-400 hover:bg-emerald-500/20 hover:border-emerald-500/30'
+                        : 'border-cyan-500/20 bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20 hover:border-cyan-500/30'
+                    }`}
+                  >
+                    <span>
+                      {preferredModel.includes('3.6') ? '3.6 FLASH' : preferredModel.includes('3.5-lite') || preferredModel.includes('3.1-flash-lite') ? '3.5 LITE' : '3.5 FLASH'}
+                    </span>
+                  </button>
+
+                  {showModelMenu && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setShowModelMenu(false)} />
+                      <div className="absolute right-0 mt-2 w-44 bg-[#0b0f19] border border-slate-800 rounded-xl shadow-2xl p-1.5 z-50 animate-fade-in space-y-0.5">
+                        <div className="text-[9px] font-black text-slate-500 uppercase tracking-wider px-2.5 py-1 border-b border-slate-800/80 mb-1 select-none">API 엔진 설정</div>
+                        
+                        <button
+                          type="button"
+                          onClick={() => handleSelectPreferredModel('gemini-3.6-flash')}
+                          className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left text-[11px] font-extrabold transition-all cursor-pointer ${
+                            preferredModel.includes('3.6')
+                              ? 'bg-indigo-600/20 text-indigo-300'
+                              : 'text-slate-400 hover:bg-slate-800/40 hover:text-slate-200'
+                          }`}
+                        >
+                          <span>3.6 FLASH</span>
+                          {preferredModel.includes('3.6') && <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleSelectPreferredModel('gemini-3.5-lite')}
+                          className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left text-[11px] font-extrabold transition-all cursor-pointer ${
+                            preferredModel.includes('3.5-lite') || preferredModel.includes('3.1-flash-lite')
+                              ? 'bg-emerald-600/20 text-emerald-300'
+                              : 'text-slate-400 hover:bg-slate-800/40 hover:text-slate-200'
+                          }`}
+                        >
+                          <span>3.5 LITE</span>
+                          {(preferredModel.includes('3.5-lite') || preferredModel.includes('3.1-flash-lite')) && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleSelectPreferredModel('gemini-3.5-flash')}
+                          className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left text-[11px] font-extrabold transition-all cursor-pointer ${
+                            preferredModel === 'gemini-3.5-flash'
+                              ? 'bg-cyan-600/20 text-cyan-300'
+                              : 'text-slate-400 hover:bg-slate-800/40 hover:text-slate-200'
+                          }`}
+                        >
+                          <span>3.5 FLASH</span>
+                          {preferredModel === 'gemini-3.5-flash' && <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />}
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
 
                 <button
                   type="button"

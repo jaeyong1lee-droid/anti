@@ -19,18 +19,6 @@ export let otherStandardsList = [
     "updatedAt": "2026-07-25T00:00:00.000Z"
   },
   {
-    "id": "user_other_default_4",
-    "title": "SVG/TikZ/Mermaid 3대 플러그인 2D 벡터 구조화 수칙",
-    "content": "SVG 그림, TikZ 순서도, Mermaid 플로우차트는 텍스트 코드 블록을 노출하지 않고 판단 결정 다이아몬드(polygon) 및 연결 화살표가 포함된 선명한 다크 테마 2D 벡터 카드 형태로 자동 변환하여 렌더링합니다.",
-    "updatedAt": "2026-07-25T00:00:00.000Z"
-  },
-  {
-    "id": "user_other_default_5",
-    "title": "실시간 최종 시각 출력물 생성 및 끝까지 검증 수칙",
-    "content": "코드 검증뿐만 아니라 실제 사용자 화면에 표출되는 렌더링 최종 시각 출력물(2D 그래픽, 플로우차트)을 끝까지 직접 생성하여 시각적으로 결과물이 정상인지 최종 확인합니다.",
-    "updatedAt": "2026-07-25T00:00:00.000Z"
-  },
-  {
     "id": "user_other_default_6",
     "title": "사용자 명시적 지시 기반 푸시/배포 엄수 수칙",
     "content": "git push 및 프로덕션 배포는 자동 수행하지 않으며, 오직 사용자가 '푸시해' 또는 '배포해'라고 명시적으로 지시할 때만 실행합니다.",
@@ -38,14 +26,14 @@ export let otherStandardsList = [
   }
 ];
 
+export let OTHER_STANDARDS = assembleOtherStandardsPrompt(otherStandardsList);
+
 export function assembleOtherStandardsPrompt(list) {
   if (!Array.isArray(list) || list.length === 0) {
     return "- 등록된 기타 지침 기준이 없습니다.";
   }
   return list.map((std, idx) => `${idx + 1}. **${std.title}**:\n   - ${std.content}`).join('\n');
 }
-
-export let OTHER_STANDARDS = assembleOtherStandardsPrompt(otherStandardsList);
 
 export function updateLiveOtherStandards(newList) {
   otherStandardsList = newList;
