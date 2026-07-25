@@ -2,6 +2,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { Brain } from 'lucide-react';
 import { 
   convertMarkdownToHtml, 
+  wrapMechanismProcedureAssumptionsHtml,
   renderKatexString, 
   getSelectionTextWithLatex, 
   handleOpenHtmlAnswerPopup,
@@ -518,6 +519,7 @@ export const LatexRenderer = React.memo(function LatexRenderer({
     const shouldHideRemarks = isMixedReview || (formulaSource === 'tutor' && !hideTableWrapper);
     cleanedText = convertMarkdownTablesToHtml(cleanedText, hideTableWrapper, shouldHideRemarks);
     cleanedText = convertMarkdownAcronymsToHtml(cleanedText);
+    cleanedText = wrapMechanismProcedureAssumptionsHtml(cleanedText);
   }
 
   // Tutor panels (isMarkdown=true) use rich markdown-to-HTML conversion.

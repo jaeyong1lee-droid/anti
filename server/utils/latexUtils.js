@@ -449,16 +449,6 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   processed = processed.replace(deltaGreekRegex, '\\Delta \\$1');
   processed = processed.replace(/\\\s*Delta\s*([a-zA-Z])\b/gi, '\\Delta $1');
 
-  // [Self-Healing] Fix inner spaces in dollar math delimiters (e.g. $ 0.6$ -> $0.6$, $ 2q $ -> $2q$, $ A = ... $ -> $A = ...$)
-  processed = processed.replace(/\$\s+([^\$\n]+?)\s+\$/g, (match, g1) => `$${g1.trim()}$`)
-                       .replace(/\$\s+([^\$\n]+?)\$/g, (match, g1) => `$${g1.trim()}$`)
-                       .replace(/\$([^\$\n]+?)\s+\$/g, (match, g1) => `$${g1.trim()}$`);
-
-  // [Self-Healing] Fix invalid math commands inside \\text{} block (e.g. \\text{\\sum Resisting} -> \\sum \\text{Resisting})
-  processed = processed.replace(/\\text\s*\{\s*(\\sum|\\prod|\\int|\\lim|\\Delta|\\alpha|\\beta|\\gamma|\\theta)\s*([^}]+)\}/gi, (m, cmd, textPart) => {
-    return `${cmd} \\text{${textPart.trim()}}`;
-  });
-
   // [🚨 KaTeX HTML 블록 최우선 복원 필터 🚨]
   // 텍스트 내부에 들어있는 KaTeX HTML 사전 렌더링 블록을 감지하여
   // 그 내부에 들어있는 원본 LaTeX 수식 문자열(annotation encoding="application/x-tex")을 추출한 뒤,
@@ -1278,7 +1268,7 @@ export function healQuizQuestionObject(q) {
           // Let's find the placeholder identifier (e.g. A, B, C, INPUT_1, 빈칸(1) 등)
           let placeholderId = '';
           const inputMatch = trimmedCell.match(/INPUT_(\d+(?:_\d+)?)/i);
-          const letterMatch = trimmedCell.match(/^[\[\(]?\s*([A-Za-z])\s*[\]\)]?$/);
+          const letterMatch = trimmedCell.match(/[\[\(]\s*([A-Za-z])\s*[\]\)]|\b([A-Za-z])\s*[\.\:\)]|^[\[\(]?\s*([A-Za-z])\s*[\]\)]?$/);
           const binkanMatch = trimmedCell.match(/빈칸\s*\(?(\d+)\)?/i);
           
           let matchedNum = null;
@@ -1288,8 +1278,9 @@ export function healQuizQuestionObject(q) {
               matchedNum = parseInt(inputMatch[1], 10);
             }
           } else if (letterMatch) {
-            placeholderId = letterMatch[1].toUpperCase(); // e.g. "A"
-            matchedNum = letterMatch[1].toUpperCase().charCodeAt(0) - 64;
+            const letter = (letterMatch[1] || letterMatch[2] || letterMatch[3]).toUpperCase();
+            placeholderId = letter; // e.g. "A", "B", "C", "D"
+            matchedNum = letter.charCodeAt(0) - 64;
           } else if (binkanMatch) {
             placeholderId = `INPUT_${binkanMatch[1]}`;
             matchedNum = parseInt(binkanMatch[1], 10);
@@ -1410,6 +1401,33 @@ export function healQuizQuestionObject(q) {
       });
 
       q.tableData.rows = newRows;
+
+      // Structural row-header cross-healing for 2x2 comparison tables (e.g. 목적/정의 vs 산정방식/공식)
+      if (q.tableData && q.tableData.rows && q.tableData.rows.length >= 2) {
+        const row0Header = String(q.tableData.rows[0]?.[0] || '').toLowerCase();
+        const row1Header = String(q.tableData.rows[1]?.[0] || '').toLowerCase();
+
+        const isRow0Purpose = /목적|정의|개념|원리|의미/.test(row0Header);
+        const isRow1Formula = /산정|방식|공식|계산|식/.test(row1Header);
+
+        if (isRow0Purpose && isRow1Formula) {
+          const colCount = Math.max(q.tableData.rows[0]?.length || 0, q.tableData.rows[1]?.length || 0);
+          for (let c = 1; c < colCount; c++) {
+            const keyRow0 = `INPUT_${c}`;
+            const keyRow1 = `INPUT_${c + (colCount - 1)}`;
+            const ans0 = String(newAnswers[keyRow0] || '');
+            const ans1 = String(newAnswers[keyRow1] || '');
+
+            const isAns0Formula = /=|\\delta|\\sigma|델타|시그마|산정|공식|b=|u=/.test(ans0.toLowerCase());
+            const isAns1Purpose = /목적|정의|측정|판정|검증|평가|반응/.test(ans1.toLowerCase());
+
+            if (isAns0Formula || isAns1Purpose) {
+              newAnswers[keyRow0] = ans1;
+              newAnswers[keyRow1] = ans0;
+            }
+          }
+        }
+      }
       // 비교표(comparisonTableData)의 answers는 메인 tableData rows 순회에서 처리되지 않으므로
       // oldAnswers에서 comparisonTableData.rows에 실제로 존재하는 키만 살려서 병합한다.
       if (q.comparisonTableData && q.comparisonTableData.rows) {
@@ -1577,9 +1595,6 @@ export const LATEX_CHAT_PROMPT_INSTRUCTIONS = `
 18. 🚨 [달러 기호 매칭 오류 및 이탈 방지 규칙]: 리스트 기호나 숫자가 포함된 번호 매기기(예: "1) 연성 벽체...", "2) 고강성...")가 포함된 문단 내에서 공식들을 나열할 때, 각 공식들은 개별적으로 완벽히 수식 기호($)로 열고 닫혀 있어야 합니다. 절대로 여는 수식 기호가 없는 상태에서 닫는 수식 기호만 배치하거나, 혹은 어설프게 매칭되어 한글 제목 전체가 수식 영역 안으로 빨려 들어가지 않도록 극도로 유의하십시오.
     - ❌ [절대 금지 오류 예시]: d_{H,max1} = ... $ 2) CIP 공법 적용 시: $ d_{H,max2} = ... (중간 한글 제목이 달러 기호에 갇히는 형태는 렌더링을 완전히 망가뜨립니다.)
 20. 🚨 [수식 변수 및 아래첨자 결합 유지 규칙]: 수학 기호나 공식 내에서 물리량 변수 기호와 그 아래첨자(예: Nc, Df, kh 등)는 절대로 중간에 달러 기호($ 또는 $$)를 끼워 넣어서 서로 다른 블록으로 쪼개서 출력하지 마십시오. 반드시 수식 전체를 감싸서 하나의 수식 블록 내에 모두 포함시켜야 합니다. (예: $N_c$ (O) / N$_c$ (X), $\\text{N}_c$ (O) / \\text{N}$$_c (X))
-21. 🚨 [SVG, TikZ, Mermaid 그래픽 코드 출력 절대 금지]:
-    - 어떠한 경우에도 답변에 SVG \`<svg>\`, TikZ \`\\\\begin{tikzpicture}\`, Mermaid \`graph TD\` 등의 그래픽 코드 블록을 작성하거나 출력하지 마십시오.
-    - 지반공학 원리나 절차를 설명할 때는 오직 정제된 한글 문장, 마크다운 비교표, 그리고 일반 수식($)만 사용하여 설명하십시오. 임의로 아스키 아트나 그래픽 코드를 생성하여 답변을 어지럽히는 행위를 엄격히 금지합니다.
 `;
 // Trigger redeployment with clean UTF-8 BOM-less encoding.
 

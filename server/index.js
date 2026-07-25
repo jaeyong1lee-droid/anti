@@ -37,75 +37,6 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
-// Database and Server Startup state
-let isInitialized = false;
-let initPromise = null;
-
-export async function ensureDbInitialized() {
-  if (isInitialized) return;
-  if (!initPromise) {
-    initPromise = (async () => {
-      try {
-        console.log('[Startup] Initializing Database connection...');
-        await initDatabase();
-        
-        try {
-          await dbQuery.run(`
-            CREATE TABLE IF NOT EXISTS app_session (
-              key TEXT PRIMARY KEY,
-              value TEXT,
-              updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-          `);
-          console.log('[Startup] app_session table ensured.');
-        } catch (e) {
-          console.warn('[Startup] ensureSessionTable warning:', e.message);
-        }
-
-        try {
-          console.log('[Startup] Syncing saved standards from database...');
-          await initializeAllStandards();
-        } catch (e) {
-          console.warn('[Startup] initializeAllStandards warning:', e.message);
-        }
-
-        try {
-          console.log('[Startup] Loading saved preferred model configuration...');
-          await loadPreferredModel();
-        } catch (e) {
-          console.warn('[Startup] loadPreferredModel warning:', e.message);
-        }
-
-        if (!process.env.VERCEL) {
-          try {
-            startBackupScheduler();
-          } catch (e) {
-            console.warn('[Startup] startBackupScheduler warning:', e.message);
-          }
-        }
-
-        isInitialized = true;
-      } catch (error) {
-        console.error('[CRITICAL STARTUP ERROR] Database connection failed:', error);
-        initPromise = null;
-        throw error;
-      }
-    })();
-  }
-  await initPromise;
-}
-
-// Request middleware to guarantee DB initialization BEFORE any route is matched
-app.use(async (req, res, next) => {
-  try {
-    await ensureDbInitialized();
-    next();
-  } catch (err) {
-    console.error('[Middleware DB Init Error]:', err);
-    res.status(500).json({ error: 'Database initialization failed', details: err.message });
-  }
-});
-
 // Request Logger
 app.use((req, res, next) => {
   console.log(`[${new Date().toLocaleTimeString()}] ${req.method} ${req.url}`);
@@ -171,16 +102,16 @@ app.use('/api', quizRoutes);
 app.use('/api', gradingRoutes);
 app.use('/api/lockscreen', lockscreenRoutes);
 
-// Static Client Asset Serving for Production deployments (standalone Node mode only)
+// Static Client Asset Serving for Production deployments
 const clientBuildPath = path.resolve(__dirname, '../client/dist');
-if (!process.env.VERCEL && fs.existsSync(clientBuildPath)) {
+if (fs.existsSync(clientBuildPath)) {
   console.log(`[Static Serving] Serving production build assets from: ${clientBuildPath}`);
   app.use(express.static(clientBuildPath));
   app.get('*', (req, res) => {
     res.sendFile(path.join(clientBuildPath, 'index.html'));
   });
 } else {
-  console.log('[Static Serving] Running in Vercel or API mode.');
+  console.log('[Static Serving] Production build folder not found. Local server started in API mode.');
 }
 
 import { updateLiveEngineeringStandards, standardsList } from './plugins/engineeringStandards.js';
@@ -188,7 +119,6 @@ import { updateLiveGradingStandards } from './plugins/gradingPlugin.js';
 import { gradingStandardsList } from './plugins/gradingStandardsList.js';
 import { updateLiveGenerationStandards, generationStandardsList } from './plugins/generationStandards.js';
 import { updateLiveLockscreenStandards, lockscreenStandardsList } from './plugins/lockscreenStandards.js';
-import { updateLiveOtherStandards, otherStandardsList } from './plugins/otherStandards.js';
 
 import { saveSessionValue } from './services/aiService.js';
 
@@ -238,16 +168,6 @@ async function checkIsFileNewer(fileName, dbKey) {
 }
 
 async function initializeAllStandards() {
-  if (process.env.VERCEL) {
-    // In Vercel serverless environment, instantly load in-memory standards to eliminate network latency
-    updateLiveEngineeringStandards(standardsList);
-    updateLiveGradingStandards(gradingStandardsList);
-    updateLiveGenerationStandards(generationStandardsList);
-    updateLiveLockscreenStandards(lockscreenStandardsList);
-    updateLiveOtherStandards(otherStandardsList);
-    return;
-  }
-
   const syncStandard = async (fileName, dbKey, fileList, updateFn) => {
     try {
       let dbList = [];
@@ -273,32 +193,47 @@ async function initializeAllStandards() {
   await syncStandard('gradingStandardsList.js', 'grading_standards', gradingStandardsList, updateLiveGradingStandards);
   await syncStandard('generationStandards.js', 'generation_standards', generationStandardsList, updateLiveGenerationStandards);
   await syncStandard('lockscreenStandards.js', 'lockscreen_standards', lockscreenStandardsList, updateLiveLockscreenStandards);
-  await syncStandard('otherStandards.js', 'other_standards', otherStandardsList, updateLiveOtherStandards);
 }
 
-// Global Express Error Handler to guarantee JSON responses for all server errors
-app.use((err, req, res, next) => {
-  console.error('[Global Express Server Error]:', err);
-  if (res.headersSent) {
-    return next(err);
-  }
-  res.status(err.status || 500).json({
-    error: err.message || 'Internal Server Error',
-    details: process.env.NODE_ENV === 'production' ? undefined : err.stack
-  });
-});
+// Database and Server Startup
+async function startServer() {
+  try {
+    console.log('[Startup] Initializing SQLite/PostgreSQL Database connection...');
+    await initDatabase();
+    
+    // Ensure app_session table exists once at startup (bypasses per-request DDL check)
+    try {
+      await dbQuery.run(`
+        CREATE TABLE IF NOT EXISTS app_session (
+          key TEXT PRIMARY KEY,
+          value TEXT,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+      console.log('[Startup] app_session table ensured.');
+    } catch (e) {
+      console.warn('[Startup] ensureSessionTable warning:', e.message);
+    }
 
-if (!process.env.VERCEL) {
-  ensureDbInitialized().then(() => {
+    console.log('[Startup] Syncing saved standards from database...');
+    await initializeAllStandards();
+    console.log('[Startup] Loading saved preferred model configuration...');
+    await loadPreferredModel();
+    
+    // Start automated DB backup cron job
+    startBackupScheduler();
+
     app.listen(PORT, () => {
       console.log(`================================================`);
       console.log(`  Antigravity Server is running on port ${PORT}`);
       console.log(`  Mode: ${process.env.NODE_ENV || 'development'}`);
       console.log(`================================================`);
     });
-  }).catch((err) => {
-    console.error('Failed to start standalone server:', err);
-  });
+  } catch (error) {
+    console.error('[CRITICAL STARTUP ERROR] Server failed to start:', error);
+    process.exit(1);
+  }
 }
 
+startServer();
 export default app;

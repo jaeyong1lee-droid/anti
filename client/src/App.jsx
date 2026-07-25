@@ -36,7 +36,6 @@ import {
   Calendar, 
   List, 
   Activity,
-  BarChart2,
   FileText, 
   FileCode,
   Sparkles, 
@@ -929,29 +928,15 @@ function parseQuestionTable(q, topicTitle) {
 }
 
 
-const getActualLettersMap = (text, q = null) => {
+const getActualLettersMap = (text) => {
   const map = {};
   if (typeof text !== 'string') return map;
-  const regex = /[\(\[]([A-F])[\)\]](?:\s*입력)?/g;
+  const regex = /[\(\[]([A-F])[\)\]]/g;
   let match;
   let idx = 1;
-  const seen = new Set();
   while ((match = regex.exec(text)) !== null) {
-    const letter = match[1].toUpperCase();
-    const fullMatch = match[0];
-    
-    const inputId = `INPUT_${idx}`;
-    const hasAnswerKey = q?.answers?.[inputId] !== undefined;
-    const hasRowEntry = q?.tableData?.rows?.some(row => row[0] && row[0].includes(`(${letter})`));
-    const isExplicitInputBlank = fullMatch.includes('입력') || text.includes(`빈칸 (${letter})`) || text.includes(`(${letter}) 입력`);
-    
-    const isActualBlank = q ? (hasAnswerKey || hasRowEntry || isExplicitInputBlank) : (isExplicitInputBlank || ['A','B','C','D'].includes(letter));
-
-    if (isActualBlank && !seen.has(letter)) {
-      seen.add(letter);
-      map[inputId] = letter;
-      idx++;
-    }
+    map[`INPUT_${idx}`] = match[1].toUpperCase();
+    idx++;
   }
   return map;
 };
@@ -1126,21 +1111,6 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
       const letter = letterMatch[1];
       const letterIdx = letter.charCodeAt(0) - 65;
       const inputId = `INPUT_${letterIdx + 1}`;
-      
-      // Validate whether this letter is an actual blank in the question answers or rows
-      const hasAnswerKey = q?.answers?.[inputId] !== undefined;
-      const hasRowEntry = q?.tableData?.rows?.some(row => row[0] && row[0].includes(`(${letter})`));
-      const isQuestionPromptBlank = q?.question && (q.question.includes(`(${letter}) 입력`) || q.question.includes(`빈칸 (${letter})`));
-      const isActualBlank = hasAnswerKey || hasRowEntry || isQuestionPromptBlank;
-
-      if (!isActualBlank) {
-        return (
-          <div className="w-full h-auto whitespace-pre-wrap break-all flowchart-text-force">
-            <LatexRenderer text={content} katexLoaded={katexLoaded} enableAddFormula={true} questionKey={questionKey} forceInline={true} />
-          </div>
-        );
-      }
-
       const inputKey = `${questionIdx}_${inputId}`;
       const val = tableAnswers[inputKey] || '';
 
@@ -1196,7 +1166,7 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
 
       return (
         <div className="flex items-center gap-1.5 flex-wrap my-0.5 select-text w-full h-auto whitespace-pre-wrap break-all flowchart-text-force">
-          <LatexRenderer text={parts[0]} katexLoaded={katexLoaded} forceInline={true} />
+          <span>{parts[0]}</span>
           <div className="flex items-center gap-1.5 flex-grow flex-1 min-w-[170px] relative">
             <input
               type="text"
@@ -1213,7 +1183,7 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
               }`}
             />
           </div>
-          <LatexRenderer text={rightText} katexLoaded={katexLoaded} forceInline={true} />
+          <span>{rightText}</span>
         </div>
       );
     }
@@ -1395,7 +1365,7 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
       {/* 📝 각 동적 상자 칸 채점 피드백 누적 출력 영역 */}
       {(() => {
         const feedbackList = [];
-        const actualLettersMap = getActualLettersMap(flowchartText, q);
+        const actualLettersMap = getActualLettersMap(flowchartText);
 
         if (tableGradingResults) {
           Object.keys(tableGradingResults).forEach(key => {
@@ -3033,9 +3003,32 @@ export default function App() {
   const [allTopics, setAllTopics] = useState([]);
   const [topicFilter, setTopicFilter] = useState('전체');
   const [editingTopicId, setEditingTopicId] = useState(null);
-  const [editingTitleText, setEditingTitleText] = useState('');
-  const [preferredModel, setPreferredModel] = useState('gemini-3.1-flash-lite');
-  const [showModelMenu, setShowModelMenu] = useState(false);
+  const [preferredModel, setPreferredModel] = useState('gemini-3.5-flash');
+  const [showApiModal, setShowApiModal] = useState(false);
+
+  const handleSelectModel = async (modelKey) => {
+    setPreferredModel(modelKey);
+    localStorage.setItem('anti_preferred_model', modelKey);
+
+    try {
+      await fetch(`${API_BASE}/api/preferred-model`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: modelKey })
+      });
+      const names = {
+        'gemini-3.5-flash-lite': '3.5 Flash Lite',
+        'gemini-3.5-lite': '3.5 Flash Lite',
+        'gemini-3.6-flash': '3.6 Flash',
+        'gemini-3.1-flash-lite': '3.1 Lite',
+        'gemini-3.5-flash': '3.5 Flash'
+      };
+      showNotification(`AI 모델이 ${names[modelKey] || modelKey}(으)로 변경되었습니다.`, 'success');
+    } catch (error) {
+      console.warn('Failed to sync preferred model to server:', error);
+    }
+    setShowApiModal(false);
+  };
   const [isLockscreenQuizEnabled, setIsLockscreenQuizEnabled] = useState(() => {
     return localStorage.getItem('anti_lockscreen_quiz_enabled') === 'true';
   });
@@ -4906,6 +4899,43 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
             }
           }
           
+          const boxCount = (patchedQ.question.match(/┌/g) || []).length;
+          if (boxCount === 3) {
+            const ansE = patchedQ.answers?.INPUT_5 || '';
+            const ansF = patchedQ.answers?.INPUT_6 || '';
+            
+            if (ansE || ansF) {
+              let restoredQuestion = patchedQ.question;
+              restoredQuestion = restoredQuestion
+                .replace(/\[\s*\(E\)\s*\]/g, `[ ${ansE} ]`)
+                .replace(/\[\s*\(E\) 입력\s*\]/g, `[ ${ansE} ]`)
+                .replace(/\(\s*E\s*\)/g, ansE)
+                .replace(/-\s*\(F\)/g, `- ${ansF}`)
+                .replace(/-\s*\(F\) 입력/g, `- ${ansF}`)
+                .replace(/\(\s*F\s*\)/g, ansF);
+                
+              const newAnswers = { ...patchedQ.answers };
+              delete newAnswers.INPUT_5;
+              delete newAnswers.INPUT_6;
+              
+              const newRows = patchedQ.tableData?.rows 
+                ? patchedQ.tableData.rows.filter(row => row[0] !== '(E)' && row[0] !== '(F)') 
+                : [];
+                
+              const newTableData = {
+                ...patchedQ.tableData,
+                rows: newRows
+              };
+              
+              patchedQ = {
+                ...patchedQ,
+                question: restoredQuestion,
+                answers: newAnswers,
+                tableData: newTableData
+              };
+            }
+          }
+          
           return patchedQ;
         }
         return q;
@@ -5488,15 +5518,6 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
   const [editingLockscreenContent, setEditingLockscreenContent] = useState('');
   const [isSavingLockscreenStandardsList, setIsSavingLockscreenStandardsList] = useState(false);
   const [isLoadingLockscreenStandardsList, setIsLoadingLockscreenStandardsList] = useState(false);
-
-  const [showManageOtherStandardsModal, setShowManageOtherStandardsModal] = useState(false);
-  const [showEditOtherStandardModal, setShowEditOtherStandardModal] = useState(false);
-  const [otherStandardsList, setOtherStandardsList] = useState([]);
-  const [editingOtherStandard, setEditingOtherStandard] = useState(null);
-  const [editingOtherTitle, setEditingOtherTitle] = useState('');
-  const [editingOtherContent, setEditingOtherContent] = useState('');
-  const [isSavingOtherStandardsList, setIsSavingOtherStandardsList] = useState(false);
-  const [isLoadingOtherStandardsList, setIsLoadingOtherStandardsList] = useState(false);
   
   const [showManageTopicInstructionsModal, setShowManageTopicInstructionsModal] = useState(false);
   const [showEditTopicInstructionModal, setShowEditTopicInstructionModal] = useState(false);
@@ -11642,29 +11663,11 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
     }
   };
 
-  const handleSelectPreferredModel = async (modelName) => {
-    setPreferredModel(modelName);
-    localStorage.setItem('anti_preferred_model', modelName);
-    setShowModelMenu(false);
-
-    try {
-      const response = await fetch(`${API_BASE}/api/preferred-model`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ model: modelName })
-      });
-      if (!response.ok) {
-        throw new Error(`Server returned ${response.status}`);
-      }
-      showNotification(`API 모델이 ${
-        modelName === 'gemini-3.6-flash' ? '3.6 FLASH' : modelName === 'gemini-3.5-lite' ? '3.5 LITE' : '3.5 FLASH'
-      }로 변경되었습니다.`, 'success');
-    } catch (error) {
-      console.warn('Failed to sync preferred model to server:', error);
-      showNotification('모델 변경 실패: ' + error.message, 'error');
-    }
+  const handleTogglePreferredModel = async () => {
+    const models = ['gemini-3.5-flash-lite', 'gemini-3.6-flash', 'gemini-3.1-flash-lite', 'gemini-3.5-flash'];
+    const currentIndex = models.indexOf(preferredModel);
+    const nextModel = models[(currentIndex + 1) % models.length];
+    handleSelectModel(nextModel);
   };
 
   const handleDeleteStandard = async (id) => {
@@ -12343,109 +12346,6 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
       showNotification(err.message, 'error');
     } finally {
       setIsSavingLockscreenStandardsList(false);
-    }
-  };
-
-  const handleOpenManageOtherStandardsModal = async () => {
-    setShowManageOtherStandardsModal(true);
-    setIsLoadingOtherStandardsList(true);
-    try {
-      const res = await fetch(`${API_BASE}/api/other-standards`);
-      if (!res.ok) throw new Error('기타 지침 데이터를 불러오지 못했습니다.');
-      const data = await res.json();
-      setOtherStandardsList(data.standards || []);
-    } catch (err) {
-      console.error(err);
-      showNotification(err.message, 'error');
-    } finally {
-      setIsLoadingOtherStandardsList(false);
-    }
-  };
-
-  const handleDeleteOtherStandard = async (id) => {
-    if (!window.confirm('정말 이 기타 지침을 삭제하시겠습니까?')) return;
-    const updatedList = otherStandardsList.filter(s => s.id !== id);
-    setIsSavingOtherStandardsList(true);
-    try {
-      const res = await fetch(`${API_BASE}/api/other-standards`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ standards: updatedList })
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || '삭제 저장에 실패했습니다.');
-      }
-      setOtherStandardsList(updatedList);
-      showNotification('기타 지침이 삭제되었습니다.', 'success');
-    } catch (err) {
-      console.error(err);
-      showNotification(err.message, 'error');
-    } finally {
-      setIsSavingOtherStandardsList(false);
-    }
-  };
-
-  const handleOpenAddOtherStandardModal = () => {
-    setEditingOtherStandard(null);
-    setEditingOtherTitle('');
-    setEditingOtherContent('');
-    setShowEditOtherStandardModal(true);
-  };
-
-  const handleOpenEditOtherStandardModal = (std) => {
-    setEditingOtherStandard(std);
-    setEditingOtherTitle(std.title || '');
-    setEditingOtherContent(std.content || '');
-    setShowEditOtherStandardModal(true);
-  };
-
-  const handleSaveEditOtherStandard = async () => {
-    if (!editingOtherTitle.trim()) {
-      showNotification('제목을 입력해주세요.', 'error');
-      return;
-    }
-    if (!editingOtherContent.trim()) {
-      showNotification('내용을 입력해주세요.', 'error');
-      return;
-    }
-
-    let updatedList;
-    if (editingOtherStandard) {
-      updatedList = otherStandardsList.map(s => 
-        s.id === editingOtherStandard.id 
-          ? { ...s, title: editingOtherTitle, content: editingOtherContent } 
-          : s
-      );
-    } else {
-      const newId = 'user_other_' + Math.random().toString(36).substring(2, 9);
-      const newStd = {
-        id: newId,
-        title: editingOtherTitle,
-        content: editingOtherContent
-      };
-      updatedList = [...otherStandardsList, newStd];
-    }
-
-    setIsSavingOtherStandardsList(true);
-    try {
-      const res = await fetch(`${API_BASE}/api/other-standards`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ standards: updatedList })
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || '저장에 실패했습니다.');
-      }
-      setOtherStandardsList(updatedList);
-      showNotification('기타 지침이 저장되었습니다.', 'success');
-      setShowEditOtherStandardModal(false);
-    } catch (err) {
-      console.error(err);
-      showNotification(err.message, 'error');
-    } finally {
-      setIsSavingOtherStandardsList(false);
     }
   };
 
@@ -16312,150 +16212,6 @@ ${itemsStr}
     : 0;
   const totalScheduleCount = Array.isArray(allTopics) ? allTopics.length * 6 : 0;
   const overallProgressPercent = totalScheduleCount > 0 ? Math.round((totalCompletedCount / totalScheduleCount) * 100) : 0;
-
-  // 회차별 (1일, 4일, 7일, 14일, 35일, 60일) 막대그래프 달성률 통계
-  const roundStats = useMemo(() => {
-    const defaultLabels = ['1회차 (1일)', '2회차 (4일)', '3회차 (7일)', '4회차 (14일)', '5회차 (35일)', '6회차 (60일)'];
-    const defaultColors = [
-      'from-blue-600 to-cyan-500',
-      'from-cyan-600 to-teal-500',
-      'from-emerald-600 to-green-500',
-      'from-amber-600 to-yellow-500',
-      'from-violet-600 to-purple-500',
-      'from-fuchsia-600 to-pink-500'
-    ];
-
-    if (!Array.isArray(allTopics) || allTopics.length === 0) {
-      return [1, 2, 3, 4, 5, 6].map(r => ({
-        round: r,
-        label: defaultLabels[r - 1],
-        completed: 0,
-        total: 0,
-        percent: 0,
-        color: defaultColors[r - 1]
-      }));
-    }
-
-    const totalTopics = allTopics.length;
-    const roundCounts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
-
-    allTopics.forEach(t => {
-      if (Array.isArray(t.schedules)) {
-        t.schedules.forEach(s => {
-          if (s && s.status === 'completed' && s.review_round >= 1 && s.review_round <= 6) {
-            roundCounts[s.review_round] = (roundCounts[s.review_round] || 0) + 1;
-          }
-        });
-      }
-    });
-
-    return [1, 2, 3, 4, 5, 6].map(r => {
-      const comp = roundCounts[r] || 0;
-      const pct = Math.min(100, Math.round((comp / totalTopics) * 100));
-      return {
-        round: r,
-        label: defaultLabels[r - 1],
-        completed: comp,
-        total: totalTopics,
-        percent: pct,
-        color: defaultColors[r - 1]
-      };
-    });
-  }, [allTopics]);
-
-  // 최근 10일간 제출 및 채점 문제 수 세로막대형 그래프 통계 데이터
-  const recent10DaysStats = useMemo(() => {
-    const days = [];
-    const today = new Date(referenceDate || new Date());
-    
-    for (let i = 9; i >= 0; i--) {
-      const d = new Date(today);
-      d.setDate(d.getDate() - i);
-      const dateStr = d.toISOString().split('T')[0];
-      const displayLabel = `${d.getMonth() + 1}.${d.getDate() < 10 ? '0' : ''}${d.getDate()}`;
-      days.push({
-        dateStr,
-        label: displayLabel,
-        isToday: i === 0,
-        count: 0
-      });
-    }
-
-    if (Array.isArray(allTopics)) {
-      allTopics.forEach(t => {
-        if (Array.isArray(t.schedules)) {
-          t.schedules.forEach(s => {
-            if (s && s.status === 'completed' && s.completed_at) {
-              const compDate = String(s.completed_at).split('T')[0];
-              const target = days.find(d => d.dateStr === compDate);
-              if (target) {
-                const qCount = (s.questions && Array.isArray(s.questions) && s.questions.length > 0)
-                  ? s.questions.length
-                  : ((t.questions && Array.isArray(t.questions) && t.questions.length > 0)
-                      ? t.questions.length
-                      : 13);
-                target.count += qCount;
-              }
-            }
-          });
-        }
-      });
-    }
-
-    const maxCount = Math.max(1, ...days.map(d => d.count));
-
-    return days.map(d => {
-      const ratio = maxCount > 0 ? d.count / maxCount : 0;
-      const heightPercent = d.count === 0 ? 10 : Math.min(100, Math.max(15, Math.round(ratio * 100)));
-      
-      // 🎨 100% 동적 최고 공부량 피크 기준 5단계 스펙트럼 (레드/주황/초록/청록/인디고)
-      let barGradient = 'from-slate-800 to-slate-600';
-      let textColor = 'text-slate-500';
-      let badgeBg = 'bg-slate-900 text-slate-400 border-slate-700';
-      let levelLabel = '0개';
-
-      if (d.count === 0) {
-        barGradient = 'from-slate-800 to-slate-600';
-        textColor = 'text-slate-500';
-        badgeBg = 'bg-slate-950 text-slate-500 border-slate-800';
-        levelLabel = '0개';
-      } else if (ratio >= 0.95) {
-        // 🔥 Level 5: 최고 공부량 날 (동적 100% 최고 피크 - 강렬한 크림슨 레드)
-        barGradient = 'from-red-600 via-rose-500 to-pink-400';
-        textColor = 'text-red-400';
-        badgeBg = 'bg-red-950/80 text-red-300 border-red-500/40';
-        levelLabel = '최다';
-      } else if (ratio >= 0.7) {
-        // 🟧 Level 4: 상위 공부량 (70% 이상 - 비비드 오렌지)
-        barGradient = 'from-orange-600 via-amber-500 to-yellow-300';
-        textColor = 'text-orange-400';
-        badgeBg = 'bg-orange-950/80 text-orange-300 border-orange-500/40';
-        levelLabel = '많음';
-      } else if (ratio >= 0.4) {
-        // 🟩 Level 3: 중간 공부량 (40~69% - 에메랄드 그린)
-        barGradient = 'from-emerald-600 via-green-500 to-lime-300';
-        textColor = 'text-emerald-400';
-        badgeBg = 'bg-emerald-950/80 text-emerald-300 border-emerald-500/40';
-        levelLabel = '보통';
-      } else {
-        // 🟦 Level 2/1: 소량 공부량 (40% 미만 - 일렉트릭 사이언)
-        barGradient = 'from-cyan-600 via-sky-500 to-blue-300';
-        textColor = 'text-cyan-400';
-        badgeBg = 'bg-cyan-950/80 text-cyan-300 border-cyan-500/40';
-        levelLabel = '조금';
-      }
-
-      return {
-        ...d,
-        heightPercent,
-        barGradient,
-        textColor,
-        badgeBg,
-        levelLabel
-      };
-    });
-  }, [allTopics, referenceDate]);
-
   const isModalOpen = !!(selectedTopic || showExam || showFormulaExam || showTheoryExam);
 
   // ── Restore active modal data on mount after all functions are defined
@@ -17782,9 +17538,9 @@ ${itemsStr}
                 <h2 className="text-lg font-bold text-white">오늘 공부한 토픽 등록</h2>
               </div>
 
-              <form onSubmit={handleRegisterTopic} className="space-y-3">
+              <form onSubmit={handleRegisterTopic} className="space-y-5">
                 <div>
-                  <label className="block text-xs font-bold text-slate-400 mb-1 uppercase tracking-wider">
+                  <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">
                     토픽 제목 <span className="text-rose-500">*</span>
                   </label>
                   <div className="relative">
@@ -17793,7 +17549,7 @@ ${itemsStr}
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
                       placeholder="예: B-Tree와 B+Tree 구조 및 비교"
-                      className="w-full bg-slateCustom-900/90 border border-slate-800 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 outline-none transition-all duration-200"
+                      className="w-full bg-slateCustom-900/90 border border-slate-800 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 outline-none transition-all duration-200"
                       required
                     />
                     {suggestTitleLoading && (
@@ -17806,14 +17562,14 @@ ${itemsStr}
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-400 mb-1 uppercase tracking-wider">
+                  <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">
                     토픽 구분
                   </label>
-                  <div className="flex bg-slateCustom-900/60 p-1 rounded-xl border border-slate-800 gap-1 w-full">
+                  <div className="flex bg-slateCustom-900/60 p-1.5 rounded-xl border border-slate-800 gap-1.5 w-full">
                     <button
                       type="button"
                       onClick={() => setCategory('일반')}
-                      className={`flex-1 py-1.5 text-center text-xs font-extrabold rounded-lg transition-all duration-200 cursor-pointer select-none ${
+                      className={`flex-1 py-2 text-center text-xs font-extrabold rounded-lg transition-all duration-200 cursor-pointer select-none ${
                         category === '일반'
                           ? 'bg-gradient-to-r from-brand-600 to-indigo-600 text-white shadow-md'
                           : 'text-slate-400 hover:text-slate-200 hover:bg-slateCustom-900/40'
@@ -17824,7 +17580,7 @@ ${itemsStr}
                     <button
                       type="button"
                       onClick={() => setCategory('계산')}
-                      className={`flex-1 py-1.5 text-center text-xs font-extrabold rounded-lg transition-all duration-200 cursor-pointer select-none ${
+                      className={`flex-1 py-2 text-center text-xs font-extrabold rounded-lg transition-all duration-200 cursor-pointer select-none ${
                         category === '계산'
                           ? 'bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white shadow-md'
                           : 'text-slate-400 hover:text-slate-200 hover:bg-slateCustom-900/40'
@@ -17837,7 +17593,7 @@ ${itemsStr}
 
                 {category === '계산' && (
                   <div>
-                    <label className="block text-xs font-bold text-slate-400 mb-1 uppercase tracking-wider">
+                    <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">
                       계산문제 업로드
                     </label>
                     
@@ -17875,23 +17631,23 @@ ${itemsStr}
                             }
                           }
                         }}
-                        className="border border-dashed border-slate-800 rounded-xl p-2.5 text-center cursor-pointer flex flex-col items-center justify-center transition-all duration-200 bg-slateCustom-900/30 hover:bg-slateCustom-900/50 hover:border-violet-500/50 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 min-h-[90px]"
+                        className="border border-dashed border-slate-800 rounded-xl p-4 text-center cursor-pointer flex flex-col items-center justify-center transition-all duration-200 bg-slateCustom-900/30 hover:bg-slateCustom-900/50 hover:border-violet-500/50 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 min-h-[120px]"
                       >
                         {calculationImagePreviews.length === 0 ? (
                           <>
-                            <Copy size={18} className="text-slate-500 mb-1" />
+                            <Copy size={20} className="text-slate-500 mb-1.5" />
                             <p className="text-xs font-bold text-slate-300">클립보드 스크린샷</p>
-                            <p className="text-[10px] text-slate-500 mt-0.5">클릭 후 Ctrl+V로 붙여넣기</p>
+                            <p className="text-[10px] text-slate-500 mt-1">클릭 후 Ctrl+V로 붙여넣기</p>
                           </>
                         ) : (
-                          <div className="flex flex-col items-center gap-2 w-full">
-                            <div className="flex flex-wrap items-center justify-center gap-2">
+                          <div className="flex flex-col items-center gap-3.5 w-full">
+                            <div className="flex flex-wrap items-center justify-center gap-3">
                               {calculationImagePreviews.map((preview, idx) => (
                                 <div key={idx} className="relative group shrink-0" onClick={(e) => e.stopPropagation()}>
                                   <img 
                                     src={preview} 
                                     alt={`Pasted ${idx}`} 
-                                    className="h-12 w-auto object-contain rounded-lg border border-slate-700 bg-slate-950/80 shadow-md" 
+                                    className="h-16 w-auto object-contain rounded-lg border border-slate-700 bg-slate-950/80 shadow-md" 
                                   />
                                   <button
                                     type="button"
@@ -17914,7 +17670,7 @@ ${itemsStr}
                   </div>
                 )}
 
-                <div className="space-y-1">
+                <div className="space-y-1.5">
                   <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">
                     HTML 코딩 직접 입력
                   </label>
@@ -17928,83 +17684,30 @@ ${itemsStr}
                       }
                     }}
                     onBlur={(e) => handleSuggestTitleFromHtml(e.target.value)}
-                    rows={3}
+                    rows={6}
                     placeholder="HTML 코드 내용을 여기에 직접 붙여넣거나 코딩하여 토픽 자료로 등록하세요."
-                    className="w-full bg-slateCustom-900/90 border border-slate-800 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 rounded-xl px-3.5 py-2.5 text-xs font-mono text-slate-100 placeholder-slate-500 outline-none transition-all duration-200 resize-none"
+                    className="w-full bg-slateCustom-900/90 border border-slate-800 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 rounded-xl px-4 py-3 text-xs font-mono text-slate-100 placeholder-slate-500 outline-none transition-all duration-200 resize-none"
                   />
                 </div>
 
                 <button 
                   type="submit" 
                   disabled={submitLoading}
-                  className="w-full bg-gradient-to-r from-brand-600 to-indigo-600 text-white rounded-xl py-3 font-black text-xs hover:from-brand-500 hover:to-indigo-500 transition-all duration-300 shadow-lg shadow-brand-950/40 border border-brand-500/20 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed glow-purple-hover mt-2"
+                  className="w-full bg-gradient-to-r from-brand-600 to-indigo-600 text-white rounded-xl py-3.5 font-black text-sm hover:from-brand-500 hover:to-indigo-500 transition-all duration-300 shadow-lg shadow-brand-950/40 border border-brand-500/20 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed glow-purple-hover"
                 >
                   {submitLoading ? (
                     <>
-                      <RefreshCw className="animate-spin" size={15} />
+                      <RefreshCw className="animate-spin" size={16} />
                       토픽 등록 스케줄링 중...
                     </>
                   ) : (
                     <>
-                      <PlusCircle size={15} />
+                      <PlusCircle size={16} />
                       오늘 공부 토픽으로 등록
                     </>
                   )}
                 </button>
               </form>
-
-              {/* 📊 오른쪽 패널 하단 실시간 대시보드 현황 카드 */}
-              <div className="mt-6 pt-5 border-t border-slate-800/80 space-y-4">
-                {/* 📊 최근 10일간 제출 및 채점 문제 수 (세로막대형 그래프) */}
-                <div className="bg-slateCustom-900/90 p-2.5 rounded-2xl border border-slate-800/90 shadow-md space-y-2">
-                  <div className="flex items-center justify-between px-1">
-                    <span className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
-                      <BarChart2 size={14} className="text-brand-400" />
-                      <span>최근 10일간 제출/채점 수</span>
-                    </span>
-                    <span className="text-[10px] text-slate-400 font-medium">최근 10일 통계</span>
-                  </div>
-
-                  {/* 세로막대형 그래프 캔버스 영역 (타이트하게 조절) */}
-                  <div className="h-36 bg-slate-950/90 rounded-xl border border-slate-800/80 px-2 pt-2 pb-1 flex items-end justify-between gap-1 relative overflow-hidden">
-                    {/* 배경 보조 눈금선 */}
-                    <div className="absolute inset-0 flex flex-col justify-between px-2 pt-3 pb-5 pointer-events-none opacity-20">
-                      <div className="border-b border-slate-700 w-full" />
-                      <div className="border-b border-slate-700 w-full" />
-                      <div className="border-b border-slate-700 w-full" />
-                    </div>
-
-                    {/* 10개 일자별 세로막대 기둥 */}
-                    {recent10DaysStats.map((item, idx) => (
-                      <div key={idx} className="flex-1 flex flex-col items-center h-full justify-end group z-10">
-                        {/* 수량 라벨 */}
-                        <span className={`text-[9px] font-black mb-0.5 transition-all ${
-                          item.isToday ? `${item.textColor} scale-110 font-black` : `${item.textColor} group-hover:scale-105`
-                        }`}>
-                          {item.count}개
-                        </span>
-
-                        {/* 세로 막대기 */}
-                        <div className="w-full max-w-[26px] bg-slate-900 rounded-t-md overflow-hidden flex items-end h-[85px] p-0.5 border border-slate-800/60 shadow-inner">
-                          <div 
-                            className={`w-full rounded-t-sm transition-all duration-500 ease-out bg-gradient-to-t ${item.barGradient} ${
-                              item.isToday ? 'shadow-lg shadow-red-500/30 ring-1 ring-white/50' : 'group-hover:brightness-125'
-                            }`}
-                            style={{ height: `${item.heightPercent}%` }}
-                          />
-                        </div>
-
-                        {/* X축 일자 라벨 (바닥에 딱 맞춰 타이트 배치) */}
-                        <span className={`text-[9px] font-bold mt-0.5 whitespace-nowrap ${
-                          item.isToday ? 'text-brand-300 font-extrabold underline decoration-brand-500 underline-offset-1' : 'text-slate-400'
-                        }`}>
-                          {item.isToday ? '오늘' : item.label}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
             </section>
           </div>
         ) : (
@@ -18043,71 +17746,18 @@ ${itemsStr}
                   <span>기준</span>
                 </button>
 
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setShowModelMenu(!showModelMenu)}
-                    className={`flex items-center justify-center px-3 py-1.5 rounded-xl border transition-all active:scale-98 text-[11px] font-black cursor-pointer shadow-md select-none ${
-                      preferredModel.includes('3.6')
-                        ? 'border-indigo-500/20 bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 hover:border-indigo-500/30'
-                        : preferredModel.includes('3.5-lite') || preferredModel.includes('3.1-flash-lite')
-                        ? 'border-emerald-500/20 bg-[#10b981]/10 text-emerald-400 hover:bg-emerald-500/20 hover:border-emerald-500/30'
-                        : 'border-cyan-500/20 bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20 hover:border-cyan-500/30'
-                    }`}
-                  >
-                    <span>
-                      {preferredModel.includes('3.6') ? '3.6 FLASH' : preferredModel.includes('3.5-lite') || preferredModel.includes('3.1-flash-lite') ? '3.5 LITE' : '3.5 FLASH'}
-                    </span>
-                  </button>
-
-                  {showModelMenu && (
-                    <>
-                      <div className="fixed inset-0 z-40" onClick={() => setShowModelMenu(false)} />
-                      <div className="absolute right-0 mt-2 w-44 bg-[#0b0f19] border border-slate-800 rounded-xl shadow-2xl p-1.5 z-50 animate-fade-in space-y-0.5">
-                        <div className="text-[9px] font-black text-slate-500 uppercase tracking-wider px-2.5 py-1 border-b border-slate-800/80 mb-1 select-none">API 엔진 설정</div>
-                        
-                        <button
-                          type="button"
-                          onClick={() => handleSelectPreferredModel('gemini-3.6-flash')}
-                          className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left text-[11px] font-extrabold transition-all cursor-pointer ${
-                            preferredModel.includes('3.6')
-                              ? 'bg-indigo-600/20 text-indigo-300'
-                              : 'text-slate-400 hover:bg-slate-800/40 hover:text-slate-200'
-                          }`}
-                        >
-                          <span>3.6 FLASH</span>
-                          {preferredModel.includes('3.6') && <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />}
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => handleSelectPreferredModel('gemini-3.5-lite')}
-                          className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left text-[11px] font-extrabold transition-all cursor-pointer ${
-                            preferredModel.includes('3.5-lite') || preferredModel.includes('3.1-flash-lite')
-                              ? 'bg-emerald-600/20 text-emerald-300'
-                              : 'text-slate-400 hover:bg-slate-800/40 hover:text-slate-200'
-                          }`}
-                        >
-                          <span>3.5 LITE</span>
-                          {(preferredModel.includes('3.5-lite') || preferredModel.includes('3.1-flash-lite')) && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />}
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => handleSelectPreferredModel('gemini-3.5-flash')}
-                          className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left text-[11px] font-extrabold transition-all cursor-pointer ${
-                            preferredModel === 'gemini-3.5-flash'
-                              ? 'bg-cyan-600/20 text-cyan-300'
-                              : 'text-slate-400 hover:bg-slate-800/40 hover:text-slate-200'
-                          }`}
-                        >
-                          <span>3.5 FLASH</span>
-                          {preferredModel === 'gemini-3.5-flash' && <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />}
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowApiModal(true)}
+                  className="flex items-center justify-center px-3 py-1.5 rounded-xl border border-cyan-500/30 bg-cyan-500/10 text-cyan-300 hover:bg-cyan-500/20 hover:border-cyan-500/40 transition-all active:scale-98 text-[11px] font-black cursor-pointer shadow-md select-none"
+                  title="AI 모델 API 선택 (3.5 Flash Lite, 3.6 Flash, 3.1 Lite, 3.5 Flash)"
+                >
+                  <span>
+                    {preferredModel === 'gemini-3.5-flash-lite' || preferredModel === 'gemini-3.5-lite' ? '3.5 Flash Lite' :
+                     preferredModel === 'gemini-3.6-flash' ? '3.6 Flash' :
+                     preferredModel === 'gemini-3.1-flash-lite' ? '3.1 Lite' : '3.5 Flash'}
+                  </span>
+                </button>
 
                 <button
                   type="button"
@@ -18139,14 +17789,6 @@ ${itemsStr}
                   className="hidden md:flex items-center justify-center px-3 py-1.5 rounded-xl border border-indigo-500/20 bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 hover:border-indigo-500/30 transition-all active:scale-98 text-[11px] font-black cursor-pointer shadow-md"
                 >
                   <span>락스크린</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleOpenManageOtherStandardsModal}
-                  className="hidden md:flex items-center justify-center px-3 py-1.5 rounded-xl border border-purple-500/20 bg-purple-500/10 text-purple-400 hover:bg-purple-500/20 hover:border-purple-500/30 transition-all active:scale-98 text-[11px] font-black cursor-pointer shadow-md"
-                >
-                  <span>기타</span>
                 </button>
               </div>
               
@@ -19998,7 +19640,7 @@ ${itemsStr}
                                 );
                               })()}
                               {!isRevd ? (
-                                !isOverviewReview(q) && !isNATMFlowchart(idx, q) && (
+                                !isOverviewReview(q) && !isNATMFlowchart(idx, q, false) && (
                                   <button
                                     onClick={async () => {
                                       if (gradingLoading[idx]) return;
@@ -20014,7 +19656,14 @@ ${itemsStr}
                                 )
                               ) : (() => {
                                 const isOverview = isOverviewReview(q);
-                                if (isOverview || isNATMFlowchart(idx, q)) {
+                                if (isOverview) {
+                                  return (
+                                    <div className="mt-2.5 pt-2.5 border-t border-slate-800/40 text-left">
+                                      {renderCardTutorChat(rKey, q)}
+                                    </div>
+                                  );
+                                }
+                                if (isNATMFlowchart(idx, q, false)) {
                                   return null;
                                 }
                                 return (
@@ -20342,12 +19991,11 @@ ${itemsStr}
                         )}
 
                         <button
-                          onClick={handleRefreshReviewQuestions}
-                          disabled={loadingAI}
-                          className="px-2.5 py-1 text-[10px] font-black rounded-lg bg-violet-950/40 hover:bg-violet-900/60 text-violet-300 hover:text-white border border-violet-500/20 transition-all cursor-pointer active:scale-95 shadow-md disabled:opacity-50"
-                          title="주제와 문제가 맞지 않을 때 전체 AI 재출제"
+                          onClick={() => setShowApiModal(true)}
+                          className="px-2.5 py-1 text-[10px] font-black rounded-lg bg-indigo-950/80 hover:bg-indigo-900 text-indigo-300 hover:text-white border border-indigo-500/40 transition-all cursor-pointer active:scale-95 shadow-md"
+                          title="AI 모델 API 선택 (3.5 Lite, 3.6 Flash, 3.5 Flash, 3.1 Lite)"
                         >
-                          AI
+                          api
                         </button>
                         <button
                           onClick={async () => { 
@@ -21575,175 +21223,75 @@ ${itemsStr}
         </div>
       )}
 
-      {/* ⚙️ 기타 지침 통합 관리 모달 (Other Standards Management Modal) */}
-      {showManageOtherStandardsModal && (
-        <div className="fixed inset-0 z-[200] overflow-y-auto flex items-center justify-center p-4 bg-black/45 backdrop-blur-sm transition-all duration-300 animate-fade-in" onClick={() => setShowManageOtherStandardsModal(false)}>
-          <div className="w-full max-w-4xl bg-slateCustom-900 border border-white/20 rounded-2xl overflow-hidden shadow-2xl p-6 space-y-4 animate-scale-up text-left" onClick={(e) => e.stopPropagation()}>
+      {/* 🤖 API 선택 모달 (Preferred Model Selection Modal) */}
+      {showApiModal && (
+        <div className="fixed inset-0 z-[250] overflow-y-auto flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm transition-all duration-300 animate-fade-in" onClick={() => setShowApiModal(false)}>
+          <div className="w-full max-w-md bg-slateCustom-900 border border-indigo-500/40 rounded-2xl overflow-hidden shadow-2xl p-5 space-y-4 animate-scale-up text-left select-text" onClick={(e) => e.stopPropagation()}>
             
-            {/* Modal Header */}
-            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
-              <div className="flex items-center gap-2">
-                <div className="p-1.5 bg-purple-500/10 text-purple-400 rounded-lg">
-                  <Sliders size={18} className="text-purple-500 animate-pulse" />
+            {/* Header */}
+            <div className="flex items-center justify-between pb-2.5 border-b border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-indigo-500/10 text-indigo-400 rounded-xl border border-indigo-500/30">
+                  <span className="text-lg">🤖</span>
                 </div>
-                <h3 className="text-sm font-extrabold text-white">⚙️ 기타 프롬프트 및 시스템 지침 통합 관리</h3>
+                <div>
+                  <h3 className="text-sm font-extrabold text-white">AI 모델 API 선택</h3>
+                  <p className="text-[11px] text-slate-400 font-medium">출제 및 튜터링에 사용할 Gemini AI 모델을 선택하세요.</p>
+                </div>
               </div>
               <button
-                onClick={() => setShowManageOtherStandardsModal(false)}
-                className="w-6 h-6 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-200 flex items-center justify-center transition-all cursor-pointer"
+                onClick={() => setShowApiModal(false)}
+                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
               >
-                <X size={14} />
+                <X size={16} />
               </button>
             </div>
 
-            {/* Modal Sub-Header Info */}
-            <div className="bg-purple-950/30 border border-purple-500/20 rounded-xl p-3 text-xs text-purple-300 space-y-1">
-              💡 AI 튜터, 채점관 및 시스템 전반에 반영되는 **기타 지침 기준 목록**입니다. 등록된 모든 지침 항목은 AI의 시스템 프롬프트 및 채점/생성 기준과 합쳐져 실시간 적용됩니다.
-            </div>
-
-            {/* Standards List Container */}
-            <div className="max-h-[60vh] overflow-y-auto space-y-3 pr-1 custom-vertical-scrollbar">
-              {isLoadingOtherStandardsList ? (
-                <div className="py-12 text-center flex flex-col items-center justify-center gap-2">
-                  <div className="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
-                  <span className="text-xs text-purple-400 font-bold animate-pulse">서버에서 기타 지침 데이터를 로드하는 중입니다...</span>
-                </div>
-              ) : otherStandardsList.length === 0 ? (
-                <div className="py-12 text-center bg-slate-950/40 rounded-xl border border-dashed border-slate-800 text-slate-500 text-xs font-semibold">
-                  등록된 기타 지침이 없습니다. 새로운 지침을 추가해보세요.
-                </div>
-              ) : (
-                otherStandardsList.map((std, idx) => (
-                  <div key={std.id || idx} className="bg-slate-950/60 border border-slate-800/80 hover:border-purple-500/40 rounded-xl p-4 transition-all duration-200 space-y-2 group">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="w-5 h-5 rounded-full bg-purple-500/10 text-purple-400 text-[10px] font-black flex items-center justify-center border border-purple-500/20">
-                          {idx + 1}
-                        </span>
-                        <h4 className="text-xs font-bold text-slate-100 group-hover:text-purple-300 transition-colors">
-                          {std.title}
-                        </h4>
-                      </div>
-                      <div className="flex items-center gap-1.5 opacity-80 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={() => handleOpenEditOtherStandardModal(std)}
-                          className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-purple-400 rounded-lg text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1 active:scale-95"
-                          title="지침 수정"
-                        >
-                          <Edit2 size={11} />
-                          <span>수정</span>
-                        </button>
-                        <button
-                          onClick={() => handleDeleteOtherStandard(std.id)}
-                          className="px-2.5 py-1 bg-rose-950/40 hover:bg-rose-900/60 text-rose-400 border border-rose-500/20 rounded-lg text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1 active:scale-95"
-                          title="지침 삭제"
-                        >
-                          <Trash2 size={11} />
-                          <span>삭제</span>
-                        </button>
+            {/* Model List */}
+            <div className="grid grid-cols-1 gap-2.5 pt-1">
+              {[
+                { key: 'gemini-3.5-flash-lite', name: '3.5 Flash Lite', desc: 'Gemini 3.5 Flash Lite (고속 경량화 추천 모델)', icon: '⚡' },
+                { key: 'gemini-3.6-flash', name: '3.6 Flash', desc: 'Gemini 3.6 Flash (최신 차세대 고성능 모델)', icon: '🚀' },
+                { key: 'gemini-3.1-flash-lite', name: '3.1 Lite', desc: 'Gemini 3.1 Lite (초고속 응답 모델)', icon: '💡' },
+                { key: 'gemini-3.5-flash', name: '3.5 Flash', desc: 'Gemini 3.5 Flash (표준 추천 고성능 모델)', icon: '🔥' }
+              ].map((m) => {
+                const isSelected = preferredModel === m.key;
+                return (
+                  <button
+                    key={m.key}
+                    onClick={() => handleSelectModel(m.key)}
+                    className={`flex items-center justify-between p-3.5 rounded-xl border transition-all cursor-pointer active:scale-[0.98] text-left ${
+                      isSelected 
+                        ? 'bg-indigo-950/80 border-indigo-500/80 shadow-md shadow-indigo-500/20' 
+                        : 'bg-slate-950/60 border-slate-800/80 hover:border-slate-700 hover:bg-slate-850'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-xl">{m.icon}</span>
+                      <div>
+                        <div className={`font-extrabold text-sm ${isSelected ? 'text-indigo-300' : 'text-slate-200'}`}>
+                          {m.name}
+                        </div>
+                        <div className="text-[11px] text-slate-400 font-medium">{m.desc}</div>
                       </div>
                     </div>
-                    <p className="text-xs text-slate-300 leading-relaxed font-mono whitespace-pre-wrap bg-slate-900/50 p-3 rounded-lg border border-slate-800/40">
-                      {std.content}
-                    </p>
-                  </div>
-                ))
-              )}
+                    {isSelected && (
+                      <span className="text-[11px] font-black text-indigo-300 bg-indigo-500/20 px-2.5 py-1 rounded-full border border-indigo-500/40">
+                        선택됨 ✓
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
 
-            {/* Modal Footer Controls */}
-            <div className="flex items-center justify-between pt-3 border-t border-slate-800">
+            {/* Footer */}
+            <div className="flex justify-end pt-2 border-t border-slate-800">
               <button
-                onClick={handleOpenAddOtherStandardModal}
-                className="px-3.5 py-2 bg-purple-950/60 hover:bg-purple-900/60 text-purple-300 border border-purple-500/30 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 active:scale-95 shadow-sm"
-              >
-                <span>➕ 신규 기타 지침 추가</span>
-              </button>
-              <button
-                onClick={() => setShowManageOtherStandardsModal(false)}
+                onClick={() => setShowApiModal(false)}
                 className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer"
               >
                 닫기
-              </button>
-            </div>
-
-          </div>
-        </div>
-      )}
-
-      {/* ✏️ 기타 지침 추가/수정 서브 모달 (Other Standard Add/Edit Sub-Modal) */}
-      {showEditOtherStandardModal && (
-        <div className="fixed inset-0 z-[210] overflow-y-auto flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-all duration-300 animate-fade-in" onClick={() => setShowEditOtherStandardModal(false)}>
-          <div className="w-full max-w-2xl bg-slateCustom-900 border border-white/20 rounded-2xl overflow-hidden shadow-2xl p-6 space-y-4 animate-scale-up text-left" onClick={(e) => e.stopPropagation()}>
-            
-            {/* Modal Header */}
-            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
-              <div className="flex items-center gap-2">
-                <div className="p-1.5 bg-purple-500/10 text-purple-400 rounded-lg">
-                  <Sliders size={18} className="text-purple-500" />
-                </div>
-                <h3 className="text-sm font-extrabold text-white">
-                  {editingOtherStandard ? '✏️ 기타 지침 수정' : '➕ 신규 기타 지침 추가'}
-                </h3>
-              </div>
-              <button
-                onClick={() => setShowEditOtherStandardModal(false)}
-                className="w-6 h-6 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-200 flex items-center justify-center transition-all cursor-pointer"
-              >
-                <X size={14} />
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div className="py-2 space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-black text-slate-400">지침 제목 (Standard Title)</label>
-                <input
-                  type="text"
-                  value={editingOtherTitle}
-                  onChange={(e) => setEditingOtherTitle(e.target.value)}
-                  onFocus={(e) => e.target.select()}
-                  placeholder="예: 기타 시스템 프롬프트 및 사용자 지침"
-                  className="w-full bg-slate-950/60 border border-slate-800 focus:border-purple-500/80 rounded-xl px-3 py-2.5 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-purple-500 transition-all font-semibold"
-                  disabled={isSavingOtherStandardsList}
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-black text-slate-400">지침 세부 내용 (Prompt Instruction Text)</label>
-                <textarea
-                  value={editingOtherContent}
-                  onChange={(e) => setEditingOtherContent(e.target.value)}
-                  onFocus={(e) => e.target.select()}
-                  placeholder="예: AI 튜터 및 채점관은 기타 요구사항 및 특수 지침이 있을 경우 본 기타 지침 항목에 기재된 모든 내용들을 최우선적으로 존중하여 반영하십시오."
-                  className="w-full h-80 bg-slate-950/60 border border-slate-800 focus:border-purple-500/80 rounded-xl p-3 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-purple-500 transition-all font-mono leading-relaxed resize-none"
-                  disabled={isSavingOtherStandardsList}
-                />
-              </div>
-            </div>
-
-            {/* Modal Footer */}
-            <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">
-              <button
-                onClick={() => setShowEditOtherStandardModal(false)}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer"
-                disabled={isSavingOtherStandardsList}
-              >
-                취소
-              </button>
-              <button
-                onClick={handleSaveEditOtherStandard}
-                disabled={isSavingOtherStandardsList}
-                className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer flex items-center gap-1.5"
-              >
-                {isSavingOtherStandardsList ? (
-                  <>
-                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    <span>저장 중...</span>
-                  </>
-                ) : (
-                  <span>지침 저장 💾</span>
-                )}
               </button>
             </div>
           </div>
@@ -23650,7 +23198,7 @@ ${itemsStr}
                                 );
                               })()}
                               {!examRevealed[idx] ? (
-                                !isOverviewReview(q) && !isNATMFlowchart(idx, q) && (
+                                !isOverviewReview(q) && !isNATMFlowchart(idx, q, true) && (
                                   <button
                                     onClick={async () => {
                                       if (gradingLoading[idx]) return;
@@ -23666,7 +23214,14 @@ ${itemsStr}
                                 )
                               ) : (() => {
                                 const isOverview = isOverviewReview(q);
-                                if (isOverview || isNATMFlowchart(idx, q)) {
+                                if (isOverview) {
+                                  return (
+                                    <div className="mt-2.5 pt-2.5 border-t border-slate-800/40 text-left">
+                                      {renderCardTutorChat(eKey, q)}
+                                    </div>
+                                  );
+                                }
+                                if (isNATMFlowchart(idx, q, true)) {
                                   return null;
                                 }
                                 return (

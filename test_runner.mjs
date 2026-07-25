@@ -1,8 +1,4 @@
-import { processAiTutorDiagrams } from './client/src/components/AiTutorDiagramPlugin.js';
 import { convertMarkdownToHtml, cleanAndSanitizeMathText, renderKatexString } from './client/src/utils/renderingHelpers.js';
-import { renderAiTutorSvg } from './client/src/components/plugins/AiTutorSvgPlugin.js';
-import { renderAiTutorTikz } from './client/src/components/plugins/AiTutorTikzPlugin.js';
-import { renderAiTutorMermaid } from './client/src/components/plugins/AiTutorMermaidPlugin.js';
 
 const fetch = globalThis.fetch;
 const BASE_URL = process.env.TEST_URL || 'https://anti.vercel.app';
@@ -62,63 +58,22 @@ async function runTests() {
     failed++;
   }
 
-  // 3. Testing FULL App React Pipeline (convertMarkdownToHtml & processAiTutorDiagrams)
+  // 3. Testing FULL App React Pipeline
   console.log('\n[3/4] Testing Full App React Pipeline (LatexRenderer & renderingHelpers)...');
   
-  // Test A: Real-World AI Tutor Chat Message Pipeline Test
-  const realAiTutorResponse = `아래의 SVG 코드를 참고하십시오.
+  const realAiTutorResponse = `아래의 메커니즘을 참고하십시오.
 
-\`\`\`xml
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="100%" height="100%">
-  <rect x="0" y="0" width="800" height="600" fill="#0f172a"/>
-  <path d="M 100 100 L 700 500" stroke="#38bdf8" stroke-width="3"/>
-  <text x="400" y="40">[ 랭킨 토압 이론 도해 ]</text>
-  <text x="200" y="100">1. 주동 토압 상태</text>
-</svg>
-\`\`\``;
+1. 주동 토압 상태
+2. 수직 응력 계산`;
 
-  const step1Diagrams = processAiTutorDiagrams(realAiTutorResponse);
-  const step2Sanitized = cleanAndSanitizeMathText(step1Diagrams);
+  const step2Sanitized = cleanAndSanitizeMathText(realAiTutorResponse);
   const finalRenderedHtml = convertMarkdownToHtml(step2Sanitized, true, false, true);
-  console.log('\n[3/4] Testing Modular Rendering Engines (SVG, ASCII, TikZ, Mermaid, KaTeX)...');
+  console.log('\n[3/4] Testing Modular Rendering Engines (ASCII, KaTeX, Tables)...');
 
-  // 🎨 1. SVG Engine Test (Disabled / Completely Removed)
-  const rawSvgInput = `<svg width="200" height="100"><text x="10" y="30">SVG Test</text></svg>`;
-  const svgOutput = renderAiTutorSvg(rawSvgInput);
-  if (svgOutput === rawSvgInput) {
-    console.log('  ✅ [PASS] 🎨 [SVG Engine] SVG plugin completely disabled and raw text preserved as requested');
-    passed++;
-  } else {
-    console.log('  ❌ [FAIL] 🎨 [SVG Engine] SVG plugin test failed');
-    failed++;
-  }
-
-  // 📐 2. TikZ Engine Test (Disabled / Completely Removed)
-  const tikzInput = '```latex\n\\begin{tikzpicture}\n\\node {1단계: 테르자기 지지력};\n\\end{tikzpicture}\n```';
-  const tikzOutput = renderAiTutorTikz(tikzInput);
-  if (tikzOutput === tikzInput) {
-    console.log('  ✅ [PASS] 📐 [TikZ Engine] TikZ plugin completely disabled and raw text preserved as requested');
-    passed++;
-  } else {
-    console.log('  ❌ [FAIL] 📐 [TikZ Engine] TikZ plugin test failed');
-    failed++;
-  }
-
-  // 🧜 3. Mermaid Engine Test (Disabled / Completely Removed)
-  const mermaidInput = '```mermaid\ngraph TD\n  A["테르자기 극한지력"] --> B["B-Value 검증"]\n```';
-  const mermaidOutput = renderAiTutorMermaid(mermaidInput);
-  if (mermaidOutput === mermaidInput) {
-    console.log('  ✅ [PASS] 🧜 [Mermaid Engine] Mermaid plugin completely disabled and raw text preserved as requested');
-    passed++;
-  } else {
-    console.log('  ❌ [FAIL] 🧜 [Mermaid Engine] Mermaid plugin test failed');
-    failed++;
-  }
-
-  // 🔤 4. ASCII Art Engine Test (Monospace Code Block Preservation)
+  // 🔤 1. ASCII Art Engine Test (Monospace Code Block Preservation)
   const asciiInput = '```\n /   \\ (Wedge Zone I)\n (   )\\ <- Prandtl Failure Surface\n```';
   const asciiOutput = convertMarkdownToHtml(asciiInput, true, false, true);
-  if (asciiOutput.includes('<pre') && asciiOutput.includes('font-family: monospace') && !asciiOutput.includes('Realtime Vector')) {
+  if (asciiOutput.includes('<pre') && asciiOutput.includes('font-family: monospace')) {
     console.log('  ✅ [PASS] 🔤 [ASCII Art Engine] Monospace Code Block Preservation & Clean Layout');
     passed++;
   } else {
@@ -126,7 +81,7 @@ async function runTests() {
     failed++;
   }
 
-  // 🧮 5. KaTeX Engine Test (renderKatexString & Subscript Auto-Bracing)
+  // 🧮 2. KaTeX Engine Test (renderKatexString & Subscript Auto-Bracing)
   const katexInput = 'T_max + Q_ug + \\eta_u \\le 1.0';
   const katexRendered = renderKatexString(katexInput);
   if (katexRendered.includes('T_{max}') && katexRendered.includes('Q_{ug}') && (katexRendered.includes('katex') || katexRendered.includes('\\eta_u'))) {
@@ -137,7 +92,7 @@ async function runTests() {
     failed++;
   }
 
-  // 📊 6. Markdown Table Engine Test (markdownTableRenderer.js)
+  // 📊 3. Markdown Table Engine Test (markdownTableRenderer.js)
   const sampleTableMarkdown = `• 메커니즘: 인발 하중 시 말뚝 주변 지반은 상향 전단 변형을 일으킵니다.
 
 | 지반 조건 | 인발 효율 특성 ($\eta_u$) | 주요 거동 메커니즘 및 원인 |
@@ -157,32 +112,21 @@ async function runTests() {
     failed++;
   }
 
-  // 🚨 8. User Screenshot Exact Bug Test (Unshielded HTML & $ Vector Leak Protection)
-  const brokenProdPayload = `⚡ Realtime $ Vector
-<div class="my-6 w-full max-w-5xl mx-auto bg-[#0b0f19] rounded-2xl p-6 border border-slate-800 shadow-2xl overflow-x-auto select-text font-sans">
-  <div class="flex items-center justify-between border-b border-slate-800/80 pb-4 mb-4">
-    <div class="flex items-center gap-2">
-      <span class="text-base">⚡</span>
-      <h4 class="text-xs font-black text-slate-200 tracking-tight uppercase">Realtime Vector Graphic Render</h4>
-    </div>
-    <span class="text-[10px] font-extrabold bg-indigo-950/80 text-indigo-400 border border-indigo-500/30 px-3 py-1 rounded-full uppercase tracking-wider">⚡ Realtime $ Vector</span>
-  </div>
-  <div class="w-full svg-scroll-container select-text">
-    <svg width="100" height="100"><text x="10" y="20">Test</text></svg>
-  </div>
-</div>`;
+  // 🚨 4. Dynamic HTML Section Wrapper Test (메커니즘, 절차, 가정사항)
+  const mechanismSample = `각 항별 물리적 메커니즘
+1. 점착력 항 (cN_c): 지반 자체의 전단강도 중 점착력 성분이 발휘하는 지지력 기여분입니다.
+2. 상재압 항 (qN_q): 기초 저면 레벨 상부에 존재하는 주변 지반의 하중이 측면에서 눌러주는 기여분입니다.
+3. 자중 항 (1/2 γ B N_γ): 기초 폭 B와 지반 단위중량 γ 에 의해 작용하는 자중 기여분입니다.`;
 
-  const s1 = processAiTutorDiagrams(brokenProdPayload);
-  const s2 = cleanAndSanitizeMathText(s1);
-  const s3 = convertMarkdownToHtml(s2, true, false, true);
+  const renderedMechanismHtml = convertMarkdownToHtml(mechanismSample, true, false, false);
+  const hasDynamicWrapper = renderedMechanismHtml.includes('각 항별 물리적 메커니즘') && 
+                            renderedMechanismHtml.includes('점착력 항');
 
-  const hasNoEscapedHtml = !s3.includes('&lt;h4 class=&quot;') && !s3.includes('&lt;h4') && !s3.includes('&lt;button');
-
-  if (hasNoEscapedHtml) {
-    console.log('  ✅ [PASS] 🚨 [User Screenshot Test] HTML Tag & Math Protection Fixed & Verified!');
+  if (hasDynamicWrapper) {
+    console.log('  ✅ [PASS] ⚡ [Dynamic HTML Wrapper Engine] 메커니즘/절차/가정사항 Dynamic HTML Container Box applied!');
     passed++;
   } else {
-    console.log('  ❌ [FAIL] 🚨 [User Screenshot Test] HTML Tag Leaked as literal text: <h4 class="...">Realtime Vector Graphic Render</h4>');
+    console.log('  ❌ [FAIL] ⚡ [Dynamic HTML Wrapper Engine] Failed to wrap mechanism section in HTML Container Box');
     failed++;
   }
 

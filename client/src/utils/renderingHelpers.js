@@ -646,7 +646,77 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
   tempText = tempText.replace(/___HTML_TABLE_\d+___/g, '');
   tempText = tempText.replace(/___CODE_BLOCK_\d+___/g, '');
 
+  tempText = wrapMechanismProcedureAssumptionsHtml(tempText);
   return tempText;
+}
+
+export function wrapMechanismProcedureAssumptionsHtml(text) {
+  if (!text || typeof text !== 'string') return text;
+
+  const sectionRegex = /(?:^|<br\/>|\n|<p>)[ \t]*(?:[•\*\-]\s*|#{1,6}\s*|\[|\*\*)?\s*([^\n<]*(?:메커니즘|절차|흐름도|플로우차트|순서도|프로세스|가정\s*사항|가정\s*조건|기본\s*가정|전제\s*조건|가정|Mechanism|Procedure|Assumptions)[^\n<]*)\s*[:\]\*\*]*[ \t]*(?:<br\/>|\n|<\/p>|<p>)((?:[ \t]*(?:<div[^>]*>|<p>)?(?:\d+[\.\)]|[①-⑳]|[•\*\-]|[가-힣]+[\.\)]|\([0-9a-zA-Z가-힣]+\)|\[[0-9a-zA-Z가-힣]+\])[ \t]*[\s\S]*?(?:<\/div>|<\/p>|<br\/>|\n))+)/gi;
+
+  let result = text.replace(sectionRegex, (fullMatch, headerTitle, stepsBlock) => {
+    if (fullMatch.includes('___HTML_TABLE_') || fullMatch.includes('___CODE_BLOCK_') || /<table/i.test(fullMatch)) {
+      return fullMatch;
+    }
+
+    const rawLines = stepsBlock.split(/(?:<\/p>|<\/div>|<br\/>|\n)+/);
+    const itemBoxes = [];
+
+    rawLines.forEach((line) => {
+      const stripped = line.replace(/<[^>]+>/g, '').trim();
+      if (!stripped) return;
+
+      const content = line.replace(/^(?:<div[^>]*>|<p>)?\s*(?:\d+[\.\)]|[①-⑳]|[•\*\-]|[가-힣]+[\.\)]|\([0-9a-zA-Z가-힣]+\)|\[[0-9a-zA-Z가-힣]+\])\s*/, '').trim();
+      if (!content) return;
+
+      const stepNum = itemBoxes.length + 1;
+
+      itemBoxes.push(
+        `<div class="flex items-start gap-2.5 p-2.5 rounded-lg bg-slate-900/90 border border-slate-700/80 hover:border-indigo-500/50 shadow-sm text-left select-text flowchart-text-force my-1.5"><span class="w-5 h-5 rounded bg-indigo-600/30 text-indigo-300 border border-indigo-500/50 flex items-center justify-center font-bold text-[11px] shrink-0 mt-0.5">${stepNum}</span><div class="flex-1 text-[14px] sm:text-[16px] text-slate-200 leading-relaxed break-words flowchart-text-force">${content}</div></div>`
+      );
+    });
+
+    if (itemBoxes.length === 0) return fullMatch;
+
+    const titleClean = headerTitle.replace(/<[^>]+>/g, '').replace(/^[\#\*\-•\[\]\s]+/, '').replace(/[\#\*\-•\[\]\s]+$/, '').trim();
+
+    return `<div class="my-3 w-full text-left select-text flowchart-text-force"><div class="my-2 font-bold text-[14px] sm:text-[16px] text-indigo-300 flex items-center gap-1.5 pb-1 border-b border-slate-800"><span>⚡</span><span>${titleClean}</span></div><div class="space-y-1.5 my-2">${itemBoxes.join('')}</div></div>`;
+  });
+
+  // Handle standalone numbered step sequences (e.g. 1. 상하류 수두차 ... 2. 동수경사 ... 3. 유효응력 ...) below diagrams or headers
+  const standaloneListRegex = /(?:^|<br\/>|\n|<\/div>|<\/p>)\s*((?:(?:<p>|<div[^>]*>)?\s*\d+[\.\)]\s+[\s\S]*?(?:<\/p>|<\/div>|<br\/>|\n)){2,})/gi;
+
+  result = result.replace(standaloneListRegex, (fullMatch, stepsBlock) => {
+    if (fullMatch.includes('flowchart-text-force') || fullMatch.includes('___HTML_TABLE_') || fullMatch.includes('___CODE_BLOCK_') || /<table/i.test(fullMatch)) {
+      return fullMatch;
+    }
+
+    const rawLines = stepsBlock.split(/(?:<\/p>|<\/div>|<br\/>|\n)+/);
+    const itemBoxes = [];
+
+    rawLines.forEach((line) => {
+      const stripped = line.replace(/<[^>]+>/g, '').trim();
+      if (!stripped) return;
+
+      const match = line.match(/^(?:<div[^>]*>|<p>)?\s*(\d+)[\.\)]\s*([\s\S]*)/);
+      if (!match) return;
+
+      const [, numStr, content] = match;
+      const cleanContent = content.replace(/<\/(?:div|p)>$/, '').trim();
+      if (!cleanContent) return;
+
+      itemBoxes.push(
+        `<div class="flex items-start gap-2.5 p-2.5 rounded-lg bg-slate-900/90 border border-slate-700/80 hover:border-indigo-500/50 shadow-sm text-left select-text flowchart-text-force my-1.5"><span class="w-5 h-5 rounded bg-indigo-600/30 text-indigo-300 border border-indigo-500/50 flex items-center justify-center font-bold text-[11px] shrink-0 mt-0.5">${numStr}</span><div class="flex-1 text-[14px] sm:text-[16px] text-slate-200 leading-relaxed break-words flowchart-text-force">${cleanContent}</div></div>`
+      );
+    });
+
+    if (itemBoxes.length < 2) return fullMatch;
+
+    return `<div class="my-3 w-full text-left select-text flowchart-text-force"><div class="space-y-1.5 my-2">${itemBoxes.join('')}</div></div>`;
+  });
+
+  return result;
 }
 
 export const renderKatexString = (math, options) => {
@@ -677,6 +747,9 @@ export const renderKatexString = (math, options) => {
     return `${base}_{${sub}}`;
   });
 
+  // Auto-heal invalid backslashes before Korean characters in math mode (e.g. \차3 -> \text{차}_3)
+  cleaned = cleaned.replace(/\\([가-힣]+)/g, '\\text{$1}');
+
   if (cleaned.startsWith('$$') && cleaned.endsWith('$$')) {
     cleaned = cleaned.substring(2, cleaned.length - 2).trim();
   } else if (cleaned.startsWith('$') && cleaned.endsWith('$')) {
@@ -689,15 +762,24 @@ export const renderKatexString = (math, options) => {
     try {
       return window.katex.renderToString(processedMath, { ...options, throwOnError: true, strict: 'ignore' }).replace(/\n/g, ' ');
     } catch (e) {
-      console.warn('KaTeX render error:', e);
-      const escapedMath = processedMath
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;')
-        .replace(/\$/g, '&#36;');
-      return `<span class="katex-error" style="color:#cc0000; font-family: monospace;" title="KaTeX error: ${escapedMath}">${escapedMath}</span>`;
+      try {
+        const fallbackMath = processedMath.replace(/\\([^\s\\\{\}\^_]+)/g, (fullMatch, cmd) => {
+          const validCmds = /^(d?frac|sqrt|text|mathrm|mathbf|mathit|Delta|Sigma|Gamma|Phi|Theta|Omega|alpha|beta|gamma|sigma|tau|phi|theta|epsilon|pi|delta|omega|mu|lambda|psi|rho|eta|nu|xi|zeta|chi|upsilon|kappa|cdot|times|div|pm|mp|infty|partial|sum|prod|int|lim|sim|le|ge|lt|gt|sin|cos|tan|log|ln|nabla|neq|ne|approx|vec|hat|bar|tilde|over|under|left|right|quad|qquad|textstyle|displaystyle)$/;
+          if (validCmds.test(cmd)) return fullMatch;
+          return `\\text{${cmd}}`;
+        });
+        return window.katex.renderToString(fallbackMath, { ...options, throwOnError: false, strict: 'ignore' }).replace(/\n/g, ' ');
+      } catch (e2) {
+        console.warn('KaTeX render error:', e);
+        const escapedMath = processedMath
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;')
+          .replace(/\$/g, '&#36;');
+        return `<span class="katex-error" style="color:#cc0000; font-family: monospace;" title="KaTeX error: ${escapedMath}">${escapedMath}</span>`;
+      }
     }
   }
   return options?.displayMode ? `$$${processedMath}$$` : `$${processedMath}$`;

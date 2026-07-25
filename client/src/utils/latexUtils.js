@@ -1273,7 +1273,7 @@ export function healQuizQuestionObject(q) {
           // Let's find the placeholder identifier (e.g. A, B, C, INPUT_1, 빈칸(1) 등)
           let placeholderId = '';
           const inputMatch = trimmedCell.match(/INPUT_(\d+(?:_\d+)?)/i);
-          const letterMatch = trimmedCell.match(/^[\[\(]?\s*([A-Za-z])\s*[\]\)]?$/);
+          const letterMatch = trimmedCell.match(/[\[\(]\s*([A-Za-z])\s*[\]\)]|\b([A-Za-z])\s*[\.\:\)]|^[\[\(]?\s*([A-Za-z])\s*[\]\)]?$/);
           const binkanMatch = trimmedCell.match(/빈칸\s*\(?(\d+)\)?/i);
           
           let matchedNum = null;
@@ -1283,8 +1283,9 @@ export function healQuizQuestionObject(q) {
               matchedNum = parseInt(inputMatch[1], 10);
             }
           } else if (letterMatch) {
-            placeholderId = letterMatch[1].toUpperCase(); // e.g. "A"
-            matchedNum = letterMatch[1].toUpperCase().charCodeAt(0) - 64;
+            const letter = (letterMatch[1] || letterMatch[2] || letterMatch[3]).toUpperCase();
+            placeholderId = letter; // e.g. "A", "B", "C", "D"
+            matchedNum = letter.charCodeAt(0) - 64;
           } else if (binkanMatch) {
             placeholderId = `INPUT_${binkanMatch[1]}`;
             matchedNum = parseInt(binkanMatch[1], 10);
@@ -1405,6 +1406,33 @@ export function healQuizQuestionObject(q) {
       });
 
       q.tableData.rows = newRows;
+
+      // Structural row-header cross-healing for 2x2 comparison tables (e.g. 목적/정의 vs 산정방식/공식)
+      if (q.tableData && q.tableData.rows && q.tableData.rows.length >= 2) {
+        const row0Header = String(q.tableData.rows[0]?.[0] || '').toLowerCase();
+        const row1Header = String(q.tableData.rows[1]?.[0] || '').toLowerCase();
+
+        const isRow0Purpose = /목적|정의|개념|원리|의미/.test(row0Header);
+        const isRow1Formula = /산정|방식|공식|계산|식/.test(row1Header);
+
+        if (isRow0Purpose && isRow1Formula) {
+          const colCount = Math.max(q.tableData.rows[0]?.length || 0, q.tableData.rows[1]?.length || 0);
+          for (let c = 1; c < colCount; c++) {
+            const keyRow0 = `INPUT_${c}`;
+            const keyRow1 = `INPUT_${c + (colCount - 1)}`;
+            const ans0 = String(newAnswers[keyRow0] || '');
+            const ans1 = String(newAnswers[keyRow1] || '');
+
+            const isAns0Formula = /=|\\delta|\\sigma|델타|시그마|산정|공식|b=|u=/.test(ans0.toLowerCase());
+            const isAns1Purpose = /목적|정의|측정|판정|검증|평가|반응/.test(ans1.toLowerCase());
+
+            if (isAns0Formula || isAns1Purpose) {
+              newAnswers[keyRow0] = ans1;
+              newAnswers[keyRow1] = ans0;
+            }
+          }
+        }
+      }
       // 비교표(comparisonTableData)의 answers는 메인 tableData rows 순회에서 처리되지 않으므로
       // oldAnswers에서 comparisonTableData.rows에 실제로 존재하는 키만 살려서 병합한다.
       if (q.comparisonTableData && q.comparisonTableData.rows) {

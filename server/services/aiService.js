@@ -5,7 +5,7 @@ import { parseLlmJson } from '../utils/latexUtils.js';
 // Global AI progress tracker map
 global.progressTracker = global.progressTracker || new Map();
 
-export let globalPreferredModel = 'gemini-3.1-flash-lite';
+export let globalPreferredModel = 'gemini-3.5-flash-lite';
 
 export async function loadPreferredModel() {
   try {
@@ -21,6 +21,26 @@ export async function loadPreferredModel() {
 
 export function updatePreferredModel(model) {
   globalPreferredModel = model;
+}
+
+export function resolveGeminiModelName(modelName) {
+  if (!modelName) return 'gemini-1.5-flash';
+  const name = modelName.trim().toLowerCase();
+
+  if (name.includes('3.5-flash-lite') || name.includes('3.5-lite') || name.includes('3.5lite')) {
+    return 'gemini-2.5-flash-lite';
+  }
+  if (name.includes('3.6-flash') || name.includes('3.6flash')) {
+    return 'gemini-2.5-flash';
+  }
+  if (name.includes('3.1-flash-lite') || name.includes('3.1-lite') || name.includes('3.1lite')) {
+    return 'gemini-1.5-flash-8b';
+  }
+  if (name.includes('3.5-flash') || name.includes('3.5flash')) {
+    return 'gemini-1.5-flash';
+  }
+
+  return name;
 }
 
 export async function saveSessionValue(key, value) {
@@ -150,38 +170,42 @@ export async function callLLMWithFailover(systemInstruction, userPrompt, image =
     ? image.some(img => img && img.data && img.mimeType)
     : !!(image && image.data && image.mimeType);
 
-  const executionList = [];
+  const geminiKeys = [];
+  const groqKeys = [];
+  const grokKeys = [];
 
-  const keys = [];
-  if (primaryKey) keys.push({ key: primaryKey, label: 'Key #1' });
-  if (secondaryKey) keys.push({ key: secondaryKey, label: 'Key #2' });
-  if (tertiaryKey) keys.push({ key: tertiaryKey, label: 'Key #3' });
+  const rawKeys = [];
+  if (primaryKey) rawKeys.push({ key: primaryKey, label: 'Key #1' });
+  if (secondaryKey) rawKeys.push({ key: secondaryKey, label: 'Key #2' });
+  if (tertiaryKey) rawKeys.push({ key: tertiaryKey, label: 'Key #3' });
 
-  for (const k of keys) {
-    const isGroq = k.key.startsWith('gsk_');
-    const isGrok = k.key.startsWith('xai-');
+  for (const k of rawKeys) {
+    if (k.key.startsWith('gsk_')) groqKeys.push(k);
+    else if (k.key.startsWith('xai-')) grokKeys.push(k);
+    else geminiKeys.push(k);
+  }
 
-    if (isGroq) {
-      executionList.push({ key: k.key, label: k.label, model: 'llama-3.3-70b-versatile', type: 'groq' });
-      executionList.push({ key: k.key, label: k.label, model: 'llama-3.1-8b-instant', type: 'groq' });
-    } else if (isGrok) {
-      executionList.push({ key: k.key, label: k.label, model: 'grok-2-1212', type: 'grok' });
-      executionList.push({ key: k.key, label: k.label, model: 'grok-2', type: 'grok' });
-    } else {
-      const geminiFallbacks = [
-        options.preferredModel,
-        globalPreferredModel,
-        'gemini-3.1-flash-lite',
-        'gemini-3.5-flash',
-        'gemini-3.0-flash',
-        'gemini-2.5-flash',
-        'gemini-2.5-flash-lite'
-      ];
-      const uniqueModels = [...new Set(geminiFallbacks.filter(Boolean))];
-      for (const modelName of uniqueModels) {
-        executionList.push({ key: k.key, label: k.label, model: modelName, type: 'gemini' });
-      }
+  const geminiFallbacks = [
+    options.preferredModel,
+    globalPreferredModel,
+    'gemini-3.5-flash-lite',
+    'gemini-3.6-flash',
+    'gemini-3.1-flash-lite',
+    'gemini-3.5-flash'
+  ];
+  const uniqueModels = [...new Set(geminiFallbacks.filter(Boolean))];
+
+  // 1. 모든 Gemini API Key에 대해 Gemini 4개 모델 순서대로 시도
+  for (const k of geminiKeys) {
+    for (const modelName of uniqueModels) {
+      executionList.push({ key: k.key, label: k.label, model: modelName, type: 'gemini' });
     }
+  }
+
+  // 3. Grok 키 시도
+  for (const k of grokKeys) {
+    executionList.push({ key: k.key, label: k.label, model: 'grok-2-1212', type: 'grok' });
+    executionList.push({ key: k.key, label: k.label, model: 'grok-2', type: 'grok' });
   }
 
   if (xaiKey) {
@@ -294,10 +318,11 @@ export async function callLLMWithFailover(systemInstruction, userPrompt, image =
           }
 
         } else {
-          console.log(`[Gemini 시도] ${task.label} (${maskedKey}), 모델: ${modelName} (시도 #${attempt + 1})`);
+          const actualModel = resolveGeminiModelName(modelName);
+          console.log(`[Gemini 시도] ${task.label} (${maskedKey}), 모델: ${modelName} -> ${actualModel} (시도 #${attempt + 1})`);
           const genAI = new GoogleGenerativeAI(key);
           const model = genAI.getGenerativeModel({
-            model: modelName,
+            model: actualModel,
             systemInstruction: systemInstruction || undefined,
             generationConfig: {
               temperature: options.temperature !== undefined ? options.temperature : 0.2,
