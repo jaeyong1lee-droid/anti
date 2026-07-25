@@ -71,13 +71,13 @@ export function wrapSymbolDefinitionsHtml(text) {
         const symbolVar = matchSymbol[1].trim();
         const descText = matchSymbol[2].trim();
         itemBoxes.push(
-          `<div class="flex items-baseline gap-2.5 px-2 py-1 select-text text-left leading-[1.3]"><span class="text-purple-300 font-bold font-mono text-[14px] sm:text-[15px] italic shrink-0">• ${symbolVar}:</span><div class="flex-1 text-[13px] sm:text-[14px] text-slate-200 leading-[1.3] break-words">${descText}</div></div>`
+          `<div class="flex items-baseline gap-2 px-1 py-0.5 select-text text-left leading-[1.1]"><span class="text-purple-300 font-bold font-mono text-[14px] sm:text-[15px] italic shrink-0">• ${symbolVar}:</span><div class="flex-1 text-[13px] sm:text-[14px] text-slate-200 leading-[1.1] break-words">${descText}</div></div>`
         );
       } else {
         const content = stripped.replace(/^(?:[•\*\-]\s*)/, '').trim();
         if (content && !/^[-–—\s]+$/.test(content) && content !== '--') {
           itemBoxes.push(
-            `<div class="flex items-baseline gap-2 px-2 py-1 text-slate-300 text-xs sm:text-sm leading-[1.3]"><span class="text-purple-400 font-bold">•</span><div class="flex-1 text-slate-200 leading-[1.3]">${content}</div></div>`
+            `<div class="flex items-baseline gap-1.5 px-1 py-0.5 text-slate-300 text-xs sm:text-sm leading-[1.1]"><span class="text-purple-400 font-bold">•</span><div class="flex-1 text-slate-200 leading-[1.1]">${content}</div></div>`
           );
         }
       }
@@ -87,7 +87,7 @@ export function wrapSymbolDefinitionsHtml(text) {
 
     const titleClean = headerTitle.replace(/<[^>]+>/g, '').replace(/^[#\*\-•\[\]\s]+/, '').replace(/[#\*\-•\[\]\s]+$/, '').trim();
 
-    return `<div class="my-3 p-3.5 rounded-2xl bg-slate-950/90 border border-purple-500/40 shadow-lg text-left select-text leading-[1.3]"><div class="flex items-center gap-2 mb-2 pb-1.5 border-b border-purple-500/25 text-purple-300 text-xs sm:text-sm font-black select-none leading-[1.3]"><span class="text-base">✨</span><span>${titleClean || '공식 기호 정의'}</span></div><div class="space-y-0.5 leading-[1.3]">${itemBoxes.join('')}</div></div>`;
+    return `<div class="my-1.5 p-2.5 px-3 rounded-xl bg-slate-950/90 border border-purple-500/40 shadow-sm text-left select-text leading-[1.1]"><div class="flex items-center gap-2 mb-1 pb-1 border-b border-purple-500/20 text-purple-300 text-xs sm:text-sm font-black select-none leading-[1.1]"><span class="text-sm">✨</span><span>${titleClean || '공식 기호 정의'}</span></div><div class="space-y-0 leading-[1.1]">${itemBoxes.join('')}</div></div>`;
   });
 }
 
