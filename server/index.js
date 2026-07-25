@@ -276,6 +276,18 @@ async function initializeAllStandards() {
   await syncStandard('otherStandards.js', 'other_standards', otherStandardsList, updateLiveOtherStandards);
 }
 
+// Global Express Error Handler to guarantee JSON responses for all server errors
+app.use((err, req, res, next) => {
+  console.error('[Global Express Server Error]:', err);
+  if (res.headersSent) {
+    return next(err);
+  }
+  res.status(err.status || 500).json({
+    error: err.message || 'Internal Server Error',
+    details: process.env.NODE_ENV === 'production' ? undefined : err.stack
+  });
+});
+
 if (!process.env.VERCEL) {
   ensureDbInitialized().then(() => {
     app.listen(PORT, () => {
