@@ -1698,32 +1698,166 @@ export const TableQuiz = React.memo(function TableQuiz({
     })()
   ) : null;
 
-  const extractFlowchartDiagram = (explanation) => {
-    if (!explanation) return null;
-    const match = explanation.match(/```(?:[a-zA-Z0-9_-]+)?\n([\s\S]*?)```/);
-    if (match) {
-      return match[0];
-    }
-    if (explanation.includes('┌') || explanation.includes('─') || explanation.includes('│')) {
-      return `\`\`\`\n${explanation}\n\`\`\``;
-    }
-    return null;
-  };
+  const renderFlowchartQuizView = () => {
+    if (!q.explanation && !q.question) return null;
 
-  const diagramMarkdown = extractFlowchartDiagram(q.explanation);
+    const rawExplanation = q.explanation || q.question || '';
+    let diagramText = rawExplanation;
+    const codeBlockMatch = rawExplanation.match(/```(?:[a-zA-Z0-9_-]+)?\n([\s\S]*?)```/);
+    if (codeBlockMatch) {
+      diagramText = codeBlockMatch[1];
+    }
+
+    const boxChunks = [];
+    const lines = diagramText.split('\n');
+    let currentBoxLines = [];
+    let insideBox = false;
+
+    lines.forEach(line => {
+      if (line.includes('┌')) {
+        insideBox = true;
+        currentBoxLines = [];
+      } else if (line.includes('└')) {
+        insideBox = false;
+        if (currentBoxLines.length > 0) {
+          boxChunks.push(currentBoxLines.join('\n'));
+          currentBoxLines = [];
+        }
+      } else if (insideBox) {
+        const cleanLine = line.replace(/^[│\s]+|[│\s]+$/g, '').trim();
+        if (cleanLine) currentBoxLines.push(cleanLine);
+      } else if (!line.includes('│') && !line.includes('▼') && line.trim().length > 0) {
+        boxChunks.push(line.trim());
+      }
+    });
+
+    if (boxChunks.length === 0 && diagramText.trim()) {
+      const steps = diagramText.split(/(?:▼|\n\s*\n)/).map(s => s.trim()).filter(Boolean);
+      boxChunks.push(...steps);
+    }
+
+    const allInputIds = firstTableInputs && firstTableInputs.length > 0 ? firstTableInputs : (inputIds && inputIds.length > 0 ? inputIds : ['INPUT_1', 'INPUT_2', 'INPUT_3', 'INPUT_4']);
+
+    return (
+      <div className="w-full space-y-3 my-3 animate-fade-in">
+        <div className="flex items-center gap-2 text-xs font-black text-amber-400 select-none mb-1">
+          <span>📊</span>
+          <span>동적 감싸기 흐름도 (상자 내부 답안 기입)</span>
+        </div>
+
+        {boxChunks.map((chunk, boxIdx) => {
+          const matchedInputs = [];
+          allInputIds.forEach((inputId, iIdx) => {
+            const letter = String.fromCharCode(65 + iIdx);
+            if (chunk.includes(`(${letter})`) || chunk.includes(`[${letter}]`) || chunk.includes(inputId) || chunk.includes(`[INPUT_${iIdx + 1}]`)) {
+              matchedInputs.push({ inputId, letter, index: iIdx });
+            }
+          });
+
+          return (
+            <React.Fragment key={boxIdx}>
+              {boxIdx > 0 && (
+                <div className="flex justify-center my-1.5 text-violet-400 font-extrabold text-base select-none">
+                  ▼
+                </div>
+              )}
+              <div className="w-full p-3.5 rounded-xl border border-slate-700/80 bg-[#0b0f19]/90 shadow-xl text-left space-y-3 relative overflow-hidden transition-all hover:border-slate-600">
+                <div className="absolute top-0 left-0 bottom-0 w-1 bg-gradient-to-b from-sky-500 via-indigo-500 to-violet-500" />
+                
+                {matchedInputs.length === 0 ? (
+                  <div className="text-slate-200 text-[14px] sm:text-[15px] leading-relaxed font-semibold">
+                    <LatexRenderer text={chunk} katexLoaded={katexLoaded} isMarkdown={true} />
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {chunk.split('\n').map((line, lIdx) => {
+                      const hasPlaceholder = matchedInputs.some(m => line.includes(`(${m.letter})`) || line.includes(`[${m.letter}]`) || line.includes(m.inputId));
+                      if (!hasPlaceholder && line.trim()) {
+                        return (
+                          <div key={lIdx} className="text-slate-200 font-bold text-[14px] sm:text-[15px] border-b border-slate-800/60 pb-1 mb-1.5">
+                            <LatexRenderer text={line} katexLoaded={katexLoaded} isMarkdown={true} />
+                          </div>
+                        );
+                      }
+                      return null;
+                    })}
+
+                    {matchedInputs.map(({ inputId, letter, index }) => {
+                      const value = tableAnswers[`${questionIdx}_${inputId}`] || '';
+                      const correctAnswer = q.answers?.[inputId] || '';
+                      const gradingResult = tableGradingResults?.[`${questionIdx}_${inputId}`];
+                      const isCorrect = gradingResult 
+                        ? gradingResult.isCorrect 
+                        : (normalize(value) === normalize(correctAnswer));
+                      const isCellGraded = revealed || (tableGradingResults && tableGradingResults[`${questionIdx}_${inputId}`] !== undefined);
+                      const theme = isCellGraded ? getTableScoreColorTheme(gradingResult, isCorrect, value) : null;
+
+                      return (
+                        <div key={inputId} className="space-y-1.5 p-3 rounded-lg bg-slate-900/60 border border-slate-800">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-black text-amber-400 flex items-center gap-1.5">
+                              <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-black">({letter})</span>
+                              <span>빈칸 ({letter}) 입력:</span>
+                            </span>
+                            {isCellGraded && gradingResult && gradingResult.score !== undefined && (
+                              <span className={`text-xs font-bold ${theme ? theme.text : 'text-slate-400'}`}>
+                                {Math.round((gradingResult.score / 10) * (weight / allInputIds.length) * 10) / 10}점
+                              </span>
+                            )}
+                          </div>
+
+                          <BufferedTextarea
+                            value={value}
+                            onChange={(val) => handleInputChange(inputId, val)}
+                            onKeystroke={(val) => handleInputKeystroke(inputId, val)}
+                            placeholder={`(${letter}) 빈칸에 들어갈 공학적 수식 및 명칭을 기입하세요...`}
+                            data-answer-key={`${questionIdx}_${inputId}`}
+                            className={`w-full text-[14px] sm:text-[15px] p-2.5 rounded-lg border outline-none resize-none transition-all ${
+                              isCellGraded
+                                ? (theme ? `${theme.cellBg} ${theme.text} border-slate-700` : 'bg-slate-950/80 text-slate-200 border-slate-700')
+                                : 'bg-slate-950 text-slate-100 border-slate-700 focus:border-sky-500 focus:ring-1 focus:ring-sky-500'
+                            }`}
+                            rows={2}
+                          />
+
+                          {isCellGraded && (
+                            <div className="mt-2 text-xs space-y-1 pt-1.5 border-t border-slate-800">
+                              <div className="text-emerald-400 font-bold flex items-start gap-1">
+                                <span>✅ 정답:</span>
+                                <span><LatexRenderer text={gradingResult?.suggestedModelAnswer || correctAnswer} katexLoaded={katexLoaded} isMarkdown={true} /></span>
+                              </div>
+                              {gradingResult?.reason && (
+                                <div className="text-slate-300 text-[11px] leading-relaxed">
+                                  💡 <LatexRenderer text={formatReason(gradingResult.reason)} katexLoaded={katexLoaded} isMarkdown={true} />
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </React.Fragment>
+          );
+        })}
+      </div>
+    );
+  };
 
   return (
     <div ref={containerRef} className="w-full text-left">
       {floatedStyleTag}
-      {diagramMarkdown && (
-        <div className="mb-4 p-4 rounded-xl border border-slate-800 bg-[#0b0f19]/80 shadow-inner select-text">
-          <div className="text-xs font-bold text-sky-400 mb-2 select-none">📊 동적 흐름도 (흐름도 참고)</div>
-          <LatexRenderer text={diagramMarkdown} katexLoaded={katexLoaded} isMarkdown={true} />
-        </div>
+      {isFlowchart ? (
+        renderFlowchartQuizView()
+      ) : (
+        <>
+          {mainTableTitle}
+          {mainTablePlaceholder}
+          {mainTable}
+        </>
       )}
-      {mainTableTitle}
-      {mainTablePlaceholder}
-      {mainTable}
  
        {isOverviewReview && !isFirstTableGraded && (
          <div className="mt-3.5 mb-5 select-none flex justify-center w-full">
