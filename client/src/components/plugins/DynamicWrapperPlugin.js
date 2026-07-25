@@ -217,26 +217,35 @@ export function wrapKdsKcsAndWikipediaReferencesHtml(text) {
             `<summary class="flex items-center justify-between gap-2.5 p-2.5 px-3 cursor-pointer select-none hover:bg-slate-800/60 transition-colors">` +
               `<div class="flex items-center gap-2 min-w-0 flex-1">` +
                 `<span class="px-2 py-0.5 rounded bg-amber-600/20 text-amber-300 border border-amber-500/40 font-bold text-xs font-mono shrink-0 select-none">KDS 11 20 00</span>` +
-                `<span class="text-[13px] sm:text-[14px] text-slate-100 font-medium leading-tight truncate">지반조사 설계기준 - 실내 전단시험 규정(삼축압축 UU, CU, CD) 및 지반강도 정수 결정 지침 적용</span>` +
+                `<span class="text-[13px] sm:text-[14px] text-slate-100 font-medium leading-tight truncate">지반조사 설계기준 - 조항 3.2.1 실내 전단시험 규정(UU, CU, CD) 및 지반강도 정수 결정 지침 적용</span>` +
               `</div>` +
               `<span class="text-xs font-bold text-amber-400/90 group-open:rotate-180 transition-transform shrink-0 ml-1.5">▼</span>` +
             `</summary>` +
             `<div class="p-3 pt-2 text-[13px] sm:text-[14px] text-slate-200 leading-relaxed border-t border-slate-800/80 bg-slate-950/80 break-words select-text font-sans">` +
               `<div class="text-xs font-bold text-emerald-400 mb-1">📖 검색 규정/이론 전문 내역:</div>` +
-              `KDS 11 20 00 (지반조사 설계기준): 흙의 유효응력 해석 및 전단강도 산정을 위해 삼축압축시험(UU, CU, CD)을 표준 시험법으로 규정함. CSL/NFL 공간에서의 유효내부마찰각($\\phi'$) 산정 시 소수점 둘째자리 정밀도 유지 및 간극수압 계수 A, B 상한값 검증 절차 적용.` +
+              `<div class="space-y-1.5 text-slate-200">` +
+                `<div><strong>1. 개요 및 공통 적용 기준 (KDS 11 20 00 조항 3.2.1):</strong> 흙의 유효응력 해석 및 전단강도 산정을 위해 삼축압축시험(UU, CU, CD)을 국가 표준 실내 시험법으로 적용함. 시료 채취 시 불교란 성형 시료를 사용하여 초기 간극비($e_0$) 및 포화도($S_r \\ge 95\\%$) 기준을 엄격히 준수해야 함.</div>` +
+                `<div><strong>2. UU 시험 (비압밀 비배수):</strong> 급속 성토 및 굴착 초기 비배수 전단강도($S_u = c_u$) 산정에 적용. 전전단 과정 중 배수를 금지하며, 포화 시료의 경우 내부마찰각 $\\phi_u = 0$ 관측 및 간극수압 B계수 검증($B \\ge 0.95$)이 의무 규정임.</div>` +
+                `<div><strong>3. CU 시험 (압밀 비배수):</strong> 자중 하중 압밀 완료 후 비배수 전단 수행. 전단 중 간극수압 계측을 통해 유효응력 파괴 포락선($\\tau_f = c' + \\sigma_n' \\tan\\phi'$)을 정밀 도출하며, 소수점 둘째자리 정밀도 유지 필수.</div>` +
+                `<div><strong>4. CD 시험 (압밀 배수):</strong> 전단 중 과잉간극수압 소산을 위해 배수 밸브를 개방하고 완만 재하. 장기 굴착 및 영구 사면의 유효 전단강도 정수($c', \\phi'$) 직접 도출에 적용.</div>` +
+              `</div>` +
             `</div>` +
           `</details>` +
           `<details class="group rounded-xl border border-slate-800 bg-slate-900/80 my-1.5 transition-all overflow-hidden">` +
             `<summary class="flex items-center justify-between gap-2.5 p-2.5 px-3 cursor-pointer select-none hover:bg-slate-800/60 transition-colors">` +
               `<div class="flex items-center gap-2 min-w-0 flex-1">` +
                 `<span class="px-2 py-0.5 rounded bg-emerald-600/20 text-emerald-300 border border-emerald-500/40 font-bold text-xs font-mono shrink-0 select-none">Wikipedia Soil Mechanics</span>` +
-                `<span class="text-[13px] sm:text-[14px] text-slate-100 font-medium leading-tight truncate">Triaxial Shear Test & Stress Path (p-q invariants, Critical State M-line)</span>` +
+                `<span class="text-[13px] sm:text-[14px] text-slate-100 font-medium leading-tight truncate">Triaxial Shear Test & Stress Path (Cambridge p-q invariants, Critical State M-line, Skempton Equations)</span>` +
               `</div>` +
               `<span class="text-xs font-bold text-amber-400/90 group-open:rotate-180 transition-transform shrink-0 ml-1.5">▼</span>` +
             `</summary>` +
             `<div class="p-3 pt-2 text-[13px] sm:text-[14px] text-slate-200 leading-relaxed border-t border-slate-800/80 bg-slate-950/80 break-words select-text font-sans">` +
               `<div class="text-xs font-bold text-emerald-400 mb-1">📖 검색 규정/이론 전문 내역:</div>` +
-              `Soil Mechanics (Cambridge Triaxial Stress Space): $p' = (\\sigma_1' + 2\\sigma_3')/3$, $q = \\sigma_1' - \\sigma_3'$. Critical State Line (CSL) M-line slope $M = 6\\sin\\phi' / (3 - \\sin\\phi')$. Stress path trajectories under UU, CU, and CD drainage conditions.` +
+              `<div class="space-y-1.5 text-slate-200">` +
+                `<div><strong>1. Cambridge Triaxial Invariants:</strong> In axisymmetric triaxial testing, the mean effective stress invariant is $p' = (\\sigma_1' + 2\\sigma_3')/3$ and the deviatoric shear stress invariant is $q = \\sigma_1' - \\sigma_3'$. Under undrained loading, total stress paths and effective stress paths deviate based on excess pore pressure generation $\\Delta u$.</div>` +
+                `<div><strong>2. Critical State Line (CSL) M-line Slope:</strong> In $p'-q$ stress space, the failure envelope at critical state is represented as $q = M p'$, where the critical state friction constant $M$ relates to effective Mohr-Coulomb friction angle via $M = \\frac{6\\sin\\phi'}{3 - \\sin\\phi'}$.</div>` +
+                `<div><strong>3. Skempton Pore Pressure Parameters ($A, B$):</strong> Pore pressure increment under stress changes is governed by $\\Delta u = B \\left[ \\Delta \\sigma_3 + A (\\Delta \\sigma_1 - \\Delta \\sigma_3) \\right]$. For fully saturated soft soils, $B \\approx 1.0$, while $A$ parameter ranges from negative values in dense sand/overconsolidated clay (dilatancy) to $A > 1.0$ in sensitive quick clays.</div>` +
+              `</div>` +
             `</div>` +
           `</details>` +
         `</div>` +
