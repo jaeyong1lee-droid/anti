@@ -59,10 +59,8 @@ export function renderAiTutorSvg(text) {
           return match.replace(/fill=["'][^"']+["']/gi, 'fill="none"').replace(/stroke=["'][^"']+["']/gi, 'stroke="none"');
         });
 
-      // Inject global dark halo style tag into SVG to guarantee text never overlaps any lines
-      darkSvg = darkSvg.replace(/<svg\b([^>]*?)>/i, (match, attrs) => {
-        return `<svg${attrs}><style>text { paint-order: stroke fill !important; stroke: #0f172a !important; stroke-width: 10px !important; stroke-linejoin: round !important; stroke-linecap: round !important; }</style>`;
-      });
+      // Inject halo stroke attributes directly onto <text> tags so no <style> tag ever leaks
+      darkSvg = darkSvg.replace(/<text\b/gi, '<text paint-order="stroke fill" stroke="#0f172a" stroke-width="10px" stroke-linejoin="round" stroke-linecap="round"');
 
       // Enforce fixed drawing size & horizontal scrollbar when width exceeds container
       const vbMatch = darkSvg.match(/viewBox=["']\s*\d+\s+\d+\s+(\d+)\s+\d+["']/i);
@@ -79,7 +77,7 @@ export function renderAiTutorSvg(text) {
       <h4 class="text-xs font-black text-slate-200 tracking-tight uppercase">${cardTitle}</h4>
       <span class="text-[10px] font-extrabold bg-indigo-950/80 text-indigo-400 border border-indigo-500/30 px-3 py-1 rounded-full uppercase tracking-wider">${badgeText}</span>
     </div>
-    <button onclick="window.__toggleDiagramCard &amp;&amp; window.__toggleDiagramCard(this)" class="text-xs font-bold bg-slate-800/90 hover:bg-slate-700 text-slate-300 border border-slate-700/80 px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer select-none">
+    <button onclick="window.toggleDiagramCard &amp;&amp; window.toggleDiagramCard(this)" class="text-xs font-bold bg-slate-800/90 hover:bg-slate-700 text-slate-300 border border-slate-700/80 px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer select-none">
       <span class="toggle-label">▼ 펼치기</span>
     </button>
   </div>

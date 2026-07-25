@@ -450,9 +450,9 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   processed = processed.replace(/\\\s*Delta\s*([a-zA-Z])\b/gi, '\\Delta $1');
 
   // [Self-Healing] Fix inner spaces in dollar math delimiters (e.g. $ 0.6$ -> $0.6$, $ 2q $ -> $2q$, $ A = ... $ -> $A = ...$)
-  processed = processed.replace(/\$\s+([^\$\n]+?)\s+\$/g, '$$1$')
-                       .replace(/\$\s+([^\$\n]+?)\$/g, '$$1$')
-                       .replace(/\$([^\$\n]+?)\s+\$/g, '$$1$');
+  processed = processed.replace(/\$\s+([^\$\n]+?)\s+\$/g, (match, g1) => `$${g1.trim()}$`)
+                       .replace(/\$\s+([^\$\n]+?)\$/g, (match, g1) => `$${g1.trim()}$`)
+                       .replace(/\$([^\$\n]+?)\s+\$/g, (match, g1) => `$${g1.trim()}$`);
 
   // [🚨 KaTeX HTML 블록 최우선 복원 필터 🚨]
   // 텍스트 내부에 들어있는 KaTeX HTML 사전 렌더링 블록을 감지하여

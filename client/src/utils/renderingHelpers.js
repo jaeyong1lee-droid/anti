@@ -8,6 +8,21 @@ import { renderAiTutorTikz } from '../components/plugins/AiTutorTikzPlugin.js';
 import { convertMarkdownTablesToHtml } from './markdownTableRenderer.js';
 
 
+if (typeof window !== 'undefined') {
+  window.toggleDiagramCard = function(btn) {
+    if (!btn) return;
+    const card = btn.closest('.my-6') || btn.closest('.table-export-wrapper');
+    if (!card) return;
+    const content = card.querySelector('.diagram-card-content') || card.querySelector('.markdown-table-container');
+    if (!content) return;
+    const isHidden = content.classList.toggle('hidden');
+    const label = btn.querySelector('.toggle-label');
+    if (label) {
+      label.textContent = isHidden ? '▼ 펼치기' : '▲ 접기';
+    }
+  };
+}
+
 export const formatGradingReason = (reason) => {
   if (!reason) return '';
   return reason.replace(/(\b\d+(?:\.\d+)?)(점\s*(?:을\s*)?감점)/g, '10점 만점 기준 $1$2');

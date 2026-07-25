@@ -48,7 +48,7 @@ function renderTikzVectorSvgCard(stepItems, title = 'LaTeX TikZ Realtime Vector 
       <h4 class="text-xs font-black text-slate-200 tracking-tight uppercase">${escapeXmlText(title.replace(/\$/g, ''))}</h4>
       <span class="text-[10px] font-extrabold bg-emerald-950/80 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-full uppercase tracking-wider">⚡ Realtime Vector</span>
     </div>
-    <button onclick="window.__toggleDiagramCard &amp;&amp; window.__toggleDiagramCard(this)" class="text-xs font-bold bg-slate-800/90 hover:bg-slate-700 text-slate-300 border border-slate-700/80 px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer select-none">
+    <button onclick="window.toggleDiagramCard &amp;&amp; window.toggleDiagramCard(this)" class="text-xs font-bold bg-slate-800/90 hover:bg-slate-700 text-slate-300 border border-slate-700/80 px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer select-none">
       <span class="toggle-label">▼ 펼치기</span>
     </button>
   </div>
