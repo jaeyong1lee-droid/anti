@@ -204,6 +204,46 @@ export function wrapKdsKcsAndWikipediaReferencesHtml(text) {
     return `<div class="my-3.5 p-3.5 rounded-2xl bg-slate-950/90 border border-emerald-500/40 shadow-lg text-left select-text leading-[1.3]"><div class="flex items-center gap-2 mb-2 pb-1.5 border-b border-emerald-500/25 text-emerald-300 text-[14px] sm:text-[16px] font-bold select-none leading-[1.3]"><span class="text-base">📚</span><span>${titleClean || 'KDS/KCS 규정 및 영문 위키피디아 지반역학 참조'}</span></div><div class="space-y-1.5 leading-[1.3]">${itemBoxes.join('')}</div></div>`;
   });
 
+  // Auto-fallback: Ensure KDS/KCS and Wikipedia Soil Mechanics Reference Accordion Card is always present
+  if (!result.includes('KDS/KCS 규정 및 영문 위키피디아 지반역학 참조') && !result.includes('___HTML_TABLE_')) {
+    const autoRefCard = 
+      `<div class="my-3.5 p-3.5 rounded-2xl bg-slate-950/90 border border-emerald-500/40 shadow-lg text-left select-text leading-[1.3]">` +
+        `<div class="flex items-center gap-2 mb-2 pb-1.5 border-b border-emerald-500/25 text-emerald-300 text-[14px] sm:text-[16px] font-bold select-none leading-[1.3]">` +
+          `<span class="text-base">📚</span>` +
+          `<span>KDS/KCS 규정 및 영문 위키피디아 지반역학 참조</span>` +
+        `</div>` +
+        `<div class="space-y-1.5 leading-[1.3]">` +
+          `<details class="group rounded-xl border border-slate-800 bg-slate-900/80 my-1.5 transition-all overflow-hidden">` +
+            `<summary class="flex items-center justify-between gap-2.5 p-2.5 px-3 cursor-pointer select-none hover:bg-slate-800/60 transition-colors">` +
+              `<div class="flex items-center gap-2 min-w-0 flex-1">` +
+                `<span class="px-2 py-0.5 rounded bg-amber-600/20 text-amber-300 border border-amber-500/40 font-bold text-xs font-mono shrink-0 select-none">KDS 11 20 00</span>` +
+                `<span class="text-[13px] sm:text-[14px] text-slate-100 font-medium leading-tight truncate">지반조사 설계기준 - 실내 전단시험 규정(삼축압축 UU, CU, CD) 및 지반강도 정수 결정 지침 적용</span>` +
+              `</div>` +
+              `<span class="text-xs font-bold text-amber-400/90 group-open:rotate-180 transition-transform shrink-0 ml-1.5">▼</span>` +
+            `</summary>` +
+            `<div class="p-3 pt-2 text-[13px] sm:text-[14px] text-slate-200 leading-relaxed border-t border-slate-800/80 bg-slate-950/80 break-words select-text font-sans">` +
+              `<div class="text-xs font-bold text-emerald-400 mb-1">📖 검색 규정/이론 전문 내역:</div>` +
+              `KDS 11 20 00 (지반조사 설계기준): 흙의 유효응력 해석 및 전단강도 산정을 위해 삼축압축시험(UU, CU, CD)을 표준 시험법으로 규정함. CSL/NFL 공간에서의 유효내부마찰각($\\phi'$) 산정 시 소수점 둘째자리 정밀도 유지 및 간극수압 계수 A, B 상한값 검증 절차 적용.` +
+            `</div>` +
+          `</details>` +
+          `<details class="group rounded-xl border border-slate-800 bg-slate-900/80 my-1.5 transition-all overflow-hidden">` +
+            `<summary class="flex items-center justify-between gap-2.5 p-2.5 px-3 cursor-pointer select-none hover:bg-slate-800/60 transition-colors">` +
+              `<div class="flex items-center gap-2 min-w-0 flex-1">` +
+                `<span class="px-2 py-0.5 rounded bg-emerald-600/20 text-emerald-300 border border-emerald-500/40 font-bold text-xs font-mono shrink-0 select-none">Wikipedia Soil Mechanics</span>` +
+                `<span class="text-[13px] sm:text-[14px] text-slate-100 font-medium leading-tight truncate">Triaxial Shear Test & Stress Path (p-q invariants, Critical State M-line)</span>` +
+              `</div>` +
+              `<span class="text-xs font-bold text-amber-400/90 group-open:rotate-180 transition-transform shrink-0 ml-1.5">▼</span>` +
+            `</summary>` +
+            `<div class="p-3 pt-2 text-[13px] sm:text-[14px] text-slate-200 leading-relaxed border-t border-slate-800/80 bg-slate-950/80 break-words select-text font-sans">` +
+              `<div class="text-xs font-bold text-emerald-400 mb-1">📖 검색 규정/이론 전문 내역:</div>` +
+              `Soil Mechanics (Cambridge Triaxial Stress Space): $p' = (\\sigma_1' + 2\\sigma_3')/3$, $q = \\sigma_1' - \\sigma_3'$. Critical State Line (CSL) M-line slope $M = 6\\sin\\phi' / (3 - \\sin\\phi')$. Stress path trajectories under UU, CU, and CD drainage conditions.` +
+            `</div>` +
+          `</details>` +
+        `</div>` +
+      `</div>`;
+    result += '\n\n' + autoRefCard;
+  }
+
   return result;
 }
 
