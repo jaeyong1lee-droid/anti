@@ -137,7 +137,7 @@ export function wrapMechanismProcedureAssumptionsHtml(text) {
 export function wrapKdsKcsAndWikipediaReferencesHtml(text) {
   if (!text || typeof text !== 'string') return text;
 
-  const refSectionRegex = /(?:^|<br\/>|\n|<p>)[ \t]*(?:<div[^>]*>|<p>)?\s*(?:[•\*\-]\s*|#{1,6}\s*|\[|\*\*)?\s*([^\n<]*(?:📚|KDS|KCS|국가건설기준|위키피디아|Wikipedia|Soil\s*Mechanics|참조|근거|규정)[^\n<]*)\s*[:\]\*\*,\.]*[ \t]*(?:<\/div>|<\/p>|<br\/>|\n)+\s*((?:(?:<div[^>]*>|<p>)?\s*(?:[•\*\-]\s*)?(?:KDS|KCS|Wikipedia|Soil\s*Mechanics|[가-힣A-Za-z0-9_\-]+)\s*:[^\n<]*[\s\S]*?(?:<\/div>|<\/p>|<br\/>|\n))+)/gi;
+  const refSectionRegex = /(?:^|<br\/>|\n|<p>)[ \t]*(?:<div[^>]*>|<p>)?\s*(?:[•\*\-]\s*|#{1,6}\s*|\[|\*\*)?\s*([^\n<]*(?:📚|KDS|KCS|국가건설기준|위키피디아|Wikipedia|Soil\s*Mechanics|참조|근거|규정)[^\n<]*)\s*[:\]\*\*,\.]*[ \t]*(?:<\/div>|<\/p>|<br\/>|\n)+\s*((?:(?:<div[^>]*>|<p>)?\s*(?:[•\*\-]\s*)?(?:KDS|KCS|Wikipedia|Soil\s*Mechanics|[가-힣A-Za-z0-9_\-]+)[^\n<]*[\s\S]*?(?:<\/div>|<\/p>|<br\/>|\n))+)/gi;
 
   let result = text.replace(refSectionRegex, (fullMatch, headerTitle, refBlock) => {
     if (fullMatch.includes('___HTML_TABLE_') || fullMatch.includes('___CODE_BLOCK_') || /<table/i.test(fullMatch)) {
