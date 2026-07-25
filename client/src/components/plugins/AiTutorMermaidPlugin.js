@@ -72,7 +72,7 @@ function renderMermaidVectorSvgCard(stepItems, title = 'Mermaid Realtime Vector 
   });
 
   return `
-\n<div class="my-6 w-full max-w-4xl mx-auto bg-[#0b0f19] rounded-2xl p-6 border border-slate-800 shadow-2xl overflow-x-auto select-text font-sans">
+\n<div class="my-6 w-full max-w-4xl mx-auto bg-[#0b0f19] rounded-2xl p-6 border border-slate-800 shadow-2xl select-text font-sans">
   <div class="flex items-center justify-between border-b border-slate-800/80 pb-4 mb-4">
     <div class="flex items-center gap-2">
       <span class="text-base">⚡</span>
@@ -80,8 +80,8 @@ function renderMermaidVectorSvgCard(stepItems, title = 'Mermaid Realtime Vector 
     </div>
     <span class="text-[10px] font-extrabold bg-emerald-950/80 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-full uppercase tracking-wider">⚡ Realtime Vector</span>
   </div>
-  <div class="w-full svg-scroll-container select-text">
-    <svg width="100%" viewBox="0 0 800 ${svgHeight}" xmlns="http://www.w3.org/2000/svg" style="min-width: 750px; width: 100%; height: auto; display: block;">
+  <div class="w-full select-text">
+    <svg width="100%" viewBox="0 0 800 ${svgHeight}" xmlns="http://www.w3.org/2000/svg" style="width: 100%; height: auto; display: block;">
     <defs>
       <marker id="mermaid-arrowhead" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
         <path d="M 0 1 L 10 5 L 0 9 z" fill="#94a3b8" />
