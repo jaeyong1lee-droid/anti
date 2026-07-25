@@ -541,8 +541,16 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
   for (let i = 0; i < rawLines.length; i++) {
     const line = rawLines[i];
     const nextLine = rawLines[i + 1] || '';
+    const trimmed = line.trim();
+
+    // Auto-prefix bullet '• ' for standalone section headers (e.g. "시험의 장단점", "적용 분야", "개요") without markers
+    const standaloneHeaderRegex = /^\s*(?:시험의\s*장단점|적용\s*분야|장단점|적용\s*범위|시공시\s*유의사항|설계시\s*고려사항|핵심\s*특징|시험\s*목적)\s*$/;
+    if (standaloneHeaderRegex.test(trimmed)) {
+      processedLines.push('• ' + trimmed);
+      continue;
+    }
+
     if (/^\s*(?:2\.|2\)|②)\s+/.test(nextLine.trim())) {
-      const trimmed = line.trim();
       if (trimmed && !listMarkerCheckRegex.test(trimmed) && !trimmed.startsWith('#') && !trimmed.startsWith('•')) {
         processedLines.push('1. ' + line);
         continue;
