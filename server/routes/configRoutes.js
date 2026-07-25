@@ -238,8 +238,25 @@ router.get('/engineering-standards', async (req, res) => {
     } catch (dbErr) {
       console.error('Failed to read engineering standards from database:', dbErr.message);
     }
+
+    // Always re-read file list if possible
+    let currentFileList = standardsList;
+    try {
+      const filePath = path.join(serverDir, 'plugins', 'engineeringStandards.js');
+      if (fs.existsSync(filePath)) {
+        const fileContent = fs.readFileSync(filePath, 'utf-8');
+        const match = fileContent.match(/export let standardsList = (\[[\s\S]*?\]);/);
+        if (match && match[1]) {
+          currentFileList = JSON.parse(match[1]);
+        }
+      }
+    } catch (parseErr) {
+      console.error('Failed to read engineeringStandards.js file dynamically:', parseErr.message);
+    }
+
     const fileIsNewer = await checkIsFileNewer('engineeringStandards.js', 'engineering_standards');
-    const merged = mergeStandards(standardsList, dbList, fileIsNewer);
+    const merged = mergeStandards(currentFileList, dbList, fileIsNewer);
+
     if (JSON.stringify(merged) !== JSON.stringify(dbList)) {
       try {
         await saveSessionValue('engineering_standards', JSON.stringify(merged));
