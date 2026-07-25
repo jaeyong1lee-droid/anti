@@ -27,6 +27,9 @@ export function renderAiTutorSvg(text) {
   const svgRegex = /(?:```(?:xml|svg)?\s*)?(?:<[ \t]*svg|xmlns=["']http:\/\/www\.w3\.org\/2000\/svg["'])([\s\S]*?<\/svg>)((?:(?!```)[\s\S])*?)(?:```\s*$|$)/gi;
   
   processed = processed.replace(svgRegex, (match, svgInnerContent, trailingContent) => {
+    if (match.includes('diagram-card-content') || match.includes('toggleDiagramCard') || match.includes('my-6 w-full max-w-')) {
+      return match;
+    }
     let cleanSvg = `<svg${svgInnerContent}`;
 
     if (!cleanSvg.includes('</svg>')) {

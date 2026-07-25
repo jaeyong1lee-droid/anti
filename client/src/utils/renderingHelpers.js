@@ -397,6 +397,9 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
 
   // SVG Graphic rendering shield: Render raw or code block <svg ...></svg> directly as a rendered vector graphic
   tempText = tempText.replace(/(?:```(?:xml|svg)?\s*)?(?:&lt;\s*svg|<[ \t]*svg)([\s\S]*?(?:&lt;\/\s*svg&gt;|<\/[ \t]*svg>))((?:(?!```)[\s\S])*?)(?:```\s*|$)/gi, (match) => {
+    if (match.includes('diagram-card-content') || match.includes('toggleDiagramCard') || match.includes('my-6 w-full max-w-')) {
+      return match;
+    }
     let cleanSvg = match
       .replace(/&lt;/g, '<').replace(/&gt;/g, '>')
       .replace(/&amp;/g, '&').replace(/&quot;/g, '"');
