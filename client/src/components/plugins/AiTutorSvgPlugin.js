@@ -49,10 +49,20 @@ export function renderAiTutorSvg(text) {
       if (endSvgIdx !== -1) {
         const orphanLabelText = cleanSvg.substring(endSvgIdx + 6).trim();
         if (orphanLabelText) {
-          const orphanLines = orphanLabelText
+          let orphanLines = orphanLabelText
             .split(/\r?\n/)
             .map(l => l.trim())
             .filter(l => l && !l.startsWith('```') && !l.startsWith('<div') && !l.startsWith('</div'));
+
+          // Re-attach split parameters if a <text> tag inside SVG ends with an open parenthesis '('
+          if (orphanLines.length > 0) {
+            const unclosedTextMatch = baseSvgContent.match(/(<text\b[^>]*>[^<]*\()\s*<\/text>/i);
+            if (unclosedTextMatch) {
+              const firstOrphan = orphanLines.shift();
+              const cleanFirst = firstOrphan.replace(/\\/g, '');
+              baseSvgContent = baseSvgContent.replace(/(<text\b[^>]*>[^<]*\()\s*<\/text>/i, `$1${cleanFirst}</text>`);
+            }
+          }
 
           if (orphanLines.length > 0) {
             let viewW = 850;
