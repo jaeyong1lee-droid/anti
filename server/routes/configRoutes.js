@@ -239,28 +239,52 @@ router.get('/engineering-standards', async (req, res) => {
       console.error('Failed to read engineering standards from database:', dbErr.message);
     }
 
-    // Always re-read file list if possible
-    let currentFileList = standardsList;
+    // Direct dynamic load of engineeringStandards.js
+    let currentFileList = [];
     try {
       const filePath = path.join(serverDir, 'plugins', 'engineeringStandards.js');
       if (fs.existsSync(filePath)) {
         const fileContent = fs.readFileSync(filePath, 'utf-8');
-        const match = fileContent.match(/export let standardsList = (\[[\s\S]*?\]);/);
-        if (match && match[1]) {
-          currentFileList = JSON.parse(match[1]);
+        const startIdx = fileContent.indexOf('export let standardsList = [');
+        const endIdx = fileContent.indexOf(';\n\nexport let ENGINEERING_STANDARDS');
+        if (startIdx !== -1 && endIdx !== -1) {
+          const jsonArrayStr = fileContent.substring(startIdx + 'export let standardsList = '.length, endIdx).trim();
+          currentFileList = JSON.parse(jsonArrayStr);
         }
       }
     } catch (parseErr) {
       console.error('Failed to read engineeringStandards.js file dynamically:', parseErr.message);
     }
 
-    const fileIsNewer = await checkIsFileNewer('engineeringStandards.js', 'engineering_standards');
-    const merged = mergeStandards(currentFileList, dbList, fileIsNewer);
+    if (!Array.isArray(currentFileList) || currentFileList.length === 0) {
+      currentFileList = standardsList;
+    }
+
+    // Merge logic: Ensure all currentFileList items exist in dbList
+    const dbMap = new Map((dbList || []).map(item => [item.id, item]));
+    const merged = [];
+
+    for (const fileItem of currentFileList) {
+      const dbItem = dbMap.get(fileItem.id);
+      if (dbItem) {
+        merged.push(dbItem);
+      } else {
+        merged.push(fileItem);
+      }
+    }
+
+    // Also include any user-created custom items from DB
+    const fileIds = new Set(currentFileList.map(i => i.id));
+    for (const dbItem of dbList) {
+      if (!fileIds.has(dbItem.id)) {
+        merged.push(dbItem);
+      }
+    }
 
     if (JSON.stringify(merged) !== JSON.stringify(dbList)) {
       try {
         await saveSessionValue('engineering_standards', JSON.stringify(merged));
-        console.log('[Sync] Automatically synced engineering standards to database.');
+        console.log('[Sync] Automatically synced all engineering standards to database.');
       } catch (saveErr) {
         console.error('Failed to auto-save merged engineering standards to database:', saveErr.message);
       }
