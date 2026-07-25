@@ -128,37 +128,6 @@ export function wrapMechanismProcedureAssumptionsHtml(text) {
     return `<div class="my-3.5 p-3.5 rounded-2xl bg-slate-950/90 border border-indigo-500/35 shadow-lg text-left select-text flowchart-text-force"><div class="my-1.5 font-bold text-[14px] sm:text-[16px] text-indigo-300 flex items-center gap-1.5 pb-2 border-b border-indigo-500/20 select-none"><span>⚡</span><span>${titleClean}</span></div><div class="space-y-1 my-1 divide-y divide-slate-800/60">${itemBoxes.join('')}</div></div>`;
   });
 
-  // Handle standalone numbered step sequences
-  const standaloneListRegex = /(?:^|<br\/>|\n|<\/div>|<\/p>)\s*((?:(?:<p>|<div[^>]*>)?\s*\d+[\.\)]\s+[\s\S]*?(?:<\/p>|<\/div>|<br\/>|\n)){2,})/gi;
-
-  result = result.replace(standaloneListRegex, (fullMatch, stepsBlock) => {
-    if (fullMatch.includes('flowchart-text-force') || fullMatch.includes('___HTML_TABLE_') || fullMatch.includes('___CODE_BLOCK_') || /<table/i.test(fullMatch)) {
-      return fullMatch;
-    }
-
-    const rawLines = stepsBlock.split(/(?:<\/p>|<\/div>|<br\/>|\n)+/);
-    const itemBoxes = [];
-
-    rawLines.forEach((line) => {
-      const stripped = line.replace(/<[^>]+>/g, '').trim();
-      if (!stripped) return;
-
-      const numMatch = line.match(/^(?:<p>|<div[^>]*>)?\s*(\d+)[\.\)]\s*/);
-      const numStr = numMatch ? numMatch[1] : String(itemBoxes.length + 1);
-
-      const cleanContent = line.replace(/^(?:<p>|<div[^>]*>)?\s*(?:\d+[\.\)]|[①-⑳]|[•\*\-]|[가-힣]+[\.\)]|\([0-9a-zA-Z가-힣]+\)|\[[0-9a-zA-Z가-힣]+\])\s*/, '').trim();
-      if (!cleanContent || /^[-–—\s]+$/.test(cleanContent) || cleanContent === '--' || cleanContent === '---') return;
-
-      itemBoxes.push(
-        `<div class="flex items-start gap-3 p-3 my-2 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-indigo-500/40 shadow-sm text-left select-text flowchart-text-force"><span class="min-w-[1.375rem] h-[1.375rem] px-1 rounded-md bg-indigo-600/30 text-indigo-300 border border-indigo-500/50 flex items-center justify-center font-black text-[11px] font-mono shrink-0 select-none mt-0.5">${numStr}</span><div class="flex-1 text-[14px] sm:text-[15px] text-slate-100 leading-relaxed break-words min-w-0 flowchart-text-force pl-0.5">${cleanContent}</div></div>`
-      );
-    });
-
-    if (itemBoxes.length === 0) return fullMatch;
-
-    return `<div class="my-3 space-y-2 text-left select-text flowchart-text-force">${itemBoxes.join('')}</div>`;
-  });
-
   return result;
 }
 
