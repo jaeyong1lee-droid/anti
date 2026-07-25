@@ -163,37 +163,42 @@ export function wrapMechanismProcedureAssumptionsHtml(text) {
 }
 
 /**
- * 4. KDS/KCS 국가건설기준 참조 및 적용 규정 동적 감싸기 카드 박스
+ * 4. KDS/KCS 규정 및 영문 위키피디아 지반역학 참조 동적 감싸기 카드 박스
  */
-export function wrapKdsKcsReferencesHtml(text) {
+export function wrapKdsKcsAndWikipediaReferencesHtml(text) {
   if (!text || typeof text !== 'string') return text;
 
-  const kdsKcsSectionRegex = /(?:^|<br\/>|\n|<p>)[ \t]*(?:<div[^>]*>|<p>)?\s*(?:[•\*\-]\s*|#{1,6}\s*|\[|\*\*)?\s*([^\n<]*(?:KDS\s*\/\s*KCS|국가건설기준|설계기준\s*및\s*표준시방서|KDS\s*참조|KCS\s*참조)[^\n<]*)\s*[:\]\*\*,\.]*[ \t]*(?:<\/div>|<\/p>|<br\/>|\n)+\s*((?:(?:<div[^>]*>|<p>)?\s*(?:[•\*\-]\s*)?(?:KDS|KCS|[가-힣A-Za-z0-9_\-]+)\s*:[^\n<]*[\s\S]*?(?:<\/div>|<\/p>|<br\/>|\n))+)/gi;
+  const refSectionRegex = /(?:^|<br\/>|\n|<p>)[ \t]*(?:<div[^>]*>|<p>)?\s*(?:[•\*\-]\s*|#{1,6}\s*|\[|\*\*)?\s*([^\n<]*(?:KDS|KCS|국가건설기준|위키피디아|Wikipedia|Soil\s*Mechanics)[^\n<]*)\s*[:\]\*\*,\.]*[ \t]*(?:<\/div>|<\/p>|<br\/>|\n)+\s*((?:(?:<div[^>]*>|<p>)?\s*(?:[•\*\-]\s*)?(?:KDS|KCS|Wikipedia|[가-힣A-Za-z0-9_\-]+)\s*:[^\n<]*[\s\S]*?(?:<\/div>|<\/p>|<br\/>|\n))+)/gi;
 
-  return text.replace(kdsKcsSectionRegex, (fullMatch, headerTitle, kdsBlock) => {
+  return text.replace(refSectionRegex, (fullMatch, headerTitle, refBlock) => {
     if (fullMatch.includes('___HTML_TABLE_') || fullMatch.includes('___CODE_BLOCK_') || /<table/i.test(fullMatch)) {
       return fullMatch;
     }
 
-    const rawLines = kdsBlock.split(/(?:<\/p>|<\/div>|<br\/>|\n)+/);
+    const rawLines = refBlock.split(/(?:<\/p>|<\/div>|<br\/>|\n)+/);
     const itemBoxes = [];
 
     rawLines.forEach((line) => {
       const stripped = line.replace(/<[^>]+>/g, '').trim();
       if (!stripped) return;
 
-      const matchKds = line.match(/(?:[•\*\-]\s*)?\$?([A-Za-z0-9_\'\^\(\)\{\}\+\-\*\/\=\\s]+)\$?\s*:\s*(.+)$/);
-      if (matchKds) {
-        const kdsCode = matchKds[1].trim();
-        const descText = matchKds[2].trim();
+      const matchRef = line.match(/(?:[•\*\-]\s*)?\$?([A-Za-z0-9_\'\^\(\)\{\}\+\-\*\/\=\\s]+)\$?\s*:\s*(.+)$/);
+      if (matchRef) {
+        const refTag = matchRef[1].trim();
+        const descText = matchRef[2].trim();
+        const isWiki = /wikipedia|soil\s*mechanics/i.test(refTag);
+        const badgeClass = isWiki 
+          ? 'bg-emerald-600/20 text-emerald-300 border-emerald-500/40' 
+          : 'bg-amber-600/20 text-amber-300 border-amber-500/40';
+
         itemBoxes.push(
-          `<div class="flex items-baseline gap-2.5 px-2 py-1 select-text text-left leading-[1.3]"><span class="px-2 py-0.5 rounded bg-amber-600/20 text-amber-300 border border-amber-500/40 font-bold text-xs font-mono shrink-0 select-none">${kdsCode}</span><div class="flex-1 text-[14px] sm:text-[15px] text-slate-100 leading-[1.3] break-words">${descText}</div></div>`
+          `<div class="flex items-baseline gap-2.5 px-2 py-1 select-text text-left leading-[1.3]"><span class="px-2 py-0.5 rounded ${badgeClass} border font-bold text-xs font-mono shrink-0 select-none">${refTag}</span><div class="flex-1 text-[14px] sm:text-[15px] text-slate-100 leading-[1.3] break-words">${descText}</div></div>`
         );
       } else {
         const content = stripped.replace(/^(?:[•\*\-]\s*)/, '').trim();
         if (content && !/^[-–—\s]+$/.test(content) && content !== '--') {
           itemBoxes.push(
-            `<div class="flex items-baseline gap-2 px-2 py-1 text-slate-300 text-[14px] sm:text-[15px] leading-[1.3]"><span class="text-amber-400 font-bold">•</span><div class="flex-1 text-slate-100 leading-[1.3]">${content}</div></div>`
+            `<div class="flex items-baseline gap-2 px-2 py-1 text-slate-300 text-[14px] sm:text-[15px] leading-[1.3]"><span class="text-emerald-400 font-bold">•</span><div class="flex-1 text-slate-100 leading-[1.3]">${content}</div></div>`
           );
         }
       }
@@ -203,7 +208,7 @@ export function wrapKdsKcsReferencesHtml(text) {
 
     const titleClean = headerTitle.replace(/<[^>]+>/g, '').replace(/^[#\*\-•\[\]\s]+/, '').replace(/[#\*\-•\[\]\s]+$/, '').trim();
 
-    return `<div class="my-3 p-3.5 rounded-2xl bg-slate-950/90 border border-amber-500/40 shadow-lg text-left select-text leading-[1.3]"><div class="flex items-center gap-2 mb-2 pb-1.5 border-b border-amber-500/25 text-amber-300 text-[14px] sm:text-[16px] font-bold select-none leading-[1.3]"><span class="text-base">🏗️</span><span>${titleClean || 'KDS/KCS 국가건설기준 참조 및 적용 규정'}</span></div><div class="space-y-1 leading-[1.3]">${itemBoxes.join('')}</div></div>`;
+    return `<div class="my-3 p-3.5 rounded-2xl bg-slate-950/90 border border-emerald-500/40 shadow-lg text-left select-text leading-[1.3]"><div class="flex items-center gap-2 mb-2 pb-1.5 border-b border-emerald-500/25 text-emerald-300 text-[14px] sm:text-[16px] font-bold select-none leading-[1.3]"><span class="text-base">📚</span><span>${titleClean || 'KDS/KCS 규정 및 영문 위키피디아 지반역학 참조'}</span></div><div class="space-y-1 leading-[1.3]">${itemBoxes.join('')}</div></div>`;
   });
 }
 
@@ -215,7 +220,7 @@ export function applyAllDynamicWrappers(text) {
   let result = text;
   result = wrapMechanismProcedureAssumptionsHtml(result);
   result = wrapSymbolDefinitionsHtml(result);
-  result = wrapKdsKcsReferencesHtml(result);
+  result = wrapKdsKcsAndWikipediaReferencesHtml(result);
   return result;
 }
 
@@ -223,6 +228,6 @@ export default {
   wrapMechanismProcedureAssumptionsHtml,
   wrapSymbolDefinitionsHtml,
   wrapFollowingListItemsHtml,
-  wrapKdsKcsReferencesHtml,
+  wrapKdsKcsAndWikipediaReferencesHtml,
   applyAllDynamicWrappers
 };
