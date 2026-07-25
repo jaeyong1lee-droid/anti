@@ -559,31 +559,10 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
     deduplicatedLines.push(curLine);
   }
 
-  const processedLines = [];
-  const listMarkerCheckRegex = /^(?:[ \t]*(?:\*|-|•)[ \t]+|(\d+)\.\s+|(\d+\))\s*|([a-zA-Z가-힣]\))\s*|([①-⑳])\s*)/;
-  for (let i = 0; i < deduplicatedLines.length; i++) {
-    const line = deduplicatedLines[i];
-    const nextLine = deduplicatedLines[i + 1] || '';
-    const trimmed = line.trim();
-
-    // Auto-prefix bullet '• ' for standalone section headers (e.g. "시험의 장단점", "적용 분야", "개요") without markers
-    const standaloneHeaderRegex = /^\s*(?:시험의\s*장단점|적용\s*분야|장단점|적용\s*범위|시공시\s*유의사항|설계시\s*고려사항|핵심\s*특징|시험\s*목적)\s*$/;
-    if (standaloneHeaderRegex.test(trimmed)) {
-      processedLines.push('• ' + trimmed);
-      continue;
-    }
-
-    if (/^\s*(?:2\.|2\)|②)\s+/.test(nextLine.trim())) {
-      if (trimmed && !listMarkerCheckRegex.test(trimmed) && !trimmed.startsWith('#') && !trimmed.startsWith('•')) {
-        processedLines.push('1. ' + line);
-        continue;
-      }
-    }
-    processedLines.push(line);
-  }
+  const listMarkerCheckRegex = /^(?:[ \t]*(?:\*|-|•)[ \t]+|(\d+)[\.\)]\s+|([①-⑳])\s*)/;
 
   // Render list items (Clean direct single-pass rendering to avoid line duplication)
-  const lines = processedLines;
+  const lines = deduplicatedLines;
   const renderedLines = [];
   const listMarkerRegex = listMarkerCheckRegex;
 
@@ -599,11 +578,7 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
       } else if (match[1]) {
         displayMarker = match[1] + '. ';
       } else if (match[2]) {
-        displayMarker = match[2] + ') ';
-      } else if (match[3]) {
-        displayMarker = match[3] + ') ';
-      } else if (match[4]) {
-        displayMarker = match[4] + ' ';
+        displayMarker = match[2] + ' ';
       }
       
       const contentWithoutMarker = line.replace(listMarkerRegex, '');
