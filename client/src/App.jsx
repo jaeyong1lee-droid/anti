@@ -5530,6 +5530,17 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
   const [editingLockscreenContent, setEditingLockscreenContent] = useState('');
   const [isSavingLockscreenStandardsList, setIsSavingLockscreenStandardsList] = useState(false);
   const [isLoadingLockscreenStandardsList, setIsLoadingLockscreenStandardsList] = useState(false);
+
+  const [showManageEngineeringStandardsModal, setShowManageEngineeringStandardsModal] = useState(false);
+  const [showEditEngineeringStandardModal, setShowEditEngineeringStandardModal] = useState(false);
+  const [engineeringStandardsList, setEngineeringStandardsList] = useState([]);
+  const [editingEngineeringStandard, setEditingEngineeringStandard] = useState(null);
+  const [editingEngineeringTitle, setEditingEngineeringTitle] = useState('');
+  const [editingEngineeringContent, setEditingEngineeringContent] = useState('');
+  const [isSavingEngineeringStandardsList, setIsSavingEngineeringStandardsList] = useState(false);
+  const [isLoadingEngineeringStandardsList, setIsLoadingEngineeringStandardsList] = useState(false);
+
+  const [showApiSelectMiniPopup, setShowApiSelectMiniPopup] = useState(false);
   
   const [showManageTopicInstructionsModal, setShowManageTopicInstructionsModal] = useState(false);
   const [showEditTopicInstructionModal, setShowEditTopicInstructionModal] = useState(false);
@@ -21397,6 +21408,184 @@ ${itemsStr}
                 ) : (
                   <span>지침 저장 💾</span>
                 )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ⚙️ 기타 공학 지침 통합 관리 모달 (Engineering/Other Standards Management Modal) */}
+      {showManageEngineeringStandardsModal && (
+        <div className="fixed inset-0 z-[200] overflow-y-auto flex items-center justify-center p-4 bg-black/45 backdrop-blur-sm transition-all duration-300 animate-fade-in" onClick={() => setShowManageEngineeringStandardsModal(false)}>
+          <div className="w-full max-w-4xl bg-slateCustom-900 border border-white/20 rounded-2xl overflow-hidden shadow-2xl p-6 space-y-4 animate-scale-up text-left" onClick={(e) => e.stopPropagation()}>
+            
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-purple-500/10 text-purple-400 rounded-lg">
+                  <Sliders size={18} className="text-purple-500" />
+                </div>
+                <h3 className="text-sm font-extrabold text-white">⚙️ 기타 공학 및 내부 시스템 지침 통합 관리</h3>
+              </div>
+              <button
+                onClick={() => setShowManageEngineeringStandardsModal(false)}
+                className="w-6 h-6 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-200 flex items-center justify-center transition-all cursor-pointer"
+              >
+                <X size={14} />
+              </button>
+            </div>
+
+            {/* Sub-header info banner */}
+            <div className="bg-purple-950/30 border border-purple-800/40 rounded-xl p-3 text-xs text-purple-200/90 leading-relaxed font-semibold">
+              💡 기존 UI 버튼(기준, 채점, 검증, 문제, 락스크린) 지침에 직접 포함되지 않은 **기타 내부 공학 지침(MIT 응력 표현, 그래프/표 묘사, 상황적 적합성, 수리학적 침투, 비교표 마크다운 작성 수칙 등)** 목록입니다. 실시간 AI 프롬프트에 자동으로 결합 및 반영됩니다.
+            </div>
+
+            {/* Modal Body */}
+            <div className="py-2">
+              {isLoadingEngineeringStandardsList ? (
+                <div className="py-12 text-center space-y-2">
+                  <div className="inline-block w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+                  <p className="text-xs text-purple-400 font-bold animate-pulse">서버에서 기타 공학 지침 데이터를 로드하는 중입니다...</p>
+                </div>
+              ) : (
+                <div className="max-h-[50vh] overflow-y-auto pr-1 space-y-2 custom-vertical-scrollbar border border-slate-800/80 rounded-xl bg-slate-950/40 p-2">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-slate-800 text-[11px] font-black text-slate-400 bg-slate-900/60">
+                        <th className="py-2.5 px-3 w-12 text-center">#</th>
+                        <th className="py-2.5 px-3 w-48">지침 제목</th>
+                        <th className="py-2.5 px-3">지침 내용 (Prompt Content)</th>
+                        <th className="py-2.5 px-3 w-24 text-center">관리</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/50 text-xs">
+                      {engineeringStandardsList.length === 0 ? (
+                        <tr>
+                          <td colSpan={4} className="py-8 text-center text-slate-500 font-semibold">
+                            등록된 기타 공학 지침이 없습니다. 새로운 지침을 추가해보세요.
+                          </td>
+                        </tr>
+                      ) : (
+                        engineeringStandardsList.map((std, index) => (
+                          <tr key={std.id || index} className="hover:bg-slate-800/40 transition-colors">
+                            <td className="py-3 px-3 text-center text-slate-500 font-mono text-[11px]">{index + 1}</td>
+                            <td className="py-3 px-3 font-extrabold text-purple-300 align-top">
+                              {std.title}
+                            </td>
+                            <td className="py-3 px-3 text-slate-300 font-mono text-[11px] whitespace-pre-wrap leading-relaxed align-top max-w-xl">
+                              {std.content}
+                            </td>
+                            <td className="py-3 px-3 text-center align-top">
+                              <div className="flex items-center justify-center gap-1.5">
+                                <button
+                                  onClick={() => handleOpenEditEngineeringStandardModal(std)}
+                                  className="px-2 py-1 bg-purple-950/60 hover:bg-purple-900/80 text-purple-300 border border-purple-800/60 rounded-lg text-[10px] font-bold transition-all active:scale-95 cursor-pointer"
+                                  title="수정"
+                                >
+                                  수정
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteEngineeringStandard(std.id)}
+                                  className="px-2 py-1 bg-rose-950/60 hover:bg-rose-900/80 text-rose-400 border border-rose-800/60 rounded-lg text-[10px] font-bold transition-all active:scale-95 cursor-pointer"
+                                  title="삭제"
+                                >
+                                  삭제
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex justify-between items-center pt-2 border-t border-slate-800">
+              <button
+                onClick={handleOpenAddEngineeringStandardModal}
+                disabled={isLoadingEngineeringStandardsList || isSavingEngineeringStandardsList}
+                className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer flex items-center gap-1.5"
+              >
+                <span>신규 지침 추가 ➕</span>
+              </button>
+              <button
+                onClick={() => setShowManageEngineeringStandardsModal(false)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer"
+              >
+                닫기 (적용 완료)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ✏️ 기타 공학 지침 추가/수정 서브 모달 (Engineering Standard Add/Edit Sub-Modal) */}
+      {showEditEngineeringStandardModal && (
+        <div className="fixed inset-0 z-[210] overflow-y-auto flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-all duration-300 animate-fade-in" onClick={() => setShowEditEngineeringStandardModal(false)}>
+          <div className="w-full max-w-2xl bg-slateCustom-900 border border-white/20 rounded-2xl overflow-hidden shadow-2xl p-6 space-y-4 animate-scale-up text-left" onClick={(e) => e.stopPropagation()}>
+            
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-purple-500/10 text-purple-400 rounded-lg">
+                  <Sliders size={18} className="text-purple-500" />
+                </div>
+                <h3 className="text-sm font-extrabold text-white">
+                  {editingEngineeringStandard ? '✏️ 기타 공학 지침 수정' : '➕ 신규 기타 공학 지침 추가'}
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowEditEngineeringStandardModal(false)}
+                className="w-6 h-6 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-200 flex items-center justify-center transition-all cursor-pointer"
+              >
+                <X size={14} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="py-2 space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-black text-slate-400">지침 제목 (Instruction Title)</label>
+                <input
+                  type="text"
+                  value={editingEngineeringTitle}
+                  onChange={(e) => setEditingEngineeringTitle(e.target.value)}
+                  placeholder="예: MIT 응력 표현 기준"
+                  className="w-full bg-slate-950/60 border border-slate-800 focus:border-purple-500/80 rounded-xl px-3 py-2.5 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-purple-500 transition-all font-semibold"
+                  disabled={isSavingEngineeringStandardsList}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-black text-slate-400">지침 세부 내용 (Prompt Instruction Text)</label>
+                <textarea
+                  value={editingEngineeringContent}
+                  onChange={(e) => setEditingEngineeringContent(e.target.value)}
+                  placeholder="예: 모든 문제 출제 및 채점 시 응력 경로는 MIT(Lambe) 방식을 엄격하게 고수하십시오."
+                  className="w-full h-80 bg-slate-950/60 border border-slate-800 focus:border-purple-500/80 rounded-xl p-3 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-purple-500 transition-all font-mono leading-relaxed resize-none"
+                  disabled={isSavingEngineeringStandardsList}
+                />
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">
+              <button
+                onClick={() => setShowEditEngineeringStandardModal(false)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer"
+                disabled={isSavingEngineeringStandardsList}
+              >
+                취소
+              </button>
+              <button
+                onClick={handleSaveEditEngineeringStandard}
+                disabled={isSavingEngineeringStandardsList}
+                className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer flex items-center gap-1.5"
+              >
+                <span>{isSavingEngineeringStandardsList ? '저장 중...' : '저장 완료 💾'}</span>
               </button>
             </div>
           </div>
