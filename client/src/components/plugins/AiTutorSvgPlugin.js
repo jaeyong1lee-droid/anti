@@ -23,17 +23,12 @@ export function renderAiTutorSvg(text) {
     .replace(/<\s+\//g, '</')
     .replace(/<\s+([a-zA-Z0-9_-]+)/g, '<$1');
 
-  // Match SVG graphic blocks strictly from <svg> to </svg>, optionally matching trailing split parameters
-  const svgRegex = /(?:```(?:xml|svg)?\s*)?(<svg[\s\S]*?<\/svg>)(?:\s*[\r\n]+([^\r\n]+?\)))?(?:\s*```)?/gi;
+  // Match SVG graphic blocks strictly from <svg> to </svg>, capturing all trailing lines in the code block
+  const svgRegex = /(?:```(?:xml|svg)?\s*)?(?:<[ \t]*svg|xmlns=["']http:\/\/www\.w3\.org\/2000\/svg["'])([\s\S]*?<\/svg>)([\s\S]*?)(?:```\s*$|$)/gi;
   
-  processed = processed.replace(svgRegex, (match, svgContent, trailingLine) => {
-    let cleanSvg = svgContent
-      .replace(/<\s*svg[\$a-zA-Z0-9_-]*/gi, '<svg');
+  processed = processed.replace(svgRegex, (match, svgInnerContent, trailingContent) => {
+    let cleanSvg = `<svg${svgInnerContent}`;
 
-    if (!cleanSvg.trim().startsWith('<svg') && cleanSvg.includes('xmlns=')) {
-      const xmlnsIdx = cleanSvg.indexOf('xmlns=');
-      cleanSvg = `<svg ${cleanSvg.substring(xmlnsIdx)}`;
-    }
     if (!cleanSvg.includes('</svg>')) {
       cleanSvg += '</svg>';
     }
@@ -46,13 +41,18 @@ export function renderAiTutorSvg(text) {
 
       let baseSvgContent = svgMatch[0];
       
-      // Auto-heal split soil parameters (e.g., <text>1층 점토층 (</text> \gamma_1...) back into intact text inside SVG
-      if (trailingLine && trailingLine.includes(')')) {
-        // Find any text element inside SVG that ends with open parenthesis '('
+      // Extract all trailing orphan lines inside the code block
+      let orphanLines = (trailingContent || '')
+        .split(/\r?\n/)
+        .map(l => l.trim())
+        .filter(l => l && !l.startsWith('```') && !l.startsWith('<div') && !l.startsWith('</div'));
+
+      // 1. Re-assemble split parenthesis if any (e.g. 주동토압 ( -> \gamma_1...)
+      if (orphanLines.length > 0) {
         const unclosedTextMatch = baseSvgContent.match(/(<text\b[^>]*>[^<]*\(\s*)<\/text>/i);
         if (unclosedTextMatch) {
-          // Format LaTeX greek letters back to clean unicode symbols for SVG display
-          let cleanFirst = trailingLine
+          const firstOrphan = orphanLines.shift();
+          const cleanFirst = firstOrphan
             .replace(/\\gamma/g, 'γ')
             .replace(/\\phi/g, 'φ')
             .replace(/\\sigma/g, 'σ')
@@ -61,11 +61,58 @@ export function renderAiTutorSvg(text) {
             .replace(/\\delta/g, 'δ')
             .replace(/\\alpha/g, 'α')
             .replace(/\\beta/g, 'β')
-            .replace(/\\/g, ''); // strip any backslashes
+            .replace(/\\/g, ''); // strip backslashes
 
-          // Safely merge parameters into the unclosed parenthesized text tag!
           baseSvgContent = baseSvgContent.replace(/(<text\b[^>]*>[^<]*\(\s*)<\/text>/i, `$1${cleanFirst}</text>`);
         }
+      }
+
+      // 2. Embed all remaining trailing lines inside an Integrated SVG Legend Box at the bottom!
+      if (orphanLines.length > 0) {
+        let viewW = 850;
+        let viewH = 450;
+        const viewBoxMatch = baseSvgContent.match(/viewBox=["']\s*\d+\s+\d+\s+(\d+)\s+(\d+)\s*["']/i);
+        if (viewBoxMatch && viewBoxMatch[1] && viewBoxMatch[2]) {
+          viewW = Math.max(parseInt(viewBoxMatch[1], 10), 850);
+          viewH = parseInt(viewBoxMatch[2], 10);
+        } else {
+          const heightMatch = baseSvgContent.match(/height=["'](\d+)["']/i);
+          if (heightMatch && heightMatch[1]) {
+            viewH = parseInt(heightMatch[1], 10);
+          }
+        }
+
+        const legendBoxH = orphanLines.length * 28 + 20;
+        const newViewH = viewH + legendBoxH + 30;
+
+        let legendGroup = `\n<!-- Integrated SVG Diagram Legend -->\n<g id="integrated-legend" transform="translate(40, ${viewH + 15})">\n`;
+        legendGroup += `  <rect x="0" y="0" width="${viewW - 80}" height="${legendBoxH}" fill="#0b1120" stroke="#334155" stroke-width="1.5" rx="10" />\n`;
+
+        let textY = 25;
+        orphanLines.forEach(line => {
+          const cleanLineStr = line
+            .replace(/\\gamma/g, 'γ')
+            .replace(/\\phi/g, 'φ')
+            .replace(/\\sigma/g, 'σ')
+            .replace(/\\tau/g, 'τ')
+            .replace(/\\theta/g, 'θ')
+            .replace(/\\delta/g, 'δ')
+            .replace(/\\alpha/g, 'α')
+            .replace(/\\beta/g, 'β')
+            .replace(/\\/g, '') // strip backslashes
+            .replace(/\$/g, ''); // strip dollar signs
+
+          legendGroup += `  <text x="20" y="${textY}" fill="#38bdf8" font-size="13px" font-weight="bold">${cleanLineStr}</text>\n`;
+          textY += 28;
+        });
+        legendGroup += `</g>\n`;
+
+        // Expand viewBox height & height attribute
+        if (viewBoxMatch) {
+          baseSvgContent = baseSvgContent.replace(/viewBox=["'][^"']+["']/i, `viewBox="0 0 ${viewW} ${newViewH}"`);
+        }
+        baseSvgContent = baseSvgContent.replace(/height=["']\d+["']/i, `height="${newViewH}"`);
+        baseSvgContent = baseSvgContent.replace(/<\/svg>/i, `${legendGroup}</svg>`);
       }
 
       // Transform white background & dark text into sleek Dark Mode (#0f172a / #f8fafc)
