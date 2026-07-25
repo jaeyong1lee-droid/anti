@@ -1,4 +1,4 @@
-import { cleanAndSanitizeMathText } from './renderingHelpers';
+import { cleanAndSanitizeMathText } from './renderingHelpers.js';
 
 function parseRow(rowText) {
   if (!rowText) return [];
@@ -20,7 +20,7 @@ function renderCellMath(text) {
   
   // Replace $$ ... $$ first (block math)
   let temp = cleanedText.replace(/\$\$\s*([\s\S]*?)\s*\$\$/g, (match, math) => {
-    if (window.katex) {
+    if (typeof window !== 'undefined' && window.katex) {
       try {
         let cleaned = math.trim();
         cleaned = cleaned.replace(/\\frac\b/g, '\\dfrac');
@@ -42,7 +42,7 @@ function renderCellMath(text) {
     if (!isReal) {
       return match;
     }
-    if (window.katex) {
+    if (typeof window !== 'undefined' && window.katex) {
       try {
         let cleaned = math.trim();
         cleaned = cleaned.replace(/\\frac\b/g, '\\dfrac');
@@ -56,6 +56,12 @@ function renderCellMath(text) {
       }
     }
     return match;
+  });
+
+  // Format bold text **...** inside table cells (short key terms in yellow, long in white)
+  temp = temp.replace(/\*\*([^\*]+?)\*\*/g, (match, innerText) => {
+    const trimmed = innerText.trim();
+    return trimmed.length <= 25 ? `<strong style="color: #fbbf24; font-weight: 700;">${innerText}</strong>` : `<strong style="color: #f8fafc; font-weight: 700;">${innerText}</strong>`;
   });
 
   return temp;
@@ -139,7 +145,11 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false,
     return html;
   }
 
-  const cleanTitle = precedingTitle ? precedingTitle.replace(/["']/g, '&quot;') : '비교표';
+  let rawTitle = precedingTitle ? precedingTitle.replace(/["']/g, '&quot;').trim() : '';
+  if (!rawTitle || rawTitle === '--' || rawTitle === '-' || rawTitle === '•') {
+    rawTitle = '지반 조건별 비교 개요';
+  }
+  const cleanTitle = rawTitle;
   const safeTitleForDataAttr = cleanTitle.replace(/\$/g, '&#36;');
 
   html += `<div class="w-full my-4 space-y-2 table-export-wrapper relative">`;
@@ -210,9 +220,10 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false,
 
 function isHeaderLine(line) {
   const trimmed = line.trim();
+  if (trimmed.startsWith('•') || trimmed.startsWith('- ') || trimmed.startsWith('* ')) return false;
   if (trimmed.startsWith('#')) return true;
   if (trimmed.startsWith('**') && trimmed.endsWith('**')) return true;
-  if (trimmed.startsWith('*') && trimmed.endsWith('*')) return true;
+  if (trimmed.startsWith('[') && trimmed.endsWith(']')) return true;
   if (trimmed.length > 0 && trimmed.length < 40) {
     const hasSentenceEnding = /[.!?다]$/.test(trimmed) || trimmed.includes('. ') || trimmed.includes(', ');
     if (!hasSentenceEnding) {

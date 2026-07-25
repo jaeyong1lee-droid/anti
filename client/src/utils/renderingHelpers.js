@@ -5,6 +5,7 @@ import { healLatexFormulas } from './latexUtils.js';
 import { renderAiTutorSvg } from '../components/plugins/AiTutorSvgPlugin.js';
 import { renderAiTutorMermaid } from '../components/plugins/AiTutorMermaidPlugin.js';
 import { renderAiTutorTikz } from '../components/plugins/AiTutorTikzPlugin.js';
+import { convertMarkdownTablesToHtml } from './markdownTableRenderer.js';
 
 
 export const formatGradingReason = (reason) => {
@@ -399,12 +400,6 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
         .replace(/<rect\b([^>]*?)(?:stroke=["'][^"']+["']|rx=["'][^"']+["'])([^>]*?)>/gi, (match) => {
           if (match.includes('width="800"') || match.includes('width="100%"') || match.includes('width="730"') || match.includes('height="600"')) return match;
           return match.replace(/fill=["'][^"']+["']/gi, 'fill="none"').replace(/stroke=["'][^"']+["']/gi, 'stroke="none"');
-        })
-        .replace(/(<text\b[^>]*?\by=["'](\d+)["'][^>]*?>[\s\S]*?<\/text>)/gi, (m) => {
-          if (m.includes('sigma') || m.includes('\\sigma') || m.includes('=')) {
-            return m.replace(/y=["']\d+["']/i, 'y="520"');
-          }
-          return m;
         });
 
       darkSvg = darkSvg.replace(/<svg\b([^>]*?)>/i, (match, attrs) => {
@@ -473,6 +468,9 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
     return placeholder;
   });
   
+  // Convert raw markdown tables (| ... |) into styled HTML table cards
+  tempText = convertMarkdownTablesToHtml(tempText);
+
   // Primary: match table-export-wrapper div from open tag to the two closing </div> tags that follow </table>
   tempText = tempText.replace(/(<div[^>]*class="[^"]*table-export-wrapper[^"]*"[^>]*>[\s\S]*?<\/table>[\s\S]*?<\/div>\s*<\/div>)/g, (match) => {
     const placeholder = `___HTML_TABLE_${placeholderIndex}___`;
@@ -500,8 +498,8 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
     return placeholder;
   });
 
-  // Protect $ ... $
-  tempText = tempText.replace(/\$((?:[^\$\n<]|<(?![a-zA-Z/!]))+?)\$/g, (match, math) => {
+  // Protect $ ... $ (exclude '|' pipe characters so inline math NEVER matches across markdown table cells)
+  tempText = tempText.replace(/\$((?:[^\$\n<|]|<(?![a-zA-Z/!]))+?)\$/g, (match, math) => {
     const isReal = !/[\uAC00-\uD7A3]/.test(math) || /\\/.test(math) || /_/.test(math) || /\^/.test(math) || /[=+\-\*\/]/.test(math) || /\\cdot/.test(math);
     if (!isReal) {
       return match;
@@ -523,17 +521,14 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
   // Headings on same line
   tempText = tempText.replace(/([^\n])\s*(#{2,6}\s+)/g, '$1\n\n$2');
 
-  // Bold text
-  if (isTutor) {
-    tempText = tempText.replace(/\*\*([^\*]+?)\*\*/g, `<span style="color: #fbbf24; font-weight: normal;">$1</span>`);
-    tempText = tempText.replace(/'([^'\n]+?)'/g, `<span style="color: #fbbf24; font-weight: normal;">'$1'</span>`);
-  } else {
-    const boldColor = (isMarkdown && highlightBold) ? '#fbbf24' : '#f1f5f9';
-    tempText = tempText.replace(/\*\*([^\*]+?)\*\*/g, `<strong style="color: ${boldColor}; font-weight: 700;">$1</strong>`);
-    if (isMarkdown && highlightBold) {
-      tempText = tempText.replace(/'([^'\n]+?)'/g, `<span style="color: #fbbf24; font-weight: normal;">'$1'</span>`);
+  // Bold & Key Word Highlighting: Highlight ONLY short important key words (<= 25 chars) in yellow (#fbbf24)
+  tempText = tempText.replace(/\*\*([^\*]+?)\*\*/g, (match, innerText) => {
+    const trimmed = innerText.trim();
+    if (trimmed.length <= 25 && !trimmed.includes('\n')) {
+      return `<strong style="color: #fbbf24; font-weight: 700;">${innerText}</strong>`;
     }
-  }
+    return `<strong style="color: #f8fafc; font-weight: 700;">${innerText}</strong>`;
+  });
 
   tempText = tempText.replace(/([^\n])[ \t]*(?:\* * \*|\*\*\*)[ \t]*/g, '$1\n* * * ');
 
@@ -732,7 +727,7 @@ export const renderKatexString = (math, options) => {
   cleaned = cleaned.replace(/^\$|\$/g, '').trim();
   processedMath = cleaned;
 
-  if (window.katex) {
+  if (typeof window !== 'undefined' && window.katex) {
     try {
       return window.katex.renderToString(processedMath, { ...options, throwOnError: true, strict: 'ignore' }).replace(/\n/g, ' ');
     } catch (e) {
@@ -747,7 +742,7 @@ export const renderKatexString = (math, options) => {
       return `<span class="katex-error" style="color:#cc0000; font-family: monospace;" title="KaTeX error: ${escapedMath}">${escapedMath}</span>`;
     }
   }
-  return options.displayMode ? `$$${processedMath}$$` : `$${processedMath}$`;
+  return options?.displayMode ? `$$${processedMath}$$` : `$${processedMath}$`;
 };
 
 export const getSelectionTextWithLatex = (selection) => {

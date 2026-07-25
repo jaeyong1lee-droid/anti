@@ -57,13 +57,6 @@ export function renderAiTutorSvg(text) {
         .replace(/<rect\b([^>]*?)(?:stroke=["'][^"']+["']|rx=["'][^"']+["'])([^>]*?)>/gi, (match) => {
           if (match.includes('width="800"') || match.includes('width="100%"') || match.includes('width="730"') || match.includes('height="600"')) return match;
           return match.replace(/fill=["'][^"']+["']/gi, 'fill="none"').replace(/stroke=["'][^"']+["']/gi, 'stroke="none"');
-        })
-        // Position math formula text at the very bottom of the SVG canvas (y=520) underneath all drawings
-        .replace(/(<text\b[^>]*?\by=["'](\d+)["'][^>]*?>[\s\S]*?<\/text>)/gi, (m) => {
-          if (m.includes('sigma') || m.includes('\\sigma') || m.includes('=')) {
-            return m.replace(/y=["']\d+["']/i, 'y="520"');
-          }
-          return m;
         });
 
       // Inject global dark halo style tag into SVG to guarantee text never overlaps any lines
