@@ -71,13 +71,13 @@ export function wrapSymbolDefinitionsHtml(text) {
         const symbolVar = matchSymbol[1].trim();
         const descText = matchSymbol[2].trim();
         itemBoxes.push(
-          `<div class="flex items-center gap-2.5 px-3 py-2 my-1 rounded-xl bg-slate-900/90 border border-purple-500/30 hover:border-purple-500/60 shadow-sm text-left select-text"><span class="px-2.5 py-0.5 rounded-lg bg-purple-600/25 text-purple-300 border border-purple-500/40 font-black text-xs font-mono shrink-0 shadow-sm">${symbolVar}</span><div class="flex-1 text-[13px] sm:text-[14px] text-slate-100 leading-normal break-words">${descText}</div></div>`
+          `<div class="flex items-center gap-3 px-2 py-1.5 hover:bg-purple-900/15 rounded-lg transition-colors text-left select-text"><span class="w-6 h-6 rounded-md bg-purple-600/30 text-purple-300 border border-purple-500/40 font-bold text-xs font-mono flex items-center justify-center shrink-0">${symbolVar}</span><div class="flex-1 text-[13px] sm:text-[14px] text-slate-200 leading-relaxed break-words">${descText}</div></div>`
         );
       } else {
         const content = stripped.replace(/^(?:[•\*\-]\s*)/, '').trim();
         if (content && !/^[-–—\s]+$/.test(content) && content !== '--') {
           itemBoxes.push(
-            `<div class="flex items-center gap-2 px-3 py-1.5 my-0.5 text-slate-300 text-xs sm:text-sm"><span class="text-purple-400 font-bold">•</span><div class="flex-1 text-slate-200">${content}</div></div>`
+            `<div class="flex items-center gap-2.5 px-2 py-1 text-slate-300 text-xs sm:text-sm"><span class="text-purple-400 font-bold">•</span><div class="flex-1 text-slate-200">${content}</div></div>`
           );
         }
       }
@@ -87,7 +87,7 @@ export function wrapSymbolDefinitionsHtml(text) {
 
     const titleClean = headerTitle.replace(/<[^>]+>/g, '').replace(/^[#\*\-•\[\]\s]+/, '').replace(/[#\*\-•\[\]\s]+$/, '').trim();
 
-    return `<div class="my-3.5 p-3.5 rounded-2xl bg-slate-950/90 border border-purple-500/40 shadow-lg text-left"><div class="flex items-center gap-2 mb-2.5 pb-2 border-b border-purple-500/25 text-purple-300 text-xs sm:text-sm font-black select-none"><span class="text-base">✨</span><span>${titleClean || '공식 기호 정의'}</span></div><div class="space-y-1">${itemBoxes.join('')}</div></div>`;
+    return `<div class="my-3.5 p-3.5 rounded-2xl bg-slate-950/90 border border-purple-500/40 shadow-lg text-left"><div class="flex items-center gap-2 mb-2 pb-2 border-b border-purple-500/25 text-purple-300 text-xs sm:text-sm font-black select-none"><span class="text-base">✨</span><span>${titleClean || '공식 기호 정의'}</span></div><div class="space-y-0.5 divide-y divide-purple-500/10">${itemBoxes.join('')}</div></div>`;
   });
 }
 
@@ -117,7 +117,7 @@ export function wrapMechanismProcedureAssumptionsHtml(text) {
       const stepNum = itemBoxes.length + 1;
 
       itemBoxes.push(
-        `<div class="flex items-start gap-3 p-3 my-2 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-indigo-500/40 shadow-sm text-left select-text flowchart-text-force"><span class="min-w-[1.375rem] h-[1.375rem] px-1 rounded-md bg-indigo-600/30 text-indigo-300 border border-indigo-500/50 flex items-center justify-center font-black text-[11px] font-mono shrink-0 select-none mt-0.5">${stepNum}</span><div class="flex-1 text-[14px] sm:text-[15px] text-slate-100 leading-relaxed break-words min-w-0 flowchart-text-force pl-0.5">${content}</div></div>`
+        `<div class="flex items-start gap-3 px-2.5 py-2 hover:bg-slate-900/60 rounded-lg transition-colors text-left select-text flowchart-text-force"><span class="w-5 h-5 rounded-md bg-indigo-600/30 text-indigo-300 border border-indigo-500/50 flex items-center justify-center font-bold text-[11px] font-mono shrink-0 select-none mt-0.5">${stepNum}</span><div class="flex-1 text-[14px] sm:text-[15px] text-slate-100 leading-relaxed break-words min-w-0 flowchart-text-force">${content}</div></div>`
       );
     });
 
@@ -125,7 +125,7 @@ export function wrapMechanismProcedureAssumptionsHtml(text) {
 
     const titleClean = headerTitle.replace(/<[^>]+>/g, '').replace(/^[#\*\-•\[\]\s]+/, '').replace(/[#\*\-•\[\]\s]+$/, '').trim();
 
-    return `<div class="my-3 w-full text-left select-text flowchart-text-force"><div class="my-2 font-bold text-[14px] sm:text-[16px] text-indigo-300 flex items-center gap-1.5 pb-1 border-b border-slate-800"><span>⚡</span><span>${titleClean}</span></div><div class="space-y-2 my-2">${itemBoxes.join('')}</div></div>`;
+    return `<div class="my-3.5 p-3.5 rounded-2xl bg-slate-950/90 border border-indigo-500/35 shadow-lg text-left select-text flowchart-text-force"><div class="my-1.5 font-bold text-[14px] sm:text-[16px] text-indigo-300 flex items-center gap-1.5 pb-2 border-b border-indigo-500/20 select-none"><span>⚡</span><span>${titleClean}</span></div><div class="space-y-1 my-1 divide-y divide-slate-800/60">${itemBoxes.join('')}</div></div>`;
   });
 
   // Handle standalone numbered step sequences
