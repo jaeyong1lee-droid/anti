@@ -6,6 +6,7 @@ import { dbQuery } from '../database.js';
 import { put, get } from '@vercel/blob';
 import { saveSessionValue, globalPreferredModel, updatePreferredModel, callLLMWithFailover, startBackendProgressTimer, updateProgress } from '../services/aiService.js';
 import { updateLiveEngineeringStandards, standardsList, ENGINEERING_STANDARDS } from '../plugins/engineeringStandards.js';
+import { updateLiveOtherStandards, otherStandardsList, OTHER_STANDARDS } from '../plugins/otherStandards.js';
 import { updateLiveGradingStandards, gradingStandardsList } from '../plugins/gradingPlugin.js';
 let validationStandardsList = [];
 function updateLiveValidationStandards(newList) {
@@ -239,32 +240,25 @@ router.get('/engineering-standards', async (req, res) => {
       console.error('Failed to read engineering standards from database:', dbErr.message);
     }
 
-    // Direct dynamic load of engineeringStandards.js
-    let currentFileList = [];
+    let currentFileList = standardsList;
     try {
       const filePath = path.join(serverDir, 'plugins', 'engineeringStandards.js');
       if (fs.existsSync(filePath)) {
         const fileContent = fs.readFileSync(filePath, 'utf-8');
         const startIdx = fileContent.indexOf('export let standardsList = [');
-        const endIdx = fileContent.indexOf(';\n\nexport let ENGINEERING_STANDARDS');
-        if (startIdx !== -1 && endIdx !== -1) {
-          const jsonArrayStr = fileContent.substring(startIdx + 'export let standardsList = '.length, endIdx).trim();
-          currentFileList = JSON.parse(jsonArrayStr);
+        const endIdx = fileContent.lastIndexOf('];');
+        if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
+          const jsonStr = fileContent.substring(startIdx + 'export let standardsList = '.length, endIdx + 1).trim();
+          currentFileList = JSON.parse(jsonStr);
         }
       }
     } catch (parseErr) {
       console.error('Failed to read engineeringStandards.js file dynamically:', parseErr.message);
     }
 
-    if (!Array.isArray(currentFileList) || currentFileList.length === 0) {
-      currentFileList = standardsList;
-    }
-
-    // Merge logic: Always trust currentFileList for title/content of default items, preserve user additions
     const dbMap = new Map((dbList || []).map(item => [item.id, item]));
     const merged = currentFileList.map(fileItem => {
       const dbItem = dbMap.get(fileItem.id);
-      // Always update title & content from file if file has newer/updated definitions
       return {
         ...fileItem,
         title: fileItem.title,
@@ -273,7 +267,6 @@ router.get('/engineering-standards', async (req, res) => {
       };
     });
 
-    // Also include any user-created custom items from DB (items not present in default file list)
     const fileIds = new Set(currentFileList.map(i => i.id));
     for (const dbItem of dbList || []) {
       if (!fileIds.has(dbItem.id)) {
@@ -284,7 +277,7 @@ router.get('/engineering-standards', async (req, res) => {
     if (JSON.stringify(merged) !== JSON.stringify(dbList)) {
       try {
         await saveSessionValue('engineering_standards', JSON.stringify(merged));
-        console.log('[Sync] Automatically synced all engineering standards to database.');
+        console.log('[Sync] Automatically synced engineering standards to database.');
       } catch (saveErr) {
         console.error('Failed to auto-save merged engineering standards to database:', saveErr.message);
       }
@@ -293,6 +286,121 @@ router.get('/engineering-standards', async (req, res) => {
     res.json({ standards: merged });
   } catch (err) {
     console.error('GET /api/engineering-standards error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/engineering-standards
+router.post('/engineering-standards', async (req, res) => {
+  try {
+    const { standards } = req.body;
+    if (!Array.isArray(standards)) {
+      return res.status(400).json({ error: 'standards must be an array' });
+    }
+
+    const stamped = stampUpdatedStandards(standards, standardsList);
+    updateLiveEngineeringStandards(stamped);
+
+    try {
+      await saveSessionValue('engineering_standards', JSON.stringify(stamped));
+      console.log('Successfully saved engineering standards to database.');
+    } catch (dbErr) {
+      console.error('Failed to save engineering standards to database:', dbErr.message);
+    }
+
+    await writeStandardToFile('engineeringStandards.js', stamped);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('POST /api/engineering-standards error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/other-standards
+router.get('/other-standards', async (req, res) => {
+  try {
+    let dbList = [];
+    try {
+      const row = await dbQuery.get("SELECT value FROM app_session WHERE key = 'other_standards'");
+      if (row && row.value) {
+        dbList = JSON.parse(row.value);
+      }
+    } catch (dbErr) {
+      console.error('Failed to read other standards from database:', dbErr.message);
+    }
+
+    let currentFileList = otherStandardsList;
+    try {
+      const filePath = path.join(serverDir, 'plugins', 'otherStandards.js');
+      if (fs.existsSync(filePath)) {
+        const fileContent = fs.readFileSync(filePath, 'utf-8');
+        const startIdx = fileContent.indexOf('export let otherStandardsList = [');
+        const endIdx = fileContent.lastIndexOf('];');
+        if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
+          const jsonStr = fileContent.substring(startIdx + 'export let otherStandardsList = '.length, endIdx + 1).trim();
+          currentFileList = JSON.parse(jsonStr);
+        }
+      }
+    } catch (parseErr) {
+      console.error('Failed to read otherStandards.js file dynamically:', parseErr.message);
+    }
+
+    const dbMap = new Map((dbList || []).map(item => [item.id, item]));
+    const merged = currentFileList.map(fileItem => {
+      const dbItem = dbMap.get(fileItem.id);
+      return {
+        ...fileItem,
+        title: fileItem.title,
+        content: fileItem.content,
+        updatedAt: fileItem.updatedAt || new Date().toISOString()
+      };
+    });
+
+    const fileIds = new Set(currentFileList.map(i => i.id));
+    for (const dbItem of dbList || []) {
+      if (!fileIds.has(dbItem.id)) {
+        merged.push(dbItem);
+      }
+    }
+
+    if (JSON.stringify(merged) !== JSON.stringify(dbList)) {
+      try {
+        await saveSessionValue('other_standards', JSON.stringify(merged));
+        console.log('[Sync] Automatically synced other standards to database.');
+      } catch (saveErr) {
+        console.error('Failed to auto-save merged other standards to database:', saveErr.message);
+      }
+    }
+    updateLiveOtherStandards(merged);
+    res.json({ standards: merged });
+  } catch (err) {
+    console.error('GET /api/other-standards error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/other-standards
+router.post('/other-standards', async (req, res) => {
+  try {
+    const { standards } = req.body;
+    if (!Array.isArray(standards)) {
+      return res.status(400).json({ error: 'standards must be an array' });
+    }
+
+    const stamped = stampUpdatedStandards(standards, otherStandardsList);
+    updateLiveOtherStandards(stamped);
+
+    try {
+      await saveSessionValue('other_standards', JSON.stringify(stamped));
+      console.log('Successfully saved other standards to database.');
+    } catch (dbErr) {
+      console.error('Failed to save other standards to database:', dbErr.message);
+    }
+
+    await writeStandardToFile('otherStandards.js', stamped);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('POST /api/other-standards error:', err);
     res.status(500).json({ error: err.message });
   }
 });

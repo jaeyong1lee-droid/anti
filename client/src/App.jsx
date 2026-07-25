@@ -12378,7 +12378,7 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
     setEngineeringStandardsPage(1);
     setIsLoadingEngineeringStandardsList(true);
     try {
-      const res = await fetch(`${API_BASE}/api/engineering-standards`);
+      const res = await fetch(`${API_BASE}/api/other-standards`);
       if (!res.ok) throw new Error('기타 공학 지침 데이터를 불러오지 못했습니다.');
       const data = await res.json();
       setEngineeringStandardsList(data.standards || []);
@@ -12395,7 +12395,7 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
     const updatedList = engineeringStandardsList.filter(s => s.id !== id);
     setIsSavingEngineeringStandardsList(true);
     try {
-      const res = await fetch(`${API_BASE}/api/engineering-standards`, {
+      const res = await fetch(`${API_BASE}/api/other-standards`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ standards: updatedList })
@@ -12457,7 +12457,7 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
 
     setIsSavingEngineeringStandardsList(true);
     try {
-      const res = await fetch(`${API_BASE}/api/engineering-standards`, {
+      const res = await fetch(`${API_BASE}/api/other-standards`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ standards: updatedList })
