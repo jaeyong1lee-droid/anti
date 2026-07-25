@@ -647,7 +647,54 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
   tempText = tempText.replace(/___CODE_BLOCK_\d+___/g, '');
 
   tempText = wrapMechanismProcedureAssumptionsHtml(tempText);
+  tempText = wrapSymbolDefinitionsHtml(tempText);
   return tempText;
+}
+
+export function wrapSymbolDefinitionsHtml(text) {
+  if (!text || typeof text !== 'string') return text;
+
+  // Clean lonely '*' or '-' lines
+  let cleanText = text.replace(/(?:<br\/>|\n|<p>)\s*[\*\-•]\s*(?=<br\/>|\n|<\/p>|<p>|$)/gi, '');
+
+  // Match '여기서,', 'Where,', '기호 정의', '변수 정의' symbol definition blocks
+  const symbolSectionRegex = /(?:^|<br\/>|\n|<p>)[ \t]*(?:[•\*\-]\s*|#{1,6}\s*|\[|\*\*)?\s*([^\n<]*(?:여기서|Where|기호\s*정의|변수\s*정의|공식\s*기호|기호\s*설명)[^\n<]*)\s*[:\]\*\*,\.]*[ \t]*(?:<br\/>|\n|<\/p>|<p>)((?:[ \t]*(?:<div[^>]*>|<p>)?(?:\d+[\.\)]|[①-⑳]|[•\*\-]|[a-zA-Z0-9_\$\\s\(\)\/]+:)[ \t]*[\s\S]*?(?:<\/div>|<\/p>|<br\/>|\n))+)/gi;
+
+  return cleanText.replace(symbolSectionRegex, (fullMatch, headerTitle, symbolsBlock) => {
+    if (fullMatch.includes('___HTML_TABLE_') || fullMatch.includes('___CODE_BLOCK_') || /<table/i.test(fullMatch)) {
+      return fullMatch;
+    }
+
+    const rawLines = symbolsBlock.split(/(?:<\/p>|<\/div>|<br\/>|\n)+/);
+    const itemBoxes = [];
+
+    rawLines.forEach((line) => {
+      const stripped = line.replace(/<[^>]+>/g, '').trim();
+      if (!stripped) return;
+
+      const matchSymbol = line.match(/^(?:<div[^>]*>|<p>)?\s*(?:[•\*\-]\s*)?\$?([a-zA-Z0-9_\'\^\(\)\{\}\+\-\*\/\=\\]+)\$?\s*:\s*(.+)$/);
+      if (matchSymbol) {
+        const symbolVar = matchSymbol[1].trim();
+        const descText = matchSymbol[2].trim();
+        itemBoxes.push(
+          `<div class="flex items-center gap-2.5 px-3 py-2 my-1 rounded-lg bg-slate-900/90 border border-purple-500/30 hover:border-purple-500/60 shadow-sm text-left select-text"><span class="px-2 py-0.5 rounded bg-purple-600/20 text-purple-300 border border-purple-500/40 font-bold text-xs font-mono shrink-0">${symbolVar}</span><div class="flex-1 text-[13px] sm:text-[14px] text-slate-200 leading-normal break-words">${descText}</div></div>`
+        );
+      } else {
+        const content = line.replace(/^(?:<div[^>]*>|<p>)?\s*(?:\d+[\.\)]|[①-⑳]|[•\*\-]|[가-힣]+[\.\)]|\([0-9a-zA-Z가-힣]+\)|\[[0-9a-zA-Z가-힣]+\])\s*/, '').trim();
+        if (content && !/^[-–—\s]+$/.test(content) && content !== '--') {
+          itemBoxes.push(
+            `<div class="flex items-center gap-2 px-3 py-1.5 my-0.5 text-slate-300 text-xs sm:text-sm"><span class="text-purple-400 font-bold">•</span><div class="flex-1">${content}</div></div>`
+          );
+        }
+      }
+    });
+
+    if (itemBoxes.length === 0) return fullMatch;
+
+    const titleClean = headerTitle.replace(/<[^>]+>/g, '').replace(/^[#\*\-•\[\]\s]+/, '').replace(/[#\*\-•\[\]\s]+$/, '').trim();
+
+    return `<div class="my-3 p-3 rounded-xl bg-slate-950/80 border border-purple-500/40 shadow-md"><div class="flex items-center gap-2 mb-2 pb-1.5 border-b border-purple-500/20 text-purple-400 text-xs sm:text-sm font-extrabold select-none"><span class="text-base">✨</span><span>${titleClean || '공식 기호 정의'}</span></div><div class="space-y-1">${itemBoxes.join('')}</div></div>`;
+  });
 }
 
 export function wrapMechanismProcedureAssumptionsHtml(text) {
