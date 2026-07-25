@@ -12,7 +12,9 @@ function getCallLLM(req) {
     callLLMWithFailover(sys, prompt, img, scenario, { ...opts, progressId });
 }
 
+let lockscreenSessionTableEnsured = false;
 async function ensureSessionTable() {
+  if (lockscreenSessionTableEnsured) return;
   try {
     await dbQuery.run(`
       CREATE TABLE IF NOT EXISTS app_session (
@@ -21,6 +23,7 @@ async function ensureSessionTable() {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
+    lockscreenSessionTableEnsured = true;
   } catch (e) {
     console.warn('ensureSessionTable warning:', e.message);
   }

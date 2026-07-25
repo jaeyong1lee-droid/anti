@@ -497,7 +497,9 @@ router.post('/lockscreen-standards', async (req, res) => {
   }
 });
 
+let configSessionTableEnsured = false;
 async function ensureSessionTable() {
+  if (configSessionTableEnsured) return;
   try {
     await dbQuery.run(`
       CREATE TABLE IF NOT EXISTS app_session (
@@ -506,6 +508,7 @@ async function ensureSessionTable() {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
+    configSessionTableEnsured = true;
   } catch (e) {
     console.warn('ensureSessionTable warning:', e.message);
   }

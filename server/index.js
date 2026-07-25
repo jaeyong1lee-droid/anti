@@ -221,19 +221,52 @@ async function startServer() {
     await loadPreferredModel();
     
     // Start automated DB backup cron job
-    startBackupScheduler();
+    if (!process.env.VERCEL) {
+      startBackupScheduler();
+    }
 
-    app.listen(PORT, () => {
-      console.log(`================================================`);
-      console.log(`  Antigravity Server is running on port ${PORT}`);
-      console.log(`  Mode: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`================================================`);
-    });
+    if (!process.env.VERCEL) {
+      app.listen(PORT, () => {
+        console.log(`================================================`);
+        console.log(`  Antigravity Server is running on port ${PORT}`);
+        console.log(`  Mode: ${process.env.NODE_ENV || 'development'}`);
+        console.log(`================================================`);
+      });
+    }
   } catch (error) {
     console.error('[CRITICAL STARTUP ERROR] Server failed to start:', error);
-    process.exit(1);
+    if (!process.env.VERCEL) {
+      process.exit(1);
+    }
   }
 }
 
-startServer();
+// Lazy DB initialization & standards sync handler for Serverless Vercel environment
+let vercelInitPromise = null;
+if (process.env.VERCEL) {
+  app.use(async (req, res, next) => {
+    try {
+      if (!vercelInitPromise) {
+        vercelInitPromise = (async () => {
+          if (isPostgres) {
+            await initDatabase();
+            await initializeAllStandards();
+            await loadPreferredModel();
+          }
+        })().catch(err => {
+          console.error('[Vercel Serverless Init Error]', err.message);
+          vercelInitPromise = null; // Reset promise to allow retrying on subsequent requests
+        });
+      }
+      await vercelInitPromise;
+    } catch (err) {
+      console.warn('[Vercel Serverless Middleware Error]', err.message);
+    }
+    next();
+  });
+} else {
+  startServer();
+}
+
 export default app;
+

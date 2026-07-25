@@ -290,7 +290,9 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
     finalShorts4[3]             // 13번 주관식 (index 12) -> Short Subjective 4 (Field/Countermeasure)
   ].filter(Boolean);
 }
+let quizSessionTableEnsured = false;
 async function ensureSessionTable() {
+  if (quizSessionTableEnsured) return;
   try {
     await dbQuery.run(`
       CREATE TABLE IF NOT EXISTS app_session (
@@ -299,6 +301,7 @@ async function ensureSessionTable() {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
+    quizSessionTableEnsured = true;
   } catch (e) {
     console.warn('ensureSessionTable warning:', e.message);
   }

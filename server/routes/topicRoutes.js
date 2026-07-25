@@ -976,7 +976,9 @@ router.get('/dashboard/weak-points', async (req, res) => {
 });
 
 // Helper database schema check functions
+let topicSessionTableEnsured = false;
 async function ensureSessionTable() {
+  if (topicSessionTableEnsured) return;
   try {
     await dbQuery.run(`
       CREATE TABLE IF NOT EXISTS app_session (
@@ -985,6 +987,7 @@ async function ensureSessionTable() {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
+    topicSessionTableEnsured = true;
   } catch (e) {
     console.warn('ensureSessionTable warning:', e.message);
   }
