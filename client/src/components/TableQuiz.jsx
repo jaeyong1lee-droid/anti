@@ -1794,26 +1794,14 @@ export const TableQuiz = React.memo(function TableQuiz({
                         const theme = isCellGraded ? getTableScoreColorTheme(gradingResult, isCorrect, value) : null;
 
                         return (
-                          <div key={inputId} className="space-y-1.5 p-3 rounded-lg bg-slate-900/60 border border-slate-800">
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs font-black text-amber-400 flex items-center gap-1.5">
-                                <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-black">({letter})</span>
-                                <span>빈칸 ({letter}) 입력:</span>
-                              </span>
-                              {isCellGraded && gradingResult && gradingResult.score !== undefined && (
-                                <span className={`text-xs font-bold ${theme ? theme.text : 'text-slate-400'}`}>
-                                  {Math.round((gradingResult.score / 10) * (weight / allInputIds.length) * 10) / 10}점
-                                </span>
-                              )}
-                            </div>
-
+                          <div key={inputId} className="w-full space-y-1">
                             <BufferedTextarea
                               value={value}
                               onChange={(val) => handleInputChange(inputId, val)}
                               onKeystroke={(val) => handleInputKeystroke(inputId, val)}
                               placeholder={`(${letter}) 빈칸에 들어갈 공학적 수식 및 명칭 기입...`}
                               data-answer-key={`${questionIdx}_${inputId}`}
-                              className={`w-full text-[13px] sm:text-[14px] p-2 sm:p-2.5 rounded-lg border outline-none resize-none transition-all ${
+                              className={`w-full text-[13px] sm:text-[14px] p-2.5 rounded-lg border outline-none resize-none transition-all ${
                                 isCellGraded
                                   ? (theme ? `${theme.cellBg} ${theme.text} border-slate-700` : 'bg-slate-950/80 text-slate-200 border-slate-700')
                                   : 'bg-slate-950 text-slate-100 border-slate-700 focus:border-sky-500 focus:ring-1 focus:ring-sky-500'
@@ -1833,10 +1821,15 @@ export const TableQuiz = React.memo(function TableQuiz({
                             />
 
                             {isCellGraded && (
-                              <div className="mt-2 text-xs space-y-1 pt-1.5 border-t border-slate-800">
+                              <div className="mt-1 text-xs space-y-1 pt-1 border-t border-slate-800">
                                 <div className="text-emerald-400 font-bold flex items-start gap-1">
-                                  <span>✅ 정답:</span>
+                                  <span>✅ ({letter}) 정답:</span>
                                   <span><LatexRenderer text={gradingResult?.suggestedModelAnswer || correctAnswer} katexLoaded={katexLoaded} isMarkdown={true} /></span>
+                                  {gradingResult && gradingResult.score !== undefined && (
+                                    <span className={`ml-auto text-xs font-bold ${theme ? theme.text : 'text-slate-400'}`}>
+                                      {Math.round((gradingResult.score / 10) * (weight / allInputIds.length) * 10) / 10}점
+                                    </span>
+                                  )}
                                 </div>
                                 {gradingResult?.reason && (
                                   <div className="text-slate-300 text-[11px] leading-relaxed">
@@ -1855,9 +1848,9 @@ export const TableQuiz = React.memo(function TableQuiz({
                         <button
                           type="button"
                           onClick={onSubmit}
-                          className="w-full sm:w-auto px-5 py-3.5 bg-slate-700 hover:bg-slate-600 text-white border border-slate-500/50 rounded-xl text-xs sm:text-sm font-black transition-all shadow-md active:scale-95 whitespace-nowrap cursor-pointer flex items-center justify-center gap-1.5 font-bold"
+                          className="w-full sm:w-auto px-4 py-3 bg-slate-700 hover:bg-slate-600 text-white border border-slate-500/50 rounded-xl text-xs sm:text-sm font-black transition-all shadow-md active:scale-95 whitespace-nowrap cursor-pointer flex items-center justify-center font-bold"
                         >
-                          제출하고 채점하기 →
+                          제출
                         </button>
                       </div>
                     )}
