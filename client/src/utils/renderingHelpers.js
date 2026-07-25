@@ -965,7 +965,7 @@ export const cleanAndSanitizeMathText = (rawText) => {
   // Shield pre-rendered diagram card divs (<div class="my-6...) from math sanitizer corruption
   const diagramCards = [];
   let cardIndex = 0;
-  let cleaned = rawText.replace(/(<div[^>]*class=["'][^"']*my-6[^"']*["'][^>]*>[\s\S]*?<\/div>\s*<\/div>|<div[^>]*class=["'][^"']*my-6[^"']*["'][^>]*>[\s\S]*?<\/div>)/gi, (match) => {
+  let cleaned = rawText.replace(/(<div[^>]*class=["'][^"']*my-6[^"']*["'][^>]*>[\s\S]*?<\/svg>\s*(?:<\/div>\s*)+|<div[^>]*class=["'][^"']*my-6[^"']*["'][^>]*>[\s\S]*?<\/div>\s*<\/div>|<div[^>]*class=["'][^"']*my-6[^"']*["'][^>]*>[\s\S]*?<\/div>)/gi, (match) => {
     const placeholder = `___DIAGRAM_CARD_${cardIndex}___`;
     diagramCards.push({ placeholder, content: match });
     cardIndex++;

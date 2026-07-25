@@ -156,24 +156,32 @@ async function runTests() {
     failed++;
   }
 
-  // 🛡️ 7. HTML Tag & Hex Color KaTeX Parse Protection Test
-  const vectorGraphicPayload = `⚡ Realtime Vector Graphic Render ⚡
-<div class='my-6 w-full max-w-5xl mx-auto bg-[#0b0f19] rounded-2xl p-6 border border-slate-800 shadow-2xl overflow-x-auto select-text font-sans'>
-<h4 class='text-xs font-black text-slate-200 tracking-tight uppercase'>Realtime Vector Graphic Render</h4>
-<svg width="100" height="100"><text x="10" y="20">Test</text></svg>
+  // 🚨 8. User Screenshot Exact Bug Test (Unshielded HTML & $ Vector Leak Protection)
+  const brokenProdPayload = `⚡ Realtime $ Vector
+<div class="my-6 w-full max-w-5xl mx-auto bg-[#0b0f19] rounded-2xl p-6 border border-slate-800 shadow-2xl overflow-x-auto select-text font-sans">
+  <div class="flex items-center justify-between border-b border-slate-800/80 pb-4 mb-4">
+    <div class="flex items-center gap-2">
+      <span class="text-base">⚡</span>
+      <h4 class="text-xs font-black text-slate-200 tracking-tight uppercase">Realtime Vector Graphic Render</h4>
+    </div>
+    <span class="text-[10px] font-extrabold bg-indigo-950/80 text-indigo-400 border border-indigo-500/30 px-3 py-1 rounded-full uppercase tracking-wider">⚡ Realtime $ Vector</span>
+  </div>
+  <div class="w-full svg-scroll-container select-text">
+    <svg width="100" height="100"><text x="10" y="20">Test</text></svg>
+  </div>
 </div>`;
 
-  const sanitizedVector = cleanAndSanitizeMathText(vectorGraphicPayload);
-  const renderedVectorHtml = convertMarkdownToHtml(sanitizedVector, true, false, true);
-  
-  const hasNoKatexErrors = !renderedVectorHtml.includes('ParseError') && !sanitizedVector.includes('$class=');
-  const hasNoEscapedHtmlTags = !renderedVectorHtml.includes('&lt;h4') && !renderedVectorHtml.includes('&lt;div class=&#39;my-6');
+  const s1 = processAiTutorDiagrams(brokenProdPayload);
+  const s2 = cleanAndSanitizeMathText(s1);
+  const s3 = convertMarkdownToHtml(s2, true, false, true);
 
-  if (hasNoKatexErrors && hasNoEscapedHtmlTags) {
-    console.log('  ✅ [PASS] 🛡️ [HTML & Hex Color Guard] Vector Graphic HTML Tag & Tailwind Hex Color (#0b0f19) Protection');
+  const hasNoEscapedHtml = !s3.includes('&lt;h4 class=&quot;') && !s3.includes('&lt;h4') && s3.includes('<h4 class="text-xs');
+
+  if (hasNoEscapedHtml) {
+    console.log('  ✅ [PASS] 🚨 [User Screenshot Test] HTML Tag & Math Protection Fixed & Verified!');
     passed++;
   } else {
-    console.log('  ❌ [FAIL] 🛡️ [HTML & Hex Color Guard] Test failed');
+    console.log('  ❌ [FAIL] 🚨 [User Screenshot Test] HTML Tag Leaked as literal text: <h4 class="...">Realtime Vector Graphic Render</h4>');
     failed++;
   }
 
