@@ -204,8 +204,10 @@ export function wrapKdsKcsAndWikipediaReferencesHtml(text) {
     return `<div class="my-3.5 p-3.5 rounded-2xl bg-slate-950/90 border border-emerald-500/40 shadow-lg text-left select-text leading-[1.3]"><div class="flex items-center gap-2 mb-2 pb-1.5 border-b border-emerald-500/25 text-emerald-300 text-[14px] sm:text-[16px] font-bold select-none leading-[1.3]"><span class="text-base">📚</span><span>${titleClean || 'KDS/KCS 규정 및 영문 위키피디아 지반역학 참조'}</span></div><div class="space-y-1.5 leading-[1.3]">${itemBoxes.join('')}</div></div>`;
   });
 
-  // Auto-fallback: Ensure KDS/KCS and Wikipedia Soil Mechanics Reference Accordion Card is always present
-  if (!result.includes('KDS/KCS 규정 및 영문 위키피디아 지반역학 참조') && !result.includes('___HTML_TABLE_')) {
+  // Auto-fallback: Ensure KDS/KCS and Wikipedia Soil Mechanics Reference Accordion Card is present ONLY for normal valid tutor responses (Exclude errors, loading, or table blocks)
+  const isErrorOrLoadingText = /오류가\s*발생했습니다|AI\s*호출\s*실패|request\s*timeout|답변을\s*생성하고\s*있습니다|Error:|Failed\s*to\s*fetch/i.test(result);
+
+  if (!isErrorOrLoadingText && !result.includes('KDS/KCS 규정 및 영문 위키피디아 지반역학 참조') && !result.includes('___HTML_TABLE_') && result.trim().length > 30) {
     const autoRefCard = 
       `<div class="my-3.5 p-3.5 rounded-2xl bg-slate-950/90 border border-emerald-500/40 shadow-lg text-left select-text leading-[1.3]">` +
         `<div class="flex items-center gap-2 mb-2 pb-1.5 border-b border-emerald-500/25 text-emerald-300 text-[14px] sm:text-[16px] font-bold select-none leading-[1.3]">` +

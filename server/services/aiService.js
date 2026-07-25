@@ -357,7 +357,7 @@ export async function callLLMWithFailover(systemInstruction, userPrompt, image =
           }
 
           reportLlmProgress(options, scenario, modelName);
-          const timeoutMs = 20000;
+          const timeoutMs = 60000;
           const timeoutPromise = new Promise((_, reject) =>
             setTimeout(() => reject(new Error(`Gemini request timeout after ${timeoutMs}ms`)), timeoutMs)
           );

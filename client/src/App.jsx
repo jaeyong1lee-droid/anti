@@ -3400,7 +3400,7 @@ export default function App() {
       if (progressId.startsWith('ref_')) return 'AI 복습 문제 리프레쉬';
       if (progressId.startsWith('exp_')) return 'AI 보기 상세해설 생성';
       if (progressId.startsWith('hint_')) return 'AI 풀이 힌트 생성';
-      if (progressId.startsWith('tutor_')) return 'AI 튜터 질의응답';
+      if (progressId.startsWith('tutor_') || progressId.startsWith('realtime_tutor_')) return 'AI 튜터 질의응답';
       if (progressId.startsWith('guide_')) return 'AI 맞춤형 학습 가이드 생성';
       if (progressId.startsWith('exam_gen_')) return 'AI 종합평가 문제 생성';
       if (progressId.startsWith('exam_ref_')) return 'AI 종합평가 문제 리프레쉬';
