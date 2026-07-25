@@ -579,7 +579,7 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
       const lineHi = isMarkdown ? '1.6' : '1.5';
       
       currentListBlock = {
-        outerStyleStart: `<div style="margin-top: ${marginVal}; margin-bottom: ${marginVal}; padding-left: ${paddingVal}; text-indent: -${paddingVal}; color: #ffffff; line-height: ${lineHi};">`,
+        outerStyleStart: `<div style="margin-top: ${marginVal}; margin-bottom: ${marginVal}; padding-left: 0.5rem; text-indent: 0; color: #ffffff; line-height: ${lineHi};">`,
         content: [displayMarker + contentWithoutMarker]
       };
     } else if (line.trim() === '' || /^___(?:BLOCK|INLINE)_MATH_\d+___$/.test(line.trim())) {
