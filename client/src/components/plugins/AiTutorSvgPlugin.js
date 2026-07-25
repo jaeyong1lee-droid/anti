@@ -24,7 +24,7 @@ export function renderAiTutorSvg(text) {
     .replace(/<\s+([a-zA-Z0-9_-]+)/g, '<$1');
 
   // Match SVG graphic blocks strictly from <svg> to </svg>, capturing all trailing lines in the code block
-  const svgRegex = /(?:```(?:xml|svg)?\s*)?(?:<[ \t]*svg|xmlns=["']http:\/\/www\.w3\.org\/2000\/svg["'])([\s\S]*?<\/svg>)([\s\S]*?)(?:```\s*$|$)/gi;
+  const svgRegex = /(?:```(?:xml|svg)?\s*)?(?:<[ \t]*svg|xmlns=["']http:\/\/www\.w3\.org\/2000\/svg["'])([\s\S]*?<\/svg>)((?:(?!```)[\s\S])*?)(?:```\s*$|$)/gi;
   
   processed = processed.replace(svgRegex, (match, svgInnerContent, trailingContent) => {
     let cleanSvg = `<svg${svgInnerContent}`;

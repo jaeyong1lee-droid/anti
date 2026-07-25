@@ -396,7 +396,7 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
   });
 
   // SVG Graphic rendering shield: Render raw or code block <svg ...></svg> directly as a rendered vector graphic
-  tempText = tempText.replace(/(?:```(?:xml|svg)?\s*)?(?:&lt;\s*svg|<[ \t]*svg)([\s\S]*?(?:&lt;\/\s*svg&gt;|<\/[ \t]*svg>))([\s\S]*?)(?:```\s*|$)/gi, (match) => {
+  tempText = tempText.replace(/(?:```(?:xml|svg)?\s*)?(?:&lt;\s*svg|<[ \t]*svg)([\s\S]*?(?:&lt;\/\s*svg&gt;|<\/[ \t]*svg>))((?:(?!```)[\s\S])*?)(?:```\s*|$)/gi, (match) => {
     let cleanSvg = match
       .replace(/&lt;/g, '<').replace(/&gt;/g, '>')
       .replace(/&amp;/g, '&').replace(/&quot;/g, '"');
