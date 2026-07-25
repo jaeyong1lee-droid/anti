@@ -227,7 +227,7 @@ router.post('/verify-pin', (req, res) => {
   }
 });
 
-// GET /api/engineering-standards
+// GET /api/engineering-standards (공학 판단 기준 5개 전용)
 router.get('/engineering-standards', async (req, res) => {
   try {
     let dbList = [];
@@ -256,6 +256,19 @@ router.get('/engineering-standards', async (req, res) => {
       console.error('Failed to read engineeringStandards.js file dynamically:', parseErr.message);
     }
 
+    // System standard IDs that belong strictly to other-standards
+    const systemStandardIds = new Set([
+      'bullet_point_formatting_standard',
+      'subheading_title_formatting_standard',
+      'latex_formula_formatting_standard',
+      'markdown_table_html_standard',
+      'tutor_organic_knowledge',
+      'tutor_technical_accuracy',
+      'tutor_hallucination_prevention',
+      'tutor_attitude_standard',
+      'tutor_structure_standard'
+    ]);
+
     const dbMap = new Map((dbList || []).map(item => [item.id, item]));
     const merged = currentFileList.map(fileItem => {
       const dbItem = dbMap.get(fileItem.id);
@@ -267,21 +280,15 @@ router.get('/engineering-standards', async (req, res) => {
       };
     });
 
+    // Only preserve user custom items that are NOT legacy system items
     const fileIds = new Set(currentFileList.map(i => i.id));
     for (const dbItem of dbList || []) {
-      if (!fileIds.has(dbItem.id)) {
+      if (!fileIds.has(dbItem.id) && !systemStandardIds.has(dbItem.id)) {
         merged.push(dbItem);
       }
     }
 
-    if (JSON.stringify(merged) !== JSON.stringify(dbList)) {
-      try {
-        await saveSessionValue('engineering_standards', JSON.stringify(merged));
-        console.log('[Sync] Automatically synced engineering standards to database.');
-      } catch (saveErr) {
-        console.error('Failed to auto-save merged engineering standards to database:', saveErr.message);
-      }
-    }
+    await saveSessionValue('engineering_standards', JSON.stringify(merged));
     updateLiveEngineeringStandards(merged);
     res.json({ standards: merged });
   } catch (err) {
@@ -290,33 +297,7 @@ router.get('/engineering-standards', async (req, res) => {
   }
 });
 
-// POST /api/engineering-standards
-router.post('/engineering-standards', async (req, res) => {
-  try {
-    const { standards } = req.body;
-    if (!Array.isArray(standards)) {
-      return res.status(400).json({ error: 'standards must be an array' });
-    }
-
-    const stamped = stampUpdatedStandards(standards, standardsList);
-    updateLiveEngineeringStandards(stamped);
-
-    try {
-      await saveSessionValue('engineering_standards', JSON.stringify(stamped));
-      console.log('Successfully saved engineering standards to database.');
-    } catch (dbErr) {
-      console.error('Failed to save engineering standards to database:', dbErr.message);
-    }
-
-    await writeStandardToFile('engineeringStandards.js', stamped);
-    res.json({ ok: true });
-  } catch (err) {
-    console.error('POST /api/engineering-standards error:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// GET /api/other-standards
+// GET /api/other-standards (기타 AI 튜터 & 내부 시스템 지침 9개 전용)
 router.get('/other-standards', async (req, res) => {
   try {
     let dbList = [];
@@ -363,14 +344,7 @@ router.get('/other-standards', async (req, res) => {
       }
     }
 
-    if (JSON.stringify(merged) !== JSON.stringify(dbList)) {
-      try {
-        await saveSessionValue('other_standards', JSON.stringify(merged));
-        console.log('[Sync] Automatically synced other standards to database.');
-      } catch (saveErr) {
-        console.error('Failed to auto-save merged other standards to database:', saveErr.message);
-      }
-    }
+    await saveSessionValue('other_standards', JSON.stringify(merged));
     updateLiveOtherStandards(merged);
     res.json({ standards: merged });
   } catch (err) {
@@ -1723,6 +1697,7 @@ router.post('/chat', async (req, res) => {
 수험생의 질문이나 이미지 자료에 대해 학회 표준 및 기술사 시험 수준의 전문 용어를 사용하여 매우 깊이 있는 기술적/실무적 답변을 제시해 주십시오.
 
 ${ENGINEERING_STANDARDS}
+${OTHER_STANDARDS}
 ${ASCII_DIAGRAM_PROMPT}
 ${LATEX_CHAT_PROMPT_INSTRUCTIONS}`;
 
