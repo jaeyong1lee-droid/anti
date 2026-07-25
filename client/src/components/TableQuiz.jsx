@@ -1698,12 +1698,32 @@ export const TableQuiz = React.memo(function TableQuiz({
     })()
   ) : null;
 
+  const extractFlowchartDiagram = (explanation) => {
+    if (!explanation) return null;
+    const match = explanation.match(/```(?:[a-zA-Z0-9_-]+)?\n([\s\S]*?)```/);
+    if (match) {
+      return match[0];
+    }
+    if (explanation.includes('┌') || explanation.includes('─') || explanation.includes('│')) {
+      return `\`\`\`\n${explanation}\n\`\`\``;
+    }
+    return null;
+  };
+
+  const diagramMarkdown = extractFlowchartDiagram(q.explanation);
+
   return (
-    <div ref={containerRef} className="w-full">
+    <div ref={containerRef} className="w-full text-left">
       {floatedStyleTag}
-      {!isFlowchart && mainTableTitle}
-      {!isFlowchart && mainTablePlaceholder}
-      {!isFlowchart && mainTable}
+      {diagramMarkdown && (
+        <div className="mb-4 p-4 rounded-xl border border-slate-800 bg-[#0b0f19]/80 shadow-inner select-text">
+          <div className="text-xs font-bold text-sky-400 mb-2 select-none">📊 동적 흐름도 (흐름도 참고)</div>
+          <LatexRenderer text={diagramMarkdown} katexLoaded={katexLoaded} isMarkdown={true} />
+        </div>
+      )}
+      {mainTableTitle}
+      {mainTablePlaceholder}
+      {mainTable}
  
        {isOverviewReview && !isFirstTableGraded && (
          <div className="mt-3.5 mb-5 select-none flex justify-center w-full">

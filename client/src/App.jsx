@@ -19998,7 +19998,7 @@ ${itemsStr}
                                 );
                               })()}
                               {!isRevd ? (
-                                !isOverviewReview(q) && !isNATMFlowchart(idx, q, false) && (
+                                !isOverviewReview(q) && (
                                   <button
                                     onClick={async () => {
                                       if (gradingLoading[idx]) return;
@@ -20020,9 +20020,6 @@ ${itemsStr}
                                       {renderCardTutorChat(rKey, q)}
                                     </div>
                                   );
-                                }
-                                if (isNATMFlowchart(idx, q, false)) {
-                                  return null;
                                 }
                                 return (
                                   <div className={`p-0 sm:p-4 rounded-none sm:rounded-xl border-0 sm:border space-y-3 text-left transition-all ${getTableContainerClasses(idx, q, isRevd)}`}>
@@ -23657,7 +23654,7 @@ ${itemsStr}
                                 );
                               })()}
                               {!examRevealed[idx] ? (
-                                !isOverviewReview(q) && !isNATMFlowchart(idx, q, true) && (
+                                !isOverviewReview(q) && (
                                   <button
                                     onClick={async () => {
                                       if (gradingLoading[idx]) return;
@@ -23679,9 +23676,6 @@ ${itemsStr}
                                       {renderCardTutorChat(eKey, q)}
                                     </div>
                                   );
-                                }
-                                if (isNATMFlowchart(idx, q, true)) {
-                                  return null;
                                 }
                                 return (
                                   <div className={`p-0 sm:p-4 rounded-none sm:rounded-xl border-0 sm:border space-y-3 text-left transition-all ${getTableContainerClasses(idx, q, !!examRevealed[idx])}`}>
