@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { LatexRenderer } from './LatexRenderer';
 import { BufferedTextarea } from './BufferedInput';
 import { PopoutWindow } from './PopoutWindow';
-import { getTableScoreColorTheme, areCellsEqual, isOverviewReview as isOverviewReviewHelper, formatGradingReason as formatReason } from '../utils/renderingHelpers';
+import { getTableScoreColorTheme, areCellsEqual, isOverviewReview as isOverviewReviewHelper, formatGradingReason as formatReason, resolveCorrectAnswer } from '../utils/renderingHelpers';
 
 const normalize = (s) => (s || '').trim().toLowerCase().replace(/\s+/g, '');
 
@@ -1724,10 +1724,8 @@ export const TableQuiz = React.memo(function TableQuiz({
           currentBoxLines = [];
         }
       } else if (insideBox) {
-        const cleanLine = line.replace(/^[│\s]+|[│\s]+$/g, '').trim();
+        const cleanLine = line.replace(/^[│\s]+|[│\s]+$/g, '').replace(/│/g, '  ').trim();
         if (cleanLine) currentBoxLines.push(cleanLine);
-      } else if (!line.includes('│') && !line.includes('▼') && line.trim().length > 0) {
-        boxChunks.push(line.trim());
       }
     });
 
@@ -1736,16 +1734,22 @@ export const TableQuiz = React.memo(function TableQuiz({
       boxChunks.push(...steps);
     }
 
-    const allInputIds = firstTableInputs && firstTableInputs.length > 0 ? firstTableInputs : (inputIds && inputIds.length > 0 ? inputIds : ['INPUT_1', 'INPUT_2', 'INPUT_3', 'INPUT_4']);
+    const allInputIds = firstTableInputs && firstTableInputs.length > 0 ? firstTableInputs : (inputIds && inputIds.length > 0 ? inputIds : ['INPUT_1', 'INPUT_2', 'INPUT_3', 'INPUT_4', 'INPUT_5', 'INPUT_6']);
+
+    const validBoxChunks = boxChunks.filter(chunk => {
+      const hasInput = allInputIds.some((inputId, iIdx) => {
+        const letter = String.fromCharCode(65 + iIdx);
+        return chunk.includes(`(${letter})`) || chunk.includes(`[${letter}]`) || chunk.includes(inputId) || chunk.includes(`[INPUT_${iIdx + 1}]`);
+      });
+      const isStepHeader = /^\[\d+\]/.test(chunk.trim()) || /^\d+\./.test(chunk.trim());
+      return hasInput || isStepHeader;
+    });
+
+    const displayChunks = validBoxChunks.length > 0 ? validBoxChunks : boxChunks;
 
     return (
       <div className="w-full space-y-3 my-3 animate-fade-in">
-        <div className="flex items-center gap-2 text-xs font-black text-amber-400 select-none mb-1">
-          <span>📊</span>
-          <span>동적 감싸기 흐름도 (상자 내부 답안 기입)</span>
-        </div>
-
-        {boxChunks.map((chunk, boxIdx) => {
+        {displayChunks.map((chunk, boxIdx) => {
           const matchedInputs = [];
           allInputIds.forEach((inputId, iIdx) => {
             const letter = String.fromCharCode(65 + iIdx);
@@ -1784,8 +1788,8 @@ export const TableQuiz = React.memo(function TableQuiz({
                       })}
 
                       {matchedInputs.map(({ inputId, letter, index }) => {
-                        const value = tableAnswers[`${questionIdx}_${inputId}`] || '';
-                        const correctAnswer = q.answers?.[inputId] || '';
+                        const value = tableAnswers[`${questionIdx}_${inputId}`] || tableAnswers[`${questionIdx}_${letter}`] || tableAnswers[`${questionIdx}_INPUT_${index + 1}`] || '';
+                        const correctAnswer = resolveCorrectAnswer(q.answers, inputId, letter, index);
                         const gradingResult = tableGradingResults ? tableGradingResults[`${questionIdx}_${inputId}`] : null;
                         const cellResult = gradingResult;
                         const isCorrect = gradingResult 

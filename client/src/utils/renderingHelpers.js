@@ -25,6 +25,29 @@ export const formatGradingReason = (reason) => {
   return reason.replace(/(\b\d+(?:\.\d+)?)(점\s*(?:을\s*)?감점)/g, '10점 만점 기준 $1$2');
 };
 
+export const resolveCorrectAnswer = (answers, inputId, letter, index) => {
+  if (!answers || typeof answers !== 'object') return '';
+  if (answers[inputId] !== undefined && answers[inputId] !== null) return String(answers[inputId]);
+  if (letter) {
+    if (answers[letter] !== undefined && answers[letter] !== null) return String(answers[letter]);
+    if (answers[`(${letter})`] !== undefined && answers[`(${letter})`] !== null) return String(answers[`(${letter})`]);
+    if (answers[`[${letter}]`] !== undefined && answers[`[${letter}]`] !== null) return String(answers[`[${letter}]`]);
+    const lowerLetter = letter.toLowerCase();
+    if (answers[lowerLetter] !== undefined && answers[lowerLetter] !== null) return String(answers[lowerLetter]);
+  }
+  if (index !== undefined && index !== null) {
+    const numKey = String(index + 1);
+    if (answers[numKey] !== undefined && answers[numKey] !== null) return String(answers[numKey]);
+    if (answers[index] !== undefined && answers[index] !== null) return String(answers[index]);
+  }
+  const keys = Object.keys(answers);
+  if (letter) {
+    const matchedKey = keys.find(k => k.trim().toUpperCase() === letter.toUpperCase() || k.includes(`_${letter}`) || k.includes(`-${letter}`));
+    if (matchedKey && answers[matchedKey] !== undefined) return String(answers[matchedKey]);
+  }
+  return '';
+};
+
 export const buildHtmlDocument = (text, isPopup = false) => {
   let cleanedText = text.replace(/\r\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
   

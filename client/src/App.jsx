@@ -19998,7 +19998,7 @@ ${itemsStr}
                                 );
                               })()}
                               {!isRevd ? (
-                                !isOverviewReview(q) && (
+                                !isOverviewReview(q) && !isNATMFlowchart(idx, q) && (
                                   <button
                                     onClick={async () => {
                                       if (gradingLoading[idx]) return;
@@ -23650,7 +23650,7 @@ ${itemsStr}
                                 );
                               })()}
                               {!examRevealed[idx] ? (
-                                !isOverviewReview(q) && (
+                                !isOverviewReview(q) && !isNATMFlowchart(idx, q) && (
                                   <button
                                     onClick={async () => {
                                       if (gradingLoading[idx]) return;
