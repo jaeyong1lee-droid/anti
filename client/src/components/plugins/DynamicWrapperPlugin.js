@@ -170,7 +170,6 @@ export function applyAllDynamicWrappers(text) {
   let result = text;
   result = wrapMechanismProcedureAssumptionsHtml(result);
   result = wrapSymbolDefinitionsHtml(result);
-  result = wrapFollowingListItemsHtml(result);
   return result;
 }
 
