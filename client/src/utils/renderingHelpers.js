@@ -588,14 +588,11 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
       }
       
       const contentWithoutMarker = line.replace(listMarkerRegex, '');
-      const isSubHeader = /^\s*(?:\d+[\.\)]|[①-⑳])\s+[^\n]+:?$/.test(line.trim());
       const lineHi = isMarkdown ? '1.5' : '1.4';
 
       if (!currentListBlock) {
-        // Only add top margin if this is a new subheader starting a new section
-        const topSpace = isSubHeader ? '0.85rem' : '0.2rem';
         currentListBlock = {
-          outerStyleStart: `<div class="section-paragraph-block" style="margin-top: ${topSpace}; margin-bottom: 0.25rem; padding-left: 0.25rem; text-indent: 0; color: #ffffff; line-height: ${lineHi};">`,
+          outerStyleStart: `<div class="section-paragraph-block" style="margin-top: 0.3rem; margin-bottom: 0.3rem; padding-left: 0.25rem; text-indent: 0; color: #ffffff; line-height: ${lineHi};">`,
           content: [displayMarker + contentWithoutMarker]
         };
       } else {
@@ -616,12 +613,7 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
       if (currentListBlock) {
         currentListBlock.content.push(line);
       } else {
-        const isHeaderLine = /^\s*(?:\d+[\.\)]|[①-⑳]|[•\*\-])?\s*[^\n]+:$/.test(line.trim());
-        if (isHeaderLine) {
-          renderedLines.push(`<div style="margin-top: 0.85rem; margin-bottom: 0.15rem; font-weight: 700;">${line}</div>`);
-        } else {
-          renderedLines.push(line);
-        }
+        renderedLines.push(line);
       }
     }
   }
