@@ -16434,13 +16434,13 @@ ${itemsStr}
       });
     }
 
-    const maxCount = Math.max(13, ...days.map(d => d.count));
+    const maxCount = Math.max(1, ...days.map(d => d.count));
 
     return days.map(d => {
       const ratio = maxCount > 0 ? d.count / maxCount : 0;
-      const heightPercent = Math.min(100, Math.max(10, Math.round(ratio * 100)));
+      const heightPercent = d.count === 0 ? 10 : Math.min(100, Math.max(15, Math.round(ratio * 100)));
       
-      // 🎨 5단계 고대비 명확한 컬러 스펙트럼 (레드/주황/초록/청록/인디고)
+      // 🎨 100% 동적 최고 공부량 피크 기준 5단계 스펙트럼 (레드/주황/초록/청록/인디고)
       let barGradient = 'from-slate-800 to-slate-600';
       let textColor = 'text-slate-500';
       let badgeBg = 'bg-slate-900 text-slate-400 border-slate-700';
@@ -16451,36 +16451,30 @@ ${itemsStr}
         textColor = 'text-slate-500';
         badgeBg = 'bg-slate-950 text-slate-500 border-slate-800';
         levelLabel = '0개';
-      } else if (ratio >= 0.8 || d.count >= 39) {
-        // 🔥 Level 5: 39개 문제 이상 (최다 - 강렬한 크림슨 레드)
+      } else if (ratio >= 0.95) {
+        // 🔥 Level 5: 최고 공부량 날 (동적 100% 최고 피크 - 강렬한 크림슨 레드)
         barGradient = 'from-red-600 via-rose-500 to-pink-400';
         textColor = 'text-red-400';
         badgeBg = 'bg-red-950/80 text-red-300 border-red-500/40';
         levelLabel = '최다';
-      } else if (ratio >= 0.55 || d.count >= 26) {
-        // 🟧 Level 4: 26~38개 문제 (많음 - 비비드 오렌지)
+      } else if (ratio >= 0.7) {
+        // 🟧 Level 4: 상위 공부량 (70% 이상 - 비비드 오렌지)
         barGradient = 'from-orange-600 via-amber-500 to-yellow-300';
         textColor = 'text-orange-400';
         badgeBg = 'bg-orange-950/80 text-orange-300 border-orange-500/40';
         levelLabel = '많음';
-      } else if (ratio >= 0.35 || d.count >= 13) {
-        // 🟩 Level 3: 13~25개 문제 (보통 - 에메랄드 그린)
+      } else if (ratio >= 0.4) {
+        // 🟩 Level 3: 중간 공부량 (40~69% - 에메랄드 그린)
         barGradient = 'from-emerald-600 via-green-500 to-lime-300';
         textColor = 'text-emerald-400';
         badgeBg = 'bg-emerald-950/80 text-emerald-300 border-emerald-500/40';
         levelLabel = '보통';
-      } else if (ratio >= 0.18 || d.count >= 5) {
-        // 🟦 Level 2: 5~12개 문제 (조금 - 일렉트릭 사이언)
+      } else {
+        // 🟦 Level 2/1: 소량 공부량 (40% 미만 - 일렉트릭 사이언)
         barGradient = 'from-cyan-600 via-sky-500 to-blue-300';
         textColor = 'text-cyan-400';
         badgeBg = 'bg-cyan-950/80 text-cyan-300 border-cyan-500/40';
         levelLabel = '조금';
-      } else {
-        // 🟪 Level 1: 1~4개 문제 (소량 - 딥 사파이어 인디고)
-        barGradient = 'from-indigo-700 via-blue-600 to-violet-400';
-        textColor = 'text-indigo-400';
-        badgeBg = 'bg-indigo-950/80 text-indigo-300 border-indigo-500/40';
-        levelLabel = '소량';
       }
 
       return {

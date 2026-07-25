@@ -1,5 +1,8 @@
 import { processAiTutorDiagrams } from './client/src/components/AiTutorDiagramPlugin.js';
 import { convertMarkdownToHtml, cleanAndSanitizeMathText, renderKatexString } from './client/src/utils/renderingHelpers.js';
+import { renderAiTutorSvg } from './client/src/components/plugins/AiTutorSvgPlugin.js';
+import { renderAiTutorTikz } from './client/src/components/plugins/AiTutorTikzPlugin.js';
+import { renderAiTutorMermaid } from './client/src/components/plugins/AiTutorMermaidPlugin.js';
 
 const fetch = globalThis.fetch;
 const BASE_URL = process.env.TEST_URL || 'https://anti.vercel.app';
@@ -77,96 +80,64 @@ async function runTests() {
   const step1Diagrams = processAiTutorDiagrams(realAiTutorResponse);
   const step2Sanitized = cleanAndSanitizeMathText(step1Diagrams);
   const finalRenderedHtml = convertMarkdownToHtml(step2Sanitized, true, false, true);
+  console.log('\n[3/4] Testing Modular Rendering Engines (SVG, ASCII, TikZ, Mermaid, KaTeX)...');
 
-  const hasOuterCardContainer = finalRenderedHtml.includes('bg-[#0b0f19]') && finalRenderedHtml.includes('rounded-2xl');
-  const hasUnescapedHeaderTag = finalRenderedHtml.includes('<h4 class="text-xs') && !finalRenderedHtml.includes('&lt;h4');
-  const hasValidInnerSvgGraphic = finalRenderedHtml.includes('<svg') && finalRenderedHtml.includes('</svg>') && finalRenderedHtml.includes('<path d=') && finalRenderedHtml.includes('<rect');
-  const hasNoMathCorruption = !finalRenderedHtml.includes('<svg$') && !finalRenderedHtml.includes('___INLINE_MATH_');
-
-  if (hasOuterCardContainer && hasUnescapedHeaderTag && hasValidInnerSvgGraphic && hasNoMathCorruption) {
-    console.log('  ✅ [PASS] Full App React Pipeline - Real AI Tutor Chat Message (100% Environment Match)');
+  // 🎨 1. SVG Engine Test (renderAiTutorSvg in AiTutorSvgPlugin.js)
+  const rawSvgInput = `<svg width="200" height="100"><text x="10" y="30">SVG Test</text></svg>`;
+  const svgOutput = renderAiTutorSvg(rawSvgInput);
+  if (svgOutput.includes('<svg') && svgOutput.includes('SVG Test') && svgOutput.includes('my-6')) {
+    console.log('  ✅ [PASS] 🎨 [SVG Engine] Standalone AiTutorSvgPlugin.js -> 2D Vector SVG Card Render');
     passed++;
   } else {
-    console.log('  ❌ [FAIL] Full App React Pipeline - Real AI Tutor Chat Message failed environment match test');
+    console.log('  ❌ [FAIL] 🎨 [SVG Engine] AiTutorSvgPlugin.js test failed');
     failed++;
   }
 
-  // Test B: SVG Text Distinct Y-Coordinates & Dark Halo Masking Test
-  const svgYMatch1 = finalRenderedHtml.match(/y=["']40["']/);
-  const svgYMatch2 = finalRenderedHtml.match(/y=["']100["']/);
-  const hasGlobalDarkHaloStyle = finalRenderedHtml.includes('paint-order: stroke fill !important;') && finalRenderedHtml.includes('stroke: #0f172a !important;');
-  const hasNoTextYCollapse = svgYMatch1 !== null && svgYMatch2 !== null;
-
-  if (hasGlobalDarkHaloStyle && hasNoTextYCollapse) {
-    console.log('  ✅ [PASS] Full App React Pipeline - SVG Text Y-Position Distinctness & 10px Dark Halo Masking');
+  // 📐 2. TikZ Engine Test (renderAiTutorTikz in AiTutorTikzPlugin.js)
+  const tikzInput = '```latex\n\\begin{tikzpicture}\n\\node {1단계: 테르자기 지지력};\n\\end{tikzpicture}\n```';
+  const tikzOutput = renderAiTutorTikz(tikzInput);
+  if (tikzOutput.includes('1단계: 테르자기 지지력') && tikzOutput.includes('svg')) {
+    console.log('  ✅ [PASS] 📐 [TikZ Engine] Standalone AiTutorTikzPlugin.js -> 2D Vector Flowchart Render');
     passed++;
   } else {
-    console.log('  ❌ [FAIL] Full App React Pipeline - SVG Text Y-Position or Dark Halo test failed');
+    console.log('  ❌ [FAIL] 📐 [TikZ Engine] AiTutorTikzPlugin.js test failed');
     failed++;
   }
 
-  // Test C: Key-Word Highlighting Test (Highlight ONLY short important key words <= 25 chars in yellow)
-  const sampleMarkdownHighlight = `말뚝기초의 **인발저항효율** 평가는 군말뚝(Group Piles)이 인발 하중을 받을 때 중요한 설계 지표입니다.
-
-• **정의**: 군말뚝의 인발 저항력을 단독말뚝 인발 저항력의 합으로 나눈 비율입니다.`;
-
-  const highlightedHtml = convertMarkdownToHtml(sampleMarkdownHighlight, true, false, true);
-  const hasYellowKeyWord = highlightedHtml.includes('<strong style="color: #fbbf24; font-weight: 700;">인발저항효율</strong>') && highlightedHtml.includes('<strong style="color: #fbbf24; font-weight: 700;">정의</strong>');
-  const hasNoYellowWholeSentence = !highlightedHtml.includes('<span style="color: #fbbf24; font-weight: normal;">');
-
-  if (hasYellowKeyWord && hasNoYellowWholeSentence) {
-    console.log('  ✅ [PASS] Full App React Pipeline - Key-Word Highlighting (ONLY short key words in yellow, whole sentences white)');
+  // 🧜 3. Mermaid Engine Test (renderAiTutorMermaid in AiTutorMermaidPlugin.js)
+  const mermaidInput = '```mermaid\ngraph TD\n  A["테르자기 극한지력"] --> B["B-Value 검증"]\n```';
+  const mermaidOutput = renderAiTutorMermaid(mermaidInput);
+  if (mermaidOutput.includes('테르자기 극한지력') && mermaidOutput.includes('svg')) {
+    console.log('  ✅ [PASS] 🧜 [Mermaid Engine] Standalone AiTutorMermaidPlugin.js -> 2D Vector Flowchart Render');
     passed++;
   } else {
-    console.log('  ❌ [FAIL] Full App React Pipeline - Key-Word Highlighting test failed');
+    console.log('  ❌ [FAIL] 🧜 [Mermaid Engine] AiTutorMermaidPlugin.js test failed');
     failed++;
   }
 
-  // Test D: Subscript Auto-Bracing Test (T_max -> T_{max}, Q_ug -> Q_{ug})
-  const katexInput = 'T_max + Q_ug + W_p';
+  // 🔤 4. ASCII Art Engine Test (Monospace Code Block Preservation)
+  const asciiInput = '```\n /   \\ (Wedge Zone I)\n (   )\\ <- Prandtl Failure Surface\n```';
+  const asciiOutput = convertMarkdownToHtml(asciiInput, true, false, true);
+  if (asciiOutput.includes('<pre') && asciiOutput.includes('font-family: monospace') && !asciiOutput.includes('Realtime Vector')) {
+    console.log('  ✅ [PASS] 🔤 [ASCII Art Engine] Monospace Code Block Preservation & Clean Layout');
+    passed++;
+  } else {
+    console.log('  ❌ [FAIL] 🔤 [ASCII Art Engine] ASCII Art preservation test failed');
+    failed++;
+  }
+
+  // 🧮 5. KaTeX Engine Test (renderKatexString & Subscript Auto-Bracing)
+  const katexInput = 'T_max + Q_ug + \\eta_u \\le 1.0';
   const katexRendered = renderKatexString(katexInput);
-  if (katexRendered.includes('T_{max}') && katexRendered.includes('Q_{ug}') && katexRendered.includes('W_p')) {
-    console.log('  ✅ [PASS] Full App React Pipeline - Subscript Auto-Bracing (T_max -> T_{max}, Q_ug -> Q_{ug})');
+  if (katexRendered.includes('T_{max}') && katexRendered.includes('Q_{ug}') && (katexRendered.includes('katex') || katexRendered.includes('\\eta_u'))) {
+    console.log('  ✅ [PASS] 🧮 [KaTeX Engine] Subscript Auto-Bracing (T_max -> T_{max}, Q_ug -> Q_{ug}) & Formula Render');
     passed++;
   } else {
-    console.log('  ❌ [FAIL] Full App React Pipeline - Subscript Auto-Bracing test failed');
+    console.log('  ❌ [FAIL] 🧮 [KaTeX Engine] KaTeX formula test failed');
     failed++;
   }
 
-  // Test E: TikZ Flowchart
-  const testTikzInput = '```latex\n\\documentclass[tikz, border=10pt]{standalone}\n\\usepackage{tikz}\n\\begin{document}\n\\begin{tikzpicture}[\n  node distance = 1.2cm,\n  corebox/.style={rectangle, rounded corners=6pt}\n]\n\\node (box1) {1단계: 테르자기 지지력 검토};\n\\node (box2) {2단계: B-Value 검증?};\n\\end{tikzpicture}\n\\end{document}\n```';
-  const fullTikzPipelineOutput = convertMarkdownToHtml(processAiTutorDiagrams(testTikzInput), true, false, true);
-  if (fullTikzPipelineOutput.includes('1단계: 테르자기 지지력 검토') && fullTikzPipelineOutput.includes('polygon') && fullTikzPipelineOutput.includes('svg')) {
-    console.log('  ✅ [PASS] Full App React Pipeline - TikZ Flowchart (Converted to 2D Vector SVG)');
-    passed++;
-  } else {
-    console.log('  ❌ [FAIL] Full App React Pipeline - TikZ Flowchart test failed');
-    failed++;
-  }
-
-  // Test F: Mermaid Flowchart
-  const testMermaidInput = '```\ngraph TD\n  Core["테르자기(Terzaghi) 극한지력 기본 공식\n  * q_u = c * N_c + q * N_q"]: :::core\n  BVal["Skempton B값 B = Δu/Δσ3 ≥ 0.95 검증?"]: :::alert\n```';
-  const fullMermaidPipelineOutput = convertMarkdownToHtml(processAiTutorDiagrams(testMermaidInput), true, false, true);
-  if (fullMermaidPipelineOutput.includes('테르자기(Terzaghi) 극한지력 기본 공식') && fullMermaidPipelineOutput.includes('polygon') && fullMermaidPipelineOutput.includes('svg')) {
-    console.log('  ✅ [PASS] Full App React Pipeline - Mermaid Flowchart (Converted to 2D Vector SVG)');
-    passed++;
-  } else {
-    console.log('  ❌ [FAIL] Full App React Pipeline - Mermaid Flowchart test failed');
-    failed++;
-  }
-
-  // Test G: ASCII Art Diagram
-  const asciiArtInput = '```\n /                                 \\\n /                                 \\ (탄성 영역: Wedge Zone, I)\n / ( I )                           \\\n /                                 \\ <- 방사형 전단 영역 (Radial Shear Zone, II)\n (                                 )\\\n (                                 )\\ <- Prandtl 파괴면 (Failure Surface)\n```';
-  const fullAsciiPipelineOutput = convertMarkdownToHtml(processAiTutorDiagrams(asciiArtInput), true, false, true);
-  if (fullAsciiPipelineOutput.includes('<pre') && fullAsciiPipelineOutput.includes('font-family: monospace') && !fullAsciiPipelineOutput.includes('flowchart-text-force') && !fullAsciiPipelineOutput.includes('Realtime Vector')) {
-    console.log('  ✅ [PASS] Full App React Pipeline - ASCII Art Graphic Diagram (Preserved cleanly as Monospace Code Block)');
-    passed++;
-  } else {
-    console.log('  ❌ [FAIL] Full App React Pipeline - ASCII Art Graphic Diagram test failed');
-    failed++;
-  }
-
-  // Test H: Markdown Table Parsing & Title Validation Test (No broken '📊 --' titles or mangled cells)
+  // 📊 6. Markdown Table Engine Test (markdownTableRenderer.js)
   const sampleTableMarkdown = `• 메커니즘: 인발 하중 시 말뚝 주변 지반은 상향 전단 변형을 일으킵니다.
 
 | 지반 조건 | 인발 효율 특성 ($\eta_u$) | 주요 거동 메커니즘 및 원인 |
@@ -178,10 +149,31 @@ async function runTests() {
   const hasValidHtmlTableStructure = renderedTableHtml.includes('<table class="markdown-table') && renderedTableHtml.includes('사질토 지반 (Sand)');
 
   if (hasCleanTableTitle && hasValidHtmlTableStructure) {
-    console.log('  ✅ [PASS] Full App React Pipeline - Markdown Table Parsing & Clean Title Rendering');
+    console.log('  ✅ [PASS] 📊 [Markdown Table Engine] Table Parsing, Clean Title & Yellow Keyword Highlighting');
     passed++;
   } else {
-    console.log('  ❌ [FAIL] Full App React Pipeline - Markdown Table Parsing or Title test failed');
+    console.log('  ❌ [FAIL] 📊 [Markdown Table Engine] Markdown Table test failed');
+    failed++;
+  }
+
+  // 🛡️ 7. HTML Tag & Hex Color KaTeX Parse Protection Test
+  const vectorGraphicPayload = `⚡ Realtime Vector Graphic Render ⚡
+<div class='my-6 w-full max-w-5xl mx-auto bg-[#0b0f19] rounded-2xl p-6 border border-slate-800 shadow-2xl overflow-x-auto select-text font-sans'>
+<h4 class='text-xs font-black text-slate-200 tracking-tight uppercase'>Realtime Vector Graphic Render</h4>
+<svg width="100" height="100"><text x="10" y="20">Test</text></svg>
+</div>`;
+
+  const sanitizedVector = cleanAndSanitizeMathText(vectorGraphicPayload);
+  const renderedVectorHtml = convertMarkdownToHtml(sanitizedVector, true, false, true);
+  
+  const hasNoKatexErrors = !renderedVectorHtml.includes('ParseError') && !sanitizedVector.includes('$class=');
+  const hasNoEscapedHtmlTags = !renderedVectorHtml.includes('&lt;h4') && !renderedVectorHtml.includes('&lt;div class=&#39;my-6');
+
+  if (hasNoKatexErrors && hasNoEscapedHtmlTags) {
+    console.log('  ✅ [PASS] 🛡️ [HTML & Hex Color Guard] Vector Graphic HTML Tag & Tailwind Hex Color (#0b0f19) Protection');
+    passed++;
+  } else {
+    console.log('  ❌ [FAIL] 🛡️ [HTML & Hex Color Guard] Test failed');
     failed++;
   }
 

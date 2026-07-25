@@ -965,7 +965,7 @@ export const cleanAndSanitizeMathText = (rawText) => {
   // Shield pre-rendered diagram card divs (<div class="my-6...) from math sanitizer corruption
   const diagramCards = [];
   let cardIndex = 0;
-  let cleaned = rawText.replace(/(<div[^>]*class="[^"]*my-6[^"]*"[^>]*>[\s\S]*?<\/div>\s*<\/div>|<div[^>]*class="[^"]*my-6[^"]*"[^>]*>[\s\S]*?<\/div>)/gi, (match) => {
+  let cleaned = rawText.replace(/(<div[^>]*class=["'][^"']*my-6[^"']*["'][^>]*>[\s\S]*?<\/div>\s*<\/div>|<div[^>]*class=["'][^"']*my-6[^"']*["'][^>]*>[\s\S]*?<\/div>)/gi, (match) => {
     const placeholder = `___DIAGRAM_CARD_${cardIndex}___`;
     diagramCards.push({ placeholder, content: match });
     cardIndex++;
@@ -1063,7 +1063,7 @@ export const cleanAndSanitizeMathText = (rawText) => {
     return '';
   });
 
-  cleaned = cleaned.replace(/<\s*\/?\s*(?:div|span|annotation|semantics|math|mrow|msub|msup|mfrac|msqrt|msubsup|mo|mi|mn|mtext|mspace|mstyle|mtd|mtr|mtable)\b[^>]*>/gi, '');
+  cleaned = cleaned.replace(/<\s*\/?\s*(?:annotation|semantics|math|mrow|msub|msup|mfrac|msqrt|msubsup|mo|mi|mn|mtext|mspace|mstyle|mtd|mtr|mtable)\b[^>]*>/gi, '');
   
   cleaned = healLatexFormulas(cleaned);
 
