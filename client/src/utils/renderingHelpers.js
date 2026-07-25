@@ -624,10 +624,10 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
   tempText = renderedLines.join('\n');
 
   if (isMarkdown) {
-    tempText = tempText.replace(/\n\n/g, '<div style="height: 0.85rem;"></div>');
+    tempText = tempText.replace(/\n\n/g, '<div style="height: 0.6rem;"></div>');
     tempText = tempText.replace(/\n/g, '<br/>');
   } else {
-    tempText = tempText.replace(/\n\n/g, '<div style="height: 0.5rem;"></div>');
+    tempText = tempText.replace(/\n\n/g, '<div style="height: 0.6rem;"></div>');
     tempText = tempText.replace(/\n/g, '<br/>');
   }
 
