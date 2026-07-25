@@ -1806,19 +1806,44 @@ export const TableQuiz = React.memo(function TableQuiz({
                             )}
                           </div>
 
-                          <BufferedTextarea
-                            value={value}
-                            onChange={(val) => handleInputChange(inputId, val)}
-                            onKeystroke={(val) => handleInputKeystroke(inputId, val)}
-                            placeholder={`(${letter}) 빈칸에 들어갈 공학적 수식 및 명칭을 기입하세요...`}
-                            data-answer-key={`${questionIdx}_${inputId}`}
-                            className={`w-full text-[14px] sm:text-[15px] p-2.5 rounded-lg border outline-none resize-none transition-all ${
-                              isCellGraded
-                                ? (theme ? `${theme.cellBg} ${theme.text} border-slate-700` : 'bg-slate-950/80 text-slate-200 border-slate-700')
-                                : 'bg-slate-950 text-slate-100 border-slate-700 focus:border-sky-500 focus:ring-1 focus:ring-sky-500'
-                            }`}
-                            rows={2}
-                          />
+                          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+                            <div className="flex-1 min-w-0">
+                              <BufferedTextarea
+                                value={value}
+                                onChange={(val) => handleInputChange(inputId, val)}
+                                onKeystroke={(val) => handleInputKeystroke(inputId, val)}
+                                placeholder={`(${letter}) 빈칸에 들어갈 공학적 수식 및 명칭 기입...`}
+                                data-answer-key={`${questionIdx}_${inputId}`}
+                                className={`w-full text-[13px] sm:text-[14px] p-2 sm:p-2.5 rounded-lg border outline-none resize-none transition-all ${
+                                  isCellGraded
+                                    ? (theme ? `${theme.cellBg} ${theme.text} border-slate-700` : 'bg-slate-950/80 text-slate-200 border-slate-700')
+                                    : 'bg-slate-950 text-slate-100 border-slate-700 focus:border-sky-500 focus:ring-1 focus:ring-sky-500'
+                                }`}
+                                rows={1}
+                                onKeyDown={async (e) => {
+                                  if (e.key === 'Enter' && !e.shiftKey) {
+                                    e.preventDefault();
+                                    const newVal = e.target.value;
+                                    if (newVal !== value) {
+                                      handleInputChange(inputId, newVal);
+                                    }
+                                    e.target.blur();
+                                    if (onSubmit) onSubmit();
+                                  }
+                                }}
+                              />
+                            </div>
+
+                            {!revealed && onSubmit && (
+                              <button
+                                type="button"
+                                onClick={onSubmit}
+                                className="px-3.5 py-2.5 bg-slate-700 hover:bg-slate-600 text-white border border-slate-500/50 rounded-lg text-xs font-black transition-all shadow-md active:scale-95 whitespace-nowrap cursor-pointer shrink-0 flex items-center justify-center gap-1 font-bold"
+                              >
+                                제출하고 채점하기 →
+                              </button>
+                            )}
+                          </div>
 
                           {isCellGraded && (
                             <div className="mt-2 text-xs space-y-1 pt-1.5 border-t border-slate-800">
