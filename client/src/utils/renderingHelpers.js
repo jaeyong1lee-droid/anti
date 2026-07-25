@@ -720,7 +720,7 @@ export function wrapMechanismProcedureAssumptionsHtml(text) {
       const stepNum = itemBoxes.length + 1;
 
       itemBoxes.push(
-        `<div class="flex items-start gap-2.5 p-2.5 rounded-lg bg-slate-900/90 border border-slate-700/80 hover:border-indigo-500/50 shadow-sm text-left select-text flowchart-text-force my-1.5"><span class="w-5 h-5 rounded bg-indigo-600/30 text-indigo-300 border border-indigo-500/50 flex items-center justify-center font-bold text-[11px] shrink-0 mt-0.5">${stepNum}</span><div class="flex-1 text-[14px] sm:text-[16px] text-slate-200 leading-relaxed break-words flowchart-text-force">${content}</div></div>`
+        `<div class="flex items-start gap-3 p-3 my-2 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-indigo-500/40 shadow-sm text-left select-text flowchart-text-force"><span class="min-w-[1.375rem] h-[1.375rem] px-1 rounded-md bg-indigo-600/30 text-indigo-300 border border-indigo-500/50 flex items-center justify-center font-black text-[11px] font-mono shrink-0 select-none mt-0.5">${stepNum}</span><div class="flex-1 text-[14px] sm:text-[15px] text-slate-100 leading-relaxed break-words min-w-0 flowchart-text-force pl-0.5">${content}</div></div>`
       );
     });
 
@@ -728,7 +728,7 @@ export function wrapMechanismProcedureAssumptionsHtml(text) {
 
     const titleClean = headerTitle.replace(/<[^>]+>/g, '').replace(/^[\#\*\-•\[\]\s]+/, '').replace(/[\#\*\-•\[\]\s]+$/, '').trim();
 
-    return `<div class="my-3 w-full text-left select-text flowchart-text-force"><div class="my-2 font-bold text-[14px] sm:text-[16px] text-indigo-300 flex items-center gap-1.5 pb-1 border-b border-slate-800"><span>⚡</span><span>${titleClean}</span></div><div class="space-y-1.5 my-2">${itemBoxes.join('')}</div></div>`;
+    return `<div class="my-3 w-full text-left select-text flowchart-text-force"><div class="my-2 font-bold text-[14px] sm:text-[16px] text-indigo-300 flex items-center gap-1.5 pb-1 border-b border-slate-800"><span>⚡</span><span>${titleClean}</span></div><div class="space-y-2 my-2">${itemBoxes.join('')}</div></div>`;
   });
 
   // Handle standalone numbered step sequences (e.g. 1. 상하류 수두차 ... 2. 동수경사 ... 3. 유효응력 ...) below diagrams or headers
@@ -754,7 +754,7 @@ export function wrapMechanismProcedureAssumptionsHtml(text) {
       if (!cleanContent || /^[-–—\s]+$/.test(cleanContent) || cleanContent === '--' || cleanContent === '---') return;
 
       itemBoxes.push(
-        `<div class="flex items-start gap-2.5 p-2.5 rounded-lg bg-slate-900/90 border border-slate-700/80 hover:border-indigo-500/50 shadow-sm text-left select-text flowchart-text-force my-1.5"><span class="w-5 h-5 rounded bg-indigo-600/30 text-indigo-300 border border-indigo-500/50 flex items-center justify-center font-bold text-[11px] shrink-0 mt-0.5">${numStr}</span><div class="flex-1 text-[14px] sm:text-[16px] text-slate-200 leading-relaxed break-words flowchart-text-force">${cleanContent}</div></div>`
+        `<div class="flex items-start gap-3 p-3 my-2 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-indigo-500/40 shadow-sm text-left select-text flowchart-text-force"><span class="min-w-[1.375rem] h-[1.375rem] px-1 rounded-md bg-indigo-600/30 text-indigo-300 border border-indigo-500/50 flex items-center justify-center font-black text-[11px] font-mono shrink-0 select-none mt-0.5">${numStr}</span><div class="flex-1 text-[14px] sm:text-[15px] text-slate-100 leading-relaxed break-words min-w-0 flowchart-text-force pl-0.5">${cleanContent}</div></div>`
       );
     });
 
