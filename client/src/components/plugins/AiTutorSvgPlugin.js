@@ -91,52 +91,19 @@ export function renderAiTutorSvg(text) {
         }
       }
 
-      // 2. Embed all remaining trailing lines inside an Integrated SVG Diagram Legend at the bottom!
+      // 2. Format remaining diagram labels into a beautiful HTML Legend Box inside the card!
+      let htmlLegend = '';
       if (orphanLines.length > 0) {
-        let viewW = 850;
-        let viewH = 450;
-        const viewBoxMatch = baseSvgContent.match(/viewBox=["']\s*\d+\s+\d+\s+(\d+)\s+(\d+)\s*["']/i);
-        if (viewBoxMatch && viewBoxMatch[1] && viewBoxMatch[2]) {
-          viewW = Math.max(parseInt(viewBoxMatch[1], 10), 850);
-          viewH = parseInt(viewBoxMatch[2], 10);
-        } else {
-          const heightMatch = baseSvgContent.match(/height=["'](\d+)["']/i);
-          if (heightMatch && heightMatch[1]) {
-            viewH = parseInt(heightMatch[1], 10);
-          }
-        }
-
-        const legendBoxH = orphanLines.length * 28 + 20;
-        const newViewH = viewH + legendBoxH + 30;
-
-        let legendGroup = `\n<!-- Integrated SVG Diagram Legend -->\n<g id="integrated-legend" transform="translate(40, ${viewH + 15})">\n`;
-        legendGroup += `  <rect x="0" y="0" width="${viewW - 80}" height="${legendBoxH}" fill="#0b1120" stroke="#334155" stroke-width="1.5" rx="10" />\n`;
-
-        let textY = 25;
+        htmlLegend = `\n  <!-- Integrated Legend Box -->\n  <div class="mt-4 p-4 bg-[#0f172a]/95 border border-slate-800/80 rounded-xl space-y-2 select-text text-sm text-slate-300">\n`;
+        htmlLegend += `    <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">📌 도해 공식 및 범례</div>\n`;
         orphanLines.forEach(line => {
-          const cleanLineStr = line
-            .replace(/\\gamma/g, 'γ')
-            .replace(/\\phi/g, 'φ')
-            .replace(/\\sigma/g, 'σ')
-            .replace(/\\tau/g, 'τ')
-            .replace(/\\theta/g, 'θ')
-            .replace(/\\delta/g, 'δ')
-            .replace(/\\alpha/g, 'α')
-            .replace(/\\beta/g, 'β')
-            .replace(/\\/g, '') // strip backslashes
-            .replace(/\$/g, ''); // strip dollar signs
-
-          legendGroup += `  <text x="20" y="${textY}" fill="#38bdf8" font-size="13px" font-weight="bold">${cleanLineStr}</text>\n`;
-          textY += 28;
+          let formattedLine = line;
+          if ((line.includes('=') || line.includes('\\') || line.includes('_')) && !line.startsWith('$')) {
+            formattedLine = `$${line}$`;
+          }
+          htmlLegend += `    <div class="flex items-center gap-2 select-text">\n      <span class="text-slate-500">•</span>\n      <span class="font-medium">${formattedLine}</span>\n    </div>\n`;
         });
-        legendGroup += `</g>\n`;
-
-        // Expand viewBox height & height attribute
-        if (viewBoxMatch) {
-          baseSvgContent = baseSvgContent.replace(/viewBox=["'][^"']+["']/i, `viewBox="0 0 ${viewW} ${newViewH}"`);
-        }
-        baseSvgContent = baseSvgContent.replace(/height=["']\d+["']/i, `height="${newViewH}"`);
-        baseSvgContent = baseSvgContent.replace(/<\/svg>/i, `${legendGroup}</svg>`);
+        htmlLegend += `  </div>\n`;
       }
 
       // Transform white background & dark text into sleek Dark Mode (#0f172a / #f8fafc)
@@ -170,6 +137,7 @@ export function renderAiTutorSvg(text) {
   </div>
   <div class="diagram-card-content hidden w-full svg-scroll-container select-text mt-4">
     ${darkSvg}
+    ${htmlLegend}
   </div>
 </div>\n\n${preservedMarkdownText}\n`;
     }
