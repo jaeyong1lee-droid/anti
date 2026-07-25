@@ -73,14 +73,17 @@ function renderMermaidVectorSvgCard(stepItems, title = 'Mermaid Realtime Vector 
 
   return `
 \n<div class="my-6 w-full max-w-4xl mx-auto bg-[#0b0f19] rounded-2xl p-6 border border-slate-800 shadow-2xl select-text font-sans">
-  <div class="flex items-center justify-between border-b border-slate-800/80 pb-4 mb-4">
+  <div class="flex items-center justify-between border-b border-slate-800/80 pb-4">
     <div class="flex items-center gap-2">
       <span class="text-base">⚡</span>
       <h4 class="text-xs font-black text-slate-200 tracking-tight uppercase">${escapeXmlText(title)}</h4>
+      <span class="text-[10px] font-extrabold bg-emerald-950/80 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-full uppercase tracking-wider">⚡ Realtime Vector</span>
     </div>
-    <span class="text-[10px] font-extrabold bg-emerald-950/80 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-full uppercase tracking-wider">⚡ Realtime Vector</span>
+    <button onclick="const content=this.closest('.my-6').querySelector('.diagram-card-content'); const isHidden=content.classList.toggle('hidden'); this.querySelector('.toggle-label').textContent=isHidden?'▼ 펼치기':'▲ 접기';" class="text-xs font-bold bg-slate-800/90 hover:bg-slate-700 text-slate-300 border border-slate-700/80 px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer select-none">
+      <span class="toggle-label">▼ 펼치기</span>
+    </button>
   </div>
-  <div class="w-full select-text">
+  <div class="diagram-card-content hidden w-full select-text mt-4">
     <svg width="100%" viewBox="0 0 800 ${svgHeight}" xmlns="http://www.w3.org/2000/svg" style="width: 100%; height: auto; display: block;">
     <defs>
       <marker id="mermaid-arrowhead" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
