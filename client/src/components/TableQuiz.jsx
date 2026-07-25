@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { LatexRenderer } from './LatexRenderer';
 import { BufferedTextarea } from './BufferedInput';
 import { PopoutWindow } from './PopoutWindow';
-import { getTableScoreColorTheme, areCellsEqual, isOverviewReview as isOverviewReviewHelper } from '../utils/renderingHelpers';
+import { getTableScoreColorTheme, areCellsEqual, isOverviewReview as isOverviewReviewHelper, formatGradingReason as formatReason } from '../utils/renderingHelpers';
 
 const normalize = (s) => (s || '').trim().toLowerCase().replace(/\s+/g, '');
 
