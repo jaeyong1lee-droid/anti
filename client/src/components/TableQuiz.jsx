@@ -1848,7 +1848,7 @@ export const TableQuiz = React.memo(function TableQuiz({
                         <button
                           type="button"
                           onClick={onSubmit}
-                          className="w-full sm:w-auto px-4 py-3 bg-slate-700 hover:bg-slate-600 text-white border border-slate-500/50 rounded-xl text-xs sm:text-sm font-black transition-all shadow-md active:scale-95 whitespace-nowrap cursor-pointer flex items-center justify-center font-bold"
+                          className="w-full sm:w-auto px-2.5 py-1.5 sm:px-3 sm:py-2 bg-slate-700 hover:bg-slate-600 text-white border border-slate-500/50 rounded-lg text-[10px] sm:text-[11px] font-black transition-all shadow-md active:scale-95 whitespace-nowrap cursor-pointer flex items-center justify-center font-bold"
                         >
                           제출
                         </button>
