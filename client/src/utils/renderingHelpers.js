@@ -656,7 +656,7 @@ export function wrapFollowingListItemsHtml(text) {
   if (!text || typeof text !== 'string') return text;
 
   // Match '다음과 같은', '아래와 같은', '다음과 같이', '아래와 같이', '주요 특징' etc. followed by 2 or more bullet/list items
-  const followingListSectionRegex = /(?:^|<br\/>|\n|<p>)[ \t]*(?:<div[^>]*>|<p>)?\s*(?:[•\*\-]\s*|#{1,6}\s*|\[|\*\*)?\s*([^\n<]*(?:다음과\s*같은|아래와\s*같은|다음과\s*같이|아래와\s*같이|다음\s*항목|아래\s*항목|주요\s*특징|특징은\s*다음|사항은\s*다음|다음과\s*같음)[^\n<]*)\s*[:\]\*\*,\.]*[ \t]*(?:<\/div>|<\/p>|<br\/>|\n)+\s*((?:(?:<div[^>]*>|<p>)?\s*(?:[•\*\-]\s*|\d+[\.\)]\s+)[^\n<]*[\s\S]*?(?:<\/div>|<\/p>|<br\/>|\n)){2,})/gi;
+  const followingListSectionRegex = /(?:^|<br\/>|\n|<p>)[ \t]*(?:<div[^>]*>|<p>)?\s*(?:[•\*\-]\s*|#{1,6}\s*|\[|\*\*)?\s*([^\n<]*(?:다음과\s*같은|아래와\s*같은|다음과\s*같이|아래와\s*같이|다음\s*항목|아래\s*항목|주요\s*특징|특징은\s*다음|사항은\s*다음|다음과\s*같음)[^\n<]*)\s*[:\]\*\*,\.]*[ \t]*(?:<\/div>|<\/p>|<br\/>|\n)+\s*((?:(?:<div[^>]*>|<p>)?\s*(?:[•\*\-]\s*|\d+[\.\)]\s+)[^\n]*?(?:<\/div>|<\/p>|<br\/>|\n|$))+)/gi;
 
   return text.replace(followingListSectionRegex, (fullMatch, headerTitle, listBlock) => {
     if (fullMatch.includes('___HTML_TABLE_') || fullMatch.includes('___CODE_BLOCK_') || fullMatch.includes('flowchart-text-force') || /<table/i.test(fullMatch)) {
@@ -672,8 +672,11 @@ export function wrapFollowingListItemsHtml(text) {
 
       const content = stripped.replace(/^(?:[•\*\-]\s*|\d+[\.\)]\s*)/, '').trim();
       if (content && !/^[-–—\s]+$/.test(content) && content !== '--' && content !== '---') {
+        const highlightedContent = content.includes(':') 
+          ? content.replace(/^([^:]+:)/, '<strong class="text-amber-300 font-bold">$1</strong>')
+          : content;
         itemBoxes.push(
-          `<div class="flex items-start gap-2.5 p-2.5 my-1.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-emerald-500/40 shadow-sm text-left select-text"><span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 mt-2 shadow-sm shadow-emerald-400/50"></span><div class="flex-1 text-[13px] sm:text-[14px] text-slate-100 leading-relaxed break-words">${line.includes(':') ? content.replace(/^([^:]+:)/, '<strong class="text-amber-300 font-bold">$1</strong>') : content}</div></div>`
+          `<div class="flex items-start gap-2.5 p-2.5 my-1.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-emerald-500/40 shadow-sm text-left select-text"><span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 mt-2 shadow-sm shadow-emerald-400/50"></span><div class="flex-1 text-[13px] sm:text-[14px] text-slate-100 leading-relaxed break-words">${highlightedContent}</div></div>`
         );
       }
     });
