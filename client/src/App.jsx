@@ -21448,7 +21448,7 @@ ${itemsStr}
                   <span className="text-[10px] text-purple-400 font-bold animate-pulse">서버에서 기타 공학 지침 데이터를 로드하는 중입니다...</span>
                 </div>
               ) : (
-                <div className="overflow-x-auto border border-slate-800 rounded-xl">
+                <div className="overflow-x-auto max-h-[65vh] overflow-y-auto custom-vertical-scrollbar border border-slate-800 rounded-xl">
                   <table className="w-full text-xs text-slate-300 divide-y divide-slate-800">
                     <thead className="bg-slate-950/60 font-black text-slate-400 select-none">
                       <tr>

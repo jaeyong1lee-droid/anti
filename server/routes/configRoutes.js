@@ -260,22 +260,22 @@ router.get('/engineering-standards', async (req, res) => {
       currentFileList = standardsList;
     }
 
-    // Merge logic: Ensure all currentFileList items exist in dbList
+    // Merge logic: Always trust currentFileList for title/content of default items, preserve user additions
     const dbMap = new Map((dbList || []).map(item => [item.id, item]));
-    const merged = [];
-
-    for (const fileItem of currentFileList) {
+    const merged = currentFileList.map(fileItem => {
       const dbItem = dbMap.get(fileItem.id);
-      if (dbItem) {
-        merged.push(dbItem);
-      } else {
-        merged.push(fileItem);
-      }
-    }
+      // Always update title & content from file if file has newer/updated definitions
+      return {
+        ...fileItem,
+        title: fileItem.title,
+        content: fileItem.content,
+        updatedAt: fileItem.updatedAt || new Date().toISOString()
+      };
+    });
 
-    // Also include any user-created custom items from DB
+    // Also include any user-created custom items from DB (items not present in default file list)
     const fileIds = new Set(currentFileList.map(i => i.id));
-    for (const dbItem of dbList) {
+    for (const dbItem of dbList || []) {
       if (!fileIds.has(dbItem.id)) {
         merged.push(dbItem);
       }
