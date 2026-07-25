@@ -195,6 +195,8 @@ export async function callLLMWithFailover(systemInstruction, userPrompt, image =
   ];
   const uniqueModels = [...new Set(geminiFallbacks.filter(Boolean))];
 
+  const executionList = [];
+
   // 1. 모든 Gemini API Key에 대해 Gemini 4개 모델 순서대로 시도
   for (const k of geminiKeys) {
     for (const modelName of uniqueModels) {

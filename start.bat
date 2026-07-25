@@ -15,15 +15,15 @@ for /f "tokens=5" %%a in ('netstat -aon ^| findstr :3000 ^| findstr LISTENING') 
 
 echo [2/3] 백엔드 서버(Port 5000)를 새 창에서 가동합니다...
 cd /d "%PROJECT_DIR%server"
-start "AntiGravity Backend" cmd /k "node index.js"
+start "AntiGravity Backend" cmd /k "set PATH=%NODE_PORTABLE_DIR%;%%PATH%% && node index.js"
 
 echo [3/3] 프론트엔드 서버(Port 3000)를 새 창에서 가동합니다...
 cd /d "%PROJECT_DIR%client"
-start "AntiGravity Frontend" cmd /k "npm run dev"
+start "AntiGravity Frontend" cmd /k "set PATH=%NODE_PORTABLE_DIR%;%%PATH%% && npm run dev"
 
 echo.
 echo 잠시 후 백엔드 및 프론트엔드 서버 준비 완료 후 브라우저를 엽니다 (5초 대기)...
-timeout /t 5 /nobreak >nul
+ping 127.0.0.1 -n 6 >nul
 start http://localhost:3000
 
 echo.
@@ -32,4 +32,5 @@ echo  서버 가동 및 브라우저 실행이 완료되었습니다!
 echo  학습을 완료한 후에는 실행된 두 검은색 명령프롬프트 창을 닫아주세요.
 echo ============================================================
 echo.
-timeout /t 5
+
+
