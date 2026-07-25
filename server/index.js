@@ -250,12 +250,13 @@ if (process.env.VERCEL) {
         vercelInitPromise = (async () => {
           if (isPostgres) {
             await initDatabase();
-            await initializeAllStandards();
-            await loadPreferredModel();
+            // Run standards & model loading in background to not block early HTTP responses
+            initializeAllStandards().catch(e => console.warn('[Vercel BG Sync Warning]', e.message));
+            loadPreferredModel().catch(e => console.warn('[Vercel BG Model Warning]', e.message));
           }
         })().catch(err => {
           console.error('[Vercel Serverless Init Error]', err.message);
-          vercelInitPromise = null; // Reset promise to allow retrying on subsequent requests
+          vercelInitPromise = null;
         });
       }
       await vercelInitPromise;

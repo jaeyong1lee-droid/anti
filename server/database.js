@@ -19,11 +19,13 @@ if (process.env.BLOB_READ_WRITE_TOKEN) {
   process.env.BLOB_READ_WRITE_TOKEN = token.replace(/['"]+$/g, '').trim();
 }
 
+const DEFAULT_NEON_DB_URL = 'postgresql://neondb_owner:npg_vY4Q7VcKFRIo@ep-broad-credit-aw98bx45-pooler.c-12.us-east-1.aws.neon.tech/neondb?sslmode=require';
+
 const connectionString = process.env.DATABASE_URL || 
                          process.env.POSTGRES_URL || 
                          process.env.POSTGRES_PRISMA_URL ||
                          process.env.SUPABASE_DATABASE_URL ||
-                         '';
+                         DEFAULT_NEON_DB_URL;
 
 export const isPostgres = !!connectionString;
 const isVercel = !!process.env.VERCEL;
@@ -234,7 +236,7 @@ export async function initDatabase() {
         // Execute a quick probe query with retry to ensure database is responsive
         await executeWithRetry(async () => {
           await pgPool.query('SELECT NOW()');
-        }, 5, 3000); // 5 retries, 3 seconds delay each to allow Neon compute to wake up
+        }, 2, 500);
 
         
         // 1. topics table: stores studied topics and raw PDF data as a BYTEA
