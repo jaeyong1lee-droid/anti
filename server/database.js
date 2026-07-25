@@ -59,37 +59,33 @@ function parseDbUrlAndSanitize(rawUrl) {
 }
 
 if (isPostgres) {
-  console.log('PostgreSQL database URL detected. Connecting to Cloud PostgreSQL database...');
-  const parsed = parseDbUrlAndSanitize(connectionString);
-  if (parsed) {
-    console.log(`Parsed DB config → host: ${parsed.host}, port: ${parsed.port}, user: ${parsed.user}, db: ${parsed.database}`);
-    pgPool = new pg.Pool({
+  if (!global.__pgPool) {
+    console.log('PostgreSQL database URL detected. Initializing Cloud PostgreSQL pool...');
+    const parsed = parseDbUrlAndSanitize(connectionString);
+    const poolConfig = parsed ? {
       user: parsed.user,
       password: parsed.password,
       host: parsed.host,
       port: parsed.port,
       database: parsed.database,
       ssl: parsed.sslmode === 'disable' ? false : { rejectUnauthorized: false },
-      max: 20, // Neon serverless connection limit protection
-      idleTimeoutMillis: 30000, // Close idle connections after 30 seconds
-      connectionTimeoutMillis: 30000, // Extend timeout to 30 seconds for Neon wake-up spin
-    });
-  } else {
-    // Fallback: use connection string directly (with sanitization)
-    const cleanedString = connectionString ? connectionString.replace(/[?&]channel_binding=[^&]*/g, '').trim() : '';
-    pgPool = new pg.Pool({
-      connectionString: cleanedString,
+      max: isVercel ? 2 : 20,
+      idleTimeoutMillis: isVercel ? 1000 : 30000,
+      connectionTimeoutMillis: isVercel ? 5000 : 30000,
+    } : {
+      connectionString: connectionString ? connectionString.replace(/[?&]channel_binding=[^&]*/g, '').trim() : '',
       ssl: { rejectUnauthorized: false },
-      max: 20,
-      idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 30000,
+      max: isVercel ? 2 : 20,
+      idleTimeoutMillis: isVercel ? 1000 : 30000,
+      connectionTimeoutMillis: isVercel ? 5000 : 30000,
+    };
+
+    global.__pgPool = new pg.Pool(poolConfig);
+    global.__pgPool.on('error', (err) => {
+      console.error('Unexpected error on idle PostgreSQL client in Neon Pool:', err.message);
     });
   }
-
-  // Gracefully handle idle client errors to prevent server crash or connection lockup on Neon pauses
-  pgPool.on('error', (err, client) => {
-    console.error('Unexpected error on idle PostgreSQL client in Neon Pool:', err.message);
-  });
+  pgPool = global.__pgPool;
 }
 
 // Lazy loader for SQLite database to prevent top-level await syntax issues & Vercel EROFS crashes
@@ -227,8 +223,11 @@ export const dbQuery = {
   }
 };
 
+let dbTablesInitialized = false;
+
 // Initialize schema
 export async function initDatabase() {
+  if (dbTablesInitialized) return;
   try {
     if (isPostgres) {
       try {
@@ -338,6 +337,7 @@ export async function initDatabase() {
     } else {
       await initSQLiteTables();
     }
+    dbTablesInitialized = true;
   } catch (error) {
     console.error('Failed to initialize database tables:', error);
     throw error;
