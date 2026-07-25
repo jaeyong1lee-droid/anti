@@ -160,8 +160,32 @@ export function wrapKdsKcsAndWikipediaReferencesHtml(text) {
           ? 'bg-emerald-600/20 text-emerald-300 border-emerald-500/40' 
           : 'bg-amber-600/20 text-amber-300 border-amber-500/40';
 
+        let titleSummary = descText;
+        let detailContent = descText;
+        if (descText.includes('||')) {
+          const parts = descText.split('||');
+          titleSummary = parts[0].trim();
+          detailContent = parts[1].trim();
+        } else if (descText.includes('::')) {
+          const parts = descText.split('::');
+          titleSummary = parts[0].trim();
+          detailContent = parts[1].trim();
+        }
+
         itemBoxes.push(
-          `<div class="flex items-baseline gap-2.5 px-2 py-1 select-text text-left leading-[1.3]"><span class="px-2 py-0.5 rounded ${badgeClass} border font-bold text-xs font-mono shrink-0 select-none">${refTag}</span><div class="flex-1 text-[14px] sm:text-[15px] text-slate-100 leading-[1.3] break-words">${descText}</div></div>`
+          `<details class="group rounded-xl border border-slate-800 bg-slate-900/80 my-1.5 transition-all overflow-hidden">` +
+            `<summary class="flex items-center justify-between gap-2.5 p-2.5 px-3 cursor-pointer select-none hover:bg-slate-800/60 transition-colors">` +
+              `<div class="flex items-center gap-2 min-w-0 flex-1">` +
+                `<span class="px-2 py-0.5 rounded ${badgeClass} border font-bold text-xs font-mono shrink-0 select-none">${refTag}</span>` +
+                `<span class="text-[13px] sm:text-[14px] text-slate-100 font-medium leading-tight truncate">${titleSummary}</span>` +
+              `</div>` +
+              `<span class="text-xs font-bold text-amber-400/90 group-open:rotate-180 transition-transform shrink-0 ml-1.5">▼</span>` +
+            `</summary>` +
+            `<div class="p-3 pt-2 text-[13px] sm:text-[14px] text-slate-200 leading-relaxed border-t border-slate-800/80 bg-slate-950/80 break-words select-text font-sans">` +
+              `<div class="text-xs font-bold text-emerald-400 mb-1">📖 검색 규정/이론 전문 내역:</div>` +
+              `${detailContent}` +
+            `</div>` +
+          `</details>`
         );
       } else {
         const content = stripped.replace(/^(?:[•\*\-]\s*)/, '').trim();
@@ -177,7 +201,7 @@ export function wrapKdsKcsAndWikipediaReferencesHtml(text) {
 
     const titleClean = headerTitle.replace(/<[^>]+>/g, '').replace(/^[#\*\-•\[\]\s📚]+/, '').replace(/[#\*\-•\[\]\s]+$/, '').trim();
 
-    return `<div class="my-3.5 p-3.5 rounded-2xl bg-slate-950/90 border border-emerald-500/40 shadow-lg text-left select-text leading-[1.3]"><div class="flex items-center gap-2 mb-2 pb-1.5 border-b border-emerald-500/25 text-emerald-300 text-[14px] sm:text-[16px] font-bold select-none leading-[1.3]"><span class="text-base">📚</span><span>${titleClean || 'KDS/KCS 규정 및 영문 위키피디아 지반역학 참조'}</span></div><div class="space-y-1 leading-[1.3]">${itemBoxes.join('')}</div></div>`;
+    return `<div class="my-3.5 p-3.5 rounded-2xl bg-slate-950/90 border border-emerald-500/40 shadow-lg text-left select-text leading-[1.3]"><div class="flex items-center gap-2 mb-2 pb-1.5 border-b border-emerald-500/25 text-emerald-300 text-[14px] sm:text-[16px] font-bold select-none leading-[1.3]"><span class="text-base">📚</span><span>${titleClean || 'KDS/KCS 규정 및 영문 위키피디아 지반역학 참조'}</span></div><div class="space-y-1.5 leading-[1.3]">${itemBoxes.join('')}</div></div>`;
   });
 
   return result;

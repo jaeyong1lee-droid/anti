@@ -130,6 +130,29 @@ async function runTests() {
     failed++;
   }
 
+  // 📚 5. KDS/KCS & Wikipedia Soil Mechanics Reference Engine Test
+  const kdsKcsWikiSample = `삼축압축시험은 지반의 전단 강도와 변형 특성을 산정하는 핵심 시험입니다.
+
+📚 KDS/KCS 규정 및 영문 위키피디아 지반역학 참조:
+• KDS 11 20 00 (지반조사 설계기준): 지반 전단강도 파라미터(c, phi) 및 한계상태 설계법 적용
+• Wikipedia Soil Mechanics (Stress Path): p-q 응력경로 및 유효응력파괴선(NFL) 삼축응력 거동 수식 적용`;
+
+  const renderedRefHtml = convertMarkdownToHtml(cleanAndSanitizeMathText(kdsKcsWikiSample), true, false, true);
+  const hasRefCard = renderedRefHtml.includes('📚') && 
+                     renderedRefHtml.includes('KDS/KCS 규정 및 영문 위키피디아 지반역학 참조') &&
+                     renderedRefHtml.includes('<details') &&
+                     renderedRefHtml.includes('<summary') &&
+                     renderedRefHtml.includes('KDS 11 20 00') &&
+                     renderedRefHtml.includes('Wikipedia Soil Mechanics');
+
+  if (hasRefCard) {
+    console.log('  ✅ [PASS] 📚 [KDS/KCS & Wikipedia References Engine] Collapsible Accordion Button & Dynamic Card Wrapper Parsing Success!');
+    passed++;
+  } else {
+    console.log('  ❌ [FAIL] 📚 [KDS/KCS & Wikipedia References Engine] Reference Card Wrapper test failed');
+    failed++;
+  }
+
   console.log('\n=====================================================================');
   console.log(` 📊 EXHAUSTIVE REGRESSION TEST SUMMARY: ${passed} PASSED, ${failed} FAILED `);
   console.log('=====================================================================');
