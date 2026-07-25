@@ -41,11 +41,35 @@ export function renderAiTutorSvg(text) {
 
       let baseSvgContent = svgMatch[0];
       
-      // Extract all trailing orphan lines inside the code block
-      let orphanLines = (trailingContent || '')
-        .split(/\r?\n/)
-        .map(l => l.trim())
-        .filter(l => l && !l.startsWith('```') && !l.startsWith('<div') && !l.startsWith('</div'));
+      const isFormulaOrLabel = (l) => {
+        if (l.length > 70) return false;
+        if (l.startsWith('#') || l.startsWith('*') || l.startsWith('-') || l.startsWith('•') || /^\d+\./.test(l)) return false;
+        if (l.includes('=') || l.includes('\\') || l.includes('(') || l.includes(')') || l.includes('_') || l.includes('^')) return true;
+        if (l.includes('G.L') || l.includes('G.W.L') || l.includes('토압') || l.includes('점토') || l.includes('모래') || l.includes('지반') || l.includes('기초') || l.includes('토류벽')) {
+          return l.length < 50;
+        }
+        return l.length < 30;
+      };
+
+      // Split and partition trailing content into diagram labels vs. general markdown text
+      const lines = (trailingContent || '').split(/\r?\n/);
+      let orphanLines = [];
+      let preservedMarkdownLines = [];
+
+      lines.forEach(rawLine => {
+        const l = rawLine.trim();
+        if (!l) {
+          preservedMarkdownLines.push(rawLine);
+          return;
+        }
+        if (l.startsWith('```') || l.startsWith('<div') || l.startsWith('</div')) return;
+        
+        if (isFormulaOrLabel(l)) {
+          orphanLines.push(l);
+        } else {
+          preservedMarkdownLines.push(rawLine);
+        }
+      });
 
       // 1. Re-assemble split parenthesis if any (e.g. 주동토압 ( -> \gamma_1...)
       if (orphanLines.length > 0) {
@@ -67,7 +91,7 @@ export function renderAiTutorSvg(text) {
         }
       }
 
-      // 2. Embed all remaining trailing lines inside an Integrated SVG Legend Box at the bottom!
+      // 2. Embed all remaining trailing lines inside an Integrated SVG Diagram Legend at the bottom!
       if (orphanLines.length > 0) {
         let viewW = 850;
         let viewH = 450;
@@ -132,6 +156,7 @@ export function renderAiTutorSvg(text) {
         return `<svg${cleanAttrs} style="min-width: ${minWidth}px; width: 100%; height: auto; display: block;">`;
       });
 
+      const preservedMarkdownText = preservedMarkdownLines.join('\n');
       return `\n<div class="my-6 w-full max-w-5xl mx-auto bg-[#0b0f19] rounded-2xl p-6 border border-slate-800 shadow-2xl overflow-x-auto select-text font-sans">
   <div class="flex items-center justify-between border-b border-slate-800/80 pb-4">
     <div class="flex items-center gap-2">
@@ -146,7 +171,7 @@ export function renderAiTutorSvg(text) {
   <div class="diagram-card-content hidden w-full svg-scroll-container select-text mt-4">
     ${darkSvg}
   </div>
-</div>\n`;
+</div>\n\n${preservedMarkdownText}\n`;
     }
     return match;
   });
