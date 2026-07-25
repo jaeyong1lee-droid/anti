@@ -3256,31 +3256,6 @@ export default function App() {
   const [aiProgressMessage, setAiProgressMessage] = useState('');
   const [aiProgressPercent, setAiProgressPercent] = useState(0);
   const [showAiProgress, setShowAiProgress] = useState(false);
-  const progressIntervalRef = useRef(null);
-  const loadingTopicLockRef = useRef(false);
-
-  // AI 수행 중단/취소 처리 핸들러
-  const handleCancelAiTask = useCallback(() => {
-    if (progressIntervalRef.current) {
-      clearInterval(progressIntervalRef.current);
-      progressIntervalRef.current = null;
-    }
-    if (window.currentAiAbortController) {
-      try {
-        window.currentAiAbortController.abort();
-      } catch (err) {
-        console.error('Failed to abort fetch controller:', err);
-      }
-      window.currentAiAbortController = null;
-    }
-    setShowAiProgress(false);
-    setAiProgressPercent(0);
-    setAiProgressMessage('');
-    if (typeof showToast === 'function') {
-      showToast('⚠️ AI 작업 수행이 취소되었습니다.', 'error');
-    }
-  }, [showToast]);
-
   // Real-Time Global AI Tutor States
   const [isRealTimeTutorOpen, setIsRealTimeTutorOpen] = useState(() => {
     try {
@@ -5825,11 +5800,31 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
   const [notification, setNotification] = useState(null);
 
   const notificationTimerRef = useRef(null);
-  const showNotification = (message, type = 'success') => {
+  const showNotification = useCallback((message, type = 'success') => {
     if (notificationTimerRef.current) clearTimeout(notificationTimerRef.current);
     setNotification({ message, type });
     notificationTimerRef.current = setTimeout(() => setNotification(null), 4000);
-  };
+  }, []);
+
+  // AI 수행 중단/취소 처리 핸들러
+  const handleCancelAiTask = useCallback(() => {
+    if (progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current);
+      progressIntervalRef.current = null;
+    }
+    if (window.currentAiAbortController) {
+      try {
+        window.currentAiAbortController.abort();
+      } catch (err) {
+        console.error('Failed to abort fetch controller:', err);
+      }
+      window.currentAiAbortController = null;
+    }
+    setShowAiProgress(false);
+    setAiProgressPercent(0);
+    setAiProgressMessage('');
+    showNotification('⚠️ AI 작업 수행이 사용자에 의해 취소되었습니다.', 'error');
+  }, [showNotification]);
 
     // Fetch reviews based on selected reference date
   const fetchTodayReviews = async (dateStr) => {
