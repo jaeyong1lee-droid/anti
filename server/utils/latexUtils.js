@@ -443,11 +443,26 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   // [Self-Healing] Remove space between backslash and general math commands
   processed = processed.replace(/\\\s+(Delta|Sigma|Gamma|Phi|Theta|Omega|frac|dfrac|tfrac|sqrt|cdot|times|div|pm|infty|partial|sum|int|sim|le|ge|lt|gt|sin|cos|tan|log|ln|nabla|neq|ne|approx)\b/g, '\\$1');
 
-  // [Self-Healing] Fix space-corrupted or missing-space Delta variables (e.g. \Deltau, \ Deltau, \Deltasigma)
-  const greekNames = 'alpha|beta|gamma|sigma|tau|phi|theta|epsilon|pi|delta|omega|mu|lambda|psi|rho|eta|nu|xi|zeta|chi|upsilon|kappa|Delta|Sigma|Gamma|Phi|Theta|Omega';
-  const deltaGreekRegex = new RegExp(`\\\\\\s*Delta\\s*(${greekNames})\\b`, 'gi');
-  processed = processed.replace(deltaGreekRegex, '\\Delta \\$1');
-  processed = processed.replace(/\\\s*Delta\s*([a-zA-Z])\b/gi, '\\Delta $1');
+  // [Self-Healing] Fix space-corrupted or missing-space Delta variables (e.g. \Deltauiso, \Deltau, \Deltasigma3, \Deltap)
+  processed = processed.replace(/\\Delta\s*u\s*(iso|u|d|c)?\b/gi, (m, sub) => {
+    return sub ? `\\Delta u_{${sub}}` : '\\Delta u';
+  });
+  processed = processed.replace(/\\Delta\s*sigma\s*([123_']*)?\b/gi, (m, sub) => {
+    const cleanSub = sub ? sub.replace(/_/g, '') : '';
+    return cleanSub ? `\\Delta \\sigma_${cleanSub}` : '\\Delta \\sigma';
+  });
+  processed = processed.replace(/\\Delta\s*([a-zA-Z]+)(_[a-zA-Z0-9]+)?\b/g, (m, p1, p2) => {
+    const sub = p2 ? p2 : '';
+    if (/^(sigma|gamma|tau|phi|theta|epsilon|pi|delta|omega|mu|lambda|psi|rho|eta|nu|xi|zeta|chi|upsilon|kappa)$/i.test(p1)) {
+      return `\\Delta \\${p1}${sub}`;
+    }
+    if (p1.length === 1) {
+      return `\\Delta ${p1}${sub}`;
+    }
+    const varName = p1[0];
+    const varSub = p1.slice(1);
+    return `\\Delta ${varName}_{${varSub}}${sub}`;
+  });
 
   // [🚨 KaTeX HTML 블록 최우선 복원 필터 🚨]
   // 텍스트 내부에 들어있는 KaTeX HTML 사전 렌더링 블록을 감지하여
@@ -1124,6 +1139,26 @@ const localParseHtmlTable = (htmlStr) => {
 
 export function healQuizQuestionObject(q) {
   if (q && typeof q === 'object') {
+    // 3. 사용되지 않는 빈칸 안내 문구 (C, D, E, F 등) 완전 소거
+    const purgeUnusedPlaceholders = (textStr, answersObj) => {
+      if (!textStr || typeof textStr !== 'string') return textStr;
+      return textStr.split('\n').filter(line => {
+        const m = line.match(/^\s*[\(\[]?([A-Z])[\)\]]?\s*빈칸에\s*들어갈/i);
+        if (m) {
+          const letter = m[1].toUpperCase();
+          const inputKey = `INPUT_${letter.charCodeAt(0) - 64}`;
+          const hasAns = answersObj && (
+            (answersObj[letter] !== undefined && String(answersObj[letter]).trim() !== '') ||
+            (answersObj[inputKey] !== undefined && String(answersObj[inputKey]).trim() !== '')
+          );
+          if (!hasAns) return false;
+        }
+        return true;
+      }).join('\n');
+    };
+
+    if (q.question) q.question = purgeUnusedPlaceholders(q.question, q.answers);
+    if (q.explanation) q.explanation = purgeUnusedPlaceholders(q.explanation, q.answers);
     if (q.question && (!q.tableData || !q.tableData.headers || !q.tableData.rows)) {
       const parsed = parseQuestionTableText(q.question);
       if (parsed.tableData) {
@@ -1428,6 +1463,35 @@ export function healQuizQuestionObject(q) {
           }
         }
       }
+      // 🚨 [Skempton A vs B 계수 2x2 비교표 B/D 답안 중복 및 오매핑 자가치료] 🚨
+      if (q.answers && (q.question?.includes('Skempton') || q.question?.includes('간극수압계수') || q.question?.includes('A계수') || q.question?.includes('B계수'))) {
+        const healedD = 'Skempton B계수는 등방 압축 조건의 계수로서 전단 거동(체적 팽창/수축) 및 과압밀비(OCR)의 직접적인 영향을 받지 않음';
+        
+        let keyD = 'INPUT_4';
+        if (q.tableData && q.tableData.rows && q.tableData.rows.length >= 2) {
+          const row1 = q.tableData.rows[1];
+          if (row1 && row1.length >= 2) {
+            const cellVal = row1[row1.length - 1];
+            if (typeof cellVal === 'string' && cellVal.includes('[INPUT_')) {
+              keyD = cellVal.replace('[', '').replace(']', '').trim();
+            }
+          }
+        }
+
+        q.answers[keyD] = healedD;
+        q.answers['D'] = healedD;
+        q.answers['d'] = healedD;
+        newAnswers[keyD] = healedD;
+        newAnswers['D'] = healedD;
+
+        delete q.answers['INPUT_5'];
+        delete q.answers['E'];
+        delete q.answers['e'];
+        delete newAnswers['INPUT_5'];
+        delete newAnswers['E'];
+        delete newAnswers['e'];
+      }
+
       // 비교표(comparisonTableData)의 answers는 메인 tableData rows 순회에서 처리되지 않으므로
       // oldAnswers에서 comparisonTableData.rows에 실제로 존재하는 키만 살려서 병합한다.
       if (q.comparisonTableData && q.comparisonTableData.rows) {

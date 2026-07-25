@@ -970,7 +970,7 @@ const isNATMFlowchart = (idx, q, isExam = false) => {
 const isFlowchartQuestion = (idx, q, isExam = false) => {
   if (isNATMFlowchart(idx, q, isExam)) return true;
   const qText = q?.question || q?.question_text || '';
-  const hasFlowchartSymbols = qText.includes('┌') || qText.includes('▼') || qText.includes('─') || qText.includes('│') || qText.includes('┃') || qText.includes('흐름도') || qText.includes('플로우차트');
+  const hasFlowchartSymbols = (qText.includes('┌') && qText.includes('└')) || qText.includes('```');
   const hasLetters = /\(([A-F])\)/.test(qText);
   return hasFlowchartSymbols && hasLetters;
 };
@@ -1375,6 +1375,18 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
               const inputId = `INPUT_${letterIdx + 1}`;
               const letter = actualLettersMap[inputId] || String.fromCharCode(65 + letterIdx);
               const result = tableGradingResults[key];
+
+              // Check if inputId/letter actually exists in q.answers
+              const isValidInQ = Boolean(
+                (q?.answers && inputId in q.answers) ||
+                (q?.answers && letter in q.answers) ||
+                (q?.answers && letter.toLowerCase() in q.answers)
+              );
+
+              if (!isValidInQ) {
+                return; // Purge orphan key not belonging to current question
+              }
+
               if (result) {
                 const rawAns = result?.suggestedModelAnswer || result?.correctAnswer || q?.answers?.[inputId] || '';
                 const cleanedAns = cleanFlowchartCorrectAnswer(rawAns, letter);

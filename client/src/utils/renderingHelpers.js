@@ -653,7 +653,7 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
 export function wrapMechanismProcedureAssumptionsHtml(text) {
   if (!text || typeof text !== 'string') return text;
 
-  const sectionRegex = /(?:^|<br\/>|\n|<p>)[ \t]*(?:[•\*\-]\s*|#{1,6}\s*|\[|\*\*)?\s*([^\n<]*(?:메커니즘|절차|흐름도|플로우차트|순서도|프로세스|가정\s*사항|가정\s*조건|기본\s*가정|전제\s*조건|가정|Mechanism|Procedure|Assumptions)[^\n<]*)\s*[:\]\*\*]*[ \t]*(?:<br\/>|\n|<\/p>|<p>)((?:[ \t]*(?:<div[^>]*>|<p>)?(?:\d+[\.\)]|[①-⑳]|[•\*\-]|[가-힣]+[\.\)]|\([0-9a-zA-Z가-힣]+\)|\[[0-9a-zA-Z가-힣]+\])[ \t]*[\s\S]*?(?:<\/div>|<\/p>|<br\/>|\n))+)/gi;
+  const sectionRegex = /(?:^|<br\/>|\n|<p>)[ \t]*(?:[•\*\-]\s*|#{1,6}\s*|\[|\*\*)?\s*([^\n<]*(?:절차|흐름도|플로우차트|순서도|프로세스|가정\s*사항|가정\s*조건|기본\s*가정|전제\s*조건|가정|Procedure|Assumptions)[^\n<]*)\s*[:\]\*\*]*[ \t]*(?:<br\/>|\n|<\/p>|<p>)((?:[ \t]*(?:<div[^>]*>|<p>)?(?:\d+[\.\)]|[①-⑳]|[•\*\-]|[가-힣]+[\.\)]|\([0-9a-zA-Z가-힣]+\)|\[[0-9a-zA-Z가-힣]+\])[ \t]*[\s\S]*?(?:<\/div>|<\/p>|<br\/>|\n))+)/gi;
 
   let result = text.replace(sectionRegex, (fullMatch, headerTitle, stepsBlock) => {
     if (fullMatch.includes('___HTML_TABLE_') || fullMatch.includes('___CODE_BLOCK_') || /<table/i.test(fullMatch)) {
@@ -668,7 +668,7 @@ export function wrapMechanismProcedureAssumptionsHtml(text) {
       if (!stripped) return;
 
       const content = line.replace(/^(?:<div[^>]*>|<p>)?\s*(?:\d+[\.\)]|[①-⑳]|[•\*\-]|[가-힣]+[\.\)]|\([0-9a-zA-Z가-힣]+\)|\[[0-9a-zA-Z가-힣]+\])\s*/, '').trim();
-      if (!content) return;
+      if (!content || /^[-–—\s]+$/.test(content) || content === '--' || content === '---') return;
 
       const stepNum = itemBoxes.length + 1;
 
@@ -704,7 +704,7 @@ export function wrapMechanismProcedureAssumptionsHtml(text) {
 
       const [, numStr, content] = match;
       const cleanContent = content.replace(/<\/(?:div|p)>$/, '').trim();
-      if (!cleanContent) return;
+      if (!cleanContent || /^[-–—\s]+$/.test(cleanContent) || cleanContent === '--' || cleanContent === '---') return;
 
       itemBoxes.push(
         `<div class="flex items-start gap-2.5 p-2.5 rounded-lg bg-slate-900/90 border border-slate-700/80 hover:border-indigo-500/50 shadow-sm text-left select-text flowchart-text-force my-1.5"><span class="w-5 h-5 rounded bg-indigo-600/30 text-indigo-300 border border-indigo-500/50 flex items-center justify-center font-bold text-[11px] shrink-0 mt-0.5">${numStr}</span><div class="flex-1 text-[14px] sm:text-[16px] text-slate-200 leading-relaxed break-words flowchart-text-force">${cleanContent}</div></div>`

@@ -30,7 +30,47 @@ export const TableQuiz = React.memo(function TableQuiz({
   }
 
   const isOverviewReview = isOverviewReviewHelper(q);
-  const isFlowchart = q.question?.includes('┌') || q.question?.includes('▼') || q.question?.includes('흐름도') || q.question?.includes('플로우차트');
+  const isFlowchart = Boolean(
+    (q.question && (q.question.includes('┌') || q.question.includes('▼') || q.question.includes('흐름') || q.question.includes('플로우차트') || q.question.includes('단계는'))) ||
+    (q.explanation && (q.explanation.includes('┌') || q.explanation.includes('▼') || q.explanation.includes('흐름') || q.explanation.includes('플로우차트') || q.explanation.includes('단계는'))) ||
+    q.subtype === '순서도' || q.subtype === '플로우차트'
+  );
+
+  const isPlaceholderAnswer = (inputId) => {
+    const idx = parseInt(inputId.replace('INPUT_', ''), 10) - 1;
+    const letter = String.fromCharCode(65 + (isNaN(idx) ? 0 : idx));
+    const ans = q.answers?.[inputId] ?? q.answers?.[letter] ?? q.answers?.[letter.toLowerCase()];
+    if (ans === undefined || ans === null) return true;
+    const clean = String(ans).trim();
+    if (!clean || clean === `${letter} 입력` || clean === `${letter}` || /^[\(\[]?[A-Z][\)\]]?\s*입력$/i.test(clean)) return true;
+
+    // Check if inputId is an orphan key in q.answers that is not present in q.tableData.rows
+    if ((q.tableData && q.tableData.rows) || (q.comparisonTableData && q.comparisonTableData.rows)) {
+      let isPresentInTable = false;
+      if (q.tableData && q.tableData.rows) {
+        q.tableData.rows.forEach(row => {
+          row.forEach(cell => {
+            if (typeof cell === 'string' && cell.includes(`[${inputId}]`)) {
+              isPresentInTable = true;
+            }
+          });
+        });
+      }
+      if (q.comparisonTableData && q.comparisonTableData.rows) {
+        q.comparisonTableData.rows.forEach(row => {
+          row.forEach(cell => {
+            if (typeof cell === 'string' && cell.includes(`[${inputId}]`)) {
+              isPresentInTable = true;
+            }
+          });
+        });
+      }
+      if (!isPresentInTable) {
+        return true; // Orphan key not in table grid!
+      }
+    }
+    return false;
+  };
 
   const getTableInputIds = () => {
     const firstTableInputs = [];
@@ -41,7 +81,9 @@ export const TableQuiz = React.memo(function TableQuiz({
         row.forEach(cell => {
           if (typeof cell === 'string' && cell.includes('[INPUT_')) {
             const inputId = cell.replace('[', '').replace(']', '').trim();
-            firstTableInputs.push(inputId);
+            if (!isPlaceholderAnswer(inputId)) {
+              firstTableInputs.push(inputId);
+            }
           }
         });
       });
@@ -52,7 +94,9 @@ export const TableQuiz = React.memo(function TableQuiz({
         row.forEach(cell => {
           if (typeof cell === 'string' && cell.includes('[INPUT_')) {
             const inputId = cell.replace('[', '').replace(']', '').trim();
-            secondTableInputs.push(inputId);
+            if (!isPlaceholderAnswer(inputId)) {
+              secondTableInputs.push(inputId);
+            }
           }
         });
       });
@@ -1140,7 +1184,24 @@ export const TableQuiz = React.memo(function TableQuiz({
           </tr>
         </thead>
         <tbody>
-          {rows.map((row, rIdx) => {
+          {rows.filter(row => {
+            if (!Array.isArray(row)) return false;
+            const labelCell = String(row[0] || '').trim();
+            const isUnusedLabel = /^[\(\[]?[C-Z][\)\]]?$/i.test(labelCell) || /^INPUT_[3-9]$/i.test(labelCell);
+            if (isUnusedLabel) {
+              const inputIdCell = row.find(c => typeof c === 'string' && c.includes('[INPUT_'));
+              if (inputIdCell) {
+                const cleanInputId = inputIdCell.replace('[', '').replace(']', '').trim();
+                const letter = labelCell.replace(/[\(\)\[\]]/g, '').trim();
+                const ansKey = q.answers?.[cleanInputId] || q.answers?.[letter] || q.answers?.[letter.toLowerCase()] || '';
+                const cleanAns = String(ansKey).trim();
+                if (!cleanAns || cleanAns === `${letter} 입력` || cleanAns === `${letter}` || /^[\(\[]?[A-Z][\)\]]?\s*입력$/i.test(cleanAns)) {
+                  return false;
+                }
+              }
+            }
+            return true;
+          }).map((row, rIdx) => {
             const canMerge = colCount > 2 && 
                              row.slice(1).every(cellVal => areCellsEqual(row[1], cellVal)) && 
                              !row.slice(1).some(cellVal => typeof cellVal === 'string' && cellVal.includes('[INPUT_'));
@@ -1700,6 +1761,7 @@ export const TableQuiz = React.memo(function TableQuiz({
 
   const renderFlowchartQuizView = () => {
     if (!q.explanation && !q.question) return null;
+    if (revealed || (tableGradingResults && Object.keys(tableGradingResults).some(k => k.startsWith(`${questionIdx}_`)))) return null;
 
     const rawExplanation = q.explanation || q.question || '';
     let diagramText = rawExplanation;
@@ -1734,9 +1796,34 @@ export const TableQuiz = React.memo(function TableQuiz({
       boxChunks.push(...steps);
     }
 
-    const allInputIds = firstTableInputs && firstTableInputs.length > 0 ? firstTableInputs : (inputIds && inputIds.length > 0 ? inputIds : ['INPUT_1', 'INPUT_2', 'INPUT_3', 'INPUT_4', 'INPUT_5', 'INPUT_6']);
+    const allInputIds = (firstTableInputs && firstTableInputs.length > 0) 
+      ? firstTableInputs 
+      : ((inputIds && inputIds.length > 0) ? inputIds.filter(id => !isPlaceholderAnswer(id)) : []);
+
+    const isPurePlaceholder = (chunkText, letter) => {
+      const clean = chunkText.replace(/<[^>]+>/g, '').replace(/[\s\(\)\[\]]/g, '').trim();
+      return (
+        clean === `${letter}빈칸에들어갈공학적수식및명칭기입...` ||
+        clean === `${letter}빈칸에들어갈공학적수식및명칭기입` ||
+        clean === `빈칸에들어갈공학적수식및명칭기입...` ||
+        clean === `빈칸에들어갈공학적수식및명칭기입` ||
+        /^[\(\[]?[A-Z][\)\]]?빈칸/i.test(clean)
+      );
+    };
 
     const validBoxChunks = boxChunks.filter(chunk => {
+      const matchedLetter = chunk.match(/[\(\[]([A-Z])[\)\]]/)?.[1];
+      if (matchedLetter && isPurePlaceholder(chunk, matchedLetter)) {
+        const inputKey = `INPUT_${matchedLetter.charCodeAt(0) - 64}`;
+        const hasValidAnswer = q.answers && (
+          (q.answers[matchedLetter] && String(q.answers[matchedLetter]).trim()) ||
+          (q.answers[inputKey] && String(q.answers[inputKey]).trim())
+        );
+        if (!hasValidAnswer) {
+          return false; // Purge unused placeholder chunk
+        }
+      }
+
       const hasInput = allInputIds.some((inputId, iIdx) => {
         const letter = String.fromCharCode(65 + iIdx);
         return chunk.includes(`(${letter})`) || chunk.includes(`[${letter}]`) || chunk.includes(inputId) || chunk.includes(`[INPUT_${iIdx + 1}]`);
@@ -1916,9 +2003,9 @@ export const TableQuiz = React.memo(function TableQuiz({
          </div>
        )}
  
-       {compTableTitle}
-       {compTablePlaceholder}
-       {compTable}
+       {!isFlowchart && compTableTitle}
+       {!isFlowchart && compTablePlaceholder}
+       {!isFlowchart && compTable}
  
        {isOverviewReview && isFirstTableGraded && !isSecondTableGraded && (
          <div className="mt-3.5 mb-2 select-none flex justify-center w-full">
