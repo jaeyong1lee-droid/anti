@@ -23,13 +23,11 @@ export function renderAiTutorSvg(text) {
     .replace(/<\s+\//g, '</')
     .replace(/<\s+([a-zA-Z0-9_-]+)/g, '<$1');
 
-  // Match SVG graphic blocks strictly from <svg> to </svg>
-  const svgRegex = /(?:```[a-zA-Z0-9_-]*\s*)?(?:\$xml|\$|\$ SVG|SVG)?\s*(?:<[ \t]*svg|xmlns=["']http:\/\/www\.w3\.org\/2000\/svg["'])[\s\S]*?(?:<\/[ \t]*svg>|<\/svg>|(?=```\s*$|$))/gi;
+  // Match SVG graphic blocks strictly from <svg> to </svg>, optionally matching trailing split parameters
+  const svgRegex = /(?:```(?:xml|svg)?\s*)?(<svg[\s\S]*?<\/svg>)(?:\s*[\r\n]+([^\r\n]+?\)))?(?:\s*```)?/gi;
   
-  processed = processed.replace(svgRegex, (match) => {
-    let cleanSvg = match
-      .replace(/^```[a-zA-Z0-9_-]*\s*/i, '').replace(/```\s*$/, '')
-      .replace(/^\$xml\s*/i, '').replace(/^\$ SVG\s*/i, '').replace(/^\$/, '')
+  processed = processed.replace(svgRegex, (match, svgContent, trailingLine) => {
+    let cleanSvg = svgContent
       .replace(/<\s*svg[\$a-zA-Z0-9_-]*/gi, '<svg');
 
     if (!cleanSvg.trim().startsWith('<svg') && cleanSvg.includes('xmlns=')) {
@@ -46,8 +44,32 @@ export function renderAiTutorSvg(text) {
       const cardTitle = isMohrApparatus ? 'DYNAMIC INLINE SVG APPARATUS & MOHR CIRCLE' : '실시간 SVG 그래픽 도해';
       const badgeText = isMohrApparatus ? '지반공학 시뮬레이션' : '실시간 벡터';
 
+      let baseSvgContent = svgMatch[0];
+      
+      // Auto-heal split soil parameters (e.g., <text>1층 점토층 (</text> \gamma_1...) back into intact text inside SVG
+      if (trailingLine && trailingLine.includes(')')) {
+        // Find any text element inside SVG that ends with open parenthesis '('
+        const unclosedTextMatch = baseSvgContent.match(/(<text\b[^>]*>[^<]*\(\s*)<\/text>/i);
+        if (unclosedTextMatch) {
+          // Format LaTeX greek letters back to clean unicode symbols for SVG display
+          let cleanFirst = trailingLine
+            .replace(/\\gamma/g, 'γ')
+            .replace(/\\phi/g, 'φ')
+            .replace(/\\sigma/g, 'σ')
+            .replace(/\\tau/g, 'τ')
+            .replace(/\\theta/g, 'θ')
+            .replace(/\\delta/g, 'δ')
+            .replace(/\\alpha/g, 'α')
+            .replace(/\\beta/g, 'β')
+            .replace(/\\/g, ''); // strip any backslashes
+
+          // Safely merge parameters into the unclosed parenthesized text tag!
+          baseSvgContent = baseSvgContent.replace(/(<text\b[^>]*>[^<]*\(\s*)<\/text>/i, `$1${cleanFirst}</text>`);
+        }
+      }
+
       // Transform white background & dark text into sleek Dark Mode (#0f172a / #f8fafc)
-      let darkSvg = svgMatch[0]
+      let darkSvg = baseSvgContent
         .replace(/fill=["']#(?:ffffff|fff|f8f9fa|fafafa|f1f5f9|FFFFFF)["']/gi, 'fill="#0f172a"')
         .replace(/fill=["']white["']/gi, 'fill="#0f172a"')
         .replace(/background(?:-color)?:\s*#(?:ffffff|fff|f8f9fa|fafafa|FFFFFF)/gi, 'background-color: #0f172a')
