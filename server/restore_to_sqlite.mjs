@@ -54,76 +54,8 @@ const db = new sqlite3.Database(dbPath, async (err) => {
       await runQuery(db, `DROP TABLE IF EXISTS ${table};`);
     }
 
-    // 3. Initialize Tables with updated schemas
-    console.log('🛠️ Recreating tables...');
-    await runQuery(db, `
-      CREATE TABLE IF NOT EXISTS topics (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        title TEXT NOT NULL,
-        keywords TEXT,
-        pdf_name TEXT,
-        pdf_data BLOB,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        category TEXT DEFAULT '일반'
-      )
-    `);
-
-    await runQuery(db, `
-      CREATE TABLE IF NOT EXISTS answersheet_reports (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        pdf_name TEXT,
-        pdf_data BLOB,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-
-    await runQuery(db, `
-      CREATE TABLE IF NOT EXISTS schedules (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        topic_id INTEGER NOT NULL,
-        review_round INTEGER NOT NULL,
-        planned_date TEXT NOT NULL,
-        completed_at DATETIME,
-        status TEXT DEFAULT 'pending',
-        score REAL,
-        correct_count INTEGER,
-        total_count INTEGER,
-        FOREIGN KEY (topic_id) REFERENCES topics (id) ON DELETE CASCADE
-      )
-    `);
-
-    await runQuery(db, `
-      CREATE TABLE IF NOT EXISTS app_session (
-        key TEXT PRIMARY KEY,
-        value TEXT,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-
-    await runQuery(db, `
-      CREATE TABLE IF NOT EXISTS question_feedback (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        topic_id INTEGER NOT NULL,
-        question_text TEXT NOT NULL,
-        feedback_type TEXT NOT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (topic_id) REFERENCES topics (id) ON DELETE CASCADE
-      )
-    `);
-
-    await runQuery(db, `
-      CREATE TABLE IF NOT EXISTS question_adjustments (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        topic_id INTEGER NOT NULL,
-        question_text TEXT NOT NULL,
-        adjusted_text TEXT NOT NULL,
-        user_feedback TEXT NOT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (topic_id) REFERENCES topics (id) ON DELETE CASCADE
-      )
-    `);
-
-    // 4. Restore data in dependency order
+    // 3. Initialize Tables and restore data in dependency order
+    console.log('🛠️ Recreating tables and restoring data...');
     const orderOfRestore = [
       'topics',
       'answersheet_reports',
@@ -140,10 +72,22 @@ const db = new sqlite3.Database(dbPath, async (err) => {
         continue;
       }
 
-      console.log(`📥 Restoring table: ${table} (${rows.length} rows)...`);
+      // Discover all unique columns across all rows in this table
+      const colSet = new Set();
+      rows.forEach(r => Object.keys(r).forEach(k => colSet.add(k)));
+      const columns = Array.from(colSet);
 
-      // SQLite supports parameterized insert. We prepare statements for efficiency.
-      const columns = Object.keys(rows[0]);
+      const colDefs = columns.map(col => {
+        if (col === 'id') return 'id INTEGER PRIMARY KEY';
+        if (table === 'app_session' && col === 'key') return 'key TEXT PRIMARY KEY';
+        if (col.endsWith('_data')) return `${col} BLOB`;
+        return `${col} TEXT`;
+      }).join(', ');
+
+      await runQuery(db, `CREATE TABLE IF NOT EXISTS ${table} (${colDefs});`);
+
+      console.log(`📥 Restoring table: ${table} (${rows.length} rows, ${columns.length} columns)...`);
+
       const placeholders = columns.map(() => '?').join(', ');
       const sql = `INSERT INTO ${table} (${columns.join(', ')}) VALUES (${placeholders})`;
 
@@ -155,6 +99,7 @@ const db = new sqlite3.Database(dbPath, async (err) => {
             for (const row of rows) {
               const values = columns.map(col => {
                 let val = row[col];
+                if (val === undefined) return null;
                 if (val && typeof val === 'object' && val._type === 'Buffer') {
                   return Buffer.from(val.data, 'base64');
                 }
