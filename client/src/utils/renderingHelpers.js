@@ -412,49 +412,7 @@ export function transformAsciiGraphToSvg(code) {
     slopeText = slopeMatch[1].replace(/[\^▲┌─]/g, '').trim();
   }
 
-  return `<div class="my-2 border border-amber-500/30 rounded-lg p-2.5 bg-gradient-to-b from-slate-900 via-slate-950 to-slate-900 shadow-md select-text max-w-sm">
-    <div class="flex items-center justify-between border-b border-slate-800/80 pb-1.5 mb-2">
-      <div class="flex items-center gap-1.5 min-w-0">
-        <span class="text-amber-400 font-bold text-xs">📈</span>
-        <span class="text-slate-100 font-semibold text-xs truncate">${title}</span>
-      </div>
-      <span class="px-1.5 py-0.5 text-[9px] font-bold text-amber-300 bg-amber-500/15 border border-amber-500/30 rounded shrink-0">SVG 추세선</span>
-    </div>
-    <div class="w-full flex justify-center py-1">
-      <svg width="260" height="110" viewBox="0 0 260 110" class="max-w-full">
-        <!-- Axes -->
-        <line x1="30" y1="12" x2="30" y2="90" stroke="#475569" stroke-width="1.2"/>
-        <line x1="30" y1="90" x2="240" y2="90" stroke="#475569" stroke-width="1.2"/>
-        <path d="M 27 16 L 30 9 L 33 16" fill="none" stroke="#475569" stroke-width="1.2"/>
-        <path d="M 235 87 L 243 90 L 235 93" fill="none" stroke="#475569" stroke-width="1.2"/>
-        
-        <!-- Grid -->
-        <line x1="30" y1="38" x2="240" y2="38" stroke="#1e293b" stroke-width="1" stroke-dasharray="2,2"/>
-        <line x1="30" y1="64" x2="240" y2="64" stroke="#1e293b" stroke-width="1" stroke-dasharray="2,2"/>
-        <line x1="100" y1="12" x2="100" y2="90" stroke="#1e293b" stroke-width="1" stroke-dasharray="2,2"/>
-        <line x1="170" y1="12" x2="170" y2="90" stroke="#1e293b" stroke-width="1" stroke-dasharray="2,2"/>
-        
-        <!-- Trend Curve -->
-        <path d="M 34 85 Q 100 40 225 20" fill="none" stroke="#f59e0b" stroke-width="2"/>
-        
-        <!-- Data Points -->
-        <circle cx="34" cy="85" r="3" fill="#fbbf24"/>
-        <circle cx="90" cy="52" r="3" fill="#fbbf24"/>
-        <circle cx="150" cy="32" r="3" fill="#fbbf24"/>
-        <circle cx="225" cy="20" r="3" fill="#fbbf24"/>
-        
-        <!-- Labels -->
-        <text x="14" y="16" fill="#94a3b8" font-size="9" font-weight="bold">s_t</text>
-        <text x="185" y="103" fill="#94a3b8" font-size="9" font-weight="bold">s_{t-Δt} (시간 t)</text>
-        
-        <!-- Slope Formula Badge -->
-        <g transform="translate(70, 20)">
-          <rect x="0" y="0" width="125" height="20" rx="4" fill="#0f172a" stroke="#f59e0b" stroke-width="0.8"/>
-          <text x="62" y="13" fill="#fbbf24" font-size="9" font-weight="bold" text-anchor="middle">기울기 = ${slopeText}</text>
-        </g>
-      </svg>
-    </div>
-  </div>`;
+  return `<div class="my-2 border border-amber-500/30 rounded-lg p-2.5 bg-gradient-to-b from-slate-900 via-slate-950 to-slate-900 shadow-md select-text max-w-sm"><div class="flex items-center justify-between border-b border-slate-800/80 pb-1.5 mb-2"><div class="flex items-center gap-1.5 min-w-0"><span class="text-amber-400 font-bold text-xs">📈</span><span class="text-slate-100 font-semibold text-xs truncate">${title}</span></div><span class="px-1.5 py-0.5 text-[9px] font-bold text-amber-300 bg-amber-500/15 border border-amber-500/30 rounded shrink-0">SVG 추세선</span></div><div class="w-full flex justify-center py-1"><svg width="260" height="110" viewBox="0 0 260 110" class="max-w-full"><line x1="30" y1="12" x2="30" y2="90" stroke="#475569" stroke-width="1.2"/><line x1="30" y1="90" x2="240" y2="90" stroke="#475569" stroke-width="1.2"/><path d="M 27 16 L 30 9 L 33 16" fill="none" stroke="#475569" stroke-width="1.2"/><path d="M 235 87 L 243 90 L 235 93" fill="none" stroke="#475569" stroke-width="1.2"/><line x1="30" y1="38" x2="240" y2="38" stroke="#1e293b" stroke-width="1" stroke-dasharray="2,2"/><line x1="30" y1="64" x2="240" y2="64" stroke="#1e293b" stroke-width="1" stroke-dasharray="2,2"/><line x1="100" y1="12" x2="100" y2="90" stroke="#1e293b" stroke-width="1" stroke-dasharray="2,2"/><line x1="170" y1="12" x2="170" y2="90" stroke="#1e293b" stroke-width="1" stroke-dasharray="2,2"/><path d="M 34 85 Q 100 40 225 20" fill="none" stroke="#f59e0b" stroke-width="2"/><circle cx="34" cy="85" r="3" fill="#fbbf24"/><circle cx="90" cy="52" r="3" fill="#fbbf24"/><circle cx="150" cy="32" r="3" fill="#fbbf24"/><circle cx="225" cy="20" r="3" fill="#fbbf24"/><text x="14" y="16" fill="#94a3b8" font-size="9" font-weight="bold">s_t</text><text x="185" y="103" fill="#94a3b8" font-size="9" font-weight="bold">s_{t-Δt} (시간 t)</text><g transform="translate(70, 20)"><rect x="0" y="0" width="125" height="20" rx="4" fill="#0f172a" stroke="#f59e0b" stroke-width="0.8"/><text x="62" y="13" fill="#fbbf24" font-size="9" font-weight="bold" text-anchor="middle">기울기 = ${slopeText}</text></g></svg></div></div>`;
 }
 
 export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold = false, isTutor = false) {
@@ -488,6 +446,13 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
     codeBlocks.push({ placeholder, content: styledHtml });
     codeBlockIndex++;
     return placeholder;
+  });
+
+  // Transform raw text ASCII graph blocks (3+ lines starting with / or containing graph markers)
+  const rawAsciiGraphRegex = /(?:^[ \t]*\/[^\n]*\n){3,}[ \t]*\/[^\n]*/gm;
+  tempText = tempText.replace(rawAsciiGraphRegex, (match) => {
+    const svgChart = transformAsciiGraphToSvg(match);
+    return svgChart ? `\n${svgChart}\n` : match;
   });
   
   // Primary: match table-export-wrapper div from open tag to the two closing </div> tags that follow </table>
