@@ -464,10 +464,13 @@ ${scenarioGuideline}
 - 부가적인 서론("지침을 분석한 결과는 다음과 같습니다" 등)이나 결론은 완벽하게 배제하고 알맹이 주의사항 텍스트만 출력하십시오.
 `;
 
-    if (progressId) updateProgress(progressId, 0, '0단계: 사전 절대 지침 준수 분석 중...', 5);
+    const existingProgress = progressId ? global.progressTracker.get(progressId) : null;
+    if (progressId && (!existingProgress || existingProgress.percentage <= 5)) {
+      updateProgress(progressId, 0, '0단계: 사전 절대 지침 준수 분석 중...', 5);
+    }
 
     const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('API response timeout (6s limit)')), 6000)
+      setTimeout(() => reject(new Error('API response timeout (3s limit)')), 3000)
     );
 
     const resultText = await Promise.race([
@@ -477,11 +480,9 @@ ${scenarioGuideline}
 
     const text = (resultText || '').trim();
     console.log(`[analyzeStandardsBeforeTask] Success! Analysis:\n${text}`);
-    if (progressId) updateProgress(progressId, 0, '0단계: 사전 절대 지침 분석 완료!', 10);
     return text;
   } catch (err) {
     console.warn('[analyzeStandardsBeforeTask] Warning: standards analysis failed:', err.message);
-    if (progressId) updateProgress(progressId, 0, '0단계: 사전 절대 지침 분석 완료!', 10);
     return '';
   }
 }

@@ -494,8 +494,8 @@ router.post('/topics/:id/ai-questions', async (req, res) => {
     };
 
     if (progressId) {
-      standardsAnalysis = await analyzeStandardsBeforeTask(progressId, topic.title, GENERATION_STANDARDS, 'generation');
       progressTimer = startBackendProgressTimer(progressId, 1, '1단계: AI 예상 문제 생성 시작...', 50, 1500, 5);
+      standardsAnalysis = await analyzeStandardsBeforeTask(progressId, topic.title, GENERATION_STANDARDS, 'generation');
     }
 
     let carryOverQuestions = [];
