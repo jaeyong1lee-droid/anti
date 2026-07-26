@@ -18522,18 +18522,16 @@ ${itemsStr}
 
               {selectedTopic && (
                 <button
-                  onClick={handleRefreshReviewQuestions}
-                  disabled={loadingAI && String(selectedTopic?.id) === String(generatingTopicId)}
-                  className="flex items-center justify-center w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-violet-950/40 hover:bg-violet-900/60 text-violet-300 hover:text-white border-violet-500/20 transition-all cursor-pointer active:scale-95 disabled:opacity-50"
-                  title="주제와 문제가 맞지 않을 때 전체 AI 재출제"
+                  type="button"
+                  onClick={handleTogglePreferredModel}
+                  className="flex items-center justify-center w-full text-[11px] font-black py-2 px-2.5 rounded-xl border border-emerald-500/40 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 hover:text-white transition-all cursor-pointer active:scale-95 select-none shadow-md"
+                  title="Gemini AI API 모델 선택 (3.5 Lite -> 3.6 Flash -> 3.1 Lite -> 3.5 Flash)"
                 >
-                  {loadingAI && (
-                    <svg className="animate-spin h-3.5 w-3.5 text-violet-300 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                  )}
-                  <span>AI 재출제</span>
+                  <span>
+                    API: {preferredModel === 'gemini-3.5-flash-lite' ? '3.5 Lite' :
+                          preferredModel === 'gemini-3.6-flash' ? '3.6 Flash' :
+                          preferredModel === 'gemini-3.1-flash-lite' ? '3.1 Lite' : '3.5 Flash'}
+                  </span>
                 </button>
               )}
 
@@ -18706,18 +18704,16 @@ ${itemsStr}
               )}
               {selectedTopic && (
                 <button
-                  onClick={handleRefreshReviewQuestions}
-                  disabled={loadingAI && String(selectedTopic?.id) === String(generatingTopicId)}
-                  className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-violet-950/40 hover:bg-violet-900/60 text-violet-300 hover:text-white border border-violet-500/20 rounded-xl text-[11px] sm:text-xs md:text-sm font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center whitespace-nowrap min-w-0 disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="주제와 문제가 맞지 않을 때 전체 AI 재출제"
+                  type="button"
+                  onClick={handleTogglePreferredModel}
+                  className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 hover:text-white border border-emerald-500/40 rounded-xl text-[11px] sm:text-xs md:text-sm font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center whitespace-nowrap min-w-0 select-none shadow-md"
+                  title="Gemini AI API 모델 선택 (3.5 Lite -> 3.6 Flash -> 3.1 Lite -> 3.5 Flash)"
                 >
-                  {loadingAI && (
-                    <svg className="animate-spin h-3.5 w-3.5 text-violet-300 mr-1 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                  )}
-                  <span className="whitespace-nowrap">재출제</span>
+                  <span className="whitespace-nowrap">
+                    API: {preferredModel === 'gemini-3.5-flash-lite' ? '3.5 Lite' :
+                          preferredModel === 'gemini-3.6-flash' ? '3.6 Flash' :
+                          preferredModel === 'gemini-3.1-flash-lite' ? '3.1 Lite' : '3.5 Flash'}
+                  </span>
                 </button>
               )}
               {selectedTopic && (
@@ -20030,12 +20026,14 @@ ${itemsStr}
                         )}
 
                         <button
-                          onClick={handleRefreshReviewQuestions}
-                          disabled={loadingAI && String(selectedTopic?.id) === String(generatingTopicId)}
-                          className="px-2.5 py-1 text-[10px] font-black rounded-lg bg-violet-950/40 hover:bg-violet-900/60 text-violet-300 hover:text-white border border-violet-500/20 transition-all cursor-pointer active:scale-95 shadow-md disabled:opacity-50"
-                          title="주제와 문제가 맞지 않을 때 전체 AI 재출제"
+                          type="button"
+                          onClick={handleTogglePreferredModel}
+                          className="px-2.5 py-1 text-[10px] font-black rounded-lg bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 hover:text-white border border-emerald-500/40 transition-all cursor-pointer active:scale-95 shadow-md select-none"
+                          title="Gemini AI API 모델 선택 (3.5 Lite -> 3.6 Flash -> 3.1 Lite -> 3.5 Flash)"
                         >
-                          AI
+                          {preferredModel === 'gemini-3.5-flash-lite' ? '3.5 Lite' :
+                           preferredModel === 'gemini-3.6-flash' ? '3.6 Flash' :
+                           preferredModel === 'gemini-3.1-flash-lite' ? '3.1 Lite' : '3.5 Flash'}
                         </button>
                         <button
                           onClick={async () => { 
@@ -23983,20 +23981,17 @@ ${itemsStr}
                 {selectedTopic && (
                       <div className="hidden md:flex items-center gap-1.5 mr-1.5">
                         <button
-                          onClick={handleRefreshReviewQuestions}
-                          disabled={loadingAI && String(selectedTopic?.id) === String(generatingTopicId)}
-                          className="px-3 py-2 text-xs font-black rounded-xl bg-violet-950/40 hover:bg-violet-900/60 text-violet-300 hover:text-white border border-violet-500/20 transition-all cursor-pointer active:scale-95 shadow-md flex items-center justify-center gap-1.5 disabled:opacity-50"
-                          title="주제와 문제가 맞지 않을 때 전체 AI 재출제"
+                          type="button"
+                          onClick={handleTogglePreferredModel}
+                          className="px-3 py-2 text-xs font-black rounded-xl bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 hover:text-white border border-emerald-500/40 transition-all cursor-pointer active:scale-95 shadow-md flex items-center justify-center gap-1.5 select-none"
+                          title="Gemini AI API 모델 선택 (3.5 Lite -> 3.6 Flash -> 3.1 Lite -> 3.5 Flash)"
                         >
-                          {(loadingAI && String(selectedTopic?.id) === String(generatingTopicId)) ? (
-                            <svg className="animate-spin h-3 w-3 text-violet-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                          ) : (
-                            <span className="text-violet-300 flex-shrink-0">🔄</span>
-                          )}
-                          <span>AI 재출제</span>
+                          <span className="text-emerald-300 flex-shrink-0">⚡</span>
+                          <span>
+                            {preferredModel === 'gemini-3.5-flash-lite' ? '3.5 Lite' :
+                             preferredModel === 'gemini-3.6-flash' ? '3.6 Flash' :
+                             preferredModel === 'gemini-3.1-flash-lite' ? '3.1 Lite' : '3.5 Flash'}
+                          </span>
                         </button>
                         <button
                           onClick={async () => { 

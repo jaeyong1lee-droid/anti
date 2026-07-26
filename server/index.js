@@ -195,45 +195,63 @@ async function initializeAllStandards() {
   await syncStandard('lockscreenStandards.js', 'lockscreen_standards', lockscreenStandardsList, updateLiveLockscreenStandards);
 }
 
-// Database and Server Startup
-async function startServer() {
+// Database and Server Startup (Lazy & Fail-safe for Vercel Serverless)
+let isDbInitialized = false;
+let dbInitPromise = null;
+
+async function ensureDbInitialized() {
+  if (isDbInitialized) return;
+  if (!dbInitPromise) {
+    dbInitPromise = (async () => {
+      try {
+        console.log('[Startup] Initializing Database connection...');
+        await initDatabase();
+        try {
+          await dbQuery.run(`
+            CREATE TABLE IF NOT EXISTS app_session (
+              key TEXT PRIMARY KEY,
+              value TEXT,
+              updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+          `);
+        } catch (e) {
+          console.warn('[Startup] ensureSessionTable warning:', e.message);
+        }
+        await initializeAllStandards();
+        await loadPreferredModel();
+        isDbInitialized = true;
+      } catch (err) {
+        console.error('[Startup DB Init Error]:', err.message);
+        dbInitPromise = null;
+      }
+    })();
+  }
+  return dbInitPromise;
+}
+
+// Middleware to ensure DB connection before route execution
+app.use(async (req, res, next) => {
   try {
-    console.log('[Startup] Initializing SQLite/PostgreSQL Database connection...');
-    await initDatabase();
-    
-    // Ensure app_session table exists once at startup (bypasses per-request DDL check)
-    try {
-      await dbQuery.run(`
-        CREATE TABLE IF NOT EXISTS app_session (
-          key TEXT PRIMARY KEY,
-          value TEXT,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-      `);
-      console.log('[Startup] app_session table ensured.');
-    } catch (e) {
-      console.warn('[Startup] ensureSessionTable warning:', e.message);
-    }
+    await ensureDbInitialized();
+    next();
+  } catch (err) {
+    console.warn('[Middleware DB Warning]:', err.message);
+    next();
+  }
+});
 
-    console.log('[Startup] Syncing saved standards from database...');
-    await initializeAllStandards();
-    console.log('[Startup] Loading saved preferred model configuration...');
-    await loadPreferredModel();
-    
-    // Start automated DB backup cron job
+async function startServer() {
+  await ensureDbInitialized();
+  if (!process.env.VERCEL) {
     startBackupScheduler();
-
     app.listen(PORT, () => {
       console.log(`================================================`);
       console.log(`  Antigravity Server is running on port ${PORT}`);
       console.log(`  Mode: ${process.env.NODE_ENV || 'development'}`);
       console.log(`================================================`);
     });
-  } catch (error) {
-    console.error('[CRITICAL STARTUP ERROR] Server failed to start:', error);
-    process.exit(1);
   }
 }
 
-startServer();
+startServer().catch(err => console.error('[Startup Error]:', err.message));
 export default app;
