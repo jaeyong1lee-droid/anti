@@ -32,7 +32,7 @@ export function wrapFollowingListItemsHtml(text) {
           ? content.replace(/^([^:]+:)/, '<strong class="text-amber-300 font-bold">$1</strong>')
           : content;
         itemBoxes.push(
-          `<div class="flex items-start gap-2.5 p-2.5 my-1.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-emerald-500/40 shadow-sm text-left select-text"><span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 mt-2 shadow-sm shadow-emerald-400/50"></span><div class="flex-1 text-[13px] sm:text-[14px] text-slate-100 leading-relaxed break-words">${highlightedContent}</div></div>`
+          `<div class="flex items-start gap-2.5 p-2.5 my-1.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-emerald-500/40 shadow-sm text-left select-text"><span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 mt-2 shadow-sm shadow-emerald-400/50"></span><div class="flex-1 text-[12px] sm:text-[14px] text-slate-100 leading-relaxed break-words">${highlightedContent}</div></div>`
         );
       }
     });
@@ -97,7 +97,7 @@ export function wrapSymbolDefinitionsHtml(text) {
         const descText = matchSymbol[2].trim();
         if (symbolVar) {
           itemBoxes.push(
-            `<div class="flex items-baseline gap-2 px-1 py-0.5 select-text text-left leading-relaxed"><span class="text-purple-300 font-bold font-mono text-[14px] sm:text-[15px] italic shrink-0">• ${symbolVar}:</span><div class="flex-1 text-[14px] sm:text-[15px] text-slate-100 leading-relaxed break-words">${descText}</div></div>`
+            `<div class="flex items-baseline gap-2 px-1 py-0.5 select-text text-left leading-relaxed"><span class="text-purple-300 font-bold font-mono text-[12px] sm:text-[14px] italic shrink-0">• ${symbolVar}:</span><div class="flex-1 text-[12px] sm:text-[14px] text-slate-100 leading-relaxed break-words">${descText}</div></div>`
           );
         }
       }
@@ -139,7 +139,7 @@ export function wrapSymbolDefinitionsHtml(text) {
         const descText = matchSymbol[2].trim();
         if (symbolVar) {
           itemBoxes.push(
-            `<div class="flex items-baseline gap-2 px-1 py-0.5 select-text text-left leading-relaxed"><span class="text-purple-300 font-bold font-mono text-[14px] sm:text-[15px] italic shrink-0">• ${symbolVar}:</span><div class="flex-1 text-[14px] sm:text-[15px] text-slate-100 leading-relaxed break-words">${descText}</div></div>`
+            `<div class="flex items-baseline gap-2 px-1 py-0.5 select-text text-left leading-relaxed"><span class="text-purple-300 font-bold font-mono text-[12px] sm:text-[14px] italic shrink-0">• ${symbolVar}:</span><div class="flex-1 text-[12px] sm:text-[14px] text-slate-100 leading-relaxed break-words">${descText}</div></div>`
           );
         }
       }
@@ -186,7 +186,7 @@ export function wrapMechanismProcedureAssumptionsHtml(text) {
         : content;
 
       itemBoxes.push(
-        `<div class="flex items-start gap-3 p-3 my-1.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-indigo-500/40 shadow-sm text-left select-text flowchart-text-force"><span class="w-6 h-6 rounded-md bg-indigo-600/30 text-indigo-300 border border-indigo-500/50 flex items-center justify-center font-bold text-xs font-mono shrink-0 select-none mt-0.5">${stepNum}</span><div class="flex-1 text-[13px] sm:text-[14px] text-slate-100 leading-relaxed break-words min-w-0 flowchart-text-force">${highlightedContent}</div></div>`
+        `<div class="flex items-start gap-3 p-3 my-1.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-indigo-500/40 shadow-sm text-left select-text flowchart-text-force"><span class="w-6 h-6 rounded-md bg-indigo-600/30 text-indigo-300 border border-indigo-500/50 flex items-center justify-center font-bold text-xs font-mono shrink-0 select-none mt-0.5">${stepNum}</span><div class="flex-1 text-[12px] sm:text-[14px] text-slate-100 leading-relaxed break-words min-w-0 flowchart-text-force">${highlightedContent}</div></div>`
       );
     });
 
@@ -226,7 +226,7 @@ export function wrapMechanismProcedureAssumptionsHtml(text) {
           : content;
 
         itemBoxes.push(
-          `<div class="flex items-start gap-3 p-3 my-1.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-indigo-500/40 shadow-sm text-left select-text flowchart-text-force"><span class="w-6 h-6 rounded-md bg-indigo-600/30 text-indigo-300 border border-indigo-500/50 flex items-center justify-center font-bold text-xs font-mono shrink-0 select-none mt-0.5">${stepNum}</span><div class="flex-1 text-[13px] sm:text-[14px] text-slate-100 leading-relaxed break-words min-w-0 flowchart-text-force">${highlightedContent}</div></div>`
+          `<div class="flex items-start gap-3 p-3 my-1.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-indigo-500/40 shadow-sm text-left select-text flowchart-text-force"><span class="w-6 h-6 rounded-md bg-indigo-600/30 text-indigo-300 border border-indigo-500/50 flex items-center justify-center font-bold text-xs font-mono shrink-0 select-none mt-0.5">${stepNum}</span><div class="flex-1 text-[12px] sm:text-[14px] text-slate-100 leading-relaxed break-words min-w-0 flowchart-text-force">${highlightedContent}</div></div>`
         );
       }
     });
@@ -487,7 +487,7 @@ export function wrapProsConsHtml(text) {
   const prosConsRegex = /:::pros_cons\s*([\s\S]*?)\s*:::/gi;
   return text.replace(prosConsRegex, (match, innerContent) => {
     if (!innerContent.trim()) return '';
-    return `<div class="my-3.5 p-3.5 rounded-2xl bg-slate-950/90 border border-amber-500/40 shadow-lg text-left select-text"><div class="my-1.5 font-bold text-[14px] sm:text-[16px] text-amber-300 flex items-center gap-1.5 pb-2 border-b border-amber-500/20 select-none"><span>📌</span><span>장단점 및 공법 비교</span></div><div class="p-2 text-[14px] sm:text-[15px] text-slate-100 leading-relaxed break-words font-sans">${innerContent.trim()}</div></div>`;
+    return `<div class="my-3.5 p-3.5 rounded-2xl bg-slate-950/90 border border-amber-500/40 shadow-lg text-left select-text"><div class="my-1.5 font-bold text-[13px] sm:text-[15px] text-amber-300 flex items-center gap-1.5 pb-2 border-b border-amber-500/20 select-none"><span>📌</span><span>장단점 및 공법 비교</span></div><div class="p-2 text-[12px] sm:text-[14px] text-slate-100 leading-relaxed break-words font-sans">${innerContent.trim()}</div></div>`;
   });
 }
 
