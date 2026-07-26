@@ -6078,38 +6078,41 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
 
   // ── Restore scroll position on topic/question load or refresh (PC/모바일 공통 스크롤 유지)
   useEffect(() => {
-    if (selectedTopic && aiQuestions.length > 0) {
+    if (selectedTopic) {
       const key = selectedTopic.schedule_id 
         ? `anti_review_progress_sched_${selectedTopic.schedule_id}`
         : `anti_review_progress_${selectedTopic.id}`;
       const localProgress = localStorage.getItem(key);
-      let targetScroll = 0;
-      let hasProgress = false;
+      let targetScroll = undefined;
 
       if (localProgress) {
         try {
           const parsed = JSON.parse(localProgress);
-          if (parsed.savedQuizScroll !== undefined) {
+          if (parsed.savedQuizScroll !== undefined && parsed.savedQuizScroll > 0) {
             targetScroll = parsed.savedQuizScroll;
-            hasProgress = true;
           }
         } catch (e) {}
       }
 
-      if (!hasProgress) {
-        targetScroll = savedQuizScroll.current || 0;
-      } else {
-        savedQuizScroll.current = targetScroll;
+      if (targetScroll === undefined || targetScroll === 0) {
+        targetScroll = savedQuizScroll.current;
       }
 
-      requestAnimationFrame(() => {
-        if (quizBodyRef.current) quizBodyRef.current.scrollTop = targetScroll;
-      });
-      setTimeout(() => {
-        if (quizBodyRef.current) quizBodyRef.current.scrollTop = targetScroll;
-      }, 100);
+      if (targetScroll !== undefined && targetScroll > 0) {
+        savedQuizScroll.current = targetScroll;
+        requestAnimationFrame(() => {
+          if (quizBodyRef.current && Math.abs(quizBodyRef.current.scrollTop - targetScroll) > 10) {
+            quizBodyRef.current.scrollTop = targetScroll;
+          }
+        });
+        setTimeout(() => {
+          if (quizBodyRef.current && Math.abs(quizBodyRef.current.scrollTop - targetScroll) > 10) {
+            quizBodyRef.current.scrollTop = targetScroll;
+          }
+        }, 100);
+      }
     }
-  }, [selectedTopic, aiQuestions]);
+  }, [selectedTopic?.id, selectedTopic?.schedule_id]);
 
   useEffect(() => {
     let selectionTimeout = null;
@@ -18738,7 +18741,19 @@ ${itemsStr}
               <div 
                 ref={quizBodyRef}
                 onScroll={(e) => {
-                  savedQuizScroll.current = e.currentTarget.scrollTop;
+                  const currentTop = e.currentTarget.scrollTop;
+                  savedQuizScroll.current = currentTop;
+                  if (selectedTopic && currentTop > 0) {
+                    const key = selectedTopic.schedule_id 
+                      ? `anti_review_progress_sched_${selectedTopic.schedule_id}`
+                      : `anti_review_progress_${selectedTopic.id}`;
+                    try {
+                      const existing = localStorage.getItem(key);
+                      const parsed = existing ? JSON.parse(existing) : {};
+                      parsed.savedQuizScroll = currentTop;
+                      localStorage.setItem(key, JSON.stringify(parsed));
+                    } catch (err) {}
+                  }
                 }}
                 onMouseDown={(e) => {
                   const rect = e.currentTarget.getBoundingClientRect();
