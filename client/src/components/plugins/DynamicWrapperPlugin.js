@@ -159,12 +159,14 @@ export function wrapSymbolDefinitionsHtml(text) {
 export function wrapMechanismProcedureAssumptionsHtml(text) {
   if (!text || typeof text !== 'string') return text;
 
-  // Pattern A: Strict Header + Numbered Steps ONLY (1. ... 2. ... or ① ... ② ...)
-  // 🚨 [사용자 절대 수칙]: 기호정의를 제외하고는 번호(1., 2. 또는 ①, ②)가 없으면 동적 감싸기를 절대 수행하지 않음
-  const sectionRegex = /(?:^|<br\/>|\n|<p>)[ \t]*(?:[•\*\-]\s*|#{1,6}\s*|\[|\*\*)?\s*([^\n<]*(?:절차|흐름도|플로우차트|순서도|프로세스|가정\s*사항|가정\s*조건|기본\s*가정|전제\s*조건|가정|메커니즘|작동\s*원리|Procedure|Assumptions)[^\n<]*)\s*[:\]\*\*]*[ \t]*(?:<br\/>|\n|<\/p>|<p>)+((?:[ \t]*(?:<div[^>]*>|<p>)?(?:\d+[\.\)]|[①-⑳])[ \t]*[^\n<]+(?:<\/div>|<\/p>|<br\/>|\n|$))+)/gi;
+  // Pre-normalization: If '1.' or '1)' is attached directly to header text without newline (e.g. '메커니즘1. 수두차'), insert newline before '1.'
+  let normalizedText = text.replace(/([가-힣a-zA-Z\)]\s*)(1[\.\)]\s+)/g, '$1\n$2');
 
-  let result = text.replace(sectionRegex, (fullMatch, headerTitle, stepsBlock) => {
-    if (fullMatch.includes('___HTML_TABLE_') || fullMatch.includes('___CODE_BLOCK_') || /<table/i.test(fullMatch)) {
+  // Pattern A: Strict Header + Numbered Steps ONLY (1. ... 2. ... or ① ... ② ...)
+  const sectionRegex = /(?:^|<br\/>|\n|<p>)[ \t]*(?:[•\*\-]\s*|#{1,6}\s*|\[|\*\*)?\s*([^\n<]*(?:절차|흐름도|플로우차트|순서도|프로세스|가정\s*사항|가정\s*조건|기본\s*가정|전제\s*조건|가정|메커니즘|작동\s*원리|개념|목적|Procedure|Assumptions|Mechanism)[^\n<]*)\s*[:\]\*\*]*[ \t]*(?:<br\/>|\n|<\/p>|<p>)+((?:[ \t]*(?:<div[^>]*>|<p>)?(?:\d+[\.\)]|[①-⑳])[ \t]*[^\n<]+(?:<\/div>|<\/p>|<br\/>|\n|$))+)/gi;
+
+  let result = normalizedText.replace(sectionRegex, (fullMatch, headerTitle, stepsBlock) => {
+    if (fullMatch.includes('___HTML_TABLE_') || fullMatch.includes('___CODE_BLOCK_') || fullMatch.includes('flowchart-text-force') || /<table/i.test(fullMatch)) {
       return fullMatch;
     }
 
@@ -179,24 +181,56 @@ export function wrapMechanismProcedureAssumptionsHtml(text) {
       if (!content || /^[-–—\s]+$/.test(content) || content === '--' || content === '---') return;
 
       const stepNum = itemBoxes.length + 1;
+      const highlightedContent = content.includes(':') 
+        ? content.replace(/^([^:]+:)/, '<strong class="text-indigo-300 font-extrabold">$1</strong>')
+        : content;
 
       itemBoxes.push(
-        `<div class="flex items-start gap-3 px-2.5 py-2 hover:bg-slate-900/60 rounded-lg transition-colors text-left select-text flowchart-text-force"><span class="w-5 h-5 rounded-md bg-indigo-600/30 text-indigo-300 border border-indigo-500/50 flex items-center justify-center font-bold text-[11px] font-mono shrink-0 select-none mt-0.5">${stepNum}</span><div class="flex-1 text-[14px] sm:text-[15px] text-slate-100 leading-relaxed break-words min-w-0 flowchart-text-force">${content}</div></div>`
+        `<div class="flex items-start gap-3 p-3 my-1.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-indigo-500/40 shadow-sm text-left select-text flowchart-text-force"><span class="w-6 h-6 rounded-md bg-indigo-600/30 text-indigo-300 border border-indigo-500/50 flex items-center justify-center font-bold text-xs font-mono shrink-0 select-none mt-0.5">${stepNum}</span><div class="flex-1 text-[13px] sm:text-[14px] text-slate-100 leading-relaxed break-words min-w-0 flowchart-text-force">${highlightedContent}</div></div>`
       );
     });
 
     if (itemBoxes.length === 0) return fullMatch;
 
     let titleClean = headerTitle.replace(/<[^>]+>/g, '').replace(/^[#\*\-•\[\]:s]+/, '').replace(/[#\*\-•\[\]:s]+$/, '').trim();
-    const isAssumption = /:*assumptions/i.test(titleClean) || titleClean.includes('가정');
 
-    if (isAssumption) {
-      // 🚨 사용자 지침: '5. 기본 가정사항 및 유의사항' 헤더 텍스트가 상단에 이미 표출되므로 카드 내부의 불필요한 'assumption' 표제 행을 100% 소거
-      return `<div class="my-3.5 p-3.5 rounded-2xl bg-slate-950/90 border border-indigo-500/35 shadow-lg text-left select-text flowchart-text-force"><div class="space-y-1 my-1 divide-y divide-slate-800/60">${itemBoxes.join('')}</div></div>`;
+    return `<div class="my-3.5 p-3.5 rounded-2xl bg-slate-950/90 border border-indigo-500/35 shadow-lg text-left select-text flowchart-text-force"><div class="flex items-center gap-2 mb-2.5 pb-2 border-b border-indigo-500/25 text-indigo-300 text-xs sm:text-sm font-extrabold select-none"><span class="text-base">⚡</span><span>${titleClean || '주요 절차 및 메커니즘'}</span></div><div class="space-y-2 my-1">${itemBoxes.join('')}</div></div>`;
+  });
+
+  // Pattern B: Standalone 2 or more consecutive numbered items without explicit header
+  const standaloneNumberedRegex = /(?:^|<br\/>|\n|<p>)[ \t]*((?:(?:<div[^>]*>|<p>)?\s*(?:\d+[\.\)]|[①-⑳])\s+[^\n<]+(?:<\/div>|<\/p>|<br\/>|\n|$)\s*){2,})/gi;
+
+  result = result.replace(standaloneNumberedRegex, (fullMatch, stepsBlock) => {
+    if (fullMatch.includes('___HTML_TABLE_') || fullMatch.includes('___CODE_BLOCK_') || fullMatch.includes('border-indigo-500') || /<table/i.test(fullMatch)) {
+      return fullMatch;
     }
 
-    // 🚨 사용자 지침: '4. 시험 절차' 등의 헤더 텍스트가 상단에 이미 표출되므로 카드 내부의 불필요한 중복 표제 행(border-b)을 100% 소거
-    return `<div class="my-3.5 p-3.5 rounded-2xl bg-slate-950/90 border border-indigo-500/35 shadow-lg text-left select-text flowchart-text-force"><div class="space-y-1 my-1 divide-y divide-slate-800/60">${itemBoxes.join('')}</div></div>`;
+    const rawLines = stepsBlock.split(/(?:<\/p>|<\/div>|<br\/>|\n)+/);
+    const itemBoxes = [];
+
+    rawLines.forEach((line) => {
+      const stripped = line.replace(/<[^>]+>/g, '').trim();
+      if (!stripped) return;
+
+      const matchNum = line.match(/^(?:<div[^>]*>|<p>)?\s*(?:(\d+)[\.\)]|[①-⑳])\s*(.+)$/);
+      if (matchNum) {
+        const stepNum = matchNum[1] || (itemBoxes.length + 1);
+        const content = matchNum[2].trim();
+        if (!content || /^[-–—\s]+$/.test(content) || content === '--') return;
+
+        const highlightedContent = content.includes(':') 
+          ? content.replace(/^([^:]+:)/, '<strong class="text-indigo-300 font-extrabold">$1</strong>')
+          : content;
+
+        itemBoxes.push(
+          `<div class="flex items-start gap-3 p-3 my-1.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-indigo-500/40 shadow-sm text-left select-text flowchart-text-force"><span class="w-6 h-6 rounded-md bg-indigo-600/30 text-indigo-300 border border-indigo-500/50 flex items-center justify-center font-bold text-xs font-mono shrink-0 select-none mt-0.5">${stepNum}</span><div class="flex-1 text-[13px] sm:text-[14px] text-slate-100 leading-relaxed break-words min-w-0 flowchart-text-force">${highlightedContent}</div></div>`
+        );
+      }
+    });
+
+    if (itemBoxes.length < 2) return fullMatch;
+
+    return `<div class="my-3.5 p-3.5 rounded-2xl bg-slate-950/90 border border-indigo-500/35 shadow-lg text-left select-text flowchart-text-force"><div class="space-y-2 my-1">${itemBoxes.join('')}</div></div>`;
   });
 
   return result;
