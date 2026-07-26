@@ -3191,6 +3191,14 @@ router.post('/schedules/:id/complete', async (req, res) => {
     `;
     await dbQuery.run(updateSql, [nowTimestamp, schedule.id]);
 
+    // 이전 회차 중 미완료(pending) 건이 남아있는 경우 자동 완료 처리하여 '재복습중' 잔류 방지
+    if (schedule.review_round && schedule.review_round !== 99) {
+      await dbQuery.run(
+        `UPDATE schedules SET status = 'completed', completed_at = ? WHERE topic_id = ? AND review_round < ? AND status = 'pending'`,
+        [nowTimestamp, schedule.topic_id, schedule.review_round]
+      );
+    }
+
     // 복습 완료 시 다음 회차 자동 생성 (망각곡선 주기 기반)
     if (schedule.review_round !== 99) {
       const baseDate = referenceDate ? new Date(referenceDate) : new Date();
@@ -3317,6 +3325,14 @@ router.post('/quiz/submit', async (req, res) => {
       `UPDATE schedules SET status = ?, completed_at = ?, score = ?, correct_count = ?, total_count = ? WHERE id = ?`,
       [finalStatus, now, scoreVal, correctVal, totalVal, targetScheduleId]
     );
+
+    // 이전 회차 중 미완료(pending) 건이 남아있는 경우 자동 완료 처리하여 '재복습중' 잔류 방지
+    if (schedule && schedule.review_round && schedule.review_round !== 99) {
+      await dbQuery.run(
+        `UPDATE schedules SET status = 'completed', completed_at = ? WHERE topic_id = ? AND review_round < ? AND status = 'pending'`,
+        [now, schedule.topic_id, schedule.review_round]
+      );
+    }
 
     // 복습 데이터 세션 보존 (완료된 복습을 다시 조회할 수 있도록 questions와 chatHistory를 포함하여 저장)
     if (questions && questions.length > 0) {
