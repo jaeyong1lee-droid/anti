@@ -547,9 +547,9 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
   return tempText;
 }
 
-export const renderKatexString = (math, options) => {
-  if (!math) return '';
-
+export const renderKatexString = (math, options = {}) => {
+  if (!math || typeof math !== 'string') return '';
+  
   // Decode standard HTML entities inside math formula
   let decoded = math
     .replace(/&amp;/g, '&')
@@ -566,6 +566,7 @@ export const renderKatexString = (math, options) => {
   let processedMath = decoded.replace(/\\frac\b/g, '\\dfrac');
   processedMath = processedMath.replace(/\\{2,}%/g, '\\%');
   processedMath = processedMath.replace(/(?<!\\)%/g, '\\%');
+  processedMath = processedMath.replace(/₩/g, '\\');
 
   let cleaned = processedMath.trim();
   if (cleaned.startsWith('$$') && cleaned.endsWith('$$')) {
@@ -574,7 +575,7 @@ export const renderKatexString = (math, options) => {
     cleaned = cleaned.substring(1, cleaned.length - 1).trim();
   }
   cleaned = cleaned.replace(/^\$|\$/g, '').trim();
-  processedMath = cleaned;
+  processedMath = cleaned.replace(/₩/g, '\\');
 
   if (window.katex) {
     try {

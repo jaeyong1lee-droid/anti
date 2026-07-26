@@ -407,6 +407,7 @@ const healCorruptedKatexHtml = (text) => {
 export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = null) {
   if (!text || typeof text !== 'string') return text;
 
+  text = text.replace(/₩/g, '\\');
   let processed = healCorruptedKatexHtml(text);
   // Normalize dashes (en-dash, em-dash, math minus) to standard hyphens
   processed = processed.replace(/[–—−]/g, '-');
@@ -416,11 +417,6 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
 
   // [Self-Healing] Fix missing backslash for \Delta t in subscripts (e.g. s_{t- Delta t} -> s_{t- \Delta t})
   processed = processed.replace(/([sS])_\{t-\s*Delta\s*t\}/g, '$1_{t-\\Delta t}');
-
-  // [Self-Healing] Pre-wrap unwrapped subscripted variables with braces (e.g. s_{t-\Delta t}, S_{max}, S_{ult}, \sigma_{1,3}) outside $
-  processed = processed.replace(/(?<!\$)(?<!\\)(\b\\?[a-zA-Z0-9_']+_\{\s*[^{}\n]+\s*\})(?!\$)/g, (match) => {
-    return `$${match}$`;
-  });
 
   // [Self-Healing] Convert plain English geotechnical math variables (e.g. sigma_v0 ', sigma_v, tau, etc.) to standard LaTeX ($...$)
   const plainGreekLetters = 'sigma|tau|phi|gamma|alpha|beta|theta|epsilon|Delta';
