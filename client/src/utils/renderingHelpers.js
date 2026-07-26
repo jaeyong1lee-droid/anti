@@ -338,10 +338,10 @@ export const handleOpenHtmlAnswerPopup = (title, text) => {
 export function transformSourcesToCollapsibleButtons(text) {
   if (!text || typeof text !== 'string') return text;
 
-  // Detect reference/source lines starting with bullets or numbers that mention KDS, KCS, 원보고서, Wikipedia, http(s), 출처, 참고자료, etc.
+  // 1. Detect individual source bullet items starting with KDS, KCS, 원보고서, Wikipedia, http(s), 출처, 참고자료, etc.
   const sourceBlockRegex = /^[ \t]*(?:\*|-|•|\d+[\.\)])[ \t]+(?:\*\*|\[)?\s*(KDS|KCS|원보고서|Wikipedia|http:\/\/|https:\/\/|출처|참고자료|근거|시방서|설계기준|보고서)([\s\S]*?)(?=\n[ \t]*(?:\*|-|•|\d+[\.\)]|#{1,6}\s+)|\n\n|$)/gmi;
 
-  return text.replace(sourceBlockRegex, (match, prefix, rest) => {
+  let transformed = text.replace(sourceBlockRegex, (match) => {
     const rawLines = match.trim().split('\n');
     const firstLine = rawLines[0].replace(/^[ \t]*(?:\*|-|•|\d+[\.\)])[ \t]+/, '').trim();
     const subLines = rawLines.slice(1).map(l => l.trim()).filter(Boolean);
@@ -372,23 +372,51 @@ export function transformSourcesToCollapsibleButtons(text) {
       }
     }
 
-    return `\n<details class="my-2.5 border border-slate-700/60 rounded-xl overflow-hidden bg-slate-900/60 transition-all duration-200 shadow-md">
-      <summary class="px-3.5 py-2.5 bg-gradient-to-r from-slate-850 via-slate-900 to-slate-850 hover:from-slate-800 hover:to-slate-800 text-slate-100 font-bold text-[13px] sm:text-[15px] cursor-pointer flex items-center justify-between select-none transition-all group border-b border-slate-800/40">
-        <span class="flex items-center gap-2 min-w-0">
-          <span class="px-2 py-0.5 text-[10px] sm:text-[11px] font-black rounded-md bg-amber-500/15 text-amber-300 border border-amber-500/30 shrink-0">${categoryBadge}</span>
+    return `___SINGLE_SOURCE_BTN_START___<details class="my-0.5 border border-slate-800 rounded-lg overflow-hidden bg-slate-900/80 shadow-xs">
+      <summary class="px-3 py-1.5 bg-slate-850 hover:bg-slate-800 text-slate-100 font-medium text-xs sm:text-sm cursor-pointer flex items-center justify-between select-none transition-colors group border-b border-slate-800/40">
+        <span class="flex items-center gap-1.5 min-w-0">
+          <span class="px-1.5 py-0.5 text-[10px] font-bold rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0">${categoryBadge}</span>
           <span class="text-slate-100 group-hover:text-amber-300 transition-colors truncate font-semibold">${mainTitle}</span>
         </span>
-        <span class="ml-2 text-[11px] sm:text-xs text-amber-400/90 font-semibold px-2 py-0.5 rounded-lg bg-amber-400/10 border border-amber-400/20 whitespace-nowrap flex items-center gap-1 group-hover:bg-amber-400/20 transition-all shrink-0">
-          <span>AI 확인 내용 접기/펼치</span>
-          <span class="text-[10px]">▼</span>
+        <span class="ml-2 text-[10px] sm:text-[11px] text-amber-400/90 font-semibold px-1.5 py-0.5 rounded bg-amber-400/10 border border-amber-400/20 whitespace-nowrap flex items-center gap-0.5 shrink-0">
+          <span>본문 확인</span>
+          <span class="text-[9px]">▼</span>
         </span>
       </summary>
-      <div class="p-3.5 bg-slate-950/85 text-xs sm:text-sm text-slate-300 leading-relaxed border-t border-slate-800/80 space-y-1.5 select-text">
-        <div class="flex items-center gap-1.5 text-amber-400 font-bold text-xs">
+      <div class="p-2.5 bg-slate-950 text-xs text-slate-300 leading-relaxed border-t border-slate-800/80 space-y-1 select-text">
+        <div class="flex items-center gap-1 text-amber-400 font-bold text-[11px]">
           <span>🔍</span>
           <span>AI 원보고서/사이트 실시간 확인 데이터:</span>
         </div>
-        <div class="pl-3 py-1.5 border-l-2 border-amber-500/50 text-slate-200 bg-slate-900/40 rounded-r-lg text-[12px] sm:text-[13px] leading-relaxed">${mainContent}</div>
+        <div class="pl-2.5 py-1 border-l-2 border-amber-500/50 text-slate-200 bg-slate-900/40 rounded-r-md text-[11px] sm:text-xs leading-relaxed">${mainContent}</div>
+      </div>
+    </details>___SINGLE_SOURCE_BTN_END___`;
+  });
+
+  // 2. Group consecutive single source buttons into a Master Accordion Box (collapsed by default)
+  const masterGroupRegex = /(?:___SINGLE_SOURCE_BTN_START___[\s\S]*?___SINGLE_SOURCE_BTN_END___\s*)+/g;
+
+  return transformed.replace(masterGroupRegex, (groupText) => {
+    const rawButtons = groupText
+      .replace(/___SINGLE_SOURCE_BTN_START___/g, '')
+      .replace(/___SINGLE_SOURCE_BTN_END___/g, '')
+      .trim();
+
+    const count = (groupText.match(/___SINGLE_SOURCE_BTN_START___/g) || []).length;
+
+    return `\n<details class="my-2 border border-slate-700/60 rounded-xl overflow-hidden bg-slate-900/90 shadow-md">
+      <summary class="px-3.5 py-2 bg-gradient-to-r from-slate-850 via-slate-900 to-slate-850 hover:from-slate-800 hover:to-slate-800 text-slate-100 font-bold text-xs sm:text-sm cursor-pointer flex items-center justify-between select-none border-b border-slate-800/50 group">
+        <span class="flex items-center gap-2">
+          <span class="px-2 py-0.5 text-[11px] font-black rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0">📜 출처 및 근거 보고서 (${count}개)</span>
+          <span class="text-slate-400 text-xs font-normal hidden sm:inline">(클릭 시 열기/접기)</span>
+        </span>
+        <span class="text-[11px] sm:text-xs text-amber-400 font-semibold px-2 py-0.5 rounded-lg bg-amber-400/10 border border-amber-400/20 flex items-center gap-1 group-hover:bg-amber-400/20 shrink-0">
+          <span>열기 / 접기</span>
+          <span class="text-[10px]">▼</span>
+        </span>
+      </summary>
+      <div class="p-2 space-y-1 bg-slate-950/80 border-t border-slate-800">
+        ${rawButtons}
       </div>
     </details>\n`;
   });
