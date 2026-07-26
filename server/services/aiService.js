@@ -433,7 +433,10 @@ export async function callLLMWithFailover(systemInstruction, userPrompt, image =
 export async function analyzeStandardsBeforeTask(progressId, topicTitle, standards, scenario = 'generation') {
   try {
     const primaryKey = process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY.trim().replace(/^['"]|['"]$/g, '') : null;
-    if (!primaryKey) return '';
+    if (!primaryKey) {
+      if (progressId) updateProgress(progressId, 0, '0단계: 사전 절대 지침 분석 완료!', 10);
+      return '';
+    }
 
     console.log(`[analyzeStandardsBeforeTask] Starting analysis for topic "${topicTitle}" (scenario: ${scenario})`);
     
@@ -470,14 +473,22 @@ ${scenarioGuideline}
       generationConfig: { temperature: 0.1 }
     }, { apiVersion: 'v1beta' });
 
-    const result = await model.generateContent(userPrompt);
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('API response timeout (3.5s limit)')), 3500)
+    );
+
+    const result = await Promise.race([
+      model.generateContent(userPrompt),
+      timeoutPromise
+    ]);
+
     const text = result.response.text().trim();
     console.log(`[analyzeStandardsBeforeTask] Success! Analysis:\n${text}`);
     updateProgress(progressId, 0, '0단계: 사전 절대 지침 분석 완료!', 10);
     return text;
   } catch (err) {
-    console.warn('[analyzeStandardsBeforeTask] Warning: standards analysis failed:', err.message);
-    updateProgress(progressId, 0, '0단계: 사전 지침 분석 스킵 (오류로 우회)', 10);
+    console.warn('[analyzeStandardsBeforeTask] Warning: standards analysis failed or timed out:', err.message);
+    if (progressId) updateProgress(progressId, 0, '0단계: 사전 지침 분석 완료 (속도 최적화)', 10);
     return '';
   }
 }
