@@ -159,8 +159,8 @@ export const LatexRenderer = React.memo(function LatexRenderer({
   if (!text) return null;
 
   let parsedText = text;
-  if (forceInline && typeof parsedText === 'string') {
-    parsedText = parsedText.replace(/\$\$/g, '$');
+  if ((forceInline || (typeof className === 'string' && className.includes('inline'))) && typeof parsedText === 'string') {
+    parsedText = parsedText.replace(/\$\$/g, '$').replace(/[\r\n]+/g, ' ').trim();
   }
 
   const flowchartRegex = /```(?:[a-zA-Z]*)?\n([\s\S]*?┌[\s\S]*?)```/g;

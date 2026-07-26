@@ -1259,7 +1259,7 @@ export const TableQuiz = React.memo(function TableQuiz({
                           isFirstCol ? 'text-left break-all' : 'text-center'
                         }`}
                       >
-                        <LatexRenderer text={cell} katexLoaded={katexLoaded} className="inline" />
+                        <LatexRenderer text={typeof cell === 'string' ? cell.replace(/[\r\n]+/g, ' ').trim() : cell} katexLoaded={katexLoaded} className="inline" />
                       </td>
                     );
                   }
@@ -1576,7 +1576,7 @@ export const TableQuiz = React.memo(function TableQuiz({
                         key={cIdx} 
                         className="p-2 sm:p-2.5 border-r border-slate-800 last:border-r-0 text-slate-355 text-[14px] sm:text-[16px] whitespace-normal break-words text-center align-middle font-extrabold select-text"
                       >
-                        <LatexRenderer text={cell} katexLoaded={katexLoaded} className="inline" />
+                        <LatexRenderer text={typeof cell === 'string' ? cell.replace(/[\r\n]+/g, ' ').trim() : cell} katexLoaded={katexLoaded} className="inline" />
                       </td>
                     );
                   })}

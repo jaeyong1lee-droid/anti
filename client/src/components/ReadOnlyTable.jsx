@@ -312,7 +312,7 @@ export const ReadOnlyTable = React.memo(function ReadOnlyTable({
                         isFirstCol ? 'text-left' : 'text-center'
                       }`}
                     >
-                      <LatexRenderer text={cell} katexLoaded={katexLoaded} className="inline" />
+                      <LatexRenderer text={typeof cell === 'string' ? cell.replace(/[\r\n]+/g, ' ').trim() : cell} katexLoaded={katexLoaded} className="inline" />
                     </td>
                   );
                 })}
