@@ -266,17 +266,27 @@ export function wrapKdsKcsAndWikipediaReferencesHtml(text) {
         if (content && !/^[-–—\s]+$/.test(content) && content !== '--') {
           const isWikiOrKdsLine = /wikipedia|soil\s*mechanics|kds|kcs/i.test(content);
           if (isWikiOrKdsLine) {
-            let refTag = 'Wikipedia Soil Mechanics';
+            let refTag = /kds|kcs/i.test(content) 
+              ? (content.match(/K[DC]S\s*\d+[\d\s]*/i)?.[0]?.trim() || 'KDS/KCS 건설기준') 
+              : 'Wikipedia Soil Mechanics';
             let descText = content;
+
             if (content.includes('::')) {
               const parts = content.split('::');
-              refTag = parts[0].replace(/^[•\*\-\s]+/, '').trim();
+              const candidateTag = parts[0].replace(/^[•\*\-\s]+/, '').trim();
+              if (/kds|kcs|wikipedia|soil\s*mechanics/i.test(candidateTag)) {
+                refTag = candidateTag;
+              }
               descText = parts[1].trim();
             } else if (content.includes(':')) {
               const parts = content.split(':');
-              refTag = parts[0].replace(/^[•\*\-\s]+/, '').trim();
-              descText = parts[1].trim();
+              const candidateTag = parts[0].replace(/^[•\*\-\s]+/, '').trim();
+              if (/kds|kcs|wikipedia|soil\s*mechanics/i.test(candidateTag)) {
+                refTag = candidateTag;
+              }
+              descText = parts.slice(1).join(':').trim();
             }
+
             const isWiki = /wikipedia|soil\s*mechanics/i.test(refTag);
             const badgeClass = isWiki 
               ? 'bg-emerald-600/20 text-emerald-300 border-emerald-500/40' 
