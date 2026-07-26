@@ -197,7 +197,16 @@ export function wrapMechanismProcedureAssumptionsHtml(text) {
     // If titleClean is empty or just English tag words, do not render title div
     const hasMeaningfulTitle = titleClean && titleClean.length > 1 && !/^(?:mechanism|procedure|assumptions|pros_cons|causes|countermeasures|solutions)$/i.test(titleClean);
 
-    return `<div class="my-2 text-left select-text flowchart-text-force">${hasMeaningfulTitle ? `<div class="text-slate-100 font-bold mb-1.5">${titleClean}</div>` : ''}<div class="space-y-2">${itemBoxes.join('')}</div></div>`;
+    // 🎯 [사용자 요구사항]: 절차, 흐름, 메커니즘일때만 박스 중간에 아래 방향 화살표(↓)로 순서 시각적 표현
+    const isSequentialProcess = /절차|흐름도|플로우차트|순서도|프로세스|순서|메커니즘|작동\s*원리|procedure|flowchart|mechanism/i.test(headerTitle);
+
+    const arrowDivider = isSequentialProcess
+      ? `<div class="flex justify-center my-1 select-none"><div class="w-5 h-5 rounded-full bg-indigo-950/90 border border-indigo-500/50 text-indigo-400 flex items-center justify-center text-xs font-extrabold shadow-sm">↓</div></div>`
+      : '';
+
+    const joinedBoxes = isSequentialProcess ? itemBoxes.join(arrowDivider) : itemBoxes.join('');
+
+    return `<div class="my-2 text-left select-text flowchart-text-force">${hasMeaningfulTitle ? `<div class="text-slate-100 font-bold mb-1.5">${titleClean}</div>` : ''}<div class="space-y-1.5">${joinedBoxes}</div></div>`;
   });
 
   // Pattern B: Standalone 2 or more consecutive numbered items without explicit header
