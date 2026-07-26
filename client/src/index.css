@@ -1250,14 +1250,14 @@ pre {
   }
 }
 
-/* 동적감싸기/흐름도 글자 크기 외부 본문보다 1pt 소형화 */
+/* 동적감싸기/흐름도 글자 크기 */
 .flowchart-text-force {
-  font-size: 14px !important;
+  font-size: 15px !important;
 }
 
 @media (max-width: 768px) {
   .flowchart-text-force {
-    font-size: 12px !important;
+    font-size: 13px !important;
   }
 }
 
