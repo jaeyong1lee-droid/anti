@@ -6,7 +6,33 @@ import { fileURLToPath } from 'url';
 import fs from 'fs';
 import { initDatabase, dbQuery, isPostgres } from './database.js';
 import { startBackupScheduler } from './backupManager.js';
-import { loadPreferredModel, globalPreferredModel } from './services/aiService.js';
+import { loadPreferredModel, globalPreferredModel, updateDynamicTemperatures, updateDynamicModelOrder } from './services/aiService.js';
+
+async function loadApiTemperatures() {
+  try {
+    const row = await dbQuery.get("SELECT value FROM app_session WHERE key = 'option_api_temperatures'");
+    if (row && row.value) {
+      const parsed = JSON.parse(row.value);
+      updateDynamicTemperatures(parsed);
+    }
+  } catch (err) {
+    console.warn("Failed to load api_temperatures from DB on startup:", err.message);
+  }
+}
+
+async function loadGeminiModelOrder() {
+  try {
+    const row = await dbQuery.get("SELECT value FROM app_session WHERE key = 'option_gemini_model_order'");
+    if (row && row.value) {
+      const parsed = JSON.parse(row.value);
+      if (Array.isArray(parsed)) {
+        updateDynamicModelOrder(parsed);
+      }
+    }
+  } catch (err) {
+    console.warn("Failed to load gemini_model_order from DB on startup:", err.message);
+  }
+}
 
 // Route Imports
 import configRoutes from './routes/configRoutes.js';
@@ -219,6 +245,8 @@ async function startServer() {
     await initializeAllStandards();
     console.log('[Startup] Loading saved preferred model configuration...');
     await loadPreferredModel();
+    await loadApiTemperatures();
+    await loadGeminiModelOrder();
     
     // Start automated DB backup cron job
     if (!process.env.VERCEL) {

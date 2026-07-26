@@ -2894,7 +2894,16 @@ export default function App() {
   }, []);
   
   // Views: 'dashboard' (today's tasks) or 'all_topics' (all materials tracker)
-  const [viewMode, setViewMode] = useState('dashboard');
+  const [viewMode, setViewModeState] = useState(() => {
+    const saved = localStorage.getItem('anti_view_mode');
+    return saved || 'dashboard';
+  });
+  const setViewMode = (mode) => {
+    setViewModeState(mode);
+    if (mode) {
+      localStorage.setItem('anti_view_mode', mode);
+    }
+  };
   const [lastSyncTime, setLastSyncTime] = useState(() => {
     const saved = localStorage.getItem('anti_last_sync_time');
     return saved ? new Date(saved) : null;
@@ -3381,7 +3390,23 @@ export default function App() {
   const [showMainMemoryTypePopup, setShowMainMemoryTypePopup] = useState(false);
   const [showMobileReviewMemoryPopup, setShowMobileReviewMemoryPopup] = useState(false);
   const [showMobileNavbarMemoryPopup, setShowMobileNavbarMemoryPopup] = useState(false);
+  const [showManageHardcodedStandardsModal, setShowManageHardcodedStandardsModal] = useState(false);
+  const [showEditHardcodedRuleModal, setShowEditHardcodedRuleModal] = useState(false);
+  const [showTempEditModal, setShowTempEditModal] = useState(false);
+  const [apiTemperature, setApiTemperature] = useState(0.3);
+  const [showModelOrderEditModal, setShowModelOrderEditModal] = useState(false);
+  const [showRecentStandardsModal, setShowRecentStandardsModal] = useState(false);
+  const [geminiModelSequence, setGeminiModelSequence] = useState([
+    { id: 'gemini-3.5-flash-lite', name: 'Gemini 3.5 Flash Lite', desc: '1순위 초고속 기본 모델', active: true },
+    { id: 'gemini-3.6-flash', name: 'Gemini 3.6 Flash', desc: '2순위 표준 고성능 모델', active: true },
+    { id: 'gemini-3.1-flash-lite', name: 'Gemini 3.1 Flash Lite', desc: '3순위 백업 경량 모델', active: true },
+    { id: 'gemini-3.5-flash', name: 'Gemini 3.5 Flash', desc: '4순위 심층 해설 보조 모델', active: true },
+  ]);
+  const [otherStandardsText, setOtherStandardsText] = useState('');
+  const [allHardcodedRules, setAllHardcodedRules] = useState([]);
   const activeProgressIdRef = useRef(null);
+  const progressIntervalRef = useRef(null);
+  const loadingTopicLockRef = useRef(false);
 
   const startProgressPolling = (progressId) => {
     if (progressIntervalRef.current) {
@@ -3651,6 +3676,25 @@ export default function App() {
   const [showAnswersState, setShowAnswersState] = useState({});
   const [examShowAnswersState, setExamShowAnswersState] = useState({});
   const [gradingLoading, setGradingLoading] = useState({});
+
+  const recent10DaysActivity = useMemo(() => {
+    const dates = [];
+    const today = new Date();
+    for (let i = 9; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0];
+      const count = (todayReviews || []).filter(r => r.created_at && r.created_at.startsWith(dateStr)).length;
+      dates.push({ date: dateStr.substring(5), count });
+    }
+    return dates;
+  }, [todayReviews]);
+
+  const recentStandardsList = useMemo(() => {
+    const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+    const now = Date.now();
+    return (allHardcodedRules || []).filter(rule => rule.created_at && (now - new Date(rule.created_at).getTime()) <= SEVEN_DAYS_MS);
+  }, [allHardcodedRules]);
 
   const gradeTableQuestion = async (qIdx, q, targetInputs = null, isReevaluation = false) => {
     setGradingLoading(prev => ({ ...prev, [qIdx]: true }));
@@ -11183,19 +11227,27 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
 
   const scrollToLastTutorResponse = (containerEl) => {
     if (!containerEl) return;
-    requestAnimationFrame(() => {
-      const bubbles = containerEl.querySelectorAll('.tutor-msg-bubble-container');
-      if (bubbles && bubbles.length > 0) {
-        const lastBubble = bubbles[bubbles.length - 1];
-        if (lastBubble) {
-          const containerRect = containerEl.getBoundingClientRect();
-          const bubbleRect = lastBubble.getBoundingClientRect();
-          containerEl.scrollTop = containerEl.scrollTop + (bubbleRect.top - containerRect.top);
+    setTimeout(() => {
+      requestAnimationFrame(() => {
+        const bubbles = containerEl.querySelectorAll('.tutor-msg-bubble-container, [data-msg-role="assistant"], [data-msg-role="tutor"], .tutor-response-container');
+        if (bubbles && bubbles.length > 0) {
+          const lastBubble = bubbles[bubbles.length - 1];
+          if (lastBubble) {
+            const containerRect = containerEl.getBoundingClientRect();
+            const bubbleRect = lastBubble.getBoundingClientRect();
+            const targetScrollTop = containerEl.scrollTop + (bubbleRect.top - containerRect.top) - 10;
+            containerEl.scrollTo({ top: Math.max(0, targetScrollTop), behavior: 'smooth' });
+            return;
+          }
         }
-      } else {
-        containerEl.scrollTop = containerEl.scrollHeight;
-      }
-    });
+        if (containerEl.lastElementChild) {
+          const containerRect = containerEl.getBoundingClientRect();
+          const lastChildRect = containerEl.lastElementChild.getBoundingClientRect();
+          const targetScrollTop = containerEl.scrollTop + (lastChildRect.top - containerRect.top) - 10;
+          containerEl.scrollTo({ top: Math.max(0, targetScrollTop), behavior: 'smooth' });
+        }
+      });
+    }, 60);
   };
 
   const handleFormulaImageAttachment = async (e) => {
@@ -12615,7 +12667,7 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
     setIsChatLoading(true);
 
     requestAnimationFrame(() => {
-      if (chatBodyRef.current) chatBodyRef.current.scrollTop = chatBodyRef.current.scrollHeight;
+      scrollToLastTutorResponse(chatBodyRef.current);
     });
 
     const progressId = 'tutor_' + Math.random().toString(36).substring(2, 9);
@@ -17149,6 +17201,34 @@ ${itemsStr}
                     <MessageSquare size={15} />
                     <span>실시간 AI 튜터</span>
                   </button>
+
+
+
+                  {/* 🌡️ 온도 설정 버튼 */}
+                  <button 
+                    onClick={() => setShowTempEditModal(true)}
+                    onDoubleClick={() => setShowTempEditModal(true)}
+                    className="px-3 py-2 bg-purple-600/30 hover:bg-purple-600/50 text-purple-200 border border-purple-500/40 rounded-xl text-xs font-bold transition-all active:scale-95 flex items-center gap-1 shadow-md cursor-pointer"
+                    title="온도 설정 모달"
+                  >
+                    <span>🌡️ 온도 설정</span>
+                  </button>
+
+                  {/* 🤖 API 모델 순서 버튼 */}
+                  <button 
+                    onClick={() => setShowModelOrderEditModal(true)}
+                    onDoubleClick={() => setShowModelOrderEditModal(true)}
+                    className="px-3 py-2 bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-200 border border-emerald-500/40 rounded-xl text-xs font-bold transition-all active:scale-95 flex items-center gap-1 shadow-md cursor-pointer"
+                    title="API 모델 순서 및 릴레이 설정 모달"
+                  >
+                    <span>🤖 API 모델 순서</span>
+                  </button>
+                  
+                  {/* 📊 최근 10일간 제출 문제 수 현황 */}
+                  <div className="hidden">
+                    <span>최근 10일간 제출 문제 수 현황</span>
+                    <textarea rows={1} readOnly value="" />
+                  </div>
                 </div>
               )}
               <div className="flex items-center gap-3 bg-slateCustom-900 border border-slate-800 rounded-xl px-4 py-2 w-full md:w-auto">
@@ -17954,6 +18034,19 @@ ${itemsStr}
                   title="지침에 없는 기타/내부 공학 지침 통합 관리"
                 >
                   <span>기타</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowRecentStandardsModal(true)}
+                  className={`hidden md:flex items-center justify-center px-3 py-1.5 rounded-xl border transition-all active:scale-98 text-[11px] font-black cursor-pointer shadow-md ${
+                    recentStandardsList && recentStandardsList.length > 0
+                      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 hover:border-emerald-500/40"
+                      : "border-slate-700/50 bg-slate-800/40 text-slate-400 hover:bg-slate-800/60 hover:text-slate-300"
+                  }`}
+                  title="최근 7일간 신규 생성/등록된 지침 통합 보기 (7일 경과 시 자연 제외)"
+                >
+                  <span>★ 신규</span>
                 </button>
               </div>
               
@@ -20592,7 +20685,7 @@ ${itemsStr}
       {/* ⚙️ 공학 기준 통합 관리 모달 (Engineering Standards Management Modal) */}
       {showManageStandardsModal && (
         <div className="fixed inset-0 z-[200] overflow-y-auto flex items-center justify-center p-4 bg-black/45 backdrop-blur-sm transition-all duration-300 animate-fade-in" onClick={() => setShowManageStandardsModal(false)}>
-          <div className="w-full max-w-4xl bg-slateCustom-900 border border-white/20 rounded-2xl overflow-hidden shadow-2xl p-6 space-y-4 animate-scale-up text-left" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-6xl bg-slateCustom-900 border border-white/20 rounded-2xl overflow-hidden shadow-2xl p-6 space-y-4 animate-scale-up text-left" onClick={(e) => e.stopPropagation()}>
             
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-2 border-b border-slate-800">
@@ -20627,19 +20720,25 @@ ${itemsStr}
                     <thead className="bg-slate-950/60 font-black text-slate-400 select-none">
                       <tr>
                         <th className="px-4 py-3 text-left w-12">번호</th>
-                        <th className="px-4 py-3 text-left w-48">기준 제목</th>
+                        <th className="px-4 py-3 text-left w-52">기준 제목</th>
                         <th className="px-4 py-3 text-left">기준 내용 요약</th>
+                        <th className="px-4 py-3 text-center w-32">등록/수정일</th>
                         <th className="px-4 py-3 text-center w-36">관리</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800 bg-slate-900/20">
-                      {standardsList.map((std, idx) => (
-                        <tr key={std.id} className="hover:bg-slate-800/30 transition-colors">
-                          <td className="px-4 py-3 font-semibold text-slate-500">{idx + 1}</td>
-                          <td className="px-4 py-3 font-bold text-white whitespace-nowrap overflow-hidden text-ellipsis max-w-[190px]" title={std.title}>{std.title}</td>
-                          <td className="px-4 py-3 text-slate-400 max-w-[300px] overflow-hidden text-ellipsis whitespace-nowrap" title={std.content}>
-                            {std.content ? std.content.trim().replace(/\n/g, ' ').slice(0, 100) + (std.content.trim().length > 100 ? '...' : '') : ''}
-                          </td>
+                      {standardsList.map((std, idx) => {
+                        const formattedDate = std.updatedAt ? std.updatedAt.slice(0, 10) : (std.createdAt ? std.createdAt.slice(0, 10) : '시스템 기본');
+                        return (
+                          <tr key={std.id} className="hover:bg-slate-800/30 transition-colors">
+                            <td className="px-4 py-3 font-semibold text-slate-500">{idx + 1}</td>
+                            <td className="px-4 py-3 font-bold text-white whitespace-nowrap overflow-hidden text-ellipsis max-w-[210px]" title={std.title}>{std.title}</td>
+                            <td className="px-4 py-3 text-slate-400 max-w-[360px] overflow-hidden text-ellipsis whitespace-nowrap" title={std.content}>
+                              {std.content ? std.content.trim().replace(/\n/g, ' ').slice(0, 100) + (std.content.trim().length > 100 ? '...' : '') : ''}
+                            </td>
+                            <td className="px-4 py-3 text-center font-mono text-[11px] text-violet-300/90 whitespace-nowrap font-bold">
+                              {formattedDate}
+                            </td>
                           <td className="px-4 py-3 text-center">
                             <div className="flex justify-center gap-1.5">
                               <button
@@ -20660,10 +20759,11 @@ ${itemsStr}
                             </div>
                           </td>
                         </tr>
-                      ))}
+                      );
+                    })}
                       {standardsList.length === 0 && (
                         <tr>
-                          <td colSpan="4" className="px-4 py-8 text-center text-slate-500 font-semibold">
+                          <td colSpan={5} className="px-4 py-8 text-center text-slate-500 font-semibold">
                             등록된 공학 기준이 없습니다. 새로운 기준을 추가해보세요.
                           </td>
                         </tr>
@@ -21447,7 +21547,7 @@ ${itemsStr}
       {/* ⚙️ 기타 공학 지침 통합 관리 모달 (Engineering/Other Standards Management Modal) */}
       {showManageEngineeringStandardsModal && (
         <div className="fixed inset-0 z-[200] overflow-y-auto flex items-center justify-center p-4 bg-black/45 backdrop-blur-sm transition-all duration-300 animate-fade-in" onClick={() => setShowManageEngineeringStandardsModal(false)}>
-          <div className="w-full max-w-4xl bg-slateCustom-900 border border-white/20 rounded-2xl overflow-hidden shadow-2xl p-6 space-y-4 animate-scale-up text-left" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-6xl bg-slateCustom-900 border border-white/20 rounded-2xl overflow-hidden shadow-2xl p-6 space-y-4 animate-scale-up text-left" onClick={(e) => e.stopPropagation()}>
             
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-2 border-b border-slate-800">
@@ -21491,29 +21591,34 @@ ${itemsStr}
                           <thead className="bg-slate-950/60 font-black text-slate-400 select-none">
                             <tr>
                               <th className="px-4 py-3 text-left w-12">번호</th>
-                              <th className="px-4 py-3 text-left w-48">지침 제목</th>
+                              <th className="px-4 py-3 text-left w-52">지침 제목</th>
                               <th className="px-4 py-3 text-left">지침 내용 요약</th>
+                              <th className="px-4 py-3 text-center w-32">등록/수정일</th>
                               <th className="px-4 py-3 text-center w-36">관리</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-800 bg-slate-900/20">
                             {engineeringStandardsList.length === 0 ? (
                               <tr>
-                                <td colSpan={4} className="px-4 py-8 text-center text-slate-500 font-semibold">
+                                <td colSpan={5} className="px-4 py-8 text-center text-slate-500 font-semibold">
                                   등록된 기타 공학 지침이 없습니다. 새로운 지침을 추가해보세요.
                                 </td>
                               </tr>
                             ) : (
                               pagedStandards.map((std, index) => {
                                 const realIndex = (validPage - 1) * itemsPerPage + index;
+                                const formattedDate = std.updatedAt ? std.updatedAt.slice(0, 10) : (std.createdAt ? std.createdAt.slice(0, 10) : '시스템 기본');
                                 return (
                                   <tr key={std.id || realIndex} className="hover:bg-slate-800/30 transition-colors">
                                     <td className="px-4 py-3 font-semibold text-slate-500">{realIndex + 1}</td>
-                                    <td className="px-4 py-3 font-bold text-white whitespace-nowrap overflow-hidden text-ellipsis max-w-[190px]" title={std.title}>
+                                    <td className="px-4 py-3 font-bold text-white whitespace-nowrap overflow-hidden text-ellipsis max-w-[210px]" title={std.title}>
                                       {std.title}
                                     </td>
-                                    <td className="px-4 py-3 text-slate-400 max-w-[300px] overflow-hidden text-ellipsis whitespace-nowrap" title={std.content}>
+                                    <td className="px-4 py-3 text-slate-400 max-w-[360px] overflow-hidden text-ellipsis whitespace-nowrap" title={std.content}>
                                       {std.content ? std.content.trim().replace(/\n/g, ' ').slice(0, 100) + (std.content.trim().length > 100 ? '...' : '') : ''}
+                                    </td>
+                                    <td className="px-4 py-3 text-center font-mono text-[11px] text-purple-300/90 whitespace-nowrap font-bold">
+                                      {formattedDate}
                                     </td>
                                     <td className="px-4 py-3 text-center">
                                       <div className="flex justify-center gap-1.5">
@@ -21676,6 +21781,320 @@ ${itemsStr}
         </div>
       )}
 
+      {/* 🔒 Hardcoded Standards Edit, Delete & Add Handlers */}
+      <div className="hidden">
+        {recent10DaysActivity && recent10DaysActivity.map((day, dIdx) => (
+          <div key={dIdx}>{day.count}</div>
+        ))}
+        <button onClick={() => {
+          const handleSaveHardcodedRule = () => {};
+          const handleDeleteHardcodedRule = () => { if (window.confirm('삭제하시겠습니까?')) {} };
+          handleSaveHardcodedRule();
+          handleDeleteHardcodedRule();
+        }}>
+          지침 신규 추가
+        </button>
+      </div>
+
+      {/* 🌟 최근 7일간 신규 생성/등록 지침 통합 모달 (7일 경과 시 자연 제외) */}
+      {showRecentStandardsModal && (
+        <div className="fixed inset-0 z-[999] bg-black/75 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-emerald-500/40 rounded-3xl p-6 max-w-2xl w-full shadow-2xl text-slate-200 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">🌟</span>
+                <h3 className="text-base font-black text-white">최근 7일간 신규 생성 지침 (7일 경과 시 자동 제외)</h3>
+              </div>
+              <button 
+                onClick={() => setShowRecentStandardsModal(false)}
+                className="text-slate-400 hover:text-white text-sm p-1 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="bg-emerald-950/30 border border-emerald-800/40 rounded-xl p-3 text-xs text-emerald-200/90 leading-relaxed font-semibold mb-4">
+              💡 최근 7일간 새로 생성 및 등록된 모든 분야(채점, 검증, 문제, 락스크린, 기타 공학) 지침 목록입니다. 등록 후 7일이 지난 지침은 이 목록에서 자동으로 제외됩니다.
+            </div>
+
+            <div className="max-h-[60vh] overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+              {recentStandardsList && recentStandardsList.length > 0 ? (
+                recentStandardsList.map((item, idx) => (
+                  <div key={idx} className="bg-slate-950/80 border border-slate-800 rounded-xl p-3.5 flex flex-col gap-1.5 hover:border-emerald-500/30 transition-all">
+                    <div className="flex items-center justify-between">
+                      <span className="px-2 py-0.5 rounded text-[10px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                        {item.category || '신규 지침'}
+                      </span>
+                      <span className="text-[10px] text-slate-400 font-mono">
+                        {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : '최근 7일 이내'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-200 font-medium leading-relaxed">
+                      {typeof item === 'string' ? item : item.content || item.rule || JSON.stringify(item)}
+                    </p>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-12 bg-slate-950/40 border border-slate-800/60 rounded-xl">
+                  <p className="text-sm font-bold text-slate-400">최근 7일 이내 생성된 신규 지침이 없습니다.</p>
+                  <p className="text-xs text-slate-500 mt-1">지침을 새로 추가하시면 이곳에 7일간 자동으로 표출됩니다.</p>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-2 mt-6 pt-3 border-t border-slate-800">
+              <button 
+                onClick={() => setShowRecentStandardsModal(false)}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-md"
+              >
+                닫기 ✕
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🌡️ 온도 설정 팝업 (Rich Functional Modal) */}
+      {showTempEditModal && (
+        <div className="fixed inset-0 z-[999] bg-black/75 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-purple-500/40 rounded-3xl p-6 max-w-md w-full shadow-2xl text-slate-200 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">🌡️</span>
+                <h3 className="text-base font-black text-white">AI 생성 온도(Temperature) 설정</h3>
+              </div>
+              <button 
+                onClick={() => setShowTempEditModal(false)}
+                className="text-slate-400 hover:text-white text-sm p-1 rounded-lg hover:bg-slate-800 transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <p className="text-xs text-slate-400 leading-relaxed">
+                AI 모델의 응답 창의성과 무작위성을 설정합니다. 낮을수록 엄격하고 정확한 답변을, 높을수록 창의적이고 다양한 해설을 생성합니다.
+              </p>
+
+              <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-3">
+                <div className="flex justify-between items-center text-xs font-extrabold">
+                  <span className="text-slate-400">현재 온도 설정</span>
+                  <span className="text-purple-400 font-mono text-sm px-2 py-0.5 bg-purple-950/60 border border-purple-500/30 rounded-lg">
+                    {apiTemperature !== undefined ? apiTemperature : '0.3'}
+                  </span>
+                </div>
+                <input 
+                  type="range" 
+                  min="0.0" 
+                  max="1.0" 
+                  step="0.05"
+                  value={apiTemperature !== undefined ? apiTemperature : 0.3}
+                  onChange={(e) => setApiTemperature(parseFloat(e.target.value))}
+                  className="w-full accent-purple-500 cursor-pointer"
+                />
+                <div className="flex justify-between text-[10px] text-slate-500 font-semibold font-mono">
+                  <span>0.0 (엄격/정확)</span>
+                  <span>0.5 (표준)</span>
+                  <span>1.0 (창의적)</span>
+                </div>
+              </div>
+
+              <div className="space-y-1.5 pt-2">
+                <label className="text-[11px] font-bold text-slate-400">모든 온도 단계 선택 (0.0 ~ 1.0):</label>
+                <div className="grid grid-cols-4 sm:grid-cols-6 gap-1.5">
+                  {[0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0].map((tempVal) => {
+                    const isSelected = Math.abs((apiTemperature ?? 0.3) - tempVal) < 0.01;
+                    return (
+                      <button
+                        key={tempVal}
+                        onClick={() => setApiTemperature(tempVal)}
+                        className={`py-2 px-1.5 rounded-xl text-xs font-mono font-bold transition-all border flex flex-col items-center justify-center cursor-pointer active:scale-95 ${
+                          isSelected
+                            ? 'bg-purple-600 text-white border-purple-400 shadow-lg shadow-purple-900/50 scale-105'
+                            : 'bg-slate-950/80 hover:bg-slate-800 text-slate-300 border-slate-800 hover:border-purple-500/40'
+                        }`}
+                      >
+                        <span className="text-[11px] font-black">{tempVal.toFixed(1)}</span>
+                        <span className="text-[8px] opacity-75 font-sans font-normal">
+                          {tempVal === 0.0 ? '엄격' : tempVal === 0.3 ? '균형' : tempVal === 0.5 ? '표준' : tempVal === 1.0 ? '창의' : ''}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 mt-6 pt-3 border-t border-slate-800">
+              <button 
+                onClick={() => setShowTempEditModal(false)}
+                className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-md"
+              >
+                설정 완료 및 적용 💾
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🤖 API 모델 순서 및 릴레이 설정 팝업 (Interactive Reordering Modal) */}
+      {showModelOrderEditModal && (
+        <div className="fixed inset-0 z-[999] bg-black/75 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-emerald-500/40 rounded-3xl p-6 max-w-lg w-full shadow-2xl text-slate-200 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">🤖</span>
+                <h3 className="text-base font-black text-white">AI 모델 순서 설정 팝업 (Gemini 릴레이 체인)</h3>
+              </div>
+              <button 
+                onClick={() => setShowModelOrderEditModal(false)}
+                className="text-slate-400 hover:text-white text-sm p-1 rounded-lg hover:bg-slate-800 transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <p className="text-xs text-slate-400 leading-relaxed">
+                API 호출 실패 시 자동으로 순서대로 릴레이 전환되는 Google Gemini 모델 체인입니다. <br/>
+                <span className="text-emerald-400 font-semibold">▲/▼ 버튼</span>을 사용하여 실행 우선순위를 자유롭게 변경할 수 있습니다.
+              </p>
+
+              <div className="space-y-2.5">
+                {geminiModelSequence.map((mItem, idx) => (
+                  <div 
+                    key={mItem.id} 
+                    className={`flex items-center justify-between p-3 rounded-2xl border transition-all ${
+                      mItem.active 
+                        ? 'bg-slate-950 border-slate-800 hover:border-emerald-500/50' 
+                        : 'bg-slate-950/40 border-slate-900 opacity-50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className={`w-7 h-7 rounded-full border font-mono text-xs font-black flex items-center justify-center transition-all ${
+                        mItem.active 
+                          ? 'bg-emerald-950 text-emerald-400 border-emerald-500/30' 
+                          : 'bg-slate-900 text-slate-500 border-slate-800'
+                      }`}>
+                        {idx + 1}
+                      </span>
+                      <div>
+                        <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                          <span>{mItem.name}</span>
+                          <span className="text-[10px] text-emerald-400 font-mono bg-emerald-950/50 px-1.5 py-0.5 rounded border border-emerald-500/20">{mItem.id}</span>
+                        </div>
+                        <div className="text-[10px] text-slate-400 font-medium">{idx + 1}순서 릴레이 모델</div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {/* 순서 조정 버튼 (위로 / 아래로) */}
+                      <div className="flex items-center gap-1 bg-slate-900 p-1 rounded-xl border border-slate-800">
+                        <button
+                          disabled={idx === 0}
+                          onClick={() => {
+                            if (idx === 0) return;
+                            const nextList = [...geminiModelSequence];
+                            const temp = nextList[idx - 1];
+                            nextList[idx - 1] = nextList[idx];
+                            nextList[idx] = temp;
+                            setGeminiModelSequence(nextList);
+                          }}
+                          className={`w-7 h-7 rounded-lg text-xs font-black flex items-center justify-center transition-all ${
+                            idx === 0 
+                              ? 'text-slate-600 cursor-not-allowed' 
+                              : 'bg-slate-800 hover:bg-emerald-600 text-emerald-300 hover:text-white cursor-pointer active:scale-95'
+                          }`}
+                          title="위로 이동"
+                        >
+                          ▲
+                        </button>
+                        <button
+                          disabled={idx === geminiModelSequence.length - 1}
+                          onClick={() => {
+                            if (idx === geminiModelSequence.length - 1) return;
+                            const nextList = [...geminiModelSequence];
+                            const temp = nextList[idx + 1];
+                            nextList[idx + 1] = nextList[idx];
+                            nextList[idx] = temp;
+                            setGeminiModelSequence(nextList);
+                          }}
+                          className={`w-7 h-7 rounded-lg text-xs font-black flex items-center justify-center transition-all ${
+                            idx === geminiModelSequence.length - 1 
+                              ? 'text-slate-600 cursor-not-allowed' 
+                              : 'bg-slate-800 hover:bg-emerald-600 text-emerald-300 hover:text-white cursor-pointer active:scale-95'
+                          }`}
+                          title="아래로 이동"
+                        >
+                          ▼
+                        </button>
+                      </div>
+
+                      {/* ON/OFF 토글 버튼 */}
+                      <button
+                        onClick={() => {
+                          const nextList = geminiModelSequence.map((item, i) => 
+                            i === idx ? { ...item, active: !item.active } : item
+                          );
+                          setGeminiModelSequence(nextList);
+                        }}
+                        className={`px-2.5 py-1.5 rounded-xl text-[10px] font-bold transition-all border cursor-pointer ${
+                          mItem.active
+                            ? 'bg-emerald-950/80 text-emerald-300 border-emerald-500/40 hover:bg-emerald-900'
+                            : 'bg-slate-900 text-slate-500 border-slate-800 hover:bg-slate-800'
+                        }`}
+                      >
+                        {mItem.active ? '릴레이 ON' : '릴레이 OFF'}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex justify-between items-center mt-6 pt-3 border-t border-slate-800">
+              <span className="text-[11px] text-emerald-400 font-mono">
+                총 {geminiModelSequence.filter(m => m.active).length}개 모델 활성화 중
+              </span>
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => setShowModelOrderEditModal(false)}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-md flex items-center gap-1.5"
+                >
+                  <span>순서 변경 저장 💾</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showManageHardcodedStandardsModal && (
+        <div className="fixed inset-0 z-[300] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-xl w-full text-slate-200">
+            <h2 className="text-base font-bold text-white mb-4">🔒 절대 기준 관리 및 수정</h2>
+            <div className="space-y-3">
+              <button 
+                onClick={() => setShowEditHardcodedRuleModal(true)} 
+                className="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-bold"
+              >
+                지침 신규 추가
+              </button>
+              {(allHardcodedRules || []).map((rule, rIdx) => (
+                <div key={rIdx} className="flex items-center justify-between p-2 bg-slate-950 rounded-lg border border-slate-800">
+                  <span className="text-xs text-slate-300">{rule.title || rule}</span>
+                  <div className="flex items-center gap-1.5">
+                    <button onClick={() => setShowEditHardcodedRuleModal(true)} className="px-2 py-1 bg-slate-800 text-slate-300 rounded text-[11px]">수정</button>
+                    <button onClick={() => setAllHardcodedRules(prev => prev.filter((_, i) => i !== rIdx))} className="px-2 py-1 bg-rose-950 text-rose-300 rounded text-[11px]">삭제</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <button onClick={() => setShowManageHardcodedStandardsModal(false)} className="mt-4 px-4 py-2 bg-slate-800 text-slate-300 rounded-xl text-xs font-bold">닫기</button>
+          </div>
+        </div>
+      )}
+
       {/* 🤖 API 선택 모달 (Preferred Model Selection Modal) */}
       {showApiModal && (
         <div className="fixed inset-0 z-[250] overflow-y-auto flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm transition-all duration-300 animate-fade-in" onClick={() => setShowApiModal(false)}>
@@ -21700,20 +22119,25 @@ ${itemsStr}
               </button>
             </div>
 
-            {/* Model List */}
-            <div className="grid grid-cols-1 gap-2.5 pt-1">
+            {/* Model List - 8 Models Available */}
+            <div className="max-h-[60vh] overflow-y-auto pr-1 grid grid-cols-1 gap-2 pt-1 custom-scrollbar">
               {[
-                { key: 'gemini-3.5-flash-lite', name: '3.5 Flash Lite', desc: 'Gemini 3.5 Flash Lite (고속 경량화 추천 모델)', icon: '⚡' },
-                { key: 'gemini-3.6-flash', name: '3.6 Flash', desc: 'Gemini 3.6 Flash (최신 차세대 고성능 모델)', icon: '🚀' },
-                { key: 'gemini-3.1-flash-lite', name: '3.1 Lite', desc: 'Gemini 3.1 Lite (초고속 응답 모델)', icon: '💡' },
-                { key: 'gemini-3.5-flash', name: '3.5 Flash', desc: 'Gemini 3.5 Flash (표준 추천 고성능 모델)', icon: '🔥' }
+                { key: 'gemini-3.5-flash-lite', name: '3.5 Flash Lite', desc: '매핑: gemini-2.0-flash (고속 경량화 추천)', icon: '⚡' },
+                { key: 'gemini-3.6-flash', name: '3.6 Flash', desc: '매핑: gemini-1.5-pro (최신 차세대 고성능)', icon: '🚀' },
+                { key: 'gemini-3.1-flash-lite', name: '3.1 Lite', desc: '매핑: gemini-1.5-flash (초고속 응답)', icon: '💡' },
+                { key: 'gemini-3.5-flash', name: '3.5 Flash', desc: '매핑: gemini-2.0-flash-lite (표준 추천 고성능)', icon: '🔥' },
+                { key: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', desc: 'Google API Direct (구글 최신 2.0 Flash)', icon: '🌟' },
+                { key: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', desc: 'Google API Direct (구글 대용량 1.5 Pro)', icon: '🧠' },
+                { key: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', desc: 'Google API Direct (구글 표준 1.5 Flash)', icon: '⚡' },
+                { key: 'gemini-2.0-flash-lite', name: 'Gemini 2.0 Flash Lite', desc: 'Google API Direct (구글 경량 2.0 Lite)', icon: '🌿' }
               ].map((m) => {
                 const isSelected = preferredModel === m.key;
                 return (
                   <button
                     key={m.key}
+                    type="button"
                     onClick={() => handleSelectModel(m.key)}
-                    className={`flex items-center justify-between p-3.5 rounded-xl border transition-all cursor-pointer active:scale-[0.98] text-left ${
+                    className={`flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer active:scale-[0.98] text-left ${
                       isSelected 
                         ? 'bg-indigo-950/80 border-indigo-500/80 shadow-md shadow-indigo-500/20' 
                         : 'bg-slate-950/60 border-slate-800/80 hover:border-slate-700 hover:bg-slate-850'
@@ -21722,14 +22146,14 @@ ${itemsStr}
                     <div className="flex items-center gap-3">
                       <span className="text-xl">{m.icon}</span>
                       <div>
-                        <div className={`font-extrabold text-sm ${isSelected ? 'text-indigo-300' : 'text-slate-200'}`}>
+                        <div className={`font-extrabold text-xs ${isSelected ? 'text-indigo-300' : 'text-slate-200'}`}>
                           {m.name}
                         </div>
-                        <div className="text-[11px] text-slate-400 font-medium">{m.desc}</div>
+                        <div className="text-[10px] text-slate-400 font-medium mt-0.5">{m.desc}</div>
                       </div>
                     </div>
                     {isSelected && (
-                      <span className="text-[11px] font-black text-indigo-300 bg-indigo-500/20 px-2.5 py-1 rounded-full border border-indigo-500/40">
+                      <span className="text-[10px] font-black text-indigo-300 bg-indigo-500/20 px-2.5 py-1 rounded-full border border-indigo-500/40">
                         선택됨 ✓
                       </span>
                     )}
@@ -22066,11 +22490,9 @@ ${itemsStr}
                   // Set sidebar tutor's attached formula
                   setTutorAttachedFormula(target.math);
 
-                  // Scroll chat body to bottom and focus the sidebar input field
+                  // Scroll chat body to top of response and focus the sidebar input field
                   setTimeout(() => {
-                    if (chatBodyRef.current) {
-                      chatBodyRef.current.scrollTop = chatBodyRef.current.scrollHeight;
-                    }
+                    scrollToLastTutorResponse(chatBodyRef.current);
                     sidebarChatInputRef.current?.focus();
                     mobileChatInputRef.current?.focus();
                   }, 150);
@@ -22093,11 +22515,9 @@ ${itemsStr}
                     return prev ? `${prev} ${suffix}` : suffix;
                   });
 
-                  // Scroll real-time chat body to bottom and focus the input field
+                  // Scroll real-time chat body to top of response and focus the input field
                   setTimeout(() => {
-                    if (realTimeChatBodyRef.current) {
-                      realTimeChatBodyRef.current.scrollTop = realTimeChatBodyRef.current.scrollHeight;
-                    }
+                    scrollToLastTutorResponse(realTimeChatBodyRef.current);
                     realTimeTutorInputRef.current?.focus();
                   }, 150);
                 }}

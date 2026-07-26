@@ -404,7 +404,8 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
     const nextLine = rawLinesBeforeMath[i + 1] || '';
     if (/^\s*(?:2\.|2\)|②)\s+/.test(nextLine.trim())) {
       const trimmed = line.trim();
-      if (trimmed && !markerCheckForPrefix.test(trimmed) && !trimmed.startsWith('#') && !trimmed.startsWith('•')) {
+      const isHeaderKey = /(?:메커니즘|절차|가정|원리|기호|참조|Assumptions|Procedure|Where|여기서)/i.test(trimmed);
+      if (trimmed && !isHeaderKey && !markerCheckForPrefix.test(trimmed) && !trimmed.startsWith('#') && !trimmed.startsWith('•')) {
         processedLinesBeforeMath.push('1. ' + line);
         continue;
       }
@@ -561,8 +562,10 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
 
   const listMarkerCheckRegex = /^(?:[ \t]*(?:\*|-|•)[ \t]+|(\d+)[\.\)]\s+|([①-⑳])\s*)/;
 
-  // Render list items (Clean direct single-pass rendering to avoid line duplication)
-  const lines = deduplicatedLines;
+  // Apply All Dynamic Container Wrappers (Assumptions, Mechanisms, Symbol Definitions, References)
+  let preWrappedText = deduplicatedLines.join('\n');
+  preWrappedText = applyAllDynamicWrappers(preWrappedText);
+  const lines = preWrappedText.split('\n');
   const renderedLines = [];
   const listMarkerRegex = listMarkerCheckRegex;
 

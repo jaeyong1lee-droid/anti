@@ -4,7 +4,7 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { dbQuery } from '../database.js';
 import { put, get } from '@vercel/blob';
-import { saveSessionValue, globalPreferredModel, updatePreferredModel, callLLMWithFailover, startBackendProgressTimer, updateProgress } from '../services/aiService.js';
+import { saveSessionValue, globalPreferredModel, updatePreferredModel, callLLMWithFailover, startBackendProgressTimer, updateProgress, updateDynamicTemperatures, updateDynamicModelOrder } from '../services/aiService.js';
 import { updateLiveEngineeringStandards, standardsList, ENGINEERING_STANDARDS } from '../plugins/engineeringStandards.js';
 import { updateLiveOtherStandards, otherStandardsList, OTHER_STANDARDS } from '../plugins/otherStandards.js';
 import { updateLiveGradingStandards, gradingStandardsList } from '../plugins/gradingPlugin.js';
@@ -1099,6 +1099,27 @@ router.post('/options/:key', async (req, res) => {
        ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=CURRENT_TIMESTAMP`,
       [key, value]
     );
+
+    if (req.params.key === 'api_temperatures' && value) {
+      try {
+        const parsed = JSON.parse(value);
+        updateDynamicTemperatures(parsed);
+      } catch (e) {
+        console.warn(`Failed to parse api_temperatures value:`, value);
+      }
+    }
+
+    if (req.params.key === 'gemini_model_order' && value) {
+      try {
+        const parsed = JSON.parse(value);
+        if (Array.isArray(parsed)) {
+          updateDynamicModelOrder(parsed);
+        }
+      } catch (e) {
+        console.warn(`Failed to parse gemini_model_order value:`, value);
+      }
+    }
+
     res.json({ ok: true });
   } catch (err) {
     console.error(`POST /api/options/${req.params.key} error:`, err);
@@ -1695,6 +1716,14 @@ router.post('/chat', async (req, res) => {
     try {
       const systemInstruction = `당신은 대한민국 국가기술자격 기술사 시험(토질및기초기술사, 토목구조기술사, 토목시공기술사, 도로및공항기술사, 수자원개발기술사, 상하수도기술사, 터널기술사 등 토목공학 전 분야) 최고 권위의 기술사 시험 전문 튜터입니다.
 수험생의 질문이나 이미지 자료에 대해 학회 표준 및 기술사 시험 수준의 전문 용어를 사용하여 매우 깊이 있는 기술적/실무적 답변을 제시해 주십시오.
+
+[AI 튜터 필수 구조화 지침 (가능한 경우 최우선 포함)]:
+답변 시 주제 및 설명 내용에 적용이 가능한 경우, 반드시 다음 5가지 구조 요소를 적극 포함하여 작성하십시오.
+1. 동적감싸기 메커니즘 (:::mechanism ... :::): 작용 원리 및 메커니즘 설명 시 반드시 태그로 감쌀 것
+2. 아스키 그림 및 그래프 (ASCII Drawing & Diagram): 개념도, 구조 단면도, 응력/변형률/토압 그래프 등을 마크다운 코드블록 내 정교하고 입체적인 ASCII 그림/다이어그램으로 시각화할 것
+3. 동적감싸기 절차 (:::procedure ... :::): 시공/설계/시험/분석 순서 및 절차가 있을 경우 태그로 감쌀 것
+4. 공식 (KaTeX Formula): 수식 및 관계식이 존재할 경우 반드시 KaTeX 공식과 변수 정의를 포함할 것
+5. 동적감싸기 가정사항 (:::assumptions ... :::): 적용 전제 조건이 있을 경우 태그로 감쌀 것
 
 ${ENGINEERING_STANDARDS}
 ${OTHER_STANDARDS}

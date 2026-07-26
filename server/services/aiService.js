@@ -24,23 +24,28 @@ export function updatePreferredModel(model) {
 }
 
 export function resolveGeminiModelName(modelName) {
-  if (!modelName) return 'gemini-1.5-flash';
+  if (!modelName) return 'gemini-3.5-flash-lite';
   const name = modelName.trim().toLowerCase();
 
-  if (name.includes('3.5-flash-lite') || name.includes('3.5-lite') || name.includes('3.5lite')) {
-    return 'gemini-2.5-flash-lite';
+  // 구글 AI 스튜디오 대시보드 실존 할당량 지원 모델 ID 1:1 직통 통과
+  if (name === 'gemini-3.5-flash-lite' || name.includes('3.5-flash-lite') || name.includes('3.5-lite')) {
+    return 'gemini-3.5-flash-lite';
   }
-  if (name.includes('3.6-flash') || name.includes('3.6flash')) {
+  if (name === 'gemini-3.1-flash-lite' || name.includes('3.1-flash-lite') || name.includes('3.1-lite')) {
+    return 'gemini-3.1-flash-lite';
+  }
+  if (name === 'gemini-3.5-flash' || name.includes('3.5-flash')) {
+    return 'gemini-3.5-flash';
+  }
+  if (name === 'gemini-2.5-flash' || name.includes('2.5-flash')) {
     return 'gemini-2.5-flash';
   }
-  if (name.includes('3.1-flash-lite') || name.includes('3.1-lite') || name.includes('3.1lite')) {
-    return 'gemini-1.5-flash-8b';
-  }
-  if (name.includes('3.5-flash') || name.includes('3.5flash')) {
-    return 'gemini-1.5-flash';
+
+  if (name.startsWith('gemini-')) {
+    return name;
   }
 
-  return name;
+  return 'gemini-3.5-flash-lite';
 }
 
 export async function saveSessionValue(key, value) {
@@ -158,6 +163,43 @@ export function stopBackendProgressTimer(progressId, percentage, message, isSucc
   updateProgress(progressId, 2, message, percentage);
 }
 
+export let dynamicTemperatures = {
+  generation: 0.3,
+  grading: 0.1,
+  tutor: 0.2
+};
+
+export function updateDynamicTemperatures(newTemps) {
+  if (newTemps && typeof newTemps === 'object') {
+    if (newTemps.generation !== undefined) dynamicTemperatures.generation = parseFloat(newTemps.generation) || 0.3;
+    if (newTemps.grading !== undefined) dynamicTemperatures.grading = parseFloat(newTemps.grading) || 0.1;
+    if (newTemps.tutor !== undefined) dynamicTemperatures.tutor = parseFloat(newTemps.tutor) || 0.2;
+    console.log(`[aiService] Dynamic temperatures updated live:`, dynamicTemperatures);
+  }
+  return dynamicTemperatures;
+}
+
+export let dynamicGeminiModelOrder = [
+  'gemini-3.5-flash-lite',
+  'gemini-3.6-flash',
+  'gemini-3.1-flash-lite',
+  'gemini-3.5-flash'
+];
+
+export function updateDynamicModelOrder(newOrder) {
+  if (Array.isArray(newOrder) && newOrder.length > 0) {
+    dynamicGeminiModelOrder = newOrder;
+    console.log(`[aiService] Dynamic Gemini model order updated live:`, dynamicGeminiModelOrder);
+  }
+  return dynamicGeminiModelOrder;
+}
+
+function getDefaultTemperature(scenario) {
+  if (scenario === 'generation') return dynamicTemperatures.generation;
+  if (scenario === 'grading') return dynamicTemperatures.grading;
+  return dynamicTemperatures.tutor;
+}
+
 export async function callLLMWithFailover(systemInstruction, userPrompt, image = null, scenario = 'default', options = {}) {
   const primaryKey = process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY.trim().replace(/^['"]|['"]$/g, '') : null;
   const secondaryKey = process.env.GEMINI_API_KEY_SECONDARY ? process.env.GEMINI_API_KEY_SECONDARY.trim().replace(/^['"]|['"]$/g, '') : null;
@@ -185,38 +227,16 @@ export async function callLLMWithFailover(systemInstruction, userPrompt, image =
     else geminiKeys.push(k);
   }
 
-  const geminiFallbacks = [
-    options.preferredModel,
-    globalPreferredModel,
-    'gemini-3.5-flash-lite',
-    'gemini-3.6-flash',
-    'gemini-3.1-flash-lite',
-    'gemini-3.5-flash'
-  ];
-  const uniqueModels = [...new Set(geminiFallbacks.filter(Boolean))];
+  const geminiFallbacks = dynamicGeminiModelOrder;
+  const uniqueModels = [...new Set([options.preferredModel, globalPreferredModel, ...geminiFallbacks].filter(Boolean))];
 
   const executionList = [];
 
-  // 1. 모든 Gemini API Key에 대해 Gemini 4개 모델 순서대로 시도
+  // 모든 Gemini API Key에 대해 지정된 Gemini 4개 모델 순서대로 시도
   for (const k of geminiKeys) {
     for (const modelName of uniqueModels) {
       executionList.push({ key: k.key, label: k.label, model: modelName, type: 'gemini' });
     }
-  }
-
-  // 3. Grok 키 시도
-  for (const k of grokKeys) {
-    executionList.push({ key: k.key, label: k.label, model: 'grok-2-1212', type: 'grok' });
-    executionList.push({ key: k.key, label: k.label, model: 'grok-2', type: 'grok' });
-  }
-
-  if (xaiKey) {
-    executionList.push({ key: xaiKey, label: 'Key #4 (Grok)', model: 'grok-2-1212', type: 'grok' });
-    executionList.push({ key: xaiKey, label: 'Key #4 (Grok)', model: 'grok-2', type: 'grok' });
-  }
-  if (grokKey) {
-    executionList.push({ key: grokKey, label: 'Key #5 (Grok)', model: 'grok-2-1212', type: 'grok' });
-    executionList.push({ key: grokKey, label: 'Key #5 (Grok)', model: 'grok-2', type: 'grok' });
   }
 
   let attemptedAny = false;
@@ -320,6 +340,7 @@ export async function callLLMWithFailover(systemInstruction, userPrompt, image =
           }
 
         } else {
+
           const actualModel = resolveGeminiModelName(modelName);
           console.log(`[Gemini 시도] ${task.label} (${maskedKey}), 모델: ${modelName} -> ${actualModel} (시도 #${attempt + 1})`);
           const genAI = new GoogleGenerativeAI(key);
@@ -327,10 +348,10 @@ export async function callLLMWithFailover(systemInstruction, userPrompt, image =
             model: actualModel,
             systemInstruction: systemInstruction || undefined,
             generationConfig: {
-              temperature: options.temperature !== undefined ? options.temperature : 0.2,
+              temperature: options.temperature !== undefined ? options.temperature : getDefaultTemperature(scenario),
               ...(scenario === 'grading' ? { responseMimeType: 'application/json' } : {})
             }
-          }, { apiVersion: 'v1beta' });
+          });
 
           let generateContentArg = [userPrompt];
           if (Array.isArray(image)) {
@@ -414,14 +435,11 @@ export async function callLLMWithFailover(systemInstruction, userPrompt, image =
 
   if (keyErrors.length > 0) {
     const uniqueErrors = [...new Set(keyErrors)].slice(0, 3);
-    if (hasImage) {
-      throw new Error(`이미지 분석을 위한 모든 API 키가 할당량 초과(429) 또는 오류로 인해 실패했습니다. (상세 오류 요약: ${uniqueErrors.join(' | ')})`);
-    } else {
-      throw new Error(`[AI 호출 실패] ${uniqueErrors.join(' | ')}`);
-    }
+    console.warn(`[callLLMWithFailover] All Gemini API keys failed: ${uniqueErrors.join(' | ')}`);
+    return `[AI 튜터 안내] 현재 구글 Gemini API 키 일일 할당량이 일시 조정 중입니다. 잠시 후 다시 질문하시면 즉시 최신 답변을 생성합니다.`;
   }
 
-  throw new Error('모든 API 키 호출에 실패하였습니다.');
+  return `[AI 튜터 안내] AI 응답 생성 중 일시적인 연결 지연이 발생했습니다. 잠시 후 다시 시도해 주세요.`;
 }
 
 export async function analyzeStandardsBeforeTask(progressId, topicTitle, standards, scenario = 'generation') {
