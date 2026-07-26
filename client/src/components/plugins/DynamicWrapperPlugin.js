@@ -186,7 +186,7 @@ export function wrapMechanismProcedureAssumptionsHtml(text) {
         : content;
 
       itemBoxes.push(
-        `<div class="flex items-start gap-3 p-3 my-1.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-indigo-500/40 shadow-sm text-left select-text flowchart-text-force"><span class="w-6 h-6 rounded-md bg-indigo-600/30 text-indigo-300 border border-indigo-500/50 flex items-center justify-center font-bold text-xs font-mono shrink-0 select-none mt-0.5">${stepNum}</span><div class="flex-1 text-[13px] sm:text-[14px] text-slate-100 leading-relaxed break-words min-w-0 flowchart-text-force">${highlightedContent}</div></div>`
+        `<div class="flex items-start gap-3 p-3 my-1.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-indigo-500/40 shadow-sm text-left select-text flowchart-text-force"><span class="w-6 h-6 rounded-md bg-indigo-600/30 text-indigo-300 border border-indigo-500/50 flex items-center justify-center font-bold text-xs font-mono shrink-0 select-none mt-0.5">${stepNum}</span><div class="flex-1 text-slate-100 leading-relaxed break-words min-w-0 flowchart-text-force">${highlightedContent}</div></div>`
       );
     });
 
@@ -226,7 +226,7 @@ export function wrapMechanismProcedureAssumptionsHtml(text) {
           : content;
 
         itemBoxes.push(
-          `<div class="flex items-start gap-3 p-3 my-1.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-indigo-500/40 shadow-sm text-left select-text flowchart-text-force"><span class="w-6 h-6 rounded-md bg-indigo-600/30 text-indigo-300 border border-indigo-500/50 flex items-center justify-center font-bold text-xs font-mono shrink-0 select-none mt-0.5">${stepNum}</span><div class="flex-1 text-[13px] sm:text-[14px] text-slate-100 leading-relaxed break-words min-w-0 flowchart-text-force">${highlightedContent}</div></div>`
+          `<div class="flex items-start gap-3 p-3 my-1.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-indigo-500/40 shadow-sm text-left select-text flowchart-text-force"><span class="w-6 h-6 rounded-md bg-indigo-600/30 text-indigo-300 border border-indigo-500/50 flex items-center justify-center font-bold text-xs font-mono shrink-0 select-none mt-0.5">${stepNum}</span><div class="flex-1 text-slate-100 leading-relaxed break-words min-w-0 flowchart-text-force">${highlightedContent}</div></div>`
         );
       }
     });
