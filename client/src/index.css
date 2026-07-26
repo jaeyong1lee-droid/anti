@@ -1252,12 +1252,12 @@ pre {
 
 /* 동적감싸기/흐름도 글자 크기 외부 본문보다 1pt 소형화 */
 .flowchart-text-force {
-  font-size: 12.5px !important;
+  font-size: 14px !important;
 }
 
 @media (max-width: 768px) {
   .flowchart-text-force {
-    font-size: 11px !important;
+    font-size: 12px !important;
   }
 }
 
