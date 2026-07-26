@@ -192,9 +192,12 @@ export function wrapMechanismProcedureAssumptionsHtml(text) {
 
     if (itemBoxes.length === 0) return fullMatch;
 
-    let titleClean = headerTitle.replace(/<[^>]+>/g, '').replace(/^[#\*\-•\[\]:s]+/, '').replace(/[#\*\-•\[\]:s]+$/, '').trim();
+    let titleClean = headerTitle.replace(/<[^>]+>/g, '').replace(/[\(\`']*(?:mechanism|procedure|assumptions|pros_cons)[\)\`']*/gi, '').replace(/^[#\*\-•\[\]\s:]+/, '').replace(/[#\*\-•\[\]\s:]+$/, '').trim();
 
-    return `<div class="my-2 text-left select-text flowchart-text-force"><div class="text-slate-100 font-bold mb-1.5">${titleClean}</div><div class="space-y-2">${itemBoxes.join('')}</div></div>`;
+    // If titleClean is empty or just English tag words, do not render title div
+    const hasMeaningfulTitle = titleClean && titleClean.length > 1 && !/^(?:mechanism|procedure|assumptions|pros_cons)$/i.test(titleClean);
+
+    return `<div class="my-2 text-left select-text flowchart-text-force">${hasMeaningfulTitle ? `<div class="text-slate-100 font-bold mb-1.5">${titleClean}</div>` : ''}<div class="space-y-2">${itemBoxes.join('')}</div></div>`;
   });
 
   // Pattern B: Standalone 2 or more consecutive numbered items without explicit header
