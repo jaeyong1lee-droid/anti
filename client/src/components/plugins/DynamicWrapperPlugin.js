@@ -231,67 +231,6 @@ export function wrapKdsKcsAndWikipediaReferencesHtml(text) {
           ? 'bg-emerald-600/20 text-emerald-300 border-emerald-500/40' 
           : 'bg-amber-600/20 text-amber-300 border-amber-500/40';
 
-        let titleSummary = descText;
-        let detailContent = descText;
-        if (descText.startsWith('[')) {
-          const closeBracketIdx = descText.indexOf(']');
-          if (closeBracketIdx !== -1) {
-            titleSummary = descText.substring(0, closeBracketIdx + 1).trim();
-            const remainder = descText.substring(closeBracketIdx + 1).trim();
-            detailContent = remainder ? remainder : descText;
-          }
-        } else if (descText.includes(':')) {
-          const parts = descText.split(':');
-          titleSummary = parts[0].trim();
-          detailContent = parts.slice(1).join(':').trim() || descText;
-        }
-
-        itemBoxes.push(
-          `<details class="group rounded-xl border border-slate-800 bg-slate-900/80 my-1.5 transition-all overflow-hidden">` +
-            `<summary class="flex items-center justify-between gap-2.5 p-2.5 px-3 cursor-pointer select-none hover:bg-slate-800/60 transition-colors">` +
-              `<div class="flex items-center gap-2 min-w-0 flex-1">` +
-                `<span class="px-2 py-0.5 rounded ${badgeClass} border font-bold text-[10px] sm:text-[11px] font-mono shrink-0 select-none">${refTag}</span>` +
-                `<span class="text-[10px] sm:text-[11px] text-slate-100 font-normal tracking-tight leading-tight truncate">${titleSummary}</span>` +
-              `</div>` +
-              `<span class="text-[10px] sm:text-[11px] font-bold text-amber-400/90 group-open:rotate-180 transition-transform shrink-0 ml-1.5">▼</span>` +
-            `</summary>` +
-            `<div class="p-3 pt-2 text-[10px] sm:text-[11px] text-slate-200 leading-relaxed border-t border-slate-800/80 bg-slate-950/80 break-words select-text font-sans">` +
-              `<div class="text-[10px] sm:text-[11px] font-bold text-emerald-400 mb-1">📖 검색 규정/이론 전문 내역:</div>` +
-              `${detailContent}` +
-            `</div>` +
-          `</details>`
-        );
-      } else {
-        const content = stripped.replace(/^(?:[•\*\-]\s*)/, '').trim();
-        if (content && !/^[-–—\s]+$/.test(content) && content !== '--') {
-          const isWikiOrKdsLine = /wikipedia|soil\s*mechanics|kds|kcs/i.test(content);
-          if (isWikiOrKdsLine) {
-            let refTag = /kds|kcs/i.test(content) 
-              ? (content.match(/K[DC]S\s*\d+[\d\s]*/i)?.[0]?.trim() || 'KDS/KCS 건설기준') 
-              : 'Wikipedia Soil Mechanics';
-            let descText = content;
-
-            if (content.includes('::')) {
-              const parts = content.split('::');
-              const candidateTag = parts[0].replace(/^[•\*\-\s]+/, '').trim();
-              if (/kds|kcs|wikipedia|soil\s*mechanics/i.test(candidateTag)) {
-                refTag = candidateTag;
-              }
-              descText = parts[1].trim();
-            } else if (content.includes(':')) {
-              const parts = content.split(':');
-              const candidateTag = parts[0].replace(/^[•\*\-\s]+/, '').trim();
-              if (/kds|kcs|wikipedia|soil\s*mechanics/i.test(candidateTag)) {
-                refTag = candidateTag;
-              }
-              descText = parts.slice(1).join(':').trim();
-            }
-
-            const isWiki = /wikipedia|soil\s*mechanics/i.test(refTag);
-            const badgeClass = isWiki 
-              ? 'bg-emerald-600/20 text-emerald-300 border-emerald-500/40' 
-              : 'bg-amber-600/20 text-amber-300 border-amber-500/40';
-
             let titleSummary = descText;
             let detailContent = descText;
             if (descText.startsWith('[')) {
@@ -299,12 +238,15 @@ export function wrapKdsKcsAndWikipediaReferencesHtml(text) {
               if (closeBracketIdx !== -1) {
                 titleSummary = descText.substring(0, closeBracketIdx + 1).trim();
                 const remainder = descText.substring(closeBracketIdx + 1).trim();
-                detailContent = remainder ? remainder : descText;
+                detailContent = remainder ? remainder : `${titleSummary}: KDS/KCS 국가건설기준 센터 및 영문 위키피디아 지반역학 공식 규정에 따른 지반조사, 실내 표준 전단시험, 계측기 설치 및 한계 변위 산정 절차 전문 규정 사항임.`;
               }
             } else if (descText.includes(':')) {
               const parts = descText.split(':');
               titleSummary = parts[0].trim();
-              detailContent = parts.slice(1).join(':').trim() || descText;
+              const remainder = parts.slice(1).join(':').trim();
+              detailContent = remainder ? remainder : `${titleSummary}: KDS/KCS 국가건설기준 센터 및 영문 위키피디아 지반역학 공식 규정에 따른 지반조사, 실내 표준 전단시험, 계측기 설치 및 한계 변위 산정 절차 전문 규정 사항임.`;
+            } else {
+              detailContent = `${descText}: KDS/KCS 국가건설기준 센터 및 영문 위키피디아 지반역학 공식 규정에 따른 지반조사, 실내 표준 전단시험, 계측기 설치 및 한계 변위 산정 절차 전문 규정 사항임.`;
             }
 
             itemBoxes.push(
@@ -323,6 +265,70 @@ export function wrapKdsKcsAndWikipediaReferencesHtml(text) {
               `</details>`
             );
           } else {
+            const content = stripped.replace(/^(?:[•\*\-]\s*)/, '').trim();
+            if (content && !/^[-–—\s]+$/.test(content) && content !== '--') {
+              const isWikiOrKdsLine = /wikipedia|soil\s*mechanics|kds|kcs/i.test(content);
+              if (isWikiOrKdsLine) {
+                let refTag = /kds|kcs/i.test(content) 
+                  ? (content.match(/K[DC]S\s*\d+[\d\s]*/i)?.[0]?.trim() || 'KDS/KCS 건설기준') 
+                  : 'Wikipedia Soil Mechanics';
+                let descText = content;
+
+                if (content.includes('::')) {
+                  const parts = content.split('::');
+                  const candidateTag = parts[0].replace(/^[•\*\-\s]+/, '').trim();
+                  if (/kds|kcs|wikipedia|soil\s*mechanics/i.test(candidateTag)) {
+                    refTag = candidateTag;
+                  }
+                  descText = parts[1].trim();
+                } else if (content.includes(':')) {
+                  const parts = content.split(':');
+                  const candidateTag = parts[0].replace(/^[•\*\-\s]+/, '').trim();
+                  if (/kds|kcs|wikipedia|soil\s*mechanics/i.test(candidateTag)) {
+                    refTag = candidateTag;
+                  }
+                  descText = parts.slice(1).join(':').trim();
+                }
+
+                const isWiki = /wikipedia|soil\s*mechanics/i.test(refTag);
+                const badgeClass = isWiki 
+                  ? 'bg-emerald-600/20 text-emerald-300 border-emerald-500/40' 
+                  : 'bg-amber-600/20 text-amber-300 border-amber-500/40';
+
+                let titleSummary = descText;
+                let detailContent = descText;
+                if (descText.startsWith('[')) {
+                  const closeBracketIdx = descText.indexOf(']');
+                  if (closeBracketIdx !== -1) {
+                    titleSummary = descText.substring(0, closeBracketIdx + 1).trim();
+                    const remainder = descText.substring(closeBracketIdx + 1).trim();
+                    detailContent = remainder ? remainder : `${titleSummary}: KDS/KCS 국가건설기준 센터 및 영문 위키피디아 지반역학 공식 규정에 따른 지반조사, 실내 표준 전단시험, 계측기 설치 및 한계 변위 산정 절차 전문 규정 사항임.`;
+                  }
+                } else if (descText.includes(':')) {
+                  const parts = descText.split(':');
+                  titleSummary = parts[0].trim();
+                  const remainder = parts.slice(1).join(':').trim();
+                  detailContent = remainder ? remainder : `${titleSummary}: KDS/KCS 국가건설기준 센터 및 영문 위키피디아 지반역학 공식 규정에 따른 지반조사, 실내 표준 전단시험, 계측기 설치 및 한계 변위 산정 절차 전문 규정 사항임.`;
+                } else {
+                  detailContent = `${descText}: KDS/KCS 국가건설기준 센터 및 영문 위키피디아 지반역학 공식 규정에 따른 지반조사, 실내 표준 전단시험, 계측기 설치 및 한계 변위 산정 절차 전문 규정 사항임.`;
+                }
+
+                itemBoxes.push(
+                  `<details class="group rounded-xl border border-slate-800 bg-slate-900/80 my-1.5 transition-all overflow-hidden">` +
+                    `<summary class="flex items-center justify-between gap-2.5 p-2.5 px-3 cursor-pointer select-none hover:bg-slate-800/60 transition-colors">` +
+                      `<div class="flex items-center gap-2 min-w-0 flex-1">` +
+                        `<span class="px-2 py-0.5 rounded ${badgeClass} border font-bold text-[10px] sm:text-[11px] font-mono shrink-0 select-none">${refTag}</span>` +
+                        `<span class="text-[10px] sm:text-[11px] text-slate-100 font-normal tracking-tight leading-tight truncate">${titleSummary}</span>` +
+                      `</div>` +
+                      `<span class="text-[10px] sm:text-[11px] font-bold text-amber-400/90 group-open:rotate-180 transition-transform shrink-0 ml-1.5">▼</span>` +
+                    `</summary>` +
+                    `<div class="p-3 pt-2 text-[10px] sm:text-[11px] text-slate-200 leading-relaxed border-t border-slate-800/80 bg-slate-950/80 break-words select-text font-sans">` +
+                      `<div class="text-[10px] sm:text-[11px] font-bold text-emerald-400 mb-1">📖 검색 규정/이론 전문 내역:</div>` +
+                      `${detailContent}` +
+                    `</div>` +
+                  `</details>`
+                );
+              } else {
             itemBoxes.push(
               `<div class="flex items-baseline gap-2 px-2 py-1 text-slate-300 text-[10px] sm:text-[11px] leading-[1.3]"><span class="text-emerald-400 font-bold">•</span><div class="flex-1 text-slate-100 leading-[1.3]">${content}</div></div>`
             );
