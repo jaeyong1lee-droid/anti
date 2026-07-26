@@ -431,15 +431,14 @@ export async function callLLMWithFailover(systemInstruction, userPrompt, image =
 }
 
 export async function analyzeStandardsBeforeTask(progressId, topicTitle, standards, scenario = 'generation') {
-  try {
-    const primaryKey = process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY.trim().replace(/^['"]|['"]$/g, '') : null;
-    if (!primaryKey) {
-      if (progressId) updateProgress(progressId, 0, '0단계: 사전 절대 지침 분석 완료!', 10);
-      return '';
-    }
+  if (!standards || typeof standards !== 'string' || standards.trim().length === 0) {
+    if (progressId) updateProgress(progressId, 0, '0단계: 사전 절대 지침 분석 완료!', 10);
+    return '';
+  }
 
+  try {
     console.log(`[analyzeStandardsBeforeTask] Starting analysis for topic "${topicTitle}" (scenario: ${scenario})`);
-    
+
     let scenarioGuideline = '';
     if (scenario === 'generation') {
       scenarioGuideline = '당신은 기술사 시험 출제위원입니다. 흙막이, 사질토, 점성토 등 토질역학 표준 정의를 꼬아 수치를 엉뚱하게 문제에 강제 출제하여 수정을 겪게 했던 사례가 있었습니다. 이번 출제 시 이러한 오류를 피하기 위해, 제공된 출제지침들을 정독하여 특히 어떤 항목들을 절대 주의해야 하는지 3~4줄로 핵심만 분석하십시오.';
@@ -465,30 +464,24 @@ ${scenarioGuideline}
 - 부가적인 서론("지침을 분석한 결과는 다음과 같습니다" 등)이나 결론은 완벽하게 배제하고 알맹이 주의사항 텍스트만 출력하십시오.
 `;
 
-    updateProgress(progressId, 0, '0단계: 사전 절대 지침 준수 분석 중...', 5);
-    const genAI = new GoogleGenerativeAI(primaryKey);
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-3.1-flash-lite',
-      systemInstruction: systemInstruction,
-      generationConfig: { temperature: 0.1 }
-    }, { apiVersion: 'v1beta' });
+    if (progressId) updateProgress(progressId, 0, '0단계: 사전 절대 지침 준수 분석 중...', 5);
 
     const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('API response timeout (3.5s limit)')), 3500)
+      setTimeout(() => reject(new Error('API response timeout (6s limit)')), 6000)
     );
 
-    const result = await Promise.race([
-      model.generateContent(userPrompt),
+    const resultText = await Promise.race([
+      callLLMWithFailover(systemInstruction, userPrompt, null, 'standards_analysis'),
       timeoutPromise
     ]);
 
-    const text = result.response.text().trim();
+    const text = (resultText || '').trim();
     console.log(`[analyzeStandardsBeforeTask] Success! Analysis:\n${text}`);
-    updateProgress(progressId, 0, '0단계: 사전 절대 지침 분석 완료!', 10);
+    if (progressId) updateProgress(progressId, 0, '0단계: 사전 절대 지침 분석 완료!', 10);
     return text;
   } catch (err) {
-    console.warn('[analyzeStandardsBeforeTask] Warning: standards analysis failed or timed out:', err.message);
-    if (progressId) updateProgress(progressId, 0, '0단계: 사전 지침 분석 완료 (속도 최적화)', 10);
+    console.warn('[analyzeStandardsBeforeTask] Warning: standards analysis failed:', err.message);
+    if (progressId) updateProgress(progressId, 0, '0단계: 사전 절대 지침 분석 완료!', 10);
     return '';
   }
 }
