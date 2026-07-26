@@ -267,7 +267,11 @@ export function wrapKdsKcsAndWikipediaReferencesHtml(text) {
 
           let titleSummary = descText;
           let detailContent = descText;
-          if (descText.startsWith('[')) {
+          const isNoneText = /해당\s*내역\s*없음|검색\s*내역\s*없음|내역\s*없음|^없음$/i.test(descText);
+
+          if (isNoneText) {
+            detailContent = '<span class="text-slate-400 font-normal italic">해당 검색 규정/문헌 내역이 없습니다.</span>';
+          } else if (descText.startsWith('[')) {
             const closeBracketIdx = descText.indexOf(']');
             if (closeBracketIdx !== -1) {
               titleSummary = descText.substring(0, closeBracketIdx + 1).trim();
