@@ -58,25 +58,22 @@ export async function saveSessionValue(key, value) {
 }
 
 export function normalizeGeminiModel(modelName) {
-  if (!modelName || typeof modelName !== 'string') return 'gemini-1.5-flash';
+  if (!modelName || typeof modelName !== 'string') return 'gemini-2.0-flash-lite';
   const name = modelName.trim().toLowerCase();
 
   const validModels = [
+    'gemini-2.0-flash-lite',
+    'gemini-2.0-flash-lite-preview-02-05',
+    'gemini-2.0-flash',
     'gemini-1.5-flash',
-    'gemini-1.5-flash-8b',
-    'gemini-1.5-pro',
-    'gemini-2.0-flash-exp'
+    'gemini-1.5-pro'
   ];
   if (validModels.includes(name)) return name;
 
-  if (name.includes('lite') || name.includes('3.1') || name.includes('3.5-flash-lite') || name.includes('8b')) {
-    return 'gemini-1.5-flash-8b';
+  if (name.includes('lite') || name.includes('3.1') || name.includes('3.5-flash-lite')) {
+    return 'gemini-2.0-flash-lite';
   }
-  if (name.includes('pro')) {
-    return 'gemini-1.5-pro';
-  }
-
-  return 'gemini-1.5-flash';
+  return 'gemini-2.0-flash';
 }
 
 export function updateProgress(progressId, step, message, percentage = null) {
@@ -89,8 +86,6 @@ export function updateProgress(progressId, step, message, percentage = null) {
     timestamp: Date.now()
   });
 }
-
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export function reportLlmProgress(options, scenario, modelName) {
   if (options && options.progressId) {
@@ -182,9 +177,9 @@ export async function callLLMWithFailover(systemInstruction, userPrompt, image =
   const executionList = [];
 
   const keys = [];
-  if (primaryKey) keys.push({ key: primaryKey, label: 'Key #1' });
-  if (secondaryKey) keys.push({ key: secondaryKey, label: 'Key #2' });
-  if (tertiaryKey) keys.push({ key: tertiaryKey, label: 'Key #3' });
+  if (primaryKey && !primaryKey.startsWith('gsk_')) keys.push({ key: primaryKey, label: 'Key #1' });
+  if (secondaryKey && !secondaryKey.startsWith('gsk_') && secondaryKey !== primaryKey) keys.push({ key: secondaryKey, label: 'Key #2' });
+  if (tertiaryKey && !tertiaryKey.startsWith('gsk_') && tertiaryKey !== primaryKey && tertiaryKey !== secondaryKey) keys.push({ key: tertiaryKey, label: 'Key #3' });
 
   const isSourceSearch = scenario === 'source' || scenario === 'source-search' || options.isSourceSearch || (options.preferredModel && options.preferredModel.includes('3.1'));
 

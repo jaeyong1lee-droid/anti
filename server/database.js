@@ -70,9 +70,9 @@ if (isPostgres) {
       port: parsed.port,
       database: parsed.database,
       ssl: parsed.sslmode === 'disable' ? false : { rejectUnauthorized: false },
-      max: 20, // Neon serverless connection limit protection
-      idleTimeoutMillis: 30000, // Close idle connections after 30 seconds
-      connectionTimeoutMillis: 30000, // Extend timeout to 30 seconds for Neon wake-up spin
+      max: isVercel ? 5 : 20, // Neon serverless connection limit protection
+      idleTimeoutMillis: isVercel ? 5000 : 30000,
+      connectionTimeoutMillis: isVercel ? 5000 : 30000,
     });
   } else {
     // Fallback: use connection string directly (with sanitization)
@@ -80,9 +80,9 @@ if (isPostgres) {
     pgPool = new pg.Pool({
       connectionString: cleanedString,
       ssl: { rejectUnauthorized: false },
-      max: 20,
-      idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 30000,
+      max: isVercel ? 5 : 20,
+      idleTimeoutMillis: isVercel ? 5000 : 30000,
+      connectionTimeoutMillis: isVercel ? 5000 : 30000,
     });
   }
 
@@ -227,8 +227,11 @@ export const dbQuery = {
   }
 };
 
+let isTablesInitialized = false;
+
 // Initialize schema
 export async function initDatabase() {
+  if (isTablesInitialized) return;
   try {
     if (isPostgres) {
       try {
@@ -236,7 +239,7 @@ export async function initDatabase() {
         // Execute a quick probe query with retry to ensure database is responsive
         await executeWithRetry(async () => {
           await pgPool.query('SELECT NOW()');
-        }, 5, 3000); // 5 retries, 3 seconds delay each to allow Neon compute to wake up
+        }, isVercel ? 2 : 5, isVercel ? 300 : 3000);
 
         
         // 1. topics table: stores studied topics and raw PDF data as a BYTEA
@@ -335,8 +338,10 @@ export async function initDatabase() {
         }
         console.error('PostgreSQL connection failed at startup. Keeping PostgreSQL active to retry and connect to the Neon cloud database: ', pgInitError.message);
       }
+      isTablesInitialized = true;
     } else {
       await initSQLiteTables();
+      isTablesInitialized = true;
     }
   } catch (error) {
     console.error('Failed to initialize database tables:', error);

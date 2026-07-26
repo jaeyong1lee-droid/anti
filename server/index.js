@@ -135,23 +135,14 @@ async function ensureDbInitialized() {
       try {
         console.log('[Startup] Initializing Database connection...');
         await initDatabase();
-        try {
-          await dbQuery.run(`
-            CREATE TABLE IF NOT EXISTS app_session (
-              key TEXT PRIMARY KEY,
-              value TEXT,
-              updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-          `);
-        } catch (e) {
-          console.warn('[Startup] ensureSessionTable warning:', e.message);
-        }
-        await initializeAllStandards();
-        await loadPreferredModel();
         isDbInitialized = true;
+        // Non-blocking background sync of standards and preferred model
+        initializeAllStandards().catch(e => console.warn('[Background Standards Sync Warning]:', e.message));
+        loadPreferredModel().catch(e => console.warn('[Background Model Load Warning]:', e.message));
       } catch (err) {
         console.error('[Startup DB Init Error]:', err.message);
         dbInitPromise = null;
+        throw err;
       }
     })();
   }
@@ -164,8 +155,8 @@ app.use(async (req, res, next) => {
     await ensureDbInitialized();
     next();
   } catch (err) {
-    console.warn('[Middleware DB Warning]:', err.message);
-    next();
+    console.error('[Middleware DB Critical Error]:', err.message);
+    res.status(500).json({ error: `데이터베이스 연결 오류: ${err.message}` });
   }
 });
 
