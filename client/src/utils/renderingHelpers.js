@@ -162,23 +162,25 @@ export const buildHtmlDocument = (text, isPopup = false) => {
         const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false);
         let node;
         const mathNodes = [];
-        const hasLaTeX = /\\\\(cdot|frac|left|right|gamma|sigma|tau|beta|alpha|delta|theta|phi|mu|omega|pi|sqrt|times|bar|hat|tilde|mathrm|text)\\b|([kK]_[{]?[h30]+[}]?)|([yγ]_[{]?[a-zA-Z0-9]+[}]?)/;
         while (node = walk.nextNode()) {
           const parent = node.parentNode;
           if (parent) {
             const tag = parent.tagName.toUpperCase();
-            if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'TEXTAREA' || tag === 'INPUT' || tag === 'CODE' || tag === 'PRE') {
+            if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'TEXTAREA' || tag === 'INPUT' || tag === 'CODE' || tag === 'PRE' || (parent.classList && (parent.classList.contains('katex') || parent.classList.contains('katex-html')))) {
               continue;
             }
           }
           const text = node.nodeValue;
           if (!text) continue;
-          if (hasLaTeX.test(text) && !text.includes('$')) {
+          if (/[a-zA-Z0-9_'\\]+_\{\s*[^{}\n]+\s*\}/.test(text) || /\\(Delta|sigma|gamma|cdot|tau|pi|theta|alpha|beta|phi|omega|mu|lambda|rho|nu|times|frac|dfrac|le|ge|ne|neq|sqrt|sum|int|partial|sin|cos|tan)\b/.test(text)) {
             mathNodes.push(node);
           }
         }
         mathNodes.forEach(node => {
-          node.nodeValue = '$$' + node.nodeValue + '$$';
+          node.nodeValue = node.nodeValue.replace(/₩/g, '\\')
+            .replace(/(?<!\$)(?:\\?[a-zA-Z0-9_']+_\{\s*[^{}\n]+\s*\}|\\(?:Delta|sigma|gamma|cdot|tau|pi|theta|alpha|beta|phi|omega|mu|lambda|rho|nu|times|frac|dfrac|le|ge|ne|neq|sqrt|sum|int|partial|sin|cos|tan)\b[a-zA-Z0-9_'\^\(\)\{\}\[\]\+\-\*\/= \t.,·]*)(?!\$)/g, function(m) {
+              return '$' + m.trim() + '$';
+            });
         });
       }
 
