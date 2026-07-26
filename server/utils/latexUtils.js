@@ -383,7 +383,23 @@ const healCorruptedKatexHtml = (text) => {
   cleaned = cleaned.replace(errorSpanRegex, (match, errContent) => {
     const titleMatch = match.match(/title=["']KaTeX error:\s*([\s\S]*?)["']/i);
     if (titleMatch && titleMatch[1]) {
-      return cleanAndSplitFormula(titleMatch[1]);
+      let msg = titleMatch[1];
+      // Strip KaTeX error prefixes and position trailers
+      msg = msg.replace(/^[\s\S]*?ParseError:\s*/i, '');
+      msg = msg.replace(/^[\s\S]*?Expected\s+['"][^'"]*['"](?:,\s*got\s+['"][^'"]*['"])?\s+at\s+position\s+\d+:\s*/i, '');
+      const colonIdx = msg.lastIndexOf(':');
+      if (colonIdx !== -1 && colonIdx < msg.length - 1) {
+        msg = msg.substring(colonIdx + 1);
+      }
+      msg = msg.trim();
+      // Filter out orphan closing braces like } or }_ or } =
+      if (/^\}[_a-zA-Z0-9]*$/.test(msg)) {
+        return '';
+      }
+      return cleanAndSplitFormula(msg);
+    }
+    if (/^\}[_a-zA-Z0-9]*$/.test(errContent.trim())) {
+      return '';
     }
     return errContent;
   });
