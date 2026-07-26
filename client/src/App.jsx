@@ -3393,6 +3393,33 @@ export default function App() {
   const [showManageHardcodedStandardsModal, setShowManageHardcodedStandardsModal] = useState(false);
   const [showEditHardcodedRuleModal, setShowEditHardcodedRuleModal] = useState(false);
   const [showTempEditModal, setShowTempEditModal] = useState(false);
+  const [activeTempTab, setActiveTempTab] = useState('gen'); // 'gen', 'grading', 'tutor'
+  const [genTemp, setGenTempState] = useState(() => {
+    const val = localStorage.getItem('anti_gen_temp');
+    return val !== null ? parseFloat(val) : 0.7;
+  });
+  const [gradingTemp, setGradingTempState] = useState(() => {
+    const val = localStorage.getItem('anti_grading_temp');
+    return val !== null ? parseFloat(val) : 0.2;
+  });
+  const [tutorTemp, setTutorTempState] = useState(() => {
+    const val = localStorage.getItem('anti_tutor_temp');
+    return val !== null ? parseFloat(val) : 0.7;
+  });
+
+  const setGenTemp = (val) => {
+    setGenTempState(val);
+    localStorage.setItem('anti_gen_temp', val.toString());
+  };
+  const setGradingTemp = (val) => {
+    setGradingTempState(val);
+    localStorage.setItem('anti_grading_temp', val.toString());
+  };
+  const setTutorTemp = (val) => {
+    setTutorTempState(val);
+    localStorage.setItem('anti_tutor_temp', val.toString());
+  };
+
   const [apiTemperature, setApiTemperature] = useState(0.3);
   const [showModelOrderEditModal, setShowModelOrderEditModal] = useState(false);
   const [showRecentStandardsModal, setShowRecentStandardsModal] = useState(false);
@@ -17161,9 +17188,45 @@ ${itemsStr}
         <div className="flex flex-wrap items-center gap-4 w-full md:w-auto">
           {(!isDesktop && !isMobileLandscape) ? null : (
             <>
-              {/* AI Tutor Button on PC */}
+              {/* AI Tutor Button on PC & API Temperature Overview Bar */}
               {(viewMode === 'dashboard' || viewMode === 'all_topics') && !selectedTopic && !showExam && !showFormulaExam && !showTheoryExam && !showAnswerSheet && (
                 <div className="flex items-center gap-2">
+                  {/* 🌡️ API 온도 전체 현황 (숫자 더블클릭 시 수정 모달 실행) */}
+                  <div 
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-purple-950/60 border border-purple-500/40 text-purple-200 text-xs font-bold shadow-md select-none transition-all hover:bg-purple-900/50"
+                    title="온도 수치를 더블클릭하여 API 온도 설정 수정"
+                  >
+                    <span className="text-amber-400 font-extrabold flex items-center gap-1">
+                      <span>🌡️</span>
+                      <span className="hidden sm:inline">API 온도</span>
+                    </span>
+                    <div className="flex items-center gap-1.5 font-mono">
+                      <span 
+                        onDoubleClick={() => { setActiveTempTab('gen'); setShowTempEditModal(true); }}
+                        className="px-1.5 py-0.5 rounded bg-slate-900/80 hover:bg-purple-800/80 hover:text-white transition-all cursor-pointer border border-purple-500/20"
+                        title="[출제 온도] 더블클릭하여 수정"
+                      >
+                        출제 <strong className="text-emerald-400 font-black">{genTemp.toFixed(1)}</strong>
+                      </span>
+                      <span className="text-purple-500/50">|</span>
+                      <span 
+                        onDoubleClick={() => { setActiveTempTab('grading'); setShowTempEditModal(true); }}
+                        className="px-1.5 py-0.5 rounded bg-slate-900/80 hover:bg-purple-800/80 hover:text-white transition-all cursor-pointer border border-purple-500/20"
+                        title="[채점 온도] 더블클릭하여 수정"
+                      >
+                        채점 <strong className="text-cyan-400 font-black">{gradingTemp.toFixed(1)}</strong>
+                      </span>
+                      <span className="text-purple-500/50">|</span>
+                      <span 
+                        onDoubleClick={() => { setActiveTempTab('tutor'); setShowTempEditModal(true); }}
+                        className="px-1.5 py-0.5 rounded bg-slate-900/80 hover:bg-purple-800/80 hover:text-white transition-all cursor-pointer border border-purple-500/20"
+                        title="[AI 튜터 온도] 더블클릭하여 수정"
+                      >
+                        AI튜터 <strong className="text-purple-300 font-black">{tutorTemp.toFixed(1)}</strong>
+                      </span>
+                    </div>
+                  </div>
+
                   <div className="relative flex items-center">
                     <button
                       onClick={() => setShowMainMemoryTypePopup(prev => !prev)}
@@ -17200,18 +17263,6 @@ ${itemsStr}
                   >
                     <MessageSquare size={15} />
                     <span>실시간 AI 튜터</span>
-                  </button>
-
-
-
-                  {/* 🌡️ 온도 설정 버튼 */}
-                  <button 
-                    onClick={() => setShowTempEditModal(true)}
-                    onDoubleClick={() => setShowTempEditModal(true)}
-                    className="px-3 py-2 bg-purple-600/30 hover:bg-purple-600/50 text-purple-200 border border-purple-500/40 rounded-xl text-xs font-bold transition-all active:scale-95 flex items-center gap-1 shadow-md cursor-pointer"
-                    title="온도 설정 모달"
-                  >
-                    <span>🌡️ 온도 설정</span>
                   </button>
 
                   {/* 🤖 API 모델 순서 버튼 */}
@@ -21854,83 +21905,127 @@ ${itemsStr}
         </div>
       )}
 
-      {/* 🌡️ 온도 설정 팝업 (Rich Functional Modal) */}
+      {/* 🌡️ API 온도 설정 팝업 (출제/채점/AI튜터 탭 지원) */}
       {showTempEditModal && (
         <div className="fixed inset-0 z-[999] bg-black/75 backdrop-blur-md flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-purple-500/40 rounded-3xl p-6 max-w-md w-full shadow-2xl text-slate-200 animate-in fade-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
               <div className="flex items-center gap-2">
                 <span className="text-xl">🌡️</span>
-                <h3 className="text-base font-black text-white">AI 생성 온도(Temperature) 설정</h3>
+                <h3 className="text-base font-black text-white">API 온도(Temperature) 상세 설정</h3>
               </div>
               <button 
                 onClick={() => setShowTempEditModal(false)}
-                className="text-slate-400 hover:text-white text-sm p-1 rounded-lg hover:bg-slate-800 transition-colors"
+                className="text-slate-400 hover:text-white text-sm p-1 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer border-none bg-transparent"
               >
                 ✕
               </button>
             </div>
 
-            <div className="space-y-4">
-              <p className="text-xs text-slate-400 leading-relaxed">
-                AI 모델의 응답 창의성과 무작위성을 설정합니다. 낮을수록 엄격하고 정확한 답변을, 높을수록 창의적이고 다양한 해설을 생성합니다.
-              </p>
-
-              <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-3">
-                <div className="flex justify-between items-center text-xs font-extrabold">
-                  <span className="text-slate-400">현재 온도 설정</span>
-                  <span className="text-purple-400 font-mono text-sm px-2 py-0.5 bg-purple-950/60 border border-purple-500/30 rounded-lg">
-                    {apiTemperature !== undefined ? apiTemperature : '0.3'}
-                  </span>
-                </div>
-                <input 
-                  type="range" 
-                  min="0.0" 
-                  max="1.0" 
-                  step="0.05"
-                  value={apiTemperature !== undefined ? apiTemperature : 0.3}
-                  onChange={(e) => setApiTemperature(parseFloat(e.target.value))}
-                  className="w-full accent-purple-500 cursor-pointer"
-                />
-                <div className="flex justify-between text-[10px] text-slate-500 font-semibold font-mono">
-                  <span>0.0 (엄격/정확)</span>
-                  <span>0.5 (표준)</span>
-                  <span>1.0 (창의적)</span>
-                </div>
-              </div>
-
-              <div className="space-y-1.5 pt-2">
-                <label className="text-[11px] font-bold text-slate-400">모든 온도 단계 선택 (0.0 ~ 1.0):</label>
-                <div className="grid grid-cols-4 sm:grid-cols-6 gap-1.5">
-                  {[0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0].map((tempVal) => {
-                    const isSelected = Math.abs((apiTemperature ?? 0.3) - tempVal) < 0.01;
-                    return (
-                      <button
-                        key={tempVal}
-                        onClick={() => setApiTemperature(tempVal)}
-                        className={`py-2 px-1.5 rounded-xl text-xs font-mono font-bold transition-all border flex flex-col items-center justify-center cursor-pointer active:scale-95 ${
-                          isSelected
-                            ? 'bg-purple-600 text-white border-purple-400 shadow-lg shadow-purple-900/50 scale-105'
-                            : 'bg-slate-950/80 hover:bg-slate-800 text-slate-300 border-slate-800 hover:border-purple-500/40'
-                        }`}
-                      >
-                        <span className="text-[11px] font-black">{tempVal.toFixed(1)}</span>
-                        <span className="text-[8px] opacity-75 font-sans font-normal">
-                          {tempVal === 0.0 ? '엄격' : tempVal === 0.3 ? '균형' : tempVal === 0.5 ? '표준' : tempVal === 1.0 ? '창의' : ''}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+            {/* 역할 선택 탭 */}
+            <div className="flex rounded-xl bg-slate-950 p-1 border border-slate-800 mb-4">
+              <button
+                onClick={() => setActiveTempTab('gen')}
+                className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border-none ${
+                  activeTempTab === 'gen'
+                    ? 'bg-purple-600 text-white shadow-md'
+                    : 'text-slate-400 hover:text-slate-200 bg-transparent'
+                }`}
+              >
+                📝 출제 ({genTemp.toFixed(1)})
+              </button>
+              <button
+                onClick={() => setActiveTempTab('grading')}
+                className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border-none ${
+                  activeTempTab === 'grading'
+                    ? 'bg-purple-600 text-white shadow-md'
+                    : 'text-slate-400 hover:text-slate-200 bg-transparent'
+                }`}
+              >
+                💯 채점 ({gradingTemp.toFixed(1)})
+              </button>
+              <button
+                onClick={() => setActiveTempTab('tutor')}
+                className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border-none ${
+                  activeTempTab === 'tutor'
+                    ? 'bg-purple-600 text-white shadow-md'
+                    : 'text-slate-400 hover:text-slate-200 bg-transparent'
+                }`}
+              >
+                🤖 AI 튜터 ({tutorTemp.toFixed(1)})
+              </button>
             </div>
+
+            {(() => {
+              const currentVal = activeTempTab === 'gen' ? genTemp : activeTempTab === 'grading' ? gradingTemp : tutorTemp;
+              const setVal = (val) => {
+                if (activeTempTab === 'gen') setGenTemp(val);
+                else if (activeTempTab === 'grading') setGradingTemp(val);
+                else setTutorTemp(val);
+                setApiTemperature(val);
+              };
+              const tabName = activeTempTab === 'gen' ? '출제' : activeTempTab === 'grading' ? '채점' : 'AI 튜터';
+
+              return (
+                <div className="space-y-4">
+                  <p className="text-xs text-slate-400 leading-relaxed">
+                    [{tabName}] 창의성과 무작위성을 설정합니다. 낮을수록 엄격하고 정확한 답변을, 높을수록 창의적이고 다양한 해설을 생성합니다.
+                  </p>
+
+                  <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-3">
+                    <div className="flex justify-between items-center text-xs font-extrabold">
+                      <span className="text-slate-400">{tabName} 현재 온도 설정</span>
+                      <span className="text-purple-400 font-mono text-sm px-2 py-0.5 bg-purple-950/60 border border-purple-500/30 rounded-lg">
+                        {currentVal.toFixed(1)}
+                      </span>
+                    </div>
+                    <input 
+                      type="range" 
+                      min="0.0" 
+                      max="1.0" 
+                      step="0.05"
+                      value={currentVal}
+                      onChange={(e) => setVal(parseFloat(e.target.value))}
+                      className="w-full accent-purple-500 cursor-pointer"
+                    />
+                    <div className="flex justify-between text-[10px] text-slate-500 font-semibold font-mono">
+                      <span>0.0 (엄격/정확)</span>
+                      <span>0.5 (표준)</span>
+                      <span>1.0 (창의적)</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5 pt-2">
+                    <label className="text-[11px] font-bold text-slate-400">온도 프리셋 선택 (0.0 ~ 1.0):</label>
+                    <div className="grid grid-cols-4 sm:grid-cols-6 gap-1.5">
+                      {[0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0].map((tempVal) => {
+                        const isSelected = Math.abs(currentVal - tempVal) < 0.01;
+                        return (
+                          <button
+                            key={tempVal}
+                            onClick={() => setVal(tempVal)}
+                            className={`py-2 px-1.5 rounded-xl text-xs font-mono font-bold transition-all border flex flex-col items-center justify-center cursor-pointer active:scale-95 ${
+                              isSelected
+                                ? 'bg-purple-600 text-white border-purple-400 shadow-lg shadow-purple-900/50 scale-105'
+                                : 'bg-slate-950/80 hover:bg-slate-800 text-slate-300 border-slate-800 hover:border-purple-500/40'
+                            }`}
+                          >
+                            <span className="text-[11px] font-black">{tempVal.toFixed(1)}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
 
             <div className="flex justify-end gap-2 mt-6 pt-3 border-t border-slate-800">
               <button 
                 onClick={() => setShowTempEditModal(false)}
-                className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-md"
+                className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-md border-none"
               >
-                설정 완료 및 적용 💾
+                설정 완료 및 저장 💾
               </button>
             </div>
           </div>

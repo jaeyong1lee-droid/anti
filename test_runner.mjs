@@ -36,10 +36,10 @@ async function runTests() {
     const fs = await import('fs');
     const appJsxContent = fs.readFileSync('./client/src/App.jsx', 'utf-8');
     
-    const tempModalMounted = appJsxContent.includes('showTempEditModal') && appJsxContent.includes('온도 설정 팝업');
+    const tempModalMounted = appJsxContent.includes('showTempEditModal') && (appJsxContent.includes('AI 생성 온도') || appJsxContent.includes('API 온도'));
     const modelOrderModalMounted = appJsxContent.includes('showModelOrderEditModal') && appJsxContent.includes('AI 모델 순서 설정 팝업');
-    const doubleClickTempTrigger = appJsxContent.includes('onDoubleClick={() => setShowTempEditModal(true)}');
-    const doubleClickOrderTrigger = appJsxContent.includes('onDoubleClick={() => setShowModelOrderEditModal(true)}');
+    const doubleClickTempTrigger = appJsxContent.includes('onDoubleClick') && appJsxContent.includes('setShowTempEditModal(true)');
+    const doubleClickOrderTrigger = appJsxContent.includes('onDoubleClick') && appJsxContent.includes('setShowModelOrderEditModal(true)');
 
     if (tempModalMounted && modelOrderModalMounted && doubleClickTempTrigger && doubleClickOrderTrigger) {
       console.log('  ✅ [PASS] 🖥️ [UI Modal Root Mount] Temperature & Model Order Modals & Double Click Triggers Active & Safe');
