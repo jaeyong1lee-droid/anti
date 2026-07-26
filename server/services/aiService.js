@@ -193,27 +193,20 @@ export async function callLLMWithFailover(systemInstruction, userPrompt, image =
       ? [
           'gemini-3.1-flash-lite',
           'gemini-3.5-flash-lite',
-          options.preferredModel,
-          globalPreferredModel,
           'gemini-3.6-flash',
           'gemini-3.5-flash'
         ]
       : [
           options.preferredModel,
-          globalPreferredModel,
           'gemini-3.5-flash-lite',
-          'gemini-3.1-flash-lite',
           'gemini-3.6-flash',
+          'gemini-3.1-flash-lite',
           'gemini-3.5-flash'
         ];
     const uniqueRaw = [...new Set(rawFallbacks.filter(Boolean))];
-    const addedActuals = new Set();
     for (const modelName of uniqueRaw) {
       const actual = normalizeGeminiModel(modelName);
-      if (!addedActuals.has(actual)) {
-        addedActuals.add(actual);
-        executionList.push({ key: k.key, label: k.label, model: modelName, actualModel: actual, type: 'gemini' });
-      }
+      executionList.push({ key: k.key, label: k.label, model: modelName, actualModel: actual, type: 'gemini' });
     }
   }
 
