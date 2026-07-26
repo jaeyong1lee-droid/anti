@@ -11,16 +11,20 @@ console.log("🧪 순서도(Flowchart) 수식 자가치유 종합 검증 테스�
 console.log("=================================================\n");
 
 const testCases = [
-  "- s_f = s_0 + ₩dfrac{1}{\\beta} 공식 및 U = \\frac{s_t}{s_f} \\times 100\\% 산출",
-  "침하량 $S_{ult} = S_0 + \\frac{1}{\\beta} \\beta } = 100 + 120 = 220$ 이 아니라",
-  '<span class="katex-error" style="color: #cc0000;" title="KaTeX error: ParseError: KaTeX parse error: Expected \'EOF\', got \'}\' at position 35: ...\\frac{1}{\\beta} \\beta } = 100 + 120 = 220">} = 100 + 120 = 220</span>'
+  "침하량 $S_{ult} = S_0 + \\frac{1}{\\beta} \\beta = 100 + 120 = 220$",
+  "침하량 S_{ult} = S_0 + \\frac{1}{\\beta} = 100 + 120 = 220",
+  "침하량 S_{ult} = S_0 + \\frac{1}{beta} = 100",
+  "침하량 S_{ult} = S_0 + 1/\\beta = 100",
+  "침하량 S_{ult} = S_0 + 1/beta = 100",
+  "침하량 $S_{ult} = S_0 + \\frac{1}{\\beta} \\beta } = 100 + 120 = 220$",
+  "침하량 $S_{ult} = S_0 + \\frac{1}{} \\beta = 100$"
 ];
 
 let hasError = false;
 
 testCases.forEach((testInput, tIdx) => {
   console.log(`\n--- [테스트케이스 ${tIdx + 1}] ---`);
-  console.log("📥 입력 본문:", testInput);
+  console.log("📥 입력:", testInput);
 
   const sanitized = cleanAndSanitizeMathText(testInput);
   const healed = healLatexFormulas(sanitized);
@@ -34,7 +38,7 @@ testCases.forEach((testInput, tIdx) => {
     formulas.push((match[1] || match[2]).trim());
   }
 
-  console.log("📐 추출된 LaTeX 수식 목록:", formulas);
+  console.log("📐 추출 수식:", formulas);
 
   formulas.forEach((f, idx) => {
     const rendered = renderKatexString(f);
@@ -42,7 +46,7 @@ testCases.forEach((testInput, tIdx) => {
       console.error(`❌ [KaTeX Error] 수식 ${idx + 1} ("${f}") 렌더링 실패!`);
       hasError = true;
     } else {
-      console.log(`  ✓ 수식 ${idx + 1} ("${f}") KaTeX 정상 렌더링 성공`);
+      console.log(`  ✓ 수식 ${idx + 1} ("${f}") -> KaTeX OK`);
     }
   });
 });
