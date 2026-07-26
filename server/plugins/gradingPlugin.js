@@ -272,29 +272,51 @@ ${explanation ? `- 전체 해설 (Explanation): ${explanation}` : ''}
 export function robustJSONParse(text) {
   let cleanText = text.trim();
   if (cleanText.startsWith('```')) {
-    cleanText = cleanText.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
+    cleanText = cleanText.replace(/^```json/i, '').replace(/^```/, '').replace(/```$/, '').trim();
   }
 
   try {
     return JSON.parse(cleanText);
   } catch (err) {
-    console.warn('[robustJSONParse] Standard JSON.parse failed, trying recovery on raw text:', cleanText);
-    const match = cleanText.match(/\{[\s\S]*\}/);
-    if (match) {
-      const extracted = match[0];
-      try {
-        return JSON.parse(extracted);
-      } catch (regexErr) {
-        try {
-          // Fix standalone backslashes (often in LaTeX math symbols like \cdot) causing parse errors
-          const repaired = extracted.replace(/(?<!\\)\\(?![btnfr"/\\]|[uU][0-9a-fA-F]{4})/g, '\\\\');
-          return JSON.parse(repaired);
-        } catch (healErr) {
-          throw regexErr;
-        }
-      }
-    }
-    throw err;
+    console.warn('[robustJSONParse] Standard JSON.parse failed, attempting LaTeX backslash healing:', err.message);
+  }
+
+  const match = cleanText.match(/\{[\s\S]*\}/);
+  const rawObjStr = match ? match[0] : cleanText;
+
+  // Heal LaTeX backslashes inside JSON strings (e.g. \beta, \theta, \nu, \rho, \frac, \sigma)
+  try {
+    // Replace unescaped backslashes before non-standard JSON escape sequences
+    const healed = rawObjStr.replace(/\\([a-zA-Z0-9_#^%+=\-()<>{}[\]|\.\,\$\/]+)/g, (fullMatch, group1) => {
+      if (group1 === '"' || group1 === '\\' || group1 === '/') return `\\${group1}`;
+      return `\\\\${group1}`;
+    });
+    return JSON.parse(healed);
+  } catch (e1) {
+    console.warn('[robustJSONParse] First recovery failed, trying regex field extraction:', e1.message);
+  }
+
+  // Ultra-robust fallback: Extract fields via Regex
+  try {
+    const isCorrectMatch = rawObjStr.match(/"isCorrect"\s*:\s*(true|false)/i);
+    const scoreMatch = rawObjStr.match(/"score"\s*:\s*(\d+)/i);
+    const reasonMatch = rawObjStr.match(/"reason"\s*:\s*"([\s\S]*?)"\s*,\s*"/i) || rawObjStr.match(/"reason"\s*:\s*"([\s\S]*?)"\s*\}/i);
+    const modelAnsMatch = rawObjStr.match(/"suggestedModelAnswer"\s*:\s*"([\s\S]*?)"\s*\}/i);
+
+    const isCorrect = isCorrectMatch ? isCorrectMatch[1].toLowerCase() === 'true' : true;
+    const score = scoreMatch ? parseInt(scoreMatch[1], 10) : (isCorrect ? 10 : 0);
+    const reason = reasonMatch ? reasonMatch[1].replace(/\\"/g, '"').replace(/\\\\/g, '\\') : 'AI 채점 완료';
+    const suggestedModelAnswer = modelAnsMatch ? modelAnsMatch[1].replace(/\\"/g, '"').replace(/\\\\/g, '\\') : null;
+
+    return {
+      isCorrect,
+      score,
+      reason,
+      suggestedModelAnswer
+    };
+  } catch (e2) {
+    console.error('[robustJSONParse] Fallback regex extraction failed:', e2);
+    throw new Error('AI 채점 JSON 파싱 오류가 발생했습니다.');
   }
 }
 
