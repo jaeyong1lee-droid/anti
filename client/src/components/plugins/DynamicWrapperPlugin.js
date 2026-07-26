@@ -237,63 +237,19 @@ export function wrapKdsKcsAndWikipediaReferencesHtml(text) {
         if (descText.includes('||')) {
           const parts = descText.split('||');
           titleSummary = parts[0].trim();
-          detailContent = parts[1].trim();
-        } else if (descText.includes('::')) {
-          const parts = descText.split('::');
-          titleSummary = parts[0].trim();
-          detailContent = parts[1].trim();
-        } else if (descText.startsWith('[')) {
-          const closeBracketIdx = descText.indexOf(']');
-          if (closeBracketIdx !== -1) {
-            titleSummary = descText.substring(0, closeBracketIdx + 1).trim();
-            detailContent = descText.substring(closeBracketIdx + 1).trim() || descText;
-          }
-        }
-
-        itemBoxes.push(
-          `<details class="group rounded-xl border border-slate-800 bg-slate-900/80 my-1.5 transition-all overflow-hidden">` +
-            `<summary class="flex items-center justify-between gap-2.5 p-2.5 px-3 cursor-pointer select-none hover:bg-slate-800/60 transition-colors">` +
-              `<div class="flex items-center gap-2 min-w-0 flex-1">` +
-                `<span class="px-2 py-0.5 rounded ${badgeClass} border font-bold text-xs font-mono shrink-0 select-none">${refTag}</span>` +
-                `<span class="text-[13px] sm:text-[14px] text-slate-100 font-medium leading-tight truncate">${titleSummary}</span>` +
-              `</div>` +
-              `<span class="text-xs font-bold text-amber-400/90 group-open:rotate-180 transition-transform shrink-0 ml-1.5">▼</span>` +
-            `</summary>` +
-            `<div class="p-3 pt-2 text-[13px] sm:text-[14px] text-slate-200 leading-relaxed border-t border-slate-800/80 bg-slate-950/80 break-words select-text font-sans">` +
-              `<div class="text-xs font-bold text-emerald-400 mb-1">📖 검색 규정/이론 전문 내역:</div>` +
-              `${detailContent}` +
-            `</div>` +
-          `</details>`
-        );
-      } else {
-        const content = stripped.replace(/^(?:[•\*\-]\s*)/, '').trim();
-        if (content && !/^[-–—\s]+$/.test(content) && content !== '--') {
-          const isWikiOrKdsLine = /wikipedia|soil\s*mechanics|kds|kcs/i.test(content);
-          if (isWikiOrKdsLine) {
-            let refTag = 'Wikipedia Soil Mechanics';
-            let descText = content;
-            if (content.includes('::')) {
-              const parts = content.split('::');
-              refTag = parts[0].replace(/^[•\*\-\s]+/, '').trim();
-              descText = parts[1].trim();
-            } else if (content.includes(':')) {
-              const parts = content.split(':');
-              refTag = parts[0].replace(/^[•\*\-\s]+/, '').trim();
-              descText = parts[1].trim();
-            }
-            const isWiki = /wikipedia|soil\s*mechanics/i.test(refTag);
-            const badgeClass = isWiki 
-              ? 'bg-emerald-600/20 text-emerald-300 border-emerald-500/40' 
-              : 'bg-amber-600/20 text-amber-300 border-amber-500/40';
-
             let titleSummary = descText;
             let detailContent = descText;
             if (descText.startsWith('[')) {
               const closeBracketIdx = descText.indexOf(']');
               if (closeBracketIdx !== -1) {
                 titleSummary = descText.substring(0, closeBracketIdx + 1).trim();
-                detailContent = descText.substring(closeBracketIdx + 1).trim() || descText;
+                const remainder = descText.substring(closeBracketIdx + 1).trim();
+                detailContent = remainder ? remainder : descText;
               }
+            } else if (descText.includes(':')) {
+              const parts = descText.split(':');
+              titleSummary = parts[0].trim();
+              detailContent = parts.slice(1).join(':').trim() || descText;
             }
 
             itemBoxes.push(
@@ -301,65 +257,116 @@ export function wrapKdsKcsAndWikipediaReferencesHtml(text) {
                 `<summary class="flex items-center justify-between gap-2.5 p-2.5 px-3 cursor-pointer select-none hover:bg-slate-800/60 transition-colors">` +
                   `<div class="flex items-center gap-2 min-w-0 flex-1">` +
                     `<span class="px-2 py-0.5 rounded ${badgeClass} border font-bold text-[10px] sm:text-[11px] font-mono shrink-0 select-none">${refTag}</span>` +
-                    `<span class="text-[11px] sm:text-[12px] text-slate-100 font-normal tracking-tight leading-tight truncate">${titleSummary}</span>` +
+                    `<span class="text-[10px] sm:text-[11px] text-slate-100 font-normal tracking-tight leading-tight truncate">${titleSummary}</span>` +
                   `</div>` +
                   `<span class="text-[10px] sm:text-[11px] font-bold text-amber-400/90 group-open:rotate-180 transition-transform shrink-0 ml-1.5">▼</span>` +
                 `</summary>` +
-                `<div class="p-3 pt-2 text-[11px] sm:text-[12px] text-slate-200 leading-relaxed border-t border-slate-800/80 bg-slate-950/80 break-words select-text font-sans">` +
+                `<div class="p-3 pt-2 text-[10px] sm:text-[11px] text-slate-200 leading-relaxed border-t border-slate-800/80 bg-slate-950/80 break-words select-text font-sans">` +
                   `<div class="text-[10px] sm:text-[11px] font-bold text-emerald-400 mb-1">📖 검색 규정/이론 전문 내역:</div>` +
                   `${detailContent}` +
                 `</div>` +
               `</details>`
             );
           } else {
-            itemBoxes.push(
-              `<div class="flex items-baseline gap-2 px-2 py-1 text-slate-300 text-[11px] sm:text-[12px] leading-[1.3]"><span class="text-emerald-400 font-bold">•</span><div class="flex-1 text-slate-100 leading-[1.3]">${content}</div></div>`
-            );
+            const content = stripped.replace(/^(?:[•\*\-]\s*)/, '').trim();
+            if (content && !/^[-–—\s]+$/.test(content) && content !== '--') {
+              const isWikiOrKdsLine = /wikipedia|soil\s*mechanics|kds|kcs/i.test(content);
+              if (isWikiOrKdsLine) {
+                let refTag = 'Wikipedia Soil Mechanics';
+                let descText = content;
+                if (content.includes('::')) {
+                  const parts = content.split('::');
+                  refTag = parts[0].replace(/^[•\*\-\s]+/, '').trim();
+                  descText = parts[1].trim();
+                } else if (content.includes(':')) {
+                  const parts = content.split(':');
+                  refTag = parts[0].replace(/^[•\*\-\s]+/, '').trim();
+                  descText = parts[1].trim();
+                }
+                const isWiki = /wikipedia|soil\s*mechanics/i.test(refTag);
+                const badgeClass = isWiki 
+                  ? 'bg-emerald-600/20 text-emerald-300 border-emerald-500/40' 
+                  : 'bg-amber-600/20 text-amber-300 border-amber-500/40';
+
+                let titleSummary = descText;
+                let detailContent = descText;
+                if (descText.startsWith('[')) {
+                  const closeBracketIdx = descText.indexOf(']');
+                  if (closeBracketIdx !== -1) {
+                    titleSummary = descText.substring(0, closeBracketIdx + 1).trim();
+                    const remainder = descText.substring(closeBracketIdx + 1).trim();
+                    detailContent = remainder ? remainder : descText;
+                  }
+                } else if (descText.includes(':')) {
+                  const parts = descText.split(':');
+                  titleSummary = parts[0].trim();
+                  detailContent = parts.slice(1).join(':').trim() || descText;
+                }
+
+                itemBoxes.push(
+                  `<details class="group rounded-xl border border-slate-800 bg-slate-900/80 my-1.5 transition-all overflow-hidden">` +
+                    `<summary class="flex items-center justify-between gap-2.5 p-2.5 px-3 cursor-pointer select-none hover:bg-slate-800/60 transition-colors">` +
+                      `<div class="flex items-center gap-2 min-w-0 flex-1">` +
+                        `<span class="px-2 py-0.5 rounded ${badgeClass} border font-bold text-[10px] sm:text-[11px] font-mono shrink-0 select-none">${refTag}</span>` +
+                        `<span class="text-[10px] sm:text-[11px] text-slate-100 font-normal tracking-tight leading-tight truncate">${titleSummary}</span>` +
+                      `</div>` +
+                      `<span class="text-[10px] sm:text-[11px] font-bold text-amber-400/90 group-open:rotate-180 transition-transform shrink-0 ml-1.5">▼</span>` +
+                    `</summary>` +
+                    `<div class="p-3 pt-2 text-[10px] sm:text-[11px] text-slate-200 leading-relaxed border-t border-slate-800/80 bg-slate-950/80 break-words select-text font-sans">` +
+                      `<div class="text-[10px] sm:text-[11px] font-bold text-emerald-400 mb-1">📖 검색 규정/이론 전문 내역:</div>` +
+                      `${detailContent}` +
+                    `</div>` +
+                  `</details>`
+                );
+              } else {
+                itemBoxes.push(
+                  `<div class="flex items-baseline gap-2 px-2 py-1 text-slate-300 text-[10px] sm:text-[11px] leading-[1.3]"><span class="text-emerald-400 font-bold">•</span><div class="flex-1 text-slate-100 leading-[1.3]">${content}</div></div>`
+                );
+              }
+            }
           }
-        }
-      }
-    });
+        });
 
-    if (itemBoxes.length === 0) return fullMatch;
+        if (itemBoxes.length === 0) return fullMatch;
 
-    const titleClean = headerTitle.replace(/<[^>]+>/g, '').replace(/^[#\*\-•\[\]\s📚]+/, '').replace(/[#\*\-•\[\]\s]+$/, '').trim();
+        const titleClean = headerTitle.replace(/<[^>]+>/g, '').replace(/^[#\*\-•\[\]\s📚]+/, '').replace(/[#\*\-•\[\]\s]+$/, '').trim();
 
-    return `<div class="my-3.5 p-3.5 rounded-2xl bg-slate-950/90 border border-emerald-500/40 shadow-lg text-left select-text leading-[1.3]"><div class="flex items-center gap-2 mb-2 pb-1.5 border-b border-emerald-500/25 text-emerald-300 text-[12px] sm:text-[13px] font-bold select-none leading-[1.3]"><span class="text-sm">📚</span><span>${titleClean || 'KDS/KCS 규정 및 영문 위키피디아 지반역학 참조'}</span></div><div class="space-y-1.5 leading-[1.3]">${itemBoxes.join('')}</div></div>`;
-  });
+        return `<div class="my-3.5 p-3.5 rounded-2xl bg-slate-950/90 border border-emerald-500/40 shadow-lg text-left select-text leading-[1.3]"><div class="flex items-center gap-2 mb-2 pb-1.5 border-b border-emerald-500/25 text-emerald-300 text-[11px] sm:text-[12px] font-bold select-none leading-[1.3]"><span class="text-sm">📚</span><span>${titleClean || 'KDS/KCS 규정 및 영문 위키피디아 지반역학 참조'}</span></div><div class="space-y-1.5 leading-[1.3]">${itemBoxes.join('')}</div></div>`;
+      });
 
-  return result;
-}
-
-/**
- * 5. 위키피디아 전용 독립형 아코디언 드롭다운 버튼 동적 감싸기
- */
-export function wrapWikipediaDirectLineHtml(text) {
-  if (!text || typeof text !== 'string') return text;
-
-  const wikiLineRegex = /(?:^|<br\/>|\n|<p>)[ \t]*(?:<div[^>]*>|<p>)?\s*(?:[•\*\-]\s*)*\s*(Wikipedia\s*Soil\s*Mechanics[^\n<:]*?)\s*(?:::|:)\s*(\[[^\]]+\])?\s*([^\n<]+)(?:<\/div>|<\/p>|<br\/>|\n|$)/gi;
-
-  return text.replace(wikiLineRegex, (fullMatch, wikiTag, bracketTitle, bodyContent) => {
-    if (fullMatch.includes('___HTML_TABLE_') || fullMatch.includes('summary')) {
-      return fullMatch;
+      return result;
     }
 
-    const titleText = bracketTitle ? `${bracketTitle} ${bodyContent.trim().substring(0, 50)}...` : bodyContent.trim().substring(0, 65) + '...';
+    /**
+     * 5. 위키피디아 전용 독립형 아코디언 드롭다운 버튼 동적 감싸기
+     */
+    export function wrapWikipediaDirectLineHtml(text) {
+      if (!text || typeof text !== 'string') return text;
 
-    return `<details class="group rounded-xl border border-slate-800 bg-slate-900/80 my-2 transition-all overflow-hidden text-left select-text">` +
-             `<summary class="flex items-center justify-between gap-2.5 p-2.5 px-3 cursor-pointer select-none hover:bg-slate-800/60 transition-colors">` +
-               `<div class="flex items-center gap-2 min-w-0 flex-1">` +
-                 `<span class="px-2 py-0.5 rounded bg-emerald-600/20 text-emerald-300 border border-emerald-500/40 font-bold text-[10px] sm:text-[11px] font-mono shrink-0 select-none">${wikiTag.trim()}</span>` +
-                 `<span class="text-[11px] sm:text-[12px] text-slate-100 font-normal tracking-tight leading-tight truncate">${titleText}</span>` +
-               `</div>` +
-               `<span class="text-[10px] sm:text-[11px] font-bold text-amber-400/90 group-open:rotate-180 transition-transform shrink-0 ml-1.5">▼</span>` +
-             `</summary>` +
-             `<div class="p-3 pt-2 text-[11px] sm:text-[12px] text-slate-200 leading-relaxed border-t border-slate-800/80 bg-slate-950/80 break-words select-text font-sans">` +
-               `<div class="text-[10px] sm:text-[11px] font-bold text-emerald-400 mb-1">📖 검색 규정/이론 전문 내역:</div>` +
-               `${bracketTitle ? bracketTitle + ' ' : ''}${bodyContent}` +
-             `</div>` +
-           `</details>`;
-  });
-}
+      const wikiLineRegex = /(?:^|<br\/>|\n|<p>)[ \t]*(?:<div[^>]*>|<p>)?\s*(?:[•\*\-]\s*)*\s*(Wikipedia\s*Soil\s*Mechanics[^\n<:]*?)\s*(?:::|:)\s*(\[[^\]]+\])?\s*([^\n<]+)(?:<\/div>|<\/p>|<br\/>|\n|$)/gi;
+
+      return text.replace(wikiLineRegex, (fullMatch, wikiTag, bracketTitle, bodyContent) => {
+        if (fullMatch.includes('___HTML_TABLE_') || fullMatch.includes('summary')) {
+          return fullMatch;
+        }
+
+        const titleText = bracketTitle ? `${bracketTitle}` : bodyContent.trim().substring(0, 45) + '...';
+
+        return `<details class="group rounded-xl border border-slate-800 bg-slate-900/80 my-2 transition-all overflow-hidden text-left select-text">` +
+                 `<summary class="flex items-center justify-between gap-2.5 p-2.5 px-3 cursor-pointer select-none hover:bg-slate-800/60 transition-colors">` +
+                   `<div class="flex items-center gap-2 min-w-0 flex-1">` +
+                     `<span class="px-2 py-0.5 rounded bg-emerald-600/20 text-emerald-300 border border-emerald-500/40 font-bold text-[10px] sm:text-[11px] font-mono shrink-0 select-none">${wikiTag.trim()}</span>` +
+                     `<span class="text-[10px] sm:text-[11px] text-slate-100 font-normal tracking-tight leading-tight truncate">${titleText}</span>` +
+                   `</div>` +
+                   `<span class="text-[10px] sm:text-[11px] font-bold text-amber-400/90 group-open:rotate-180 transition-transform shrink-0 ml-1.5">▼</span>` +
+                 `</summary>` +
+                 `<div class="p-3 pt-2 text-[10px] sm:text-[11px] text-slate-200 leading-relaxed border-t border-slate-800/80 bg-slate-950/80 break-words select-text font-sans">` +
+                   `<div class="text-[10px] sm:text-[11px] font-bold text-emerald-400 mb-1">📖 검색 규정/이론 전문 내역:</div>` +
+                   `${bracketTitle ? bracketTitle + ' ' : ''}${bodyContent}` +
+                 `</div>` +
+               `</details>`;
+      });
+    }
 
 /**
  * 6. :::pros_cons (장단점 전용 동적 감싸기 카드 박스)
