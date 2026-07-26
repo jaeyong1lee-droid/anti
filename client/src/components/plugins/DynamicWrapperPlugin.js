@@ -88,12 +88,13 @@ export function wrapSymbolDefinitionsHtml(text) {
         const rawVar = matchSymbol[1].trim();
         const cleanRawVar = rawVar.replace(/^[•\*\-\u2022\s\$]+|[•\*\-\u2022\s\$]+$/g, '').trim();
         if (/kds|kcs|wikipedia|soil\s*mechanics/i.test(rawVar)) return;
-        if (/^(정의|목적|적용성|개요|특징|결론|참고|종류|분류|용도|원인|대책|장점|단점|의의|배경|시작|끝|단계|단계별|요약|비교|주의사항|유의사항|참고사항)$/i.test(cleanRawVar)) return;
+        // 🚨 [사용자 절대 수칙]: 기호 정의는 수식 변수(영문/그리스 기호)에만 적용하고 2글자 이상 한글 서술형 단어는 100% 예외 배제
+        if (/[가-힣]{2,}/.test(cleanRawVar)) return;
         const symbolVar = formatSymbolVar(rawVar);
         const descText = matchSymbol[2].trim();
         if (symbolVar) {
           itemBoxes.push(
-            `<div class="flex items-baseline gap-2 px-1 py-0.5 select-text text-left leading-[1.3]"><span class="text-purple-300 font-bold font-mono text-[14px] sm:text-[15px] italic shrink-0">• ${symbolVar}:</span><div class="flex-1 text-[14px] sm:text-[15px] text-slate-100 leading-[1.3] break-words">${descText}</div></div>`
+            `<div class="flex items-baseline gap-2 px-1 py-0.5 select-text text-left leading-relaxed"><span class="text-purple-300 font-bold font-mono text-[14px] sm:text-[15px] italic shrink-0">• ${symbolVar}:</span><div class="flex-1 text-[14px] sm:text-[15px] text-slate-100 leading-relaxed break-words">${descText}</div></div>`
           );
         }
       }
@@ -103,7 +104,7 @@ export function wrapSymbolDefinitionsHtml(text) {
 
     const titleClean = headerTitle.replace(/<[^>]+>/g, '').replace(/^[#\*\-•\[\]\s]+/, '').replace(/[#\*\-•\[\]\s]+$/, '').trim();
 
-    return `<div class="my-2 p-3 px-3.5 rounded-xl bg-slate-950/90 border border-purple-500/40 shadow-sm text-left select-text leading-[1.3]"><div class="flex items-center gap-2 mb-1.5 pb-1.5 border-b border-purple-500/20 text-purple-300 text-[14px] sm:text-[16px] font-bold select-none leading-[1.3]"><span class="text-sm">✨</span><span>${titleClean || '공식 기호 정의'}</span></div><div class="space-y-0.5 leading-[1.3]">${itemBoxes.join('')}</div></div>`;
+    return `<div class="my-2 p-3 px-3.5 rounded-xl bg-slate-950/90 border border-purple-500/40 shadow-sm text-left select-text leading-[1.3]"><div class="space-y-0.5 leading-[1.3]">${itemBoxes.join('')}</div></div>`;
   });
 
   // 2) Standalone 2 or more consecutive '• Symbol: Description' bullet items WITHOUT explicit '여기서,' header
@@ -129,12 +130,13 @@ export function wrapSymbolDefinitionsHtml(text) {
         const rawVar = matchSymbol[1].trim();
         const cleanRawVar = rawVar.replace(/^[•\*\-\u2022\s\$]+|[•\*\-\u2022\s\$]+$/g, '').trim();
         if (/kds|kcs|wikipedia|soil\s*mechanics/i.test(rawVar)) return;
-        if (/^(정의|목적|적용성|개요|특징|결론|참고|종류|분류|용도|원인|대책|장점|단점|의의|배경|시작|끝|단계|단계별|요약|비교|주의사항|유의사항|참고사항)$/i.test(cleanRawVar)) return;
+        // 🚨 [사용자 절대 수칙]: 기호 정의는 수식 변수(영문/그리스 기호)에만 적용하고 2글자 이상 한글 서술형 단어는 100% 예외 배제
+        if (/[가-힣]{2,}/.test(cleanRawVar)) return;
         const symbolVar = formatSymbolVar(rawVar);
         const descText = matchSymbol[2].trim();
         if (symbolVar) {
           itemBoxes.push(
-            `<div class="flex items-baseline gap-2 px-1 py-0.5 select-text text-left leading-[1.3]"><span class="text-purple-300 font-bold font-mono text-[14px] sm:text-[15px] italic shrink-0">• ${symbolVar}:</span><div class="flex-1 text-[14px] sm:text-[15px] text-slate-100 leading-[1.3] break-words">${descText}</div></div>`
+            `<div class="flex items-baseline gap-2 px-1 py-0.5 select-text text-left leading-relaxed"><span class="text-purple-300 font-bold font-mono text-[14px] sm:text-[15px] italic shrink-0">• ${symbolVar}:</span><div class="flex-1 text-[14px] sm:text-[15px] text-slate-100 leading-relaxed break-words">${descText}</div></div>`
           );
         }
       }
@@ -142,7 +144,7 @@ export function wrapSymbolDefinitionsHtml(text) {
 
     if (itemBoxes.length < 2) return fullMatch;
 
-    return `<div class="my-2 p-3 px-3.5 rounded-xl bg-slate-950/90 border border-purple-500/40 shadow-sm text-left select-text leading-[1.3]"><div class="flex items-center gap-2 mb-1.5 pb-1.5 border-b border-purple-500/20 text-purple-300 text-[14px] sm:text-[16px] font-bold select-none leading-[1.3]"><span class="text-sm">✨</span><span>공식 기호 정의</span></div><div class="space-y-0.5 leading-[1.3]">${itemBoxes.join('')}</div></div>`;
+    return `<div class="my-2 p-3 px-3.5 rounded-xl bg-slate-950/90 border border-purple-500/40 shadow-sm text-left select-text leading-[1.3]"><div class="space-y-0.5 leading-[1.3]">${itemBoxes.join('')}</div></div>`;
   });
 
   return cleanText;
@@ -154,9 +156,9 @@ export function wrapSymbolDefinitionsHtml(text) {
 export function wrapMechanismProcedureAssumptionsHtml(text) {
   if (!text || typeof text !== 'string') return text;
 
-  // Pattern A: Strict Header + Numbered/Bullet Steps ONLY (1. ... 2. ... or ① ... ② ...)
-  // 🚨 [문장 훼손 및 글자 붙음 방지]: 일반 서술형 단락 문장은 캡처하지 않고, 명확한 항목 번호 목록만 안전하게 매칭
-  const sectionRegex = /(?:^|<br\/>|\n|<p>)[ \t]*(?:[•\*\-]\s*|#{1,6}\s*|\[|\*\*)?\s*([^\n<]*(?:절차|흐름도|플로우차트|순서도|프로세스|가정\s*사항|가정\s*조건|기본\s*가정|전제\s*조건|가정|메커니즘|작동\s*원리|Procedure|Assumptions)[^\n<]*)\s*[:\]\*\*]*[ \t]*(?:<br\/>|\n|<\/p>|<p>)+((?:[ \t]*(?:<div[^>]*>|<p>)?(?:\d+[\.\)]|[①-⑳]|[•\*\-])[ \t]*[^\n<]+(?:<\/div>|<\/p>|<br\/>|\n|$))+)/gi;
+  // Pattern A: Strict Header + Numbered Steps ONLY (1. ... 2. ... or ① ... ② ...)
+  // 🚨 [사용자 절대 수칙]: 기호정의를 제외하고는 번호(1., 2. 또는 ①, ②)가 없으면 동적 감싸기를 절대 수행하지 않음
+  const sectionRegex = /(?:^|<br\/>|\n|<p>)[ \t]*(?:[•\*\-]\s*|#{1,6}\s*|\[|\*\*)?\s*([^\n<]*(?:절차|흐름도|플로우차트|순서도|프로세스|가정\s*사항|가정\s*조건|기본\s*가정|전제\s*조건|가정|메커니즘|작동\s*원리|Procedure|Assumptions)[^\n<]*)\s*[:\]\*\*]*[ \t]*(?:<br\/>|\n|<\/p>|<p>)+((?:[ \t]*(?:<div[^>]*>|<p>)?(?:\d+[\.\)]|[①-⑳])[ \t]*[^\n<]+(?:<\/div>|<\/p>|<br\/>|\n|$))+)/gi;
 
   let result = text.replace(sectionRegex, (fullMatch, headerTitle, stepsBlock) => {
     if (fullMatch.includes('___HTML_TABLE_') || fullMatch.includes('___CODE_BLOCK_') || /<table/i.test(fullMatch)) {

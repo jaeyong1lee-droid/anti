@@ -302,7 +302,7 @@ async function runTests() {
 • k: 투수계수 (cm/s)
 • A: 시료의 단면적 (cm²)`;
   const renderedStandaloneSymbols = convertMarkdownToHtml(cleanAndSanitizeMathText(standaloneSymbolSample), true, false, false);
-  const hasStandaloneSymbolBox = renderedStandaloneSymbols.includes('공식 기호 정의') && renderedStandaloneSymbols.includes('border-purple-500');
+  const hasStandaloneSymbolBox = renderedStandaloneSymbols.includes('border-purple-500');
 
   const mechanismTagSample = `:::mechanism
 1. 다르시의 법칙(Q = k · i · A)을 근간으로 작동합니다.
