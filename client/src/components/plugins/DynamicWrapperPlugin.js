@@ -283,15 +283,16 @@ export function wrapKdsKcsAndWikipediaReferencesHtml(text) {
             detailContent = rest && rest.length > 5 ? rest : descText;
           }
 
-          // Strict Safeguard: If detailContent is identical to titleSummary or too short (under 45 chars), auto-fill actual rich verified full text!
-          if (!isNoneText && (detailContent.trim() === titleSummary.trim() || detailContent.replace(/<[^>]+>/g, '').trim().length <= 45)) {
+          // If the AI explicitly reported no search result, or if detailContent matches titleSummary, maintain clear honest 'no search result found' message!
+          if (isNoneText) {
+            detailContent = '<span class="text-slate-400 font-normal italic">해당 검색 규정/문헌 내역이 없습니다.</span>';
+          } else if (detailContent.trim() === titleSummary.trim() || detailContent.replace(/<[^>]+>/g, '').trim().length <= 45) {
+            // Keep content clean without inventing mismatched default text
             detailContent = isKds
-              ? `${titleSummary}: 국가건설기준 KDS 11 10 20 (지반조사 및 계측공사 기준) 제4장 4.2 계측관리 규정 - 연약지반 성토 시 지표침하판(Ground Settlement Plate)을 10~30m 간격으로 설치하여 성토고에 따른 시계열 침하 데이터를 수집해야 함. 수집된 침하 데이터를 바탕으로 Asaoka법, 쌍곡선법(Hyperbolic Method), Hoshino법을 적용하여 장래 최종 압밀침하량 및 잔류침하량을 역해석 추정하고 구조물 허용 잔류침하 기준을 판정해야 함.`
+              ? `${titleSummary}: <span class="text-slate-400 font-normal italic">해당 주제에 관한 직접적인 KDS/KCS 건설기준 검색 내역이 없습니다.</span>`
               : isReport
-              ? `${titleSummary}: 원보고서 본문 지표침하판 계측 데이터 분석 결과 - 연약지반 성토 구간에 설치된 지표침하판(SP-1~SP-4)의 180일간 시계열 침하 계측 데이터(누적 침하량 42.5cm) 분석 완료. Asaoka법(1차 지연 방정식 St = α*St-1 + β) 적용 결과 예측 최종 침하량 Sf = 48.2cm, 현재 압밀도 U = 88.2%로 산정됨. 추가 성토 방치 60일 확보 시 잔류침하량 5.7cm로 허용 기준(10cm 이내)을 충족함.`
-              : `${titleSummary}: Wikipedia Soil Mechanics (Settlement Prediction & Asaoka Method) - In geotechnical engineering, observational methods like Asaoka's method, the Hyperbolic method, and Hoshino's method are widely used to predict ultimate consolidation settlement (Sf) from time-series ground settlement plate measurement data. Asaoka's method plots settlement at constant time intervals (St vs St-1) to derive the ultimate settlement as the intersection with the 45-degree line.<br/><br/>지반공학에서 지표침하판 계측 데이터를 이용한 아사오카(Asaoka) 법은 일정한 시간 간격(Δt)의 침하량(St vs St-1) 관계선을 45도 기울기 직선과의 교점으로 최종 압밀 침하량(Sf)을 정밀하게 역해석 추정하는 대표적인 계측 해석 기법임.`;
-          } else if (isWiki && !isNoneText && !detailContent.includes('아사오카') && !detailContent.includes('Asaoka')) {
-            detailContent = `${detailContent}<br/><br/>지반공학에서 지표침하판 계측 데이터를 이용한 아사오카(Asaoka) 법은 일정한 시간 간격(Δt)의 침하량(St vs St-1) 관계선을 45도 기울기 직선과의 교점으로 최종 압밀 침하량(Sf)을 정밀하게 역해석 추정하는 대표적인 계측 해석 기법임.`;
+              ? `${titleSummary}: <span class="text-slate-400 font-normal italic">해당 주제에 관한 원보고서 본문 계측/시험 데이터 검색 내역이 없습니다.</span>`
+              : `${titleSummary}: <span class="text-slate-400 font-normal italic">해당 주제에 관한 Wikipedia 영문 위키피디아 검색 내역이 없습니다.</span>`;
           }
 
           itemBoxes.push({
@@ -325,7 +326,7 @@ export function wrapKdsKcsAndWikipediaReferencesHtml(text) {
     const hasReport = itemBoxes.some(item => item.priority === 2);
     const hasWiki = itemBoxes.some(item => item.priority === 3);
 
-    // Auto-inject missing reference types to guarantee 3 complete reference items on every card
+    // Auto-inject missing reference types with explicit honest 'no search result found' message
     if (!hasKds) {
       itemBoxes.push({
         priority: 1,
@@ -333,12 +334,12 @@ export function wrapKdsKcsAndWikipediaReferencesHtml(text) {
                 `<summary class="flex items-center justify-between gap-2.5 p-2.5 px-3 cursor-pointer select-none hover:bg-slate-800/60 transition-colors">` +
                   `<div class="flex items-center gap-2 min-w-0 flex-1">` +
                     `<span class="px-2 py-0.5 rounded bg-amber-600/20 text-amber-300 border border-amber-500/40 font-bold text-[10px] sm:text-[11px] font-mono shrink-0 select-none">KDS/KCS 건설기준</span>` +
-                    `<span class="text-[10px] sm:text-[11px] text-slate-100 font-normal tracking-tight leading-tight truncate">국가건설기준 KDS 11 10 20 지표침하판 계측관리 및 장래침하량 추정 기준</span>` +
+                    `<span class="text-[10px] sm:text-[11px] text-slate-100 font-normal tracking-tight leading-tight truncate">KDS/KCS 국가건설기준 참조</span>` +
                   `</div>` +
                   `<span class="text-[10px] sm:text-[11px] font-bold text-amber-400/90 group-open:rotate-180 transition-transform shrink-0 ml-1.5">▼</span>` +
                 `</summary>` +
                 `<div class="p-3 text-[10px] sm:text-[11px] text-slate-200 leading-relaxed border-t border-slate-800/80 bg-slate-950/80 break-words select-text font-sans">` +
-                  `국가건설기준 KDS 11 10 20 (지반조사 및 계측공사 기준) 제4장 4.2 계측관리 규정 - 연약지반 성토 시 지표침하판(Ground Settlement Plate)을 10~30m 간격으로 설치하여 성토고에 따른 시계열 침하 데이터를 수집해야 함. 수집된 침하 데이터를 바탕으로 Asaoka법, 쌍곡선법(Hyperbolic Method), Hoshino법을 적용하여 장래 최종 압밀침하량 및 잔류침하량을 역해석 추정하고 구조물 허용 잔류침하 기준을 판정해야 함.` +
+                  `<span class="text-slate-400 font-normal italic">해당 세부 주제에 관한 KDS/KCS 규정 검색 내역이 없습니다.</span>` +
                 `</div>` +
               `</details>`
       });
@@ -351,12 +352,12 @@ export function wrapKdsKcsAndWikipediaReferencesHtml(text) {
                 `<summary class="flex items-center justify-between gap-2.5 p-2.5 px-3 cursor-pointer select-none hover:bg-slate-800/60 transition-colors">` +
                   `<div class="flex items-center gap-2 min-w-0 flex-1">` +
                     `<span class="px-2 py-0.5 rounded bg-indigo-600/25 text-indigo-300 border border-indigo-500/40 font-bold text-[10px] sm:text-[11px] font-mono shrink-0 select-none">원보고서 본문</span>` +
-                    `<span class="text-[10px] sm:text-[11px] text-slate-100 font-normal tracking-tight leading-tight truncate">원보고서 본문 지표침하판 계측데이터 및 Asaoka 분석 결과</span>` +
+                    `<span class="text-[10px] sm:text-[11px] text-slate-100 font-normal tracking-tight leading-tight truncate">원보고서 본문 수록 내용 참조</span>` +
                   `</div>` +
                   `<span class="text-[10px] sm:text-[11px] font-bold text-amber-400/90 group-open:rotate-180 transition-transform shrink-0 ml-1.5">▼</span>` +
                 `</summary>` +
                 `<div class="p-3 text-[10px] sm:text-[11px] text-slate-200 leading-relaxed border-t border-slate-800/80 bg-slate-950/80 break-words select-text font-sans">` +
-                  `원보고서 본문 지표침하판 계측 데이터 분석 결과 - 연약지반 성토 구간에 설치된 지표침하판(SP-1~SP-4)의 180일간 시계열 침하 계측 데이터(누적 침하량 42.5cm) 분석 완료. Asaoka법(1차 지연 방정식 St = α*St-1 + β) 적용 결과 예측 최종 침하량 Sf = 48.2cm, 현재 압밀도 U = 88.2%로 산정됨. 추가 성토 방치 60일 확보 시 잔류침하량 5.7cm로 허용 기준(10cm 이내)을 충족함.` +
+                  `<span class="text-slate-400 font-normal italic">해당 세부 주제에 관한 원보고서 본문 데이터 검색 내역이 없습니다.</span>` +
                 `</div>` +
               `</details>`
       });
@@ -369,12 +370,12 @@ export function wrapKdsKcsAndWikipediaReferencesHtml(text) {
                 `<summary class="flex items-center justify-between gap-2.5 p-2.5 px-3 cursor-pointer select-none hover:bg-slate-800/60 transition-colors">` +
                   `<div class="flex items-center gap-2 min-w-0 flex-1">` +
                     `<span class="px-2 py-0.5 rounded bg-emerald-600/20 text-emerald-300 border border-emerald-500/40 font-bold text-[10px] sm:text-[11px] font-mono shrink-0 select-none">Wikipedia Soil Mechanics</span>` +
-                    `<span class="text-[10px] sm:text-[11px] text-slate-100 font-normal tracking-tight leading-tight truncate">Settlement Prediction & Asaoka Method Theory</span>` +
+                    `<span class="text-[10px] sm:text-[11px] text-slate-100 font-normal tracking-tight leading-tight truncate">Wikipedia 영문 위키피디아 참조</span>` +
                   `</div>` +
                   `<span class="text-[10px] sm:text-[11px] font-bold text-amber-400/90 group-open:rotate-180 transition-transform shrink-0 ml-1.5">▼</span>` +
                 `</summary>` +
                 `<div class="p-3 text-[10px] sm:text-[11px] text-slate-200 leading-relaxed border-t border-slate-800/80 bg-slate-950/80 break-words select-text font-sans">` +
-                  `Wikipedia Soil Mechanics (Settlement Prediction & Asaoka Method) - In geotechnical engineering, observational methods like Asaoka's method, the Hyperbolic method, and Hoshino's method are widely used to predict ultimate consolidation settlement (Sf) from time-series ground settlement plate measurement data. Asaoka's method plots settlement at constant time intervals (St vs St-1) to derive the ultimate settlement as the intersection with the 45-degree line.<br/><br/>지반공학에서 지표침하판 계측 데이터를 이용한 아사오카(Asaoka) 법은 일정한 시간 간격(Δt)의 침하량(St vs St-1) 관계선을 45도 기울기 직선과의 교점으로 최종 압밀 침하량(Sf)을 정밀하게 역해석 추정하는 대표적인 계측 해석 기법임.` +
+                  `<span class="text-slate-400 font-normal italic">해당 세부 주제에 관한 Wikipedia 영문 학술 위키피디아 검색 내역이 없습니다.</span>` +
                 `</div>` +
               `</details>`
       });
