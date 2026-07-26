@@ -567,8 +567,6 @@ router.post('/topics/:id/ai-questions', async (req, res) => {
       process.env.GEMINI_API_KEY ||
       process.env.GEMINI_API_KEY_SECONDARY ||
       process.env.GEMINI_API_KEY_TERTIARY ||
-      process.env.XAI_API_KEY ||
-      process.env.GROK_API_KEY ||
       process.env.ANTHROPIC_API_KEY ||
       process.env.OPENAI_API_KEY
     );
@@ -2223,8 +2221,6 @@ router.post('/exam/all', async (req, res) => {
       process.env.GEMINI_API_KEY ||
       process.env.GEMINI_API_KEY_SECONDARY ||
       process.env.GEMINI_API_KEY_TERTIARY ||
-      process.env.XAI_API_KEY ||
-      process.env.GROK_API_KEY ||
       process.env.ANTHROPIC_API_KEY ||
       process.env.OPENAI_API_KEY
     );
@@ -2768,8 +2764,6 @@ router.post('/exam/additional', async (req, res) => {
       process.env.GEMINI_API_KEY ||
       process.env.GEMINI_API_KEY_SECONDARY ||
       process.env.GEMINI_API_KEY_TERTIARY ||
-      process.env.XAI_API_KEY ||
-      process.env.GROK_API_KEY ||
       process.env.ANTHROPIC_API_KEY ||
       process.env.OPENAI_API_KEY
     );
@@ -3567,8 +3561,6 @@ router.post('/exam/detailed-answer', async (req, res) => {
       process.env.GEMINI_API_KEY ||
       process.env.GEMINI_API_KEY_SECONDARY ||
       process.env.GEMINI_API_KEY_TERTIARY ||
-      process.env.XAI_API_KEY ||
-      process.env.GROK_API_KEY ||
       process.env.ANTHROPIC_API_KEY ||
       process.env.OPENAI_API_KEY
     );
@@ -3639,9 +3631,7 @@ router.post('/hint', async (req, res) => {
     const hasAnyAiKey = !!(
       process.env.GEMINI_API_KEY ||
       process.env.GEMINI_API_KEY_SECONDARY ||
-      process.env.GEMINI_API_KEY_TERTIARY ||
-      process.env.XAI_API_KEY ||
-      process.env.GROK_API_KEY
+      process.env.GEMINI_API_KEY_TERTIARY
     );
     if (!hasAnyAiKey) {
       if (progressTimer) clearInterval(progressTimer);

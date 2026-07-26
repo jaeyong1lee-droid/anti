@@ -173,8 +173,6 @@ export async function callLLMWithFailover(systemInstruction, userPrompt, image =
   const primaryKey = process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY.trim().replace(/^['"]|['"]$/g, '') : null;
   const secondaryKey = process.env.GEMINI_API_KEY_SECONDARY ? process.env.GEMINI_API_KEY_SECONDARY.trim().replace(/^['"]|['"]$/g, '') : null;
   const tertiaryKey = process.env.GEMINI_API_KEY_TERTIARY ? process.env.GEMINI_API_KEY_TERTIARY.trim().replace(/^['"]|['"]$/g, '') : null;
-  const xaiKey = process.env.XAI_API_KEY ? process.env.XAI_API_KEY.trim().replace(/^['"]|['"]$/g, '') : null;
-  const grokKey = process.env.GROK_API_KEY ? process.env.GROK_API_KEY.trim().replace(/^['"]|['"]$/g, '') : null;
 
   const keyErrors = [];
   const hasImage = Array.isArray(image)
@@ -189,41 +187,21 @@ export async function callLLMWithFailover(systemInstruction, userPrompt, image =
   if (tertiaryKey) keys.push({ key: tertiaryKey, label: 'Key #3' });
 
   for (const k of keys) {
-    const isGroq = k.key.startsWith('gsk_');
-    const isGrok = k.key.startsWith('xai-');
-
-    if (isGroq) {
-      executionList.push({ key: k.key, label: k.label, model: 'llama-3.3-70b-versatile', type: 'groq' });
-      executionList.push({ key: k.key, label: k.label, model: 'llama-3.1-8b-instant', type: 'groq' });
-    } else if (isGrok) {
-      executionList.push({ key: k.key, label: k.label, model: 'grok-2-1212', type: 'grok' });
-      executionList.push({ key: k.key, label: k.label, model: 'grok-2', type: 'grok' });
-    } else {
-      const geminiFallbacks = [
-        options.preferredModel,
-        globalPreferredModel,
-        'gemini-3.5-flash-lite',
-        'gemini-3.6-flash',
-        'gemini-3.1-flash-lite',
-        'gemini-3.5-flash',
-        'gemini-3.0-flash',
-        'gemini-2.5-flash',
-        'gemini-2.5-flash-lite'
-      ];
-      const uniqueModels = [...new Set(geminiFallbacks.filter(Boolean))];
-      for (const modelName of uniqueModels) {
-        executionList.push({ key: k.key, label: k.label, model: modelName, type: 'gemini' });
-      }
+    const geminiFallbacks = [
+      options.preferredModel,
+      globalPreferredModel,
+      'gemini-3.5-flash-lite',
+      'gemini-3.6-flash',
+      'gemini-3.1-flash-lite',
+      'gemini-3.5-flash',
+      'gemini-3.0-flash',
+      'gemini-2.5-flash',
+      'gemini-2.5-flash-lite'
+    ];
+    const uniqueModels = [...new Set(geminiFallbacks.filter(Boolean))];
+    for (const modelName of uniqueModels) {
+      executionList.push({ key: k.key, label: k.label, model: modelName, type: 'gemini' });
     }
-  }
-
-  if (xaiKey) {
-    executionList.push({ key: xaiKey, label: 'Key #4 (Grok)', model: 'grok-2-1212', type: 'grok' });
-    executionList.push({ key: xaiKey, label: 'Key #4 (Grok)', model: 'grok-2', type: 'grok' });
-  }
-  if (grokKey) {
-    executionList.push({ key: grokKey, label: 'Key #5 (Grok)', model: 'grok-2-1212', type: 'grok' });
-    executionList.push({ key: grokKey, label: 'Key #5 (Grok)', model: 'grok-2', type: 'grok' });
   }
 
   let attemptedAny = false;
@@ -239,12 +217,6 @@ export async function callLLMWithFailover(systemInstruction, userPrompt, image =
 
     const maskedKey = `${key.substring(0, 8)}...${key.substring(key.length - 4)}`;
     const modelName = task.model;
-    const isGroq = task.type === 'groq';
-    const isGrok = task.type === 'grok';
-
-    if (hasImage && (isGroq || isGrok)) {
-      continue;
-    }
 
     attemptedAny = true;
     let attempt = 0;
@@ -253,91 +225,17 @@ export async function callLLMWithFailover(systemInstruction, userPrompt, image =
 
     while (attempt < maxAttempts) {
       try {
-        if (isGrok) {
-          console.log(`[Grok 시도] ${task.label} (${maskedKey}), 모델: ${modelName} (시도 #${attempt + 1})`);
-          const messages = [];
-          if (systemInstruction) {
-            messages.push({ role: 'system', content: systemInstruction });
+        const actualModelName = normalizeGeminiModel(modelName);
+        console.log(`[Gemini 시도] ${task.label} (${maskedKey}), 모델: ${modelName} -> ${actualModelName} (시도 #${attempt + 1})`);
+        const genAI = new GoogleGenerativeAI(key);
+        const model = genAI.getGenerativeModel({
+          model: actualModelName,
+          systemInstruction: systemInstruction || undefined,
+          generationConfig: {
+            temperature: options.temperature !== undefined ? options.temperature : 0.2,
+            ...(scenario === 'grading' ? { responseMimeType: 'application/json' } : {})
           }
-          messages.push({ role: 'user', content: userPrompt });
-
-          reportLlmProgress(options, scenario, modelName);
-          const response = await fetch('https://api.x.ai/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${key}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              model: modelName,
-              messages: messages,
-              temperature: options.temperature !== undefined ? options.temperature : 0.2,
-              ...(scenario === 'grading' ? { response_format: { type: "json_object" } } : {})
-            })
-          });
-
-          if (!response.ok) {
-            const errBody = await response.text().catch(() => '');
-            throw new Error(`HTTP Error ${response.status}: ${errBody}`);
-          }
-
-          const data = await response.json();
-          const text = data.choices?.[0]?.message?.content?.trim();
-          if (text) {
-            console.log(`[Grok 성공] ${task.label} (${maskedKey}), 모델: ${modelName}`);
-            return text;
-          } else {
-            throw new Error('Grok response empty');
-          }
-
-        } else if (isGroq) {
-          console.log(`[Groq 시도] ${task.label} (${maskedKey}), 모델: ${modelName} (시도 #${attempt + 1})`);
-          const messages = [];
-          if (systemInstruction) {
-            messages.push({ role: 'system', content: systemInstruction });
-          }
-          messages.push({ role: 'user', content: userPrompt });
-
-          reportLlmProgress(options, scenario, modelName);
-          const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${key}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              model: modelName,
-              messages: messages,
-              temperature: options.temperature !== undefined ? options.temperature : 0.2
-            })
-          });
-
-          if (!response.ok) {
-            const errBody = await response.text().catch(() => '');
-            throw new Error(`HTTP Error ${response.status}: ${errBody}`);
-          }
-
-          const data = await response.json();
-          const text = data.choices?.[0]?.message?.content?.trim();
-          if (text) {
-            console.log(`[Groq 성공] ${task.label} (${maskedKey}), 모델: ${modelName}`);
-            return text;
-          } else {
-            throw new Error('Groq response empty');
-          }
-
-        } else {
-          const actualModelName = normalizeGeminiModel(modelName);
-          console.log(`[Gemini 시도] ${task.label} (${maskedKey}), 모델: ${modelName} -> ${actualModelName} (시도 #${attempt + 1})`);
-          const genAI = new GoogleGenerativeAI(key);
-          const model = genAI.getGenerativeModel({
-            model: actualModelName,
-            systemInstruction: systemInstruction || undefined,
-            generationConfig: {
-              temperature: options.temperature !== undefined ? options.temperature : 0.2,
-              ...(scenario === 'grading' ? { responseMimeType: 'application/json' } : {})
-            }
-          }, { apiVersion: 'v1beta' });
+        }, { apiVersion: 'v1beta' });
 
           let generateContentArg = [userPrompt];
           if (Array.isArray(image)) {
@@ -379,7 +277,6 @@ export async function callLLMWithFailover(systemInstruction, userPrompt, image =
           } else {
             throw new Error('Gemini response empty');
           }
-        }
       } catch (err) {
         console.warn(`[API 시도 실패] ${task.label} (${maskedKey}), 모델: ${task.model} (시도 #${attempt + 1}): ${err.message?.substring(0, 120)}`);
         keyErrors.push(`${task.label} (${task.model}): ${err.message?.substring(0, 120)}`);

@@ -38,8 +38,6 @@ async function generateWeakPointRecommendation(queryDate, isManual = false) {
     process.env.GEMINI_API_KEY ||
     process.env.GEMINI_API_KEY_SECONDARY ||
     process.env.GEMINI_API_KEY_TERTIARY ||
-    process.env.XAI_API_KEY ||
-    process.env.GROK_API_KEY ||
     process.env.ANTHROPIC_API_KEY ||
     process.env.OPENAI_API_KEY
   );

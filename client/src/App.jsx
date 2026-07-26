@@ -3415,7 +3415,7 @@ export default function App() {
 
                   // Infer engine model name from message text
                   let modelName = item.modelName;
-                  const match = data.message.match(/([a-zA-Z0-9.-]+\s*엔진|[a-zA-Z0-9.-]+\s*Model|GEMINI-[a-zA-Z0-9.-]+|GROK-[a-zA-Z0-9.-]+|GPT-[a-zA-Z0-9.-]+)/i);
+                  const match = data.message.match(/([a-zA-Z0-9.-]+\s*엔진|[a-zA-Z0-9.-]+\s*Model|GEMINI-[a-zA-Z0-9.-]+|GPT-[a-zA-Z0-9.-]+)/i);
                   if (match) {
                     modelName = match[1].replace(/\s*엔진/i, '').trim().toLowerCase();
                   } else if (data.message.toLowerCase().includes('gemini-3.5-flash')) {
