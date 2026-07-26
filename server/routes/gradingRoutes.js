@@ -100,7 +100,7 @@ router.post('/grade-subjective', async (req, res) => {
     return callLLMWithFailover(sys, enrichedPrompt, img, scenario, { ...opts, temperature: targetTemp, progressId });
   };
   if (progressId) {
-    standardsAnalysis = await analyzeStandardsBeforeTask(progressId, question || '주관식 채점', dynamicGradingStandards, 'grading');
+    standardsAnalysis = await analyzeStandardsBeforeTask(progressId, question || '주관식 채점', dynamicGradingStandards, 'grading').catch(() => '');
     updateProgress(progressId, 1, '1단계: AI 엔진으로 제출 답안 채점 중...', 30);
   }
 

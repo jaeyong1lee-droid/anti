@@ -294,6 +294,7 @@ export async function callLLMWithFailover(systemInstruction, userPrompt, image =
 
         if (isQuota) {
           console.log(`[쿼터 초과 감지] ${task.label} (${task.model} -> ${actualModelName}) 모델 쿼터 초과(429). 동일 키의 고용량 모델(flash-lite, 500 RPD) 또는 다음 키/모델로 페일오버합니다.`);
+          await sleep(600);
           break;
         }
 
@@ -380,7 +381,7 @@ ${scenarioGuideline}
     }
 
     const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('API response timeout (3s limit)')), 3000)
+      setTimeout(() => reject(new Error('API response timeout (8s limit)')), 8000)
     );
 
     const resultText = await Promise.race([
