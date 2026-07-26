@@ -58,25 +58,25 @@ export async function saveSessionValue(key, value) {
 }
 
 export function normalizeGeminiModel(modelName) {
-  if (!modelName || typeof modelName !== 'string') return 'gemini-2.0-flash';
+  if (!modelName || typeof modelName !== 'string') return 'gemini-1.5-flash';
   const name = modelName.trim().toLowerCase();
 
   const validModels = [
-    'gemini-2.0-flash',
-    'gemini-2.0-flash-lite',
     'gemini-1.5-flash',
-    'gemini-1.5-pro'
+    'gemini-1.5-flash-8b',
+    'gemini-1.5-pro',
+    'gemini-2.0-flash-exp'
   ];
   if (validModels.includes(name)) return name;
 
-  if (name.includes('3.1-flash-lite') || name.includes('3.5-flash-lite') || name.includes('3.1-lite') || name.includes('lite')) {
-    return 'gemini-2.0-flash-lite';
+  if (name.includes('lite') || name.includes('3.1') || name.includes('3.5-flash-lite') || name.includes('8b')) {
+    return 'gemini-1.5-flash-8b';
   }
   if (name.includes('pro')) {
     return 'gemini-1.5-pro';
   }
 
-  return 'gemini-2.0-flash';
+  return 'gemini-1.5-flash';
 }
 
 export function updateProgress(progressId, step, message, percentage = null) {
@@ -189,7 +189,7 @@ export async function callLLMWithFailover(systemInstruction, userPrompt, image =
   const isSourceSearch = scenario === 'source' || scenario === 'source-search' || options.isSourceSearch || (options.preferredModel && options.preferredModel.includes('3.1'));
 
   for (const k of keys) {
-    const geminiFallbacks = isSourceSearch
+    const rawFallbacks = isSourceSearch
       ? [
           'gemini-3.1-flash-lite',
           'gemini-3.5-flash-lite',
@@ -197,24 +197,25 @@ export async function callLLMWithFailover(systemInstruction, userPrompt, image =
           globalPreferredModel,
           'gemini-3.6-flash',
           'gemini-3.5-flash',
-          'gemini-3.0-flash',
-          'gemini-2.5-flash',
-          'gemini-2.5-flash-lite'
+          'gemini-2.5-flash'
         ]
       : [
           options.preferredModel,
           globalPreferredModel,
           'gemini-3.5-flash-lite',
-          'gemini-3.6-flash',
           'gemini-3.1-flash-lite',
+          'gemini-3.6-flash',
           'gemini-3.5-flash',
-          'gemini-3.0-flash',
-          'gemini-2.5-flash',
-          'gemini-2.5-flash-lite'
+          'gemini-2.5-flash'
         ];
-    const uniqueModels = [...new Set(geminiFallbacks.filter(Boolean))];
-    for (const modelName of uniqueModels) {
-      executionList.push({ key: k.key, label: k.label, model: modelName, type: 'gemini' });
+    const uniqueRaw = [...new Set(rawFallbacks.filter(Boolean))];
+    const addedActuals = new Set();
+    for (const modelName of uniqueRaw) {
+      const actual = normalizeGeminiModel(modelName);
+      if (!addedActuals.has(actual)) {
+        addedActuals.add(actual);
+        executionList.push({ key: k.key, label: k.label, model: modelName, actualModel: actual, type: 'gemini' });
+      }
     }
   }
 
@@ -231,6 +232,7 @@ export async function callLLMWithFailover(systemInstruction, userPrompt, image =
 
     const maskedKey = `${key.substring(0, 8)}...${key.substring(key.length - 4)}`;
     const modelName = task.model;
+    const actualModelName = task.actualModel || normalizeGeminiModel(modelName);
 
     attemptedAny = true;
     let attempt = 0;
@@ -239,7 +241,6 @@ export async function callLLMWithFailover(systemInstruction, userPrompt, image =
 
     while (attempt < maxAttempts) {
       try {
-        const actualModelName = normalizeGeminiModel(modelName);
         console.log(`[Gemini 시도] ${task.label} (${maskedKey}), 모델: ${modelName} -> ${actualModelName} (시도 #${attempt + 1})`);
         const genAI = new GoogleGenerativeAI(key);
         const model = genAI.getGenerativeModel({
@@ -299,9 +300,14 @@ export async function callLLMWithFailover(systemInstruction, userPrompt, image =
         const isNotFoundModel = err.status === 404 || err.message?.includes('404') || err.message?.includes('is not found') || err.message?.includes('models/');
         const isAuthError = err.message?.includes('API_KEY_INVALID') || err.message?.includes('API key not valid') || err.status === 401 || err.status === 403;
 
-        if (isQuota || isAuthError) {
+        if (isAuthError) {
           failedKeys.add(key);
-          console.log(`[키 장애 감지] ${task.label}에 문제(Quota/Auth)가 있어 해당 키의 다른 모델 시도를 생략하고 다음 키로 즉시 페일오버합니다.`);
+          console.log(`[키 장애 감지] ${task.label} 키 유효성 오류(Auth)로 인해 다음 키로 즉시 페일오버합니다.`);
+          break;
+        }
+
+        if (isQuota) {
+          console.log(`[쿼터 초과 감지] ${task.label} (${task.model} -> ${actualModelName}) 모델 쿼터 초과(429). 동일 키의 고용량 모델(flash-lite, 500 RPD) 또는 다음 키/모델로 페일오버합니다.`);
           break;
         }
 
