@@ -142,15 +142,22 @@ export function reportValidationProgress(progressId, total) {
   });
 }
 
-export function startBackendProgressTimer(progressId, step, initialMessage, maxPercentage, intervalMs = 1500, stepIncrement = 5) {
+export function startBackendProgressTimer(progressId, step, initialMessage, maxPercentage = 88, intervalMs = 700, stepIncrement = 3) {
   if (!progressId) return null;
-  updateProgress(progressId, step, initialMessage, 10);
-  let currentPercent = 10;
+  const existing = global.progressTracker.get(progressId);
+  let currentPercent = existing && existing.percentage > 10 ? existing.percentage : 10;
+  updateProgress(progressId, step, initialMessage, currentPercent);
+  
   const timer = setInterval(() => {
-    currentPercent = Math.min(currentPercent + stepIncrement, maxPercentage);
+    const remaining = maxPercentage - currentPercent;
+    let increment = stepIncrement;
+    if (remaining < 15) increment = 1;
+    else if (remaining < 30) increment = 2;
+    
+    currentPercent = Math.min(currentPercent + increment, maxPercentage);
     const progress = global.progressTracker.get(progressId);
-    if (progress && progress.step === step) {
-      updateProgress(progressId, step, progress.message || initialMessage, currentPercent);
+    if (progress) {
+      updateProgress(progressId, progress.step || step, progress.message || initialMessage, currentPercent);
     } else {
       clearInterval(timer);
     }
