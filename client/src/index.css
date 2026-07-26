@@ -166,6 +166,12 @@ div[class*="overflow-y-auto"] {
   letter-spacing: -0.01em;
 }
 
+/* Optically scale lowercase math italic variables (s, t, etc.) so they match Korean text height */
+.katex .mord.mathnormal {
+  font-size: 1.08em;
+  font-weight: 500;
+}
+
 /* Prevent text selection and native callout menus on KaTeX formulas when long-press export is enabled */
 .enable-add-formula .katex,
 .enable-add-formula .katex-display,
