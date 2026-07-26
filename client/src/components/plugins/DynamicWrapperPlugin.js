@@ -390,21 +390,6 @@ export function cleanResidualDirectiveMarkup(text) {
 /**
  * 8. 모든 5대 동적 감싸기 엔진 및 찌꺼기 소거 통합 파이프라인
  */
-/**
- * 9. 불릿 항목(•)의 소제목/키워드(콜론 앞 텍스트)를 시각적으로 눈에 띄는 노란색 앰버 하이라이트로 정돈하는 전용 변환기
- */
-export function highlightBulletKeywordsHtml(text) {
-  if (!text || typeof text !== 'string') return text;
-
-  const bulletKeywordRegex = /(?:^|<br\/>|\n|<p>|<li>)\s*([•\*\-]\s*|\s*)(?:<strong[^>]*>|\*\*|\$)?\s*([가-힣a-zA-Z0-9_\s\-\(\)]{2,25})\s*(?:\<\/strong\>|\*\*|\$)?\s*:/gi;
-
-  return text.replace(bulletKeywordRegex, (match, prefix, keyword) => {
-    const cleanKeyword = keyword.trim();
-    if (!cleanKeyword || /kds|kcs|wikipedia|http|https/i.test(cleanKeyword)) return match;
-    return `${prefix}<span class="text-amber-300 font-bold bg-amber-500/15 px-1 py-0.5 rounded border border-amber-500/25">${cleanKeyword}</span>:`;
-  });
-}
-
 export function applyAllDynamicWrappers(text) {
   if (!text || typeof text !== 'string') return text;
   let result = text;
@@ -413,7 +398,6 @@ export function applyAllDynamicWrappers(text) {
   result = wrapSymbolDefinitionsHtml(result);
   result = wrapKdsKcsAndWikipediaReferencesHtml(result);
   result = wrapWikipediaDirectLineHtml(result);
-  result = highlightBulletKeywordsHtml(result);
   result = cleanResidualDirectiveMarkup(result);
   return result;
 }
@@ -425,7 +409,6 @@ export default {
   wrapKdsKcsAndWikipediaReferencesHtml,
   wrapWikipediaDirectLineHtml,
   wrapProsConsHtml,
-  highlightBulletKeywordsHtml,
   cleanResidualDirectiveMarkup,
   applyAllDynamicWrappers
 };
