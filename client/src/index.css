@@ -154,7 +154,7 @@ div[class*="overflow-y-auto"] {
 /* Improve KaTeX formula font rendering for Korean text */
 .katex {
   font-family: 'KaTeX_Main', 'Pretendard', 'Malgun Gothic', sans-serif !important;
-  font-size: 1em !important;
+  font-size: 1.18em !important;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

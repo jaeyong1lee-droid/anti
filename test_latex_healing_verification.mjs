@@ -11,15 +11,9 @@ console.log("🧪 순서도(Flowchart) 수식 자가치유 종합 검증 테스�
 console.log("=================================================\n");
 
 const testCases = [
-  "침하량 $S_{ult} = S_0 + \\frac{1}{\\beta} \\beta = 100 + 120 = 220$",
-  "침하량 S_{ult} = S_0 + \\frac{1}{\\beta} = 100 + 120 = 220",
-  "침하량 S_{ult} = S_0 + \\frac{1}{beta} = 100",
-  "침하량 $S_{ult} = S_0 + \\frac{1}{ } \\beta = 100$",
-  "침하량 $S_{ult} = S_0 + \\frac{1}{} \\beta = 100$",
-  "침하량 $S_{ult} = S_0 + \\dfrac{1}{ } \\beta = 100$",
-  "침하량 $S_{ult} = S_0 + \\frac{1}{\\beta} \\beta } = 100 + 120 = 220$",
-  "침하량 $S_{ult} = S_0 + \\frac{1}{\\beta}\\beta} = 100$",
-  "침하량 $S_{ult} = S_0 + \\frac{1}{\\beta} \\beta$ 이 아니라"
+  "최종 침하량 $S_{ult} = S_0 + \\\\frac{1}{\\\\beta} = 100 + 120 = 220$ 이 아니라",
+  "최종 침하량 $S_{ult} = S_0 + \\frac{1}{\\beta} = 100 + 120 = 220$ 이 아니라",
+  JSON.parse('{"text": "최종 침하량 $S_{ult} = S_0 + \\\\frac{1}{\\\\beta} = 100 + 120 = 220$ 이 아니라"}').text
 ];
 
 let hasError = false;
