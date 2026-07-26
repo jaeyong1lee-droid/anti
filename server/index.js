@@ -6,7 +6,13 @@ import { fileURLToPath } from 'url';
 import fs from 'fs';
 import { initDatabase, dbQuery, isPostgres } from './database.js';
 import { startBackupScheduler } from './backupManager.js';
-import { loadPreferredModel, globalPreferredModel } from './services/aiService.js';
+import { loadPreferredModel, globalPreferredModel, saveSessionValue } from './services/aiService.js';
+
+import { updateLiveEngineeringStandards, standardsList } from './plugins/engineeringStandards.js';
+import { updateLiveGradingStandards } from './plugins/gradingPlugin.js';
+import { gradingStandardsList } from './plugins/gradingStandardsList.js';
+import { updateLiveGenerationStandards, generationStandardsList } from './plugins/generationStandards.js';
+import { updateLiveLockscreenStandards, lockscreenStandardsList } from './plugins/lockscreenStandards.js';
 
 // Route Imports
 import configRoutes from './routes/configRoutes.js';
@@ -20,7 +26,7 @@ const __dirname = path.dirname(__filename);
 
 dotenv.config({ path: path.resolve(__dirname, '.env') });
 
-// Sanitize BLOB_READ_WRITE_TOKEN to handle copy-paste pollution (e.g. including prefix or quotes)
+// Sanitize BLOB_READ_WRITE_TOKEN to handle copy-paste pollution
 if (process.env.BLOB_READ_WRITE_TOKEN) {
   let token = process.env.BLOB_READ_WRITE_TOKEN.trim();
   const tokenIdx = token.indexOf('vercel_blob_rw_');
@@ -45,6 +51,123 @@ app.use((req, res, next) => {
 
 // AI Progress Tracker State
 global.progressTracker = global.progressTracker || new Map();
+
+function mergeStandards(fileList, dbList, fileIsNewer = false) {
+  if (!dbList || dbList.length === 0) {
+    return fileList;
+  }
+
+  if (fileIsNewer) {
+    const dbMap = new Map((dbList || []).map(item => [item.id, item]));
+    const merged = fileList.map(fileItem => {
+      const dbItem = dbMap.get(fileItem.id);
+      if (!dbItem || dbItem.content !== fileItem.content || dbItem.title !== fileItem.title) {
+        return { ...fileItem, updatedAt: new Date().toISOString() };
+      }
+      return dbItem;
+    });
+
+    const fileIds = new Set(fileList.map(item => item.id));
+    for (const dbItem of dbList || []) {
+      if (!fileIds.has(dbItem.id)) {
+        merged.push(dbItem);
+      }
+    }
+    return merged;
+  } else {
+    return dbList;
+  }
+}
+
+async function checkIsFileNewer(fileName, dbKey) {
+  try {
+    const filePath = path.resolve(__dirname, 'plugins', fileName);
+    if (!fs.existsSync(filePath)) return false;
+    const fileMtime = fs.statSync(filePath).mtime.getTime();
+
+    const row = await dbQuery.get("SELECT updated_at FROM app_session WHERE key = ?", [dbKey]);
+    if (!row || !row.updated_at) return true;
+    const dbUpdatedAt = new Date(row.updated_at).getTime();
+
+    return fileMtime > (dbUpdatedAt + 1000);
+  } catch (err) {
+    console.error(`Failed to check file mtime for ${fileName}:`, err.message);
+    return false;
+  }
+}
+
+async function initializeAllStandards() {
+  const syncStandard = async (fileName, dbKey, fileList, updateFn) => {
+    try {
+      let dbList = [];
+      const row = await dbQuery.get("SELECT value FROM app_session WHERE key = ?", [dbKey]);
+      if (row && row.value) {
+        dbList = JSON.parse(row.value);
+      }
+
+      const fileIsNewer = await checkIsFileNewer(fileName, dbKey);
+      const merged = mergeStandards(fileList, dbList, fileIsNewer);
+
+      if (JSON.stringify(merged) !== JSON.stringify(dbList)) {
+        await saveSessionValue(dbKey, JSON.stringify(merged));
+        console.log(`[Startup Sync] Automatically synced ${dbKey} to database.`);
+      }
+      updateFn(merged);
+    } catch (err) {
+      console.warn(`[Startup Sync] Failed to load/sync ${dbKey}:`, err.message);
+    }
+  };
+
+  await syncStandard('engineeringStandards.js', 'engineering_standards', standardsList, updateLiveEngineeringStandards);
+  await syncStandard('gradingStandardsList.js', 'grading_standards', gradingStandardsList, updateLiveGradingStandards);
+  await syncStandard('generationStandards.js', 'generation_standards', generationStandardsList, updateLiveGenerationStandards);
+  await syncStandard('lockscreenStandards.js', 'lockscreen_standards', lockscreenStandardsList, updateLiveLockscreenStandards);
+}
+
+// Database Initialization Safeguard (Runs BEFORE route handling)
+let isDbInitialized = false;
+let dbInitPromise = null;
+
+async function ensureDbInitialized() {
+  if (isDbInitialized) return;
+  if (!dbInitPromise) {
+    dbInitPromise = (async () => {
+      try {
+        console.log('[Startup] Initializing Database connection...');
+        await initDatabase();
+        try {
+          await dbQuery.run(`
+            CREATE TABLE IF NOT EXISTS app_session (
+              key TEXT PRIMARY KEY,
+              value TEXT,
+              updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+          `);
+        } catch (e) {
+          console.warn('[Startup] ensureSessionTable warning:', e.message);
+        }
+        await initializeAllStandards();
+        await loadPreferredModel();
+        isDbInitialized = true;
+      } catch (err) {
+        console.error('[Startup DB Init Error]:', err.message);
+        dbInitPromise = null;
+      }
+    })();
+  }
+  return dbInitPromise;
+}
+
+// Guarantee DB is connected before processing ANY incoming request
+app.use(async (req, res, next) => {
+  try {
+    await ensureDbInitialized();
+    next();
+  } catch (err) {
+    console.warn('[Middleware DB Warning]:', err.message);
+    next();
+  }
+});
 
 app.get('/api/progress/:progressId', (req, res) => {
   const { progressId } = req.params;
@@ -113,131 +236,6 @@ if (fs.existsSync(clientBuildPath)) {
 } else {
   console.log('[Static Serving] Production build folder not found. Local server started in API mode.');
 }
-
-import { updateLiveEngineeringStandards, standardsList } from './plugins/engineeringStandards.js';
-import { updateLiveGradingStandards } from './plugins/gradingPlugin.js';
-import { gradingStandardsList } from './plugins/gradingStandardsList.js';
-import { updateLiveGenerationStandards, generationStandardsList } from './plugins/generationStandards.js';
-import { updateLiveLockscreenStandards, lockscreenStandardsList } from './plugins/lockscreenStandards.js';
-
-import { saveSessionValue } from './services/aiService.js';
-
-function mergeStandards(fileList, dbList, fileIsNewer = false) {
-  if (!dbList || dbList.length === 0) {
-    return fileList;
-  }
-
-  if (fileIsNewer) {
-    const dbMap = new Map((dbList || []).map(item => [item.id, item]));
-    const merged = fileList.map(fileItem => {
-      const dbItem = dbMap.get(fileItem.id);
-      if (!dbItem || dbItem.content !== fileItem.content || dbItem.title !== fileItem.title) {
-        return { ...fileItem, updatedAt: new Date().toISOString() };
-      }
-      return dbItem;
-    });
-
-    const fileIds = new Set(fileList.map(item => item.id));
-    for (const dbItem of dbList || []) {
-      if (!fileIds.has(dbItem.id)) {
-        merged.push(dbItem);
-      }
-    }
-    return merged;
-  } else {
-    // DB is newer: trust DB completely (including deletions of default standards in the UI)
-    return dbList;
-  }
-}
-
-async function checkIsFileNewer(fileName, dbKey) {
-  try {
-    const filePath = path.resolve(__dirname, 'plugins', fileName);
-    if (!fs.existsSync(filePath)) return false;
-    const fileMtime = fs.statSync(filePath).mtime.getTime();
-
-    const row = await dbQuery.get("SELECT updated_at FROM app_session WHERE key = ?", [dbKey]);
-    if (!row || !row.updated_at) return true;
-    const dbUpdatedAt = new Date(row.updated_at).getTime();
-
-    return fileMtime > (dbUpdatedAt + 1000);
-  } catch (err) {
-    console.error(`Failed to check file mtime for ${fileName}:`, err.message);
-    return false;
-  }
-}
-
-async function initializeAllStandards() {
-  const syncStandard = async (fileName, dbKey, fileList, updateFn) => {
-    try {
-      let dbList = [];
-      const row = await dbQuery.get("SELECT value FROM app_session WHERE key = ?", [dbKey]);
-      if (row && row.value) {
-        dbList = JSON.parse(row.value);
-      }
-
-      const fileIsNewer = await checkIsFileNewer(fileName, dbKey);
-      const merged = mergeStandards(fileList, dbList, fileIsNewer);
-
-      if (JSON.stringify(merged) !== JSON.stringify(dbList)) {
-        await saveSessionValue(dbKey, JSON.stringify(merged));
-        console.log(`[Startup Sync] Automatically synced ${dbKey} to database.`);
-      }
-      updateFn(merged);
-    } catch (err) {
-      console.warn(`[Startup Sync] Failed to load/sync ${dbKey}:`, err.message);
-    }
-  };
-
-  await syncStandard('engineeringStandards.js', 'engineering_standards', standardsList, updateLiveEngineeringStandards);
-  await syncStandard('gradingStandardsList.js', 'grading_standards', gradingStandardsList, updateLiveGradingStandards);
-  await syncStandard('generationStandards.js', 'generation_standards', generationStandardsList, updateLiveGenerationStandards);
-  await syncStandard('lockscreenStandards.js', 'lockscreen_standards', lockscreenStandardsList, updateLiveLockscreenStandards);
-}
-
-// Ensure Database is initialized BEFORE any route handler runs
-let isDbInitialized = false;
-let dbInitPromise = null;
-
-async function ensureDbInitialized() {
-  if (isDbInitialized) return;
-  if (!dbInitPromise) {
-    dbInitPromise = (async () => {
-      try {
-        console.log('[Startup] Initializing Database connection...');
-        await initDatabase();
-        try {
-          await dbQuery.run(`
-            CREATE TABLE IF NOT EXISTS app_session (
-              key TEXT PRIMARY KEY,
-              value TEXT,
-              updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-          `);
-        } catch (e) {
-          console.warn('[Startup] ensureSessionTable warning:', e.message);
-        }
-        await initializeAllStandards();
-        await loadPreferredModel();
-        isDbInitialized = true;
-      } catch (err) {
-        console.error('[Startup DB Init Error]:', err.message);
-        dbInitPromise = null;
-      }
-    })();
-  }
-  return dbInitPromise;
-}
-
-app.use(async (req, res, next) => {
-  try {
-    await ensureDbInitialized();
-    next();
-  } catch (err) {
-    console.warn('[Middleware DB Warning]:', err.message);
-    next();
-  }
-});
 
 async function startServer() {
   await ensureDbInitialized();
