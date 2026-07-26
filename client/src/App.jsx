@@ -16960,6 +16960,20 @@ ${itemsStr}
                 </p>
               )}
             </div>
+
+            {/* API Temperature Badges (출제, 채점, AI튜터) */}
+            <div className="hidden lg:flex items-center gap-1.5 ml-4 px-3 py-1.5 rounded-xl bg-slate-900/90 border border-slate-700/50 text-[11px] font-black tracking-tight shadow-md select-none">
+              <span className="text-slate-400 font-extrabold mr-0.5">API 온도:</span>
+              <span className="px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-300 border border-amber-500/30" title="문제 출제 온도는 1.0 (독창적 창의적 문제 출제)">
+                출제 1.0
+              </span>
+              <span className="px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-300 border border-emerald-500/30" title="채점 온도는 0.7 (유연하고 공정한 판정)">
+                채점 0.7
+              </span>
+              <span className="px-2 py-0.5 rounded-md bg-indigo-500/15 text-indigo-300 border border-indigo-500/30" title="AI 튜터 온도는 0.2 (정확하고 일관된 답변)">
+                튜터 0.2
+              </span>
+            </div>
           </div>
 
           {/* AI Tutor Button on Mobile */}
