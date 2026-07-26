@@ -406,13 +406,21 @@ export function transformAsciiGraphToSvg(code) {
   const titleMatch = code.match(/\(([^)]*추세선[^)]*)\)/i) || code.match(/(실측 데이터[^\n\r]*)/i);
   if (titleMatch) title = titleMatch[1];
 
-  let slopeText = 'e^{-\\alpha \\Delta t}';
+  let slopeRaw = 'e^{-\\alpha \\Delta t}';
   const slopeMatch = code.match(/기울기\s*=\s*([^\n\r]+)/i);
   if (slopeMatch) {
-    slopeText = slopeMatch[1].replace(/[\^▲┌─]/g, '').trim();
+    slopeRaw = slopeMatch[1].replace(/[\^▲┌─]/g, '').trim();
   }
 
-  return `<div class="my-2 border border-amber-500/30 rounded-lg p-2.5 bg-gradient-to-b from-slate-900 via-slate-950 to-slate-900 shadow-md select-text max-w-sm"><div class="flex items-center justify-between border-b border-slate-800/80 pb-1.5 mb-2"><div class="flex items-center gap-1.5 min-w-0"><span class="text-amber-400 font-bold text-xs">📈</span><span class="text-slate-100 font-semibold text-xs truncate">${title}</span></div><span class="px-1.5 py-0.5 text-[9px] font-bold text-amber-300 bg-amber-500/15 border border-amber-500/30 rounded shrink-0">SVG 추세선</span></div><div class="w-full flex justify-center py-1"><svg width="260" height="110" viewBox="0 0 260 110" class="max-w-full"><line x1="30" y1="12" x2="30" y2="90" stroke="#475569" stroke-width="1.2"/><line x1="30" y1="90" x2="240" y2="90" stroke="#475569" stroke-width="1.2"/><path d="M 27 16 L 30 9 L 33 16" fill="none" stroke="#475569" stroke-width="1.2"/><path d="M 235 87 L 243 90 L 235 93" fill="none" stroke="#475569" stroke-width="1.2"/><line x1="30" y1="38" x2="240" y2="38" stroke="#1e293b" stroke-width="1" stroke-dasharray="2,2"/><line x1="30" y1="64" x2="240" y2="64" stroke="#1e293b" stroke-width="1" stroke-dasharray="2,2"/><line x1="100" y1="12" x2="100" y2="90" stroke="#1e293b" stroke-width="1" stroke-dasharray="2,2"/><line x1="170" y1="12" x2="170" y2="90" stroke="#1e293b" stroke-width="1" stroke-dasharray="2,2"/><path d="M 34 85 Q 100 40 225 20" fill="none" stroke="#f59e0b" stroke-width="2"/><circle cx="34" cy="85" r="3" fill="#fbbf24"/><circle cx="90" cy="52" r="3" fill="#fbbf24"/><circle cx="150" cy="32" r="3" fill="#fbbf24"/><circle cx="225" cy="20" r="3" fill="#fbbf24"/><text x="14" y="16" fill="#94a3b8" font-size="9" font-weight="bold">s_t</text><text x="185" y="103" fill="#94a3b8" font-size="9" font-weight="bold">s_{t-Δt} (시간 t)</text><g transform="translate(70, 20)"><rect x="0" y="0" width="125" height="20" rx="4" fill="#0f172a" stroke="#f59e0b" stroke-width="0.8"/><text x="62" y="13" fill="#fbbf24" font-size="9" font-weight="bold" text-anchor="middle">기울기 = ${slopeText}</text></g></svg></div></div>`;
+  let slopeKatex = slopeRaw;
+  if (!slopeKatex.startsWith('$')) {
+    slopeKatex = `$${slopeKatex}$`;
+  }
+  const renderedSlope = renderKatexString(slopeKatex);
+  const renderedY = renderKatexString('$s_t$');
+  const renderedX = renderKatexString('$s_{t-\\Delta t}$');
+
+  return `<div class="w-full my-3 border border-amber-500/30 rounded-xl p-3 sm:p-4 bg-gradient-to-b from-slate-900 via-slate-950 to-slate-900 shadow-md select-text"><div class="flex items-center justify-between border-b border-slate-800/80 pb-2 mb-3"><div class="flex items-center gap-2"><span class="text-amber-400 font-bold text-sm sm:text-base">📈</span><span class="text-slate-100 font-bold text-xs sm:text-sm truncate">${title}</span></div><span class="px-2 py-0.5 text-[10px] sm:text-xs font-bold text-amber-300 bg-amber-500/15 border border-amber-500/30 rounded-md shrink-0">SVG 역해석 추세선</span></div><div class="relative w-full overflow-hidden py-1"><svg width="100%" height="150" viewBox="0 0 500 150" class="w-full h-[130px] sm:h-[150px]"><line x1="45" y1="12" x2="45" y2="125" stroke="#475569" stroke-width="1.5"/><line x1="45" y1="125" x2="480" y2="125" stroke="#475569" stroke-width="1.5"/><path d="M 41 17 L 45 10 L 49 17" fill="none" stroke="#475569" stroke-width="1.5"/><path d="M 473 121 L 483 125 L 473 129" fill="none" stroke="#475569" stroke-width="1.5"/><line x1="45" y1="50" x2="480" y2="50" stroke="#1e293b" stroke-width="1" stroke-dasharray="3,3"/><line x1="45" y1="88" x2="480" y2="88" stroke="#1e293b" stroke-width="1" stroke-dasharray="3,3"/><line x1="180" y1="12" x2="180" y2="125" stroke="#1e293b" stroke-width="1" stroke-dasharray="3,3"/><line x1="330" y1="12" x2="330" y2="125" stroke="#1e293b" stroke-width="1" stroke-dasharray="3,3"/><path d="M 52 118 Q 190 55 455 22" fill="none" stroke="#f59e0b" stroke-width="2.5"/><circle cx="52" cy="118" r="4" fill="#fbbf24"/><circle cx="160" cy="72" r="4" fill="#fbbf24"/><circle cx="310" cy="42" r="4" fill="#fbbf24"/><circle cx="455" cy="22" r="4" fill="#fbbf24"/></svg><div class="absolute top-0 left-[8px] text-amber-400 font-bold text-xs sm:text-sm">${renderedY}</div><div class="absolute bottom-0 right-[10px] text-slate-300 font-semibold text-xs sm:text-sm flex items-center gap-1">${renderedX} <span class="text-slate-400 text-xs font-normal">(시간 t)</span></div><div class="absolute top-[30%] left-[35%] -translate-x-1/2 -translate-y-1/2 px-2.5 py-1 bg-slate-950/95 border border-amber-500/60 rounded-lg shadow-lg text-amber-300 font-bold text-xs sm:text-sm flex items-center gap-1.5 z-10"><span class="text-amber-400 shrink-0">기울기 =</span><span class="inline-block">${renderedSlope}</span></div></div></div>`;
 }
 
 export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold = false, isTutor = false) {
@@ -698,7 +706,7 @@ export const renderKatexString = (math, options = {}) => {
   // Auto-heal brace balancing (open & orphan closing braces) before passing to KaTeX
   processedMath = balanceMathBraces(processedMath);
 
-  if (window.katex) {
+  if (typeof window !== 'undefined' && window.katex) {
     try {
       return window.katex.renderToString(processedMath, { ...options, throwOnError: true, strict: 'ignore' }).replace(/\n/g, ' ');
     } catch (e) {
