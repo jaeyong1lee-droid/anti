@@ -195,7 +195,7 @@ async function initializeAllStandards() {
   await syncStandard('lockscreenStandards.js', 'lockscreen_standards', lockscreenStandardsList, updateLiveLockscreenStandards);
 }
 
-// Database and Server Startup (Lazy & Fail-safe for Vercel Serverless)
+// Ensure Database is initialized BEFORE any route handler runs
 let isDbInitialized = false;
 let dbInitPromise = null;
 
@@ -229,7 +229,6 @@ async function ensureDbInitialized() {
   return dbInitPromise;
 }
 
-// Middleware to ensure DB connection before route execution
 app.use(async (req, res, next) => {
   try {
     await ensureDbInitialized();
