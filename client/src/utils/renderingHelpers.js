@@ -372,25 +372,9 @@ export function transformSourcesToCollapsibleButtons(text) {
       }
     }
 
-    return `___SINGLE_SOURCE_BTN_START___<details class="my-0.5 border border-slate-800 rounded-lg overflow-hidden bg-slate-900/80 shadow-xs">
-      <summary class="px-3 py-1.5 bg-slate-850 hover:bg-slate-800 text-slate-100 font-medium text-xs sm:text-sm cursor-pointer flex items-center justify-between select-none transition-colors group border-b border-slate-800/40">
-        <span class="flex items-center gap-1.5 min-w-0">
-          <span class="px-1.5 py-0.5 text-[10px] font-bold rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0">${categoryBadge}</span>
-          <span class="text-slate-100 group-hover:text-amber-300 transition-colors truncate font-semibold">${mainTitle}</span>
-        </span>
-        <span class="ml-2 text-[10px] sm:text-[11px] text-amber-400/90 font-semibold px-1.5 py-0.5 rounded bg-amber-400/10 border border-amber-400/20 whitespace-nowrap flex items-center gap-0.5 shrink-0">
-          <span>본문 확인</span>
-          <span class="text-[9px]">▼</span>
-        </span>
-      </summary>
-      <div class="p-2.5 bg-slate-950 text-xs text-slate-300 leading-relaxed border-t border-slate-800/80 space-y-1 select-text">
-        <div class="flex items-center gap-1 text-amber-400 font-bold text-[11px]">
-          <span>🔍</span>
-          <span>AI 원보고서/사이트 실시간 확인 데이터:</span>
-        </div>
-        <div class="pl-2.5 py-1 border-l-2 border-amber-500/50 text-slate-200 bg-slate-900/40 rounded-r-md text-[11px] sm:text-xs leading-relaxed">${mainContent}</div>
-      </div>
-    </details>___SINGLE_SOURCE_BTN_END___`;
+    const singleHtml = `<details class="my-0.5 border border-slate-800 rounded-lg overflow-hidden bg-slate-900/80 shadow-xs"><summary class="px-3 py-1.5 bg-slate-850 hover:bg-slate-800 text-slate-100 font-medium text-xs sm:text-sm cursor-pointer flex items-center justify-between select-none transition-colors group border-b border-slate-800/40"><span class="flex items-center gap-1.5 min-w-0"><span class="px-1.5 py-0.5 text-[10px] font-bold rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0">${categoryBadge}</span><span class="text-slate-100 group-hover:text-amber-300 transition-colors truncate font-semibold">${mainTitle}</span></span><span class="ml-2 text-[10px] sm:text-[11px] text-amber-400/90 font-semibold px-1.5 py-0.5 rounded bg-amber-400/10 border border-amber-400/20 whitespace-nowrap flex items-center gap-0.5 shrink-0"><span>본문 확인</span><span class="text-[9px]">▼</span></span></summary><div class="p-2 bg-slate-950 text-xs text-slate-300 leading-relaxed border-t border-slate-800/80 space-y-1 select-text"><div class="flex items-center gap-1 text-amber-400 font-bold text-[11px]"><span>🔍</span><span>AI 원보고서/사이트 실시간 확인 데이터:</span></div><div class="pl-2.5 py-1 border-l-2 border-amber-500/50 text-slate-200 bg-slate-900/40 rounded-r-md text-[11px] sm:text-xs leading-relaxed">${mainContent}</div></div></details>`;
+
+    return `___SINGLE_SOURCE_BTN_START___${singleHtml}___SINGLE_SOURCE_BTN_END___`;
   });
 
   // 2. Group consecutive single source buttons into a Master Accordion Box (collapsed by default)
@@ -404,21 +388,9 @@ export function transformSourcesToCollapsibleButtons(text) {
 
     const count = (groupText.match(/___SINGLE_SOURCE_BTN_START___/g) || []).length;
 
-    return `\n<details class="my-2 border border-slate-700/60 rounded-xl overflow-hidden bg-slate-900/90 shadow-md">
-      <summary class="px-3.5 py-2 bg-gradient-to-r from-slate-850 via-slate-900 to-slate-850 hover:from-slate-800 hover:to-slate-800 text-slate-100 font-bold text-xs sm:text-sm cursor-pointer flex items-center justify-between select-none border-b border-slate-800/50 group">
-        <span class="flex items-center gap-2">
-          <span class="px-2 py-0.5 text-[11px] font-black rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0">📜 출처 및 근거 보고서 (${count}개)</span>
-          <span class="text-slate-400 text-xs font-normal hidden sm:inline">(클릭 시 열기/접기)</span>
-        </span>
-        <span class="text-[11px] sm:text-xs text-amber-400 font-semibold px-2 py-0.5 rounded-lg bg-amber-400/10 border border-amber-400/20 flex items-center gap-1 group-hover:bg-amber-400/20 shrink-0">
-          <span>열기 / 접기</span>
-          <span class="text-[10px]">▼</span>
-        </span>
-      </summary>
-      <div class="p-2 space-y-1 bg-slate-950/80 border-t border-slate-800">
-        ${rawButtons}
-      </div>
-    </details>\n`;
+    const masterHtml = `<details class="my-1 border border-slate-700/60 rounded-xl overflow-hidden bg-slate-900/90 shadow-md"><summary class="px-3 py-1.5 bg-gradient-to-r from-slate-850 via-slate-900 to-slate-850 hover:from-slate-800 hover:to-slate-800 text-slate-100 font-bold text-xs sm:text-sm cursor-pointer flex items-center justify-between select-none border-b border-slate-800/50 group"><span class="flex items-center gap-2"><span class="px-2 py-0.5 text-[11px] font-black rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0">📜 출처 및 근거 보고서 (${count}개)</span><span class="text-slate-400 text-xs font-normal hidden sm:inline">(클릭 시 열기/접기)</span></span><span class="text-[11px] sm:text-xs text-amber-400 font-semibold px-2 py-0.5 rounded-lg bg-amber-400/10 border border-amber-400/20 flex items-center gap-1 group-hover:bg-amber-400/20 shrink-0"><span>열기 / 접기</span><span class="text-[10px]">▼</span></span></summary><div class="p-1 space-y-0.5 bg-slate-950/80 border-t border-slate-800">${rawButtons}</div></details>`;
+
+    return `\n${masterHtml}\n`;
   });
 }
 
