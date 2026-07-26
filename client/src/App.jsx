@@ -19835,7 +19835,7 @@ ${itemsStr}
                                         />
                                       </div>
                                     </div>
-                                    {idx !== 0 && q.concept && (
+                                    {q.concept && (
                                       <div className="mt-2 pt-2 border-t border-current/10 text-[14px] sm:text-[16px] select-text">
                                         <span className="font-extrabold text-indigo-400">💡 핵심 개념:</span>
                                         <div className="mt-1 text-[14px] sm:text-[16px] text-slate-200 leading-relaxed">
@@ -19843,7 +19843,7 @@ ${itemsStr}
                                         </div>
                                       </div>
                                     )}
-                                    {idx !== 0 && q.explanation && (
+                                    {q.explanation && (
                                       <div className="mt-2 pt-2 border-t border-current/10 text-[14px] sm:text-[16px] select-text">
                                         <span className="font-extrabold text-amber-400">📝 해설:</span>
                                         <div className="mt-1 text-[14px] sm:text-[16px] text-slate-200 leading-relaxed">
@@ -23320,7 +23320,7 @@ ${itemsStr}
                                         />
                                       </div>
                                     </div>
-                                    {idx !== 0 && q.concept && (
+                                    {q.concept && (
                                       <div className="mt-2 pt-2 border-t border-current/10 text-[14px] sm:text-[16px] select-text">
                                         <span className="font-extrabold text-indigo-400">💡 핵심 개념:</span>
                                         <div className="mt-1 text-[14px] sm:text-[16px] text-slate-200 leading-relaxed">
@@ -23328,7 +23328,7 @@ ${itemsStr}
                                         </div>
                                       </div>
                                     )}
-                                    {idx !== 0 && q.explanation && (
+                                    {q.explanation && (
                                       <div className="mt-2 pt-2 border-t border-current/10 text-[14px] sm:text-[16px] select-text">
                                         <span className="font-extrabold text-amber-400">📝 해설:</span>
                                         <div className="mt-1 text-[14px] sm:text-[16px] text-slate-200 leading-relaxed">
