@@ -772,13 +772,13 @@ export const healCorruptedKatexHtml = (text) => {
 export const cleanCorruptedFormula = (formula) => {
   if (!formula || typeof formula !== 'string') return formula;
   
-  let cleaned = formula;
+  let cleaned = formula.replace(/₩/g, '\\');
   if (cleaned.includes('color:#cc0000') || cleaned.includes('math mode at position')) {
     const match = cleaned.match(/color:#cc0000"\s*>\s*([^<]+?)\s*<\s*\/\s*span\s*>/i) ||
                   cleaned.match(/color:#cc0000"\s*&gt;\s*([^&]+?)\s*&lt;\s*\/\s*span\s*&gt;/i);
                   
     if (match) {
-      const coreMath = match[1].trim();
+      let coreMath = match[1].trim().replace(/₩/g, '\\');
       const closingSpanIndex = cleaned.search(/<\s*\/\s*span\s*>/i);
       let rest = '';
       if (closingSpanIndex !== -1) {
@@ -812,7 +812,8 @@ export const cleanCorruptedFormula = (formula) => {
 export const cleanAndSanitizeMathText = (rawText) => {
   if (!rawText || typeof rawText !== 'string') return rawText || '';
   
-  let cleaned = healCorruptedKatexHtml(rawText);
+  let cleaned = (rawText || '').replace(/₩/g, '\\');
+  cleaned = healCorruptedKatexHtml(cleaned);
   cleaned = cleanCorruptedFormula(cleaned);
 
   cleaned = cleaned.replace(/&amp;#gt;/gi, '>')
