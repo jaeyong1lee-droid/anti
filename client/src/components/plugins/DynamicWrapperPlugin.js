@@ -86,7 +86,9 @@ export function wrapSymbolDefinitionsHtml(text) {
       const matchSymbol = stripped.match(/^(?:[•\*\-\u2022]\s*)?([^\n<:]+):\s*(.+)$/);
       if (matchSymbol) {
         const rawVar = matchSymbol[1].trim();
+        const cleanRawVar = rawVar.replace(/^[•\*\-\u2022\s\$]+|[•\*\-\u2022\s\$]+$/g, '').trim();
         if (/kds|kcs|wikipedia|soil\s*mechanics/i.test(rawVar)) return;
+        if (/^(정의|목적|적용성|개요|특징|결론|참고|종류|분류|용도|원인|대책|장점|단점|의의|배경|시작|끝|단계|단계별|요약|비교|주의사항|유의사항|참고사항)$/i.test(cleanRawVar)) return;
         const symbolVar = formatSymbolVar(rawVar);
         const descText = matchSymbol[2].trim();
         if (symbolVar) {
@@ -125,7 +127,9 @@ export function wrapSymbolDefinitionsHtml(text) {
       const matchSymbol = stripped.match(/^(?:[•\*\-\u2022]\s*)?([^\n<:]+):\s*(.+)$/);
       if (matchSymbol) {
         const rawVar = matchSymbol[1].trim();
+        const cleanRawVar = rawVar.replace(/^[•\*\-\u2022\s\$]+|[•\*\-\u2022\s\$]+$/g, '').trim();
         if (/kds|kcs|wikipedia|soil\s*mechanics/i.test(rawVar)) return;
+        if (/^(정의|목적|적용성|개요|특징|결론|참고|종류|분류|용도|원인|대책|장점|단점|의의|배경|시작|끝|단계|단계별|요약|비교|주의사항|유의사항|참고사항)$/i.test(cleanRawVar)) return;
         const symbolVar = formatSymbolVar(rawVar);
         const descText = matchSymbol[2].trim();
         if (symbolVar) {
