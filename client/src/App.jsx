@@ -8194,6 +8194,7 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
     });
 
     setLoadingAI(true);
+    setGeneratingTopicId(topicId);
     const targetTopic = { 
       id: topicId, 
       title: topicTitle, 
@@ -8260,6 +8261,7 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
       const currentTopicId = selectedTopicRef.current ? String(selectedTopicRef.current.id) : '';
       const currentSchedId = selectedTopicRef.current ? String(selectedTopicRef.current.schedule_id) : '';
       if (currentTopicId === String(topicId) && currentSchedId === String(scheduleId)) {
+        setGeneratingTopicId(null);
         setLoadingAI(false);
       }
     }
@@ -8633,6 +8635,7 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
       setSelectedTopic(targetTopic);
       selectedTopicRef.current = targetTopic;
       setLoadingAI(true);
+      setGeneratingTopicId(topicId);
       savedQuizScroll.current = 0;
       if (quizBodyRef.current) {
         quizBodyRef.current.scrollTop = 0;
@@ -9253,6 +9256,7 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
     } finally {
       loadingTopicLockRef.current = false; // 락 최종 해제
       if (selectedTopicRef.current?.id === topicId) {
+        setGeneratingTopicId(null);
         setLoadingAI(false);
       }
     }
@@ -18861,7 +18865,7 @@ ${itemsStr}
                     )}
                   </div>
                 )}
-              {(loadingAI && String(selectedTopic?.id) === String(generatingTopicId)) ? (
+              {(loadingAI && (!generatingTopicId || String(selectedTopic?.id) === String(generatingTopicId))) ? (
                 <div className="py-20 flex flex-col items-center justify-center gap-6 text-center max-w-lg mx-auto w-full px-4">
                   <div className="relative mb-2">
                     <div className="p-6 bg-violet-950/80 text-violet-400 rounded-full animate-pulse shadow-lg shadow-violet-500/10 border border-violet-500/30">
