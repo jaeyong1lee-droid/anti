@@ -1250,14 +1250,14 @@ pre {
   }
 }
 
-/* 흐름도(플로우차트) 글자 크기 절대 강제화 */
+/* 동적감싸기/흐름도 글자 크기 외부 본문보다 1pt 소형화 */
 .flowchart-text-force {
-  font-size: 14px !important;
+  font-size: 12.5px !important;
 }
 
 @media (max-width: 768px) {
   .flowchart-text-force {
-    font-size: 13px !important;
+    font-size: 11px !important;
   }
 }
 
