@@ -164,16 +164,16 @@ export function stopBackendProgressTimer(progressId, percentage, message, isSucc
 }
 
 export let dynamicTemperatures = {
-  generation: 0.3,
-  grading: 0.1,
-  tutor: 0.2
+  generation: 1.0,
+  grading: 1.0,
+  tutor: 1.0
 };
 
 export function updateDynamicTemperatures(newTemps) {
   if (newTemps && typeof newTemps === 'object') {
-    if (newTemps.generation !== undefined) dynamicTemperatures.generation = parseFloat(newTemps.generation) || 0.3;
-    if (newTemps.grading !== undefined) dynamicTemperatures.grading = parseFloat(newTemps.grading) || 0.1;
-    if (newTemps.tutor !== undefined) dynamicTemperatures.tutor = parseFloat(newTemps.tutor) || 0.2;
+    if (newTemps.generation !== undefined) dynamicTemperatures.generation = parseFloat(newTemps.generation) || 1.0;
+    if (newTemps.grading !== undefined) dynamicTemperatures.grading = parseFloat(newTemps.grading) || 1.0;
+    if (newTemps.tutor !== undefined) dynamicTemperatures.tutor = parseFloat(newTemps.tutor) || 1.0;
     console.log(`[aiService] Dynamic temperatures updated live:`, dynamicTemperatures);
   }
   return dynamicTemperatures;

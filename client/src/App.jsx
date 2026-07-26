@@ -3807,7 +3807,7 @@ export default function App() {
             colHeader,
             explanation: q.explanation || q.answer || '',
             category: showExam ? examTopic?.category : selectedTopic?.category,
-            temperature: isReevaluation ? 0.85 : 0.7,
+            temperature: 1.0,
             progressId
           })
         });
