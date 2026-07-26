@@ -182,7 +182,7 @@ export function wrapMechanismProcedureAssumptionsHtml(text) {
 
       const stepNum = itemBoxes.length + 1;
       const highlightedContent = content.includes(':') 
-        ? content.replace(/^([^:]+:)/, '<strong class="text-indigo-300 font-extrabold">$1</strong>')
+        ? content.replace(/^([^:]+):\s*/, '<div class="text-indigo-300 font-extrabold mb-0.5">$1</div>')
         : content;
 
       itemBoxes.push(
@@ -222,7 +222,7 @@ export function wrapMechanismProcedureAssumptionsHtml(text) {
         if (!content || /^[-–—\s]+$/.test(content) || content === '--') return;
 
         const highlightedContent = content.includes(':') 
-          ? content.replace(/^([^:]+:)/, '<strong class="text-indigo-300 font-extrabold">$1</strong>')
+          ? content.replace(/^([^:]+):\s*/, '<div class="text-indigo-300 font-extrabold mb-0.5">$1</div>')
           : content;
 
         itemBoxes.push(
@@ -516,10 +516,11 @@ export function cleanResidualDirectiveMarkup(text) {
 export function highlightBulletKeywordsHtml(text) {
   if (!text || typeof text !== 'string') return text;
 
-  return text.replace(/(•\s*)(?:<strong[^>]*>|\*\*|\$)?\s*([가-힣a-zA-Z0-9_\s\-\(\)]{2,25})\s*(?:\<\/strong\>|\*\*|\$)?\s*:/gi, (match, bulletPrefix, keyword) => {
+  // Replace '• Title: Description' with '• <span class="text-amber-300 font-extrabold block mt-1 mb-0.5">Title</span>Description' (Remove colon and put description on new line)
+  return text.replace(/(•\s*)(?:<strong[^>]*>|\*\*|\$)?\s*([가-힣a-zA-Z0-9_\s\-\(\)]{2,35})\s*(?:\<\/strong\>|\*\*|\$)?\s*:\s*/gi, (match, bulletPrefix, keyword) => {
     const cleanKeyword = keyword.trim();
     if (!cleanKeyword || /kds|kcs|wikipedia|http|https/i.test(cleanKeyword)) return match;
-    return `${bulletPrefix}<span class="text-amber-300 font-bold">${cleanKeyword}</span>:`;
+    return `${bulletPrefix}<span class="text-amber-300 font-extrabold inline-block mt-0.5 mb-0.5">${cleanKeyword}</span><br/>`;
   });
 }
 
