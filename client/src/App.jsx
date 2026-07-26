@@ -3591,6 +3591,19 @@ export default function App() {
       activeProgressIdRef.current = null;
     }
   };
+
+  const handleCancelAiTask = useCallback(() => {
+    if (progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current);
+      progressIntervalRef.current = null;
+    }
+    setShowAiProgress(false);
+    setLoadingAI(false);
+    setGeneratingTopicId(null);
+    setAiProgressMessage('태스크 취소됨');
+    setAiProgressPercent(0);
+    showNotification('AI 태스크 생성이 취소되었습니다.', 'error');
+  }, []);
   const [revealedQuestions, setRevealedQuestions] = useState({}); // Stores which question answers are unblurred/revealed
   const [selectedAnswers, setSelectedAnswers] = useState({}); // Stores chosen options for multiple choice questions { [questionIdx]: optionString }
   const [tableAnswers, _setTableAnswers] = useState({}); // Stores user text inputs for table fill-in questions
@@ -16853,8 +16866,16 @@ ${itemsStr}
                 {aiProgressMessage}
               </h5>
             </div>
-            <div className="text-right">
+            <div className="flex items-center gap-2 text-right">
               <span className="text-xs font-black text-violet-400">{aiProgressPercent}%</span>
+              <button
+                type="button"
+                onClick={handleCancelAiTask}
+                className="px-2 py-0.5 text-[10px] font-black rounded-lg bg-rose-500/20 hover:bg-rose-500/40 text-rose-300 border border-rose-500/30 transition-all cursor-pointer active:scale-95 shrink-0"
+                title="AI 작업 취소"
+              >
+                취소
+              </button>
             </div>
           </div>
           <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
@@ -16865,11 +16886,21 @@ ${itemsStr}
           </div>
           <div className="flex justify-between items-center text-[10px] text-slate-400 font-bold">
             <span>진행 상황</span>
-            <span>
-              {aiProgressMessage.includes('채점') 
-                ? `${aiProgressPercent}% 채점 중...` 
-                : `${aiProgressPercent}% 생성 중...`}
-            </span>
+            <div className="flex items-center gap-2">
+              <span>
+                {aiProgressMessage.includes('채점') 
+                  ? `${aiProgressPercent}% 채점 중...` 
+                  : `${aiProgressPercent}% 생성 중...`}
+              </span>
+              <button
+                type="button"
+                onClick={handleCancelAiTask}
+                className="text-rose-400 hover:text-rose-300 font-black text-[10px] transition-colors cursor-pointer ml-1"
+                title="AI 작업 취소"
+              >
+                작업 취소 ✕
+              </button>
+            </div>
           </div>
         </div>
       )}
