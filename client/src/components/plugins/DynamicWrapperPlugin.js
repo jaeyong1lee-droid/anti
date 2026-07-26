@@ -263,7 +263,7 @@ export function wrapKdsKcsAndWikipediaReferencesHtml(text) {
             ? 'bg-indigo-600/25 text-indigo-300 border-indigo-500/40'
             : 'bg-emerald-600/20 text-emerald-300 border-emerald-500/40';
 
-          const labelText = isReport ? '📄 원보고서 본문 관련 상세 내용:' : '📖 검색 규정/이론 전문 내역:';
+          const labelText = '📖 검색된 핵심 내용 요약:';
 
           let titleSummary = descText;
           let detailContent = descText;
@@ -276,15 +276,15 @@ export function wrapKdsKcsAndWikipediaReferencesHtml(text) {
             if (closeBracketIdx !== -1) {
               titleSummary = descText.substring(0, closeBracketIdx + 1).trim();
               const remainder = descText.substring(closeBracketIdx + 1).trim();
-              detailContent = remainder ? remainder : `${titleSummary}: ${isReport ? '원보고서 본문에 수록된 주요 공학적 시험 결과, 지반 특성, 계측 데이터 및 세부 시공 지침 관련 상세 전문 내용임.' : 'KDS/KCS 국가건설기준 센터 및 영문 위키피디아 지반역학 공식 규정에 따른 지반조사, 실내 표준 전단시험, 계측기 설치 및 한계 변위 산정 절차 전문 규정 사항임.'}`;
+              detailContent = remainder ? remainder : `${titleSummary}: ${isReport ? '원보고서 본문에 수록된 주요 현장 지반 특성, 실내 시험 데이터 수치 및 계측 분석 핵심 요약임.' : isKds ? '국가건설기준(KDS/KCS) 센터 실 규정에 따른 세부 설계 기준, 허용 한계 수치 및 공학적 시공 지침 핵심 요약임.' : 'Wikipedia Soil Mechanics 지반역학 공식 이론에 따른 응력-변형률 메커니즘 및 역학적 공식 핵심 요약임.'}`;
             }
           } else if (descText.includes(':')) {
             const parts = descText.split(':');
             titleSummary = parts[0].trim();
             const remainder = parts.slice(1).join(':').trim();
-            detailContent = remainder ? remainder : `${titleSummary}: ${isReport ? '원보고서 본문에 수록된 주요 공학적 시험 결과, 지반 특성, 계측 데이터 및 세부 시공 지침 관련 상세 전문 내용임.' : 'KDS/KCS 국가건설기준 센터 및 영문 위키피디아 지반역학 공식 규정에 따른 지반조사, 실내 표준 전단시험, 계측기 설치 및 한계 변위 산정 절차 전문 규정 사항임.'}`;
+            detailContent = remainder ? remainder : `${titleSummary}: ${isReport ? '원보고서 본문에 수록된 주요 현장 지반 특성, 실내 시험 데이터 수치 및 계측 분석 핵심 요약임.' : isKds ? '국가건설기준(KDS/KCS) 센터 실 규정에 따른 세부 설계 기준, 허용 한계 수치 및 공학적 시공 지침 핵심 요약임.' : 'Wikipedia Soil Mechanics 지반역학 공식 이론에 따른 응력-변형률 메커니즘 및 역학적 공식 핵심 요약임.'}`;
           } else {
-            detailContent = `${descText}: ${isReport ? '원보고서 본문에 수록된 주요 공학적 시험 결과, 지반 특성, 계측 데이터 및 세부 시공 지침 관련 상세 전문 내용임.' : 'KDS/KCS 국가건설기준 센터 및 영문 위키피디아 지반역학 공식 규정에 따른 지반조사, 실내 표준 전단시험, 계측기 설치 및 한계 변위 산정 절차 전문 규정 사항임.'}`;
+            detailContent = `${descText}: ${isReport ? '원보고서 본문에 수록된 주요 현장 지반 특성, 실내 시험 데이터 수치 및 계측 분석 핵심 요약임.' : isKds ? '국가건설기준(KDS/KCS) 센터 실 규정에 따른 세부 설계 기준, 허용 한계 수치 및 공학적 시공 지침 핵심 요약임.' : 'Wikipedia Soil Mechanics 지반역학 공식 이론에 따른 응력-변형률 메커니즘 및 역학적 공식 핵심 요약임.'}`;
           }
 
           itemBoxes.push({
@@ -332,8 +332,8 @@ export function wrapKdsKcsAndWikipediaReferencesHtml(text) {
                   `<span class="text-[10px] sm:text-[11px] font-bold text-amber-400/90 group-open:rotate-180 transition-transform shrink-0 ml-1.5">▼</span>` +
                 `</summary>` +
                 `<div class="p-3 pt-2 text-[10px] sm:text-[11px] text-slate-200 leading-relaxed border-t border-slate-800/80 bg-slate-950/80 break-words select-text font-sans">` +
-                  `<div class="text-[10px] sm:text-[11px] font-bold text-emerald-400 mb-1">📖 검색 규정/이론 전문 내역:</div>` +
-                  `국가건설기준(KDS/KCS) 센터 규정에 따른 해당 주제별 실내 표준 전단시험, 시추조사 피치 간격, 계측기 설치 및 한계 변위 허용 기준 규정 사항임.` +
+                  `<div class="text-[10px] sm:text-[11px] font-bold text-emerald-400 mb-1">📖 검색된 핵심 내용 요약:</div>` +
+                  `국가건설기준(KDS/KCS) 센터 규정에 따른 해당 주제별 실내 표준 전단시험, 시추조사 피치 간격, 계측기 설치 및 한계 변위 허용 기준 규정 요약임.` +
                 `</div>` +
               `</details>`
       });
@@ -351,8 +351,8 @@ export function wrapKdsKcsAndWikipediaReferencesHtml(text) {
                   `<span class="text-[10px] sm:text-[11px] font-bold text-amber-400/90 group-open:rotate-180 transition-transform shrink-0 ml-1.5">▼</span>` +
                 `</summary>` +
                 `<div class="p-3 pt-2 text-[10px] sm:text-[11px] text-slate-200 leading-relaxed border-t border-slate-800/80 bg-slate-950/80 break-words select-text font-sans">` +
-                  `<div class="text-[10px] sm:text-[11px] font-bold text-emerald-400 mb-1">📄 원보고서 본문 관련 상세 내용:</div>` +
-                  `제공된 원보고서 본문에 수록된 해당 공학적 시험 결과, 지반 역학 특성, 계측 데이터 수치 및 세부 시공/보수 지침 관련 핵심 전문 내용임.` +
+                  `<div class="text-[10px] sm:text-[11px] font-bold text-emerald-400 mb-1">📖 검색된 핵심 내용 요약:</div>` +
+                  `제공된 원보고서 본문에 수록된 해당 공학적 시험 결과, 지반 역학 특성, 계측 데이터 수치 및 세부 시공/보수 지침 관련 핵심 내용 요약임.` +
                 `</div>` +
               `</details>`
       });
@@ -370,8 +370,8 @@ export function wrapKdsKcsAndWikipediaReferencesHtml(text) {
                   `<span class="text-[10px] sm:text-[11px] font-bold text-amber-400/90 group-open:rotate-180 transition-transform shrink-0 ml-1.5">▼</span>` +
                 `</summary>` +
                 `<div class="p-3 pt-2 text-[10px] sm:text-[11px] text-slate-200 leading-relaxed border-t border-slate-800/80 bg-slate-950/80 break-words select-text font-sans">` +
-                  `<div class="text-[10px] sm:text-[11px] font-bold text-emerald-400 mb-1">📖 검색 규정/이론 전문 내역:</div>` +
-                  `Wikipedia Soil Mechanics 지반역학 공식 학술 이론에 따른 흙의 유효응력, 압밀 침하 이론 및 전단강도 거동 메커니즘 학술 전문 내역임.` +
+                  `<div class="text-[10px] sm:text-[11px] font-bold text-emerald-400 mb-1">📖 검색된 핵심 내용 요약:</div>` +
+                  `Wikipedia Soil Mechanics 지반역학 공식 학술 이론에 따른 흙의 유효응력, 압밀 침하 이론 및 전단강도 거동 메커니즘 핵심 요약임.` +
                 `</div>` +
               `</details>`
       });
