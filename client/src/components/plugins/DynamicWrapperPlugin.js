@@ -11,7 +11,8 @@
 export function wrapFollowingListItemsHtml(text) {
   if (!text || typeof text !== 'string') return text;
 
-  const followingListSectionRegex = /(?:^|<br\/>|\n|<p>)[ \t]*(?:<div[^>]*>|<p>)?\s*(?:[•\*\-]\s*|#{1,6}\s*|\[|\*\*)?\s*([^\n<]*(?:다음과\s*같은|아래와\s*같은|다음과\s*같이|아래와\s*같이|다음\s*항목|아래\s*항목|주요\s*특징|특징은\s*다음|사항은\s*다음|다음과\s*같음)[^\n<]*)\s*[:\]\*\*,\.]*[ \t]*(?:<\/div>|<\/p>|<br\/>|\n)*\s*((?:(?:<div[^>]*>|<p>)?\s*(?:[•\*\-]\s*|\d+[\.\)]\s+)[^\n]*?(?:<\/div>|<\/p>|<br\/>|\n|$))+)/gi;
+  // 🚨 [ReDoS 방지]: 외부 + 반복 그룹 내 [\ s\S]*? → [^\n<]* 로 라인 바운드 대체 (Catastrophic Backtracking 완전 차단)
+  const followingListSectionRegex = /(?:^|<br\/>|\n|<p>)[ \t]*(?:<div[^>]*>|<p>)?\s*(?:[•\*\-]\s*|#{1,6}\s*|\[|\*\*)?\s*([^\n<]*(?:다음과\s*같은|아래와\s*같은|다음과\s*같이|아래와\s*같이|다음\s*항목|아래\s*항목|주요\s*특징|특징은\s*다음|사항은\s*다음|다음과\s*같음)[^\n<]*)\s*[:\]\*\*,\.]*[ \t]*(?:<\/div>|<\/p>|<br\/>|\n)*\s*((?:(?:<div[^>]*>|<p>)?\s*(?:[•\*\-]\s*|\d+[\.\)]\s+)[^\n<]*(?:<\/div>|<\/p>|<br\/>|\n|$))+)/gi;
 
   return text.replace(followingListSectionRegex, (fullMatch, headerTitle, listBlock) => {
     if (fullMatch.includes('___HTML_TABLE_') || fullMatch.includes('___CODE_BLOCK_') || fullMatch.includes('flowchart-text-force') || /<table/i.test(fullMatch)) {
@@ -67,7 +68,8 @@ export function wrapSymbolDefinitionsHtml(text) {
   };
 
   // 1) Explicit header with symbols (여기서, Where, 기호 정의, 변수 정의 등)
-  const symbolSectionRegex = /(?:^|<br\/>|\n|<p>)[ \t]*(?:<div[^>]*>|<p>)?\s*(?:[•\*\-]\s*|#{1,6}\s*|\[|\*\*)?\s*([^\n<]*(?:여기서|Where|기호\s*정의|변수\s*정의|공식\s*기호|기호\s*설명)[^\n<]*)\s*[:\]\*\*,\.]*[ \t]*(?:<\/div>|<\/p>|<br\/>|\n)+\s*((?:(?:<div[^>]*>|<p>)?\s*(?:[•\*\-\u2022]\s*)?[^\n<:]+:\s*[^\n<]*[\s\S]*?(?:<\/div>|<\/p>|<br\/>|\n|$))+)/gi;
+  // 🚨 [ReDoS 방지]: 외부 + 반복 그룹 내 [\s\S]*? → [^\n<]* 로 라인 바운드 대체 (Catastrophic Backtracking 완전 차단)
+  const symbolSectionRegex = /(?:^|<br\/>|\n|<p>)[ \t]*(?:<div[^>]*>|<p>)?\s*(?:[•\*\-]\s*|#{1,6}\s*|\[|\*\*)?\s*([^\n<]*(?:여기서|Where|기호\s*정의|변수\s*정의|공식\s*기호|기호\s*설명)[^\n<]*)\s*[:\]\*\*,\.]*[ \t]*(?:<\/div>|<\/p>|<br\/>|\n)+\s*((?:(?:<div[^>]*>|<p>)?\s*(?:[•\*\-\u2022]\s*)?[^\n<:]+:\s*[^\n<]*(?:<\/div>|<\/p>|<br\/>|\n|$))+)/gi;
 
   cleanText = cleanText.replace(symbolSectionRegex, (fullMatch, headerTitle, symbolsBlock) => {
     if (fullMatch.includes('___HTML_TABLE_') || fullMatch.includes('___CODE_BLOCK_') || /<table/i.test(fullMatch)) {
