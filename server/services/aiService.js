@@ -58,12 +58,10 @@ export async function saveSessionValue(key, value) {
 }
 
 export function normalizeGeminiModel(modelName) {
-  if (!modelName || typeof modelName !== 'string') return 'gemini-2.5-flash';
+  if (!modelName || typeof modelName !== 'string') return 'gemini-2.0-flash';
   const name = modelName.trim().toLowerCase();
 
   const validModels = [
-    'gemini-2.5-flash',
-    'gemini-2.5-pro',
     'gemini-2.0-flash',
     'gemini-2.0-flash-lite',
     'gemini-1.5-flash',
@@ -71,14 +69,14 @@ export function normalizeGeminiModel(modelName) {
   ];
   if (validModels.includes(name)) return name;
 
-  if (name.includes('3.6') || name.includes('3.5-flash') || name.includes('3.0-flash')) {
-    return 'gemini-2.5-flash';
-  }
-  if (name.includes('3.5-flash-lite') || name.includes('3.1-flash-lite') || name.includes('lite')) {
+  if (name.includes('3.1-flash-lite') || name.includes('3.5-flash-lite') || name.includes('3.1-lite') || name.includes('lite')) {
     return 'gemini-2.0-flash-lite';
   }
+  if (name.includes('pro')) {
+    return 'gemini-1.5-pro';
+  }
 
-  return 'gemini-2.5-flash';
+  return 'gemini-2.0-flash';
 }
 
 export function updateProgress(progressId, step, message, percentage = null) {
@@ -109,6 +107,8 @@ export function reportLlmProgress(options, scenario, modelName) {
       stageText = `1단계: ${modelUpper} 엔진으로 AI 튜터 피드백 생성 중...`;
     } else if (scenario === 'formula') {
       stageText = `1단계: ${modelUpper} 엔진으로 수식 분석 및 튜터 답변 생성 중...`;
+    } else if (scenario === 'source-search' || scenario === 'source') {
+      stageText = `1단계: GEMINI-3.1-FLASH-LITE 엔진으로 출처 검색 및 국가설계기준 대조 중...`;
     } else if (scenario === 'option-explanation') {
       stageText = `1단계: ${modelUpper} 엔진으로 보기 오답 원인 분석 중...`;
     } else {
@@ -186,18 +186,32 @@ export async function callLLMWithFailover(systemInstruction, userPrompt, image =
   if (secondaryKey) keys.push({ key: secondaryKey, label: 'Key #2' });
   if (tertiaryKey) keys.push({ key: tertiaryKey, label: 'Key #3' });
 
+  const isSourceSearch = scenario === 'source' || scenario === 'source-search' || options.isSourceSearch || (options.preferredModel && options.preferredModel.includes('3.1'));
+
   for (const k of keys) {
-    const geminiFallbacks = [
-      options.preferredModel,
-      globalPreferredModel,
-      'gemini-3.5-flash-lite',
-      'gemini-3.6-flash',
-      'gemini-3.1-flash-lite',
-      'gemini-3.5-flash',
-      'gemini-3.0-flash',
-      'gemini-2.5-flash',
-      'gemini-2.5-flash-lite'
-    ];
+    const geminiFallbacks = isSourceSearch
+      ? [
+          'gemini-3.1-flash-lite',
+          'gemini-3.5-flash-lite',
+          options.preferredModel,
+          globalPreferredModel,
+          'gemini-3.6-flash',
+          'gemini-3.5-flash',
+          'gemini-3.0-flash',
+          'gemini-2.5-flash',
+          'gemini-2.5-flash-lite'
+        ]
+      : [
+          options.preferredModel,
+          globalPreferredModel,
+          'gemini-3.5-flash-lite',
+          'gemini-3.6-flash',
+          'gemini-3.1-flash-lite',
+          'gemini-3.5-flash',
+          'gemini-3.0-flash',
+          'gemini-2.5-flash',
+          'gemini-2.5-flash-lite'
+        ];
     const uniqueModels = [...new Set(geminiFallbacks.filter(Boolean))];
     for (const modelName of uniqueModels) {
       executionList.push({ key: k.key, label: k.label, model: modelName, type: 'gemini' });
@@ -530,4 +544,12 @@ export async function getTopicText(topic, fileUtils, ocrPlugin, pdfParse) {
   }
 
   return fileText;
+}
+
+export async function searchSourceDocumentWithGeminiLite(systemInstruction, userPrompt, image = null, options = {}) {
+  return await callLLMWithFailover(systemInstruction, userPrompt, image, 'source-search', {
+    ...options,
+    preferredModel: 'gemini-3.1-flash-lite',
+    isSourceSearch: true
+  });
 }
