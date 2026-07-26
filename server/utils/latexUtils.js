@@ -238,7 +238,8 @@ const simpleVariableRegex = new RegExp(
   `\\b[a-zA-Z0-9_'\^\\(\\)\\{\\}\\[\\]]+\\s*(?:[+=<>]|\\s+[-/\\*]\\s+)\\s*[a-zA-Z0-9_'\^\\(\\)\\{\\}\\[\\]]+(?:\\s*(?:[+=<>]|\\s+[-/\\*]\\s+)\\s*[a-zA-Z0-9_'\^\\(\\)\\{\\}\\[\\]]+)*\\b|` +
   // 2. Function notation (e.g. p(z), w(z))
   `\\b[a-zA-Z]\\([a-zA-Z0-9_']+\\)(?![a-zA-Z0-9_'])|` +
-  // 3. Subscripted variables (e.g. k_h, z_c)
+  // 3. Subscripted variables with braces or underscores (e.g. s_{t-\Delta t}, s_{t- \Delta t}, S_{max}, k_h, z_c)
+  `\\\\?[a-zA-Z0-9_']+_\{\\s*[^{}\\n]+\\s*\\}|` +
   `\\b[a-zA-Z0-9]+_[a-zA-Z0-9_']+\\b|` +
   // 4. Constants
   `\\b(?:EI|EA|FS)\\b|` +
@@ -409,6 +410,17 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   let processed = healCorruptedKatexHtml(text);
   // Normalize dashes (en-dash, em-dash, math minus) to standard hyphens
   processed = processed.replace(/[–—−]/g, '-');
+
+  // [Self-Healing] Fix beta subscript sub-nesting rendering error (\beta_{0,\beta_1} -> \beta_0, \beta_1)
+  processed = processed.replace(/\\?beta_\{0,\s*\\?beta_[01]\}/g, '\\beta_0, \\beta_1');
+
+  // [Self-Healing] Fix missing backslash for \Delta t in subscripts (e.g. s_{t- Delta t} -> s_{t- \Delta t})
+  processed = processed.replace(/([sS])_\{t-\s*Delta\s*t\}/g, '$1_{t-\\Delta t}');
+
+  // [Self-Healing] Pre-wrap unwrapped subscripted variables with braces (e.g. s_{t-\Delta t}, S_{max}, S_{ult}, \sigma_{1,3}) outside $
+  processed = processed.replace(/(?<!\$)(?<!\\)(\b\\?[a-zA-Z0-9_']+_\{\s*[^{}\n]+\s*\})(?!\$)/g, (match) => {
+    return `$${match}$`;
+  });
 
   // [Self-Healing] Convert plain English geotechnical math variables (e.g. sigma_v0 ', sigma_v, tau, etc.) to standard LaTeX ($...$)
   const plainGreekLetters = 'sigma|tau|phi|gamma|alpha|beta|theta|epsilon|Delta';
