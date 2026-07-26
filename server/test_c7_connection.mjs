@@ -1,6 +1,6 @@
 import pg from 'pg';
 
-const connString = 'postgresql://neondb_owner:npg_9VB7MqNvTjtA@ep-misty-dawn-apk5itib-pooler.c-7.us-east-1.aws.neon.tech/neondb?sslmode=require';
+const connString = 'postgresql://neondb_owner:npg_vY4Q7VcKFRIo@ep-broad-credit-aw98bx45-pooler.c-12.us-east-1.aws.neon.tech/neondb?sslmode=require';
 console.log('Testing connection to c-7 database...');
 const pool = new pg.Pool({
   connectionString: connString,

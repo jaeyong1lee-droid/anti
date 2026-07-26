@@ -21,11 +21,18 @@ if (process.env.BLOB_READ_WRITE_TOKEN) {
 
 const NEON_DEFAULT_URL = 'postgresql://neondb_owner:npg_vY4Q7VcKFRIo@ep-broad-credit-aw98bx45-pooler.c-12.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require';
 
-const connectionString = process.env.DATABASE_URL || 
-                         process.env.POSTGRES_URL || 
-                         process.env.POSTGRES_PRISMA_URL ||
-                         process.env.SUPABASE_DATABASE_URL ||
-                         NEON_DEFAULT_URL;
+let rawConnString = process.env.DATABASE_URL || 
+                    process.env.POSTGRES_URL || 
+                    process.env.POSTGRES_PRISMA_URL ||
+                    process.env.SUPABASE_DATABASE_URL ||
+                    NEON_DEFAULT_URL;
+
+if (rawConnString.includes('ep-misty-dawn') || rawConnString.includes('c-7.us-east-1')) {
+  console.warn('[Database Connection] Overriding deprecated/quota-exceeded c-7 Neon URL with active c-12 Neon URL.');
+  rawConnString = NEON_DEFAULT_URL;
+}
+
+const connectionString = rawConnString;
 
 export const isPostgres = !!connectionString;
 const isVercel = !!process.env.VERCEL;
