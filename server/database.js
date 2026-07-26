@@ -70,9 +70,9 @@ if (isPostgres) {
       port: parsed.port,
       database: parsed.database,
       ssl: parsed.sslmode === 'disable' ? false : { rejectUnauthorized: false },
-      max: isVercel ? 5 : 20, // Neon serverless connection limit protection
-      idleTimeoutMillis: isVercel ? 5000 : 30000,
-      connectionTimeoutMillis: isVercel ? 5000 : 30000,
+      max: isVercel ? 10 : 20, // Neon serverless connection limit protection
+      idleTimeoutMillis: isVercel ? 10000 : 30000,
+      connectionTimeoutMillis: isVercel ? 10000 : 30000,
     });
   } else {
     // Fallback: use connection string directly (with sanitization)
@@ -80,9 +80,9 @@ if (isPostgres) {
     pgPool = new pg.Pool({
       connectionString: cleanedString,
       ssl: { rejectUnauthorized: false },
-      max: isVercel ? 5 : 20,
-      idleTimeoutMillis: isVercel ? 5000 : 30000,
-      connectionTimeoutMillis: isVercel ? 5000 : 30000,
+      max: isVercel ? 10 : 20,
+      idleTimeoutMillis: isVercel ? 10000 : 30000,
+      connectionTimeoutMillis: isVercel ? 10000 : 30000,
     });
   }
 

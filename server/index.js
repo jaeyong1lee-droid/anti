@@ -153,11 +153,10 @@ async function ensureDbInitialized() {
 app.use(async (req, res, next) => {
   try {
     await ensureDbInitialized();
-    next();
   } catch (err) {
-    console.error('[Middleware DB Critical Error]:', err.message);
-    res.status(500).json({ error: `데이터베이스 연결 오류: ${err.message}` });
+    console.warn('[Middleware DB Warning]:', err.message);
   }
+  next();
 });
 
 app.get('/api/progress/:progressId', (req, res) => {
