@@ -579,19 +579,30 @@ export const renderKatexString = (math, options = {}) => {
   cleaned = cleaned.replace(/^\$|\$/g, '').trim();
   processedMath = cleaned.replace(/₩/g, '\\');
 
+  // Auto-close unclosed braces before passing to KaTeX
+  const openBraces = (processedMath.match(/\{/g) || []).length;
+  const closeBraces = (processedMath.match(/\}/g) || []).length;
+  if (openBraces > closeBraces) {
+    processedMath += '}'.repeat(openBraces - closeBraces);
+  }
+
   if (window.katex) {
     try {
       return window.katex.renderToString(processedMath, { ...options, throwOnError: true, strict: 'ignore' }).replace(/\n/g, ' ');
     } catch (e) {
-      console.warn('KaTeX render error:', e);
-      const escapedMath = processedMath
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;')
-        .replace(/\$/g, '&#36;');
-      return `<span class="katex-error" style="color:#cc0000; font-family: monospace;" title="KaTeX error: ${escapedMath}">${escapedMath}</span>`;
+      // Retry once with strict throwOnError: false
+      try {
+        return window.katex.renderToString(processedMath, { ...options, throwOnError: false, strict: 'ignore' }).replace(/\n/g, ' ');
+      } catch (err) {
+        const escapedMath = processedMath
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;')
+          .replace(/\$/g, '&#36;');
+        return `<span class="katex-error" style="color:#cc0000; font-family: monospace;" title="KaTeX error: ${escapedMath}">${escapedMath}</span>`;
+      }
     }
   }
   return options.displayMode ? `$$${processedMath}$$` : `$${processedMath}$`;

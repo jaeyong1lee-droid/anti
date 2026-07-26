@@ -342,25 +342,25 @@ const healCorruptedKatexHtml = (text) => {
   let cleaned = text.replace(/\u200b/g, '');
   
   const cleanAndSplitFormula = (formula) => {
-    let clean = formula.trim().replace(/\\+/g, '\\');
+    let clean = (formula || '').trim().replace(/\\+/g, '\\').replace(/₩/g, '\\');
     // Decode basic HTML entities inside formula before parsing/splitting
     clean = clean.replace(/&#x27;/g, "'")
                  .replace(/&quot;/g, '"')
                  .replace(/&lt;/g, '<')
                  .replace(/&gt;/g, '>')
                  .replace(/&amp;/g, '&');
+
+    const openBraces = (clean.match(/\{/g) || []).length;
+    const closeBraces = (clean.match(/\}/g) || []).length;
+    if (openBraces > closeBraces) {
+      clean += '}'.repeat(openBraces - closeBraces);
+    }
                  
-    // Protect <br> tags from being stripped by replacing with a unique placeholder
-    clean = clean.replace(/<br\s*\/?>/gi, ' __BR_TAG_PLACEHOLDER__ ');
-                 
-    // Split by any HTML tags (e.g. </div>, <a/>)
+    // Split by any HTML tags (e.g. </div>, <br>, <a/>)
     const parts = clean.split(/(?:<[^>]+?>)/gi);
-    const mapped = parts.map(p => {
+    return parts.map(p => {
       const trimmed = p.trim();
       if (!trimmed) return '';
-      if (trimmed === '__BR_TAG_PLACEHOLDER__') {
-        return '<br>';
-      }
       // Math formula check: has math operators/symbols, and is not pure Korean text
       const isMath = /[\+\-\*\/=_\\^]/.test(trimmed) && !/^[가-힣\s.,:;!]+$/.test(trimmed);
       const hasKorean = /[가-힣]/.test(trimmed);
@@ -370,8 +370,6 @@ const healCorruptedKatexHtml = (text) => {
         return ` ${trimmed} `;
       }
     }).join(' ');
-    
-    return mapped.replace(/__BR_TAG_PLACEHOLDER__/g, '<br>');
   };
 
   // 1. Match any annotation block (normal or space-corrupted) and extract formula

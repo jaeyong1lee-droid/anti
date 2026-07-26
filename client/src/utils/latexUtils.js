@@ -338,13 +338,19 @@ const healCorruptedKatexHtml = (text) => {
   let cleaned = text.replace(/\u200b/g, '');
   
   const cleanAndSplitFormula = (formula) => {
-    let clean = (formula || '').trim().replace(/\\+/g, '\\');
+    let clean = (formula || '').trim().replace(/\\+/g, '\\').replace(/₩/g, '\\');
     // Decode basic HTML entities inside formula before parsing/splitting
     clean = clean.replace(/&#x27;/g, "'")
                  .replace(/&quot;/g, '"')
                  .replace(/&lt;/g, '<')
                  .replace(/&gt;/g, '>')
                  .replace(/&amp;/g, '&');
+
+    const openBraces = (clean.match(/\{/g) || []).length;
+    const closeBraces = (clean.match(/\}/g) || []).length;
+    if (openBraces > closeBraces) {
+      clean += '}'.repeat(openBraces - closeBraces);
+    }
                  
     // Split by any HTML tags (e.g. </div>, <br>, <a/>)
     const parts = clean.split(/(?:<[^>]+?>)/gi);
