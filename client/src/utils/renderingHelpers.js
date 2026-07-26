@@ -406,21 +406,27 @@ export function transformSourcesToCollapsibleButtons(text) {
     return btnHtml || match;
   });
 
-  // 3. Group all consecutive single source buttons into a single Master Accordion Box
-  const masterGroupRegex = /(?:___SINGLE_SOURCE_BTN_START___[\s\S]*?___SINGLE_SOURCE_BTN_END___\s*)+/g;
+  // 3. Group ALL single source buttons across the entire document into ONE Master Accordion Box
+  const singleBtnRegex = /___SINGLE_SOURCE_BTN_START___([\s\S]*?)___SINGLE_SOURCE_BTN_END___/g;
+  const matches = [...transformed.matchAll(singleBtnRegex)];
 
-  return transformed.replace(masterGroupRegex, (groupText) => {
-    const rawButtons = groupText
-      .replace(/___SINGLE_SOURCE_BTN_START___/g, '')
-      .replace(/___SINGLE_SOURCE_BTN_END___/g, '')
-      .trim();
-
-    const count = (groupText.match(/___SINGLE_SOURCE_BTN_START___/g) || []).length;
+  if (matches.length > 0) {
+    const rawButtons = matches.map(m => m[1].trim()).join('\n');
+    const count = matches.length;
 
     const masterHtml = `<details class="my-1 border border-slate-700/60 rounded-xl overflow-hidden bg-slate-900/90 shadow-md"><summary class="px-3 py-1.5 bg-gradient-to-r from-slate-850 via-slate-900 to-slate-850 hover:from-slate-800 hover:to-slate-800 text-slate-100 font-bold text-xs sm:text-sm cursor-pointer flex items-center justify-between select-none border-b border-slate-800/50 group"><span class="flex items-center gap-2"><span class="px-2 py-0.5 text-[11px] font-black rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0">📜 출처 및 근거 보고서 (${count}개)</span><span class="text-slate-400 text-xs font-normal hidden sm:inline">(클릭 시 열기/접기)</span></span><span class="text-[11px] sm:text-xs text-amber-400 font-semibold px-2 py-0.5 rounded-lg bg-amber-400/10 border border-amber-400/20 flex items-center gap-1 group-hover:bg-amber-400/20 shrink-0"><span>열기 / 접기</span><span class="text-[10px]">▼</span></span></summary><div class="p-1 space-y-0.5 bg-slate-950/80 border-t border-slate-800">${rawButtons}</div></details>`;
 
-    return `\n${masterHtml}\n`;
-  });
+    let replacedFirst = false;
+    transformed = transformed.replace(singleBtnRegex, () => {
+      if (!replacedFirst) {
+        replacedFirst = true;
+        return `\n${masterHtml}\n`;
+      }
+      return '';
+    });
+  }
+
+  return transformed;
 }
 
 export function transformAsciiGraphToSvg(code) {
