@@ -475,9 +475,6 @@ export const LatexRenderer = React.memo(function LatexRenderer({
 
   cleanedText = healFormulas(cleanedText);
   if (typeof cleanedText === 'string') {
-    // Clean empty bullet headers that have no content (e.g. '* 메커니즘:')
-    cleanedText = cleanedText.replace(/(?:^|\n)[ \t]*(?:\*|-|•)[ \t]*([^:\n]+:)[ \t]*(?=\n\s*(?:\*|-|•)|\s*$)/g, '');
-
     // Collapse empty lines between colon-ended lines and list items
     cleanedText = cleanedText.replace(/(:[ \t]*)\n\n+(\s*(?:\d+\.|\d+\)|[a-zA-Z가-힣]\)|\*|-|•|[①-⑳]))/g, '$1\n$2');
 
