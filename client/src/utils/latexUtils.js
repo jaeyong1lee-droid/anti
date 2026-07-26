@@ -465,8 +465,12 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   // [Self-Healing] Fix duplicated variable right after fraction (e.g. \frac{1}{\beta} \beta -> \frac{1}{\beta})
   processed = processed.replace(/\\(d?frac)\{([^{}\n]+)\}\s*\{\s*([^{}\n]+?)\s*\}\s*\\?\3\b/g, '\\$1{$2}{$3}');
 
-  // [Self-Healing] Fix missing backslash for \Delta t in subscripts (e.g. s_{t- Delta t} -> s_{t- \Delta t})
-  processed = processed.replace(/([sS])_\{t-\s*Delta\s*t\}/g, '$1_{t-\\Delta t}');
+  // [Self-Healing] Fix missing backslash and split subscripts for \Delta t (e.g. s_{t- Delta t}, s_{t-} \Delta t, s_{t-_} \Delta t -> $s_{t-\Delta t}$)
+  processed = processed.replace(/(\$?)([a-zA-Z0-9_']+)_\{([a-zA-Z0-9]+)-_?\}\$?\s*\$?\\?\s*Delta\s*t\$?/gi, (m, p0, p1, p2) => {
+    return `$${p1}_{${p2}-\\Delta t}$`;
+  });
+  processed = processed.replace(/([a-zA-Z0-9_']+)_\{([a-zA-Z0-9]+)-\s*\$?\\?\s*Delta\s*t\$?\}/gi, '$1_{$2-\\Delta t}');
+  processed = processed.replace(/([sS])_\{t-\s*Delta\s*t\}/gi, '$1_{t-\\Delta t}');
 
   // [Self-Healing] Fix split dollar signs inside brace subscripts (e.g. s_{t- $\Delta t$} or s_{t- $\Delta$ t} -> $s_{t-\Delta t}$)
   processed = processed.replace(/(\b\\?[a-zA-Z0-9_']+_\{\s*[^{}\$\n]*)\$([^\$\n]+)\$([^{}\$\n]*\})/g, (match, p1, math, p3) => {
