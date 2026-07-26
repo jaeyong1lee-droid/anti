@@ -27,8 +27,9 @@ let rawConnString = process.env.DATABASE_URL ||
                     process.env.SUPABASE_DATABASE_URL ||
                     NEON_DEFAULT_URL;
 
-if (rawConnString.includes('ep-misty-dawn') || rawConnString.includes('c-7.us-east-1')) {
-  console.warn('[Database Connection] Overriding deprecated/quota-exceeded c-7 Neon URL with active c-12 Neon URL.');
+// Guarantee connection to the active c-12 Neon Cloud Database
+if (!rawConnString || !rawConnString.includes('ep-broad-credit-aw98bx45')) {
+  console.warn('[Database Connection] Directing database connection to active c-12 Neon Cloud Database.');
   rawConnString = NEON_DEFAULT_URL;
 }
 

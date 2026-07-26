@@ -182,9 +182,9 @@ setInterval(() => {
 app.get('/api/init-db', async (req, res) => {
   try {
     await initDatabase();
-    res.json({ success: true, message: 'DB tables initialized successfully!' });
+    res.json({ success: true, message: 'DB tables initialized successfully!', isPostgres });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, error: err.message, stack: err.stack });
   }
 });
 

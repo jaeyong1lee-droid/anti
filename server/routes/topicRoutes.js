@@ -167,7 +167,7 @@ router.get('/topics', async (req, res) => {
     res.json(topicsWithSchedules);
   } catch (error) {
     console.error('Error fetching all topics:', error);
-    res.status(500).json({ error: '서버 오류로 토픽 목록을 조회하지 못했습니다.' });
+    res.status(500).json({ error: '서버 오류로 토픽 목록을 조회하지 못했습니다.', details: error.message, stack: error.stack });
   }
 });
 
