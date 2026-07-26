@@ -332,6 +332,47 @@ export function healInvertedDelimiters(text) {
   return text;
 }
 
+export function balanceMathBraces(str) {
+  if (!str || typeof str !== 'string') return str;
+  
+  let depth = 0;
+  let result = '';
+  let i = 0;
+
+  while (i < str.length) {
+    const char = str[i];
+    
+    let backslashCount = 0;
+    let k = i - 1;
+    while (k >= 0 && str[k] === '\\') {
+      backslashCount++;
+      k--;
+    }
+    const isEscaped = (backslashCount % 2 === 1);
+
+    if (char === '{' && !isEscaped) {
+      depth++;
+      result += char;
+    } else if (char === '}' && !isEscaped) {
+      if (depth > 0) {
+        depth--;
+        result += char;
+      } else {
+        // Orphan closing brace with depth 0 -> drop it!
+      }
+    } else {
+      result += char;
+    }
+    i++;
+  }
+
+  if (depth > 0) {
+    result += '}'.repeat(depth);
+  }
+
+  return result;
+}
+
 const healCorruptedKatexHtml = (text) => {
   if (!text || typeof text !== 'string') return text;
   
@@ -346,16 +387,12 @@ const healCorruptedKatexHtml = (text) => {
                  .replace(/&gt;/g, '>')
                  .replace(/&amp;/g, '&');
 
-    const openBraces = (clean.match(/\{/g) || []).length;
-    const closeBraces = (clean.match(/\}/g) || []).length;
-    if (openBraces > closeBraces) {
-      clean += '}'.repeat(openBraces - closeBraces);
-    }
+    clean = balanceMathBraces(clean);
                  
     // Split by any HTML tags (e.g. </div>, <br>, <a/>)
     const parts = clean.split(/(?:<[^>]+?>)/gi);
     return parts.map(p => {
-      const trimmed = p.trim();
+      const trimmed = balanceMathBraces(p.trim());
       if (!trimmed) return '';
       // Math formula check: has math operators/symbols, and is not pure Korean text
       const isMath = /[\+\-\*\/=_\\^]/.test(trimmed) && !/^[가-힣\s.,:;!]+$/.test(trimmed);
@@ -380,24 +417,21 @@ const healCorruptedKatexHtml = (text) => {
     const titleMatch = match.match(/title=["']KaTeX error:\s*([\s\S]*?)["']/i);
     if (titleMatch && titleMatch[1]) {
       let msg = titleMatch[1];
-      // Strip KaTeX error prefixes and position trailers
-      msg = msg.replace(/^[\s\S]*?ParseError:\s*/i, '');
-      msg = msg.replace(/^[\s\S]*?Expected\s+['"][^'"]*['"](?:,\s*got\s+['"][^'"]*['"])?\s+at\s+position\s+\d+:\s*/i, '');
-      const colonIdx = msg.lastIndexOf(':');
-      if (colonIdx !== -1 && colonIdx < msg.length - 1) {
-        msg = msg.substring(colonIdx + 1);
+      const posIdx = msg.indexOf('at position ');
+      if (posIdx !== -1) {
+        const colonAfter = msg.indexOf(':', posIdx);
+        if (colonAfter !== -1) {
+          msg = msg.substring(colonAfter + 1);
+        }
       }
-      msg = msg.trim();
-      // Filter out orphan closing braces like } or }_ or } =
-      if (/^\}[_a-zA-Z0-9]*$/.test(msg)) {
-        return '';
-      }
+      msg = msg.replace(/^\s*\.\.\.\s*/, '');
+      msg = balanceMathBraces(msg.trim());
+      if (!msg) return '';
       return cleanAndSplitFormula(msg);
     }
-    if (/^\}[_a-zA-Z0-9]*$/.test(errContent.trim())) {
-      return '';
-    }
-    return errContent;
+    let cleanedErr = balanceMathBraces(errContent.trim());
+    if (!cleanedErr) return '';
+    return cleanedErr;
   });
   
   // 2. Strip all KaTeX-related HTML tags (allowing space corruption suffixes and prefix spaces)
@@ -740,7 +774,7 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
     
     let rebuilt = parts[0];
     for (let i = 1; i < parts.length; i += 2) {
-      let formula = parts[i];
+      let formula = balanceMathBraces(parts[i]);
       let plainText = parts[i + 1];
       
       const isElevated = elevateToDisplay[i];

@@ -1,7 +1,7 @@
 // ============================================================================
 // Markdown, KaTeX LaTeX, and HTML Iframe Rendering Helper Utilities
 // ============================================================================
-import { healLatexFormulas } from './latexUtils.js';
+import { healLatexFormulas, balanceMathBraces } from './latexUtils.js';
 
 
 export const formatGradingReason = (reason) => {
@@ -579,12 +579,8 @@ export const renderKatexString = (math, options = {}) => {
   cleaned = cleaned.replace(/^\$|\$/g, '').trim();
   processedMath = cleaned.replace(/₩/g, '\\');
 
-  // Auto-close unclosed braces before passing to KaTeX
-  const openBraces = (processedMath.match(/\{/g) || []).length;
-  const closeBraces = (processedMath.match(/\}/g) || []).length;
-  if (openBraces > closeBraces) {
-    processedMath += '}'.repeat(openBraces - closeBraces);
-  }
+  // Auto-heal brace balancing (open & orphan closing braces) before passing to KaTeX
+  processedMath = balanceMathBraces(processedMath);
 
   if (window.katex) {
     try {
