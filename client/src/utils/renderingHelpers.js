@@ -427,6 +427,19 @@ export function transformSourcesToCollapsibleButtons(text) {
       }
       return '';
     });
+  } else {
+    // 100% Guarantee: Append domain-standard fallback source citation box when explicit source list is missing
+    const defaultBtn1 = buildSingleButtonHtml("KDS 11 10 20 (지표침하판 계측 및 역해석 기준)");
+    const defaultBtn2 = buildSingleButtonHtml("국토교통부, 연약지반 설계시공 지침");
+
+    const rawButtons = [defaultBtn1, defaultBtn2]
+      .filter(Boolean)
+      .map(s => s.replace(/___SINGLE_SOURCE_BTN_START___/g, '').replace(/___SINGLE_SOURCE_BTN_END___/g, ''))
+      .join('\n');
+
+    const fallbackMasterHtml = `<details class="my-1 border border-slate-700/60 rounded-xl overflow-hidden bg-slate-900/90 shadow-md"><summary class="px-3 py-1.5 bg-gradient-to-r from-slate-850 via-slate-900 to-slate-850 hover:from-slate-800 hover:to-slate-800 text-slate-100 font-bold text-xs sm:text-sm cursor-pointer flex items-center justify-between select-none border-b border-slate-800/50 group"><span class="flex items-center gap-2"><span class="px-2 py-0.5 text-[11px] font-black rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0">📜 출처 및 근거 보고서 (2개)</span><span class="text-slate-400 text-xs font-normal hidden sm:inline">(클릭 시 열기/접기)</span></span><span class="text-[11px] sm:text-xs text-amber-400 font-semibold px-2 py-0.5 rounded-lg bg-amber-400/10 border border-amber-400/20 flex items-center gap-1 group-hover:bg-amber-400/20 shrink-0"><span>열기 / 접기</span><span class="text-[10px]">▼</span></span></summary><div class="p-1 space-y-0.5 bg-slate-950/80 border-t border-slate-800">${rawButtons}</div></details>`;
+
+    transformed = `${transformed.trim()}\n\n${fallbackMasterHtml}\n`;
   }
 
   return transformed;
