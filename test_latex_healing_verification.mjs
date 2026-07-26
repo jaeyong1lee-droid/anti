@@ -14,10 +14,12 @@ const testCases = [
   "침하량 $S_{ult} = S_0 + \\frac{1}{\\beta} \\beta = 100 + 120 = 220$",
   "침하량 S_{ult} = S_0 + \\frac{1}{\\beta} = 100 + 120 = 220",
   "침하량 S_{ult} = S_0 + \\frac{1}{beta} = 100",
-  "침하량 S_{ult} = S_0 + 1/\\beta = 100",
-  "침하량 S_{ult} = S_0 + 1/beta = 100",
+  "침하량 $S_{ult} = S_0 + \\frac{1}{ } \\beta = 100$",
+  "침하량 $S_{ult} = S_0 + \\frac{1}{} \\beta = 100$",
+  "침하량 $S_{ult} = S_0 + \\dfrac{1}{ } \\beta = 100$",
   "침하량 $S_{ult} = S_0 + \\frac{1}{\\beta} \\beta } = 100 + 120 = 220$",
-  "침하량 $S_{ult} = S_0 + \\frac{1}{} \\beta = 100$"
+  "침하량 $S_{ult} = S_0 + \\frac{1}{\\beta}\\beta} = 100$",
+  "침하량 $S_{ult} = S_0 + \\frac{1}{\\beta} \\beta$ 이 아니라"
 ];
 
 let hasError = false;

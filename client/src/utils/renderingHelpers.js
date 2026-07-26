@@ -579,6 +579,11 @@ export const renderKatexString = (math, options = {}) => {
   cleaned = cleaned.replace(/^\$|\$/g, '').trim();
   processedMath = cleaned.replace(/₩/g, '\\');
 
+  // Auto-heal empty fraction denominator followed by variable or trailing duplicate
+  processedMath = processedMath
+    .replace(/\\(d?frac)\{([^{}\n]+)\}\s*\{\s*\}\s*(\\?[a-zA-Z0-9_]+)/g, '\\$1{$2}{$3}')
+    .replace(/\\(d?frac)\{([^{}\n]+)\}\s*\{\s*([^{}\n]+?)\s*\}\s*\\?\3\b/g, '\\$1{$2}{$3}');
+
   // Auto-heal brace balancing (open & orphan closing braces) before passing to KaTeX
   processedMath = balanceMathBraces(processedMath);
 
