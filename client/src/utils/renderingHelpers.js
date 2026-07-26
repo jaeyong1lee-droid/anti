@@ -1,7 +1,7 @@
 // ============================================================================
 // Markdown, KaTeX LaTeX, and HTML Iframe Rendering Helper Utilities
 // ============================================================================
-import { healLatexFormulas } from './latexUtils';
+import { healLatexFormulas } from './latexUtils.js';
 
 
 export const formatGradingReason = (reason) => {
