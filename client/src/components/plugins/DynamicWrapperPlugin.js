@@ -163,7 +163,7 @@ export function wrapMechanismProcedureAssumptionsHtml(text) {
   let normalizedText = text.replace(/([가-힣a-zA-Z\)]\s*)(1[\.\)]\s+)/g, '$1\n$2');
 
   // Pattern A: Strict Header + Numbered Steps ONLY (1. ... 2. ... or ① ... ② ...)
-  const sectionRegex = /(?:^|<br\/>|\n|<p>)[ \t]*(?:[•\*\-]\s*|#{1,6}\s*|\[|\*\*)?\s*([^\n<]*(?:절차|흐름도|플로우차트|순서도|프로세스|가정\s*사항|가정\s*조건|기본\s*가정|전제\s*조건|가정|메커니즘|작동\s*원리|개념|목적|Procedure|Assumptions|Mechanism)[^\n<]*)\s*[:\]\*\*]*[ \t]*(?:<br\/>|\n|<\/p>|<p>)+((?:[ \t]*(?:<div[^>]*>|<p>)?(?:\d+[\.\)]|[①-⑳])[ \t]*[^\n<]+(?:<\/div>|<\/p>|<br\/>|\n|$))+)/gi;
+  const sectionRegex = /(?:^|<br\/>|\n|<p>)[ \t]*(?:[•\*\-]\s*|#{1,6}\s*|\[|\*\*)?\s*([^\n<]*(?:절차|흐름도|플로우차트|순서도|프로세스|가정\s*사항|가정\s*조건|기본\s*가정|전제\s*조건|가정|메커니즘|작동\s*원리|개념|목적|원인|발생\s*원인|주요\s*원인|대책|방지\s*대책|시공\s*대책|저감\s*대책|수립\s*대책|Procedure|Assumptions|Mechanism|Causes|Countermeasures|Solutions)[^\n<]*)\s*[:\]\*\*]*[ \t]*(?:<br\/>|\n|<\/p>|<p>)+((?:[ \t]*(?:<div[^>]*>|<p>)?(?:\d+[\.\)]|[①-⑳])[ \t]*[^\n<]+(?:<\/div>|<\/p>|<br\/>|\n|$))+)/gi;
 
   let result = normalizedText.replace(sectionRegex, (fullMatch, headerTitle, stepsBlock) => {
     if (fullMatch.includes('___HTML_TABLE_') || fullMatch.includes('___CODE_BLOCK_') || fullMatch.includes('flowchart-text-force') || /<table/i.test(fullMatch)) {
@@ -192,10 +192,10 @@ export function wrapMechanismProcedureAssumptionsHtml(text) {
 
     if (itemBoxes.length === 0) return fullMatch;
 
-    let titleClean = headerTitle.replace(/<[^>]+>/g, '').replace(/[\(\`']*(?:mechanism|procedure|assumptions|pros_cons)[\)\`']*/gi, '').replace(/^[#\*\-•\[\]\s:]+/, '').replace(/[#\*\-•\[\]\s:]+$/, '').trim();
+    let titleClean = headerTitle.replace(/<[^>]+>/g, '').replace(/[\(\`']*(?:mechanism|procedure|assumptions|pros_cons|causes|countermeasures|solutions)[\)\`']*/gi, '').replace(/^[#\*\-•\[\]\s:]+/, '').replace(/[#\*\-•\[\]\s:]+$/, '').trim();
 
     // If titleClean is empty or just English tag words, do not render title div
-    const hasMeaningfulTitle = titleClean && titleClean.length > 1 && !/^(?:mechanism|procedure|assumptions|pros_cons)$/i.test(titleClean);
+    const hasMeaningfulTitle = titleClean && titleClean.length > 1 && !/^(?:mechanism|procedure|assumptions|pros_cons|causes|countermeasures|solutions)$/i.test(titleClean);
 
     return `<div class="my-2 text-left select-text flowchart-text-force">${hasMeaningfulTitle ? `<div class="text-slate-100 font-bold mb-1.5">${titleClean}</div>` : ''}<div class="space-y-2">${itemBoxes.join('')}</div></div>`;
   });
