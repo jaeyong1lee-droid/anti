@@ -163,7 +163,7 @@ export const LatexRenderer = React.memo(function LatexRenderer({
     parsedText = parsedText.replace(/\$\$/g, '$').replace(/[\r\n]+/g, ' ').trim();
   }
 
-  const flowchartRegex = /```(?:[a-zA-Z]*)?\n([\s\S]*?┌[\s\S]*?)```/g;
+  const flowchartRegex = /```(?:[a-zA-Z]*)?\n([\s\S]*?┌[\s\S]*?(?:│|┃)[\s\S]*?)```/g;
   const hasFlowchart = flowchartRegex.test(parsedText);
   flowchartRegex.lastIndex = 0;
 
