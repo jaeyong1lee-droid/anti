@@ -194,14 +194,14 @@ export function wrapMechanismProcedureAssumptionsHtml(text) {
 
     let titleClean = headerTitle.replace(/<[^>]+>/g, '').replace(/^[#\*\-•\[\]:s]+/, '').replace(/[#\*\-•\[\]:s]+$/, '').trim();
 
-    return `<div class="my-3.5 p-3.5 rounded-2xl bg-slate-950/90 border border-indigo-500/35 shadow-lg text-left select-text flowchart-text-force"><div class="flex items-center gap-2 mb-2.5 pb-2 border-b border-indigo-500/25 text-indigo-300 text-xs sm:text-sm font-extrabold select-none"><span class="text-base">⚡</span><span>${titleClean || '주요 절차 및 메커니즘'}</span></div><div class="space-y-2 my-1">${itemBoxes.join('')}</div></div>`;
+    return `<div class="my-2 text-left select-text flowchart-text-force"><div class="text-slate-100 font-bold mb-1.5">${titleClean}</div><div class="space-y-2">${itemBoxes.join('')}</div></div>`;
   });
 
   // Pattern B: Standalone 2 or more consecutive numbered items without explicit header
   const standaloneNumberedRegex = /(?:^|<br\/>|\n|<p>)[ \t]*((?:(?:<div[^>]*>|<p>)?\s*(?:\d+[\.\)]|[①-⑳])\s+[^\n<]+(?:<\/div>|<\/p>|<br\/>|\n|$)\s*){2,})/gi;
 
   result = result.replace(standaloneNumberedRegex, (fullMatch, stepsBlock) => {
-    if (fullMatch.includes('___HTML_TABLE_') || fullMatch.includes('___CODE_BLOCK_') || fullMatch.includes('border-indigo-500') || /<table/i.test(fullMatch)) {
+    if (fullMatch.includes('___HTML_TABLE_') || fullMatch.includes('___CODE_BLOCK_') || fullMatch.includes('flowchart-text-force') || /<table/i.test(fullMatch)) {
       return fullMatch;
     }
 
@@ -230,7 +230,7 @@ export function wrapMechanismProcedureAssumptionsHtml(text) {
 
     if (itemBoxes.length < 2) return fullMatch;
 
-    return `<div class="my-3.5 p-3.5 rounded-2xl bg-slate-950/90 border border-indigo-500/35 shadow-lg text-left select-text flowchart-text-force"><div class="space-y-2 my-1">${itemBoxes.join('')}</div></div>`;
+    return `<div class="my-2 space-y-2 text-left select-text flowchart-text-force">${itemBoxes.join('')}</div>`;
   });
 
   return result;
