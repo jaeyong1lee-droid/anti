@@ -418,6 +418,11 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   // [Self-Healing] Fix missing backslash for \Delta t in subscripts (e.g. s_{t- Delta t} -> s_{t- \Delta t})
   processed = processed.replace(/([sS])_\{t-\s*Delta\s*t\}/g, '$1_{t-\\Delta t}');
 
+  // [Self-Healing] Fix split dollar signs inside brace subscripts (e.g. s_{t- $\Delta t$} or s_{t- $\Delta$ t} -> $s_{t-\Delta t}$)
+  processed = processed.replace(/(\b\\?[a-zA-Z0-9_']+_\{\s*[^{}\$\n]*)\$([^\$\n]+)\$([^{}\$\n]*\})/g, (match, p1, math, p3) => {
+    return `$${p1}${math}${p3}$`;
+  });
+
   // [Self-Healing] Convert plain English geotechnical math variables (e.g. sigma_v0 ', sigma_v, tau, etc.) to standard LaTeX ($...$)
   const plainGreekLetters = 'sigma|tau|phi|gamma|alpha|beta|theta|epsilon|Delta';
   const plainGreekRegex = new RegExp(`(?<![\\\\a-zA-Z$])(${plainGreekLetters})(?:\\s*')?(?:_([a-zA-Z0-9{}]+))?(?:\\s*')?(?![a-zA-Z0-9$_])`, 'g');

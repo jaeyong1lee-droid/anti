@@ -411,6 +411,11 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   // [Self-Healing] Fix missing backslash for \Delta t in subscripts (e.g. s_{t- Delta t} -> s_{t- \Delta t})
   processed = processed.replace(/([sS])_\{t-\s*Delta\s*t\}/g, '$1_{t-\\Delta t}');
 
+  // [Self-Healing] Fix split dollar signs inside brace subscripts (e.g. s_{t- $\Delta t$} or s_{t- $\Delta$ t} -> $s_{t-\Delta t}$)
+  processed = processed.replace(/(\b\\?[a-zA-Z0-9_']+_\{\s*[^{}\$\n]*)\$([^\$\n]+)\$([^{}\$\n]*\})/g, (match, p1, math, p3) => {
+    return `$${p1}${math}${p3}$`;
+  });
+
   // [Self-Healing] Clean up '...' used on its own line as code block boundary
   processed = processed.replace(/(?:^|\n)\s*\.\.\.\s*(?=\n)/g, '\n```');
 
