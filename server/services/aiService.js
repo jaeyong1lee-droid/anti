@@ -5,7 +5,7 @@ import { parseLlmJson } from '../utils/latexUtils.js';
 // Global AI progress tracker map
 global.progressTracker = global.progressTracker || new Map();
 
-export let globalPreferredModel = 'gemini-3.1-flash-lite';
+export let globalPreferredModel = 'gemini-3.5-flash-lite';
 
 export async function loadPreferredModel() {
   try {
@@ -171,6 +171,8 @@ export async function callLLMWithFailover(systemInstruction, userPrompt, image =
       const geminiFallbacks = [
         options.preferredModel,
         globalPreferredModel,
+        'gemini-3.5-flash-lite',
+        'gemini-3.6-flash',
         'gemini-3.1-flash-lite',
         'gemini-3.5-flash',
         'gemini-3.0-flash',

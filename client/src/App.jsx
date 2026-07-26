@@ -3004,7 +3004,7 @@ export default function App() {
   const [topicFilter, setTopicFilter] = useState('전체');
   const [editingTopicId, setEditingTopicId] = useState(null);
   const [editingTitleText, setEditingTitleText] = useState('');
-  const [preferredModel, setPreferredModel] = useState('gemini-3.1-flash-lite');
+  const [preferredModel, setPreferredModel] = useState('gemini-3.5-flash-lite');
   const [isLockscreenQuizEnabled, setIsLockscreenQuizEnabled] = useState(() => {
     return localStorage.getItem('anti_lockscreen_quiz_enabled') === 'true';
   });
@@ -11643,7 +11643,9 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
   };
 
   const handleTogglePreferredModel = async () => {
-    const nextModel = preferredModel === 'gemini-3.1-flash-lite' ? 'gemini-3.5-flash' : 'gemini-3.1-flash-lite';
+    const models = ['gemini-3.5-flash-lite', 'gemini-3.6-flash', 'gemini-3.1-flash-lite', 'gemini-3.5-flash'];
+    const currentIdx = models.indexOf(preferredModel);
+    const nextModel = models[(currentIdx + 1) % models.length];
     setPreferredModel(nextModel);
     localStorage.setItem('anti_preferred_model', nextModel);
 
@@ -17742,13 +17744,14 @@ ${itemsStr}
                 <button
                   type="button"
                   onClick={handleTogglePreferredModel}
-                  className={`flex items-center justify-center px-3 py-1.5 rounded-xl border transition-all active:scale-98 text-[11px] font-black cursor-pointer shadow-md select-none ${
-                    preferredModel === 'gemini-3.5-flash'
-                      ? 'border-cyan-500/20 bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20 hover:border-cyan-500/30'
-                      : 'border-emerald-500/20 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 hover:border-emerald-500/30'
-                  }`}
+                  title="Gemini AI 모델 순환 변경 (3.5 Lite -> 3.6 Flash -> 3.1 Lite -> 3.5 Flash)"
+                  className="flex items-center justify-center px-3 py-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 hover:border-emerald-500/40 transition-all active:scale-98 text-[11px] font-black cursor-pointer shadow-md select-none"
                 >
-                  <span>{preferredModel === 'gemini-3.5-flash' ? '3.5' : '3.1'}</span>
+                  <span>
+                    {preferredModel === 'gemini-3.5-flash-lite' ? '3.5 Lite' :
+                     preferredModel === 'gemini-3.6-flash' ? '3.6 Flash' :
+                     preferredModel === 'gemini-3.1-flash-lite' ? '3.1 Lite' : '3.5 Flash'}
+                  </span>
                 </button>
 
                 <button
