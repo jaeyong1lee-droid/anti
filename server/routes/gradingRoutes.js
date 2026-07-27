@@ -97,7 +97,7 @@ router.post('/grade-subjective', async (req, res) => {
   // 별도 LLM 호출(최대 8초 blocking)은 불필요한 지연만 발생시킴
   const localCallLLM = (sys, prompt, img, scenario, opts) => {
     const targetTemp = typeof temperature === 'number' ? temperature : 0.7;
-    return callLLMWithFailover(sys, prompt, img, scenario, { ...opts, temperature: targetTemp, progressId });
+    return callLLMWithFailover(sys, prompt, img, scenario, { preferredModel: 'gemini-3.1-flash-lite', ...opts, temperature: targetTemp, progressId });
   };
 
   if (progressId) {
