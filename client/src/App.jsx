@@ -3750,15 +3750,7 @@ export default function App() {
         return;
       }
 
-      if (normalize(cleanUser) === normalize(cleanCorrect)) {
-        nextGrading[`${qIdx}_${inputId}`] = {
-          isCorrect: true,
-          score: 10,
-          reason: '모범 답안과 정확히 일치합니다.',
-          suggestedModelAnswer: cleanCorrect
-        };
-        return;
-      }
+      // 단순 일치 조기 리턴 제거: 모든 셀이 AI 채점관을 거쳐 공학적 피드백을 풍부하게 생성받도록 변경
       
       let rowHeader = '';
       let colHeader = '';
@@ -3828,7 +3820,9 @@ export default function App() {
         nextGrading[`${qIdx}_${inputId}`] = {
           isCorrect: isMatch,
           score: isMatch ? 10 : 5,
-          reason: isMatch ? '정답과 일치합니다.' : '답안 제출 완료 (자동 채점)',
+          reason: isMatch 
+            ? '제출 답안이 모범 답안의 공학적 내용과 일치하여 만점으로 채점합니다.' 
+            : '제출 답안에 대한 기본 평가가 완료되었습니다. 상세 피드백은 개별 재채점 버튼을 통해 재확인할 수 있습니다.',
           suggestedModelAnswer: cleanCorrect
         };
       }
