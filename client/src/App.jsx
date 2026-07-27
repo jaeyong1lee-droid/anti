@@ -751,7 +751,7 @@ function parseMarkdownTable(questionText) {
             };
 
             for (const r of dataRows) {
-              const col0 = String(r[0] || '').trim();
+              const col0 = String(r[0] || '').replace(/<[^>]*>/g, '').trim();
               const col1 = String(r[1] || '').trim();
               const col2 = String(r[2] || '').trim();
 
