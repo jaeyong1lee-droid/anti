@@ -102,7 +102,9 @@ export function htmlTableToMarkdown(html, poissonSymbol = null) {
 
 export function parseMarkdownTable(questionText) {
   if (!questionText) return null;
-  const lines = questionText.split('\n');
+  const cleanStr = typeof questionText === 'string' ? questionText : String(questionText);
+  const normalizedStr = cleanStr.replace(/<br\s*\/?>/gi, '\n');
+  const lines = normalizedStr.split('\n');
   
   for (let i = 0; i < lines.length - 1; i++) {
     const line = lines[i].trim();
@@ -110,32 +112,36 @@ export function parseMarkdownTable(questionText) {
       const nextLine = lines[i + 1].trim();
       const isSeparator = nextLine.includes('-') && nextLine.includes('|') && /^[\s|:\-]+$/.test(nextLine);
       if (isSeparator) {
-        // We found a table starting at index i
-        const startIdx = i;
-        let endIdx = i + 1;
-        while (endIdx + 1 < lines.length && lines[endIdx + 1].trim().includes('|')) {
-          endIdx++;
-        }
-        
         const parseRow = (l) => {
-          const trimmed = l.trim();
-          const parts = trimmed.split('|');
-          if (trimmed.startsWith('|')) parts.shift();
-          if (trimmed.endsWith('|')) parts.pop();
-          return parts.map(cell => cell.trim());
+          let trimmed = l.trim();
+          if (trimmed.startsWith('|')) trimmed = trimmed.substring(1);
+          if (trimmed.endsWith('|')) trimmed = trimmed.substring(0, trimmed.length - 1);
+          return trimmed.split('|').map(cell => cell.replace(/<[^>]*>/g, '').replace(/[\r\n]+/g, ' ').trim());
         };
 
-        const headers = parseRow(lines[startIdx]);
+        const headers = parseRow(lines[i]);
         const rows = [];
-        for (let r = startIdx + 2; r <= endIdx; r++) {
-          rows.push(parseRow(lines[r]));
+        let j = i + 2;
+        while (j < lines.length) {
+          const rowLine = lines[j].trim();
+          if (rowLine.includes('|')) {
+            const parsedCells = parseRow(rowLine);
+            if (parsedCells.length > 0 && !parsedCells.every(c => !c || c.includes('---'))) {
+              rows.push(parsedCells);
+            }
+          } else if (rowLine !== '' && !rowLine.startsWith('<')) {
+            break;
+          }
+          j++;
         }
-        
-        const originalTableText = lines.slice(startIdx, endIdx + 1).join('\n');
-        return {
-          tableData: { headers, rows },
-          originalTableText
-        };
+
+        if (headers.length > 0 && rows.length > 0) {
+          const originalTableText = lines.slice(i, j).join('\n');
+          return {
+            tableData: { headers, rows },
+            originalTableText
+          };
+        }
       }
     }
   }

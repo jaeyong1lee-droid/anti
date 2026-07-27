@@ -696,48 +696,47 @@ const clientExtractVariables = (mathContent) => {
 
 function parseMarkdownTable(questionText) {
   if (!questionText) return null;
-  const cleanText = typeof questionText === 'string' ? questionText : String(questionText);
-  const lines = cleanText.split('\n');
-  let startIdx = -1;
-  let endIdx = -1;
-
-  for (let i = 0; i < lines.length; i++) {
+  const cleanStr = typeof questionText === 'string' ? questionText : String(questionText);
+  const normalizedStr = cleanStr.replace(/<br\s*\/?>/gi, '\n');
+  const lines = normalizedStr.split('\n');
+  
+  for (let i = 0; i < lines.length - 1; i++) {
     const line = lines[i].trim();
-    if (line.startsWith('|') && line !== '|') {
-      if (startIdx === -1) {
-        startIdx = i;
-      }
-      endIdx = i;
-    } else {
-      if (startIdx !== -1) {
-        break;
-      }
-    }
-  }
+    if (line.includes('|')) {
+      const nextLine = lines[i + 1].trim();
+      const isSeparator = nextLine.includes('-') && nextLine.includes('|') && /^[\s|:\-]+$/.test(nextLine);
+      if (isSeparator) {
+        const parseRow = (l) => {
+          let trimmed = l.trim();
+          if (trimmed.startsWith('|')) trimmed = trimmed.substring(1);
+          if (trimmed.endsWith('|')) trimmed = trimmed.substring(0, trimmed.length - 1);
+          return trimmed.split('|').map(cell => cell.replace(/<[^>]*>/g, '').replace(/[\r\n]+/g, ' ').trim());
+        };
 
-  const parseRowCells = (rowText) => {
-    let cells = rowText.split('|').map(c => c.trim());
-    while (cells.length > 0 && cells[0] === '') cells.shift();
-    while (cells.length > 0 && cells[cells.length - 1] === '') cells.pop();
-    return cells;
-  };
+        const headers = parseRow(lines[i]);
+        const rows = [];
+        let j = i + 2;
+        while (j < lines.length) {
+          const rowLine = lines[j].trim();
+          if (rowLine.includes('|')) {
+            const parsedCells = parseRow(rowLine);
+            if (parsedCells.length > 0 && !parsedCells.every(c => !c || c.includes('---'))) {
+              rows.push(parsedCells);
+            }
+          } else if (rowLine !== '' && !rowLine.startsWith('<')) {
+            break;
+          }
+          j++;
+        }
 
-  if (startIdx !== -1 && endIdx !== -1 && (endIdx - startIdx) >= 2) {
-    const headers = parseRowCells(lines[startIdx]);
-    
-    const separatorLine = lines[startIdx + 1];
-    if (separatorLine.includes('---')) {
-      const rows = [];
-      for (let i = startIdx + 2; i <= endIdx; i++) {
-        const rowCells = parseRowCells(lines[i]);
-        rows.push(rowCells);
+        if (headers.length > 0 && rows.length > 0) {
+          const originalTableText = lines.slice(i, j).join('\n');
+          return {
+            tableData: { headers, rows },
+            originalTableText
+          };
+        }
       }
-      
-      const originalTableText = lines.slice(startIdx, endIdx + 1).join('\n');
-      return {
-        tableData: { headers, rows },
-        originalTableText
-      };
     }
   }
   return null;
