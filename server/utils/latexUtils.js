@@ -1370,12 +1370,11 @@ export function healQuizQuestionObject(q) {
             const letterKey = String.fromCharCode(64 + matchedNum); // A, B, C...
             foundVal = lookup(letterKey) ?? lookup(letterKey.toLowerCase()) ?? lookup(`INPUT_${matchedNum}`) ?? lookup(`input_${matchedNum}`) ?? lookup(matchedNum) ?? lookup(String(matchedNum));
             
-            // Suffix-based recovery (e.g., match INPUT_2_1 for matchedNum = 1)
+            // Suffix-based recovery (1D keys only)
             if (foundVal === undefined) {
               const matchedKey = Object.keys(oldAnswers).find(key => {
                 const parts = key.split('_');
-                const lastPart = parts[parts.length - 1];
-                return parts[0].toLowerCase() === 'input' && parseInt(lastPart, 10) === matchedNum;
+                return parts.length === 2 && parts[0].toLowerCase() === 'input' && parseInt(parts[1], 10) === matchedNum;
               });
               if (matchedKey) {
                 foundVal = oldAnswers[matchedKey];
@@ -1388,12 +1387,11 @@ export function healQuizQuestionObject(q) {
             const seqLetter = String.fromCharCode(64 + currentCount); // A, B, C...
             foundVal = lookup(`INPUT_${currentCount}`) ?? lookup(`input_${currentCount}`) ?? lookup(currentCount) ?? lookup(String(currentCount)) ?? lookup(seqLetter) ?? lookup(seqLetter.toLowerCase());
             
-            // Suffix-based recovery for sequential fallback (e.g., match INPUT_2_1 for currentCount = 1)
+            // Suffix-based recovery for sequential fallback (1D keys only)
             if (foundVal === undefined) {
               const matchedKey = Object.keys(oldAnswers).find(key => {
                 const parts = key.split('_');
-                const lastPart = parts[parts.length - 1];
-                return parts[0].toLowerCase() === 'input' && parseInt(lastPart, 10) === currentCount;
+                return parts.length === 2 && parts[0].toLowerCase() === 'input' && parseInt(parts[1], 10) === currentCount;
               });
               if (matchedKey) {
                 foundVal = oldAnswers[matchedKey];
