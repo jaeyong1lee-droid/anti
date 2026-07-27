@@ -1803,7 +1803,7 @@ export const TableQuiz = React.memo(function TableQuiz({
        {compTablePlaceholder}
        {compTable}
  
-       {isOverviewReview && isFirstTableGraded && !isSecondTableGraded && (
+       {isOverviewReview && isFirstTableGraded && (
          <div className="mt-3.5 mb-2 select-none flex justify-center w-full">
            <button
              type="button"
@@ -1825,7 +1825,7 @@ export const TableQuiz = React.memo(function TableQuiz({
                  </svg>
                  AI 채점 진행 중...
                </span>
-             ) : '제출하고 채점하기 (2단계: 비교표) →'}
+             ) : isSecondTableGraded ? '↺ 비교표(2단계) 재채점' : '제출하고 채점하기 (2단계: 비교표) →'}
            </button>
          </div>
        )}
