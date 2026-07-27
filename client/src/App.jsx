@@ -367,6 +367,10 @@ const parseOverviewContent = (content) => {
     }
   }
 
+  if (!result.definition && !result.mechanism && !result.comparison && !result.significance && !result.intuitive && content) {
+    result.definition = typeof content === 'string' ? content.trim() : String(content).trim();
+  }
+
   return result;
 };
 
@@ -8934,6 +8938,12 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
               explanationHtml += `⚖️ **비교표 / 장단점**\n${parsed.comparison}\n\n`;
             }
             
+            if (rows.length === 0) {
+              const fallbackVal = item.content || item.title || '학술적 개요 및 핵심 기전 서술';
+              answers['INPUT_0_1'] = fallbackVal;
+              rows.push(['학술적 개요 및 핵심 기전', '[INPUT_0_1]']);
+            }
+
             return {
               id: `mixed_q_${qIdx}`,
               type: '주관식 (표채우기)',
@@ -9675,6 +9685,12 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
               explanationHtml += `⚖️ **비교표 / 장단점**\n${parsed.comparison}\n\n`;
             }
             
+            if (rows.length === 0) {
+              const fallbackVal = item.content || item.title || '학술적 개요 및 핵심 기전 서술';
+              answers['INPUT_0_1'] = fallbackVal;
+              rows.push(['학술적 개요 및 핵심 기전', '[INPUT_0_1]']);
+            }
+
             return {
               id: `mixed_q_${qIdx}`,
               type: '주관식 (표채우기)',

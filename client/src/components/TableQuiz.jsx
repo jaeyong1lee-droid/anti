@@ -25,8 +25,19 @@ export const TableQuiz = React.memo(function TableQuiz({
   setFloatedTableId = () => {},
   isExam = false
 }) {
-  if (!q.tableData || !q.tableData.headers || !q.tableData.rows) {
-    return <div className="text-red-400 text-xs py-2">오류: 표 데이터가 올바르지 않습니다.</div>;
+  const hasValidMainRows = Array.isArray(q.tableData?.rows) && q.tableData.rows.length > 0;
+  const hasValidCompRows = Array.isArray(q.comparisonTableData?.rows) && q.comparisonTableData.rows.length > 0;
+
+  if (!hasValidMainRows && !hasValidCompRows) {
+    const fallbackAnswer = q.answer || q.concept || q.explanation || q.question || '학술적 개요 및 핵심 기전 서술';
+    q.tableData = {
+      headers: ['구분', '내용'],
+      rows: [['학술적 개요 및 핵심 기전', '[INPUT_0_1]']]
+    };
+    q.answers = q.answers || {};
+    if (!q.answers['INPUT_0_1']) {
+      q.answers['INPUT_0_1'] = typeof fallbackAnswer === 'string' ? fallbackAnswer.replace(/<[^>]*>/g, '').trim() : fallbackAnswer;
+    }
   }
 
   const isOverviewReview = isOverviewReviewHelper(q);
