@@ -1519,20 +1519,46 @@ export function healQuizQuestionObject(q) {
       }
     }
     
-    // [Self-Healing] comparisonTableData의 answers 누락 복구
+    // [Self-Healing] comparisonTableData의 answers 누락 및 매핑 오류 복구
     if (q.comparisonTableData && q.comparisonTableData.rows && q.answers) {
       const answers = q.answers;
+      const textToParse = q.explanation || '';
+      
       q.comparisonTableData.rows.forEach((row, rIdx) => {
+        const rowHeader = (row[0] || '').replace(/<[^>]+>/g, '').trim();
+        
         row.forEach((cell, cIdx) => {
           if (cIdx === 0) return; // 첫 번째 열은 구분이므로 건너뜀
           
           if (typeof cell === 'string' && cell.includes('[INPUT_')) {
             const inputId = cell.replace('[', '').replace(']', '').trim();
             
-            if (answers[inputId] === undefined || answers[inputId] === null || answers[inputId] === '') {
-              const textToParse = q.explanation || '';
+            // 해설(explanation)에서 rowHeader(예: "적용 대상")가 포함된 마크다운 행 찾기
+            let recoveredFromHeaderMatch = '';
+            if (rowHeader && textToParse) {
+              const lines = textToParse.split('\n');
+              const matchedLine = lines.find(line => {
+                const l = line.trim();
+                return l.startsWith('|') && l.endsWith('|') && l.includes(rowHeader);
+              });
               
-              // 1. 만약 HTML 테이블 형태라면?
+              if (matchedLine) {
+                const cols = matchedLine.split('|').map(col => col.trim()).filter((_, idx, arr) => idx > 0 && idx < arr.length - 1);
+                if (cols[cIdx]) {
+                  const cleanAns = cols[cIdx].replace(/\*\*/g, '').trim();
+                  if (cleanAns && !cleanAns.includes('[INPUT_')) {
+                    recoveredFromHeaderMatch = cleanAns;
+                  }
+                }
+              }
+            }
+
+            // 행 헤더 명칭 매칭으로 올바른 정답이 발견되었으면 무조건 해당 정답으로 교정하여 매핑 오류 치료
+            if (recoveredFromHeaderMatch) {
+              answers[inputId] = recoveredFromHeaderMatch;
+              console.log(`[HealComparison] RowHeader matched "${rowHeader}" for ${inputId}: set answer to "${recoveredFromHeaderMatch}"`);
+            } else if (answers[inputId] === undefined || answers[inputId] === null || answers[inputId] === '') {
+              // 행 헤더 매칭 실패 시 인덱스 순차 복구 (fallback)
               if (textToParse.includes('<table') || textToParse.includes('<tr>')) {
                 const trs = textToParse.match(/<tr[^>]*>([\s\S]*?)<\/tr>/gi) || [];
                 const dataTrs = trs.filter(tr => !tr.includes('<th') && tr.includes('<td'));
@@ -1547,7 +1573,6 @@ export function healQuizQuestionObject(q) {
                   }
                 }
               }
-              // 2. 만약 HTML이 아니라 순수 마크다운 테이블 형태라면?
               if (!answers[inputId]) {
                 const lines = textToParse.split('\n');
                 const tableLines = lines.filter(line => line.trim().startsWith('|') && line.trim().endsWith('|'));
