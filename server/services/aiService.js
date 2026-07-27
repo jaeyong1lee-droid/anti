@@ -5,7 +5,7 @@ import { parseLlmJson } from '../utils/latexUtils.js';
 // Global AI progress tracker map
 global.progressTracker = global.progressTracker || new Map();
 
-export let globalPreferredModel = 'gemini-3.5-flash-lite';
+export let globalPreferredModel = 'gemini-3.1-flash-lite';
 
 export async function loadPreferredModel() {
   try {
@@ -58,20 +58,20 @@ export async function saveSessionValue(key, value) {
 }
 
 export function normalizeGeminiModel(modelName) {
-  if (!modelName || typeof modelName !== 'string') return 'gemini-3.5-flash-lite';
+  if (!modelName || typeof modelName !== 'string') return 'gemini-3.1-flash-lite';
   const name = modelName.trim().toLowerCase();
 
   const validModels = [
+    'gemini-3.1-flash-lite',
     'gemini-3.5-flash-lite',
     'gemini-3.6-flash',
-    'gemini-3.1-flash-lite',
     'gemini-3.5-flash'
   ];
   if (validModels.includes(name)) return name;
 
   if (name.includes('3.1') || (name.includes('lite') && !name.includes('3.5'))) return 'gemini-3.1-flash-lite';
   if (name.includes('3.6')) return 'gemini-3.6-flash';
-  return 'gemini-3.5-flash-lite';
+  return 'gemini-3.1-flash-lite';
 }
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));

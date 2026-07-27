@@ -3067,7 +3067,7 @@ export default function App() {
   const [topicFilter, setTopicFilter] = useState('전체');
   const [editingTopicId, setEditingTopicId] = useState(null);
   const [editingTitleText, setEditingTitleText] = useState('');
-  const [preferredModel, setPreferredModel] = useState('gemini-3.5-flash-lite');
+  const [preferredModel, setPreferredModel] = useState(() => localStorage.getItem('anti_preferred_model') || 'gemini-3.1-flash-lite');
   const [isLockscreenQuizEnabled, setIsLockscreenQuizEnabled] = useState(() => {
     return localStorage.getItem('anti_lockscreen_quiz_enabled') === 'true';
   });
