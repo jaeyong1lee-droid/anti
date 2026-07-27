@@ -58,6 +58,17 @@ function renderCellMath(text) {
     return match;
   });
 
+  // Convert **bold** markdown to <strong> in table cells
+  temp = temp.replace(/\*\*([^*]+?)\*\*/g, '<strong style="font-weight:700;">$1</strong>');
+
+  // Collapse multiple consecutive <br> tags into a single one, and trim leading/trailing <br>
+  temp = temp.replace(/(<br\s*\/?>(\s*<br\s*\/?>)+)/gi, '<br>');
+  temp = temp.replace(/^(\s*<br\s*\/?>\s*)+/i, '');
+  temp = temp.replace(/(\s*<br\s*\/?>\s*)+$/i, '');
+
+  // Trim whitespace
+  temp = temp.trim();
+
   return temp;
 }
 

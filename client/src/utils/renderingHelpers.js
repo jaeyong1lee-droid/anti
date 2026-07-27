@@ -641,6 +641,10 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
   tempText = tempText.replace(/(<\/div>)(?:<br\/>|<div style="height: [^"]*"><\/div>)+(<div style="[^"]*padding-left:[^"]*")/g, '$1$2');
   tempText = tempText.replace(/(?:<br\/>|<div style="height: [^"]*"><\/div>)+\s*(<hr\b[^>]*>)/g, '$1');
 
+  // Remove spacer divs / br immediately before and after HTML table blocks
+  tempText = tempText.replace(/(?:<br\/>|<div style="height: [^"]*"><\/div>)+\s*(___HTML_TABLE_\d+___)/g, '$1');
+  tempText = tempText.replace(/(___HTML_TABLE_\d+___)\s*(?:<br\/>|<div style="height: [^"]*"><\/div>)+/g, '$1');
+
   // Restore math blocks
   mathBlocks.forEach(block => {
     while (tempText.includes(block.placeholder)) {
