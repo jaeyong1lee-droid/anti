@@ -3816,7 +3816,6 @@ export default function App() {
             category: showExam ? examTopic?.category : selectedTopic?.category,
             temperature: isReevaluation ? 0.85 : 0.7,
             preferredModel: preferredModelRef.current || preferredModel,
-            skipPhase0: true,
             progressId
           })
         });

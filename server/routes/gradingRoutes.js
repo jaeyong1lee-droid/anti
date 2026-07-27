@@ -83,7 +83,7 @@ async function getFormattedTopicInstructions(topicId) {
 
 // POST /api/grade-subjective -> AI Subjective Grading
 router.post('/grade-subjective', async (req, res) => {
-  const { question, correctAnswer, userAnswer, rowHeader, colHeader, explanation, category, temperature, skipPhase0, standardsAnalysis: passedAnalysis } = req.body;
+  const { question, correctAnswer, userAnswer, rowHeader, colHeader, explanation, category, temperature } = req.body;
   const progressId = req.body.progressId || req.query.progressId;
 
   const dynamicGradingStandards = gradingStandardsList && gradingStandardsList.length > 0
@@ -93,11 +93,9 @@ router.post('/grade-subjective', async (req, res) => {
     ? engineeringStandardsList.map(s => s.content).join('\n\n')
     : ENGINEERING_STANDARDS;
 
-  let standardsAnalysis = passedAnalysis || '';
-  if (!standardsAnalysis && progressId && !skipPhase0) {
-    standardsAnalysis = await analyzeStandardsBeforeTask(progressId, question || '주관식 채점', dynamicGradingStandards, 'grading');
-  }
+  let standardsAnalysis = '';
   if (progressId) {
+    standardsAnalysis = await analyzeStandardsBeforeTask(progressId, question || '주관식 채점', dynamicGradingStandards, 'grading');
     const modelUpper = (req.body.preferredModel || globalPreferredModel || 'gemini-3.1-flash-lite').toUpperCase();
     updateProgress(progressId, 1, `1단계: ${modelUpper} 엔진으로 제출 답안 채점 중...`, 20);
   }
