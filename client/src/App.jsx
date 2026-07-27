@@ -1822,13 +1822,13 @@ const renderQuestionContent = (
             </div>
           </div>
         )}
-        {referenceTableData && !showImage && q.type !== '주관식 (표채우기)' && q.subtype !== '표채우기' && q.type !== '주관식 (앞글자)' && (
+        {referenceTableData && !showImage && q.type !== '주관식 (표채우기)' && q.subtype !== '표채우기' && !q.tableData && !q.comparisonTableData && q.type !== '주관식 (앞글자)' && (
           <div className="my-3 overflow-x-auto w-full">
             <div className="text-[12px] text-indigo-400 font-extrabold mb-1.5 flex items-center gap-1.5 select-none">📋 [시험 결과 데이터 표]</div>
             <ReadOnlyTable tableData={referenceTableData} katexLoaded={katexLoaded} questionIdx={questionIdx} />
           </div>
         )}
-        {tableData && !showImage && q.type !== '주관식 (표채우기)' && q.subtype !== '표채우기' && q.type !== '주관식 (앞글자)' && (
+        {tableData && !showImage && q.type !== '주관식 (표채우기)' && q.subtype !== '표채우기' && !q.tableData && !q.comparisonTableData && q.type !== '주관식 (앞글자)' && (
           <ReadOnlyTable tableData={tableData} katexLoaded={katexLoaded} questionIdx={questionIdx} />
         )}
       </div>
@@ -1843,13 +1843,13 @@ const renderQuestionContent = (
         </div>
       )}
       {renderImageElement()}
-      {referenceTableData && !showImage && q.type !== '주관식 (표채우기)' && q.subtype !== '표채우기' && q.type !== '주관식 (앞글자)' && (
+      {referenceTableData && !showImage && q.type !== '주관식 (표채우기)' && q.subtype !== '표채우기' && !q.tableData && !q.comparisonTableData && q.type !== '주관식 (앞글자)' && (
         <div className="my-3 overflow-x-auto w-full">
           <div className="text-[12px] text-indigo-400 font-extrabold mb-1.5 flex items-center gap-1.5 select-none">📋 [시험 결과 데이터 표]</div>
           <ReadOnlyTable tableData={referenceTableData} katexLoaded={katexLoaded} questionIdx={questionIdx} />
         </div>
       )}
-      {tableData && !showImage && q.type !== '주관식 (표채우기)' && q.subtype !== '표채우기' && q.type !== '주관식 (앞글자)' && (
+      {tableData && !showImage && q.type !== '주관식 (표채우기)' && q.subtype !== '표채우기' && !q.tableData && !q.comparisonTableData && q.type !== '주관식 (앞글자)' && (
         <ReadOnlyTable tableData={tableData} katexLoaded={katexLoaded} questionIdx={questionIdx} />
       )}
     </>
@@ -19294,7 +19294,7 @@ ${itemsStr}
                                   e.preventDefault();
                                   e.stopPropagation();
                                   if (gradingLoading[idx]) return;
-                                  if (q.type === '주관식 (표채우기)' || q.subtype === '표채우기') {
+                                  if (q.type === '주관식 (표채우기)' || q.subtype === '표채우기' || !!(q.tableData || q.comparisonTableData)) {
                                     await gradeTableQuestion(idx, q, null, true);
                                   } else {
                                     await gradeSubjectiveQuestion(idx, q, true);
@@ -19790,7 +19790,7 @@ ${itemsStr}
                                 </div>
                               )}
                             </div>
-                          ) : (q.type === '주관식 (표채우기)' || q.subtype === '표채우기') ? (
+                          ) : (q.type === '주관식 (표채우기)' || q.subtype === '표채우기' || !!(q.tableData || q.comparisonTableData)) ? (
                             <div className="space-y-3 w-full">
                               {(() => {
                                 const scoredIndices = [];
@@ -19881,7 +19881,7 @@ ${itemsStr}
                                 );
                               })()}
                             </div>
-                          ) : (q.type !== '주관식 (표채우기)' && q.subtype !== '표채우기' && !isNATMFlowchart(idx, q, false)) ? (
+                          ) : (q.type !== '주관식 (표채우기)' && q.subtype !== '표채우기' && !q.tableData && !q.comparisonTableData && !isNATMFlowchart(idx, q, false)) ? (
                             <div className="space-y-3 w-full animate-fade-in">
                               <div className={`p-0 sm:p-4 rounded-none sm:rounded-xl border-0 sm:border space-y-3 text-left transition-all ${getSubjectiveContainerClasses(idx, isRevd)}`}>
                                 <div className="space-y-1">
@@ -23046,7 +23046,7 @@ ${itemsStr}
                                 e.preventDefault();
                                 e.stopPropagation();
                                 if (gradingLoading[idx]) return;
-                                if (q.type === '주관식 (표채우기)' || q.subtype === '표채우기') {
+                                if (q.type === '주관식 (표채우기)' || q.subtype === '표채우기' || !!(q.tableData || q.comparisonTableData)) {
                                   await gradeTableQuestion(idx, q, null, true);
                                 } else {
                                   await gradeSubjectiveQuestion(idx, q, true);
@@ -23491,7 +23491,7 @@ ${itemsStr}
 
                       {/* Subjective Reveal */}
                       {isSubj && (
-                          (q.type === '주관식 (표채우기)' || q.subtype === '표채우기') ? (
+                          (q.type === '주관식 (표채우기)' || q.subtype === '표채우기' || !!(q.tableData || q.comparisonTableData)) ? (
                             <div className="space-y-3 w-full">
                               {(() => {
                                 const scoredIndices = [];
@@ -23582,7 +23582,7 @@ ${itemsStr}
                                 );
                               })()}
                             </div>
-                          ) : (q.type !== '주관식 (표채우기)' && q.subtype !== '표채우기' && !isNATMFlowchart(idx, q, true)) ? (
+                          ) : (q.type !== '주관식 (표채우기)' && q.subtype !== '표채우기' && !q.tableData && !q.comparisonTableData && !isNATMFlowchart(idx, q, true)) ? (
                             <div className="space-y-3 w-full animate-fade-in">
                               <div className={`p-0 sm:p-4 rounded-none sm:rounded-xl border-0 sm:border space-y-3 text-left transition-all ${getSubjectiveContainerClasses(idx, !!examRevealed[idx])}`}>
                                 <div className="space-y-1">
