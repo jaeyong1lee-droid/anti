@@ -507,22 +507,28 @@ export function healUnbalancedDollars(str) {
   if (!str || typeof str !== 'string') return str;
   let text = str.trim();
 
-  // 1. Clean orphan $$$ or $$ at end of string
+  // Clean orphan $$$ or $$ at end of string
   text = text.replace(/\${2,}$/g, '$');
 
-  // 2. Fix strings containing LaTeX commands that end with $ but are missing opening $
-  if (/^[^\$]*\\(?:frac|dfrac|beta|alpha|Delta|sigma|tau|phi|theta|pi|gamma|rho|mu|lambda|omega)[^\$]*\$$/.test(text)) {
-    return '$' + text;
-  }
-
-  // 3. Fix strings containing LaTeX commands that start with $ but are missing closing $
-  if (/^\$[^\$]*\\(?:frac|dfrac|beta|alpha|Delta|sigma|tau|phi|theta|pi|gamma|rho|mu|lambda|omega)[^\$]*$/.test(text)) {
-    return text + '$';
-  }
-
-  // 4. Auto-wrap unwrapped standalone \Delta t, \dfrac{t}{s}, etc.
   const latexCmds = 'Delta|Sigma|Gamma|Phi|Theta|Omega|alpha|beta|gamma|sigma|tau|phi|theta|epsilon|pi|delta|omega|mu|lambda|psi|rho|eta|nu|xi|zeta|chi|upsilon|kappa|frac|dfrac|tfrac|sqrt|cdot|times|div|pm|infty|partial|sum|int|sim|le|ge|lt|gt|sin|cos|tan|log|ln|nabla|neq|ne|approx';
-  text = text.replace(new RegExp(`(?<![\\$\\w])\\\\(?:${latexCmds})\\b(?:_\\{[^{}\\n]+\\}|_[a-zA-Z0-9]+|\\{[^{}\\n]*\\})*(?:\\s+[a-zA-Z0-9_']+)?(?![\\$\\w])`, 'g'), (m) => `$${m.trim()}$`);
+
+  // 1. If equation has = and LaTeX commands and no $, wrap the whole equation in $...$
+  if (!text.includes('$') && text.includes('=') && !/[\uAC00-\uD7A3]/.test(text) && new RegExp(`\\\\(?:${latexCmds})`).test(text)) {
+    return '$' + text + '$';
+  }
+
+  // 2. If text ends with $ and has LaTeX commands but no opening $, prepend $
+  if (/^[^\$]*\\(?:frac|dfrac|beta|alpha|Delta|sigma|tau|phi|theta|pi|gamma)[^\$]*\$$/.test(text)) {
+    text = '$' + text;
+  }
+  // 3. If text starts with $ and has LaTeX commands but no closing $, append $
+  else if (/^\$[^\$]*\\(?:frac|dfrac|beta|alpha|Delta|sigma|tau|phi|theta|pi|gamma)[^\$]*$/.test(text)) {
+    text = text + '$';
+  }
+  // 4. Auto-wrap unwrapped standalone \Delta t, \frac{t}{s}, etc.
+  else {
+    text = text.replace(new RegExp(`(?<![\\$\\w])\\\\(?:${latexCmds})\\b(?:_\\{[^{}\\n]+\\}|_[a-zA-Z0-9]+|\\{[^{}\\n]*\\})*(?:\\s+[a-zA-Z0-9_']+)?(?![\\$\\w])`, 'g'), (m) => `$${m.trim()}$`);
+  }
 
   return text;
 }
@@ -539,40 +545,6 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
                        .replace(/&\\gt;?/gi, '>')
                        .replace(/&lt;/gi, '<')
                        .replace(/&gt;/gi, '>');
-
-  // [Self-Healing] Auto-convert standalone comparison expressions without math dollars (e.g. k0<1, K0>1.5 -> $K_0 < 1$)
-  processed = processed.replace(/(?<!\$)\b([a-zA-Z][a-zA-Z0-9_]*)\s*(<|>|<=|>=)\s*([0-9]+(?:\.[0-9]+)?)\b(?!\$)/g, (match, varName, op, num) => {
-    let formattedVar = varName;
-    if (/^[kK]0$/i.test(varName)) formattedVar = 'K_0';
-    else if (/^([a-zA-Z]+)(\d+)$/.test(varName)) formattedVar = varName.replace(/^([a-zA-Z]+)(\d+)$/, '$1_$2');
-    
-    let latexOp = op;
-    if (op === '<=') latexOp = '\\le';
-    else if (op === '>=') latexOp = '\\ge';
-    
-    return `$${formattedVar} ${latexOp} ${num}$`;
-  });
-
-  // [Self-Healing] Fix beta subscript sub-nesting rendering error (\beta_{0,\beta_1} -> \beta_0, \beta_1)
-  processed = processed.replace(/\\?beta_\{0,\s*\\?beta_[01]\}/g, '\\beta_0, \\beta_1');
-
-  // [Self-Healing] Fix empty fraction denominator followed by variable (e.g. \frac{1}{} \beta or \frac{1}{ } \beta -> \frac{1}{\beta})
-  processed = processed.replace(/\\(d?frac)\{([^{}\n]+)\}\s*\{\s*\}\s*(\\?[a-zA-Z0-9_]+)/g, '\\$1{$2}{$3}');
-
-  // [Self-Healing] Fix duplicated variable right after fraction (e.g. \frac{1}{\beta} \beta -> \frac{1}{\beta})
-  processed = processed.replace(/\\(d?frac)\{([^{}\n]+)\}\s*\{\s*([^{}\n]+?)\s*\}\s*\\?\3\b/g, '\\$1{$2}{$3}');
-
-  // [Self-Healing] Fix missing backslash and split subscripts for \Delta t (e.g. s_{t- Delta t}, s_{t-} \Delta t, s_{t-_} \Delta t -> $s_{t-\Delta t}$)
-  processed = processed.replace(/(\$?)([a-zA-Z0-9_']+)_\{([a-zA-Z0-9]+)-_?\}\$?\s*\$?\\?\s*Delta\s*t\$?/gi, (m, p0, p1, p2) => {
-    return `$${p1}_{${p2}-\\Delta t}$`;
-  });
-  processed = processed.replace(/([a-zA-Z0-9_']+)_\{([a-zA-Z0-9]+)-\s*\$?\\?\s*Delta\s*t\$?\}/gi, '$1_{$2-\\Delta t}');
-  processed = processed.replace(/([sS])_\{t-\s*Delta\s*t\}/gi, '$1_{t-\\Delta t}');
-
-  // [Self-Healing] Fix split dollar signs inside brace subscripts (e.g. s_{t- $\Delta t$} or s_{t- $\Delta$ t} -> $s_{t-\Delta t}$)
-  processed = processed.replace(/(\b\\?[a-zA-Z0-9_']+_\{\s*[^{}\$\n]*)\$([^\$\n]+)\$([^{}\$\n]*\})/g, (match, p1, math, p3) => {
-    return `$${p1}${math}${p3}$`;
-  });
 
   // [Self-Healing] Clean up '...' used on its own line as code block boundary
   processed = processed.replace(/(?:^|\n)\s*\.\.\.\s*(?=\n)/g, '\n```');
