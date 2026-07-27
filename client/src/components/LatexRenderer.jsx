@@ -157,9 +157,7 @@ export const LatexRenderer = React.memo(function LatexRenderer({
   forceInline = false,
   isExplanation = false
 }) {
-  if (!text) return null;
-
-  let parsedText = text;
+  let parsedText = typeof text === 'string' ? healLatexFormulas(text) : text;
   if ((forceInline || (typeof className === 'string' && className.includes('inline'))) && typeof parsedText === 'string') {
     parsedText = parsedText.replace(/\$\$/g, '$').replace(/[\r\n]+/g, ' ').trim();
   }
