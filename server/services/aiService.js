@@ -192,7 +192,7 @@ export async function callLLMWithFailover(systemInstruction, userPrompt, image =
           'gemini-3.5-flash'
         ]
       : [
-          options.preferredModel,
+          options.preferredModel || globalPreferredModel,
           'gemini-3.5-flash-lite',
           'gemini-3.6-flash',
           'gemini-3.1-flash-lite',
