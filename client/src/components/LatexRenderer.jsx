@@ -154,7 +154,8 @@ export const LatexRenderer = React.memo(function LatexRenderer({
   questionKey = "", 
   isRealTimeTutor = false, 
   hideTableWrapper = false,
-  forceInline = false
+  forceInline = false,
+  isExplanation = false
 }) {
   if (!text) return null;
 
@@ -187,7 +188,7 @@ export const LatexRenderer = React.memo(function LatexRenderer({
     }
 
     return (
-      <div className="w-full space-y-2 select-text text-left">
+      <div className={`w-full space-y-2 select-text text-left ${className}`}>
         {parts.map((part, pIdx) => {
           if (part.type === 'text') {
             return (
@@ -493,7 +494,7 @@ export const LatexRenderer = React.memo(function LatexRenderer({
   // Tutor panels (isMarkdown=true) use rich markdown-to-HTML conversion.
   // Standard answers (isMarkdown=false) use the safe line-by-line rendering path.
   if (!isHeavy && isMarkdown) {
-    cleanedText = convertMarkdownToHtml(cleanedText, true, highlightBold, formulaSource === 'tutor');
+    cleanedText = convertMarkdownToHtml(cleanedText, true, highlightBold, formulaSource === 'tutor', isExplanation);
   }
 
   if (isHeavy) {

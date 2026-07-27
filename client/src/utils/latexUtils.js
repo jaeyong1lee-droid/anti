@@ -453,8 +453,26 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
 
   text = text.replace(/₩/g, '\\');
   let processed = healCorruptedKatexHtml(text);
-  // Normalize dashes (en-dash, em-dash, math minus) to standard hyphens
-  processed = processed.replace(/[–—−]/g, '-');
+  // [Self-Healing] Fix corrupted HTML entity inequality symbols (&\lt;, &amp;\lt;, etc.)
+  processed = processed.replace(/&amp;\\?lt;?/gi, '<')
+                       .replace(/&amp;\\?gt;?/gi, '>')
+                       .replace(/&\\lt;?/gi, '<')
+                       .replace(/&\\gt;?/gi, '>')
+                       .replace(/&lt;/gi, '<')
+                       .replace(/&gt;/gi, '>');
+
+  // [Self-Healing] Auto-convert standalone comparison expressions without math dollars (e.g. k0<1, K0>1.5 -> $K_0 < 1$)
+  processed = processed.replace(/(?<!\$)\b([a-zA-Z][a-zA-Z0-9_]*)\s*(<|>|<=|>=)\s*([0-9]+(?:\.[0-9]+)?)\b(?!\$)/g, (match, varName, op, num) => {
+    let formattedVar = varName;
+    if (/^[kK]0$/i.test(varName)) formattedVar = 'K_0';
+    else if (/^([a-zA-Z]+)(\d+)$/.test(varName)) formattedVar = varName.replace(/^([a-zA-Z]+)(\d+)$/, '$1_$2');
+    
+    let latexOp = op;
+    if (op === '<=') latexOp = '\\le';
+    else if (op === '>=') latexOp = '\\ge';
+    
+    return `$${formattedVar} ${latexOp} ${num}$`;
+  });
 
   // [Self-Healing] Fix beta subscript sub-nesting rendering error (\beta_{0,\beta_1} -> \beta_0, \beta_1)
   processed = processed.replace(/\\?beta_\{0,\s*\\?beta_[01]\}/g, '\\beta_0, \\beta_1');

@@ -19,6 +19,7 @@ import {
   buildHtmlDocument, 
   handleOpenHtmlAnswerPopup, 
   convertMarkdownToHtml, 
+  getOnlySourceAccordion,
   renderKatexString, 
   getSelectionTextWithLatex,
   isSameConditionValue,
@@ -5504,6 +5505,15 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
   const [editingLockscreenContent, setEditingLockscreenContent] = useState('');
   const [isSavingLockscreenStandardsList, setIsSavingLockscreenStandardsList] = useState(false);
   const [isLoadingLockscreenStandardsList, setIsLoadingLockscreenStandardsList] = useState(false);
+
+  const [showManageOtherStandardsModal, setShowManageOtherStandardsModal] = useState(false);
+  const [showEditOtherStandardModal, setShowEditOtherStandardModal] = useState(false);
+  const [otherStandardsList, setOtherStandardsList] = useState([]);
+  const [editingOtherStandard, setEditingOtherStandard] = useState(null);
+  const [editingOtherTitle, setEditingOtherTitle] = useState('');
+  const [editingOtherContent, setEditingOtherContent] = useState('');
+  const [isSavingOtherStandardsList, setIsSavingOtherStandardsList] = useState(false);
+  const [isLoadingOtherStandardsList, setIsLoadingOtherStandardsList] = useState(false);
   
   const [showManageTopicInstructionsModal, setShowManageTopicInstructionsModal] = useState(false);
   const [showEditTopicInstructionModal, setShowEditTopicInstructionModal] = useState(false);
@@ -10886,9 +10896,14 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
   function renderCardTutorChat(key, q) {
     const isCollapsed = !!tutorCollapsed[key];
     const hasPanel = !!(tutorAnswers[key]?.text || tutorAnswers[key]?.loading || tutorAnswers[key]?.error);
+    const topicTitle = q?.topicTitle || q?.title || q?.question || '';
+    const sourceAccordionHtml = q ? getOnlySourceAccordion(q.explanation || '', topicTitle) : '';
 
     return (
       <div className="mt-2.5 w-full text-left">
+        {sourceAccordionHtml && (
+          <div className="mb-3 select-text" dangerouslySetInnerHTML={{ __html: sourceAccordionHtml }} />
+        )}
         <div className="flex justify-between items-center mb-1">
           <label className="block text-[14px] sm:text-[16px] font-black text-violet-400">💬 AI 튜터 질문하기 (이 문제에 대해 물어보세요):</label>
           {hasPanel && (
@@ -12355,6 +12370,111 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
       showNotification(err.message, 'error');
     } finally {
       setIsSavingLockscreenStandardsList(false);
+    }
+  };
+
+  const handleOpenManageOtherStandardsModal = async () => {
+    setShowManageOtherStandardsModal(true);
+    setIsLoadingOtherStandardsList(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/other-standards`);
+      if (!res.ok) throw new Error('기타 지침 데이터를 불러오지 못했습니다.');
+      const data = await res.json();
+      setOtherStandardsList(data.standards || []);
+    } catch (err) {
+      console.error(err);
+      showNotification(err.message, 'error');
+    } finally {
+      setIsLoadingOtherStandardsList(false);
+    }
+  };
+
+  const handleDeleteOtherStandard = async (id) => {
+    if (!window.confirm('정말 이 기타 지침을 삭제하시겠습니까?')) return;
+    const updatedList = otherStandardsList.filter(s => s.id !== id);
+    setIsSavingOtherStandardsList(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/other-standards`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ standards: updatedList })
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || '삭제 저장에 실패했습니다.');
+      }
+      setOtherStandardsList(updatedList);
+      showNotification('기타 지침이 삭제되었습니다.', 'success');
+    } catch (err) {
+      console.error(err);
+      showNotification(err.message, 'error');
+    } finally {
+      setIsSavingOtherStandardsList(false);
+    }
+  };
+
+  const handleOpenAddOtherStandardModal = () => {
+    setEditingOtherStandard(null);
+    setEditingOtherTitle('');
+    setEditingOtherContent('');
+    setShowEditOtherStandardModal(true);
+  };
+
+  const handleOpenEditOtherStandardModal = (std) => {
+    setEditingOtherStandard(std);
+    setEditingOtherTitle(std.title || '');
+    setEditingOtherContent(std.content || '');
+    setShowEditOtherStandardModal(true);
+  };
+
+  const handleSaveEditOtherStandard = async () => {
+    if (!editingOtherTitle.trim()) {
+      showNotification('제목을 입력해주세요.', 'error');
+      return;
+    }
+    if (!editingOtherContent.trim()) {
+      showNotification('내용을 입력해주세요.', 'error');
+      return;
+    }
+
+    let updatedList;
+    if (editingOtherStandard) {
+      // Edit mode
+      updatedList = otherStandardsList.map(s => 
+        s.id === editingOtherStandard.id 
+          ? { ...s, title: editingOtherTitle, content: editingOtherContent } 
+          : s
+      );
+    } else {
+      // Add mode
+      const newId = 'user_other_' + Math.random().toString(36).substring(2, 9);
+      const newStd = {
+        id: newId,
+        title: editingOtherTitle,
+        content: editingOtherContent
+      };
+      updatedList = [...otherStandardsList, newStd];
+    }
+
+    setIsSavingOtherStandardsList(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/other-standards`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ standards: updatedList })
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || '저장에 실패했습니다.');
+      }
+      setOtherStandardsList(updatedList);
+      showNotification('기타 지침이 저장되었습니다.', 'success');
+      setShowEditOtherStandardModal(false);
+    } catch (err) {
+      console.error(err);
+      showNotification(err.message, 'error');
+    } finally {
+      setIsSavingOtherStandardsList(false);
     }
   };
 
@@ -17831,6 +17951,14 @@ ${itemsStr}
                 >
                   <span>락스크린</span>
                 </button>
+
+                <button
+                  type="button"
+                  onClick={handleOpenManageOtherStandardsModal}
+                  className="hidden md:flex items-center justify-center px-3 py-1.5 rounded-xl border border-teal-500/20 bg-teal-500/10 text-teal-400 hover:bg-teal-500/20 hover:border-teal-500/30 transition-all active:scale-98 text-[11px] font-black cursor-pointer shadow-md"
+                >
+                  <span>기타지침</span>
+                </button>
               </div>
               
               {/* Search bar inside allTopics view */}
@@ -19401,7 +19529,7 @@ ${itemsStr}
                                     정답: <strong className="inline-block"><LatexRenderer text={q.answer} katexLoaded={katexLoaded} className="inline" enableAddFormula={true} /></strong>
                                   </span>
                                 )}
-                                {q.explanation && <div className="mt-1.5 text-[14px] sm:text-[16px] text-slate-300"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>}
+                                {q.explanation && <div className="mt-1.5 text-[14px] sm:text-[16px] text-slate-300"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} isExplanation={true} /></div>}
 
                                  {/* AI 해설 및 보기분석 버튼 패널 */}
                                  <div className="mt-3 pt-3 border-t border-slate-700/50">
@@ -19725,7 +19853,7 @@ ${itemsStr}
                                       <div className="mt-2 pt-2 border-t border-current/10 text-[14px] sm:text-[16px] select-text">
                                         <span className="font-extrabold text-amber-400">📝 해설:</span>
                                         <div className="mt-1 text-[14px] sm:text-[16px] text-slate-200 leading-relaxed">
-                                          <LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} />
+                                          <LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} isExplanation={true} />
                                         </div>
                                       </div>
                                     )}
@@ -19847,7 +19975,7 @@ ${itemsStr}
                                       <div className="mt-2 pt-2 border-t border-current/10 text-[14px] sm:text-[16px] select-text">
                                         <span className="font-extrabold text-amber-400">📝 해설:</span>
                                         <div className="mt-1 text-[14px] sm:text-[16px] text-slate-200 leading-relaxed">
-                                          <LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} />
+                                          <LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} isExplanation={true} />
                                         </div>
                                       </div>
                                     )}
@@ -19894,7 +20022,7 @@ ${itemsStr}
                                     {q.explanation && (
                                       <div className="space-y-1 text-left pt-2 border-t border-amber-500/10">
                                         <span className="text-[10px] font-black text-amber-400">📝 해설: </span>
-                                        <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
+                                        <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} isExplanation={true} /></div>
                                       </div>
                                     )}
                                     {renderCardTutorChat(rKey, q)}
@@ -21262,6 +21390,188 @@ ${itemsStr}
                 className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer flex items-center gap-1.5"
               >
                 {isSavingLockscreenStandardsList ? (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>저장 중...</span>
+                  </>
+                ) : (
+                  <span>지침 저장 💾</span>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ⚙️ 기타 지침 통합 관리 모달 (Other Standards Management Modal) */}
+      {showManageOtherStandardsModal && (
+        <div className="fixed inset-0 z-[200] overflow-y-auto flex items-center justify-center p-4 bg-black/45 backdrop-blur-sm transition-all duration-300 animate-fade-in" onClick={() => setShowManageOtherStandardsModal(false)}>
+          <div className="w-full max-w-5xl bg-slateCustom-900 border border-white/20 rounded-2xl overflow-hidden shadow-2xl p-6 space-y-4 animate-scale-up text-left" onClick={(e) => e.stopPropagation()}>
+            
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-teal-500/10 text-teal-400 rounded-lg">
+                  <Sliders size={18} className="text-teal-500 animate-pulse" />
+                </div>
+                <h3 className="text-sm font-extrabold text-white">⚙️ 기타 AI 튜터 & 내부 시스템 지침 통합 관리</h3>
+              </div>
+              <button
+                onClick={() => setShowManageOtherStandardsModal(false)}
+                className="w-6 h-6 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-200 flex items-center justify-center transition-all cursor-pointer"
+              >
+                <X size={14} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="py-2 space-y-3">
+              <p className="text-[11px] text-slate-400 leading-relaxed font-semibold">
+                💡 공학 판단, 채점, 검증, 문제생성, 락스크린 외에 **기타 AI 튜터 답변 양식, 수식 서식, 유기적 지식 연결 및 시스템 내부 동작**에 적용되는 지침 기준 목록입니다. 이곳에 수정/추가된 모든 항목은 AI 튜터 및 시스템 기본 지침으로 실시간 반영됩니다.
+              </p>
+              
+              {isLoadingOtherStandardsList ? (
+                <div className="flex flex-col items-center justify-center py-16 gap-2 w-full">
+                  <div className="w-6 h-6 border-2 border-teal-500 border-t-transparent rounded-full animate-spin"></div>
+                  <span className="text-[10px] text-teal-400 font-bold animate-pulse">서버에서 기타 지침 데이터를 로드하는 중입니다...</span>
+                </div>
+              ) : (
+                <div className="overflow-x-auto border border-slate-800 rounded-xl max-h-[60vh] overflow-y-auto">
+                  <table className="w-full text-xs text-slate-300 divide-y divide-slate-800 table-fixed">
+                    <thead className="bg-slate-950/60 font-black text-slate-400 select-none sticky top-0 z-10 backdrop-blur-md">
+                      <tr>
+                        <th className="px-4 py-3 text-left w-14 shrink-0">번호</th>
+                        <th className="px-4 py-3 text-left w-52 shrink-0">지침 제목</th>
+                        <th className="px-4 py-3 text-left w-auto">세부 지침 내용</th>
+                        <th className="px-4 py-3 text-center w-20 shrink-0">작업</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/60 bg-slate-900/20">
+                      {otherStandardsList.length === 0 ? (
+                        <tr>
+                          <td colSpan={4} className="px-4 py-8 text-center text-slate-500 font-semibold">
+                            등록된 기타 지침이 없습니다. 새로운 지침을 추가해보세요.
+                          </td>
+                        </tr>
+                      ) : (
+                        otherStandardsList.map((std, idx) => (
+                          <tr key={std.id || idx} className="hover:bg-slate-800/30 transition-colors">
+                            <td className="px-4 py-3 font-mono font-bold text-slate-500 text-left align-top">{idx + 1}</td>
+                            <td className="px-4 py-3 font-bold text-slate-200 text-left align-top whitespace-nowrap overflow-hidden text-ellipsis">{std.title}</td>
+                            <td className="px-4 py-3 text-slate-300 text-left font-medium leading-relaxed align-top whitespace-pre-wrap break-words">{std.content}</td>
+                            <td className="px-4 py-3 text-center align-top">
+                              <div className="flex items-center justify-center gap-1.5">
+                                <button
+                                  onClick={() => handleOpenEditOtherStandardModal(std)}
+                                  className="p-1.5 hover:bg-slate-800 rounded-lg text-teal-400 hover:text-teal-300 transition-colors cursor-pointer"
+                                  title="지침 수정"
+                                >
+                                  <Edit2 size={13} />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteOtherStandard(std.id)}
+                                  className="p-1.5 hover:bg-slate-800 rounded-lg text-rose-400 hover:text-rose-300 transition-colors cursor-pointer"
+                                  title="지침 삭제"
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex justify-between items-center pt-2 border-t border-slate-800">
+              <button
+                onClick={handleOpenAddOtherStandardModal}
+                disabled={isLoadingOtherStandardsList || isSavingOtherStandardsList}
+                className="px-4 py-2 bg-teal-600 hover:bg-teal-500 text-white rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer flex items-center gap-1.5"
+              >
+                <span>신규 기타지침 추가 ➕</span>
+              </button>
+              <button
+                onClick={() => setShowManageOtherStandardsModal(false)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer"
+              >
+                닫기 (적용 완료)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ✏️ 기타 지침 추가/수정 서브 모달 (Other Standard Add/Edit Sub-Modal) */}
+      {showEditOtherStandardModal && (
+        <div className="fixed inset-0 z-[210] overflow-y-auto flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-all duration-300 animate-fade-in" onClick={() => setShowEditOtherStandardModal(false)}>
+          <div className="w-full max-w-2xl bg-slateCustom-900 border border-white/20 rounded-2xl overflow-hidden shadow-2xl p-6 space-y-4 animate-scale-up text-left" onClick={(e) => e.stopPropagation()}>
+            
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-teal-500/10 text-teal-400 rounded-lg">
+                  <Sliders size={18} className="text-teal-500" />
+                </div>
+                <h3 className="text-sm font-extrabold text-white">
+                  {editingOtherStandard ? '✏️ 기타 지침 수정' : '➕ 신규 기타 지침 추가'}
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowEditOtherStandardModal(false)}
+                className="w-6 h-6 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-200 flex items-center justify-center transition-all cursor-pointer"
+              >
+                <X size={14} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="py-2 space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-black text-slate-400">지침 제목 (Instruction Title)</label>
+                <input
+                  type="text"
+                  value={editingOtherTitle}
+                  onChange={(e) => setEditingOtherTitle(e.target.value)}
+                  onFocus={(e) => e.target.select()}
+                  placeholder="예: 불릿 포인트 서식 지침"
+                  className="w-full bg-slate-950/60 border border-slate-800 focus:border-teal-500/80 rounded-xl px-3 py-2.5 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-teal-500 transition-all font-semibold"
+                  disabled={isSavingOtherStandardsList}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-black text-slate-400">지침 세부 내용 (Prompt Instruction Text)</label>
+                <textarea
+                  value={editingOtherContent}
+                  onChange={(e) => setEditingOtherContent(e.target.value)}
+                  onFocus={(e) => e.target.select()}
+                  placeholder="예: 항목 구분 시 가독성을 고려하여 표준 불릿 포인트를 사용하십시오."
+                  className="w-full h-80 bg-slate-950/60 border border-slate-800 focus:border-teal-500/80 rounded-xl p-3 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-teal-500 transition-all font-mono leading-relaxed resize-none"
+                  disabled={isSavingOtherStandardsList}
+                />
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">
+              <button
+                onClick={() => setShowEditOtherStandardModal(false)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer"
+                disabled={isSavingOtherStandardsList}
+              >
+                취소
+              </button>
+              <button
+                onClick={handleSaveEditOtherStandard}
+                disabled={isSavingOtherStandardsList}
+                className="px-4 py-2 bg-teal-600 hover:bg-teal-500 text-white rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer flex items-center gap-1.5"
+              >
+                {isSavingOtherStandardsList ? (
                   <>
                     <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                     <span>저장 중...</span>
@@ -22947,7 +23257,7 @@ ${itemsStr}
                                   정답: <strong className="inline-block"><LatexRenderer text={q.answer} katexLoaded={katexLoaded} className="inline" enableAddFormula={true} /></strong>
                                 </span>
                               )}
-                              {q.explanation && <div className="mt-1.5 text-[14px] sm:text-[16px] text-slate-300"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>}
+                              {q.explanation && <div className="mt-1.5 text-[14px] sm:text-[16px] text-slate-300"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} isExplanation={true} /></div>}
                               
                               {/* AI 해설 및 보기분석 버튼 패널 */}
                               <div className="mt-2 pt-2 border-t border-slate-700/40">
@@ -23211,7 +23521,7 @@ ${itemsStr}
                                       <div className="mt-2 pt-2 border-t border-current/10 text-[14px] sm:text-[16px] select-text">
                                         <span className="font-extrabold text-amber-400">📝 해설:</span>
                                         <div className="mt-1 text-[14px] sm:text-[16px] text-slate-200 leading-relaxed">
-                                          <LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} />
+                                          <LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} isExplanation={true} />
                                         </div>
                                       </div>
                                     )}
@@ -23332,7 +23642,7 @@ ${itemsStr}
                                       <div className="mt-2 pt-2 border-t border-current/10 text-[14px] sm:text-[16px] select-text">
                                         <span className="font-extrabold text-amber-400">📝 해설:</span>
                                         <div className="mt-1 text-[14px] sm:text-[16px] text-slate-200 leading-relaxed">
-                                          <LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} />
+                                          <LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} isExplanation={true} />
                                         </div>
                                       </div>
                                     )}
@@ -23377,7 +23687,7 @@ ${itemsStr}
                                     {q.explanation && (
                                       <div className="space-y-1 text-left pt-2 border-t border-amber-500/10">
                                         <span className="text-[10px] font-black text-amber-400">📝 해설: </span>
-                                        <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
+                                        <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} isExplanation={true} /></div>
                                       </div>
                                     )}
                                     {renderCardTutorChat(eKey, q)}
@@ -28021,17 +28331,19 @@ ${itemsStr}
                         </div>
                       )}
                       <div 
-                        className="px-3.5 py-2 bg-indigo-600 text-white rounded-2xl rounded-tr-none text-sm md:text-base font-semibold leading-relaxed break-words shadow-sm max-w-full overflow-hidden"
+                        className="px-3.5 py-2 bg-indigo-600 text-white rounded-2xl rounded-tr-none text-sm md:text-base font-semibold leading-relaxed break-words shadow-sm max-w-full overflow-hidden whitespace-pre-wrap"
                         style={{ fontSize: isDesktop ? '16px' : '14px' }}
                       >
-                        <LatexRenderer 
-                          text={msg.text} 
-                          katexLoaded={katexLoaded} 
-                          isMarkdown={true} 
-                          enableAddFormula={true} 
-                          formulaSource="tutor" 
-                          isRealTimeTutor={true} 
-                        />
+                        {msg.text?.includes('$') ? (
+                          <LatexRenderer 
+                            text={msg.text} 
+                            katexLoaded={katexLoaded} 
+                            isMarkdown={false} 
+                            enableAddFormula={false} 
+                          />
+                        ) : (
+                          msg.text
+                        )}
                       </div>
                     </>
                   ) : (
