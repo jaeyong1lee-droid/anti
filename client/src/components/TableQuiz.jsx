@@ -518,7 +518,7 @@ export const TableQuiz = React.memo(function TableQuiz({
 
   const [colWidths, setColWidths] = useState(() => {
     try {
-      const saved = localStorage.getItem(`anti_desktop_col_widths_main_${colCount}`);
+      const saved = localStorage.getItem(`anti_global_desktop_col_widths_${colCount}`);
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length === colCount) {
@@ -572,7 +572,7 @@ export const TableQuiz = React.memo(function TableQuiz({
           }
         } else {
           try {
-            const saved = localStorage.getItem(`anti_desktop_col_widths_main_${colCount}`);
+            const saved = localStorage.getItem(`anti_global_desktop_col_widths_${colCount}`);
             if (saved) {
               const parsed = JSON.parse(saved);
               if (Array.isArray(parsed) && parsed.length === colCount) {
@@ -604,31 +604,26 @@ export const TableQuiz = React.memo(function TableQuiz({
   }, [colCount, q.mixedType]);
 
   const [mobileColWidths, setMobileColWidths] = useState(() => {
+    const saved = typeof window !== 'undefined' ? localStorage.getItem(`anti_global_mobile_col_widths_${colCount}`) : null;
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length === colCount) return parsed;
+      } catch (e) {}
+    }
     const widths = [];
-    const storageKeyFirst = `anti_mobile_first_col_width_${colCount}`;
-    const savedFirst = typeof window !== 'undefined' ? localStorage.getItem(storageKeyFirst) : null;
-    
-    if (savedFirst) {
-      widths.push(savedFirst);
-      for (let i = 1; i < colCount; i++) {
-        const storageKeyOther = `anti_mobile_col_width_${colCount}_${i}`;
-        const savedOther = typeof window !== 'undefined' ? localStorage.getItem(storageKeyOther) : null;
-        widths.push(savedOther || '140px');
-      }
+    if (colCount <= 1) {
+      widths.push('100%');
+    } else if (colCount === 2) {
+      widths.push('45%', '55%');
+    } else if (colCount === 3) {
+      widths.push('40%', '30%', '30%');
     } else {
-      if (colCount <= 1) {
-        widths.push('100%');
-      } else if (colCount === 2) {
-        widths.push('45%', '55%');
-      } else if (colCount === 3) {
-        widths.push('40%', '30%', '30%');
-      } else {
-        const first = 30;
-        const others = (100 - first) / (colCount - 1);
-        widths.push(`${first}%`);
-        for (let i = 1; i < colCount; i++) {
-          widths.push(`${others}%`);
-        }
+      const first = 30;
+      const others = (100 - first) / (colCount - 1);
+      widths.push(`${first}%`);
+      for (let i = 1; i < colCount; i++) {
+        widths.push(`${others}%`);
       }
     }
     return widths;
@@ -637,12 +632,17 @@ export const TableQuiz = React.memo(function TableQuiz({
   useEffect(() => {
     setMobileColWidths(prev => {
       if (prev.length === colCount) return prev;
+      const saved = typeof window !== 'undefined' ? localStorage.getItem(`anti_global_mobile_col_widths_${colCount}`) : null;
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length === colCount) return parsed;
+        } catch (e) {}
+      }
       const next = [...prev];
       if (next.length < colCount) {
         for (let i = next.length; i < colCount; i++) {
-          const storageKeyOther = `anti_mobile_col_width_${colCount}_${i}`;
-          const savedOther = typeof window !== 'undefined' ? localStorage.getItem(storageKeyOther) : null;
-          next.push(savedOther || '140px');
+          next.push('140px');
         }
       } else {
         next.splice(colCount);
@@ -652,18 +652,22 @@ export const TableQuiz = React.memo(function TableQuiz({
   }, [colCount]);
 
   useEffect(() => {
-    const handleWidthChange = (e) => {
-      if (e.detail?.colCount === colCount) {
-        setMobileColWidths(prev => {
-          if (prev[0] === e.detail.width) return prev;
-          const next = [...prev];
-          next[0] = e.detail.width;
-          return next;
-        });
+    const handleGlobalMobileWidthChange = (e) => {
+      if (e.detail?.colCount === colCount && e.detail?.widths) {
+        setMobileColWidths(e.detail.widths);
       }
     };
-    window.addEventListener('firstColWidthChanged', handleWidthChange);
-    return () => window.removeEventListener('firstColWidthChanged', handleWidthChange);
+    const handleGlobalDesktopWidthChange = (e) => {
+      if (e.detail?.colCount === colCount && e.detail?.widths) {
+        setColWidths(e.detail.widths);
+      }
+    };
+    window.addEventListener('globalMobileTableWidthChanged', handleGlobalMobileWidthChange);
+    window.addEventListener('globalDesktopTableWidthChanged', handleGlobalDesktopWidthChange);
+    return () => {
+      window.removeEventListener('globalMobileTableWidthChanged', handleGlobalMobileWidthChange);
+      window.removeEventListener('globalDesktopTableWidthChanged', handleGlobalDesktopWidthChange);
+    };
   }, [colCount]);
 
   const resetMobileColWidths = useCallback(() => {
@@ -768,16 +772,15 @@ export const TableQuiz = React.memo(function TableQuiz({
           const next = [...prev];
           if (idx === 0) {
             next[0] = `${newWidth}px`;
-            const storageKey = `anti_mobile_first_col_width_${colCount}`;
-            localStorage.setItem(storageKey, `${newWidth}px`);
-            window.dispatchEvent(new CustomEvent('firstColWidthChanged', {
-              detail: { colCount, width: `${newWidth}px` }
-            }));
           } else {
             next[idx] = `${newWidth}px`;
-            const storageKey = `anti_mobile_col_width_${colCount}_${idx}`;
-            localStorage.setItem(storageKey, `${newWidth}px`);
           }
+          try {
+            localStorage.setItem(`anti_global_mobile_col_widths_${colCount}`, JSON.stringify(next));
+          } catch(e) {}
+          window.dispatchEvent(new CustomEvent('globalMobileTableWidthChanged', {
+            detail: { colCount, widths: next }
+          }));
           return next;
         });
       } else {
@@ -809,8 +812,11 @@ export const TableQuiz = React.memo(function TableQuiz({
           }
           
           try {
-            localStorage.setItem(`anti_desktop_col_widths_main_${colCount}`, JSON.stringify(next));
+            localStorage.setItem(`anti_global_desktop_col_widths_${colCount}`, JSON.stringify(next));
           } catch(e) {}
+          window.dispatchEvent(new CustomEvent('globalDesktopTableWidthChanged', {
+            detail: { colCount, widths: next }
+          }));
 
           return next;
         });

@@ -12,6 +12,13 @@ export const ReadOnlyTable = React.memo(function ReadOnlyTable({
   const colCount = headers.length;
 
   const [colWidths, setColWidths] = useState(() => {
+    const saved = typeof window !== 'undefined' ? localStorage.getItem(`anti_global_desktop_col_widths_${colCount}`) : null;
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length === colCount) return parsed;
+      } catch (e) {}
+    }
     if (colCount <= 1) return ['100%'];
     if (colCount === 2) return [60, 40];
     if (colCount === 3) return [40, 30, 30];
@@ -29,31 +36,26 @@ export const ReadOnlyTable = React.memo(function ReadOnlyTable({
   }, []);
 
   const [mobileColWidths, setMobileColWidths] = useState(() => {
+    const saved = typeof window !== 'undefined' ? localStorage.getItem(`anti_global_mobile_col_widths_${colCount}`) : null;
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length === colCount) return parsed;
+      } catch (e) {}
+    }
     const widths = [];
-    const storageKeyFirst = `mobileFirstColWidth_${questionIdx !== null && questionIdx !== undefined ? questionIdx : 'default'}`;
-    const savedFirst = typeof window !== 'undefined' ? localStorage.getItem(storageKeyFirst) : null;
-    
-    if (savedFirst) {
-      widths.push(savedFirst);
-      for (let i = 1; i < colCount; i++) {
-        const storageKeyOther = `mobileColWidth_${questionIdx !== null && questionIdx !== undefined ? questionIdx : 'default'}_${i}`;
-        const savedOther = typeof window !== 'undefined' ? localStorage.getItem(storageKeyOther) : null;
-        widths.push(savedOther || '140px');
-      }
+    if (colCount <= 1) {
+      widths.push('100%');
+    } else if (colCount === 2) {
+      widths.push('45%', '55%');
+    } else if (colCount === 3) {
+      widths.push('40%', '30%', '30%');
     } else {
-      if (colCount <= 1) {
-        widths.push('100%');
-      } else if (colCount === 2) {
-        widths.push('45%', '55%');
-      } else if (colCount === 3) {
-        widths.push('40%', '30%', '30%');
-      } else {
-        const first = 30;
-        const others = (100 - first) / (colCount - 1);
-        widths.push(`${first}%`);
-        for (let i = 1; i < colCount; i++) {
-          widths.push(`${others}%`);
-        }
+      const first = 30;
+      const others = (100 - first) / (colCount - 1);
+      widths.push(`${first}%`);
+      for (let i = 1; i < colCount; i++) {
+        widths.push(`${others}%`);
       }
     }
     return widths;
@@ -62,68 +64,83 @@ export const ReadOnlyTable = React.memo(function ReadOnlyTable({
   useEffect(() => {
     setMobileColWidths(prev => {
       if (prev.length === colCount) return prev;
+      const saved = typeof window !== 'undefined' ? localStorage.getItem(`anti_global_mobile_col_widths_${colCount}`) : null;
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length === colCount) return parsed;
+        } catch (e) {}
+      }
       const next = [...prev];
       if (next.length < colCount) {
         for (let i = next.length; i < colCount; i++) {
-          const storageKeyOther = `mobileColWidth_${questionIdx !== null && questionIdx !== undefined ? questionIdx : 'default'}_${i}`;
-          const savedOther = typeof window !== 'undefined' ? localStorage.getItem(storageKeyOther) : null;
-          next.push(savedOther || '140px');
+          next.push('140px');
         }
       } else {
         next.splice(colCount);
       }
       return next;
     });
-  }, [colCount, questionIdx]);
+  }, [colCount]);
 
   useEffect(() => {
-    const handleWidthChange = (e) => {
-      const targetIdx = e.detail?.questionIdx;
-      if (targetIdx === questionIdx) {
-        setMobileColWidths(prev => {
-          if (prev[0] === e.detail.width) return prev;
-          const next = [...prev];
-          next[0] = e.detail.width;
-          return next;
-        });
+    const handleGlobalMobileWidthChange = (e) => {
+      if (e.detail?.colCount === colCount && e.detail?.widths) {
+        setMobileColWidths(e.detail.widths);
       }
     };
-    window.addEventListener('firstColWidthChanged', handleWidthChange);
-    return () => window.removeEventListener('firstColWidthChanged', handleWidthChange);
-  }, [questionIdx]);
+    const handleGlobalDesktopWidthChange = (e) => {
+      if (e.detail?.colCount === colCount && e.detail?.widths) {
+        setColWidths(e.detail.widths);
+      }
+    };
+    window.addEventListener('globalMobileTableWidthChanged', handleGlobalMobileWidthChange);
+    window.addEventListener('globalDesktopTableWidthChanged', handleGlobalDesktopWidthChange);
+    return () => {
+      window.removeEventListener('globalMobileTableWidthChanged', handleGlobalMobileWidthChange);
+      window.removeEventListener('globalDesktopTableWidthChanged', handleGlobalDesktopWidthChange);
+    };
+  }, [colCount]);
 
   const resetMobileColWidths = useCallback(() => {
-    const storageKeyFirst = `mobileFirstColWidth_${questionIdx !== null && questionIdx !== undefined ? questionIdx : 'default'}`;
-    localStorage.removeItem(storageKeyFirst);
+    localStorage.removeItem(`anti_global_mobile_col_widths_${colCount}`);
+    localStorage.removeItem(`anti_global_desktop_col_widths_${colCount}`);
     
-    for (let i = 1; i < colCount; i++) {
-      const storageKeyOther = `mobileColWidth_${questionIdx !== null && questionIdx !== undefined ? questionIdx : 'default'}_${i}`;
-      localStorage.removeItem(storageKeyOther);
-    }
-    
-    setMobileColWidths(() => {
-      const next = [];
-      if (colCount <= 1) {
-        next.push('100%');
-      } else if (colCount === 2) {
-        next.push('45%', '55%');
-      } else if (colCount === 3) {
-        next.push('40%', '30%', '30%');
-      } else {
-        const first = 30;
-        const others = (100 - first) / (colCount - 1);
-        next.push(`${first}%`);
-        for (let i = 1; i < colCount; i++) {
-          next.push(`${others}%`);
-        }
+    const nextMobile = [];
+    if (colCount <= 1) {
+      nextMobile.push('100%');
+    } else if (colCount === 2) {
+      nextMobile.push('45%', '55%');
+    } else if (colCount === 3) {
+      nextMobile.push('40%', '30%', '30%');
+    } else {
+      const first = 30;
+      const others = (100 - first) / (colCount - 1);
+      nextMobile.push(`${first}%`);
+      for (let i = 1; i < colCount; i++) {
+        nextMobile.push(`${others}%`);
       }
-      return next;
-    });
+    }
+    setMobileColWidths(nextMobile);
 
-    window.dispatchEvent(new CustomEvent('firstColWidthChanged', {
-      detail: { questionIdx, width: colCount === 2 ? '45%' : colCount === 3 ? '40%' : '30%' }
+    let nextDesktop;
+    if (colCount <= 1) nextDesktop = ['100%'];
+    else if (colCount === 2) nextDesktop = [60, 40];
+    else if (colCount === 3) nextDesktop = [40, 30, 30];
+    else {
+      const first = 30;
+      const others = (100 - first) / (colCount - 1);
+      nextDesktop = [first, ...Array(colCount - 1).fill(others)];
+    }
+    setColWidths(nextDesktop);
+
+    window.dispatchEvent(new CustomEvent('globalMobileTableWidthChanged', {
+      detail: { colCount, widths: nextMobile }
     }));
-  }, [questionIdx, colCount]);
+    window.dispatchEvent(new CustomEvent('globalDesktopTableWidthChanged', {
+      detail: { colCount, widths: nextDesktop }
+    }));
+  }, [colCount]);
 
   const lastTapRef = useRef(0);
   const handleHeaderClick = useCallback(() => {
@@ -179,17 +196,15 @@ export const ReadOnlyTable = React.memo(function ReadOnlyTable({
           const next = [...prev];
           if (idx === 0) {
             next[0] = `${newWidth}px`;
-            const storageKey = `mobileFirstColWidth_${questionIdx !== null && questionIdx !== undefined ? questionIdx : 'default'}`;
-            localStorage.setItem(storageKey, `${newWidth}px`);
-            window.dispatchEvent(new CustomEvent('firstColWidthChanged', {
-              detail: { questionIdx, width: `${newWidth}px` }
-            }));
           } else {
-            // 2열 이상 조절 시 1열(next[0])은 100% 완전 고정, 해당 열만 변경
             next[idx] = `${newWidth}px`;
-            const storageKey = `mobileColWidth_${questionIdx !== null && questionIdx !== undefined ? questionIdx : 'default'}_${idx}`;
-            localStorage.setItem(storageKey, `${newWidth}px`);
           }
+          try {
+            localStorage.setItem(`anti_global_mobile_col_widths_${colCount}`, JSON.stringify(next));
+          } catch(e) {}
+          window.dispatchEvent(new CustomEvent('globalMobileTableWidthChanged', {
+            detail: { colCount, widths: next }
+          }));
           return next;
         });
       } else {
@@ -221,8 +236,11 @@ export const ReadOnlyTable = React.memo(function ReadOnlyTable({
           }
 
           try {
-            localStorage.setItem(`anti_desktop_col_widths_readonly_${colCount}`, JSON.stringify(next));
+            localStorage.setItem(`anti_global_desktop_col_widths_${colCount}`, JSON.stringify(next));
           } catch(e) {}
+          window.dispatchEvent(new CustomEvent('globalDesktopTableWidthChanged', {
+            detail: { colCount, widths: next }
+          }));
 
           return next;
         });
