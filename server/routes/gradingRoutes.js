@@ -102,7 +102,8 @@ router.post('/grade-subjective', async (req, res) => {
   };
 
   if (progressId) {
-    updateProgress(progressId, 1, '1단계: AI 엔진으로 제출 답안 채점 중...', 20);
+    const modelUpper = (req.body.preferredModel || globalPreferredModel || 'gemini-3.1-flash-lite').toUpperCase();
+    updateProgress(progressId, 1, `1단계: ${modelUpper} 엔진으로 제출 답안 채점 중...`, 20);
   }
 
   let attempt = 0;

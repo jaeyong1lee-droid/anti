@@ -3452,7 +3452,7 @@ export default function App() {
       startTime: new Date().toISOString(),
       endTime: null,
       status: 'running',
-      modelName: 'gemini-3.5-flash', // Default model
+      modelName: preferredModel || 'gemini-3.1-flash-lite',
       percent: 0,
       timeline: ['준비 중...'],
       validationLogs: []
