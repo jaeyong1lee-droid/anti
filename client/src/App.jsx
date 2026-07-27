@@ -3749,6 +3749,16 @@ export default function App() {
         };
         return;
       }
+
+      if (normalize(cleanUser) === normalize(cleanCorrect)) {
+        nextGrading[`${qIdx}_${inputId}`] = {
+          isCorrect: true,
+          score: 10,
+          reason: '모범 답안과 정확히 일치합니다.',
+          suggestedModelAnswer: cleanCorrect
+        };
+        return;
+      }
       
       let rowHeader = '';
       let colHeader = '';
@@ -3786,7 +3796,7 @@ export default function App() {
       
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 40000);
+        const timeoutId = setTimeout(() => controller.abort(), 6000);
 
         const res = await fetch(`${API_BASE}/api/grade-subjective`, {
           method: 'POST',
@@ -3818,9 +3828,7 @@ export default function App() {
         nextGrading[`${qIdx}_${inputId}`] = {
           isCorrect: isMatch,
           score: isMatch ? 10 : 5,
-          reason: isMatch 
-            ? '제출 답안이 모범 답안의 공학적 내용과 일치하여 만점으로 채점합니다.' 
-            : '제출 답안에 대한 기본 평가가 완료되었습니다. 상세 피드백은 개별 재채점 버튼을 통해 재확인할 수 있습니다.',
+          reason: isMatch ? '정답과 일치합니다.' : '답안 제출 완료 (자동 채점)',
           suggestedModelAnswer: cleanCorrect
         };
       }
@@ -4014,7 +4022,7 @@ export default function App() {
 
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 40000);
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
 
       const res = await fetch(`${API_BASE}/api/grade-subjective`, {
         method: 'POST',
