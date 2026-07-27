@@ -177,7 +177,7 @@ export const LatexRenderer = React.memo(function LatexRenderer({
   }
 
   // Only trigger dynamic flowchart wrapping when step numbers like [1], [2], [A], [B], (1), (2), ①, ② are present inside
-  const flowchartRegex = /```(?:[a-zA-Z]*)?\n([\s\S]*?(?:\[\s*(?:단계\s*)?\d+\s*\]|\[\s*Step\s*\d+\s*\]|\[\s*[a-zA-Z]\s*\]|\(\s*\d+\s*\)|[①-⑳])[\s\S]*?)```gi;
+  const flowchartRegex = new RegExp('```(?:[a-zA-Z]*)?\\n([\\s\\S]*?(?:\\[\\s*(?:단계\\s*)?\\d+\\s*\\]|\\[\\s*Step\\s*\\d+\\s*\\]|\\[\\s*[a-zA-Z]\\s*\\]|\\(\\s*\\d+\\s*\\)|[①-⑳])[\\s\\S]*?)```', 'gi');
   const hasFlowchart = flowchartRegex.test(parsedText);
   flowchartRegex.lastIndex = 0;
 
