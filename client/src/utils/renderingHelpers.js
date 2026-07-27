@@ -597,8 +597,36 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
   // Render dividers
   tempText = tempText.replace(/^[ \t]*(?:\*\*\*|\* \* \*|---|---|===)[ \t]*$/gm, '<hr style="border: 0; border-top: 1px solid rgba(255, 255, 255, 0.1); margin: 0 0 1.0rem 0;" />');
 
-  // Preserve original list markdown structure without forced bullet stripping
+  // Convert markdown unordered list items (* or - at line start) into styled HTML <ul><li> blocks
+  // Groups consecutive list lines together, supports 1-level nesting via indentation
+  tempText = tempText.replace(/((?:^[ \t]*[-*]\s+.+(?:\n|$))+)/gm, (block) => {
+    const lines = block.split('\n');
+    let html = '';
+    let inOuter = false;
+    let inInner = false;
 
+    for (const line of lines) {
+      const match = line.match(/^([ \t]*)([-*])\s+(.+)$/);
+      if (!match) continue;
+      const indentLen = match[1].replace(/\t/g, '  ').length;
+      const content = match[3];
+
+      if (indentLen === 0) {
+        // Outer item
+        if (inInner) { html += '</ul>'; inInner = false; }
+        if (!inOuter) { html += '<ul style="list-style-type: disc; padding-left: 1.4rem; margin: 0.3rem 0 0.3rem 0;">'; inOuter = true; }
+        html += `<li style="margin-bottom: 0.2rem; line-height: 1.65;">${content}</li>`;
+      } else {
+        // Nested item
+        if (!inOuter) { html += '<ul style="list-style-type: disc; padding-left: 1.4rem; margin: 0.3rem 0 0.3rem 0;">'; inOuter = true; }
+        if (!inInner) { html += '<ul style="list-style-type: circle; padding-left: 1.2rem; margin: 0.1rem 0;">'; inInner = true; }
+        html += `<li style="margin-bottom: 0.2rem; line-height: 1.65;">${content}</li>`;
+      }
+    }
+    if (inInner) html += '</ul>';
+    if (inOuter) html += '</ul>';
+    return html;
+  });
 
   if (isMarkdown) {
     tempText = tempText.replace(/\n\n/g, '<div style="height: 1.2rem;"></div>');
