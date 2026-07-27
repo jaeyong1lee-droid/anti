@@ -1267,16 +1267,19 @@ export const TableQuiz = React.memo(function TableQuiz({
                                       await gradeSingleTableCell(questionIdx, q, inputId, !!gradingResult);
                                     }
                                   } else {
-                                    if (containerRef.current) {
-                                      const textareas = Array.from(containerRef.current.querySelectorAll('textarea'));
-                                      const curIdx = textareas.indexOf(e.target);
-                                      if (curIdx !== -1) {
-                                        if (curIdx === textareas.length - 1) {
-                                          if (onSubmit) onSubmit();
-                                        } else {
-                                          textareas[curIdx + 1].focus();
-                                        }
+                                    const isLastOfFirstTable = firstTableInputs.length > 0 && inputId === firstTableInputs[firstTableInputs.length - 1];
+                                    if (isLastOfFirstTable) {
+                                      if (onSubmit) onSubmit();
+                                    } else if (tableRef.current) {
+                                      const table1Textareas = Array.from(tableRef.current.querySelectorAll('textarea'));
+                                      const curIdx = table1Textareas.indexOf(e.target);
+                                      if (curIdx !== -1 && curIdx < table1Textareas.length - 1) {
+                                        table1Textareas[curIdx + 1].focus();
+                                      } else {
+                                        if (onSubmit) onSubmit();
                                       }
+                                    } else {
+                                      if (onSubmit) onSubmit();
                                     }
                                   }
                                 }
