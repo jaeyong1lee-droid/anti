@@ -93,20 +93,20 @@ router.post('/grade-subjective', async (req, res) => {
     ? engineeringStandardsList.map(s => s.content).join('\n\n')
     : ENGINEERING_STANDARDS;
 
-  let standardsAnalysis = '';
+  // 0단계 analyzeStandardsBeforeTask 제거: 채점 프롬프트에 이미 지침이 모두 포함되어 있어
+  // 별도 LLM 호출(최대 8초 blocking)은 불필요한 지연만 발생시킴
   const localCallLLM = (sys, prompt, img, scenario, opts) => {
-    const enrichedPrompt = `[🚨 0단계 AI가 사전 분석한 절대 채점 지침 준수 주의사항]:\n${standardsAnalysis}\n\n${prompt}`;
     const targetTemp = typeof temperature === 'number' ? temperature : 0.7;
-    return callLLMWithFailover(sys, enrichedPrompt, img, scenario, { ...opts, temperature: targetTemp, progressId });
+    return callLLMWithFailover(sys, prompt, img, scenario, { ...opts, temperature: targetTemp, progressId });
   };
+
   if (progressId) {
-    standardsAnalysis = await analyzeStandardsBeforeTask(progressId, question || '주관식 채점', dynamicGradingStandards, 'grading').catch(() => '');
-    updateProgress(progressId, 1, '1단계: AI 엔진으로 제출 답안 채점 중...', 30);
+    updateProgress(progressId, 1, '1단계: AI 엔진으로 제출 답안 채점 중...', 20);
   }
 
   let attempt = 0;
-  const maxAttempts = 3;
-  let delay = 1000;
+  const maxAttempts = 2; // 3→2: 재시도 횟수 단축
+  let delay = 500;       // 1000ms→500ms: 재시도 대기 단축
   let lastError = null;
 
   try {
