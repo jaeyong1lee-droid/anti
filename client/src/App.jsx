@@ -10936,6 +10936,8 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
             onChange={(e) => {
               const text = e.target.value;
               setTutorInputText(prev => ({ ...prev, [key]: text }));
+              e.target.style.height = 'auto';
+              e.target.style.height = `${Math.min(e.target.scrollHeight, 180)}px`;
             }}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
@@ -12587,6 +12589,8 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
     const currentAttachedImage = attachedImage;
     if (typeof customMessage !== 'string') {
       setChatInput('');
+      if (sidebarChatInputRef.current) sidebarChatInputRef.current.style.height = 'auto';
+      if (mobileChatInputRef.current) mobileChatInputRef.current.style.height = 'auto';
     }
     setAttachedImage(null);
     
@@ -20504,7 +20508,11 @@ ${itemsStr}
                       ref={sidebarChatInputRef}
                       rows={1}
                       value={chatInput}
-                      onChange={e => setChatInput(e.target.value)}
+                      onChange={e => {
+                        setChatInput(e.target.value);
+                        e.target.style.height = 'auto';
+                        e.target.style.height = `${Math.min(e.target.scrollHeight, 180)}px`;
+                      }}
                       onKeyDown={e => {
                         if (e.key === 'Enter' && !e.shiftKey) {
                           e.preventDefault();
@@ -24150,7 +24158,11 @@ ${itemsStr}
                       ref={mobileChatInputRef}
                       rows={1}
                       value={chatInput}
-                      onChange={e => setChatInput(e.target.value)}
+                      onChange={e => {
+                        setChatInput(e.target.value);
+                        e.target.style.height = 'auto';
+                        e.target.style.height = `${Math.min(e.target.scrollHeight, 180)}px`;
+                      }}
                       onKeyDown={e => {
                         if (e.key === 'Enter' && !e.shiftKey) {
                           e.preventDefault();
