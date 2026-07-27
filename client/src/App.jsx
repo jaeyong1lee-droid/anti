@@ -20296,7 +20296,7 @@ ${itemsStr}
                     <button
                       type="button"
                       onClick={handleTogglePreferredModel}
-                      className="px-2.5 py-1 text-[10px] font-black bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 hover:text-white border border-emerald-500/40 rounded-lg transition-all cursor-pointer active:scale-95 shadow-md flex items-center justify-center gap-1 select-none"
+                      className="px-2.5 py-1 text-[10px] font-black bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 hover:text-white border border-emerald-500/40 rounded-lg transition-all cursor-pointer active:scale-95 shadow-md flex md:hidden items-center justify-center gap-1 select-none"
                       title="API 모델 선택 (3.5 Lite -> 3.6 Flash -> 3.1 Lite -> 3.5 Flash)"
                     >
                       <span className="text-emerald-300">⚡</span>
@@ -20317,7 +20317,7 @@ ${itemsStr}
                           setSelectedTopic(null);
                         }
                       }}
-                      className="px-2.5 py-1 text-[10px] font-black bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 rounded-lg transition-all cursor-pointer active:scale-95 shadow-md flex items-center justify-center gap-1"
+                      className="px-2.5 py-1 text-[10px] font-black bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 rounded-lg transition-all cursor-pointer active:scale-95 shadow-md flex md:hidden items-center justify-center gap-1"
                       title="메인 화면(대시보드)으로 나가기"
                     >
                       <span>🏠 메인</span>
@@ -23957,7 +23957,7 @@ ${itemsStr}
                     <button
                       type="button"
                       onClick={handleTogglePreferredModel}
-                      className="px-2.5 py-1 text-[10px] font-black bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 hover:text-white border border-emerald-500/40 rounded-lg transition-all cursor-pointer active:scale-95 shadow-md flex items-center justify-center gap-1 select-none"
+                      className="px-2.5 py-1 text-[10px] font-black bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 hover:text-white border border-emerald-500/40 rounded-lg transition-all cursor-pointer active:scale-95 shadow-md flex md:hidden items-center justify-center gap-1 select-none"
                       title="API 모델 선택 (3.5 Lite -> 3.6 Flash -> 3.1 Lite -> 3.5 Flash)"
                     >
                       <span className="text-emerald-300">⚡</span>
@@ -23978,7 +23978,7 @@ ${itemsStr}
                           setSelectedTopic(null);
                         }
                       }}
-                      className="px-2.5 py-1 text-[10px] font-black bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 rounded-lg transition-all cursor-pointer active:scale-95 shadow-md flex items-center justify-center gap-1"
+                      className="px-2.5 py-1 text-[10px] font-black bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 rounded-lg transition-all cursor-pointer active:scale-95 shadow-md flex md:hidden items-center justify-center gap-1"
                       title="메인 화면(대시보드)으로 나가기"
                     >
                       <span>🏠 메인</span>
