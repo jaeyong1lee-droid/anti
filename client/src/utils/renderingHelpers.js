@@ -610,6 +610,10 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
       if (!match) continue;
       const indentLen = match[1].replace(/\t/g, '  ').length;
       let content = match[3].replace(/^[ \t]*[•\-*▪▫·][ \t]*/g, '').trim();
+      
+      // Clean up redundant "정의: " prefix when used as a repetitive item header
+      content = content.replace(/^정의\s*:\s*/, '');
+      
       if (!content) continue;
 
       if (indentLen === 0) {
