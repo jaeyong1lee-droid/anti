@@ -8,7 +8,9 @@ import { parseMarkdownTable } from '../utils/latexUtils';
 const normalize = (s) => (s || '').trim().toLowerCase().replace(/\s+/g, '');
 const cleanCellText = (cell) => {
   if (typeof cell !== 'string') return cell;
-  return cell.replace(/<[^>]*>/g, '').replace(/[\r\n]+/g, ' ').trim();
+  let clean = cell.replace(/&lt;/gi, '<').replace(/&gt;/gi, '>').replace(/&amp;/gi, '&').replace(/&quot;/gi, '"');
+  clean = clean.replace(/<[^>]*>/g, '').replace(/[\r\n]+/g, ' ');
+  return clean.trim();
 };
 
 export const TableQuiz = React.memo(function TableQuiz({ 
@@ -277,7 +279,7 @@ export const TableQuiz = React.memo(function TableQuiz({
     floatedPosRef.current = floatedPos;
   }, [floatedPos]);
 
-  const cleanTagStr = (s) => (typeof s === 'string' ? s.replace(/<[^>]*>/g, '').trim() : s);
+  const cleanTagStr = (s) => cleanCellText(s);
   const rawHeaders = q.tableData?.headers || [];
   const rawRows = q.tableData?.rows || [];
 
