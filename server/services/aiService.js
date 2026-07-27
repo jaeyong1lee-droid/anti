@@ -302,7 +302,8 @@ export async function callLLMWithFailover(systemInstruction, userPrompt, image =
         }
 
         if (isQuota) {
-          console.log(`[쿼터 초과 감지] ${task.label} (${task.model} -> ${actualModelName}) 모델 쿼터 초과(429). 1.5초 쿨링 대기 후 다음 키/모델로 페일오버합니다.`);
+          failedKeys.add(key);
+          console.log(`[키 장애 감지] ${task.label} (${task.model} -> ${actualModelName}) 쿼터 초과(429). 해당 키를 블랙리스트 처리하고 1.5초 쿨링 후 다음 키로 즉시 페일오버합니다.`);
           await sleep(1500);
           break;
         }

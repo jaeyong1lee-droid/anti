@@ -3816,6 +3816,7 @@ export default function App() {
             category: showExam ? examTopic?.category : selectedTopic?.category,
             temperature: isReevaluation ? 0.85 : 0.7,
             preferredModel: preferredModelRef.current || preferredModel,
+            skipPhase0: true,
             progressId
           })
         });
@@ -3991,6 +3992,38 @@ export default function App() {
 
     const userAnswer = activeAnswers[key] || '';
     const correctAnswer = q?.answers?.[inputId] || '';
+
+    const cleanUser = (userAnswer || '').trim();
+    const cleanCorrect = (correctAnswer || '').trim();
+    const normalize = (s) => (s || '').trim().toLowerCase().replace(/\s+/g, '');
+
+    if (!cleanUser) {
+      nextGrading[key] = {
+        isCorrect: false,
+        score: 0,
+        reason: '미입력 답안입니다.',
+        suggestedModelAnswer: cleanCorrect
+      };
+      activeSetGradingResults(nextGrading);
+      if (showExam) examTableGradingResultsRef.current = nextGrading;
+      else tableGradingResultsRef.current = nextGrading;
+      setCellGradingLoading(prev => ({ ...prev, [key]: false }));
+      return;
+    }
+
+    if (normalize(cleanUser) === normalize(cleanCorrect)) {
+      nextGrading[key] = {
+        isCorrect: true,
+        score: 10,
+        reason: '모범 답안과 정확히 일치합니다.',
+        suggestedModelAnswer: cleanCorrect
+      };
+      activeSetGradingResults(nextGrading);
+      if (showExam) examTableGradingResultsRef.current = nextGrading;
+      else tableGradingResultsRef.current = nextGrading;
+      setCellGradingLoading(prev => ({ ...prev, [key]: false }));
+      return;
+    }
 
     let rowHeader = '';
     let colHeader = '';
