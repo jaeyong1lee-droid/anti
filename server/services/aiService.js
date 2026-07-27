@@ -5,7 +5,7 @@ import { parseLlmJson } from '../utils/latexUtils.js';
 // Global AI progress tracker map
 global.progressTracker = global.progressTracker || new Map();
 
-export let globalPreferredModel = 'gemini-3.1-flash-lite';
+export let globalPreferredModel = 'gemini-3.5-flash-lite';
 
 export async function loadPreferredModel() {
   try {
@@ -58,14 +58,14 @@ export async function saveSessionValue(key, value) {
 }
 
 export function normalizeGeminiModel(modelName) {
-  if (!modelName || typeof modelName !== 'string') return 'gemini-3.1-flash-lite';
+  if (!modelName || typeof modelName !== 'string') return 'gemini-3.5-flash-lite';
   const name = modelName.trim().toLowerCase();
 
   if (name.startsWith('gemini-')) {
     return name;
   }
 
-  return 'gemini-3.1-flash-lite';
+  return 'gemini-3.5-flash-lite';
 }
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -97,7 +97,7 @@ export function reportLlmProgress(options, scenario, modelName) {
     } else if (scenario === 'formula') {
       stageText = `1단계: ${modelUpper} 엔진으로 수식 분석 및 튜터 답변 생성 중...`;
     } else if (scenario === 'source-search' || scenario === 'source') {
-      stageText = `1단계: GEMINI-3.1-FLASH-LITE 엔진으로 출처 검색 및 국가설계기준 대조 중...`;
+      stageText = `1단계: GEMINI-3.5-FLASH-LITE 엔진으로 출처 검색 및 국가설계기준 대조 중...`;
     } else if (scenario === 'option-explanation') {
       stageText = `1단계: ${modelUpper} 엔진으로 보기 오답 원인 분석 중...`;
     } else {
@@ -175,21 +175,21 @@ export async function callLLMWithFailover(systemInstruction, userPrompt, image =
   if (secondaryKey && !secondaryKey.startsWith('gsk_') && secondaryKey !== primaryKey) keys.push({ key: secondaryKey, label: 'Key #2' });
   if (tertiaryKey && !tertiaryKey.startsWith('gsk_') && tertiaryKey !== primaryKey && tertiaryKey !== secondaryKey) keys.push({ key: tertiaryKey, label: 'Key #3' });
 
-  const isSourceSearch = scenario === 'source' || scenario === 'source-search' || options.isSourceSearch || (options.preferredModel && options.preferredModel.includes('3.1'));
+  const isSourceSearch = scenario === 'source' || scenario === 'source-search' || options.isSourceSearch;
 
   for (const k of keys) {
     const rawFallbacks = isSourceSearch
       ? [
-          'gemini-3.1-flash-lite',
           'gemini-3.5-flash-lite',
+          'gemini-3.1-flash-lite',
           'gemini-3.6-flash',
           'gemini-3.5-flash'
         ]
       : [
           options.preferredModel || globalPreferredModel,
           'gemini-3.5-flash-lite',
-          'gemini-3.6-flash',
           'gemini-3.1-flash-lite',
+          'gemini-3.6-flash',
           'gemini-3.5-flash'
         ];
     const uniqueRaw = [...new Set(rawFallbacks.filter(Boolean))];

@@ -1041,7 +1041,7 @@ let parsedArray = null;
         parsedArray = extractJsonArray(rawText);
       }
     } else {
-      const targetModel = req.body.preferredModel || globalPreferredModel || 'gemini-3.1-flash-lite';
+      const targetModel = req.body.preferredModel || globalPreferredModel || 'gemini-3.5-flash-lite';
       const [batch1Text, batch2Text, batch3Text] = await Promise.all([
         localCallLLM(systemInstruction, promptBatch1, null, 'question', { temperature: 1.0, preferredModel: targetModel }),
         localCallLLM(systemInstruction, promptBatch2, null, 'question', { temperature: 1.0, preferredModel: targetModel }),

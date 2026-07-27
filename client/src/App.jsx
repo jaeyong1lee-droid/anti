@@ -3067,7 +3067,7 @@ export default function App() {
   const [topicFilter, setTopicFilter] = useState('전체');
   const [editingTopicId, setEditingTopicId] = useState(null);
   const [editingTitleText, setEditingTitleText] = useState('');
-  const [preferredModel, setPreferredModel] = useState(() => localStorage.getItem('anti_preferred_model') || 'gemini-3.1-flash-lite');
+  const [preferredModel, setPreferredModel] = useState(() => localStorage.getItem('anti_preferred_model') || 'gemini-3.5-flash-lite');
   const preferredModelRef = useRef(preferredModel);
   useEffect(() => {
     preferredModelRef.current = preferredModel;
@@ -3456,7 +3456,7 @@ export default function App() {
       startTime: new Date().toISOString(),
       endTime: null,
       status: 'running',
-      modelName: preferredModel || 'gemini-3.1-flash-lite',
+      modelName: preferredModel || 'gemini-3.5-flash-lite',
       percent: 0,
       timeline: ['준비 중...'],
       validationLogs: []
