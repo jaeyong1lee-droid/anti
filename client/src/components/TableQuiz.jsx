@@ -411,14 +411,19 @@ export const TableQuiz = React.memo(function TableQuiz({
               next[i] = eachWidth;
             }
           } else {
-            const newVal = percentWidths[idx] + deltaPercent;
-            const maxNewVal = (100 - 10) / (compColCount - 1);
-            const minNewVal = (100 - 80) / (compColCount - 1);
-            const actualVal = Math.max(minNewVal, Math.min(maxNewVal, newVal));
-            for (let i = 1; i < compColCount; i++) {
-              next[i] = actualVal;
+            // 2열 이상 조절 시 1열(next[0])은 100% 절대 불변(고정)!
+            if (idx < compColCount - 1) {
+              const sum = percentWidths[idx] + percentWidths[idx + 1];
+              const newLeftWidth = Math.max(5, percentWidths[idx] + deltaPercent);
+              const actualLeft = Math.min(sum - 5, newLeftWidth);
+              const actualRight = sum - actualLeft;
+
+              next[idx] = actualLeft;
+              next[idx + 1] = actualRight;
+            } else {
+              const maxAllowed = 100 - percentWidths[0] - (compColCount - 2) * 5;
+              next[idx] = Math.max(5, Math.min(maxAllowed, percentWidths[idx] + deltaPercent));
             }
-            next[0] = 100 - actualVal * (compColCount - 1);
           }
           
           try {
@@ -788,14 +793,19 @@ export const TableQuiz = React.memo(function TableQuiz({
               next[i] = eachWidth;
             }
           } else {
-            const newVal = percentWidths[idx] + deltaPercent;
-            const maxNewVal = (100 - 10) / (colCount - 1);
-            const minNewVal = (100 - 80) / (colCount - 1);
-            const actualVal = Math.max(minNewVal, Math.min(maxNewVal, newVal));
-            for (let i = 1; i < colCount; i++) {
-              next[i] = actualVal;
+            // 2열 이상 조절 시 1열(next[0])은 100% 절대 불변(고정)!
+            if (idx < colCount - 1) {
+              const sum = percentWidths[idx] + percentWidths[idx + 1];
+              const newLeftWidth = Math.max(5, percentWidths[idx] + deltaPercent);
+              const actualLeft = Math.min(sum - 5, newLeftWidth);
+              const actualRight = sum - actualLeft;
+
+              next[idx] = actualLeft;
+              next[idx + 1] = actualRight;
+            } else {
+              const maxAllowed = 100 - percentWidths[0] - (colCount - 2) * 5;
+              next[idx] = Math.max(5, Math.min(maxAllowed, percentWidths[idx] + deltaPercent));
             }
-            next[0] = 100 - actualVal * (colCount - 1);
           }
           
           try {
