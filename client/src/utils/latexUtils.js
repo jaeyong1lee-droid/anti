@@ -1219,7 +1219,7 @@ export const parseOverviewContent = (content) => {
   if (!content) return result;
 
   let healedContent = typeof content === 'string' ? content : String(content || '');
-  healedContent = healedContent.replace(/\|\s*(개요\(\d+~\d+자\)|개요|메커니즘|비교표|비교|장단점|의미|한계성|직관적의미|직관적)\s*\|/gi, '\n| $1 |');
+  healedContent = healedContent.replace(/\|\s*(개요\(\d+~\d+자\)|개요|정의|메커니즘|작동 메커니즘|공학적 작동 메커니즘|발생 메커니즘|기전|비교표|비교|장단점|의미|한계성|직관적의미|직관적)\s*\|/gi, '\n| $1 |');
   healedContent = healedContent.replace(/\|[ \t]*\|/g, '\n|');
 
   const lines = healedContent.split('\n');
@@ -1236,17 +1236,15 @@ export const parseOverviewContent = (content) => {
     const sectionMatch = trimmed.match(/^\|\s*([^|]+)\s*\|?\s*([\s\S]*)$/);
     const rawKeyCandidate = sectionMatch ? sectionMatch[1].trim() : '';
     const isTopLevelKey = 
-      rawKeyCandidate === '개요' || 
-      rawKeyCandidate.startsWith('개요(') || 
-      rawKeyCandidate === '메커니즘' || 
-      rawKeyCandidate === '비교표' || 
-      rawKeyCandidate === '비교' || 
-      rawKeyCandidate === '장단점' || 
-      rawKeyCandidate === '공학적 의미/한계성' || 
-      rawKeyCandidate === '공학적 의미 및 한계성' || 
-      rawKeyCandidate === '의미/한계성' || 
-      rawKeyCandidate === '직관적의미' || 
-      rawKeyCandidate === '직관적';
+      rawKeyCandidate.includes('개요') || 
+      rawKeyCandidate.includes('정의') ||
+      rawKeyCandidate.includes('메커니즘') || 
+      rawKeyCandidate.includes('기전') || 
+      rawKeyCandidate.includes('비교') || 
+      rawKeyCandidate.includes('장단점') || 
+      rawKeyCandidate.includes('의미') || 
+      rawKeyCandidate.includes('한계성') || 
+      rawKeyCandidate.includes('직관적');
 
     if (sectionMatch && isTopLevelKey) {
       const rawKey = sectionMatch[1].trim();
@@ -1256,9 +1254,9 @@ export const parseOverviewContent = (content) => {
         rawVal = rawVal.slice(0, -1).trim();
       }
 
-      if (rawKey.includes('개요')) {
+      if (rawKey.includes('개요') || rawKey.includes('정의')) {
         currentKey = 'definition';
-      } else if (rawKey.includes('메커니즘')) {
+      } else if (rawKey.includes('메커니즘') || rawKey.includes('기전')) {
         currentKey = 'mechanism';
       } else if (rawKey.includes('직관적')) {
         currentKey = 'intuitive';
@@ -1327,23 +1325,30 @@ export function healQuizQuestionObject(q) {
       }
     }
 
-    // Real-time healing for overview questions with duplicated tableData in active sessions
-    if ((q.mixedType === 'overview' || String(q.question || '').includes('[개요 복습]')) && q.comparisonTableData && q.tableData) {
+    // Real-time healing for overview questions to ensure both 학술적 정의 & 공학적 작동 메커니즘 are present
+    if ((q.mixedType === 'overview' || String(q.question || '').includes('[개요 복습]')) && q.tableData) {
       const mainHeaders = (q.tableData.headers || []).join(',');
-      const compHeaders = (q.comparisonTableData.headers || []).join(',');
-      if (mainHeaders === compHeaders && mainHeaders !== '구분,내용') {
+      const compHeaders = (q.comparisonTableData?.headers || []).join(',');
+      const isDuplicated = q.comparisonTableData && mainHeaders === compHeaders && mainHeaders !== '구분,내용';
+      const isSingleRow = Array.isArray(q.tableData.rows) && q.tableData.rows.length === 1;
+
+      if (isDuplicated || isSingleRow) {
         const parsed = parseOverviewContent(q.explanation || q.content || '');
         const answers = { ...(q.answers || {}) };
         const rows = [];
-        if (parsed.definition) {
-          answers['INPUT_0_1'] = parsed.definition;
+        if (parsed.definition || q.tableData.rows?.[0]?.[1]) {
+          const defVal = parsed.definition || q.answers?.['INPUT_0_1'] || q.answer || '';
+          answers['INPUT_0_1'] = defVal;
           rows.push(['학술적 정의', '[INPUT_0_1]']);
         }
-        if (parsed.mechanism) {
+        
+        const mechVal = parsed.mechanism || parsed.intuitive || parsed.significance || (q.explanation ? q.explanation.replace(/<[^>]*>/g, '').trim() : '');
+        if (mechVal) {
           const rowIdx = rows.length;
-          answers[`INPUT_${rowIdx}_1`] = parsed.mechanism;
+          answers[`INPUT_${rowIdx}_1`] = mechVal;
           rows.push(['공학적 작동 메커니즘', `[INPUT_${rowIdx}_1]`]);
         }
+
         if (rows.length === 0) {
           answers['INPUT_0_1'] = q.answer || q.concept || '학술적 개요 및 핵심 기전 서술';
           rows.push(['학술적 개요 및 핵심 기전', '[INPUT_0_1]']);
