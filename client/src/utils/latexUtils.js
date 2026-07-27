@@ -507,28 +507,22 @@ export function healUnbalancedDollars(str) {
   if (!str || typeof str !== 'string') return str;
   let text = str.trim();
 
+  // 1. Clean orphan $$$ or $$ at end of string
+  text = text.replace(/\${2,}$/g, '$');
+
+  // 2. Fix strings containing LaTeX commands that end with $ but are missing opening $
+  if (/^[^\$]*\\(?:frac|dfrac|beta|alpha|Delta|sigma|tau|phi|theta|pi|gamma|rho|mu|lambda|omega)[^\$]*\$$/.test(text)) {
+    return '$' + text;
+  }
+
+  // 3. Fix strings containing LaTeX commands that start with $ but are missing closing $
+  if (/^\$[^\$]*\\(?:frac|dfrac|beta|alpha|Delta|sigma|tau|phi|theta|pi|gamma|rho|mu|lambda|omega)[^\$]*$/.test(text)) {
+    return text + '$';
+  }
+
+  // 4. Auto-wrap unwrapped standalone \Delta t, \dfrac{t}{s}, etc.
   const latexCmds = 'Delta|Sigma|Gamma|Phi|Theta|Omega|alpha|beta|gamma|sigma|tau|phi|theta|epsilon|pi|delta|omega|mu|lambda|psi|rho|eta|nu|xi|zeta|chi|upsilon|kappa|frac|dfrac|tfrac|sqrt|cdot|times|div|pm|infty|partial|sum|int|sim|le|ge|lt|gt|sin|cos|tan|log|ln|nabla|neq|ne|approx';
-
-  // 1. If text is a pure math equation (contains = and latex/subscript), wrap the whole line in $...$
-  const cleanEq = text.replace(/\$+/g, '').trim();
-  if (cleanEq.includes('=') && !/[\uAC00-\uD7A3]/.test(cleanEq) && new RegExp(`\\\\(?:${latexCmds})|[a-zA-Z]_[a-zA-Z0-9]+`).test(cleanEq)) {
-    return `$${cleanEq}$`;
-  }
-
-  // 2. Strip orphan $ signs ($$$ or trailing $ or $ inside parens)
-  text = text.replace(/(\$(?:[^\$\n]+)\$)\s*\$+/g, '$1');
-  text = text.replace(/(\\?[a-zA-Z0-9_'\^\\(\)\{\}\\[\\]]+)\$+(?=[)\s,]|$)/g, '$1');
-
-  // 3. Auto-wrap unwrapped LaTeX commands
-  const mathRegex = new RegExp(`(?<![\\$\\\\\\w])(?:\\\\(?:${latexCmds})(?:_\\{[^{}\\n]+\\}|_[a-zA-Z0-9]+|\\^\\{[^{}\\n]+\\}|\\^[a-zA-Z0-9]+|\\{[^{}\\n]*\\})*(?:[\\s\\+\\-\\*\\/=]*[a-zA-Z0-9_'\^\\(\\)\\{\\}\\[\\]]+)*|\\b[a-zA-Z][a-zA-Z0-9_']*_\\{[^{}\\n]+\\}|\\b[a-zA-Z][a-zA-Z0-9_']*_[a-zA-Z0-9]+)(?![\\$\\w])`, 'g');
-  text = text.replace(mathRegex, (m) => `$${m.trim()}$`);
-
-  // 4. Clean any remaining odd dollar counts
-  const count = (text.match(/\$/g) || []).length;
-  if (count % 2 !== 0) {
-    text = text.replace(/\$+/g, '');
-    text = text.replace(mathRegex, (m) => `$${m.trim()}$`);
-  }
+  text = text.replace(new RegExp(`(?<![\\$\\w])\\\\(?:${latexCmds})\\b(?:_\\{[^{}\\n]+\\}|_[a-zA-Z0-9]+|\\{[^{}\\n]*\\})*(?:\\s+[a-zA-Z0-9_']+)?(?![\\$\\w])`, 'g'), (m) => `$${m.trim()}$`);
 
   return text;
 }
@@ -956,21 +950,6 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
       const bulletRegex = /^([ \t]*(?:\*|-|•|▪|▫|·|\d+\.|\d+\)|[a-zA-Z가-힣]\.|\b[a-zA-Z가-힣]\)|[①-⑳]|\[INPUT_\d+(?:_\d+)?\])[ \t]*)(?!\$)([a-zA-Z0-9_\\'\^\(\)\{\}\+\-\*\/=]+)(?!\$)([ \t]*:)/;
       return line.replace(bulletRegex, (match, p1, p2, p3) => `${p1}$${p2}$${p3}`);
     }).join('\n');
-
-    // [Self-Healing] Auto-wrap unwrapped LaTeX commands and subscript variables in $...$
-    const latexCmds = 'Delta|Sigma|Gamma|Phi|Theta|Omega|alpha|beta|gamma|sigma|tau|phi|theta|epsilon|pi|delta|omega|mu|lambda|psi|rho|eta|nu|xi|zeta|chi|upsilon|kappa|frac|dfrac|tfrac|sqrt|cdot|times|div|pm|infty|partial|sum|int|sim|le|ge|lt|gt|sin|cos|tan|log|ln|nabla|neq|ne|approx';
-    const unwrappedMathRegex = new RegExp(`(?<![\\$\\\\\\w])(?:\\\\(?:${latexCmds})(?:_\\{[^{}\\n]+\\}|_[a-zA-Z0-9]+|\\^\\{[^{}\\n]+\\}|\\^[a-zA-Z0-9]+|\\{[^{}\\n]*\\})*(?:[\\s\\+\\-\\*\\/=]*[a-zA-Z0-9_'\^\\(\\)\\{\\}\\[\\]]+)*|\\b[a-zA-Z][a-zA-Z0-9_']*_\\{[^{}\\n]+\\}|\\b[a-zA-Z][a-zA-Z0-9_']*_[a-zA-Z0-9]+)(?![\\$\\w])`, 'g');
-    
-    const tokens = tokenizeForHealing(processed);
-    processed = tokens.map(t => {
-      if (t.type === 'text') {
-        return t.content.replace(unwrappedMathRegex, (m) => `$${m.trim()}$`);
-      }
-      return t.content;
-    }).join('');
-
-    // Clean orphan trailing dollar signs that sit immediately after a closed math formula
-    processed = processed.replace(/(\$[^\$\n]+\$)\s*\$(?!\$)/g, '$1');
   }
 
   // [🔥 치명적 버그 해결] AI의 이중 이스케이프 오류(\\phi -> \phi) 최우선 복구
