@@ -277,7 +277,12 @@ export const TableQuiz = React.memo(function TableQuiz({
     floatedPosRef.current = floatedPos;
   }, [floatedPos]);
 
-  const { headers, rows } = q.tableData;
+  const cleanTagStr = (s) => (typeof s === 'string' ? s.replace(/<[^>]*>/g, '').trim() : s);
+  const rawHeaders = q.tableData?.headers || [];
+  const rawRows = q.tableData?.rows || [];
+
+  const headers = rawHeaders.map(h => cleanTagStr(h));
+  const rows = rawRows.map(row => row.map(cell => cleanTagStr(cell)));
   const inputIds = Object.keys(q.answers || {});
 
   // Comparison table resize states & methods
