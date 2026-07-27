@@ -3732,7 +3732,7 @@ export default function App() {
     const progressId = 'grade_' + Math.random().toString(36).substring(2, 9);
     startProgressPolling(progressId);
 
-    const promises = inputs.map(async (inputId) => {
+    const processSingleInput = async (inputId) => {
       const userAnswer = activeAnswers[`${qIdx}_${inputId}`] || '';
       const correctAnswer = q?.answers?.[inputId] || '';
       
@@ -3749,8 +3749,6 @@ export default function App() {
         };
         return;
       }
-
-      // 단순 일치 조기 리턴 제거: 모든 셀이 AI 채점관을 거쳐 공학적 피드백을 풍부하게 생성받도록 변경
       
       let rowHeader = '';
       let colHeader = '';
@@ -3826,10 +3824,19 @@ export default function App() {
           suggestedModelAnswer: cleanCorrect
         };
       }
-    });
+    };
 
     try {
-      await Promise.all(promises);
+      const queue = [...inputs];
+      const workers = Array.from({ length: Math.min(2, queue.length) }).map(async () => {
+        while (queue.length > 0) {
+          const item = queue.shift();
+          if (item) {
+            await processSingleInput(item);
+          }
+        }
+      });
+      await Promise.all(workers);
       
       activeSetGradingResults(nextGrading);
       if (showExam) {
