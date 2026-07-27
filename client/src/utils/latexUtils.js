@@ -1216,11 +1216,26 @@ export function healQuizQuestionObject(q) {
       }
     }
 
-    if (q.question && (!q.tableData || !q.tableData.headers || !q.tableData.rows)) {
-      const parsed = parseQuestionTableText(q.question);
-      if (parsed.tableData) {
-        q.tableData = parsed.tableData;
-        q.question = parsed.questionText;
+    if ((!q.tableData || !q.tableData.headers || !q.tableData.rows || q.tableData.rows.length === 0)) {
+      const textToParse = (q.question || '') + '\n' + (q.explanation || '') + '\n' + (q.content || '');
+      const parsed = parseQuestionTableText(textToParse);
+      if (parsed.tableData && parsed.tableData.headers && parsed.tableData.rows && parsed.tableData.rows.length > 0) {
+        const answers = {};
+        const rows = parsed.tableData.rows.map((row, rIdx) => {
+          return row.map((cell, cIdx) => {
+            if (cIdx === 0) return cell;
+            const inputId = `INPUT_${rIdx}_${cIdx}`;
+            answers[inputId] = cell;
+            return `[${inputId}]`;
+          });
+        });
+        q.tableData = {
+          headers: parsed.tableData.headers,
+          rows: rows
+        };
+        if (!q.answers || Object.keys(q.answers).length === 0) {
+          q.answers = answers;
+        }
       }
     }
 
