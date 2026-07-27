@@ -14,7 +14,7 @@ import { convertMarkdownAcronymsToHtml } from '../utils/markdownAcronymRenderer'
 import { healLatexFormulas } from '../utils/latexUtils';
 
 const parseAndRenderFlowchart = (flowchartText, katexLoaded, questionKey) => {
-  const stepMarkerRegex = /(?:\[\s*\d+\s*\]|\[\s*[a-zA-Z]\s*\]|\(\s*\d+\s*\)|[①-⑳]|\b\d+\.|\b\d+\))/;
+  const stepMarkerRegex = /(?:\[\s*(?:단계\s*)?\d+\s*\]|\[\s*Step\s*\d+\s*\]|\[\s*[a-zA-Z]\s*\]|\(\s*\d+\s*\)|[①-⑳])/i;
   if (!stepMarkerRegex.test(flowchartText)) {
     return (
       <pre className="w-full font-mono text-[12px] sm:text-[13px] overflow-x-auto whitespace-pre p-3 rounded-xl bg-slate-900/70 border border-slate-700/50 text-slate-200 leading-snug my-2 select-text">
@@ -177,7 +177,7 @@ export const LatexRenderer = React.memo(function LatexRenderer({
   }
 
   // Only trigger dynamic flowchart wrapping when step numbers like [1], [2], [A], [B], (1), (2), ①, ② are present inside
-  const flowchartRegex = /```(?:[a-zA-Z]*)?\n([\s\S]*?(?:\[\s*\d+\s*\]|\[\s*[a-zA-Z]\s*\]|\(\s*\d+\s*\)|[①-⑳])[\s\S]*?)```/g;
+  const flowchartRegex = /```(?:[a-zA-Z]*)?\n([\s\S]*?(?:\[\s*(?:단계\s*)?\d+\s*\]|\[\s*Step\s*\d+\s*\]|\[\s*[a-zA-Z]\s*\]|\(\s*\d+\s*\)|[①-⑳])[\s\S]*?)```gi;
   const hasFlowchart = flowchartRegex.test(parsedText);
   flowchartRegex.lastIndex = 0;
 
