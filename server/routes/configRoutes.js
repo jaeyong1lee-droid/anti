@@ -219,7 +219,7 @@ router.post('/verify-pin', (req, res) => {
 });
 
 // GET /api/engineering-standards
-router.get('/engineering-standards', async (req, res) => {
+router.get(['/engineering-standards', '/other-standards'], async (req, res) => {
   try {
     let dbList = [];
     try {
@@ -249,7 +249,7 @@ router.get('/engineering-standards', async (req, res) => {
 });
 
 // POST /api/engineering-standards
-router.post('/engineering-standards', async (req, res) => {
+router.post(['/engineering-standards', '/other-standards'], async (req, res) => {
   try {
     const { standards } = req.body;
     if (!Array.isArray(standards)) {
