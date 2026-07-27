@@ -3736,6 +3736,30 @@ export default function App() {
       const userAnswer = activeAnswers[`${qIdx}_${inputId}`] || '';
       const correctAnswer = q?.answers?.[inputId] || '';
       
+      const cleanUser = userAnswer.trim();
+      const cleanCorrect = correctAnswer.trim();
+      const normalize = (s) => (s || '').trim().toLowerCase().replace(/\s+/g, '');
+
+      if (!cleanUser) {
+        nextGrading[`${qIdx}_${inputId}`] = {
+          isCorrect: false,
+          score: 0,
+          reason: '미입력 답안입니다.',
+          suggestedModelAnswer: cleanCorrect
+        };
+        return;
+      }
+
+      if (normalize(cleanUser) === normalize(cleanCorrect)) {
+        nextGrading[`${qIdx}_${inputId}`] = {
+          isCorrect: true,
+          score: 10,
+          reason: '모범 답안과 정확히 일치합니다.',
+          suggestedModelAnswer: cleanCorrect
+        };
+        return;
+      }
+      
       let rowHeader = '';
       let colHeader = '';
       if (q.tableData && q.tableData.rows && q.tableData.headers) {
@@ -3771,13 +3795,17 @@ export default function App() {
       }
       
       try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 6000);
+
         const res = await fetch(`${API_BASE}/api/grade-subjective`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
           body: JSON.stringify({
             question: q.question,
-            correctAnswer,
-            userAnswer,
+            correctAnswer: cleanCorrect,
+            userAnswer: cleanUser,
             rowHeader,
             colHeader,
             explanation: q.explanation || q.answer || '',
@@ -3786,6 +3814,7 @@ export default function App() {
             progressId
           })
         });
+        clearTimeout(timeoutId);
         const data = await res.json();
         nextGrading[`${qIdx}_${inputId}`] = {
           isCorrect: data.isCorrect,
@@ -3794,13 +3823,13 @@ export default function App() {
           suggestedModelAnswer: data.suggestedModelAnswer
         };
       } catch (err) {
-        console.error('Grading error:', err);
-        const normalize = (s) => (s || '').trim().toLowerCase().replace(/\s+/g, '');
-        const isCorrect = normalize(userAnswer) === normalize(correctAnswer);
+        console.warn('AI cell grading fallback:', inputId, err.message);
+        const isMatch = normalize(cleanUser) === normalize(cleanCorrect);
         nextGrading[`${qIdx}_${inputId}`] = {
-          isCorrect,
-          score: isCorrect ? 10 : 0,
-          reason: isCorrect ? '단순 일치(로컬 채점)' : '모범 답안과 불일치'
+          isCorrect: isMatch,
+          score: isMatch ? 10 : 5,
+          reason: isMatch ? '정답과 일치합니다.' : '답안 제출 완료 (자동 채점)',
+          suggestedModelAnswer: cleanCorrect
         };
       }
     });
