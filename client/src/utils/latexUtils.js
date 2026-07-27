@@ -506,7 +506,9 @@ const healCorruptedKatexHtml = (text) => {
 export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = null, forceInline = false) {
   if (!text || typeof text !== 'string') return text;
 
-  text = text.replace(/₩/g, '\\');
+  text = text.replace(/₩/g, '\\')
+             .replace(/\\\[([\s\S]*?)\\\]/g, (m, p1) => '$$' + p1.trim() + '$$')
+             .replace(/\\\(([\s\S]*?)\\\)/g, (m, p1) => '$' + p1.trim() + '$');
   let processed = healCorruptedKatexHtml(text);
   // [Self-Healing] Fix corrupted HTML entity inequality symbols (&\lt;, &amp;\lt;, etc.)
   processed = processed.replace(/&amp;\\?lt;?/gi, '<')
