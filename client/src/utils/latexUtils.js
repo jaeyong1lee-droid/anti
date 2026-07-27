@@ -1271,25 +1271,33 @@ export function healQuizQuestionObject(q) {
       }
     }
 
-    const existingRowCount = Array.isArray(q.tableData?.rows) ? q.tableData.rows.length : 0;
-    const hasBulletsInCol0 = (q.tableData?.rows || []).some(r => String(r[0] || '').startsWith('•') || String(r[0] || '').startsWith('-') || String(r[0] || '').includes('<strong>'));
-    const textToParse = (q.question || '') + '\n' + (q.explanation || '') + '\n' + (q.content || '');
-    const parsed = parseQuestionTableText(textToParse);
-    if (!q.comparisonTableData && parsed && parsed.tableData && parsed.tableData.headers && parsed.tableData.rows && (parsed.tableData.rows.length > existingRowCount || hasBulletsInCol0)) {
-      const answers = {};
-      const rows = parsed.tableData.rows.map((row, rIdx) => {
-        return row.map((cell, cIdx) => {
-          if (cIdx === 0) return cell;
-          const inputId = `INPUT_${rIdx}_${cIdx}`;
-          answers[inputId] = cell;
-          return `[${inputId}]`;
-        });
-      });
-      q.tableData = {
-        headers: parsed.tableData.headers,
-        rows: rows
-      };
-      q.answers = { ...(q.answers || {}), ...answers };
+    // Real-time healing for overview questions with duplicated tableData in active sessions
+    if ((q.mixedType === 'overview' || String(q.question || '').includes('[개요 복습]')) && q.comparisonTableData && q.tableData) {
+      const mainHeaders = (q.tableData.headers || []).join(',');
+      const compHeaders = (q.comparisonTableData.headers || []).join(',');
+      if (mainHeaders === compHeaders && mainHeaders !== '구분,내용') {
+        const parsed = parseOverviewContent(q.explanation || q.content || '');
+        const answers = { ...(q.answers || {}) };
+        const rows = [];
+        if (parsed.definition) {
+          answers['INPUT_0_1'] = parsed.definition;
+          rows.push(['학술적 정의', '[INPUT_0_1]']);
+        }
+        if (parsed.mechanism) {
+          const rowIdx = rows.length;
+          answers[`INPUT_${rowIdx}_1`] = parsed.mechanism;
+          rows.push(['공학적 작동 메커니즘', `[INPUT_${rowIdx}_1]`]);
+        }
+        if (rows.length === 0) {
+          answers['INPUT_0_1'] = q.answer || q.concept || '학술적 개요 및 핵심 기전 서술';
+          rows.push(['학술적 개요 및 핵심 기전', '[INPUT_0_1]']);
+        }
+        q.tableData = {
+          headers: ['구분', '내용'],
+          rows: rows
+        };
+        q.answers = answers;
+      }
     }
 
     // For multiple choice questions, heal mismatched answer field
