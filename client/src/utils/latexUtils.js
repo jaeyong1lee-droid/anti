@@ -1222,29 +1222,24 @@ export function healQuizQuestionObject(q) {
       }
     }
 
-    const isDummyTable = q.tableData && q.tableData.rows && q.tableData.rows.length === 1 && String(q.tableData.rows[0]?.[0] || '').includes('학술적 개요 및 핵심 기전');
-
-    if ((!q.tableData || !q.tableData.headers || !q.tableData.rows || q.tableData.rows.length === 0 || isDummyTable)) {
-      const textToParse = (q.question || '') + '\n' + (q.explanation || '') + '\n' + (q.content || '');
-      const parsed = parseQuestionTableText(textToParse);
-      if (parsed.tableData && parsed.tableData.headers && parsed.tableData.rows && parsed.tableData.rows.length > 0) {
-        const answers = {};
-        const rows = parsed.tableData.rows.map((row, rIdx) => {
-          return row.map((cell, cIdx) => {
-            if (cIdx === 0) return cell;
-            const inputId = `INPUT_${rIdx}_${cIdx}`;
-            answers[inputId] = cell;
-            return `[${inputId}]`;
-          });
+    const existingRowCount = Array.isArray(q.tableData?.rows) ? q.tableData.rows.length : 0;
+    const textToParse = (q.question || '') + '\n' + (q.explanation || '') + '\n' + (q.content || '');
+    const parsed = parseQuestionTableText(textToParse);
+    if (parsed && parsed.tableData && parsed.tableData.headers && parsed.tableData.rows && parsed.tableData.rows.length > existingRowCount) {
+      const answers = {};
+      const rows = parsed.tableData.rows.map((row, rIdx) => {
+        return row.map((cell, cIdx) => {
+          if (cIdx === 0) return cell;
+          const inputId = `INPUT_${rIdx}_${cIdx}`;
+          answers[inputId] = cell;
+          return `[${inputId}]`;
         });
-        q.tableData = {
-          headers: parsed.tableData.headers,
-          rows: rows
-        };
-        if (!q.answers || Object.keys(q.answers).length === 0 || isDummyTable) {
-          q.answers = answers;
-        }
-      }
+      });
+      q.tableData = {
+        headers: parsed.tableData.headers,
+        rows: rows
+      };
+      q.answers = { ...(q.answers || {}), ...answers };
     }
 
     // For multiple choice questions, heal mismatched answer field

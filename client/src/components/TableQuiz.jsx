@@ -30,42 +30,40 @@ export const TableQuiz = React.memo(function TableQuiz({
   setFloatedTableId = () => {},
   isExam = false
 }) {
+  const existingRowCount = Array.isArray(q.tableData?.rows) ? q.tableData.rows.length : 0;
+  const textToParse = (q.explanation || '') + '\n' + (q.content || '') + '\n' + (q.question || '');
+  if (textToParse.includes('|')) {
+    const mdParsed = parseMarkdownTable(textToParse);
+    if (mdParsed && mdParsed.tableData && mdParsed.tableData.headers && mdParsed.tableData.rows && mdParsed.tableData.rows.length > existingRowCount) {
+      const answers = {};
+      const compRows = mdParsed.tableData.rows.map((row, rIdx) => {
+        return row.map((cell, cIdx) => {
+          if (cIdx === 0) return cell;
+          const inputId = `INPUT_${rIdx}_${cIdx}`;
+          answers[inputId] = cell;
+          return `[${inputId}]`;
+        });
+      });
+      q.tableData = {
+        headers: mdParsed.tableData.headers,
+        rows: compRows
+      };
+      q.answers = { ...(q.answers || {}), ...answers };
+    }
+  }
+
   const hasValidMainRows = Array.isArray(q.tableData?.rows) && q.tableData.rows.length > 0;
   const hasValidCompRows = Array.isArray(q.comparisonTableData?.rows) && q.comparisonTableData.rows.length > 0;
-  const isDummyMain = Array.isArray(q.tableData?.rows) && q.tableData.rows.length === 1 && String(q.tableData.rows[0]?.[0] || '').includes('학술적 개요 및 핵심 기전');
 
-  if ((!hasValidMainRows && !hasValidCompRows) || isDummyMain) {
-    const textToParse = (q.explanation || '') + '\n' + (q.content || '') + '\n' + (q.question || '');
-    if (textToParse.includes('|')) {
-      const mdParsed = parseMarkdownTable(textToParse);
-      if (mdParsed && mdParsed.tableData && mdParsed.tableData.headers && mdParsed.tableData.rows && mdParsed.tableData.rows.length > 0) {
-        const answers = {};
-        const compRows = mdParsed.tableData.rows.map((row, rIdx) => {
-          return row.map((cell, cIdx) => {
-            if (cIdx === 0) return cell;
-            const inputId = `INPUT_${rIdx}_${cIdx}`;
-            answers[inputId] = cell;
-            return `[${inputId}]`;
-          });
-        });
-        q.tableData = {
-          headers: mdParsed.tableData.headers,
-          rows: compRows
-        };
-        q.answers = answers;
-      }
-    }
-
-    if (!q.tableData || !q.tableData.rows || q.tableData.rows.length === 0) {
-      const fallbackAnswer = q.answer || q.concept || q.explanation || q.question || '학술적 개요 및 핵심 기전 서술';
-      q.tableData = {
-        headers: ['구분', '내용'],
-        rows: [['학술적 개요 및 핵심 기전', '[INPUT_0_1]']]
-      };
-      q.answers = q.answers || {};
-      if (!q.answers['INPUT_0_1']) {
-        q.answers['INPUT_0_1'] = typeof fallbackAnswer === 'string' ? fallbackAnswer.replace(/<[^>]*>/g, '').trim() : fallbackAnswer;
-      }
+  if (!hasValidMainRows && !hasValidCompRows) {
+    const fallbackAnswer = q.answer || q.concept || q.explanation || q.question || '학술적 개요 및 핵심 기전 서술';
+    q.tableData = {
+      headers: ['구분', '내용'],
+      rows: [['학술적 개요 및 핵심 기전', '[INPUT_0_1]']]
+    };
+    q.answers = q.answers || {};
+    if (!q.answers['INPUT_0_1']) {
+      q.answers['INPUT_0_1'] = typeof fallbackAnswer === 'string' ? fallbackAnswer.replace(/<[^>]*>/g, '').trim() : fallbackAnswer;
     }
   }
 
