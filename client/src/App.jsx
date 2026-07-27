@@ -3068,6 +3068,10 @@ export default function App() {
   const [editingTopicId, setEditingTopicId] = useState(null);
   const [editingTitleText, setEditingTitleText] = useState('');
   const [preferredModel, setPreferredModel] = useState(() => localStorage.getItem('anti_preferred_model') || 'gemini-3.1-flash-lite');
+  const preferredModelRef = useRef(preferredModel);
+  useEffect(() => {
+    preferredModelRef.current = preferredModel;
+  }, [preferredModel]);
   const [isLockscreenQuizEnabled, setIsLockscreenQuizEnabled] = useState(() => {
     return localStorage.getItem('anti_lockscreen_quiz_enabled') === 'true';
   });
@@ -3811,7 +3815,7 @@ export default function App() {
             explanation: q.explanation || q.answer || '',
             category: showExam ? examTopic?.category : selectedTopic?.category,
             temperature: isReevaluation ? 0.85 : 0.7,
-            preferredModel,
+            preferredModel: preferredModelRef.current || preferredModel,
             progressId
           })
         });
@@ -3929,7 +3933,7 @@ export default function App() {
           colHeader: '암기단어 및 설명',
           explanation: correctAnswer,
           category: '앞글자',
-          preferredModel,
+          preferredModel: preferredModelRef.current || preferredModel,
           progressId
         })
       });
@@ -4039,7 +4043,7 @@ export default function App() {
           explanation: q.explanation || q.answer || '',
           category: showExam ? examTopic?.category : selectedTopic?.category,
           temperature: isReevaluation ? 0.85 : 0.7,
-          preferredModel,
+          preferredModel: preferredModelRef.current || preferredModel,
           progressId
         })
       });
@@ -4271,7 +4275,7 @@ export default function App() {
           explanation: q.explanation || '',
           category: showExam ? examTopic?.category : selectedTopic?.category,
           temperature: isReevaluation ? 0.85 : 0.7,
-          preferredModel,
+          preferredModel: preferredModelRef.current || preferredModel,
           progressId
         })
       });
@@ -4422,18 +4426,24 @@ export default function App() {
 
   // Load preferred AI model on mount
   useEffect(() => {
+    const localVal = localStorage.getItem('anti_preferred_model');
+    if (localVal) {
+      setPreferredModel(localVal);
+      preferredModelRef.current = localVal;
+    }
     fetch(`${API_BASE}/api/preferred-model`)
       .then(res => {
         if (res.ok) return res.json();
         throw new Error('Network response not ok');
       })
       .then(data => {
-        if (data.model) setPreferredModel(data.model);
+        if (data.model && !localVal) {
+          setPreferredModel(data.model);
+          preferredModelRef.current = data.model;
+        }
       })
       .catch(err => {
         console.warn('Failed to load preferred model from server, using local fallback:', err);
-        const localVal = localStorage.getItem('anti_preferred_model');
-        if (localVal) setPreferredModel(localVal);
       });
   }, []);
 
@@ -11867,8 +11877,9 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
 
   const handleTogglePreferredModel = async () => {
     const models = ['gemini-3.5-flash-lite', 'gemini-3.6-flash', 'gemini-3.1-flash-lite', 'gemini-3.5-flash'];
-    const currentIdx = models.indexOf(preferredModel);
+    const currentIdx = models.indexOf(preferredModelRef.current || preferredModel);
     const nextModel = models[(currentIdx + 1) % models.length];
+    preferredModelRef.current = nextModel;
     setPreferredModel(nextModel);
     localStorage.setItem('anti_preferred_model', nextModel);
 
