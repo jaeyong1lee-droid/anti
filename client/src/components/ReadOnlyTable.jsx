@@ -185,11 +185,10 @@ export const ReadOnlyTable = React.memo(function ReadOnlyTable({
               detail: { questionIdx, width: `${newWidth}px` }
             }));
           } else {
-            for (let i = 1; i < colCount; i++) {
-              next[i] = `${newWidth}px`;
-              const storageKey = `mobileColWidth_${questionIdx !== null && questionIdx !== undefined ? questionIdx : 'default'}_${i}`;
-              localStorage.setItem(storageKey, `${newWidth}px`);
-            }
+            // 2열 및 그 외 열 독립적 변경 (1열 고정 유지!)
+            next[idx] = `${newWidth}px`;
+            const storageKey = `mobileColWidth_${questionIdx !== null && questionIdx !== undefined ? questionIdx : 'default'}_${idx}`;
+            localStorage.setItem(storageKey, `${newWidth}px`);
           }
           return next;
         });
@@ -197,13 +196,28 @@ export const ReadOnlyTable = React.memo(function ReadOnlyTable({
         const deltaPercent = (deltaX / totalWidth) * 100;
         setColWidths(prev => {
           const next = [...prev];
-          const sum = percentWidths[idx] + percentWidths[idx + 1];
-          const newLeftWidth = Math.max(10, percentWidths[idx] + deltaPercent);
-          const actualLeft = Math.min(sum - 10, newLeftWidth);
-          const actualRight = sum - actualLeft;
+          if (idx === 0) {
+            const newFirstWidth = Math.max(10, Math.min(80, percentWidths[0] + deltaPercent));
+            next[0] = newFirstWidth;
+            const remaining = 100 - newFirstWidth;
+            const eachWidth = remaining / (colCount - 1);
+            for (let i = 1; i < colCount; i++) {
+              next[i] = eachWidth;
+            }
+          } else {
+            // 2열 이상 조절 시 1열(next[0])은 100% 독립적으로 고정 유지
+            if (idx < colCount - 1) {
+              const sum = percentWidths[idx] + percentWidths[idx + 1];
+              const newLeftWidth = Math.max(10, percentWidths[idx] + deltaPercent);
+              const actualLeft = Math.min(sum - 10, newLeftWidth);
+              const actualRight = sum - actualLeft;
 
-          next[idx] = actualLeft;
-          next[idx + 1] = actualRight;
+              next[idx] = actualLeft;
+              next[idx + 1] = actualRight;
+            } else {
+              next[idx] = Math.max(10, percentWidths[idx] + deltaPercent);
+            }
+          }
           return next;
         });
       }

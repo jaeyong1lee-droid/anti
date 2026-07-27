@@ -392,11 +392,9 @@ export const TableQuiz = React.memo(function TableQuiz({
             const storageKey = `anti_mobile_first_comp_col_width_${compColCount}`;
             localStorage.setItem(storageKey, `${newWidth}px`);
           } else {
-            for (let i = 1; i < compColCount; i++) {
-              next[i] = `${newWidth}px`;
-              const storageKey = `anti_mobile_comp_col_width_${compColCount}_${i}`;
-              localStorage.setItem(storageKey, `${newWidth}px`);
-            }
+            next[idx] = `${newWidth}px`;
+            const storageKey = `anti_mobile_comp_col_width_${compColCount}_${idx}`;
+            localStorage.setItem(storageKey, `${newWidth}px`);
           }
           return next;
         });
@@ -771,11 +769,9 @@ export const TableQuiz = React.memo(function TableQuiz({
               detail: { colCount, width: `${newWidth}px` }
             }));
           } else {
-            for (let i = 1; i < colCount; i++) {
-              next[i] = `${newWidth}px`;
-              const storageKey = `anti_mobile_col_width_${colCount}_${i}`;
-              localStorage.setItem(storageKey, `${newWidth}px`);
-            }
+            next[idx] = `${newWidth}px`;
+            const storageKey = `anti_mobile_col_width_${colCount}_${idx}`;
+            localStorage.setItem(storageKey, `${newWidth}px`);
           }
           return next;
         });
