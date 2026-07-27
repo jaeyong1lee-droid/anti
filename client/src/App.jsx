@@ -3898,9 +3898,13 @@ export default function App() {
     startProgressPolling(progressId);
     
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 40000);
+
       const res = await fetch(`${API_BASE}/api/grade-subjective`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
         body: JSON.stringify({
           question: `${q.question} (두문자: ${userLetter})`,
           correctAnswer,
@@ -3912,6 +3916,7 @@ export default function App() {
           progressId
         })
       });
+      clearTimeout(timeoutId);
       const data = await res.json();
       nextGrading[combKey] = {
         isCorrect: data.isCorrect,
@@ -4001,9 +4006,13 @@ export default function App() {
     }
 
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 40000);
+
       const res = await fetch(`${API_BASE}/api/grade-subjective`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
         body: JSON.stringify({
           question: q.question,
           correctAnswer,
@@ -4016,6 +4025,7 @@ export default function App() {
           progressId
         })
       });
+      clearTimeout(timeoutId);
       const data = await res.json();
       nextGrading[key] = {
         isCorrect: data.isCorrect,
@@ -4229,9 +4239,13 @@ export default function App() {
 
     let newResult = null;
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 40000);
+
       const res = await fetch(`${API_BASE}/api/grade-subjective`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
         body: JSON.stringify({
           question: q.question,
           correctAnswer,
@@ -4242,6 +4256,7 @@ export default function App() {
           progressId
         })
       });
+      clearTimeout(timeoutId);
       const data = await res.json();
       newResult = {
         isCorrect: data.isCorrect,
