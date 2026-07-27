@@ -14,6 +14,15 @@ import { convertMarkdownAcronymsToHtml } from '../utils/markdownAcronymRenderer'
 import { healLatexFormulas } from '../utils/latexUtils';
 
 const parseAndRenderFlowchart = (flowchartText, katexLoaded, questionKey) => {
+  const stepMarkerRegex = /(?:\[\s*\d+\s*\]|\[\s*[a-zA-Z]\s*\]|\(\s*\d+\s*\)|[①-⑳]|\b\d+\.|\b\d+\))/;
+  if (!stepMarkerRegex.test(flowchartText)) {
+    return (
+      <pre className="w-full font-mono text-[12px] sm:text-[13px] overflow-x-auto whitespace-pre p-3 rounded-xl bg-slate-900/70 border border-slate-700/50 text-slate-200 leading-snug my-2 select-text">
+        {flowchartText}
+      </pre>
+    );
+  }
+
   const lines = flowchartText.split('\n');
   const items = [];
   let currentBoxes = null;
