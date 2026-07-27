@@ -1403,7 +1403,7 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
               {feedbackList.map((item, fIdx) => (
                 <div 
                   key={fIdx} 
-                  className="py-3 px-0 border-b border-slate-800/50 leading-relaxed text-[13px] sm:text-[14px] text-slate-200"
+                  className="py-3 px-0 border-b border-slate-800/50 leading-relaxed text-[14px] sm:text-[16px] text-slate-200"
                 >
                   <div className="font-extrabold flex items-center justify-between gap-2 mb-1">
                     <span className="flex items-center gap-1.5">
@@ -1414,17 +1414,17 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
                       </span>
                       <span>입력값: "{item.userVal || '빈칸'}"</span>
                     </span>
-                    <span className={`text-[11px] font-black ${item.isCorrect ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    <span className={`text-[12px] sm:text-[14px] font-black ${item.isCorrect ? 'text-emerald-400' : 'text-rose-400'}`}>
                       {item.isCorrect ? '정답 ✓' : '오답 ✗'} (점수: {item.score}점)
                     </span>
                   </div>
                   {item.reason && (
-                    <div className="text-[12px] sm:text-[13px] text-slate-300 mt-1.5 leading-relaxed pl-6">
+                    <div className="text-[14px] sm:text-[16px] text-slate-300 mt-1.5 leading-relaxed pl-6">
                       <LatexRenderer text={formatGradingReason(item.reason)} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} />
                     </div>
                   )}
                   {(item.correctAnswer || item.suggestedModelAnswer) && (
-                    <div className="text-[12px] sm:text-[13px] text-slate-400 mt-1.5 pt-1.5 border-t border-slate-800/30 pl-6">
+                    <div className="text-[14px] sm:text-[16px] text-slate-400 mt-1.5 pt-1.5 border-t border-slate-800/30 pl-6">
                       <span className="font-extrabold text-slate-400">💡 모범 정답: </span>
                       <span className="text-slate-350 font-bold inline-block">
                         <LatexRenderer text={item.correctAnswer || item.suggestedModelAnswer} katexLoaded={katexLoaded} forceInline={true} />
@@ -10884,6 +10884,14 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
         ...prev,
         [key]: { loading: false, text: data.text, error: '' }
       }));
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          const cardTutorEl = document.getElementById(`tutor-answer-panel-${key}`);
+          if (cardTutorEl) {
+            cardTutorEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }, 100);
+      });
     } catch (err) {
       stopProgressPolling('답변 생성 실패', 100, false);
       setTutorAnswers(prev => ({
@@ -10987,7 +10995,7 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
               <div className="text-[14px] sm:text-[16px] text-rose-400 font-bold select-text mt-2 border-0 sm:border-t sm:border-violet-500/10 pt-2">❌ 답변 오류: {tutorAnswers[key].error}</div>
             )}
             {tutorAnswers[key]?.text && !tutorAnswers[key]?.loading && (
-              <div className="mt-2.5 pt-2.5 border-0 sm:border-t sm:border-violet-500/20 select-text">
+              <div id={`tutor-answer-panel-${key}`} className="mt-2.5 pt-2.5 border-0 sm:border-t sm:border-violet-500/20 select-text scroll-mt-14">
                 <div className="text-[14px] sm:text-[16px] font-black text-violet-400 mb-1.5">💬 AI 튜터 답변</div>
                 <div className="tutor-response-content text-[14px] sm:text-[16px] text-slate-200 leading-relaxed whitespace-pre-wrap select-text text-left w-full mt-1">
                   <LatexRenderer text={tutorAnswers[key].text} katexLoaded={katexLoaded} enableAddFormula={true} formulaSource="tutor" isMarkdown={true} />
@@ -20276,6 +20284,35 @@ ${itemsStr}
                       <span>calc</span>
                     </button>
                     <button
+                      type="button"
+                      onClick={handleTogglePreferredModel}
+                      className="px-2.5 py-1 text-[10px] font-black bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 hover:text-white border border-emerald-500/40 rounded-lg transition-all cursor-pointer active:scale-95 shadow-md flex items-center justify-center gap-1 select-none"
+                      title="API 모델 선택 (3.5 Lite -> 3.6 Flash -> 3.1 Lite -> 3.5 Flash)"
+                    >
+                      <span className="text-emerald-300">⚡</span>
+                      <span>
+                        {preferredModel === 'gemini-3.5-flash-lite' ? '3.5 Lite' :
+                         preferredModel === 'gemini-3.6-flash' ? '3.6 Flash' :
+                         preferredModel === 'gemini-3.1-flash-lite' ? '3.1 Lite' : '3.5 Flash'}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        savedQuizScroll.current = quizBodyRef.current?.scrollTop || 0;
+                        if (selectedTopic?.isReadOnly) {
+                          setSelectedTopic(null);
+                        } else {
+                          await forceSaveActiveSessions();
+                          setSelectedTopic(null);
+                        }
+                      }}
+                      className="px-2.5 py-1 text-[10px] font-black bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 rounded-lg transition-all cursor-pointer active:scale-95 shadow-md flex items-center justify-center gap-1"
+                      title="메인 화면(대시보드)으로 나가기"
+                    >
+                      <span>🏠 메인</span>
+                    </button>
+                    <button
                       onClick={async () => {
                         if (window.confirm("튜터 대화 기록과 저장된 캐시 찌꺼기를 모두 삭제하시겠습니까?")) {
                           setChatHistory([]);
@@ -23902,6 +23939,35 @@ ${itemsStr}
                       title="공학용 계산기 토글"
                     >
                       <span>calc</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleTogglePreferredModel}
+                      className="px-2.5 py-1 text-[10px] font-black bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 hover:text-white border border-emerald-500/40 rounded-lg transition-all cursor-pointer active:scale-95 shadow-md flex items-center justify-center gap-1 select-none"
+                      title="API 모델 선택 (3.5 Lite -> 3.6 Flash -> 3.1 Lite -> 3.5 Flash)"
+                    >
+                      <span className="text-emerald-300">⚡</span>
+                      <span>
+                        {preferredModel === 'gemini-3.5-flash-lite' ? '3.5 Lite' :
+                         preferredModel === 'gemini-3.6-flash' ? '3.6 Flash' :
+                         preferredModel === 'gemini-3.1-flash-lite' ? '3.1 Lite' : '3.5 Flash'}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        savedQuizScroll.current = quizBodyRef.current?.scrollTop || 0;
+                        if (selectedTopic?.isReadOnly) {
+                          setSelectedTopic(null);
+                        } else {
+                          await forceSaveActiveSessions();
+                          setSelectedTopic(null);
+                        }
+                      }}
+                      className="px-2.5 py-1 text-[10px] font-black bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 rounded-lg transition-all cursor-pointer active:scale-95 shadow-md flex items-center justify-center gap-1"
+                      title="메인 화면(대시보드)으로 나가기"
+                    >
+                      <span>🏠 메인</span>
                     </button>
                     <button
                       onClick={async () => {
