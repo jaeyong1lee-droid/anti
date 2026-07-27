@@ -503,40 +503,10 @@ const healCorruptedKatexHtml = (text) => {
 };
 
 // 3. 메인 레이아웃 및 수식 복구 마스터 함수
-export function healUnbalancedDollars(str) {
-  if (!str || typeof str !== 'string') return str;
-  let text = str.trim();
-
-  // Clean orphan $$$ or $$ at end of string
-  text = text.replace(/\${2,}$/g, '$');
-
-  const latexCmds = 'Delta|Sigma|Gamma|Phi|Theta|Omega|alpha|beta|gamma|sigma|tau|phi|theta|epsilon|pi|delta|omega|mu|lambda|psi|rho|eta|nu|xi|zeta|chi|upsilon|kappa|frac|dfrac|tfrac|sqrt|cdot|times|div|pm|infty|partial|sum|int|sim|le|ge|lt|gt|sin|cos|tan|log|ln|nabla|neq|ne|approx';
-
-  // 1. If equation has = and LaTeX commands and no $, wrap the whole equation in $...$
-  if (!text.includes('$') && text.includes('=') && !/[\uAC00-\uD7A3]/.test(text) && new RegExp(`\\\\(?:${latexCmds})`).test(text)) {
-    return '$' + text + '$';
-  }
-
-  // 2. If text ends with $ and has LaTeX commands but no opening $, prepend $
-  if (/^[^\$]*\\(?:frac|dfrac|beta|alpha|Delta|sigma|tau|phi|theta|pi|gamma)[^\$]*\$$/.test(text)) {
-    text = '$' + text;
-  }
-  // 3. If text starts with $ and has LaTeX commands but no closing $, append $
-  else if (/^\$[^\$]*\\(?:frac|dfrac|beta|alpha|Delta|sigma|tau|phi|theta|pi|gamma)[^\$]*$/.test(text)) {
-    text = text + '$';
-  }
-  // 4. Auto-wrap unwrapped standalone \Delta t, \frac{t}{s}, etc.
-  else {
-    text = text.replace(new RegExp(`(?<![\\$\\w])\\\\(?:${latexCmds})\\b(?:_\\{[^{}\\n]+\\}|_[a-zA-Z0-9]+|\\{[^{}\\n]*\\})*(?:\\s+[a-zA-Z0-9_']+)?(?![\\$\\w])`, 'g'), (m) => `$${m.trim()}$`);
-  }
-
-  return text;
-}
-
 export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = null, forceInline = false) {
   if (!text || typeof text !== 'string') return text;
 
-  text = healUnbalancedDollars(text.replace(/₩/g, '\\'));
+  text = text.replace(/₩/g, '\\');
   let processed = healCorruptedKatexHtml(text);
   // [Self-Healing] Fix corrupted HTML entity inequality symbols (&\lt;, &amp;\lt;, etc.)
   processed = processed.replace(/&amp;\\?lt;?/gi, '<')
