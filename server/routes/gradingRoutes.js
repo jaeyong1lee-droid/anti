@@ -93,18 +93,21 @@ router.post('/grade-subjective', async (req, res) => {
     ? engineeringStandardsList.map(s => s.content).join('\n\n')
     : ENGINEERING_STANDARDS;
 
-  // 0단계 analyzeStandardsBeforeTask 제거: 채점 프롬프트에 이미 지침이 모두 포함되어 있어
-  // 별도 LLM 호출(최대 8초 blocking)은 불필요한 지연만 발생시킴
-  const localCallLLM = (sys, prompt, img, scenario, opts) => {
-    const targetTemp = typeof temperature === 'number' ? temperature : 0.7;
-    const prefModel = req.body.preferredModel || globalPreferredModel;
-    return callLLMWithFailover(sys, prompt, img, scenario, { preferredModel: prefModel, ...opts, temperature: targetTemp, progressId });
-  };
-
+  let standardsAnalysis = '';
   if (progressId) {
+    standardsAnalysis = await analyzeStandardsBeforeTask(progressId, question || '주관식 채점', dynamicGradingStandards, 'grading');
     const modelUpper = (req.body.preferredModel || globalPreferredModel || 'gemini-3.1-flash-lite').toUpperCase();
     updateProgress(progressId, 1, `1단계: ${modelUpper} 엔진으로 제출 답안 채점 중...`, 20);
   }
+
+  const localCallLLM = (sys, prompt, img, scenario, opts) => {
+    const enrichedPrompt = standardsAnalysis 
+      ? `[🚨 0단계 AI가 사전 분석한 절대 채점 지침 준수 주의사항]:\n${standardsAnalysis}\n\n${prompt}` 
+      : prompt;
+    const targetTemp = typeof temperature === 'number' ? temperature : 0.7;
+    const prefModel = req.body.preferredModel || globalPreferredModel;
+    return callLLMWithFailover(sys, enrichedPrompt, img, scenario, { preferredModel: prefModel, ...opts, temperature: targetTemp, progressId });
+  };
 
   let attempt = 0;
   const maxAttempts = 2; // 3→2: 재시도 횟수 단축
@@ -294,11 +297,11 @@ router.post('/question/regenerate', async (req, res) => {
   let standardsAnalysis = '';
   let progressTimer = null;
   const localCallLLM = (sys, prompt, img, scenario, opts) => {
-    const enrichedPrompt = standardsAnalysis ? `${standardsAnalysis}\n\n${prompt}` : prompt;
+    const enrichedPrompt = standardsAnalysis ? `[🚨 0단계 AI가 사전 분석한 절대 지침 준수 주의사항]:\n${standardsAnalysis}\n\n${prompt}` : prompt;
     return callLLMWithFailover(sys, enrichedPrompt, img, scenario, { ...opts, progressId });
   };
   if (progressId) {
-    standardsAnalysis = '반드시 아래에 명시된 문제 생성 지침과 지반공학 엔지니어링 표준을 100% 준수하여, 기술사 수준의 깊이 있는 서술형 문항과 답안을 출제하십시오.';
+    standardsAnalysis = await analyzeStandardsBeforeTask(progressId, currentQuestion?.question || '문항 재생성', getActiveGenerationStandards(), 'generation');
     progressTimer = startBackendProgressTimer(progressId, 1, '1단계: AI 문항 재생성 시작...', 50, 1500, 5);
   }
 

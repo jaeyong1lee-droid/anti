@@ -302,8 +302,8 @@ export async function callLLMWithFailover(systemInstruction, userPrompt, image =
         }
 
         if (isQuota) {
-          console.log(`[쿼터 초과 감지] ${task.label} (${task.model} -> ${actualModelName}) 모델 쿼터 초과(429). 동일 키의 고용량 모델(flash-lite, 500 RPD) 또는 다음 키/모델로 페일오버합니다.`);
-          await sleep(600);
+          console.log(`[쿼터 초과 감지] ${task.label} (${task.model} -> ${actualModelName}) 모델 쿼터 초과(429). 1.5초 쿨링 대기 후 다음 키/모델로 페일오버합니다.`);
+          await sleep(1500);
           break;
         }
 
@@ -351,7 +351,55 @@ export async function callLLMWithFailover(systemInstruction, userPrompt, image =
 }
 
 export async function analyzeStandardsBeforeTask(progressId, topicTitle, standards, scenario = 'generation') {
-  return '';
+  try {
+    const primaryKey = process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY.trim().replace(/^['"]|['"]$/g, '') : null;
+    if (!primaryKey) return '';
+
+    console.log(`[analyzeStandardsBeforeTask] Starting analysis for topic "${topicTitle}" (scenario: ${scenario})`);
+    
+    let scenarioGuideline = '';
+    if (scenario === 'generation') {
+      scenarioGuideline = '당신은 기술사 시험 출제위원입니다. 미흡하거나 부적절한 문제 출제를 방지하기 위해, 제시된 지침들을 정독하고 특히 어떤 점을 주의해야 하는지 3~4줄로 핵심을 분석하십시오.';
+    } else if (scenario === 'grading') {
+      scenarioGuideline = '당신은 지반공학 전문 채점관입니다. 사용자의 답안이 단순 자구 매칭과 무관하게 공학적 메커니즘을 충족하는지 판단하도록, 채점 지침 중 어떤 판정 규칙을 최우선 준수할 것인지 3~4줄로 분석하십시오.';
+    } else {
+      scenarioGuideline = '제시된 지침들 중 이번 태스크 처리에 핵심적으로 준수해야 할 필수적인 헌법적 철칙 3~4줄을 엄밀하게 분석하십시오.';
+    }
+
+    const systemInstruction = `당신은 대한민국 국가건설기준설계코드(KDS) 및 지반공학 기술사 시험 출제/채점 지침 분석용 AI 튜터입니다.
+주어진 지침 리스트를 정독하고, 이번 태스크를 수행할 때 위배해서는 안 될 핵심적인 절대 강제 금지/의무 사항들을 0단계 사전 주의사항으로 요약하십시오.`;
+
+    const userPrompt = `
+[수행 태스크 대상]: ${topicTitle}
+[분석 대상 지침/기준 문구]:
+${standards}
+
+[분석 요구 가이드라인]:
+${scenarioGuideline}
+
+[출력 요구사항]:
+- 오직 3~4줄 내외의 컴팩트한 주의사항 리스트만 명료하게 반환하십시오.
+- 부가적인 서론이나 결론은 완벽하게 배제하고 알맹이 주의사항 텍스트만 출력하십시오.
+`;
+
+    updateProgress(progressId, 0, '0단계: 사전 절대 지침 준수 분석 중...', 5);
+    const genAI = new GoogleGenerativeAI(primaryKey);
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-2.0-flash-lite',
+      systemInstruction: systemInstruction,
+      generationConfig: { temperature: 0.1 }
+    }, { apiVersion: 'v1beta' });
+
+    const result = await model.generateContent(userPrompt);
+    const text = result.response.text().trim();
+    console.log(`[analyzeStandardsBeforeTask] Success! Analysis:\n${text}`);
+    updateProgress(progressId, 0, '0단계: 사전 절대 지침 분석 완료!', 10);
+    return text;
+  } catch (err) {
+    console.warn('[analyzeStandardsBeforeTask] Warning: standards analysis failed:', err.message);
+    updateProgress(progressId, 0, '0단계: 사전 지침 분석 스킵 (오류로 우회)', 10);
+    return '';
+  }
 }
 
 // Helper: Stream detection flags
