@@ -58,29 +58,14 @@ export async function saveSessionValue(key, value) {
 }
 
 export function normalizeGeminiModel(modelName) {
-  if (!modelName || typeof modelName !== 'string') return 'gemini-2.0-flash-lite';
+  if (!modelName || typeof modelName !== 'string') return 'gemini-3.1-flash-lite';
   const name = modelName.trim().toLowerCase();
 
-  // If already an official Google Gemini model name, return as is
-  if (name.startsWith('gemini-1.5-') || name.startsWith('gemini-2.0-') || name.startsWith('gemini-2.5-')) {
+  if (name.startsWith('gemini-')) {
     return name;
   }
 
-  // Alias mappings for custom model labels to valid Google Gemini API models
-  if (name.includes('3.1') || name.includes('3.1-flash-lite')) {
-    return 'gemini-2.0-flash-lite';
-  }
-  if (name.includes('3.6') || name.includes('3.6-flash')) {
-    return 'gemini-2.0-flash';
-  }
-  if (name.includes('3.5-flash') && !name.includes('lite')) {
-    return 'gemini-1.5-pro';
-  }
-  if (name.includes('3.5') || name.includes('3.5-flash-lite')) {
-    return 'gemini-1.5-flash';
-  }
-
-  return 'gemini-2.0-flash-lite';
+  return 'gemini-3.1-flash-lite';
 }
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
