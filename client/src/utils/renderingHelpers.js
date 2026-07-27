@@ -331,7 +331,11 @@ export const handleOpenHtmlAnswerPopup = (title, text) => {
     popupWindow.document.close();
     popupWindow.focus();
   } else {
-    alert("팝업 차단기가 활성화되어 �// Helper to build a single collapsible button HTML
+    alert("팝업 차단기가 활성화되어 창을 열 수 없습니다. 팝업 차단을 해제해 주세요.");
+  }
+};
+
+// Helper to build a single collapsible button HTML
 export const buildSingleButtonHtml = (itemStr, fallbackBody = '') => {
   if (!itemStr || typeof itemStr !== 'string') return '';
   const rawLines = itemStr.trim().split('\n');
@@ -429,37 +433,6 @@ export function getOnlySourceAccordion(text, qTitle = '') {
     const defaultBtn1 = buildSingleButtonHtml(`국가 건설기준 KDS / KCS: ${cleanTopicTitle}`, dynamicFallbackBody);
     const defaultBtn2 = buildSingleButtonHtml(`원보고서 본문: ${cleanTopicTitle}`, dynamicFallbackBody);
     const defaultBtn3 = buildSingleButtonHtml(`Wikipedia / 학술문헌: ${cleanTopicTitle}`, dynamicFallbackBody);
-
-    rawButtons = [defaultBtn1, defaultBtn2, defaultBtn3].filter(Boolean).join('\n');
-    count = 3;
-  }
-
-  return `<details class="my-2 border border-slate-700/60 rounded-xl overflow-hidden bg-slate-900/90 shadow-md select-text"><summary class="px-3 py-1.5 bg-gradient-to-r from-slate-850 via-slate-900 to-slate-850 hover:from-slate-800 hover:to-slate-800 text-slate-100 font-bold text-xs sm:text-sm cursor-pointer flex items-center justify-between select-none border-b border-slate-800/50 group"><span class="flex items-center gap-2"><span class="px-2 py-0.5 text-[11px] font-black rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0">📜 출처 및 근거 보고서 (${count}개)</span><span class="text-slate-400 text-xs font-normal hidden sm:inline">(클릭 시 열기/접기)</span></span><span class="text-[11px] sm:text-xs text-amber-400 font-semibold px-2 py-0.5 rounded-lg bg-amber-400/10 border border-amber-400/20 flex items-center gap-1 group-hover:bg-amber-400/20 shrink-0"><span>열기 / 접기</span><span class="text-[10px]">▼</span></span></summary><div class="p-1 space-y-0.5 bg-slate-950/80 border-t border-slate-800">${rawButtons}</div></details>`;
-}leanKey)) {
-        uniqueItems.add(cleanKey);
-        const btn = buildSingleButtonHtml(itemStr);
-        if (btn) btnHtmls.push(btn);
-      }
-    }
-    rawButtons = btnHtmls.join('\n');
-    count = btnHtmls.length;
-  }
-
-  if (count === 0 || isTunnel) {
-    let defaultBtn1, defaultBtn2, defaultBtn3;
-    if (isTunnel) {
-      defaultBtn1 = buildSingleButtonHtml("KDS 27 10 05 터널설계기준");
-      defaultBtn2 = buildSingleButtonHtml(`원보고서 본문: ${cleanTopicTitle}`);
-      defaultBtn3 = buildSingleButtonHtml(`Wikipedia Soil Mechanics: Earth pressure coefficient at rest $K_0$ determines the ratio between vertical and horizontal stress in rock mass`);
-    } else if (isSlope) {
-      defaultBtn1 = buildSingleButtonHtml("KDS 11 70 15 사면설계기준");
-      defaultBtn2 = buildSingleButtonHtml(`원보고서 본문: ${cleanTopicTitle}`);
-      defaultBtn3 = buildSingleButtonHtml(`Wikipedia Soil Mechanics: Slope stability & Limit equilibrium analysis`);
-    } else {
-      defaultBtn1 = buildSingleButtonHtml(`KDS / KCS 국가 건설기준: ${cleanTopicTitle}`);
-      defaultBtn2 = buildSingleButtonHtml(`원보고서 본문: ${cleanTopicTitle}`);
-      defaultBtn3 = buildSingleButtonHtml(`Wikipedia Soil Mechanics: ${cleanTopicTitle}`);
-    }
 
     rawButtons = [defaultBtn1, defaultBtn2, defaultBtn3].filter(Boolean).join('\n');
     count = 3;
