@@ -20,9 +20,9 @@ export let lockscreenStandardsList = [
   },
   {
     "id": "user_lockscreen_interval_10min",
-    "title": "출제 간격 지침",
-    "content": "락스크린 문제는 한 문제 출제 후 최소 10분이 경과하고 조건(백그라운드에서 복귀 등)이 만족되는 경우에만 출제합니다.",
-    "updatedAt": "2026-07-06T03:55:00.000Z"
+    "title": "핸드폰 웹 이용 10분 경과 후 락스크린 제공 지침",
+    "content": "락스크린 주기는 핸드폰에서 웹을 이용한 지 10분이 경과되었을 경우 그 이후에 문제를 제공합니다.",
+    "updatedAt": new Date().toISOString()
   }
 ];
 

@@ -3097,13 +3097,19 @@ export default function App() {
   const triggerLockscreenQuiz = () => {
     if (!isLockscreenQuizEnabled) return;
 
-    // Check if 10 minutes have passed since the last trigger
+    // 락스크린 주기: 핸드폰에서 웹을 이용한 지 10분이 경과되었을 경우 그 이후에 문제 제공
+    const now = Date.now();
     const lastTimeStr = localStorage.getItem('anti_last_lockscreen_time');
-    if (lastTimeStr) {
-      const lastTime = parseInt(lastTimeStr, 10);
-      if (!isNaN(lastTime) && Date.now() - lastTime < 10 * 60 * 1000) {
-        return;
-      }
+    if (!lastTimeStr) {
+      // 최초 웹 이용 시 시각 기록 후 10분 경과 대기
+      localStorage.setItem('anti_last_lockscreen_time', String(now));
+      return;
+    }
+
+    const lastTime = parseInt(lastTimeStr, 10);
+    if (!isNaN(lastTime) && now - lastTime < 10 * 60 * 1000) {
+      // 10분이 미경과된 경우 퀴즈 미제공
+      return;
     }
     
     const cached = localStorage.getItem('anti_lockscreen_questions');
