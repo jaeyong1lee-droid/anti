@@ -3796,7 +3796,7 @@ export default function App() {
       
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 6000);
+        const timeoutId = setTimeout(() => controller.abort(), 40000);
 
         const res = await fetch(`${API_BASE}/api/grade-subjective`, {
           method: 'POST',
@@ -3929,6 +3929,7 @@ export default function App() {
           colHeader: '암기단어 및 설명',
           explanation: correctAnswer,
           category: '앞글자',
+          preferredModel,
           progressId
         })
       });
@@ -4023,7 +4024,7 @@ export default function App() {
 
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 6000);
+      const timeoutId = setTimeout(() => controller.abort(), 40000);
 
       const res = await fetch(`${API_BASE}/api/grade-subjective`, {
         method: 'POST',
@@ -4038,6 +4039,7 @@ export default function App() {
           explanation: q.explanation || q.answer || '',
           category: showExam ? examTopic?.category : selectedTopic?.category,
           temperature: isReevaluation ? 0.85 : 0.7,
+          preferredModel,
           progressId
         })
       });
@@ -4269,6 +4271,7 @@ export default function App() {
           explanation: q.explanation || '',
           category: showExam ? examTopic?.category : selectedTopic?.category,
           temperature: isReevaluation ? 0.85 : 0.7,
+          preferredModel,
           progressId
         })
       });
