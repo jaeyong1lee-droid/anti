@@ -58,21 +58,20 @@ export async function saveSessionValue(key, value) {
 }
 
 export function normalizeGeminiModel(modelName) {
-  if (!modelName || typeof modelName !== 'string') return 'gemini-2.0-flash';
+  if (!modelName || typeof modelName !== 'string') return 'gemini-3.5-flash-lite';
   const name = modelName.trim().toLowerCase();
 
   const validModels = [
-    'gemini-2.0-flash',
-    'gemini-2.0-flash-lite',
-    'gemini-1.5-flash',
-    'gemini-1.5-pro'
+    'gemini-3.5-flash-lite',
+    'gemini-3.6-flash',
+    'gemini-3.1-flash-lite',
+    'gemini-3.5-flash'
   ];
   if (validModels.includes(name)) return name;
 
-  if (name.includes('lite') || name.includes('3.1') || name.includes('3.5-flash-lite')) return 'gemini-2.0-flash-lite';
-  if (name.includes('pro') || name.includes('3.6')) return 'gemini-1.5-pro';
-  if (name.includes('1.5')) return 'gemini-1.5-flash';
-  return 'gemini-2.0-flash';
+  if (name.includes('3.1') || (name.includes('lite') && !name.includes('3.5'))) return 'gemini-3.1-flash-lite';
+  if (name.includes('3.6')) return 'gemini-3.6-flash';
+  return 'gemini-3.5-flash-lite';
 }
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -187,16 +186,17 @@ export async function callLLMWithFailover(systemInstruction, userPrompt, image =
   for (const k of keys) {
     const rawFallbacks = isSourceSearch
       ? [
-          'gemini-2.0-flash-lite',
-          'gemini-2.0-flash',
-          'gemini-1.5-flash'
+          'gemini-3.1-flash-lite',
+          'gemini-3.5-flash-lite',
+          'gemini-3.6-flash',
+          'gemini-3.5-flash'
         ]
       : [
           options.preferredModel,
-          'gemini-2.0-flash',
-          'gemini-2.0-flash-lite',
-          'gemini-1.5-flash',
-          'gemini-1.5-pro'
+          'gemini-3.5-flash-lite',
+          'gemini-3.6-flash',
+          'gemini-3.1-flash-lite',
+          'gemini-3.5-flash'
         ];
     const uniqueRaw = [...new Set(rawFallbacks.filter(Boolean))];
     for (const modelName of uniqueRaw) {
