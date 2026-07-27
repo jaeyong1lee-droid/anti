@@ -926,6 +926,21 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
       const bulletRegex = /^([ \t]*(?:\*|-|•|▪|▫|·|\d+\.|\d+\)|[a-zA-Z가-힣]\.|\b[a-zA-Z가-힣]\)|[①-⑳]|\[INPUT_\d+(?:_\d+)?\])[ \t]*)(?!\$)([a-zA-Z0-9_\\'\^\(\)\{\}\+\-\*\/=]+)(?!\$)([ \t]*:)/;
       return line.replace(bulletRegex, (match, p1, p2, p3) => `${p1}$${p2}$${p3}`);
     }).join('\n');
+
+    // [Self-Healing] Auto-wrap unwrapped LaTeX commands and subscript variables in $...$
+    const latexCmds = 'Delta|Sigma|Gamma|Phi|Theta|Omega|alpha|beta|gamma|sigma|tau|phi|theta|epsilon|pi|delta|omega|mu|lambda|psi|rho|eta|nu|xi|zeta|chi|upsilon|kappa|frac|dfrac|tfrac|sqrt|cdot|times|div|pm|infty|partial|sum|int|sim|le|ge|lt|gt|sin|cos|tan|log|ln|nabla|neq|ne|approx';
+    const unwrappedMathRegex = new RegExp(`(?<![\\$\\\\\\w])(?:\\\\(?:${latexCmds})(?:_\\{[^{}\\n]+\\}|_[a-zA-Z0-9]+|\\^\\{[^{}\\n]+\\}|\\^[a-zA-Z0-9]+|\\{[^{}\\n]*\\})*(?:[\\s\\+\\-\\*\\/=]*[a-zA-Z0-9_'\^\\(\\)\\{\\}\\[\\]]+)*|\\b[a-zA-Z][a-zA-Z0-9_']*_\\{[^{}\\n]+\\}|\\b[a-zA-Z][a-zA-Z0-9_']*_[a-zA-Z0-9]+)(?![\\$\\w])`, 'g');
+    
+    const tokens = tokenizeForHealing(processed);
+    processed = tokens.map(t => {
+      if (t.type === 'text') {
+        return t.content.replace(unwrappedMathRegex, (m) => `$${m.trim()}$`);
+      }
+      return t.content;
+    }).join('');
+
+    // Clean orphan trailing dollar signs that sit immediately after a closed math formula
+    processed = processed.replace(/(\$[^\$\n]+\$)\s*\$(?!\$)/g, '$1');
   }
 
   // [🔥 치명적 버그 해결] AI의 이중 이스케이프 오류(\\phi -> \phi) 최우선 복구

@@ -1,4 +1,5 @@
 import { cleanAndSanitizeMathText } from './renderingHelpers';
+import { healLatexFormulas } from './latexUtils';
 
 function parseRow(rowText) {
   if (!rowText) return [];
@@ -16,7 +17,7 @@ function renderCellMath(text) {
   if (!text) return '';
   if (typeof text !== 'string') return text;
   
-  const cleanedText = cleanAndSanitizeMathText(text);
+  const cleanedText = healLatexFormulas(cleanAndSanitizeMathText(text));
   
   // Replace $$ ... $$ first (block math)
   let temp = cleanedText.replace(/\$\$\s*([\s\S]*?)\s*\$\$/g, (match, math) => {

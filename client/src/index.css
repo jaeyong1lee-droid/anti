@@ -942,7 +942,8 @@ div[class*="overflow-y-auto"] {
     min-width: var(--global-mobile-first-col-width, var(--col-width-0, 7.5rem)) !important;
     max-width: var(--global-mobile-first-col-width, var(--col-width-0, 7.5rem)) !important;
     box-shadow: 2px 0 5px rgba(0, 0, 0, 0.4);
-    word-break: break-all !important;
+    word-break: keep-all !important;
+    overflow-wrap: break-word !important;
     white-space: normal !important;
     padding-left: 6px !important;
     padding-right: 6px !important;
@@ -1039,7 +1040,8 @@ div[class*="overflow-y-auto"] {
   .markdown-table-2col td:not(:first-child) {
     width: calc(100% - 60px) !important;
     white-space: normal !important;
-    word-break: break-all !important;
+    word-break: keep-all !important;
+    overflow-wrap: break-word !important;
     text-align: left !important;
     padding: 8px 10px !important;
   }
