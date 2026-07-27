@@ -3766,7 +3766,7 @@ router.post('/search-source', async (req, res) => {
   try {
     const { query, topicTitle, documentText, progressId } = req.body;
     const sysPrompt = `당신은 대한민국 국가설계기준(KDS/KCS) 및 국토교통부 설계시공지침, 원보고서 출처 전문 검색 AI입니다. gemini-3.1-flash-lite 초고속 엔진으로 주어진 조회 요청에 대해 정확한 출처 문헌, 조항 번호 및 핵심 규정 수치 데이터를 찾아 반환하십시오.`;
-    const userPrompt = `[출처 검색 질의]: ${query || topicTitle || '연약지반 설계시공 지침'}\n[참조 문서 텍스트]:\n${documentText || 'KDS 11 10 20 (지표침하판 계측 및 역해석 기준)'}`;
+    const userPrompt = `[출처 검색 질의]: ${query || topicTitle || '국가 건설기준 KDS/KCS 및 원보고서 지침'}\n[참조 문서 텍스트]:\n${documentText || (topicTitle ? `KDS / KCS 국가 건설기준 및 원보고서: ${topicTitle}` : '국가 건설기준 및 원보고서 지침')}`;
     
     const result = await searchSourceDocumentWithGeminiLite(sysPrompt, userPrompt, null, { progressId });
     return res.json({ success: true, model: 'gemini-3.1-flash-lite', result });
