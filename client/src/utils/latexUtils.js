@@ -503,10 +503,31 @@ const healCorruptedKatexHtml = (text) => {
 };
 
 // 3. 메인 레이아웃 및 수식 복구 마스터 함수
+export function healUnbalancedDollars(str) {
+  if (!str || typeof str !== 'string') return str;
+  let text = str;
+
+  const count = (text.match(/\$/g) || []).length;
+  if (count % 2 !== 0) {
+    const latexCmds = 'Delta|Sigma|Gamma|Phi|Theta|Omega|alpha|beta|gamma|sigma|tau|phi|theta|epsilon|pi|delta|omega|mu|lambda|psi|rho|eta|nu|xi|zeta|chi|upsilon|kappa|frac|dfrac|tfrac|sqrt|cdot|times|div|pm|infty|partial|sum|int|sim|le|ge|lt|gt|sin|cos|tan|log|ln|nabla|neq|ne|approx';
+    // 1. Missing opening $: e.g. (\Delta t$) or (\dfrac{t}{s} - t$) or ( s_f$)
+    text = text.replace(new RegExp(`([(\\s])(\\\\?(?:${latexCmds}|[a-zA-Z][a-zA-Z0-9_']*)[^\\$\\n]*?)\\$`, 'g'), (m, p1, p2) => {
+      return `${p1}$${p2.trim()}$`;
+    });
+
+    // 2. Missing closing $: e.g. $s_i = \beta_0 + \beta_1 s_{i-1} or $\dfrac{t}{s(t)}=\alpha + \beta t
+    if ((text.match(/\$/g) || []).length % 2 !== 0) {
+      text = text.trim() + '$';
+    }
+  }
+
+  return text;
+}
+
 export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = null, forceInline = false) {
   if (!text || typeof text !== 'string') return text;
 
-  text = text.replace(/₩/g, '\\');
+  text = healUnbalancedDollars(text.replace(/₩/g, '\\'));
   let processed = healCorruptedKatexHtml(text);
   // [Self-Healing] Fix corrupted HTML entity inequality symbols (&\lt;, &amp;\lt;, etc.)
   processed = processed.replace(/&amp;\\?lt;?/gi, '<')

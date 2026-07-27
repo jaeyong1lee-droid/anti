@@ -3796,7 +3796,7 @@ export default function App() {
       
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 6000);
+        const timeoutId = setTimeout(() => controller.abort(), 40000);
 
         const res = await fetch(`${API_BASE}/api/grade-subjective`, {
           method: 'POST',
