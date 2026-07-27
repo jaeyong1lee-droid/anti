@@ -229,8 +229,11 @@ const getSeededRandom = (seedStr) => {
 };
 
 const parseHtmlTable = (htmlStr) => {
+  if (!htmlStr) return { headers: [], rows: [] };
+  const str = typeof htmlStr === 'string' ? htmlStr : String(htmlStr);
+
   const parser = new DOMParser();
-  const doc = parser.parseFromString(htmlStr || '', 'text/html');
+  const doc = parser.parseFromString(str, 'text/html');
   
   let ths = [];
   const thead = doc.querySelector('thead');
@@ -253,6 +256,13 @@ const parseHtmlTable = (htmlStr) => {
     const tds = Array.from(tr.querySelectorAll('td, th')).map(el => el.textContent.trim());
     if (tds.length > 0) {
       rows.push(tds);
+    }
+  }
+
+  if ((ths.length === 0 || rows.length === 0) && str.includes('|')) {
+    const mdParsed = parseMarkdownTable(str);
+    if (mdParsed && mdParsed.tableData && mdParsed.tableData.headers && mdParsed.tableData.rows && mdParsed.tableData.rows.length > 0) {
+      return mdParsed.tableData;
     }
   }
 
@@ -8811,9 +8821,9 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
         
         const questions = await Promise.all(selectedItems.map(async (item, qIdx) => {
           if (item.mixedType === 'table') {
-            const parsed = parseHtmlTable(item.html);
+            const parsed = parseHtmlTable(item.html || item.content);
             const answers = {};
-            const rows = parsed.rows.map((row, rIdx) => {
+            const rows = (parsed.rows || []).map((row, rIdx) => {
               return row.map((cell, cIdx) => {
                 if (cIdx === 0) return cell;
                 const inputId = `INPUT_${rIdx}_${cIdx}`;
@@ -8828,11 +8838,11 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
               subtype: '표채우기',
               question: item.title,
               tableData: {
-                headers: parsed.headers,
+                headers: parsed.headers && parsed.headers.length > 0 ? parsed.headers : ['구분', '내용'],
                 rows: rows
               },
               answers: answers,
-              explanation: item.html,
+              explanation: item.html || item.content || item.title,
               mixedType: 'table',
               originalId: item.id
             };
@@ -9644,9 +9654,9 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
 
         const questions = await Promise.all(selectedItems.map(async (item, qIdx) => {
           if (item.mixedType === 'table') {
-            const parsed = parseHtmlTable(item.html);
+            const parsed = parseHtmlTable(item.html || item.content);
             const answers = {};
-            const rows = parsed.rows.map((row, rIdx) => {
+            const rows = (parsed.rows || []).map((row, rIdx) => {
               return row.map((cell, cIdx) => {
                 if (cIdx === 0) return cell;
                 const inputId = `INPUT_${rIdx}_${cIdx}`;
@@ -9661,11 +9671,11 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
               subtype: '표채우기',
               question: item.title,
               tableData: {
-                headers: parsed.headers,
+                headers: parsed.headers && parsed.headers.length > 0 ? parsed.headers : ['구분', '내용'],
                 rows: rows
               },
               answers: answers,
-              explanation: item.html,
+              explanation: item.html || item.content || item.title,
               mixedType: 'table',
               originalId: item.id
             };
