@@ -6,6 +6,10 @@ import { getTableScoreColorTheme, areCellsEqual, isOverviewReview as isOverviewR
 import { parseMarkdownTable } from '../utils/latexUtils';
 
 const normalize = (s) => (s || '').trim().toLowerCase().replace(/\s+/g, '');
+const cleanCellText = (cell) => {
+  if (typeof cell !== 'string') return cell;
+  return cell.replace(/<[^>]*>/g, '').replace(/[\r\n]+/g, ' ').trim();
+};
 
 export const TableQuiz = React.memo(function TableQuiz({ 
   questionIdx, 
@@ -1174,7 +1178,7 @@ export const TableQuiz = React.memo(function TableQuiz({
                   onClick={isFirstCol ? handleHeaderClick : undefined}
                   title={isFirstCol ? "더블클릭 시 너비 초기화" : undefined}
                 >
-                  <LatexRenderer text={header} katexLoaded={katexLoaded} className="inline" />
+                  <LatexRenderer text={cleanCellText(header)} katexLoaded={katexLoaded} className="inline" />
                   {hIdx < colCount - 1 && (
                     <div
                       className="absolute right-0 top-0 bottom-0 w-4 sm:w-2 cursor-col-resize select-none z-10 hover:bg-sky-500/30 active:bg-sky-500/50 touch-none"
@@ -1307,7 +1311,7 @@ export const TableQuiz = React.memo(function TableQuiz({
                           isFirstCol ? 'text-left break-all' : 'text-center'
                         }`}
                       >
-                        <LatexRenderer text={typeof cell === 'string' ? cell.replace(/[\r\n]+/g, ' ').trim() : cell} katexLoaded={katexLoaded} className="inline" />
+                        <LatexRenderer text={cleanCellText(cell)} katexLoaded={katexLoaded} className="inline" />
                       </td>
                     );
                   }
@@ -1501,7 +1505,7 @@ export const TableQuiz = React.memo(function TableQuiz({
                     onClick={isFirstCol ? handleCompHeaderClick : undefined}
                     title={isFirstCol ? "더블클릭 시 너비 초기화" : undefined}
                   >
-                    <LatexRenderer text={header} katexLoaded={katexLoaded} className="inline" />
+                    <LatexRenderer text={cleanCellText(header)} katexLoaded={katexLoaded} className="inline" />
                     {hIdx < compColCount - 1 && (
                       <div
                         className="absolute right-0 top-0 bottom-0 w-4 sm:w-2 cursor-col-resize select-none z-10 hover:bg-sky-500/30 active:bg-sky-500/50 touch-none"
@@ -1624,7 +1628,7 @@ export const TableQuiz = React.memo(function TableQuiz({
                         key={cIdx} 
                         className="p-2 sm:p-2.5 border-r border-slate-800 last:border-r-0 text-slate-355 text-[14px] sm:text-[16px] whitespace-normal break-words text-center align-middle font-extrabold select-text"
                       >
-                        <LatexRenderer text={typeof cell === 'string' ? cell.replace(/[\r\n]+/g, ' ').trim() : cell} katexLoaded={katexLoaded} className="inline" />
+                        <LatexRenderer text={cleanCellText(cell)} katexLoaded={katexLoaded} className="inline" />
                       </td>
                     );
                   })}
