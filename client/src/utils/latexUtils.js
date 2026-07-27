@@ -1216,7 +1216,9 @@ export function healQuizQuestionObject(q) {
       }
     }
 
-    if ((!q.tableData || !q.tableData.headers || !q.tableData.rows || q.tableData.rows.length === 0)) {
+    const isDummyTable = q.tableData && q.tableData.rows && q.tableData.rows.length === 1 && String(q.tableData.rows[0]?.[0] || '').includes('학술적 개요 및 핵심 기전');
+
+    if ((!q.tableData || !q.tableData.headers || !q.tableData.rows || q.tableData.rows.length === 0 || isDummyTable)) {
       const textToParse = (q.question || '') + '\n' + (q.explanation || '') + '\n' + (q.content || '');
       const parsed = parseQuestionTableText(textToParse);
       if (parsed.tableData && parsed.tableData.headers && parsed.tableData.rows && parsed.tableData.rows.length > 0) {
@@ -1233,7 +1235,7 @@ export function healQuizQuestionObject(q) {
           headers: parsed.tableData.headers,
           rows: rows
         };
-        if (!q.answers || Object.keys(q.answers).length === 0) {
+        if (!q.answers || Object.keys(q.answers).length === 0 || isDummyTable) {
           q.answers = answers;
         }
       }
