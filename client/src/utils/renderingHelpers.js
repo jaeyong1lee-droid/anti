@@ -331,12 +331,8 @@ export const handleOpenHtmlAnswerPopup = (title, text) => {
     popupWindow.document.close();
     popupWindow.focus();
   } else {
-    alert("팝업 차단기가 활성화되어 있어 팝업창을 열 수 없습니다. 브라우저 설정에서 이 사이트의 팝업을 허용해 주세요.");
-  }
-};
-
-// Helper to build a single collapsible button HTML
-export const buildSingleButtonHtml = (itemStr) => {
+    alert("팝업 차단기가 활성화되어 �// Helper to build a single collapsible button HTML
+export const buildSingleButtonHtml = (itemStr, fallbackBody = '') => {
   if (!itemStr || typeof itemStr !== 'string') return '';
   const rawLines = itemStr.trim().split('\n');
   const firstLine = rawLines[0]
@@ -362,20 +358,16 @@ export const buildSingleButtonHtml = (itemStr) => {
   }
 
   if (!mainContent) {
-    if (/KDS 27 10 05|터널|측압계수|K_0|K0|라이닝|천단부|인버트/i.test(firstLine + ' ' + (itemStr || ''))) {
-      if (/원보고서/i.test(firstLine)) {
-        mainContent = `• <strong>1. 개요 (Introduction)</strong>:<br/>지하 구조물인 터널은 굴착 전 지반이 수직 및 수평방향으로 받고 있는 <strong>초기 지중응력(In-situ Stress)</strong>에 직접적으로 구속되어 있습니다. 터널 굴착이 시작되면 원지반에 존재하던 응력 평형 상태가 파괴되며, 구속압이 해방됨과 동시에 터널 주위로 응력이 재분배(Stress Redistribution)되는 과정을 거치게 됩니다.<br/><br/>이때, 연직 지중응력에 대한 수평 지중응력의 비로 정의되는 <strong>측압계수 $K_0$</strong> 는 터널 주변 암반의 변형 패턴, 소성역(Plastic Zone)의 규모 및 방향성, 그리고 지보재(Shotcrete, Rock Bolt)에 작용하는 설계 하중의 특성을 원천적으로 결정하는 극히 중요한 매개변수입니다.<br/><br/>• <strong>2. 측압계수 $K_0$ 의 역학적 정의 및 Kirsch의 탄성해</strong>:<br/>기본적으로 초기지중응력 상태에서의 측압계수 $K_0$ 의 정의는 유효연직응력 $\\sigma_v'$ 와 유효수평응력 $\\sigma_h'$ 의 비로 나타납니다:<br/>$$K_0 = \\frac{\\sigma_h'}{\\sigma_v'}$$`;
-      } else {
-        mainContent = `• <strong>KDS 27 10 05 (터널설계기준 / 지반 측압계수 $K_0$ 영향 평가 기준)</strong>:<br/>터널 굴착 후 지반의 초기 측압계수($K_0 = \\sigma_h' / \\sigma_v'$) 조건에 따른 응력 분배 및 라이닝 변형 거동 규정. 저측압 조건($K_0 < 1.0$)의 연직하중 지배로 인한 천장부 침하 및 어깨부 인장집중 양상과, 고측압 조건($K_0 > 1.0$)의 수평응력 지배에 의한 측벽부 압출 및 인버트 부어오름(Heaving) 발생 메커니즘 수록.`;
-      }
-    } else if (/국가설계기준/i.test(firstLine)) {
-      mainContent = `• <strong>KDS / KCS 국가 건설기준</strong>:<br/>국토교통부 및 관계 기관 발행 지반/토목공학 표준 설계시공지침 규정으로, 현장 설계 파라미터 수치와 구조 안전성 한계 허용 기준 수록.`;
+    if (fallbackBody) {
+      mainContent = fallbackBody;
+    } else if (/KDS|KCS|국가설계기준|설계기준|시방서/i.test(firstLine)) {
+      mainContent = `• <strong>${mainTitle}</strong>:<br/>국토교통부 KDS/KCS 국가건설기준에 수록된 해당 공법/토픽의 표준 설계 지침, 품질 관리 기준 및 시공 안전 규정.`;
     } else if (/원보고서/i.test(firstLine)) {
-      mainContent = `• <strong>원보고서 기술 수록 본문</strong>:<br/>현장 공사 성토/굴착 시계열 실측 계측치 데이터 분석 및 공학적 역해석(Observational Method & Back-Analysis) 수행 결과, 핵심 설계 수치와 토압/응력/변위 계측 데이터 수록.`;
+      mainContent = `• <strong>${mainTitle}</strong>:<br/>현장 공사 계측치 데이터 분석, 공학적 변위/응력 검토 결과 및 실무 기술 수록 본문.`;
     } else if (/Wikipedia|위키|Soil Mechanics/i.test(firstLine)) {
-      mainContent = `• <strong>Geotechnical Soil Mechanics Standard</strong>:<br/>In geotechnical engineering & soil mechanics, this field topic governs stress distribution, effective stress ratio ($K_0 = \\sigma_h' / \\sigma_v'$), and observational deformation behavior according to Terzaghi, Peck, and Jaky empirical soil pressure models.`;
+      mainContent = `• <strong>${mainTitle}</strong>:<br/>지반공학 및 학술 문헌에 근거한 공학적 변량 규정, 거동 메커니즘 및 역학적 파라미터 표준.`;
     } else {
-      mainContent = `• <strong>${mainTitle} 수록 본문 내용</strong>:<br/>해당 규정/지침/문헌의 핵심 설계 파라미터 수치와 수리/역학적 역해석 모델 실측 데이터 수록.`;
+      mainContent = `• <strong>${mainTitle}</strong>:<br/>해당 기술 기준 및 학술 문헌의 설계 파라미터 수치와 핵심 공학적 메커니즘 규정.`;
     }
   }
 
@@ -398,12 +390,21 @@ export function getOnlySourceAccordion(text, qTitle = '') {
   const safeText = text || '';
   const cleanTopicTitle = (qTitle || '').replace(/^Q\d+\.?\s*/i, '').replace(/[\r\n]/g, '').trim() || '해당 기술사 토픽';
 
-  const isTunnel = /터널|측압계수|K_0|K0|라이닝|굴착|천단|측벽|인버트|락볼트/i.test(safeText + ' ' + cleanTopicTitle);
-  const isSlope = /사면|비탈면|활동면|슬라이딩|낙석|절토/i.test(safeText + ' ' + cleanTopicTitle);
-
   const sourceItemRegex = /^[ \t]*(?:\*|-|•|\d+[\.\)]|\[\d+\])?[ \t]*(?:📚|📖|📄|🔖|💡|📌|🔍|📜|📑|📘)?[ \t]*(?:\*\*|\[)?\s*(KDS|KCS|KWCS|KS|ASTM|AASHTO|FHWA|USACE|JHD|국토교통부|국토부|건설교통부|건교부|해양수산부|해수부|환경부|산업통상자원부|한국도로공사|도로공사|LH|LH공사|수자원공사|K-water|농어촌공사|철도공단|철도시설공단|지반공학회|토목학회|발파공학회|터널지하공간학회|서울시|서울특별시|일본도로공단|원보고서|보고서|Wikipedia|위키|http:\/\/|https:\/\/|출처|참고자료|참고문헌|근거|시방서|설계기준|지침|설계지침|시공지침|안전지침|시공기준|기술기준|지반조사|논문|학술지|서적|교재|도서|Soil Mechanics|Lambe|Whitman|Peck|Terzaghi|Bowles|Das|Skempton|Bjerrum|Casagrande|Asaoka|Mesa)([\s\S]*?)(?=\n[ \t]*(?:\*|-|•|\d+[\.\)]|\[\d+\]|#{1,6}\s+)|\n\n|$)/gmi;
 
   const matches = [...safeText.matchAll(sourceItemRegex)];
+
+  // Extract meaningful body lines from text for dynamic fallback body content
+  const extractFallbackContent = (bodyStr) => {
+    if (!bodyStr) return '';
+    const lines = bodyStr.split('\n')
+      .map(l => l.trim())
+      .filter(l => l.length > 5 && !/^[ \t]*(?:\*|-|•|\d+[\.\)]|\[\d+\])?[ \t]*(?:📜|📚|📖|📄|🔖|💡|📌|🔍|📑|📘)?[ \t]*(?:\*\*|\[)?\s*(KDS|KCS|원보고서|Wikipedia|출처)/i.test(l));
+    if (lines.length === 0) return '';
+    return lines.slice(0, 3).map(l => `• ${l.replace(/^[\*•\-]\s*/, '')}`).join('<br/>');
+  };
+
+  const dynamicFallbackBody = extractFallbackContent(safeText);
 
   let rawButtons = '';
   let count = 0;
@@ -413,13 +414,28 @@ export function getOnlySourceAccordion(text, qTitle = '') {
     const btnHtmls = [];
     for (const m of matches) {
       const itemStr = m[0].trim();
-      // Purge mismatched citations (e.g. if topic is Tunnel, purge Soft Ground citations)
-      if (isTunnel && /연약지반|지표침하판|쌍곡선|아사오카|압밀/i.test(itemStr) && !/터널|측압계수/i.test(itemStr)) {
-        continue; // Skip topic-mismatched citations
-      }
-
       const cleanKey = itemStr.replace(/[^a-zA-Z0-9가-힣]/g, '').substring(0, 30);
       if (!uniqueItems.has(cleanKey)) {
+        uniqueItems.add(cleanKey);
+        const btn = buildSingleButtonHtml(itemStr, dynamicFallbackBody);
+        if (btn) btnHtmls.push(btn);
+      }
+    }
+    rawButtons = btnHtmls.join('\n');
+    count = btnHtmls.length;
+  }
+
+  if (count === 0) {
+    const defaultBtn1 = buildSingleButtonHtml(`국가 건설기준 KDS / KCS: ${cleanTopicTitle}`, dynamicFallbackBody);
+    const defaultBtn2 = buildSingleButtonHtml(`원보고서 본문: ${cleanTopicTitle}`, dynamicFallbackBody);
+    const defaultBtn3 = buildSingleButtonHtml(`Wikipedia / 학술문헌: ${cleanTopicTitle}`, dynamicFallbackBody);
+
+    rawButtons = [defaultBtn1, defaultBtn2, defaultBtn3].filter(Boolean).join('\n');
+    count = 3;
+  }
+
+  return `<details class="my-2 border border-slate-700/60 rounded-xl overflow-hidden bg-slate-900/90 shadow-md select-text"><summary class="px-3 py-1.5 bg-gradient-to-r from-slate-850 via-slate-900 to-slate-850 hover:from-slate-800 hover:to-slate-800 text-slate-100 font-bold text-xs sm:text-sm cursor-pointer flex items-center justify-between select-none border-b border-slate-800/50 group"><span class="flex items-center gap-2"><span class="px-2 py-0.5 text-[11px] font-black rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0">📜 출처 및 근거 보고서 (${count}개)</span><span class="text-slate-400 text-xs font-normal hidden sm:inline">(클릭 시 열기/접기)</span></span><span class="text-[11px] sm:text-xs text-amber-400 font-semibold px-2 py-0.5 rounded-lg bg-amber-400/10 border border-amber-400/20 flex items-center gap-1 group-hover:bg-amber-400/20 shrink-0"><span>열기 / 접기</span><span class="text-[10px]">▼</span></span></summary><div class="p-1 space-y-0.5 bg-slate-950/80 border-t border-slate-800">${rawButtons}</div></details>`;
+}leanKey)) {
         uniqueItems.add(cleanKey);
         const btn = buildSingleButtonHtml(itemStr);
         if (btn) btnHtmls.push(btn);
