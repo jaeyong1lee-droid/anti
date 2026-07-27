@@ -294,7 +294,7 @@ router.post('/question/regenerate', async (req, res) => {
   let standardsAnalysis = '';
   let progressTimer = null;
   const localCallLLM = (sys, prompt, img, scenario, opts) => {
-    const enrichedPrompt = `[🚨 0단계 AI가 사전 분석한 절대 지침 준수 주의사항]:\n${standardsAnalysis}\n\n${prompt}`;
+    const enrichedPrompt = standardsAnalysis ? `${standardsAnalysis}\n\n${prompt}` : prompt;
     return callLLMWithFailover(sys, enrichedPrompt, img, scenario, { ...opts, progressId });
   };
   if (progressId) {

@@ -342,9 +342,6 @@ export async function callLLMWithFailover(systemInstruction, userPrompt, image =
 }
 
 export async function analyzeStandardsBeforeTask(progressId, topicTitle, standards, scenario = 'generation') {
-  if (progressId) {
-    updateProgress(progressId, 0, '0단계: 사전 절대 지침 반영 완료', 10);
-  }
   return '';
 }
 

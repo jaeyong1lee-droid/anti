@@ -489,7 +489,7 @@ router.post('/topics/:id/ai-questions', async (req, res) => {
     const progressId = req.query.progressId || req.body.progressId;
     let standardsAnalysis = '';
     const localCallLLM = (sys, prompt, img, scenario, opts) => {
-      const enrichedPrompt = `[🚨 0단계 AI가 사전 분석한 절대 지침 준수 주의사항]:\n${standardsAnalysis}\n\n${prompt}`;
+      const enrichedPrompt = standardsAnalysis ? `${standardsAnalysis}\n\n${prompt}` : prompt;
       return callLLMWithFailover(sys, enrichedPrompt, img, scenario, { ...opts, progressId });
     };
 
@@ -764,10 +764,7 @@ ${activeEngineeringStandards}
 [🚨 최우선 절대 준수 법규 (Constitutional Guidelines) - 작업을 시작하기 전에 가장 먼저 확인하고 100% 준수하십시오]:
 당신은 대한민국 국가기술자격 기술사(Professional Engineer) 시험 출제위원으로서 문제를 출제하기 전, 아래 명시된 **문제생성 절대 지침들**과 **공학적 이론 기준**을 헌법의 제1조 철칙으로 삼아 이를 먼저 완벽하게 숙지하고 절대적으로 복종하여 문제를 설계 및 출제해야 합니다. 지침을 위반하여 출제된 문제는 시스템 검증 단계에서 즉시 폐기됩니다.
 
-[🚨 0단계 AI가 사전 분석한 절대 지침 준수 주의사항]:
-${standardsAnalysis}
-
-[🚨 문제 생성 절대 준수 지침]:
+${standardsAnalysis ? `${standardsAnalysis}\n\n` : ''}[🚨 문제 생성 절대 준수 지침]:
 ${activeGenerationStandards}
 
 [🚨 지반공학 표준 이론 및 계산 기준]:
@@ -905,10 +902,7 @@ ${LATEX_PROMPT_INSTRUCTIONS}
 [🚨 최우선 절대 준수 법규 (Constitutional Guidelines) - 작업을 시작하기 전에 가장 먼저 확인하고 100% 준수하십시오]:
 당신은 대한민국 국가기술자격 기술사(Professional Engineer) 시험 출제위원으로서 문제를 출제하기 전, 아래 명시된 **문제생성 절대 지침들**과 **공학적 이론 기준**을 헌법의 제1조 철칙으로 삼아 이를 먼저 완벽하게 숙지하고 절대적으로 복종하여 문제를 설계 및 출제해야 합니다. 지침을 위반하여 출제된 문제는 시스템 검증 단계에서 즉시 폐기됩니다.
 
-[🚨 0단계 AI가 사전 분석한 절대 지침 준수 주의사항]:
-${standardsAnalysis}
-
-[🚨 문제 생성 절대 준수 지침]:
+${standardsAnalysis ? `${standardsAnalysis}\n\n` : ''}[🚨 문제 생성 절대 준수 지침]:
 ${activeGenerationStandards}
 
 [🚨 지반공학 표준 이론 및 계산 기준]:
@@ -980,10 +974,7 @@ ${LATEX_PROMPT_INSTRUCTIONS}
 [🚨 최우선 절대 준수 법규 (Constitutional Guidelines) - 작업을 시작하기 전에 가장 먼저 확인하고 100% 준수하십시오]:
 당신은 대한민국 국가기술자격 기술사(Professional Engineer) 시험 출제위원으로서 문제를 출제하기 전, 아래 명시된 **문제생성 절대 지침들**과 **공학적 이론 기준**을 헌법의 제1조 철칙으로 삼아 이를 먼저 완벽하게 숙지하고 절대적으로 복종하여 문제를 설계 및 출제해야 합니다. 지침을 위반하여 출제된 문제는 시스템 검증 단계에서 즉시 폐기됩니다.
 
-[🚨 0단계 AI가 사전 분석한 절대 지침 준수 주의사항]:
-${standardsAnalysis}
-
-[🚨 문제 생성 절대 준수 지침]:
+${standardsAnalysis ? `${standardsAnalysis}\n\n` : ''}[🚨 문제 생성 절대 준수 지침]:
 ${activeGenerationStandards}
 
 [🚨 지반공학 표준 이론 및 계산 기준]:
@@ -2473,7 +2464,7 @@ ${ENGINEERING_STANDARDS}
 `;
       try {
         console.log(`[종합평가 병렬 생성] #${idx + 1}번째 배치 전송 시작...`);
-        const enrichedPrompt = `[🚨 0단계 AI가 사전 분석한 절대 지침 준수 주의사항]:\n${standardsAnalysis}\n\n${batchPrompt}`;
+        const enrichedPrompt = standardsAnalysis ? `${standardsAnalysis}\n\n${batchPrompt}` : batchPrompt;
         const rawText = await callLLMWithFailover(null, enrichedPrompt, null, 'question', { temperature: 1.0 });
         let text = rawText.trim();
         if (text.startsWith('```')) {
