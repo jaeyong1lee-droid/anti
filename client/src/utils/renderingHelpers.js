@@ -597,19 +597,20 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
   // Render dividers
   tempText = tempText.replace(/^[ \t]*(?:\*\*\*|\* \* \*|---|---|===)[ \t]*$/gm, '<hr style="border: 0; border-top: 1px solid rgba(255, 255, 255, 0.1); margin: 0 0 1.0rem 0;" />');
 
-  // Convert markdown unordered list items (* or - at line start) into styled HTML <ul><li> blocks
+  // Convert markdown unordered list items (*, -, or • at line start) into styled HTML <ul><li> blocks
   // Groups consecutive list lines together, supports 1-level nesting via indentation
-  tempText = tempText.replace(/((?:^[ \t]*[-*]\s+.+(?:\n|$))+)/gm, (block) => {
+  tempText = tempText.replace(/((?:^[ \t]*[-*•▪▫·]\s*.+(?:\n|$))+)/gm, (block) => {
     const lines = block.split('\n');
     let html = '';
     let inOuter = false;
     let inInner = false;
 
     for (const line of lines) {
-      const match = line.match(/^([ \t]*)([-*])\s+(.+)$/);
+      const match = line.match(/^([ \t]*)([-*•▪▫·])\s*(.+)$/);
       if (!match) continue;
       const indentLen = match[1].replace(/\t/g, '  ').length;
-      const content = match[3];
+      let content = match[3].replace(/^[ \t]*[•\-*▪▫·][ \t]*/g, '').trim();
+      if (!content) continue;
 
       if (indentLen === 0) {
         // Outer item
