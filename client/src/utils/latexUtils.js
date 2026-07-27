@@ -1275,7 +1275,7 @@ export function healQuizQuestionObject(q) {
     const hasBulletsInCol0 = (q.tableData?.rows || []).some(r => String(r[0] || '').startsWith('•') || String(r[0] || '').startsWith('-') || String(r[0] || '').includes('<strong>'));
     const textToParse = (q.question || '') + '\n' + (q.explanation || '') + '\n' + (q.content || '');
     const parsed = parseQuestionTableText(textToParse);
-    if (parsed && parsed.tableData && parsed.tableData.headers && parsed.tableData.rows && (parsed.tableData.rows.length > existingRowCount || hasBulletsInCol0)) {
+    if (!q.comparisonTableData && parsed && parsed.tableData && parsed.tableData.headers && parsed.tableData.rows && (parsed.tableData.rows.length > existingRowCount || hasBulletsInCol0)) {
       const answers = {};
       const rows = parsed.tableData.rows.map((row, rIdx) => {
         return row.map((cell, cIdx) => {

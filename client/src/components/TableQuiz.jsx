@@ -35,7 +35,7 @@ export const TableQuiz = React.memo(function TableQuiz({
   const existingRowCount = Array.isArray(q.tableData?.rows) ? q.tableData.rows.length : 0;
   const hasBulletsInCol0 = (q.tableData?.rows || []).some(r => String(r[0] || '').startsWith('•') || String(r[0] || '').startsWith('-') || String(r[0] || '').includes('<strong>'));
   const textToParse = (q.explanation || '') + '\n' + (q.content || '') + '\n' + (q.question || '');
-  if (textToParse.includes('|')) {
+  if (!q.comparisonTableData && textToParse.includes('|')) {
     const mdParsed = parseMarkdownTable(textToParse);
     if (mdParsed && mdParsed.tableData && mdParsed.tableData.headers && mdParsed.tableData.rows && (mdParsed.tableData.rows.length > existingRowCount || hasBulletsInCol0)) {
       const answers = {};

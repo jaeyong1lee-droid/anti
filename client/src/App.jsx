@@ -8942,91 +8942,60 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
               originalId: item.id
             };
           } else if (item.mixedType === 'overview') {
-            const matchedTable = (tables || []).find(t => t.title && item.title && (t.title.trim() === item.title.trim() || t.title.includes(item.title) || item.title.includes(t.title)));
-            
             const parsed = parseOverviewContent(item.content);
             const answers = {};
-            let rows = [];
-            let tableHeaders = ['구분', '내용'];
+            const rows = [];
+            const tableHeaders = ['구분', '내용'];
             let comparisonTableData = null;
 
-            if (matchedTable && matchedTable.html) {
-              const parsedT = parseHtmlTable(matchedTable.html);
-              if (parsedT && parsedT.headers && parsedT.rows && parsedT.rows.length > 0) {
-                tableHeaders = parsedT.headers;
-                rows = parsedT.rows.map((row, rIdx) => {
+            if (parsed.definition) {
+              answers['INPUT_0_1'] = parsed.definition;
+              rows.push(['학술적 정의', '[INPUT_0_1]']);
+            }
+            if (parsed.mechanism) {
+              const rowIdx = rows.length;
+              answers[`INPUT_${rowIdx}_1`] = parsed.mechanism;
+              rows.push(['공학적 작동 메커니즘', `[INPUT_${rowIdx}_1]`]);
+            }
+            if (rows.length === 0) {
+              const fallbackVal = item.content || item.title || '학술적 개요 및 핵심 기전 서술';
+              answers['INPUT_0_1'] = fallbackVal;
+              rows.push(['학술적 개요 및 핵심 기전', '[INPUT_0_1]']);
+            }
+
+            let rawCompText = parsed.comparison || '';
+            if (!rawCompText) {
+              const matchedTable = (tables || []).find(t => t.title && item.title && (t.title.trim() === item.title.trim() || t.title.includes(item.title) || item.title.includes(t.title)));
+              if (matchedTable) {
+                rawCompText = matchedTable.html || matchedTable.content || '';
+              }
+            }
+
+            if (rawCompText) {
+              let normalizedComparison = rawCompText;
+              normalizedComparison = normalizedComparison.split('\n').map(line => {
+                let l = line.trim();
+                if (l && l.includes('|')) {
+                  if (!l.startsWith('|')) l = '| ' + l;
+                  if (!l.endsWith('|')) l = l + ' |';
+                }
+                return l;
+              }).join('\n');
+
+              const parsedComp = parseMarkdownTable(normalizedComparison) || parseHtmlTable(normalizedComparison);
+              if (parsedComp && parsedComp.tableData && parsedComp.tableData.headers && parsedComp.tableData.rows && parsedComp.tableData.rows.length > 0) {
+                const compRows = parsedComp.tableData.rows.map((row, rIdx) => {
                   return row.map((cell, cIdx) => {
                     if (cIdx === 0) return cell;
-                    const inputId = `INPUT_${rIdx}_${cIdx}`;
+                    const inputId = `INPUT_${rows.length + rIdx}_${cIdx}`;
                     answers[inputId] = cell;
                     return `[${inputId}]`;
                   });
                 });
-              }
-            }
-
-            if (rows.length === 0) {
-              if (parsed.definition) {
-                answers['INPUT_0_1'] = parsed.definition;
-                rows.push(['학술적 정의', '[INPUT_0_1]']);
-              }
-              if (parsed.mechanism) {
-                const rowIdx = rows.length;
-                answers[`INPUT_${rowIdx}_1`] = parsed.mechanism;
-                rows.push(['공학적 작동 메커니즘', `[INPUT_${rowIdx}_1]`]);
-              }
-
-              if (parsed.comparison) {
-                let normalizedComparison = parsed.comparison;
-                normalizedComparison = normalizedComparison.split('\n').map(line => {
-                  let l = line.trim();
-                  if (l && l.includes('|')) {
-                    if (!l.startsWith('|')) l = '| ' + l;
-                    if (!l.endsWith('|')) l = l + ' |';
-                  }
-                  return l;
-                }).join('\n');
-
-                const parsedComp = parseMarkdownTable(normalizedComparison);
-                if (parsedComp && parsedComp.tableData && parsedComp.tableData.headers && parsedComp.tableData.rows) {
-                  const compRows = parsedComp.tableData.rows.map((row, rIdx) => {
-                    return row.map((cell, cIdx) => {
-                      if (cIdx === 0) return cell;
-                      const inputId = `INPUT_${rows.length + rIdx}_${cIdx}`;
-                      answers[inputId] = cell;
-                      return `[${inputId}]`;
-                    });
-                  });
-                  comparisonTableData = {
-                    headers: parsedComp.tableData.headers,
-                    rows: compRows
-                  };
-                }
-              }
-            }
-
-            if (rows.length === 0) {
-              if (comparisonTableData && comparisonTableData.headers && comparisonTableData.rows && comparisonTableData.rows.length > 0) {
-                tableHeaders = comparisonTableData.headers;
-                rows = comparisonTableData.rows;
-                comparisonTableData = null;
-              } else {
-                const mdParsed = parseMarkdownTable(item.content);
-                if (mdParsed && mdParsed.tableData && mdParsed.tableData.headers && mdParsed.tableData.rows && mdParsed.tableData.rows.length > 0) {
-                  tableHeaders = mdParsed.tableData.headers;
-                  rows = mdParsed.tableData.rows.map((row, rIdx) => {
-                    return row.map((cell, cIdx) => {
-                      if (cIdx === 0) return cell;
-                      const inputId = `INPUT_${rIdx}_${cIdx}`;
-                      answers[inputId] = cell;
-                      return `[${inputId}]`;
-                    });
-                  });
-                } else {
-                  const fallbackVal = item.content || item.title || '학술적 개요 및 핵심 기전 서술';
-                  answers['INPUT_0_1'] = fallbackVal;
-                  rows.push(['학술적 개요 및 핵심 기전', '[INPUT_0_1]']);
-                }
+                comparisonTableData = {
+                  headers: parsedComp.tableData.headers,
+                  rows: compRows
+                };
               }
             }
 
