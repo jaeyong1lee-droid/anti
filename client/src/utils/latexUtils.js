@@ -1214,23 +1214,79 @@ function parseQuestionTableText(questionText) {
   return { questionText, tableData };
 }
 
-const localParseOverviewContent = (content) => {
+export const parseOverviewContent = (content) => {
   const result = { definition: '', mechanism: '', comparison: '', significance: '', intuitive: '' };
   if (!content) return result;
-  const lines = content.split('\n');
+
+  let healedContent = typeof content === 'string' ? content : String(content || '');
+  healedContent = healedContent.replace(/\|\s*(개요\(\d+~\d+자\)|개요|메커니즘|비교표|비교|장단점|의미|한계성|직관적의미|직관적)\s*\|/gi, '\n| $1 |');
+  healedContent = healedContent.replace(/\|[ \t]*\|/g, '\n|');
+
+  const lines = healedContent.split('\n');
+  let currentKey = null;
+
   for (const line of lines) {
-    if (!line.includes('|')) continue;
-    const parts = line.split('|').map(p => p.trim()).filter(Boolean);
-    if (parts.length < 2) continue;
-    const key = parts[0];
-    const val = parts[1];
+    const trimmed = line.trim();
+    if (!trimmed || trimmed === '|') continue;
     
-    if (key.includes('개요')) {
-      result.definition = val;
-    } else if (key.includes('메커니즘')) {
-      result.mechanism = val;
+    if ((trimmed.includes(':---') || (trimmed.startsWith('|') && trimmed.includes('구분') && trimmed.includes('내용'))) && !currentKey) {
+      continue;
+    }
+
+    const sectionMatch = trimmed.match(/^\|\s*([^|]+)\s*\|?\s*([\s\S]*)$/);
+    const rawKeyCandidate = sectionMatch ? sectionMatch[1].trim() : '';
+    const isTopLevelKey = 
+      rawKeyCandidate === '개요' || 
+      rawKeyCandidate.startsWith('개요(') || 
+      rawKeyCandidate === '메커니즘' || 
+      rawKeyCandidate === '비교표' || 
+      rawKeyCandidate === '비교' || 
+      rawKeyCandidate === '장단점' || 
+      rawKeyCandidate === '공학적 의미/한계성' || 
+      rawKeyCandidate === '공학적 의미 및 한계성' || 
+      rawKeyCandidate === '의미/한계성' || 
+      rawKeyCandidate === '직관적의미' || 
+      rawKeyCandidate === '직관적';
+
+    if (sectionMatch && isTopLevelKey) {
+      const rawKey = sectionMatch[1].trim();
+      let rawVal = sectionMatch[2].trim();
+      
+      if (rawVal.endsWith('|')) {
+        rawVal = rawVal.slice(0, -1).trim();
+      }
+
+      if (rawKey.includes('개요')) {
+        currentKey = 'definition';
+      } else if (rawKey.includes('메커니즘')) {
+        currentKey = 'mechanism';
+      } else if (rawKey.includes('직관적')) {
+        currentKey = 'intuitive';
+      } else if (rawKey.includes('비교') || rawKey.includes('비교표') || rawKey.includes('장단점')) {
+        currentKey = 'comparison';
+      } else if (rawKey.includes('의미') || rawKey.includes('한계성')) {
+        currentKey = 'significance';
+      }
+
+      result[currentKey] = rawVal;
+    } else {
+      if (currentKey) {
+        result[currentKey] += '\n' + trimmed;
+      }
     }
   }
+
+  for (const k in result) {
+    result[k] = result[k].replace(/<br\s*\/?>/gi, '\n').trim();
+    if (result[k].endsWith('|') && !result[k].includes('\n')) {
+      result[k] = result[k].slice(0, -1).trim();
+    }
+  }
+
+  if (!result.definition && !result.mechanism && !result.comparison && !result.significance && !result.intuitive && content) {
+    result.definition = typeof content === 'string' ? content.trim() : String(content).trim();
+  }
+
   return result;
 };
 
