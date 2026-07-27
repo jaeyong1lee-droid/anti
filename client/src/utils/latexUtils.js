@@ -120,14 +120,14 @@ export function parseMarkdownTable(questionText) {
         };
 
         const headers = parseRow(lines[i]);
-        const rows = [];
+        const dataRows = [];
         let j = i + 2;
         while (j < lines.length) {
           const rowLine = lines[j].trim();
           if (rowLine.includes('|')) {
             const parsedCells = parseRow(rowLine);
             if (parsedCells.length > 0 && !parsedCells.every(c => !c || c.includes('---'))) {
-              rows.push(parsedCells);
+              dataRows.push(parsedCells);
             }
           } else if (rowLine !== '' && !rowLine.startsWith('<')) {
             break;
@@ -135,10 +135,58 @@ export function parseMarkdownTable(questionText) {
           j++;
         }
 
-        if (headers.length > 0 && rows.length > 0) {
+        if (headers.length > 0 && dataRows.length > 0) {
+          const hasBulletsInCol0 = dataRows.some(r => String(r[0] || '').startsWith('•') || String(r[0] || '').startsWith('-'));
+
+          let finalRows = dataRows;
+          if (hasBulletsInCol0) {
+            const consolidated = [];
+            let curSection = null;
+            let curCol1Bullets = [];
+            let curCol2Bullets = [];
+
+            const flushSection = () => {
+              if (curSection) {
+                const col1Text = curCol1Bullets.join('\n');
+                const col2Text = curCol2Bullets.join('\n');
+                consolidated.push([curSection, col1Text, col2Text]);
+              }
+              curSection = null;
+              curCol1Bullets = [];
+              curCol2Bullets = [];
+            };
+
+            for (const r of dataRows) {
+              const col0 = String(r[0] || '').trim();
+              const col1 = String(r[1] || '').trim();
+              const col2 = String(r[2] || '').trim();
+
+              if (col0.startsWith('•') || col0.startsWith('-')) {
+                if (curCol1Bullets.length === 0) {
+                  curCol1Bullets.push(col0);
+                } else if (curCol2Bullets.length === 0 && headers.length >= 3) {
+                  curCol2Bullets.push(col0);
+                } else {
+                  curCol1Bullets.push(col0);
+                }
+              } else {
+                flushSection();
+                if (col1 || col2) {
+                  consolidated.push([col0, col1, col2]);
+                } else {
+                  curSection = col0;
+                }
+              }
+            }
+            flushSection();
+            if (consolidated.length > 0) {
+              finalRows = consolidated;
+            }
+          }
+
           const originalTableText = lines.slice(i, j).join('\n');
           return {
-            tableData: { headers, rows },
+            tableData: { headers, rows: finalRows },
             originalTableText
           };
         }
@@ -1223,9 +1271,10 @@ export function healQuizQuestionObject(q) {
     }
 
     const existingRowCount = Array.isArray(q.tableData?.rows) ? q.tableData.rows.length : 0;
+    const hasBulletsInCol0 = (q.tableData?.rows || []).some(r => String(r[0] || '').startsWith('•') || String(r[0] || '').startsWith('-') || String(r[0] || '').includes('<strong>'));
     const textToParse = (q.question || '') + '\n' + (q.explanation || '') + '\n' + (q.content || '');
     const parsed = parseQuestionTableText(textToParse);
-    if (parsed && parsed.tableData && parsed.tableData.headers && parsed.tableData.rows && parsed.tableData.rows.length > existingRowCount) {
+    if (parsed && parsed.tableData && parsed.tableData.headers && parsed.tableData.rows && (parsed.tableData.rows.length > existingRowCount || hasBulletsInCol0)) {
       const answers = {};
       const rows = parsed.tableData.rows.map((row, rIdx) => {
         return row.map((cell, cIdx) => {
