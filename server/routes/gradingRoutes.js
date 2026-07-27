@@ -130,7 +130,7 @@ router.post('/grade-subjective', async (req, res) => {
           engineeringStandards: dynamicEngineeringStandards
         });
         if (progressId) {
-          updateProgress(progressId, 1, '1단계: 채점 완료!', 100);
+          updateProgress(progressId, 1, '1단계: 제출 답안 AI 정밀 분석 완료', 90);
         }
         return res.json(result);
       } catch (err) {
@@ -147,7 +147,7 @@ router.post('/grade-subjective', async (req, res) => {
     const normalize = (s) => (s || '').trim().toLowerCase().replace(/\s+/g, '');
     const localCorrect = normalize(userAnswer) === normalize(correctAnswer);
     if (progressId) {
-      updateProgress(progressId, 1, '1단계: 채점 완료(로컬)!', 100);
+      updateProgress(progressId, 1, '1단계: 답안 비교 완료 (로컬)', 90);
     }
     res.json({
       isCorrect: localCorrect,

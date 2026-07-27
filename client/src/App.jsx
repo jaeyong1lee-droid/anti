@@ -3594,10 +3594,14 @@ export default function App() {
               const isGuide = finishedId.startsWith('guide_');
               
               if (isGrading) {
-                timeline.push(`[1단계: 제출 답안 분석] 사용자의 주관식 입력 데이터를 AI가 정밀 파싱했습니다.`);
-                timeline.push(`[2단계: 채점 및 첨삭 완료] 모델(${modelName})을 사용하여 모범 답안 매칭 및 지반공학 기술사 관점 피드백을 생성했습니다.`);
+                if (!timeline.some(t => t.includes('1단계: 제출 답안 분석'))) {
+                  timeline.push(`[1단계: 제출 답안 분석] 사용자의 주관식 입력 데이터를 AI가 정밀 파싱했습니다.`);
+                }
+                if (!timeline.some(t => t.includes('2단계: 채점 및 첨삭 완료'))) {
+                  timeline.push(`[2단계: 채점 및 첨삭 완료] 모델(${modelName})을 사용하여 지반공학 기술사 관점 평가를 완료했습니다.`);
+                }
               } else if (isExplanation) {
-                timeline.push(`[1단계: 오답 오답지 분석] 선택지별 개념 구조를 분석했습니다.`);
+                timeline.push(`[1단계: 오답지 분석] 선택지별 개념 구조를 분석했습니다.`);
                 timeline.push(`[2단계: 상세 해설 완료] 모델(${modelName})을 사용하여 오답 원인 분석 해설서 작성을 완료했습니다.`);
               } else if (isHint) {
                 timeline.push(`[1단계: 문제 힌트 추출] 문제에 적용된 개념적 공식을 도출했습니다.`);
@@ -3868,7 +3872,7 @@ export default function App() {
         saveActiveSessionDebounced();
       }
 
-      stopProgressPolling('채점 완료!', 100);
+      stopProgressPolling('2단계: 주관식 표 채우기 채점 완료!', 100);
       return nextGrading;
     } catch (e) {
       stopProgressPolling('채점 실패', 100, false);
