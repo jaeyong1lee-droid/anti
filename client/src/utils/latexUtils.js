@@ -505,20 +505,29 @@ const healCorruptedKatexHtml = (text) => {
 // 3. 메인 레이아웃 및 수식 복구 마스터 함수
 export function healUnbalancedDollars(str) {
   if (!str || typeof str !== 'string') return str;
-  let text = str;
+  let text = str.trim();
 
+  const latexCmds = 'Delta|Sigma|Gamma|Phi|Theta|Omega|alpha|beta|gamma|sigma|tau|phi|theta|epsilon|pi|delta|omega|mu|lambda|psi|rho|eta|nu|xi|zeta|chi|upsilon|kappa|frac|dfrac|tfrac|sqrt|cdot|times|div|pm|infty|partial|sum|int|sim|le|ge|lt|gt|sin|cos|tan|log|ln|nabla|neq|ne|approx';
+
+  // 1. If text is a pure math equation (contains = and latex/subscript), wrap the whole line in $...$
+  const cleanEq = text.replace(/\$+/g, '').trim();
+  if (cleanEq.includes('=') && !/[\uAC00-\uD7A3]/.test(cleanEq) && new RegExp(`\\\\(?:${latexCmds})|[a-zA-Z]_[a-zA-Z0-9]+`).test(cleanEq)) {
+    return `$${cleanEq}$`;
+  }
+
+  // 2. Strip orphan $ signs ($$$ or trailing $ or $ inside parens)
+  text = text.replace(/(\$(?:[^\$\n]+)\$)\s*\$+/g, '$1');
+  text = text.replace(/(\\?[a-zA-Z0-9_'\^\\(\)\{\}\\[\\]]+)\$+(?=[)\s,]|$)/g, '$1');
+
+  // 3. Auto-wrap unwrapped LaTeX commands
+  const mathRegex = new RegExp(`(?<![\\$\\\\\\w])(?:\\\\(?:${latexCmds})(?:_\\{[^{}\\n]+\\}|_[a-zA-Z0-9]+|\\^\\{[^{}\\n]+\\}|\\^[a-zA-Z0-9]+|\\{[^{}\\n]*\\})*(?:[\\s\\+\\-\\*\\/=]*[a-zA-Z0-9_'\^\\(\\)\\{\\}\\[\\]]+)*|\\b[a-zA-Z][a-zA-Z0-9_']*_\\{[^{}\\n]+\\}|\\b[a-zA-Z][a-zA-Z0-9_']*_[a-zA-Z0-9]+)(?![\\$\\w])`, 'g');
+  text = text.replace(mathRegex, (m) => `$${m.trim()}$`);
+
+  // 4. Clean any remaining odd dollar counts
   const count = (text.match(/\$/g) || []).length;
   if (count % 2 !== 0) {
-    const latexCmds = 'Delta|Sigma|Gamma|Phi|Theta|Omega|alpha|beta|gamma|sigma|tau|phi|theta|epsilon|pi|delta|omega|mu|lambda|psi|rho|eta|nu|xi|zeta|chi|upsilon|kappa|frac|dfrac|tfrac|sqrt|cdot|times|div|pm|infty|partial|sum|int|sim|le|ge|lt|gt|sin|cos|tan|log|ln|nabla|neq|ne|approx';
-    // 1. Missing opening $: e.g. (\Delta t$) or (\dfrac{t}{s} - t$) or ( s_f$)
-    text = text.replace(new RegExp(`([(\\s])(\\\\?(?:${latexCmds}|[a-zA-Z][a-zA-Z0-9_']*)[^\\$\\n]*?)\\$`, 'g'), (m, p1, p2) => {
-      return `${p1}$${p2.trim()}$`;
-    });
-
-    // 2. Missing closing $: e.g. $s_i = \beta_0 + \beta_1 s_{i-1} or $\dfrac{t}{s(t)}=\alpha + \beta t
-    if ((text.match(/\$/g) || []).length % 2 !== 0) {
-      text = text.trim() + '$';
-    }
+    text = text.replace(/\$+/g, '');
+    text = text.replace(mathRegex, (m) => `$${m.trim()}$`);
   }
 
   return text;
