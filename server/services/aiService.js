@@ -342,60 +342,10 @@ export async function callLLMWithFailover(systemInstruction, userPrompt, image =
 }
 
 export async function analyzeStandardsBeforeTask(progressId, topicTitle, standards, scenario = 'generation') {
-  if (!standards || typeof standards !== 'string' || standards.trim().length === 0) {
-    if (progressId) updateProgress(progressId, 0, '0단계: 사전 절대 지침 분석 완료!', 10);
-    return '';
+  if (progressId) {
+    updateProgress(progressId, 0, '0단계: 사전 절대 지침 반영 완료', 10);
   }
-
-  try {
-    console.log(`[analyzeStandardsBeforeTask] Starting analysis for topic "${topicTitle}" (scenario: ${scenario})`);
-
-    let scenarioGuideline = '';
-    if (scenario === 'generation') {
-      scenarioGuideline = '당신은 기술사 시험 출제위원입니다. 흙막이, 사질토, 점성토 등 토질역학 표준 정의를 꼬아 수치를 엉뚱하게 문제에 강제 출제하여 수정을 겪게 했던 사례가 있었습니다. 이번 출제 시 이러한 오류를 피하기 위해, 제공된 출제지침들을 정독하여 특히 어떤 항목들을 절대 주의해야 하는지 3~4줄로 핵심만 분석하십시오.';
-    } else if (scenario === 'grading') {
-      scenarioGuideline = '당신은 지반공학 전문 채점관입니다. 사용자가 쓴 단어가 정답과 유사하다는 이유로 과도하게 유연 채점하거나, 반대로 물리적으로 같은 의미임에도 자구 불일치로 오답 처리했던 오류 사례가 있었습니다. 이번 채점 시 지침 내의 핵심 판정 규칙 중 어떤 점을 최우선 준수하여 점수를 공정하게 산정해야 하는지 3~4줄로 분석하십시오.';
-    } else {
-      scenarioGuideline = '제시된 지침들 중 이번 태스크 처리에 핵심적으로 준수해야 할 필수적인 헌법적 철칙 3~4줄을 엄밀하게 분석하십시오.';
-    }
-
-    const systemInstruction = `당신은 대한민국 국가건설기준설계코드(KDS) 및 지반공학 기술사 시험 출제/채점 지침 분석용 AI 튜터입니다.
-주어진 지침 리스트를 정독하고, 이번 태스크를 수행할 때 위배해서는 안 될 핵심적인 절대 강제 금지/의무 사항들을 0단계 사전 주의사항으로 요약하십시오.`;
-
-    const userPrompt = `
-[수행 태스크 대상]: ${topicTitle}
-[분석 대상 지침/기준 문구]:
-${standards}
-
-[분석 요구 가이드라인]:
-${scenarioGuideline}
-
-[출력 요구사항]:
-- 오직 3~4줄 내외의 컴팩트한 주의사항 리스트만 명료하게 반환하십시오.
-- 부가적인 서론("지침을 분석한 결과는 다음과 같습니다" 등)이나 결론은 완벽하게 배제하고 알맹이 주의사항 텍스트만 출력하십시오.
-`;
-
-    const existingProgress = progressId ? global.progressTracker.get(progressId) : null;
-    if (progressId && (!existingProgress || existingProgress.percentage <= 5)) {
-      updateProgress(progressId, 0, '0단계: 사전 절대 지침 준수 분석 중...', 5);
-    }
-
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('API response timeout (8s limit)')), 8000)
-    );
-
-    const resultText = await Promise.race([
-      callLLMWithFailover(systemInstruction, userPrompt, null, 'standards_analysis'),
-      timeoutPromise
-    ]);
-
-    const text = (resultText || '').trim();
-    console.log(`[analyzeStandardsBeforeTask] Success! Analysis:\n${text}`);
-    return text;
-  } catch (err) {
-    console.warn('[analyzeStandardsBeforeTask] Warning: standards analysis failed:', err.message);
-    return '';
-  }
+  return '';
 }
 
 // Helper: Stream detection flags
