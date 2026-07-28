@@ -112,20 +112,23 @@ export const TableQuiz = React.memo(function TableQuiz({
     id => getGradingResult(tableGradingResults, questionIdx, id) !== undefined
   ));
 
-  const renderStepFeedback = (targetInputs, title) => {
+  const renderStepFeedback = (targetInputs, title, isStep2 = false) => {
     if (targetInputs.length === 0) return null;
     
     return (
       <div className="mt-4 text-left space-y-3 w-full animate-in fade-in slide-in-from-top-2 duration-200">
         <span className="font-extrabold text-amber-400 text-[14px] sm:text-[16px]">{title}:</span>
         <div className="divide-y divide-slate-800/80 mt-1">
-          {targetInputs.map((inputId) => {
-            const value = getAnswerValue(tableAnswers, questionIdx, inputId);
+          {targetInputs.map((inputId, sIdx) => {
+            const value = getAnswerValue(tableAnswers, questionIdx, inputId, isStep2);
             const correctAnswer = q.answers?.[inputId] || '';
-            const gradingResult = getGradingResult(tableGradingResults, questionIdx, inputId);
+            const gradingResult = getGradingResult(tableGradingResults, questionIdx, inputId, isStep2);
             
-            const inputIdx = inputIds.indexOf(inputId);
-            const inputLetter = String.fromCharCode(65 + (inputIdx !== -1 ? inputIdx : 0));
+            let letterIdx = inputIds.indexOf(inputId);
+            if (isStep2) {
+              letterIdx = firstTableInputs.length + sIdx;
+            }
+            const inputLetter = String.fromCharCode(65 + (letterIdx >= 0 ? letterIdx : 0));
             
             const isCorrect = gradingResult 
               ? gradingResult.isCorrect 
@@ -1566,8 +1569,9 @@ export const TableQuiz = React.memo(function TableQuiz({
                         ? gradingResult.isCorrect 
                         : (normalize(value) === normalize(correctAnswer));
      
-                      const inputIdx = inputIds.indexOf(inputId);
-                      const inputLetter = String.fromCharCode(65 + (inputIdx !== -1 ? inputIdx : 0));
+                      const sIdx = rIdx * (row.length - 1) + (cIdx - 1);
+                      const letterIdx = isOverviewReview ? (firstTableInputs.length + sIdx) : (inputIds.indexOf(inputId) !== -1 ? inputIds.indexOf(inputId) : sIdx + firstTableInputs.length);
+                      const inputLetter = String.fromCharCode(65 + (letterIdx >= 0 ? letterIdx : 0));
                       const isCellGraded = revealed || (getGradingResult(tableGradingResults, questionIdx, inputId, true) !== undefined);
                       const theme = isCellGraded ? getTableScoreColorTheme(gradingResult, isCorrect, value) : null;
                       return (
@@ -1855,7 +1859,7 @@ export const TableQuiz = React.memo(function TableQuiz({
  
        {isOverviewReview && isSecondTableGraded && (
          <div className="my-4 w-full">
-           {renderStepFeedback(secondTableInputs, "⚖️ [2단계: 비교표] 채점 피드백")}
+           {renderStepFeedback(secondTableInputs, "⚖️ [2단계: 비교표] 채점 피드백", true)}
          </div>
        )}
     </div>

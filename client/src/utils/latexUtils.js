@@ -1327,6 +1327,32 @@ export function healQuizQuestionObject(q) {
         };
         q.answers = answers;
       }
+
+      if (q.comparisonTableData && q.comparisonTableData.rows && q.answers) {
+        const mainRowsCount = q.tableData?.rows?.length || 2;
+        q.comparisonTableData.rows.forEach((row, rIdx) => {
+          row.forEach((cell, cIdx) => {
+            if (cIdx === 0) return;
+            const inputId = typeof cell === 'string' && cell.includes('[INPUT_')
+              ? cell.replace('[', '').replace(']', '').trim()
+              : `INPUT_${rIdx}_${cIdx}`;
+            
+            const targetKey1 = `INPUT_${mainRowsCount + rIdx}_${cIdx}`;
+            const targetKey2 = `INPUT_${rIdx}_${cIdx}`;
+            
+            if (!q.answers[inputId]) {
+              if (q.answers[targetKey1]) q.answers[inputId] = q.answers[targetKey1];
+              else if (q.answers[targetKey2]) q.answers[inputId] = q.answers[targetKey2];
+            }
+            if (!q.answers[targetKey1] && q.answers[inputId]) {
+              q.answers[targetKey1] = q.answers[inputId];
+            }
+            if (!q.answers[targetKey2] && q.answers[inputId]) {
+              q.answers[targetKey2] = q.answers[inputId];
+            }
+          });
+        });
+      }
     }
 
     // For multiple choice questions, heal mismatched answer field
