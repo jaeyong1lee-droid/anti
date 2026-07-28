@@ -16,70 +16,177 @@ function checkUrl(url) {
   });
 }
 
+function postUrl(url, bodyObj) {
+  return new Promise((resolve) => {
+    const parsedUrl = new URL(url);
+    const postData = JSON.stringify(bodyObj);
+    const req = http.request({
+      hostname: parsedUrl.hostname,
+      port: parsedUrl.port,
+      path: parsedUrl.pathname + parsedUrl.search,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(postData)
+      }
+    }, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        resolve({ statusCode: res.statusCode, body: data });
+      });
+    });
+    req.on('error', (err) => {
+      resolve({ error: err.message });
+    });
+    req.write(postData);
+    req.end();
+  });
+}
+
 async function runTests() {
   console.log('====================================================');
   console.log('       AntiGravity Real-Time Test Runner System     ');
   console.log('====================================================\n');
 
-  console.log('[TEST 1] Frontend Dev Server (http://localhost:3000) Connection Check...');
+  let failedCount = 0;
+
+  // [TEST 1] Server File Syntax Checks
+  console.log('[TEST 1] Node.js Backend Code Syntax Inspection...');
+  try {
+    execSync('node --check server/index.js', { stdio: 'pipe' });
+    execSync('node --check server/routes/quizRoutes.js', { stdio: 'pipe' });
+    execSync('node --check server/database.js', { stdio: 'pipe' });
+    console.log('  ➜ [SUCCESS] Server JavaScript files syntax check PASSED (0 syntax errors).');
+  } catch (err) {
+    failedCount++;
+    console.log(`  ➜ [CRITICAL FAIL] Syntax error detected in server code: ${err.message}`);
+  }
+
+  // [TEST 2] Frontend Connection Check
+  console.log('\n[TEST 2] Frontend Dev Server (http://localhost:3000)...');
   const feRes = await checkUrl('http://localhost:3000');
   if (feRes.statusCode === 200) {
     console.log('  ➜ [SUCCESS] Frontend server active on http://localhost:3000 (Status: 200 OK)');
   } else {
-    console.log(`  ➜ [CRITICAL FAIL] Frontend server connection error: ${feRes.error || feRes.statusCode}`);
+    failedCount++;
+    console.log(`  ➜ [CRITICAL FAIL] Frontend server error: ${feRes.error || feRes.statusCode}`);
   }
 
-  console.log('\n[TEST 2] Backend Server (Port 5000) & API Endpoints Check...');
+  // [TEST 3] Backend Direct Connection Check
+  console.log('\n[TEST 3] Backend Server Direct (http://localhost:5000)...');
   const beRes = await checkUrl('http://localhost:5000/api/preferred-model');
   if (beRes.statusCode === 200) {
     console.log('  ➜ [SUCCESS] Backend server active on http://localhost:5000 (Status: 200 OK)');
-    console.log(`  ➜ [RESPONSE DATA]: ${beRes.body.trim()}`);
+    console.log(`  ➜ [PREFERRED MODEL]: ${beRes.body.trim()}`);
   } else {
-    console.log(`  ➜ [CRITICAL FAIL] Backend server (Port 5000) NOT RUNNING or returned error: ${beRes.error || beRes.statusCode}`);
-    console.log('     Please start the backend server via `node index.js` in the server directory!');
+    failedCount++;
+    console.log(`  ➜ [CRITICAL FAIL] Backend server (Port 5000) connection error: ${beRes.error || beRes.statusCode}`);
+    console.log('     Run `node index.js` in server directory to start backend!');
   }
 
-  console.log('\n[TEST 2-1] Vite Proxy API Health Check (http://localhost:3000/api/dashboard)...');
+  // [TEST 4] Vite Proxy API Health Check
+  console.log('\n[TEST 4] Vite Proxy API Endpoints Suite Check (via Port 3000)...');
   const todayStr = new Date().toISOString().split('T')[0];
-  const proxyRes = await checkUrl(`http://localhost:3000/api/dashboard?date=${todayStr}`);
-  if (proxyRes.statusCode === 200) {
-    console.log('  ➜ [SUCCESS] Vite Proxy to Backend API working (Status: 200 OK)');
-  } else {
-    console.log(`  ➜ [CRITICAL FAIL] Vite Proxy API failed with Status: ${proxyRes.error || proxyRes.statusCode}`);
+  const apiEndpoints = [
+    `/api/dashboard?date=${todayStr}`,
+    `/api/topics`,
+    `/api/lockscreen/pool`,
+    `/api/session/mixed-completed`,
+    `/api/options/lockscreen_quiz_enabled`
+  ];
+
+  for (const ep of apiEndpoints) {
+    const res = await checkUrl(`http://localhost:3000${ep}`);
+    if (res.statusCode === 200) {
+      console.log(`  ➜ [PASS] GET http://localhost:3000${ep} (Status: 200 OK)`);
+    } else {
+      failedCount++;
+      console.log(`  ➜ [FAIL] GET http://localhost:3000${ep} failed (Status: ${res.error || res.statusCode})`);
+    }
   }
 
-  console.log('\n[TEST 3] REAL Vite Bundle & 1,511 React Components Full Build Inspection...');
+  // [TEST 5] Save & Load Session Integration Test (GET/POST /api/session/review)
+  console.log('\n[TEST 5] Mixed Session Save & Load Integration Test...');
+  const testTopicId = `mixed_test_runner_${Date.now()}`;
+  const testSessionId = `sess_${testTopicId}`;
+  
+  const savePayload = {
+    topicId: testTopicId,
+    sessionId: testSessionId,
+    questions: [{ id: 'test_q_1', question: 'Integration Test Question' }],
+    tableAnswers: { '0_INPUT': 'Integration Test Answer' },
+    tableGradingResults: { '0_INPUT': { isCorrect: true, score: 10, reason: 'Test Reason' } }
+  };
+
+  const saveRes = await postUrl('http://localhost:3000/api/session/review', savePayload);
+  if (saveRes.statusCode === 200) {
+    console.log('  ➜ [PASS] POST /api/session/review (Status: 200 OK)');
+  } else {
+    failedCount++;
+    console.log(`  ➜ [FAIL] POST /api/session/review failed (Status: ${saveRes.error || saveRes.statusCode})`);
+  }
+
+  const loadRes = await checkUrl(`http://localhost:3000/api/session/review?topicId=${testTopicId}&sessionId=${testSessionId}`);
+  if (loadRes.statusCode === 200) {
+    try {
+      const data = JSON.parse(loadRes.body);
+      if (data.success && data.data && data.data.tableAnswers?.['0_INPUT'] === 'Integration Test Answer') {
+        console.log('  ➜ [PASS] GET /api/session/review retrieved saved mixed session data accurately.');
+      } else {
+        failedCount++;
+        console.log('  ➜ [FAIL] GET /api/session/review returned unexpected data structure.');
+      }
+    } catch (e) {
+      failedCount++;
+      console.log(`  ➜ [FAIL] GET /api/session/review returned invalid JSON: ${e.message}`);
+    }
+  } else {
+    failedCount++;
+    console.log(`  ➜ [FAIL] GET /api/session/review failed (Status: ${loadRes.error || loadRes.statusCode})`);
+  }
+
+  // [TEST 6] Quiz Submit String Schedule ID Integration Test
+  console.log('\n[TEST 6] Quiz Submit Non-Numeric Schedule ID Test...');
+  const submitPayload = {
+    topic_id: testTopicId,
+    schedule_id: `mixed_schedule_${todayStr}`,
+    score: 100,
+    isPassed: true,
+    questions: [{ id: 'test_q_1' }]
+  };
+  const submitRes = await postUrl('http://localhost:3000/api/quiz/submit', submitPayload);
+  if (submitRes.statusCode === 200) {
+    console.log('  ➜ [PASS] POST /api/quiz/submit with string schedule_id handled cleanly (Status: 200 OK).');
+  } else {
+    failedCount++;
+    console.log(`  ➜ [FAIL] POST /api/quiz/submit failed (Status: ${submitRes.error || submitRes.statusCode})`);
+  }
+
+  // [TEST 7] Vite Full Bundle & React Component Build Check
+  console.log('\n[TEST 7] REAL Vite Bundle & React Component Compilation Check...');
   try {
     const clientPath = path.join(process.cwd(), 'client');
-    const buildOutput = execSync('npx vite build', { cwd: clientPath, encoding: 'utf-8', stdio: 'pipe' });
-    console.log('  ➜ [SUCCESS] REAL Vite Build & React Component Rendering Inspection PASSED!');
-    console.log('  ➜ [0 REFERENCE ERRORS]: All 1,511 React components and JSX helper functions compiled cleanly with 0 errors.');
+    execSync('npx vite build', { cwd: clientPath, encoding: 'utf-8', stdio: 'pipe' });
+    console.log('  ➜ [SUCCESS] Vite Build PASSED (All React components compiled cleanly).');
   } catch (err) {
-    console.log('  ➜ [CRITICAL RENDER/BUNDLE ERROR DETECTED IN FRONTEND]:');
+    failedCount++;
+    console.log('  ➜ [CRITICAL BUILD ERROR]:');
     const stderr = err.stderr || err.stdout || err.message;
     const errorLines = stderr.split('\n').filter(l => l.includes('Error') || l.includes('defined') || l.includes('src/')).slice(0, 10).join('\n     ');
     console.log(`     ${errorLines}`);
   }
 
-  console.log('\n[TEST 4] Frontend Utility Module Function Execution Check...');
-  try {
-    const renderingHelpers = await import('./client/src/utils/renderingHelpers.js');
-    if (typeof renderingHelpers.getOnlySourceAccordion === 'function') {
-      const sampleAccordion = renderingHelpers.getOnlySourceAccordion('* KDS 11 10 20 지표침하판 테스트 기준', '테스트 토픽');
-      console.log('  ➜ [SUCCESS] getOnlySourceAccordion executed without runtime errors.');
-      console.log(`  ➜ [ACCORDION OUTPUT]: Generated ${sampleAccordion.length} characters cleanly.`);
-    }
-  } catch (err) {
-    console.log(`  ➜ [RUNTIME MODULE ERROR]: ${err.message}`);
-  }
-
-  console.log('\n[TEST 5] User Input Question Bubble Plain Text Preservation Check...');
-  console.log('  ➜ [SUCCESS] User question input "k0<1 인경우 터널 천단부 융기하나?" rendered directly without unnecessary HTML/LaTeX parsing errors!');
-  console.log('  ➜ [RAW TEXT PRESERVED]: "k0<1 인경우 터널 천단부 융기하나?"');
-
   console.log('\n====================================================');
-  console.log('  TEST COMPLETE - All Front/Back services operational');
-  console.log('====================================================');
+  if (failedCount > 0) {
+    console.log(`  ❌ TEST FAILED - ${failedCount} CRITICAL ERRORS DETECTED!`);
+    console.log('====================================================');
+    process.exit(1);
+  } else {
+    console.log('  ✅ ALL TESTS PASSED - All Front/Back services 100% operational!');
+    console.log('====================================================');
+    process.exit(0);
+  }
 }
 
 runTests();

@@ -3248,21 +3248,32 @@ router.post('/quiz/submit', async (req, res) => {
     return res.status(400).json({ error: 'schedule_id와 topic_id는 필수입니다.' });
   }
 
+  const isMixedReq = (typeof topic_id === 'string' && topic_id.startsWith('mixed_')) ||
+                     (typeof schedule_id === 'string' && schedule_id.startsWith('mixed_'));
+
   const topicIdInt = parseInt(topic_id, 10);
   let scheduleIdInt = parseInt(schedule_id, 10);
   const rRound = review_round !== undefined ? review_round : reviewRound;
 
-  if (isNaN(topicIdInt) || isNaN(scheduleIdInt)) {
+  if (!isMixedReq && (isNaN(topicIdInt) || isNaN(scheduleIdInt))) {
     return res.status(400).json({ error: '유효한 topic_id와 schedule_id가 아닙니다.' });
   }
 
   const now = new Date().toISOString();
 
   try {
-    let targetScheduleId = scheduleIdInt;
+    let targetScheduleId = isMixedReq ? schedule_id : scheduleIdInt;
     let schedule = null;
 
-    if (isBonus) {
+    if (isMixedReq) {
+      targetScheduleId = schedule_id || `mixed_schedule_${referenceDate || 'default'}`;
+      schedule = {
+        id: targetScheduleId,
+        topic_id: topic_id || String(targetScheduleId).replace('mixed_schedule_', 'mixed_'),
+        review_round: 1,
+        status: 'completed'
+      };
+    } else if (isBonus) {
       let existingBonus = null;
       if (scheduleIdInt && scheduleIdInt !== 9999) {
         existingBonus = await dbQuery.get('SELECT * FROM schedules WHERE id = ?', [scheduleIdInt]);
@@ -3328,21 +3339,9 @@ router.post('/quiz/submit', async (req, res) => {
       }
     }
 
-    const isMixedSched = typeof targetScheduleId === 'string' && targetScheduleId.startsWith('mixed_');
-    if (!isMixedSched && targetScheduleId && !isNaN(parseInt(targetScheduleId, 10))) {
-      targetScheduleId = parseInt(targetScheduleId, 10);
-    }
-
     // 1. 해당 일정 존재 여부 확인
-    if (!schedule && !isMixedSched) {
+    if (!schedule) {
       schedule = await dbQuery.get('SELECT * FROM schedules WHERE id = ?', [targetScheduleId]);
-    } else if (!schedule && isMixedSched) {
-      schedule = {
-        id: targetScheduleId,
-        topic_id: topic_id || String(targetScheduleId).replace('mixed_schedule_', 'mixed_'),
-        review_round: 1,
-        status: 'completed'
-      };
     }
     if (!schedule) {
       return res.status(404).json({ error: '해당 복습 일정을 찾을 수 없습니다.' });
@@ -3354,17 +3353,19 @@ router.post('/quiz/submit', async (req, res) => {
     const totalVal = total !== undefined ? total : null;
 
     const finalStatus = isPassed ? 'completed' : 'failed';
-    await dbQuery.run(
-      `UPDATE schedules SET status = ?, completed_at = ?, score = ?, correct_count = ?, total_count = ? WHERE id = ?`,
-      [finalStatus, now, scoreVal, correctVal, totalVal, targetScheduleId]
-    );
-
-    // 이전 회차 중 미완료(pending) 건이 남아있는 경우 자동 완료 처리하여 '재복습중' 잔류 방지
-    if (schedule && schedule.review_round && schedule.review_round !== 99) {
+    if (!isMixedReq) {
       await dbQuery.run(
-        `UPDATE schedules SET status = 'completed', completed_at = ? WHERE topic_id = ? AND review_round < ? AND status = 'pending'`,
-        [now, schedule.topic_id, schedule.review_round]
+        `UPDATE schedules SET status = ?, completed_at = ?, score = ?, correct_count = ?, total_count = ? WHERE id = ?`,
+        [finalStatus, now, scoreVal, correctVal, totalVal, targetScheduleId]
       );
+
+      // 이전 회차 중 미완료(pending) 건이 남아있는 경우 자동 완료 처리하여 '재복습중' 잔류 방지
+      if (schedule && schedule.review_round && schedule.review_round !== 99) {
+        await dbQuery.run(
+          `UPDATE schedules SET status = 'completed', completed_at = ? WHERE topic_id = ? AND review_round < ? AND status = 'pending'`,
+          [now, schedule.topic_id, schedule.review_round]
+        );
+      }
     }
 
     // 복습 데이터 세션 보존 (완료된 복습을 다시 조회할 수 있도록 questions와 chatHistory를 포함하여 저장)
@@ -3388,22 +3389,24 @@ router.post('/quiz/submit', async (req, res) => {
       );
 
       // 보존 정책: 이전 세션 정리
-      try {
-        const finishedSchedules = await dbQuery.all(
-          `SELECT id FROM schedules 
-           WHERE topic_id = ? AND (status = 'completed' OR status = 'failed') 
-           ORDER BY completed_at DESC, id DESC`,
-          [topicIdInt]
-        );
-        if (finishedSchedules.length > 2) {
-          const oldSchedules = finishedSchedules.slice(2);
-          for (const oldSched of oldSchedules) {
-            const oldSessionKey = `completed_review_schedule_${oldSched.id}`;
-            await dbQuery.run('DELETE FROM app_session WHERE key = ?', [oldSessionKey]);
+      if (!isMixedReq) {
+        try {
+          const finishedSchedules = await dbQuery.all(
+            `SELECT id FROM schedules 
+             WHERE topic_id = ? AND (status = 'completed' OR status = 'failed') 
+             ORDER BY completed_at DESC, id DESC`,
+            [topicIdInt]
+          );
+          if (finishedSchedules.length > 2) {
+            const oldSchedules = finishedSchedules.slice(2);
+            for (const oldSched of oldSchedules) {
+              const oldSessionKey = `completed_review_schedule_${oldSched.id}`;
+              await dbQuery.run('DELETE FROM app_session WHERE key = ?', [oldSessionKey]);
+            }
           }
+        } catch (policyErr) {
+          console.warn('[DB Session Policy] Error cleaning up old sessions:', policyErr.message);
         }
-      } catch (policyErr) {
-        console.warn('[DB Session Policy] Error cleaning up old sessions:', policyErr.message);
       }
     }
 
@@ -3412,7 +3415,7 @@ router.post('/quiz/submit', async (req, res) => {
       "DELETE FROM app_session WHERE key = ? OR key LIKE ?",
       [`review_questions_topic_${topic_id}`, `review_questions_topic_${topic_id}_sess_%`]
     );
-    if (targetScheduleId && targetScheduleId !== 9999 && targetScheduleId !== '9999') {
+    if (!isMixedReq && targetScheduleId && targetScheduleId !== 9999 && targetScheduleId !== '9999') {
       await dbQuery.run(
         "DELETE FROM app_session WHERE key = ? OR key LIKE ?",
         [`review_questions_schedule_${targetScheduleId}`, `review_questions_schedule_${targetScheduleId}_sess_%`]
@@ -3420,7 +3423,7 @@ router.post('/quiz/submit', async (req, res) => {
     }
 
     // 다음 회차 자동 생성
-    if (isPassed && !isBonus && schedule.review_round !== 99) {
+    if (!isMixedReq && isPassed && !isBonus && schedule.review_round !== 99) {
       const baseDate = referenceDate ? new Date(referenceDate) : new Date();
       await scheduleNextReviewRound(topicIdInt, schedule.review_round, baseDate);
     }
