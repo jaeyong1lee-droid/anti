@@ -2896,7 +2896,7 @@ export default function App() {
     });
     
     await Promise.all(promises);
-    stopProgressPolling();
+    stopProgressPolling('앞글자 채점 완료!', 100);
     setGradingLoading(prev => ({ ...prev, [qIdx]: false }));
     
     const updatedGrading = { ...activeGradingRef.current, ...results };
@@ -3462,6 +3462,7 @@ export default function App() {
   const startProgressPolling = (progressId) => {
     if (progressIntervalRef.current) {
       clearInterval(progressIntervalRef.current);
+      progressIntervalRef.current = null;
     }
     setAiProgressMessage('준비 중...');
     setAiProgressPercent(0);
@@ -4135,30 +4136,25 @@ export default function App() {
       };
     }
 
-    try {
-      activeSetGradingResults(nextGrading);
-      if (showExam) {
-        examTableGradingResultsRef.current = nextGrading;
-      } else {
-        tableGradingResultsRef.current = nextGrading;
-      }
-
-      // DB 저장 (디바운스 적용)
-      if (!showExam && selectedTopic && selectedTopic.id && aiQuestions.length > 0 && !selectedTopic.isReadOnly) {
-        lastSyncStateRef.current.tableGradingResults = nextGrading;
-        saveActiveSessionDebounced();
-      }
-
-      if (showExam && examQuestions.length > 0 && !loadingExam) {
-        saveActiveSessionDebounced();
-      }
-
-      stopProgressPolling('재채점 완료!', 100);
-    } catch (e) {
-      stopProgressPolling('재채점 실패', 100, false);
-    } finally {
-      setCellGradingLoading(prev => ({ ...prev, [key]: false }));
+    activeSetGradingResults(nextGrading);
+    if (showExam) {
+      examTableGradingResultsRef.current = nextGrading;
+    } else {
+      tableGradingResultsRef.current = nextGrading;
     }
+
+    // DB 저장 (디바운스 적용)
+    if (!showExam && selectedTopic && selectedTopic.id && aiQuestions.length > 0 && !selectedTopic.isReadOnly) {
+      lastSyncStateRef.current.tableGradingResults = nextGrading;
+      saveActiveSessionDebounced();
+    }
+
+    if (showExam && examQuestions.length > 0 && !loadingExam) {
+      saveActiveSessionDebounced();
+    }
+
+    stopProgressPolling('재채점 완료!', 100);
+    setCellGradingLoading(prev => ({ ...prev, [key]: false }));
   };
 
   const getReviewTotalScore = () => {
