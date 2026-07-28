@@ -3805,7 +3805,7 @@ export default function App() {
     startProgressPolling(progressId);
 
     const processSingleInput = async (inputId) => {
-      const userAnswer = activeAnswers[`${qIdx}_${inputId}`] || '';
+      const userAnswer = getAnswerValue(activeAnswers, qIdx, inputId) || activeAnswers[`${qIdx}_${inputId}`] || '';
       const correctAnswer = q?.answers?.[inputId] || '';
       
       const cleanUser = userAnswer.trim();
@@ -4058,7 +4058,7 @@ export default function App() {
     const progressId = 'grade_cell_' + Math.random().toString(36).substring(2, 9);
     startProgressPolling(progressId);
 
-    const userAnswer = activeAnswers[key] || '';
+    const userAnswer = getAnswerValue(activeAnswers, qIdx, inputId) || activeAnswers[key] || '';
     const correctAnswer = q?.answers?.[inputId] || '';
 
     let rowHeader = '';
