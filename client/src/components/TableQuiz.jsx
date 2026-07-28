@@ -1535,17 +1535,17 @@ export const TableQuiz = React.memo(function TableQuiz({
                     const isInput = typeof cell === 'string' && cell.includes('[INPUT_');
                     if (isInput) {
                       const inputId = cell.replace('[', '').replace(']', '').trim();
-                      const value = tableAnswers[`${questionIdx}_${inputId}`] || '';
+                      const value = getAnswerValue(tableAnswers, questionIdx, inputId, true);
                       const correctAnswer = q.answers?.[inputId] || '';
                       
-                      const gradingResult = tableGradingResults?.[`${questionIdx}_${inputId}`];
+                      const gradingResult = getGradingResult(tableGradingResults, questionIdx, inputId, true);
                       const isCorrect = gradingResult 
                         ? gradingResult.isCorrect 
                         : (normalize(value) === normalize(correctAnswer));
      
                       const inputIdx = inputIds.indexOf(inputId);
                       const inputLetter = String.fromCharCode(65 + (inputIdx !== -1 ? inputIdx : 0));
-                      const isCellGraded = revealed || (tableGradingResults && tableGradingResults[`${questionIdx}_${inputId}`] !== undefined);
+                      const isCellGraded = revealed || (getGradingResult(tableGradingResults, questionIdx, inputId, true) !== undefined);
                       const theme = isCellGraded ? getTableScoreColorTheme(gradingResult, isCorrect, value) : null;
                       return (
                         <td 

@@ -2559,8 +2559,8 @@ export default function App() {
 
         <div className="divide-y divide-slate-800/80 mt-1">
           {filteredInputIds.map((inputId) => {
-            const value = getAnswerValue(activeAnswers, idx, inputId);
-            const gradingResult = getGradingResult(activeGradingResults, idx, inputId);
+            const value = getAnswerValue(activeAnswers, idx, inputId, isOverview);
+            const gradingResult = getGradingResult(activeGradingResults, idx, inputId, isOverview);
             const correctAnswer = gradingResult?.suggestedModelAnswer || q.answers?.[inputId] || '';
             
             const inputIdx = inputIds.indexOf(inputId);

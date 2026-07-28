@@ -4,16 +4,32 @@
 import { healLatexFormulas, balanceMathBraces } from './latexUtils.js';
 
 
-export const getAnswerValue = (tableAnswers, questionIdx, inputId) => {
+export const getAnswerValue = (tableAnswers, questionIdx, inputId, isComparisonTable = false) => {
   if (!tableAnswers) return '';
   const key = `${questionIdx}_${inputId}`;
-  if (tableAnswers[key] !== undefined && tableAnswers[key] !== '') return tableAnswers[key];
 
   const altKeys = [];
+
+  const match = String(inputId || '').match(/^INPUT_(\d+)_(\d+)$/);
+  if (match) {
+    const r = parseInt(match[1], 10);
+    const c = parseInt(match[2], 10);
+    if (isComparisonTable) {
+      altKeys.push(`${questionIdx}_INPUT_${r + 2}_${c}`);
+      altKeys.push(`${questionIdx}_INPUT_${r * 2 + c + 2}`);
+      altKeys.push(`${questionIdx}_INPUT_${r}_${c}`);
+    } else {
+      altKeys.push(`${questionIdx}_INPUT_${r}_${c}`);
+      altKeys.push(`${questionIdx}_INPUT_${r + 1}`);
+    }
+  } else {
+    altKeys.push(key);
+  }
+
   if (inputId === 'INPUT_1') altKeys.push(`${questionIdx}_INPUT_0_1`, `${questionIdx}_INPUT_0`);
   if (inputId === 'INPUT_2') altKeys.push(`${questionIdx}_INPUT_1_1`, `${questionIdx}_INPUT_1`);
-  if (inputId === 'INPUT_0_1') altKeys.push(`${questionIdx}_INPUT_1`, `${questionIdx}_INPUT_0`);
-  if (inputId === 'INPUT_1_1') altKeys.push(`${questionIdx}_INPUT_2`, `${questionIdx}_INPUT_1`);
+  if (inputId === 'INPUT_0_1' && !isComparisonTable) altKeys.push(`${questionIdx}_INPUT_1`, `${questionIdx}_INPUT_0`);
+  if (inputId === 'INPUT_1_1' && !isComparisonTable) altKeys.push(`${questionIdx}_INPUT_2`, `${questionIdx}_INPUT_1`);
 
   for (const alt of altKeys) {
     if (tableAnswers[alt] !== undefined && tableAnswers[alt] !== '') {
@@ -23,16 +39,32 @@ export const getAnswerValue = (tableAnswers, questionIdx, inputId) => {
   return tableAnswers[key] || '';
 };
 
-export const getGradingResult = (tableGradingResults, questionIdx, inputId) => {
+export const getGradingResult = (tableGradingResults, questionIdx, inputId, isComparisonTable = false) => {
   if (!tableGradingResults) return undefined;
   const key = `${questionIdx}_${inputId}`;
-  if (tableGradingResults[key] !== undefined) return tableGradingResults[key];
 
   const altKeys = [];
+
+  const match = String(inputId || '').match(/^INPUT_(\d+)_(\d+)$/);
+  if (match) {
+    const r = parseInt(match[1], 10);
+    const c = parseInt(match[2], 10);
+    if (isComparisonTable) {
+      altKeys.push(`${questionIdx}_INPUT_${r + 2}_${c}`);
+      altKeys.push(`${questionIdx}_INPUT_${r * 2 + c + 2}`);
+      altKeys.push(`${questionIdx}_INPUT_${r}_${c}`);
+    } else {
+      altKeys.push(`${questionIdx}_INPUT_${r}_${c}`);
+      altKeys.push(`${questionIdx}_INPUT_${r + 1}`);
+    }
+  } else {
+    altKeys.push(key);
+  }
+
   if (inputId === 'INPUT_1') altKeys.push(`${questionIdx}_INPUT_0_1`, `${questionIdx}_INPUT_0`);
   if (inputId === 'INPUT_2') altKeys.push(`${questionIdx}_INPUT_1_1`, `${questionIdx}_INPUT_1`);
-  if (inputId === 'INPUT_0_1') altKeys.push(`${questionIdx}_INPUT_1`, `${questionIdx}_INPUT_0`);
-  if (inputId === 'INPUT_1_1') altKeys.push(`${questionIdx}_INPUT_2`, `${questionIdx}_INPUT_1`);
+  if (inputId === 'INPUT_0_1' && !isComparisonTable) altKeys.push(`${questionIdx}_INPUT_1`, `${questionIdx}_INPUT_0`);
+  if (inputId === 'INPUT_1_1' && !isComparisonTable) altKeys.push(`${questionIdx}_INPUT_2`, `${questionIdx}_INPUT_1`);
 
   for (const alt of altKeys) {
     if (tableGradingResults[alt] !== undefined) {
