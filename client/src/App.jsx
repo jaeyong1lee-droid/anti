@@ -17244,59 +17244,72 @@ ${itemsStr}
       )}
 
       {/* Floating AI Progress Popup (Hidden on Mobile View) */}
-      {showAiProgress && isDesktop && !isMobileLandscape && (
-        <div className="fixed bottom-6 right-6 z-[9999] max-w-sm w-[90vw] sm:w-96 rounded-2xl bg-slate-950/90 border border-violet-500/40 p-4 shadow-2xl shadow-violet-950/50 flex flex-col gap-3 backdrop-blur-xl animate-fade-in-up">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-violet-950 border border-violet-500/20 text-violet-400 rounded-xl flex items-center justify-center">
-              <svg className="animate-spin h-5 w-5 text-violet-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
+      {showAiProgress && isDesktop && !isMobileLandscape && (() => {
+        const pid = activeProgressIdRef.current || '';
+        const taskLabel = pid.startsWith('grade_') || pid.startsWith('grade_cell_') || pid.startsWith('grade_acronym')
+          ? '채점'
+          : pid.startsWith('gen_') || pid.startsWith('ref_') || pid.startsWith('recreate_')
+          ? '문제 생성'
+          : pid.startsWith('exp_')
+          ? '해설 생성'
+          : pid.startsWith('hint_')
+          ? '힌트 생성'
+          : pid.startsWith('tutor_') || pid.startsWith('guide_')
+          ? 'AI 튜터'
+          : pid.startsWith('exam_')
+          ? '종합평가'
+          : 'AI 분석';
+        const taskColor = taskLabel === '채점'
+          ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+          : taskLabel === '문제 생성' || taskLabel === '종합평가'
+          ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+          : taskLabel === 'AI 튜터'
+          ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30'
+          : 'bg-violet-500/20 text-violet-300 border-violet-500/30';
+        const statusVerb = taskLabel === '채점' ? '채점 중' : taskLabel === 'AI 튜터' ? '응답 중' : '생성 중';
+        return (
+          <div className="fixed bottom-6 right-6 z-[9999] max-w-sm w-[90vw] sm:w-96 rounded-2xl bg-slate-950/90 border border-violet-500/40 p-4 shadow-2xl shadow-violet-950/50 flex flex-col gap-3 backdrop-blur-xl animate-fade-in-up">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-violet-950 border border-violet-500/20 text-violet-400 rounded-xl flex items-center justify-center">
+                <svg className="animate-spin h-5 w-5 text-violet-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5 mb-0.5">
+                  <p className="text-[10px] font-black text-violet-400 uppercase tracking-widest">AI TASK PROGRESS</p>
+                  <span className={`px-1.5 py-0.5 text-[9px] font-black rounded border ${taskColor}`}>{taskLabel}</span>
+                </div>
+                <h5 className="text-xs font-extrabold text-white truncate" title={aiProgressMessage}>
+                  {aiProgressMessage || '준비 중...'}
+                </h5>
+              </div>
+              <div className="flex items-center gap-2 text-right shrink-0">
+                <span className="text-xs font-black text-violet-400">{aiProgressPercent}%</span>
+                <button
+                  type="button"
+                  onClick={handleCancelAiTask}
+                  className="px-2 py-0.5 text-[10px] font-black rounded-lg bg-rose-500/20 hover:bg-rose-500/40 text-rose-300 border border-rose-500/30 transition-all cursor-pointer active:scale-95"
+                  title="AI 작업 취소"
+                >
+                  취소
+                </button>
+              </div>
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-[10px] font-black text-violet-400 uppercase tracking-widest">AI TASK PROGRESS</p>
-              <h5 className="text-xs font-extrabold text-white truncate mt-0.5" title={aiProgressMessage}>
-                {aiProgressMessage}
-              </h5>
+            <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+              <div
+                className="bg-gradient-to-r from-violet-500 to-fuchsia-500 h-full rounded-full transition-all duration-500"
+                style={{ width: `${aiProgressPercent}%` }}
+              />
             </div>
-            <div className="flex items-center gap-2 text-right">
-              <span className="text-xs font-black text-violet-400">{aiProgressPercent}%</span>
-              <button
-                type="button"
-                onClick={handleCancelAiTask}
-                className="px-2 py-0.5 text-[10px] font-black rounded-lg bg-rose-500/20 hover:bg-rose-500/40 text-rose-300 border border-rose-500/30 transition-all cursor-pointer active:scale-95 shrink-0"
-                title="AI 작업 취소"
-              >
-                취소
-              </button>
+            <div className="flex justify-between items-center text-[10px] text-slate-400 font-bold">
+              <span>진행 상황</span>
+              <span className="text-slate-300">{aiProgressPercent}% {statusVerb}...</span>
             </div>
           </div>
-          <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
-            <div 
-              className="bg-gradient-to-r from-violet-500 to-fuchsia-500 h-full rounded-full transition-all duration-300"
-              style={{ width: `${aiProgressPercent}%` }}
-            />
-          </div>
-          <div className="flex justify-between items-center text-[10px] text-slate-400 font-bold">
-            <span>진행 상황</span>
-            <div className="flex items-center gap-2">
-              <span>
-                {aiProgressMessage.includes('채점') 
-                  ? `${aiProgressPercent}% 채점 중...` 
-                  : `${aiProgressPercent}% 생성 중...`}
-              </span>
-              <button
-                type="button"
-                onClick={handleCancelAiTask}
-                className="text-rose-400 hover:text-rose-300 font-black text-[10px] transition-colors cursor-pointer ml-1"
-                title="AI 작업 취소"
-              >
-                작업 취소 ✕
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Top Premium Navbar */}
       <header className="w-full glass-panel border-b border-slate-800 py-5 px-6 md:px-12 flex flex-col md:flex-row justify-between items-center gap-4 sticky top-0 z-40 landscape-hide">
