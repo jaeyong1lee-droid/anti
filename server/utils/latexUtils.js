@@ -1471,7 +1471,35 @@ export function healQuizQuestionObject(q) {
       q.tableData.rows = newRows;
       // 비교표(comparisonTableData)의 answers는 메인 tableData rows 순회에서 처리되지 않으므로
       // oldAnswers에서 comparisonTableData.rows에 실제로 존재하는 키만 살려서 병합한다.
-      if (q.comparisonTableData && q.comparisonTableData.rows) {
+      if (q.comparisonTableData && q.comparisonTableData.rows && q.answers) {
+        const mainRowsCount = q.tableData?.rows?.length || 2;
+        q.comparisonTableData.rows = q.comparisonTableData.rows.map((row, rIdx) => {
+          if (!Array.isArray(row)) return row;
+          return row.map((cell, cIdx) => {
+            if (cIdx === 0) return cell;
+            let currentId = typeof cell === 'string' && cell.includes('[INPUT_')
+              ? cell.replace('[', '').replace(']', '').trim()
+              : `INPUT_${rIdx}_${cIdx}`;
+            
+            const match = currentId.match(/^INPUT_(\d+)_(\d+)$/i);
+            let finalId = currentId;
+            if (match) {
+              const r = parseInt(match[1], 10);
+              const c = parseInt(match[2], 10);
+              if (r < mainRowsCount) {
+                finalId = `INPUT_${mainRowsCount + r}_${c}`;
+                if (q.answers[currentId] && !q.answers[finalId]) {
+                  q.answers[finalId] = q.answers[currentId];
+                }
+              }
+            }
+            if (!q.answers[finalId] && q.answers[currentId]) {
+              q.answers[finalId] = q.answers[currentId];
+            }
+            return `[${finalId}]`;
+          });
+        });
+
         const activeComparisonKeys = new Set();
         q.comparisonTableData.rows.forEach(row => {
           if (Array.isArray(row)) {

@@ -15,9 +15,15 @@ export const getAnswerValue = (tableAnswers, questionIdx, inputId, isComparisonT
     const r = parseInt(match[1], 10);
     const c = parseInt(match[2], 10);
     if (isComparisonTable) {
-      altKeys.push(`${questionIdx}_INPUT_${r + 2}_${c}`);
-      altKeys.push(`${questionIdx}_INPUT_${r * 2 + c + 2}`);
-      altKeys.push(`${questionIdx}_INPUT_${r}_${c}`);
+      if (r >= 2) {
+        altKeys.push(`${questionIdx}_INPUT_${r}_${c}`);
+        altKeys.push(`${questionIdx}_INPUT_COMP_${r - 2}_${c}`);
+        altKeys.push(`${questionIdx}_INPUT_COMP_${r}_${c}`);
+      } else {
+        altKeys.push(`${questionIdx}_INPUT_${r + 2}_${c}`);
+        altKeys.push(`${questionIdx}_INPUT_COMP_${r}_${c}`);
+        altKeys.push(`${questionIdx}_INPUT_${r * 2 + c + 2}`);
+      }
     } else {
       altKeys.push(`${questionIdx}_INPUT_${r}_${c}`);
       altKeys.push(`${questionIdx}_INPUT_${r + 1}`);
@@ -26,10 +32,12 @@ export const getAnswerValue = (tableAnswers, questionIdx, inputId, isComparisonT
     altKeys.push(key);
   }
 
-  if (inputId === 'INPUT_1') altKeys.push(`${questionIdx}_INPUT_0_1`, `${questionIdx}_INPUT_0`);
-  if (inputId === 'INPUT_2') altKeys.push(`${questionIdx}_INPUT_1_1`, `${questionIdx}_INPUT_1`);
-  if (inputId === 'INPUT_0_1' && !isComparisonTable) altKeys.push(`${questionIdx}_INPUT_1`, `${questionIdx}_INPUT_0`);
-  if (inputId === 'INPUT_1_1' && !isComparisonTable) altKeys.push(`${questionIdx}_INPUT_2`, `${questionIdx}_INPUT_1`);
+  if (!isComparisonTable) {
+    if (inputId === 'INPUT_1') altKeys.push(`${questionIdx}_INPUT_0_1`, `${questionIdx}_INPUT_0`);
+    if (inputId === 'INPUT_2') altKeys.push(`${questionIdx}_INPUT_1_1`, `${questionIdx}_INPUT_1`);
+    if (inputId === 'INPUT_0_1') altKeys.push(`${questionIdx}_INPUT_1`, `${questionIdx}_INPUT_0`);
+    if (inputId === 'INPUT_1_1') altKeys.push(`${questionIdx}_INPUT_2`, `${questionIdx}_INPUT_1`);
+  }
 
   for (const alt of altKeys) {
     if (tableAnswers[alt] !== undefined && tableAnswers[alt] !== '') {
@@ -50,9 +58,15 @@ export const getGradingResult = (tableGradingResults, questionIdx, inputId, isCo
     const r = parseInt(match[1], 10);
     const c = parseInt(match[2], 10);
     if (isComparisonTable) {
-      altKeys.push(`${questionIdx}_INPUT_${r + 2}_${c}`);
-      altKeys.push(`${questionIdx}_INPUT_${r * 2 + c + 2}`);
-      altKeys.push(`${questionIdx}_INPUT_${r}_${c}`);
+      if (r >= 2) {
+        altKeys.push(`${questionIdx}_INPUT_${r}_${c}`);
+        altKeys.push(`${questionIdx}_INPUT_COMP_${r - 2}_${c}`);
+        altKeys.push(`${questionIdx}_INPUT_COMP_${r}_${c}`);
+      } else {
+        altKeys.push(`${questionIdx}_INPUT_${r + 2}_${c}`);
+        altKeys.push(`${questionIdx}_INPUT_COMP_${r}_${c}`);
+        altKeys.push(`${questionIdx}_INPUT_${r * 2 + c + 2}`);
+      }
     } else {
       altKeys.push(`${questionIdx}_INPUT_${r}_${c}`);
       altKeys.push(`${questionIdx}_INPUT_${r + 1}`);
@@ -61,10 +75,12 @@ export const getGradingResult = (tableGradingResults, questionIdx, inputId, isCo
     altKeys.push(key);
   }
 
-  if (inputId === 'INPUT_1') altKeys.push(`${questionIdx}_INPUT_0_1`, `${questionIdx}_INPUT_0`);
-  if (inputId === 'INPUT_2') altKeys.push(`${questionIdx}_INPUT_1_1`, `${questionIdx}_INPUT_1`);
-  if (inputId === 'INPUT_0_1' && !isComparisonTable) altKeys.push(`${questionIdx}_INPUT_1`, `${questionIdx}_INPUT_0`);
-  if (inputId === 'INPUT_1_1' && !isComparisonTable) altKeys.push(`${questionIdx}_INPUT_2`, `${questionIdx}_INPUT_1`);
+  if (!isComparisonTable) {
+    if (inputId === 'INPUT_1') altKeys.push(`${questionIdx}_INPUT_0_1`, `${questionIdx}_INPUT_0`);
+    if (inputId === 'INPUT_2') altKeys.push(`${questionIdx}_INPUT_1_1`, `${questionIdx}_INPUT_1`);
+    if (inputId === 'INPUT_0_1') altKeys.push(`${questionIdx}_INPUT_1`, `${questionIdx}_INPUT_0`);
+    if (inputId === 'INPUT_1_1') altKeys.push(`${questionIdx}_INPUT_2`, `${questionIdx}_INPUT_1`);
+  }
 
   for (const alt of altKeys) {
     if (tableGradingResults[alt] !== undefined) {

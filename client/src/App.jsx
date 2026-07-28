@@ -3712,7 +3712,36 @@ export default function App() {
     setGradingLoading(prev => ({ ...prev, [qIdx]: true }));
     let inputs = targetInputs;
     if (!inputs) {
-      if (q.answers && Object.keys(q.answers).length > 0) {
+      if (isOverviewReview(q)) {
+        const firstTableInputs = [];
+        const secondTableInputs = [];
+        if (q.tableData && q.tableData.rows) {
+          q.tableData.rows.forEach(row => {
+            row.forEach(cell => {
+              if (typeof cell === 'string' && cell.includes('[INPUT_')) {
+                firstTableInputs.push(cell.replace('[', '').replace(']', '').trim());
+              }
+            });
+          });
+        }
+        if (q.comparisonTableData && q.comparisonTableData.rows) {
+          q.comparisonTableData.rows.forEach(row => {
+            row.forEach(cell => {
+              if (typeof cell === 'string' && cell.includes('[INPUT_')) {
+                secondTableInputs.push(cell.replace('[', '').replace(']', '').trim());
+              }
+            });
+          });
+        }
+        const isFirstGraded = (firstTableInputs.length > 0 && firstTableInputs.every(
+          id => getGradingResult(tableGradingResultsRef.current, qIdx, id) !== undefined
+        ));
+        if (!isFirstGraded) {
+          inputs = firstTableInputs;
+        } else {
+          inputs = secondTableInputs.length > 0 ? secondTableInputs : Object.keys(q.answers || {});
+        }
+      } else if (q.answers && Object.keys(q.answers).length > 0) {
         inputs = Object.keys(q.answers);
       } else {
         const isFlowchart = q.question && (q.question.includes('┌──') || q.question.includes('▼') || q.question.includes('플로우차트') || q.question.includes('흐름도'));

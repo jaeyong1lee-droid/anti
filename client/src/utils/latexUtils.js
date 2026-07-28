@@ -1330,26 +1330,30 @@ export function healQuizQuestionObject(q) {
 
       if (q.comparisonTableData && q.comparisonTableData.rows && q.answers) {
         const mainRowsCount = q.tableData?.rows?.length || 2;
-        q.comparisonTableData.rows.forEach((row, rIdx) => {
-          row.forEach((cell, cIdx) => {
-            if (cIdx === 0) return;
-            const inputId = typeof cell === 'string' && cell.includes('[INPUT_')
+        q.comparisonTableData.rows = q.comparisonTableData.rows.map((row, rIdx) => {
+          if (!Array.isArray(row)) return row;
+          return row.map((cell, cIdx) => {
+            if (cIdx === 0) return cell;
+            let currentId = typeof cell === 'string' && cell.includes('[INPUT_')
               ? cell.replace('[', '').replace(']', '').trim()
               : `INPUT_${rIdx}_${cIdx}`;
             
-            const targetKey1 = `INPUT_${mainRowsCount + rIdx}_${cIdx}`;
-            const targetKey2 = `INPUT_${rIdx}_${cIdx}`;
-            
-            if (!q.answers[inputId]) {
-              if (q.answers[targetKey1]) q.answers[inputId] = q.answers[targetKey1];
-              else if (q.answers[targetKey2]) q.answers[inputId] = q.answers[targetKey2];
+            const match = currentId.match(/^INPUT_(\d+)_(\d+)$/i);
+            let finalId = currentId;
+            if (match) {
+              const r = parseInt(match[1], 10);
+              const c = parseInt(match[2], 10);
+              if (r < mainRowsCount) {
+                finalId = `INPUT_${mainRowsCount + r}_${c}`;
+                if (q.answers[currentId] && !q.answers[finalId]) {
+                  q.answers[finalId] = q.answers[currentId];
+                }
+              }
             }
-            if (!q.answers[targetKey1] && q.answers[inputId]) {
-              q.answers[targetKey1] = q.answers[inputId];
+            if (!q.answers[finalId] && q.answers[currentId]) {
+              q.answers[finalId] = q.answers[currentId];
             }
-            if (!q.answers[targetKey2] && q.answers[inputId]) {
-              q.answers[targetKey2] = q.answers[inputId];
-            }
+            return `[${finalId}]`;
           });
         });
       }

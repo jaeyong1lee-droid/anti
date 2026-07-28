@@ -109,7 +109,15 @@ export const TableQuiz = React.memo(function TableQuiz({
   ));
 
   const isSecondTableGraded = revealed || (secondTableInputs.length > 0 && secondTableInputs.every(
-    id => getGradingResult(tableGradingResults, questionIdx, id) !== undefined
+    id => {
+      const res = getGradingResult(tableGradingResults, questionIdx, id, true);
+      if (!res) return false;
+      if (res.score === 0 && res.reason && res.reason.includes('미입력')) {
+        const userVal = getAnswerValue(tableAnswers, questionIdx, id, true);
+        if (!userVal || !userVal.trim()) return false;
+      }
+      return true;
+    }
   ));
 
   const renderStepFeedback = (targetInputs, title, isStep2 = false) => {
@@ -556,8 +564,12 @@ export const TableQuiz = React.memo(function TableQuiz({
       if (match) {
         const r = parseInt(match[1], 10);
         const c = parseInt(match[2], 10);
-        updates[`${questionIdx}_INPUT_${r + 2}_${c}`] = val;
-        updates[`${questionIdx}_INPUT_${r * 2 + c + 2}`] = val;
+        if (r < 2) {
+          updates[`${questionIdx}_INPUT_${r + 2}_${c}`] = val;
+          updates[`${questionIdx}_INPUT_COMP_${r}_${c}`] = val;
+        } else {
+          updates[`${questionIdx}_INPUT_COMP_${r - 2}_${c}`] = val;
+        }
       }
     }
 
@@ -579,8 +591,12 @@ export const TableQuiz = React.memo(function TableQuiz({
         if (match) {
           const r = parseInt(match[1], 10);
           const c = parseInt(match[2], 10);
-          tableAnswersRef.current[`${questionIdx}_INPUT_${r + 2}_${c}`] = val;
-          tableAnswersRef.current[`${questionIdx}_INPUT_${r * 2 + c + 2}`] = val;
+          if (r < 2) {
+            tableAnswersRef.current[`${questionIdx}_INPUT_${r + 2}_${c}`] = val;
+            tableAnswersRef.current[`${questionIdx}_INPUT_COMP_${r}_${c}`] = val;
+          } else {
+            tableAnswersRef.current[`${questionIdx}_INPUT_COMP_${r - 2}_${c}`] = val;
+          }
         }
       }
     }
