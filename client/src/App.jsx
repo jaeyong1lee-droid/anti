@@ -30,7 +30,8 @@ import {
   isOverviewReview,
   cleanCorruptedFormula,
   getAnswerValue,
-  getGradingResult
+  getGradingResult,
+  getCorrectAnswerForInput
 } from './utils/renderingHelpers';
 import { 
   Brain, 
@@ -1236,7 +1237,7 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
       };
 
       const parts = content.split(`(${letter})`);
-      const answerVal = q?.answers?.[inputId] || '';
+      const answerVal = getCorrectAnswerForInput(q, inputId);
       let rightText = parts[1] || '';
       if (answerVal) {
         const escapedAns = answerVal.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
@@ -1463,7 +1464,7 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
               const letter = actualLettersMap[inputId] || String.fromCharCode(65 + letterIdx);
               const result = tableGradingResults[key];
               if (result) {
-                const rawAns = result?.suggestedModelAnswer || result?.correctAnswer || q?.answers?.[inputId] || '';
+                const rawAns = result?.suggestedModelAnswer || result?.correctAnswer || getCorrectAnswerForInput(q, inputId);
                 const cleanedAns = cleanFlowchartCorrectAnswer(rawAns, letter);
                 feedbackList.push({
                   ...result,
@@ -3807,7 +3808,7 @@ export default function App() {
 
     const processSingleInput = async (inputId) => {
       const userAnswer = getAnswerValue(activeAnswers, qIdx, inputId) || activeAnswers[`${qIdx}_${inputId}`] || '';
-      const correctAnswer = q?.answers?.[inputId] || '';
+      const correctAnswer = getCorrectAnswerForInput(q, inputId);
       
       const cleanUser = userAnswer.trim();
       const cleanCorrect = correctAnswer.trim();
@@ -4068,7 +4069,7 @@ export default function App() {
     startProgressPolling(progressId);
 
     const userAnswer = getAnswerValue(activeAnswers, qIdx, inputId) || activeAnswers[key] || '';
-    const correctAnswer = q?.answers?.[inputId] || '';
+    const correctAnswer = getCorrectAnswerForInput(q, inputId);
 
     let rowHeader = '';
     let colHeader = '';

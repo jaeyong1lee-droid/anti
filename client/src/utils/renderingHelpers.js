@@ -3,6 +3,50 @@
 // ============================================================================
 import { healLatexFormulas, balanceMathBraces } from './latexUtils.js';
 
+export const getCorrectAnswerForInput = (q, inputId) => {
+  if (!q || !q.answers) return '';
+  if (q.answers[inputId]) return q.answers[inputId];
+
+  const match = String(inputId || '').match(/^INPUT_(\d+)$/i);
+  if (match) {
+    const idx = parseInt(match[1], 10);
+    const letter = String.fromCharCode(65 + idx - 1);
+    const letterLower = letter.toLowerCase();
+
+    const candidates = [
+      `INPUT_${letter}`,
+      `INPUT_${letterLower}`,
+      `(${letter})`,
+      `(${letterLower})`,
+      `${letter}`,
+      `${letterLower}`,
+      `${idx}`,
+      `INPUT_${idx}`
+    ];
+    for (const cand of candidates) {
+      if (q.answers[cand]) return q.answers[cand];
+    }
+  }
+
+  const letterMatch = String(inputId || '').match(/^\(?([A-F])\)?$/i);
+  if (letterMatch) {
+    const letter = letterMatch[1].toUpperCase();
+    const idx = letter.charCodeAt(0) - 65 + 1;
+    const candidates = [
+      `INPUT_${idx}`,
+      `INPUT_${letter}`,
+      `(${letter})`,
+      `${letter}`,
+      `${idx}`
+    ];
+    for (const cand of candidates) {
+      if (q.answers[cand]) return q.answers[cand];
+    }
+  }
+
+  return '';
+};
+
 
 export const getAnswerValue = (tableAnswers, questionIdx, inputId, isComparisonTable = false) => {
   if (!tableAnswers) return '';

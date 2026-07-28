@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { LatexRenderer } from './LatexRenderer';
 import { BufferedTextarea } from './BufferedInput';
 import { PopoutWindow } from './PopoutWindow';
-import { getTableScoreColorTheme, areCellsEqual, isOverviewReview as isOverviewReviewHelper, getAnswerValue, getGradingResult } from '../utils/renderingHelpers';
+import { getTableScoreColorTheme, areCellsEqual, isOverviewReview as isOverviewReviewHelper, getAnswerValue, getGradingResult, getCorrectAnswerForInput } from '../utils/renderingHelpers';
 import { parseMarkdownTable } from '../utils/latexUtils';
 
 const normalize = (s) => (s || '').trim().toLowerCase().replace(/\s+/g, '');
@@ -129,7 +129,7 @@ export const TableQuiz = React.memo(function TableQuiz({
         <div className="divide-y divide-slate-800/80 mt-1">
           {targetInputs.map((inputId, sIdx) => {
             const value = getAnswerValue(tableAnswers, questionIdx, inputId, isStep2);
-            const correctAnswer = q.answers?.[inputId] || '';
+            const correctAnswer = getCorrectAnswerForInput(q, inputId);
             const gradingResult = getGradingResult(tableGradingResults, questionIdx, inputId, isStep2);
             
             let letterIdx = inputIds.indexOf(inputId);
@@ -1256,7 +1256,7 @@ export const TableQuiz = React.memo(function TableQuiz({
                   if (isInput) {
                     const inputId = cell.replace('[', '').replace(']', '').trim();
                     const value = getAnswerValue(tableAnswers, questionIdx, inputId);
-                    const correctAnswer = q.answers?.[inputId] || '';
+                    const correctAnswer = getCorrectAnswerForInput(q, inputId);
                     
                     const gradingResult = getGradingResult(tableGradingResults, questionIdx, inputId);
                     const isCorrect = gradingResult 
@@ -1578,7 +1578,7 @@ export const TableQuiz = React.memo(function TableQuiz({
                     if (isInput) {
                       const inputId = cell.replace('[', '').replace(']', '').trim();
                       const value = getAnswerValue(tableAnswers, questionIdx, inputId, true);
-                      const correctAnswer = q.answers?.[inputId] || '';
+                      const correctAnswer = getCorrectAnswerForInput(q, inputId);
                       
                       const gradingResult = getGradingResult(tableGradingResults, questionIdx, inputId, true);
                       const isCorrect = gradingResult 
