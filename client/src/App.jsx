@@ -11173,14 +11173,8 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
   function renderCardTutorChat(key, q) {
     const isCollapsed = !!tutorCollapsed[key];
     const hasPanel = !!(tutorAnswers[key]?.text || tutorAnswers[key]?.loading || tutorAnswers[key]?.error);
-    const topicTitle = q?.topicTitle || q?.title || q?.question || '';
-    const sourceAccordionHtml = q ? getOnlySourceAccordion(q.explanation || '', topicTitle) : '';
-
     return (
       <div className="mt-2.5 w-full text-left">
-        {sourceAccordionHtml && (
-          <div className="mb-3 select-text" dangerouslySetInnerHTML={{ __html: sourceAccordionHtml }} />
-        )}
         <div className="flex justify-between items-center mb-1">
           <label className="block text-[14px] sm:text-[16px] font-black text-violet-400">💬 AI 튜터 질문하기 (이 문제에 대해 물어보세요):</label>
           {hasPanel && (

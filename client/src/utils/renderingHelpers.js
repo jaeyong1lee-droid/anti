@@ -516,9 +516,10 @@ export function removeSourceCitationsFromText(text) {
 }
 
 export function getOnlySourceAccordion(text, qTitle = '') {
-  if (!text && !qTitle) return '';
-  const safeText = text || '';
-  const cleanTopicTitle = (qTitle || '').replace(/^Q\d+\.?\s*/i, '').replace(/[\r\n]/g, '').trim() || '해당 기술사 토픽';
+  return '';
+}
+
+function _unusedSourceAccordionLogic(text, qTitle = '') {
 
   const sourceItemRegex = /^[ \t]*(?:\*|-|•|\d+[\.\)]|\[\d+\])?[ \t]*(?:📚|📖|📄|🔖|💡|📌|🔍|📜|📑|📘)?[ \t]*(?:\*\*|\[)?\s*(KDS|KCS|KWCS|KS|ASTM|AASHTO|FHWA|USACE|JHD|국토교통부|국토부|건설교통부|건교부|해양수산부|해수부|환경부|산업통상자원부|한국도로공사|도로공사|LH|LH공사|수자원공사|K-water|농어촌공사|철도공단|철도시설공단|지반공학회|토목학회|발파공학회|터널지하공간학회|서울시|서울특별시|일본도로공단|원보고서|보고서|Wikipedia|위키|http:\/\/|https:\/\/|출처|참고자료|참고문헌|근거|시방서|설계기준|지침|설계지침|시공지침|안전지침|시공기준|기술기준|지반조사|논문|학술지|서적|교재|도서|Soil Mechanics|Lambe|Whitman|Peck|Terzaghi|Bowles|Das|Skempton|Bjerrum|Casagrande|Asaoka|Mesa)([\s\S]*?)(?=\n[ \t]*(?:\*|-|•|\d+[\.\)]|\[\d+\]|#{1,6}\s+)|\n\n|$)/gmi;
 
