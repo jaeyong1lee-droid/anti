@@ -105,7 +105,7 @@ export const TableQuiz = React.memo(function TableQuiz({
   const { firstTableInputs, secondTableInputs } = getTableInputIds();
 
   const isFirstTableGraded = revealed || (firstTableInputs.length > 0 && firstTableInputs.every(
-    id => getGradingResult(tableGradingResults, questionIdx, id) !== undefined
+    id => getGradingResult(tableGradingResults, questionIdx, id, false) !== undefined
   ));
 
   const isSecondTableGraded = revealed || (secondTableInputs.length > 0 && secondTableInputs.every(

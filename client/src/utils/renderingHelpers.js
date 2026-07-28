@@ -13,38 +13,29 @@ export const getAnswerValue = (tableAnswers, questionIdx, inputId, isComparisonT
     return tableAnswers[key];
   }
 
-  const altKeys = [];
-
-  const match = String(inputId || '').match(/^INPUT_(\d+)_(\d+)$/);
-  if (match) {
-    const r = parseInt(match[1], 10);
-    const c = parseInt(match[2], 10);
-    if (isComparisonTable) {
-      if (r >= 2) {
-        altKeys.push(`${questionIdx}_INPUT_${r}_${c}`);
-        altKeys.push(`${questionIdx}_INPUT_COMP_${r - 2}_${c}`);
-        altKeys.push(`${questionIdx}_INPUT_COMP_${r}_${c}`);
-      } else {
-        altKeys.push(`${questionIdx}_INPUT_${r + 2}_${c}`);
-        altKeys.push(`${questionIdx}_INPUT_COMP_${r}_${c}`);
-        altKeys.push(`${questionIdx}_INPUT_${r * 2 + c + 2}`);
+  if (isComparisonTable) {
+    const match = String(inputId || '').match(/^INPUT_(\d+)_(\d+)$/);
+    if (match) {
+      const r = parseInt(match[1], 10);
+      const c = parseInt(match[2], 10);
+      const compKeys = [
+        `${questionIdx}_INPUT_COMP_${r}_${c}`,
+        `${questionIdx}_INPUT_COMP_${r - 2}_${c}`
+      ];
+      for (const alt of compKeys) {
+        if (tableAnswers[alt] !== undefined && tableAnswers[alt] !== '') {
+          return tableAnswers[alt];
+        }
       }
     }
-    // For regular (non-comparison) tables: do NOT add INPUT_{r+1} alias.
-    // That mapping caused A-cell value to appear in B-cell when Tab is pressed.
-  } else {
-    altKeys.push(key);
+    return tableAnswers[key] || '';
   }
 
-  if (!isComparisonTable) {
-    // Legacy 1D <-> 2D aliases for backward compatibility with older saved sessions.
-    // Deliberately omit INPUT_1 from INPUT_1_1's altkeys and INPUT_1 from INPUT_0_1's
-    // write path — value lookup only falls back to these when the exact key is missing.
-    if (inputId === 'INPUT_1') altKeys.push(`${questionIdx}_INPUT_0_1`, `${questionIdx}_INPUT_0`);
-    if (inputId === 'INPUT_2') altKeys.push(`${questionIdx}_INPUT_1_1`);
-    if (inputId === 'INPUT_0_1') altKeys.push(`${questionIdx}_INPUT_1`);
-    if (inputId === 'INPUT_1_1') altKeys.push(`${questionIdx}_INPUT_2`);
-  }
+  const altKeys = [];
+  if (inputId === 'INPUT_1') altKeys.push(`${questionIdx}_INPUT_0_1`, `${questionIdx}_INPUT_0`);
+  if (inputId === 'INPUT_2') altKeys.push(`${questionIdx}_INPUT_1_1`);
+  if (inputId === 'INPUT_0_1') altKeys.push(`${questionIdx}_INPUT_1`);
+  if (inputId === 'INPUT_1_1') altKeys.push(`${questionIdx}_INPUT_2`);
 
   for (const alt of altKeys) {
     if (alt !== key && tableAnswers[alt] !== undefined && tableAnswers[alt] !== '') {
@@ -53,7 +44,6 @@ export const getAnswerValue = (tableAnswers, questionIdx, inputId, isComparisonT
   }
   return tableAnswers[key] || '';
 };
-
 
 export const getGradingResult = (tableGradingResults, questionIdx, inputId, isComparisonTable = false) => {
   if (!tableGradingResults) return undefined;
@@ -64,38 +54,29 @@ export const getGradingResult = (tableGradingResults, questionIdx, inputId, isCo
     return tableGradingResults[key];
   }
 
-  const altKeys = [];
-
-  const match = String(inputId || '').match(/^INPUT_(\d+)_(\d+)$/);
-  if (match) {
-    const r = parseInt(match[1], 10);
-    const c = parseInt(match[2], 10);
-    if (isComparisonTable) {
-      if (r >= 2) {
-        altKeys.push(`${questionIdx}_INPUT_${r}_${c}`);
-        altKeys.push(`${questionIdx}_INPUT_COMP_${r - 2}_${c}`);
-        altKeys.push(`${questionIdx}_INPUT_COMP_${r}_${c}`);
-      } else {
-        altKeys.push(`${questionIdx}_INPUT_${r + 2}_${c}`);
-        altKeys.push(`${questionIdx}_INPUT_COMP_${r}_${c}`);
-        altKeys.push(`${questionIdx}_INPUT_${r * 2 + c + 2}`);
+  if (isComparisonTable) {
+    const match = String(inputId || '').match(/^INPUT_(\d+)_(\d+)$/);
+    if (match) {
+      const r = parseInt(match[1], 10);
+      const c = parseInt(match[2], 10);
+      const compKeys = [
+        `${questionIdx}_INPUT_COMP_${r}_${c}`,
+        `${questionIdx}_INPUT_COMP_${r - 2}_${c}`
+      ];
+      for (const alt of compKeys) {
+        if (tableGradingResults[alt] !== undefined) {
+          return tableGradingResults[alt];
+        }
       }
     }
-    // For regular tables: do NOT add INPUT_{r+1} alias — it collides with adjacent cells.
-  } else {
-    altKeys.push(key);
+    return undefined;
   }
 
-  if (!isComparisonTable) {
-    // Legacy 1D <-> 2D key aliases for grading result lookup.
-    // Keep INPUT_0 aliases for backward compatibility with older sessions,
-    // but remove shared intermediate keys (INPUT_1 shared by both INPUT_0_1 and INPUT_1_1)
-    // to avoid returning the wrong grading result for adjacent cells.
-    if (inputId === 'INPUT_1') altKeys.push(`${questionIdx}_INPUT_0_1`, `${questionIdx}_INPUT_0`);
-    if (inputId === 'INPUT_2') altKeys.push(`${questionIdx}_INPUT_1_1`);
-    if (inputId === 'INPUT_0_1') altKeys.push(`${questionIdx}_INPUT_1`);
-    if (inputId === 'INPUT_1_1') altKeys.push(`${questionIdx}_INPUT_2`);
-  }
+  const altKeys = [];
+  if (inputId === 'INPUT_1') altKeys.push(`${questionIdx}_INPUT_0_1`, `${questionIdx}_INPUT_0`);
+  if (inputId === 'INPUT_2') altKeys.push(`${questionIdx}_INPUT_1_1`);
+  if (inputId === 'INPUT_0_1') altKeys.push(`${questionIdx}_INPUT_1`);
+  if (inputId === 'INPUT_1_1') altKeys.push(`${questionIdx}_INPUT_2`);
 
   for (const alt of altKeys) {
     if (alt !== key && tableGradingResults[alt] !== undefined) {
