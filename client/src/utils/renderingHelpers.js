@@ -29,19 +29,21 @@ export const getAnswerValue = (tableAnswers, questionIdx, inputId, isComparisonT
         altKeys.push(`${questionIdx}_INPUT_COMP_${r}_${c}`);
         altKeys.push(`${questionIdx}_INPUT_${r * 2 + c + 2}`);
       }
-    } else {
-      altKeys.push(`${questionIdx}_INPUT_${r}_${c}`);
-      altKeys.push(`${questionIdx}_INPUT_${r + 1}`);
     }
+    // For regular (non-comparison) tables: do NOT add INPUT_{r+1} alias.
+    // That mapping caused A-cell value to appear in B-cell when Tab is pressed.
   } else {
     altKeys.push(key);
   }
 
   if (!isComparisonTable) {
+    // Legacy 1D <-> 2D aliases for backward compatibility with older saved sessions.
+    // Deliberately omit INPUT_1 from INPUT_1_1's altkeys and INPUT_1 from INPUT_0_1's
+    // write path — value lookup only falls back to these when the exact key is missing.
     if (inputId === 'INPUT_1') altKeys.push(`${questionIdx}_INPUT_0_1`, `${questionIdx}_INPUT_0`);
-    if (inputId === 'INPUT_2') altKeys.push(`${questionIdx}_INPUT_1_1`, `${questionIdx}_INPUT_1`);
-    if (inputId === 'INPUT_0_1') altKeys.push(`${questionIdx}_INPUT_1`, `${questionIdx}_INPUT_0`);
-    if (inputId === 'INPUT_1_1') altKeys.push(`${questionIdx}_INPUT_2`, `${questionIdx}_INPUT_1`);
+    if (inputId === 'INPUT_2') altKeys.push(`${questionIdx}_INPUT_1_1`);
+    if (inputId === 'INPUT_0_1') altKeys.push(`${questionIdx}_INPUT_1`);
+    if (inputId === 'INPUT_1_1') altKeys.push(`${questionIdx}_INPUT_2`);
   }
 
   for (const alt of altKeys) {
@@ -51,6 +53,7 @@ export const getAnswerValue = (tableAnswers, questionIdx, inputId, isComparisonT
   }
   return tableAnswers[key] || '';
 };
+
 
 export const getGradingResult = (tableGradingResults, questionIdx, inputId, isComparisonTable = false) => {
   if (!tableGradingResults) return undefined;
@@ -77,19 +80,21 @@ export const getGradingResult = (tableGradingResults, questionIdx, inputId, isCo
         altKeys.push(`${questionIdx}_INPUT_COMP_${r}_${c}`);
         altKeys.push(`${questionIdx}_INPUT_${r * 2 + c + 2}`);
       }
-    } else {
-      altKeys.push(`${questionIdx}_INPUT_${r}_${c}`);
-      altKeys.push(`${questionIdx}_INPUT_${r + 1}`);
     }
+    // For regular tables: do NOT add INPUT_{r+1} alias — it collides with adjacent cells.
   } else {
     altKeys.push(key);
   }
 
   if (!isComparisonTable) {
+    // Legacy 1D <-> 2D key aliases for grading result lookup.
+    // Keep INPUT_0 aliases for backward compatibility with older sessions,
+    // but remove shared intermediate keys (INPUT_1 shared by both INPUT_0_1 and INPUT_1_1)
+    // to avoid returning the wrong grading result for adjacent cells.
     if (inputId === 'INPUT_1') altKeys.push(`${questionIdx}_INPUT_0_1`, `${questionIdx}_INPUT_0`);
-    if (inputId === 'INPUT_2') altKeys.push(`${questionIdx}_INPUT_1_1`, `${questionIdx}_INPUT_1`);
-    if (inputId === 'INPUT_0_1') altKeys.push(`${questionIdx}_INPUT_1`, `${questionIdx}_INPUT_0`);
-    if (inputId === 'INPUT_1_1') altKeys.push(`${questionIdx}_INPUT_2`, `${questionIdx}_INPUT_1`);
+    if (inputId === 'INPUT_2') altKeys.push(`${questionIdx}_INPUT_1_1`);
+    if (inputId === 'INPUT_0_1') altKeys.push(`${questionIdx}_INPUT_1`);
+    if (inputId === 'INPUT_1_1') altKeys.push(`${questionIdx}_INPUT_2`);
   }
 
   for (const alt of altKeys) {
