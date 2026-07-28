@@ -2775,12 +2775,16 @@ export default function App() {
     );
   };
 
-  const gradeAcronymQuestion = async (qIdx, q) => {
+  const gradeAcronymQuestion = async (qIdx, q, isReevaluation = false) => {
     setGradingLoading(prev => ({ ...prev, [qIdx]: true }));
     
-    const rowCount = q.tableData?.rows?.length || 0;
+    const activeAnswersRef = showExam ? examTableAnswersRef : tableAnswersRef;
+    const activeSetGradingResults = showExam ? setExamTableGradingResults : setTableGradingResults;
+    const activeGradingRef = showExam ? examTableGradingResultsRef : tableGradingResultsRef;
+
+    const rowCount = q.tableData?.rows?.length || q.correctRows?.length || 0;
     const userAcronym = Array.from({ length: rowCount })
-      .map((_, rIdx) => (tableAnswersRef.current[`${qIdx}_ROW_${rIdx}_ACRONYM`] || '').trim())
+      .map((_, rIdx) => (activeAnswersRef.current[`${qIdx}_ROW_${rIdx}_ACRONYM`] || '').trim())
       .join('');
     const correctAcronym = (q.acronym || '').trim();
     
@@ -2796,8 +2800,8 @@ export default function App() {
     
     const userRows = Array.from({ length: rowCount }).map((_, rIdx) => {
       return {
-        acronym: (tableAnswersRef.current[`${qIdx}_ROW_${rIdx}_ACRONYM`] || '').trim(),
-        combined: (tableAnswersRef.current[`${qIdx}_ROW_${rIdx}_COMB`] || '').trim()
+        acronym: (activeAnswersRef.current[`${qIdx}_ROW_${rIdx}_ACRONYM`] || '').trim(),
+        combined: (activeAnswersRef.current[`${qIdx}_ROW_${rIdx}_COMB`] || '').trim()
       };
     });
     
@@ -2811,7 +2815,7 @@ export default function App() {
       const userLetter = userRow.acronym;
       const userContent = userRow.combined;
       
-      const correctRow = mappedCorrectRows[rIdx];
+      const correctRow = mappedCorrectRows[rIdx] || {};
       
       if (!userLetter) {
         results[`${qIdx}_ROW_${rIdx}_ACRONYM`] = { isCorrect: false, score: 0, reason: '두문자 미입력' };
@@ -2826,12 +2830,16 @@ export default function App() {
         reason: isLetterCorrect ? `두문자 매칭 성공` : `두문자 불일치 (입력: ${userLetter}, 모범답안: ${correctRow.acronym})`
       };
       
-      const correctAnswer = `${correctRow.word} : ${correctRow.description}`;
+      const correctAnswer = correctRow.word ? `${correctRow.word} : ${correctRow.description}` : (q.explanation || '');
       
       try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 40000);
+
         const res = await fetch(`${API_BASE}/api/grade-subjective`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
           body: JSON.stringify({
             question: `${q.question} (두문자: ${userLetter})`,
             correctAnswer,
@@ -2840,9 +2848,12 @@ export default function App() {
             colHeader: '암기단어 및 설명',
             explanation: correctAnswer,
             category: '앞글자',
+            temperature: isReevaluation ? 0.85 : 0.7,
+            preferredModel: preferredModelRef.current || preferredModel,
             progressId
           })
         });
+        clearTimeout(timeoutId);
         const data = await res.json();
         results[`${qIdx}_ROW_${rIdx}_COMB`] = {
           isCorrect: data.isCorrect,
@@ -2866,11 +2877,11 @@ export default function App() {
     stopProgressPolling();
     setGradingLoading(prev => ({ ...prev, [qIdx]: false }));
     
-    const updatedGrading = { ...tableGradingResultsRef.current, ...results };
-    setTableGradingResults(updatedGrading);
-    tableGradingResultsRef.current = updatedGrading;
+    const updatedGrading = { ...activeGradingRef.current, ...results };
+    activeSetGradingResults(updatedGrading);
+    activeGradingRef.current = updatedGrading;
     
-    if (selectedTopic && selectedTopic.id && aiQuestions.length > 0 && !selectedTopic.isReadOnly) {
+    if (!showExam && selectedTopic && selectedTopic.id && aiQuestions.length > 0 && !selectedTopic.isReadOnly) {
       lastSyncStateRef.current.revealedQuestions = { ...revealedQuestionsRef.current, [qIdx]: true };
       lastSyncStateRef.current.tableGradingResults = updatedGrading;
       saveActiveSessionDebounced();
@@ -3914,7 +3925,7 @@ export default function App() {
 
   const [cellGradingLoading, setCellGradingLoading] = useState({});
 
-  const gradeSingleAcronymCell = async (qIdx, q, rIdx) => {
+  const gradeSingleAcronymCell = async (qIdx, q, rIdx, isReevaluation = false) => {
     const acronymKey = `${qIdx}_ROW_${rIdx}_ACRONYM`;
     const combKey = `${qIdx}_ROW_${rIdx}_COMB`;
     
@@ -3928,10 +3939,10 @@ export default function App() {
     const userLetter = (activeAnswers[acronymKey] || '').trim();
     const userContent = (activeAnswers[combKey] || '').trim();
     
-    const rowCount = q.correctRows?.length || 0;
+    const rowCount = q.correctRows?.length || q.tableData?.rows?.length || 0;
     const userLetters = Array.from({ length: rowCount }).map((_, i) => (activeAnswers[`${qIdx}_ROW_${i}_ACRONYM`] || '').trim());
     const mappedCorrectRows = matchUserRowsToCorrectRows(userLetters, q.correctRows);
-    const correctRow = mappedCorrectRows[rIdx];
+    const correctRow = mappedCorrectRows[rIdx] || {};
     
     if (!userLetter) {
       nextGrading[acronymKey] = { isCorrect: false, score: 0, reason: '두문자 미입력' };
@@ -3948,7 +3959,7 @@ export default function App() {
       reason: isLetterCorrect ? `두문자 매칭 성공` : `두문자 불일치 (입력: ${userLetter}, 모범답안: ${correctRow.acronym})`
     };
     
-    const correctAnswer = `${correctRow.word} : ${correctRow.description}`;
+    const correctAnswer = correctRow.word ? `${correctRow.word} : ${correctRow.description}` : (q.explanation || '');
     const progressId = 'grade_acronym_cell_' + Math.random().toString(36).substring(2, 9);
     startProgressPolling(progressId);
     
@@ -3968,6 +3979,7 @@ export default function App() {
           colHeader: '암기단어 및 설명',
           explanation: correctAnswer,
           category: '앞글자',
+          temperature: isReevaluation ? 0.85 : 0.7,
           preferredModel: preferredModelRef.current || preferredModel,
           progressId
         })
@@ -19519,7 +19531,10 @@ ${itemsStr}
                                   e.preventDefault();
                                   e.stopPropagation();
                                   if (gradingLoading[idx]) return;
-                                  if (q.type === '주관식 (표채우기)' || q.subtype === '표채우기' || !!(q.tableData || q.comparisonTableData)) {
+                                  const isAcronym = q.type === '주관식 (앞글자)' || q.type === '주관식 (두문자)' || !!q.acronym || !!q.acronymData || !!q.correctRows || (q.tableData && q.tableData.headers && q.tableData.headers[0] === '두');
+                                  if (isAcronym) {
+                                    await gradeAcronymQuestion(idx, q, true);
+                                  } else if (q.type === '주관식 (표채우기)' || q.subtype === '표채우기' || !!(q.tableData || q.comparisonTableData)) {
                                     await gradeTableQuestion(idx, q, null, true);
                                   } else {
                                     await gradeSubjectiveQuestion(idx, q, true);
@@ -23271,7 +23286,10 @@ ${itemsStr}
                                 e.preventDefault();
                                 e.stopPropagation();
                                 if (gradingLoading[idx]) return;
-                                if (q.type === '주관식 (표채우기)' || q.subtype === '표채우기' || !!(q.tableData || q.comparisonTableData)) {
+                                const isAcronym = q.type === '주관식 (앞글자)' || q.type === '주관식 (두문자)' || !!q.acronym || !!q.acronymData || !!q.correctRows || (q.tableData && q.tableData.headers && q.tableData.headers[0] === '두');
+                                if (isAcronym) {
+                                  await gradeAcronymQuestion(idx, q, true);
+                                } else if (q.type === '주관식 (표채우기)' || q.subtype === '표채우기' || !!(q.tableData || q.comparisonTableData)) {
                                   await gradeTableQuestion(idx, q, null, true);
                                 } else {
                                   await gradeSubjectiveQuestion(idx, q, true);

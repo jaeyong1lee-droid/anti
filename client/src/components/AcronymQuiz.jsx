@@ -210,7 +210,7 @@ export const AcronymQuiz = React.memo(function AcronymQuiz({
                           e.stopPropagation();
                           if (isCellLoading) return;
                           if (gradeSingleAcronymCell) {
-                            await gradeSingleAcronymCell(questionIdx, q, rIdx);
+                            await gradeSingleAcronymCell(questionIdx, q, rIdx, true);
                           } else if (onSubmit) {
                             await onSubmit();
                           }

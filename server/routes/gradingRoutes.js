@@ -1,7 +1,7 @@
 import express from 'express';
 import pdfParse from 'pdf-parse';
 import { dbQuery } from '../database.js';
-import { callLLMWithFailover, analyzeStandardsBeforeTask, getTopicText, startBackendProgressTimer, updateProgress, stopBackendProgressTimer } from '../services/aiService.js';
+import { callLLMWithFailover, analyzeStandardsBeforeTask, getTopicText, startBackendProgressTimer, updateProgress, stopBackendProgressTimer, globalPreferredModel } from '../services/aiService.js';
 import { healQuizQuestionObject, parseLlmJson, healLatexFormulas } from '../utils/latexUtils.js';
 import * as fileUtils from '../utils/fileUtils.js';
 import { generateFallbackQuestions } from '../fallback_generator.js';
