@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { dbQuery, isPostgres } from '../database.js';
-import { callLLMWithFailover, searchSourceDocumentWithGeminiLite, analyzeStandardsBeforeTask, saveSessionValue, getTopicText, startBackendProgressTimer, updateProgress } from '../services/aiService.js';
+import { callLLMWithFailover, searchSourceDocumentWithGeminiLite, analyzeStandardsBeforeTask, saveSessionValue, getTopicText, startBackendProgressTimer, updateProgress, globalPreferredModel } from '../services/aiService.js';
 import { healLatexFormulas, healQuizQuestionObject, healAnswersheetQuestionObject, parseLlmJson, LATEX_PROMPT_INSTRUCTIONS, LATEX_CHAT_PROMPT_INSTRUCTIONS } from '../utils/latexUtils.js';
 import * as fileUtils from '../utils/fileUtils.js';
 import { generateFallbackQuestions } from '../fallback_generator.js';
@@ -1041,7 +1041,7 @@ let parsedArray = null;
         parsedArray = extractJsonArray(rawText);
       }
     } else {
-      const targetModel = req.body.preferredModel || globalPreferredModel || 'gemini-3.5-flash-lite';
+      const targetModel = (req.body && req.body.preferredModel) || globalPreferredModel || 'gemini-3.5-flash-lite';
       const [batch1Text, batch2Text, batch3Text] = await Promise.all([
         localCallLLM(systemInstruction, promptBatch1, null, 'question', { temperature: 1.0, preferredModel: targetModel }),
         localCallLLM(systemInstruction, promptBatch2, null, 'question', { temperature: 1.0, preferredModel: targetModel }),
