@@ -544,19 +544,42 @@ export const TableQuiz = React.memo(function TableQuiz({
     lastCompTapRef.current = now;
   }, [resetCompMobileColWidths]);
 
-  const handleInputChange = (inputId, val) => {
-    if (tableAnswersRef) {
-      tableAnswersRef.current[`${questionIdx}_${inputId}`] = val;
+  const handleInputChange = (inputId, val, isComp = false) => {
+    const key = `${questionIdx}_${inputId}`;
+    const updates = { [key]: val };
+
+    if (isComp) {
+      const match = String(inputId || '').match(/^INPUT_(\d+)_(\d+)$/);
+      if (match) {
+        const r = parseInt(match[1], 10);
+        const c = parseInt(match[2], 10);
+        updates[`${questionIdx}_INPUT_${r + 2}_${c}`] = val;
+        updates[`${questionIdx}_INPUT_${r * 2 + c + 2}`] = val;
+      }
+    }
+
+    if (tableAnswersRef && tableAnswersRef.current) {
+      Object.assign(tableAnswersRef.current, updates);
     }
     setTableAnswers(prev => ({
       ...prev,
-      [`${questionIdx}_${inputId}`]: val
+      ...updates
     }));
   };
 
-  const handleInputKeystroke = (inputId, val) => {
-    if (tableAnswersRef) {
-      tableAnswersRef.current[`${questionIdx}_${inputId}`] = val;
+  const handleInputKeystroke = (inputId, val, isComp = false) => {
+    const key = `${questionIdx}_${inputId}`;
+    if (tableAnswersRef && tableAnswersRef.current) {
+      tableAnswersRef.current[key] = val;
+      if (isComp) {
+        const match = String(inputId || '').match(/^INPUT_(\d+)_(\d+)$/);
+        if (match) {
+          const r = parseInt(match[1], 10);
+          const c = parseInt(match[2], 10);
+          tableAnswersRef.current[`${questionIdx}_INPUT_${r + 2}_${c}`] = val;
+          tableAnswersRef.current[`${questionIdx}_INPUT_${r * 2 + c + 2}`] = val;
+        }
+      }
     }
   };
 
@@ -1561,8 +1584,8 @@ export const TableQuiz = React.memo(function TableQuiz({
                             <div className="flex-grow text-left font-medium">
                               <BufferedTextarea
                                 value={value}
-                                onChange={(val) => handleInputChange(inputId, val)}
-                                onKeystroke={(val) => handleInputKeystroke(inputId, val)}
+                                onChange={(val) => handleInputChange(inputId, val, true)}
+                                onKeystroke={(val) => handleInputKeystroke(inputId, val, true)}
                                 placeholder={isOverviewReview && !isFirstTableGraded ? "🔒 1단계 완료 후 활성화" : `${inputLetter} 입력`}
                                 readOnly={isOverviewReview && !isFirstTableGraded}
                                 disabled={isOverviewReview && !isFirstTableGraded}
