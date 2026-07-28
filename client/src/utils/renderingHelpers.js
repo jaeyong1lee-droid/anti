@@ -33,13 +33,15 @@ export const getAnswerValue = (tableAnswers, questionIdx, inputId, isComparisonT
       altKeys.push(`${questionIdx}_INPUT_${r}_${c}`);
       altKeys.push(`${questionIdx}_INPUT_${r + 1}`);
     }
+  } else {
+    altKeys.push(key);
   }
 
   if (!isComparisonTable) {
     if (inputId === 'INPUT_1') altKeys.push(`${questionIdx}_INPUT_0_1`, `${questionIdx}_INPUT_0`);
-    if (inputId === 'INPUT_2') altKeys.push(`${questionIdx}_INPUT_1_1`);
+    if (inputId === 'INPUT_2') altKeys.push(`${questionIdx}_INPUT_1_1`, `${questionIdx}_INPUT_1`);
     if (inputId === 'INPUT_0_1') altKeys.push(`${questionIdx}_INPUT_1`, `${questionIdx}_INPUT_0`);
-    if (inputId === 'INPUT_1_1') altKeys.push(`${questionIdx}_INPUT_2`);
+    if (inputId === 'INPUT_1_1') altKeys.push(`${questionIdx}_INPUT_2`, `${questionIdx}_INPUT_1`);
   }
 
   for (const alt of altKeys) {
@@ -79,13 +81,15 @@ export const getGradingResult = (tableGradingResults, questionIdx, inputId, isCo
       altKeys.push(`${questionIdx}_INPUT_${r}_${c}`);
       altKeys.push(`${questionIdx}_INPUT_${r + 1}`);
     }
+  } else {
+    altKeys.push(key);
   }
 
   if (!isComparisonTable) {
     if (inputId === 'INPUT_1') altKeys.push(`${questionIdx}_INPUT_0_1`, `${questionIdx}_INPUT_0`);
-    if (inputId === 'INPUT_2') altKeys.push(`${questionIdx}_INPUT_1_1`);
+    if (inputId === 'INPUT_2') altKeys.push(`${questionIdx}_INPUT_1_1`, `${questionIdx}_INPUT_1`);
     if (inputId === 'INPUT_0_1') altKeys.push(`${questionIdx}_INPUT_1`, `${questionIdx}_INPUT_0`);
-    if (inputId === 'INPUT_1_1') altKeys.push(`${questionIdx}_INPUT_2`);
+    if (inputId === 'INPUT_1_1') altKeys.push(`${questionIdx}_INPUT_2`, `${questionIdx}_INPUT_1`);
   }
 
   for (const alt of altKeys) {

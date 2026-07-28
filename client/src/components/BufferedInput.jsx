@@ -2,8 +2,12 @@ import React from 'react';
 
 export const BufferedInput = React.memo(({ value, onChange, onKeystroke, onKeyDown, ...props }) => {
   const [localVal, setLocalVal] = React.useState(value || '');
+  const inputRef = React.useRef(null);
 
   React.useEffect(() => {
+    if (typeof document !== 'undefined' && document.activeElement === inputRef.current) {
+      return;
+    }
     setLocalVal(value || '');
   }, [value]);
 
@@ -35,6 +39,7 @@ export const BufferedInput = React.memo(({ value, onChange, onKeystroke, onKeyDo
   return (
     <input
       {...props}
+      ref={inputRef}
       value={localVal}
       onChange={handleChange}
       onBlur={handleBlur}
@@ -49,6 +54,9 @@ export const BufferedTextarea = React.memo(({ value, onChange, onKeystroke, onKe
   const textareaRef = React.useRef(null);
 
   React.useEffect(() => {
+    if (typeof document !== 'undefined' && document.activeElement === textareaRef.current) {
+      return;
+    }
     setLocalVal(value || '');
   }, [value]);
 
