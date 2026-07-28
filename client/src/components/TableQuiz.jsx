@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { LatexRenderer } from './LatexRenderer';
 import { BufferedTextarea } from './BufferedInput';
 import { PopoutWindow } from './PopoutWindow';
-import { getTableScoreColorTheme, areCellsEqual, isOverviewReview as isOverviewReviewHelper } from '../utils/renderingHelpers';
+import { getTableScoreColorTheme, areCellsEqual, isOverviewReview as isOverviewReviewHelper, getAnswerValue, getGradingResult } from '../utils/renderingHelpers';
 import { parseMarkdownTable } from '../utils/latexUtils';
 
 const normalize = (s) => (s || '').trim().toLowerCase().replace(/\s+/g, '');
@@ -105,11 +105,11 @@ export const TableQuiz = React.memo(function TableQuiz({
   const { firstTableInputs, secondTableInputs } = getTableInputIds();
 
   const isFirstTableGraded = revealed || (firstTableInputs.length > 0 && firstTableInputs.every(
-    id => tableGradingResults && tableGradingResults[`${questionIdx}_${id}`] !== undefined
+    id => getGradingResult(tableGradingResults, questionIdx, id) !== undefined
   ));
 
   const isSecondTableGraded = revealed || (secondTableInputs.length > 0 && secondTableInputs.every(
-    id => tableGradingResults && tableGradingResults[`${questionIdx}_${id}`] !== undefined
+    id => getGradingResult(tableGradingResults, questionIdx, id) !== undefined
   ));
 
   const renderStepFeedback = (targetInputs, title) => {
@@ -120,9 +120,9 @@ export const TableQuiz = React.memo(function TableQuiz({
         <span className="font-extrabold text-amber-400 text-[14px] sm:text-[16px]">{title}:</span>
         <div className="divide-y divide-slate-800/80 mt-1">
           {targetInputs.map((inputId) => {
-            const value = tableAnswers[`${questionIdx}_${inputId}`] || '';
+            const value = getAnswerValue(tableAnswers, questionIdx, inputId);
             const correctAnswer = q.answers?.[inputId] || '';
-            const gradingResult = tableGradingResults?.[`${questionIdx}_${inputId}`];
+            const gradingResult = getGradingResult(tableGradingResults, questionIdx, inputId);
             
             const inputIdx = inputIds.indexOf(inputId);
             const inputLetter = String.fromCharCode(65 + (inputIdx !== -1 ? inputIdx : 0));
@@ -1213,17 +1213,17 @@ export const TableQuiz = React.memo(function TableQuiz({
 
                   if (isInput) {
                     const inputId = cell.replace('[', '').replace(']', '').trim();
-                    const value = tableAnswers[`${questionIdx}_${inputId}`] || '';
+                    const value = getAnswerValue(tableAnswers, questionIdx, inputId);
                     const correctAnswer = q.answers?.[inputId] || '';
                     
-                    const gradingResult = tableGradingResults?.[`${questionIdx}_${inputId}`];
+                    const gradingResult = getGradingResult(tableGradingResults, questionIdx, inputId);
                     const isCorrect = gradingResult 
                       ? gradingResult.isCorrect 
                       : (normalize(value) === normalize(correctAnswer));
    
                     const inputIdx = inputIds.indexOf(inputId);
                     const inputLetter = String.fromCharCode(65 + (inputIdx !== -1 ? inputIdx : 0));
-                    const isCellGraded = revealed || (tableGradingResults && tableGradingResults[`${questionIdx}_${inputId}`] !== undefined);
+                    const isCellGraded = revealed || (getGradingResult(tableGradingResults, questionIdx, inputId) !== undefined);
                     const theme = isCellGraded ? getTableScoreColorTheme(gradingResult, isCorrect, value) : null;
                     return (
                       <td 

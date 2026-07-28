@@ -4,6 +4,44 @@
 import { healLatexFormulas, balanceMathBraces } from './latexUtils.js';
 
 
+export const getAnswerValue = (tableAnswers, questionIdx, inputId) => {
+  if (!tableAnswers) return '';
+  const key = `${questionIdx}_${inputId}`;
+  if (tableAnswers[key] !== undefined && tableAnswers[key] !== '') return tableAnswers[key];
+
+  const altKeys = [];
+  if (inputId === 'INPUT_1') altKeys.push(`${questionIdx}_INPUT_0_1`, `${questionIdx}_INPUT_0`);
+  if (inputId === 'INPUT_2') altKeys.push(`${questionIdx}_INPUT_1_1`, `${questionIdx}_INPUT_1`);
+  if (inputId === 'INPUT_0_1') altKeys.push(`${questionIdx}_INPUT_1`, `${questionIdx}_INPUT_0`);
+  if (inputId === 'INPUT_1_1') altKeys.push(`${questionIdx}_INPUT_2`, `${questionIdx}_INPUT_1`);
+
+  for (const alt of altKeys) {
+    if (tableAnswers[alt] !== undefined && tableAnswers[alt] !== '') {
+      return tableAnswers[alt];
+    }
+  }
+  return tableAnswers[key] || '';
+};
+
+export const getGradingResult = (tableGradingResults, questionIdx, inputId) => {
+  if (!tableGradingResults) return undefined;
+  const key = `${questionIdx}_${inputId}`;
+  if (tableGradingResults[key] !== undefined) return tableGradingResults[key];
+
+  const altKeys = [];
+  if (inputId === 'INPUT_1') altKeys.push(`${questionIdx}_INPUT_0_1`, `${questionIdx}_INPUT_0`);
+  if (inputId === 'INPUT_2') altKeys.push(`${questionIdx}_INPUT_1_1`, `${questionIdx}_INPUT_1`);
+  if (inputId === 'INPUT_0_1') altKeys.push(`${questionIdx}_INPUT_1`, `${questionIdx}_INPUT_0`);
+  if (inputId === 'INPUT_1_1') altKeys.push(`${questionIdx}_INPUT_2`, `${questionIdx}_INPUT_1`);
+
+  for (const alt of altKeys) {
+    if (tableGradingResults[alt] !== undefined) {
+      return tableGradingResults[alt];
+    }
+  }
+  return undefined;
+};
+
 export const formatGradingReason = (reason) => {
   if (!reason) return '';
   return reason.replace(/(\b\d+(?:\.\d+)?)(점\s*(?:을\s*)?감점)/g, '10점 만점 기준 $1$2');

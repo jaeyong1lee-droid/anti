@@ -28,7 +28,9 @@ import {
   formatGradingReason,
   stripHtmlTagsFromRawData,
   isOverviewReview,
-  cleanCorruptedFormula
+  cleanCorruptedFormula,
+  getAnswerValue,
+  getGradingResult
 } from './utils/renderingHelpers';
 import { 
   Brain, 
@@ -2557,8 +2559,8 @@ export default function App() {
 
         <div className="divide-y divide-slate-800/80 mt-1">
           {filteredInputIds.map((inputId) => {
-            const value = activeAnswers[`${idx}_${inputId}`] || '';
-            const gradingResult = activeGradingResults?.[`${idx}_${inputId}`];
+            const value = getAnswerValue(activeAnswers, idx, inputId);
+            const gradingResult = getGradingResult(activeGradingResults, idx, inputId);
             const correctAnswer = gradingResult?.suggestedModelAnswer || q.answers?.[inputId] || '';
             
             const inputIdx = inputIds.indexOf(inputId);
