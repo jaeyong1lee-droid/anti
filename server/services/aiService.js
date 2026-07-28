@@ -73,10 +73,14 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 export function updateProgress(progressId, step, message, percentage = null) {
   if (!progressId) return;
   const existing = global.progressTracker.get(progressId) || {};
+  let finalPercentage = percentage !== null ? percentage : existing.percentage || 0;
+  if (percentage !== null && existing.step === step && existing.percentage && percentage < existing.percentage && percentage < 100) {
+    finalPercentage = existing.percentage;
+  }
   global.progressTracker.set(progressId, {
     step: step !== undefined ? step : existing.step || 1,
     message: message || existing.message || '',
-    percentage: percentage !== null ? percentage : existing.percentage || 0,
+    percentage: finalPercentage,
     timestamp: Date.now()
   });
 }
@@ -336,7 +340,13 @@ export async function callLLMWithFailover(systemInstruction, userPrompt, image =
   throw new Error('모든 API 키 호출에 실패하였습니다.');
 }
 
+global.standardsAnalysisCache = global.standardsAnalysisCache || new Map();
+
 export async function analyzeStandardsBeforeTask(progressId, topicTitle, standards, scenario = 'generation') {
+  if (progressId && global.standardsAnalysisCache.has(progressId)) {
+    return global.standardsAnalysisCache.get(progressId);
+  }
+
   try {
     const primaryKey = process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY.trim().replace(/^['"]|['"]$/g, '') : null;
     if (!primaryKey) return '';
@@ -380,6 +390,11 @@ ${scenarioGuideline}
     const text = result.response.text().trim();
     console.log(`[analyzeStandardsBeforeTask] Success! Analysis:\n${text}`);
     updateProgress(progressId, 0, '0단계: 사전 절대 지침 분석 완료!', 10);
+    
+    if (progressId && text) {
+      global.standardsAnalysisCache.set(progressId, text);
+      setTimeout(() => global.standardsAnalysisCache.delete(progressId), 300000);
+    }
     return text;
   } catch (err) {
     console.warn('[analyzeStandardsBeforeTask] Warning: standards analysis failed:', err.message);

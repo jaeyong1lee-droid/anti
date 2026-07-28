@@ -3910,11 +3910,19 @@ export default function App() {
 
     try {
       const queue = [...inputs];
+      let completedCount = 0;
+      const totalCount = queue.length;
       const workers = Array.from({ length: Math.min(2, queue.length) }).map(async () => {
         while (queue.length > 0) {
           const item = queue.shift();
           if (item) {
             await processSingleInput(item);
+            completedCount++;
+            if (totalCount > 1) {
+              const currentPercent = Math.min(95, Math.floor(15 + (completedCount / totalCount) * 80));
+              setAiProgressPercent(currentPercent);
+              setAiProgressMessage(`1단계: 주관식 표 채우기 채점 중... (${completedCount}/${totalCount} 완료)`);
+            }
           }
         }
       });
