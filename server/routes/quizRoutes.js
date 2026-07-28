@@ -1467,15 +1467,34 @@ router.post('/session/review', async (req, res) => {
         await saveSessionValue(questionsKey, JSON.stringify(questions));
       }
 
+      const mergeStateField = (inc, ext) => {
+        if (inc === undefined || inc === null) return ext || {};
+        if (typeof inc === 'object' && !Array.isArray(inc)) {
+          const incObj = inc || {};
+          const extObj = ext || {};
+          const incKeys = Object.keys(incObj);
+          const extKeys = Object.keys(extObj);
+          if (incKeys.length === 0 && extKeys.length > 0) return extObj;
+          const merged = { ...extObj, ...incObj };
+          for (const k of extKeys) {
+            if (extObj[k] !== undefined && extObj[k] !== '' && (incObj[k] === undefined || incObj[k] === '')) {
+              merged[k] = extObj[k];
+            }
+          }
+          return merged;
+        }
+        return inc !== undefined ? inc : ext;
+      };
+
       // Save lightweight state object (no questions array — reduces autosave payload by ~80%)
       const value = JSON.stringify({
         sessionId: sessionId || existingData.sessionId || '',
-        selectedAnswers: selectedAnswers !== undefined ? selectedAnswers : (existingData.selectedAnswers || {}),
-        revealedQuestions: revealedQuestions !== undefined ? revealedQuestions : (existingData.revealedQuestions || {}),
-        tableAnswers: tableAnswers !== undefined ? tableAnswers : (existingData.tableAnswers || {}),
-        tableGradingResults: tableGradingResults !== undefined ? tableGradingResults : (existingData.tableGradingResults || {}),
-        tutorAnswers: tutorAnswers !== undefined ? tutorAnswers : (existingData.tutorAnswers || {}),
-        tutorInputText: tutorInputText !== undefined ? tutorInputText : (existingData.tutorInputText || {}),
+        selectedAnswers: mergeStateField(selectedAnswers, existingData.selectedAnswers),
+        revealedQuestions: mergeStateField(revealedQuestions, existingData.revealedQuestions),
+        tableAnswers: mergeStateField(tableAnswers, existingData.tableAnswers),
+        tableGradingResults: mergeStateField(tableGradingResults, existingData.tableGradingResults),
+        tutorAnswers: mergeStateField(tutorAnswers, existingData.tutorAnswers),
+        tutorInputText: mergeStateField(tutorInputText, existingData.tutorInputText),
         chatHistory: chatHistory !== undefined ? chatHistory : (existingData.chatHistory || []),
         savedQuizScroll: savedQuizScroll !== undefined ? savedQuizScroll : (existingData.savedQuizScroll || 0)
       });
@@ -1499,15 +1518,34 @@ router.post('/session/review', async (req, res) => {
       await saveSessionValue(questionsKey, JSON.stringify(questions));
     }
 
+    const mergeStateField2 = (inc, ext) => {
+      if (inc === undefined || inc === null) return ext || {};
+      if (typeof inc === 'object' && !Array.isArray(inc)) {
+        const incObj = inc || {};
+        const extObj = ext || {};
+        const incKeys = Object.keys(incObj);
+        const extKeys = Object.keys(extObj);
+        if (incKeys.length === 0 && extKeys.length > 0) return extObj;
+        const merged = { ...extObj, ...incObj };
+        for (const k of extKeys) {
+          if (extObj[k] !== undefined && extObj[k] !== '' && (incObj[k] === undefined || incObj[k] === '')) {
+            merged[k] = extObj[k];
+          }
+        }
+        return merged;
+      }
+      return inc !== undefined ? inc : ext;
+    };
+
     // Save lightweight state object (no questions array — reduces autosave payload by ~80%)
     const value = JSON.stringify({
       sessionId: sessionId || existingData2.sessionId || '',
-      selectedAnswers: selectedAnswers !== undefined ? selectedAnswers : (existingData2.selectedAnswers || {}),
-      revealedQuestions: revealedQuestions !== undefined ? revealedQuestions : (existingData2.revealedQuestions || {}),
-      tableAnswers: tableAnswers !== undefined ? tableAnswers : (existingData2.tableAnswers || {}),
-      tableGradingResults: tableGradingResults !== undefined ? tableGradingResults : (existingData2.tableGradingResults || {}),
-      tutorAnswers: tutorAnswers !== undefined ? tutorAnswers : (existingData2.tutorAnswers || {}),
-      tutorInputText: tutorInputText !== undefined ? tutorInputText : (existingData2.tutorInputText || {}),
+      selectedAnswers: mergeStateField2(selectedAnswers, existingData2.selectedAnswers),
+      revealedQuestions: mergeStateField2(revealedQuestions, existingData2.revealedQuestions),
+      tableAnswers: mergeStateField2(tableAnswers, existingData2.tableAnswers),
+      tableGradingResults: mergeStateField2(tableGradingResults, existingData2.tableGradingResults),
+      tutorAnswers: mergeStateField2(tutorAnswers, existingData2.tutorAnswers),
+      tutorInputText: mergeStateField2(tutorInputText, existingData2.tutorInputText),
       chatHistory: chatHistory !== undefined ? chatHistory : (existingData2.chatHistory || []),
       savedQuizScroll: savedQuizScroll !== undefined ? savedQuizScroll : (existingData2.savedQuizScroll || 0)
     });
@@ -1651,56 +1689,62 @@ router.get('/session/last-active-review', async (req, res) => {
 
     const key = row.key;
     if (key.startsWith('completed_review_schedule_')) {
-      const scheduleId = parseInt(key.replace('completed_review_schedule_', ''), 10);
-      const sched = await dbQuery.get(
-        `SELECT s.id, s.topic_id, s.review_round, t.title, t.keywords, t.pdf_name, t.category 
-         FROM schedules s 
-         JOIN topics t ON s.topic_id = t.id 
-         WHERE s.id = ?`,
-        [scheduleId]
-      );
-      if (sched) {
-        return res.json({
-          success: true,
-          lastActive: {
-            topicId: sched.topic_id,
-            title: sched.title,
-            keywords: sched.keywords || '',
-            pdfName: sched.pdf_name || '',
-            mode: 'completed',
-            scheduleId: sched.id,
-            reviewRound: sched.review_round,
-            isReadOnly: true,
-            isBonus: sched.review_round === 99,
-            category: sched.category || '일반'
-          }
-        });
+      const rawSchedId = key.replace('completed_review_schedule_', '');
+      const scheduleId = parseInt(rawSchedId, 10);
+      if (!isNaN(scheduleId)) {
+        const sched = await dbQuery.get(
+          `SELECT s.id, s.topic_id, s.review_round, t.title, t.keywords, t.pdf_name, t.category 
+           FROM schedules s 
+           JOIN topics t ON s.topic_id = t.id 
+           WHERE s.id = ?`,
+          [scheduleId]
+        );
+        if (sched) {
+          return res.json({
+            success: true,
+            lastActive: {
+              topicId: sched.topic_id,
+              title: sched.title,
+              keywords: sched.keywords || '',
+              pdfName: sched.pdf_name || '',
+              mode: 'completed',
+              scheduleId: sched.id,
+              reviewRound: sched.review_round,
+              isReadOnly: true,
+              isBonus: sched.review_round === 99,
+              category: sched.category || '일반'
+            }
+          });
+        }
       }
     } else if (key.startsWith('review_questions_schedule_')) {
-      const scheduleId = parseInt(key.replace('review_questions_schedule_', ''), 10);
-      const sched = await dbQuery.get(
-        `SELECT s.id, s.topic_id, s.review_round, t.title, t.keywords, t.pdf_name, t.category 
-         FROM schedules s 
-         JOIN topics t ON s.topic_id = t.id 
-         WHERE s.id = ?`,
-        [scheduleId]
-      );
-      if (sched) {
-        return res.json({
-          success: true,
-          lastActive: {
-            topicId: sched.topic_id,
-            title: sched.title,
-            keywords: sched.keywords || '',
-            pdfName: sched.pdf_name || '',
-            mode: 'ai',
-            scheduleId: sched.id,
-            reviewRound: sched.review_round,
-            isReadOnly: false,
-            isBonus: sched.review_round === 99,
-            category: sched.category || '일반'
-          }
-        });
+      const rawSchedId = key.replace('review_questions_schedule_', '');
+      const scheduleId = parseInt(rawSchedId, 10);
+      if (!isNaN(scheduleId)) {
+        const sched = await dbQuery.get(
+          `SELECT s.id, s.topic_id, s.review_round, t.title, t.keywords, t.pdf_name, t.category 
+           FROM schedules s 
+           JOIN topics t ON s.topic_id = t.id 
+           WHERE s.id = ?`,
+          [scheduleId]
+        );
+        if (sched) {
+          return res.json({
+            success: true,
+            lastActive: {
+              topicId: sched.topic_id,
+              title: sched.title,
+              keywords: sched.keywords || '',
+              pdfName: sched.pdf_name || '',
+              mode: 'ai',
+              scheduleId: sched.id,
+              reviewRound: sched.review_round,
+              isReadOnly: false,
+              isBonus: sched.review_round === 99,
+              category: sched.category || '일반'
+            }
+          });
+        }
       }
     } else if (key.startsWith('review_questions_topic_')) {
       let topicIdRaw = key.replace('review_questions_topic_', '');
