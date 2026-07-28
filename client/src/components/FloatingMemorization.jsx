@@ -6,8 +6,33 @@ import { ImageTabList } from './ImageStandardsPlugin';
 import { PopoutWindow } from './PopoutWindow';
 
 const parseHtmlTable = (htmlStr) => {
+  if (!htmlStr) return { headers: [], rows: [] };
+
+  if (typeof htmlStr === 'object' && htmlStr !== null) {
+    if (Array.isArray(htmlStr.headers) && Array.isArray(htmlStr.rows)) {
+      return { headers: htmlStr.headers, rows: htmlStr.rows };
+    }
+    if (htmlStr.tableData && Array.isArray(htmlStr.tableData.headers) && Array.isArray(htmlStr.tableData.rows)) {
+      return { headers: htmlStr.tableData.headers, rows: htmlStr.tableData.rows };
+    }
+  }
+
+  const str = typeof htmlStr === 'string' ? htmlStr : String(htmlStr);
+
+  if (str.trim().startsWith('{') || str.trim().startsWith('[')) {
+    try {
+      const parsedJson = JSON.parse(str);
+      if (parsedJson && Array.isArray(parsedJson.headers) && Array.isArray(parsedJson.rows)) {
+        return { headers: parsedJson.headers, rows: parsedJson.rows };
+      }
+      if (parsedJson && parsedJson.tableData && Array.isArray(parsedJson.tableData.headers) && Array.isArray(parsedJson.tableData.rows)) {
+        return { headers: parsedJson.tableData.headers, rows: parsedJson.tableData.rows };
+      }
+    } catch (e) {}
+  }
+
   const parser = new DOMParser();
-  const doc = parser.parseFromString(htmlStr || '', 'text/html');
+  const doc = parser.parseFromString(str, 'text/html');
   
   let ths = [];
   const thead = doc.querySelector('thead');
@@ -30,6 +55,13 @@ const parseHtmlTable = (htmlStr) => {
     const tds = Array.from(tr.querySelectorAll('td, th')).map(el => el.textContent.trim());
     if (tds.length > 0) {
       rows.push(tds);
+    }
+  }
+
+  if ((ths.length === 0 || rows.length === 0) && str.includes('|')) {
+    const mdParsed = parseMarkdownTable(str);
+    if (mdParsed && mdParsed.tableData && Array.isArray(mdParsed.tableData.headers) && Array.isArray(mdParsed.tableData.rows) && (mdParsed.tableData.headers.length > 0 || mdParsed.tableData.rows.length > 0)) {
+      return mdParsed.tableData;
     }
   }
 
@@ -101,24 +133,29 @@ const parseMarkdownTable = (questionText) => {
     return cells;
   };
 
-  if (startIdx !== -1 && endIdx !== -1 && (endIdx - startIdx) >= 2) {
+  if (startIdx !== -1 && endIdx !== -1 && (endIdx - startIdx) >= 1) {
     const headers = parseRowCells(lines[startIdx]);
+    let dataStartIdx = startIdx + 1;
     
-    const separatorLine = lines[startIdx + 1];
-    if (separatorLine.includes('---')) {
-      const rows = [];
-      for (let i = startIdx + 2; i <= endIdx; i++) {
-        const rowCells = parseRowCells(lines[i]);
+    if (dataStartIdx <= endIdx && lines[dataStartIdx].includes('-')) {
+      dataStartIdx++;
+    }
+
+    const rows = [];
+    for (let i = dataStartIdx; i <= endIdx; i++) {
+      const rowCells = parseRowCells(lines[i]);
+      if (rowCells.length > 0) {
         rows.push(rowCells);
       }
-      
-      const originalTableText = lines.slice(startIdx, endIdx + 1).join('\n');
-      return {
-        tableData: { headers, rows },
-        originalTableText
-      };
     }
+    
+    const originalTableText = lines.slice(startIdx, endIdx + 1).join('\n');
+    return {
+      tableData: { headers, rows },
+      originalTableText
+    };
   }
+
   return null;
 };
 
@@ -695,7 +732,8 @@ export function FloatingMemorization({
                       {isExpanded && (
                         <div className="table-quiz-container overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40 p-0 select-text animate-fade-in text-[14px] md:text-[16px]">
                           {(() => {
-                            const parsed = parseHtmlTable(t.html);
+                            const rawData = t.html || t.content || t.comparison || (t.tableData ? JSON.stringify(t.tableData) : '');
+                            const parsed = parseHtmlTable(rawData);
                             return (
                               <table className="table-quiz-table w-full table-auto text-center border-collapse min-w-full">
                                 <thead>

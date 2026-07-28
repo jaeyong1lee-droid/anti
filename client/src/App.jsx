@@ -232,7 +232,29 @@ const getSeededRandom = (seedStr) => {
 
 const parseHtmlTable = (htmlStr) => {
   if (!htmlStr) return { headers: [], rows: [] };
+
+  if (typeof htmlStr === 'object' && htmlStr !== null) {
+    if (Array.isArray(htmlStr.headers) && Array.isArray(htmlStr.rows)) {
+      return { headers: htmlStr.headers, rows: htmlStr.rows };
+    }
+    if (htmlStr.tableData && Array.isArray(htmlStr.tableData.headers) && Array.isArray(htmlStr.tableData.rows)) {
+      return { headers: htmlStr.tableData.headers, rows: htmlStr.tableData.rows };
+    }
+  }
+
   const str = typeof htmlStr === 'string' ? htmlStr : String(htmlStr);
+
+  if (str.trim().startsWith('{') || str.trim().startsWith('[')) {
+    try {
+      const parsedJson = JSON.parse(str);
+      if (parsedJson && Array.isArray(parsedJson.headers) && Array.isArray(parsedJson.rows)) {
+        return { headers: parsedJson.headers, rows: parsedJson.rows };
+      }
+      if (parsedJson && parsedJson.tableData && Array.isArray(parsedJson.tableData.headers) && Array.isArray(parsedJson.tableData.rows)) {
+        return { headers: parsedJson.tableData.headers, rows: parsedJson.tableData.rows };
+      }
+    } catch (e) {}
+  }
 
   const parser = new DOMParser();
   const doc = parser.parseFromString(str, 'text/html');
