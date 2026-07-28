@@ -26,16 +26,26 @@ async function runTests() {
   if (feRes.statusCode === 200) {
     console.log('  ➜ [SUCCESS] Frontend server active on http://localhost:3000 (Status: 200 OK)');
   } else {
-    console.log(`  ➜ [WARNING/FAIL] Frontend server connection error: ${feRes.error || feRes.statusCode}`);
+    console.log(`  ➜ [CRITICAL FAIL] Frontend server connection error: ${feRes.error || feRes.statusCode}`);
   }
 
-  console.log('\n[TEST 2] Backend Server Preferred Model Check...');
+  console.log('\n[TEST 2] Backend Server (Port 5000) & API Endpoints Check...');
   const beRes = await checkUrl('http://localhost:5000/api/preferred-model');
   if (beRes.statusCode === 200) {
-    console.log('  ➜ [SUCCESS] Backend server active and responding (Status: 200 OK)');
+    console.log('  ➜ [SUCCESS] Backend server active on http://localhost:5000 (Status: 200 OK)');
     console.log(`  ➜ [RESPONSE DATA]: ${beRes.body.trim()}`);
   } else {
-    console.log(`  ➜ [INFO] Backend response: ${beRes.error || beRes.statusCode}`);
+    console.log(`  ➜ [CRITICAL FAIL] Backend server (Port 5000) NOT RUNNING or returned error: ${beRes.error || beRes.statusCode}`);
+    console.log('     Please start the backend server via `node index.js` in the server directory!');
+  }
+
+  console.log('\n[TEST 2-1] Vite Proxy API Health Check (http://localhost:3000/api/dashboard)...');
+  const todayStr = new Date().toISOString().split('T')[0];
+  const proxyRes = await checkUrl(`http://localhost:3000/api/dashboard?date=${todayStr}`);
+  if (proxyRes.statusCode === 200) {
+    console.log('  ➜ [SUCCESS] Vite Proxy to Backend API working (Status: 200 OK)');
+  } else {
+    console.log(`  ➜ [CRITICAL FAIL] Vite Proxy API failed with Status: ${proxyRes.error || proxyRes.statusCode}`);
   }
 
   console.log('\n[TEST 3] REAL Vite Bundle & 1,511 React Components Full Build Inspection...');
