@@ -1334,15 +1334,41 @@ router.get('/session/review', async (req, res) => {
     }
 
     if (targetTopicId && targetTopicId.startsWith('mixed_')) {
-      const sId = req.query.sessionId || 'legacy_default';
-      const key = `review_questions_topic_${targetTopicId}_sess_${sId}`;
-      let row = await dbQuery.get('SELECT value FROM app_session WHERE key = ?', [key]);
+      let rawSid = String(req.query.sessionId || 'legacy_default');
+      let cleanSid = rawSid;
+      if (cleanSid.startsWith('sess_')) cleanSid = cleanSid.substring(5);
+
+      const key = `review_questions_topic_${targetTopicId}_sess_${cleanSid}`;
+      const legacyKey = `review_questions_topic_${targetTopicId}_sess_${rawSid}`;
+
+      let row = await dbQuery.get('SELECT value FROM app_session WHERE key = ? OR key = ?', [key, legacyKey]);
+      let actualKey = row ? (row.key || key) : key;
+
+      if (!row) {
+        const topicPattern = `review_questions_topic_${targetTopicId}%`;
+        const topicSessionRow = await dbQuery.get(
+          'SELECT key, value FROM app_session WHERE key LIKE ? AND key NOT LIKE ? ORDER BY updated_at DESC LIMIT 1',
+          [topicPattern, '%_q']
+        );
+        if (topicSessionRow) {
+          row = topicSessionRow;
+          actualKey = topicSessionRow.key;
+        }
+      }
+
       if (row && row.value) {
         let data = JSON.parse(row.value);
         // Merge questions from separate _q key when using new split-storage format
         if (data && !Array.isArray(data) && (!data.questions || data.questions.length === 0)) {
-          const qRow = await dbQuery.get('SELECT value FROM app_session WHERE key = ?', [`${key}_q`]);
+          const qRow = await dbQuery.get('SELECT value FROM app_session WHERE key = ? OR key = ? OR key = ?', [
+            `${actualKey}_q`,
+            `${key}_q`,
+            `${legacyKey}_q`
+          ]);
           if (qRow && qRow.value) data.questions = JSON.parse(qRow.value);
+        }
+        if (Array.isArray(data.questions)) {
+          data.questions = data.questions.map(q => healQuizQuestionObject(q));
         }
         return res.json({ success: true, data });
       }
@@ -1419,14 +1445,20 @@ router.post('/session/review', async (req, res) => {
     }
 
     if (targetTopicId && targetTopicId.startsWith('mixed_')) {
-      const sId = sessionId || 'legacy_default';
-      const key = `review_questions_topic_${targetTopicId}_sess_${sId}`;
+      let rawSid = String(sessionId || 'legacy_default');
+      let cleanSid = rawSid;
+      if (cleanSid.startsWith('sess_')) cleanSid = cleanSid.substring(5);
+
+      const key = `review_questions_topic_${targetTopicId}_sess_${cleanSid}`;
       const questionsKey = `${key}_q`;
 
       // Merge with existing state for missing fields
       let existingData = {};
       try {
-        const existingRow = await dbQuery.get('SELECT value FROM app_session WHERE key = ?', [key]);
+        const existingRow = await dbQuery.get('SELECT value FROM app_session WHERE key = ? OR key = ?', [
+          key,
+          `review_questions_topic_${targetTopicId}_sess_${rawSid}`
+        ]);
         if (existingRow && existingRow.value) existingData = JSON.parse(existingRow.value);
       } catch (e) {}
 
@@ -3296,11 +3328,21 @@ router.post('/quiz/submit', async (req, res) => {
       }
     }
 
-    targetScheduleId = parseInt(targetScheduleId, 10);
+    const isMixedSched = typeof targetScheduleId === 'string' && targetScheduleId.startsWith('mixed_');
+    if (!isMixedSched && targetScheduleId && !isNaN(parseInt(targetScheduleId, 10))) {
+      targetScheduleId = parseInt(targetScheduleId, 10);
+    }
 
     // 1. 해당 일정 존재 여부 확인
-    if (!schedule) {
+    if (!schedule && !isMixedSched) {
       schedule = await dbQuery.get('SELECT * FROM schedules WHERE id = ?', [targetScheduleId]);
+    } else if (!schedule && isMixedSched) {
+      schedule = {
+        id: targetScheduleId,
+        topic_id: topic_id || String(targetScheduleId).replace('mixed_schedule_', 'mixed_'),
+        review_round: 1,
+        status: 'completed'
+      };
     }
     if (!schedule) {
       return res.status(404).json({ error: '해당 복습 일정을 찾을 수 없습니다.' });

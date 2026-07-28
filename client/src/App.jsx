@@ -7079,13 +7079,13 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
     }, 5000);
   };
 
-  const refreshActiveReviewSession = async () => {
+  const refreshActiveReviewSession = async (forceRefresh = false) => {
     if (!selectedTopic || !selectedTopic.id) return;
     console.log('[Auto-Sync] Pulling latest session from server...');
     const topicId = selectedTopic.id;
     const finalScheduleId = selectedTopic.schedule_id;
     const isMixed = topicId && typeof topicId === 'string' && topicId.startsWith('mixed_');
-    const activeSid = isMixed ? `sess_${topicId}` : (reviewSessionId || 'legacy_default');
+    const activeSid = isMixed ? (reviewSessionId || `sess_${topicId}`) : (reviewSessionId || 'legacy_default');
     try {
       const res = await fetch(`${API_BASE}/api/session/review?topicId=${topicId}&scheduleId=${finalScheduleId || ''}&sessionId=${activeSid}&t=${Date.now()}`);
       if (res.ok) {
@@ -7093,7 +7093,8 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
         if (resData.success && resData.data) {
           const server = resData.data;
           
-          const isSame = aiQuestions.length > 0 &&
+          const isSame = !forceRefresh &&
+                         aiQuestions.length > 0 &&
                          JSON.stringify(server.selectedAnswers || {}) === JSON.stringify(selectedAnswers) &&
                          JSON.stringify(server.revealedQuestions || {}) === JSON.stringify(revealedQuestions) &&
                          JSON.stringify(server.tableAnswers || {}) === JSON.stringify(tableAnswers) &&
@@ -18953,7 +18954,7 @@ ${itemsStr}
                   <button
                     onClick={async () => {
                       showNotification('서버에서 최신 복습 세션을 불러옵니다...', 'info');
-                      await refreshActiveReviewSession();
+                      await refreshActiveReviewSession(true);
                       showNotification('동기화 완료!', 'success');
                     }}
                     className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-slate-700 bg-slate-800/80 hover:bg-slate-700 hover:text-white text-slate-350 transition-all duration-200 cursor-pointer active:scale-95 text-[11px] font-black"
@@ -19005,7 +19006,7 @@ ${itemsStr}
                   <button
                     onClick={async () => {
                       showNotification('서버에서 최신 복습 세션을 불러옵니다...', 'info');
-                      await refreshActiveReviewSession();
+                      await refreshActiveReviewSession(true);
                       showNotification('동기화 완료!', 'success');
                     }}
                     className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-350 hover:text-white border border-slate-700/40 rounded-xl text-[11px] sm:text-xs md:text-sm font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center whitespace-nowrap min-w-0"
