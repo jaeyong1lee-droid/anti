@@ -1049,6 +1049,7 @@ let parsedArray = null;
       ]);
 
       const parseBatch = (responseText, batchName) => {
+        if (!responseText || typeof responseText !== 'string') return [];
         let text = responseText.trim();
         if (text.startsWith('```')) {
           text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
@@ -1060,10 +1061,7 @@ let parsedArray = null;
           console.warn(`[Batch ${batchName}] parseLlmJson failed, trying regex extraction:`, parseErr);
           parsed = extractJsonArray(responseText);
         }
-        if (!parsed || !Array.isArray(parsed)) {
-          throw new Error(`AI ${batchName} 응답을 유효한 문제 JSON 배열로 파싱하지 못했습니다.`);
-        }
-        return parsed;
+        return Array.isArray(parsed) ? parsed : [];
       };
 
       const q1 = parseBatch(batch1Text, '1 (주관식 개요/공식/단답)');
@@ -1144,8 +1142,44 @@ let parsedArray = null;
 
   } catch (err) {
     if (progressTimer) clearInterval(progressTimer);
-    console.error('Error generating AI questions:', err);
-    res.status(500).json({ error: err.message });
+    console.error('Error generating AI questions, falling back to local questions:', err);
+    try {
+      const fallbackQuestions = generateFallbackQuestions(topic.title, topic.keywords, fileText);
+      const finalQuestions = topic.category === '계산'
+        ? assembleFinalCalculationQuestions(fallbackQuestions, topic)
+        : assembleFinalQuestions(fallbackQuestions, topic, carryOverQuestions, fileText);
+
+      const cleanedFallback = finalQuestions.map(q => healQuizQuestionObject({
+        ...q,
+        topic_id: Number(topicId),
+        category: topic.category,
+        question: cleanQuizQuestion(q.question)
+      }));
+
+      const deduplicatedFallback = deduplicateQuestions(cleanedFallback);
+      const sId = req.query.sessionId || 'legacy_default';
+      const key = resolvedScheduleId
+        ? `review_questions_schedule_${resolvedScheduleId}_sess_${sId}`
+        : `review_questions_topic_${topicId}_sess_${sId}`;
+
+      try {
+        await dbQuery.run('DELETE FROM app_session WHERE key = ?', [key]);
+        await dbQuery.run(
+          'INSERT INTO app_session (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)',
+          [key, JSON.stringify(deduplicatedFallback)]
+        );
+      } catch (e) {}
+
+      return res.json({
+        questions: deduplicatedFallback,
+        isFallback: true,
+        mode: 'local-fallback',
+        scheduleId: resolvedScheduleId
+      });
+    } catch (fallbackErr) {
+      console.error('Local fallback generation also failed:', fallbackErr);
+      res.status(500).json({ error: err.message });
+    }
   }
 });
 
