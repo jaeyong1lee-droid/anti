@@ -664,19 +664,23 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
   // Headings on same line
   tempText = tempText.replace(/([^\n])\s*(#{2,6}\s+)/g, '$1\n\n$2');
 
-  // Bold text
+  // Bold & Italics text highlight
+  const yellowColor = '#fbbf24';
   if (isTutor) {
-    tempText = tempText.replace(/\*\*([^\*]+?)\*\*/g, `<span style="color: #fbbf24; font-weight: normal;">$1</span>`);
-    tempText = tempText.replace(/'([^'\n]+?)'/g, `<span style="color: #fbbf24; font-weight: normal;">'$1'</span>`);
+    tempText = tempText.replace(/\*\*\*([^\*]+?)\*\*\*/g, `<strong style="color: ${yellowColor}; font-style: italic; font-weight: 800;">$1</strong>`);
+    tempText = tempText.replace(/\*\*([^\*]+?)\*\*/g, `<strong style="color: ${yellowColor}; font-weight: 700;">$1</strong>`);
+    tempText = tempText.replace(/'([^'\n]+?)'/g, `<span style="color: ${yellowColor}; font-weight: normal;">'$1'</span>`);
   } else {
-    const boldColor = (isMarkdown && highlightBold) ? '#fbbf24' : '#f1f5f9';
+    const boldColor = (isMarkdown && highlightBold) ? yellowColor : '#f1f5f9';
+    tempText = tempText.replace(/\*\*\*([^\*]+?)\*\*\*/g, `<strong style="color: ${boldColor}; font-style: italic; font-weight: 800;">$1</strong>`);
     tempText = tempText.replace(/\*\*([^\*]+?)\*\*/g, `<strong style="color: ${boldColor}; font-weight: 700;">$1</strong>`);
     if (isMarkdown && highlightBold) {
-      tempText = tempText.replace(/'([^'\n]+?)'/g, `<span style="color: #fbbf24; font-weight: normal;">'$1'</span>`);
+      tempText = tempText.replace(/'([^'\n]+?)'/g, `<span style="color: ${yellowColor}; font-weight: normal;">'$1'</span>`);
     }
   }
 
-  tempText = tempText.replace(/([^\n])[ \t]*(?:\* * \*|\*\*\*)[ \t]*/g, '$1\n* * * ');
+  // Standalone horizontal rule divider
+  tempText = tempText.replace(/^[ \t]*(?:\* * \*|\*\*\*|---|___)[ \t]*$/gm, '<hr style="border: 0; border-top: 1px solid rgba(255, 255, 255, 0.1); margin: 0.8rem 0;" />');
 
   // Render headings
   tempText = tempText.replace(/^(###+)\s+(.*?)$/gm, (match, hashes, title) => {

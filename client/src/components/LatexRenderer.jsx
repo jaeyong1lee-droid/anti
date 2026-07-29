@@ -633,25 +633,6 @@ export const LatexRenderer = React.memo(function LatexRenderer({
   cleanedText = cleanedText.replace(/([\uAC00-\uD7A3a-zA-Z0-9])\$\$\s*([\s\S]*?)\s*\$\$/g, (m, p1, p2) => `${p1} $$${p2}$$`);
   cleanedText = cleanedText.replace(/\$\$\s*([\s\S]*?)\s*\$\$\s*([\uAC00-\uD7A3a-zA-Z0-9])/g, (m, p1, p2) => `$$${p1}$$ ${p2}`);
 
-  // 2. [줄 내의 수식 자동 인라인화 가공]
-  const rawLines = cleanedText.split('\n');
-  const processedLines = rawLines.map(line => {
-    if (/[\uAC00-\uD7A3]/.test(line)) {
-      return line.replace(/\$\$\s*([\s\S]*?)\s*\$\$/g, (match, formula, offset) => {
-        if (/\\(?:d?frac|sum|int|prod|log|ln|sqrt|begin|end|matrix|array|left|right)/.test(formula)) {
-          return match;
-        }
-        const before = line.substring(0, offset).trim();
-        if (/[.!?]\s*$/.test(before)) {
-          return match;
-        }
-        return `$${formula}$`;
-      });
-    }
-    return line;
-  });
-  cleanedText = processedLines.join('\n');
-
   // Check if text contains HTML tags
   const hasHtml = /<\/?(div|table|tr|td|th|tbody|thead|tfoot|p|span|br|hr|strong|em|ul|ol|li|h[1-6]|b|i|a|img|code|pre|style|html|body)\b[^>]*>/i.test(cleanedText);
 
@@ -676,8 +657,8 @@ export const LatexRenderer = React.memo(function LatexRenderer({
       });
     }
 
-    const isInline = className.includes('inline');
-    if (isInline) {
+    const isInlineMode = className.includes('inline') && !htmlContent.includes('<table') && !htmlContent.includes('<div');
+    if (isInlineMode) {
       return (
         <span 
           className={`${className} select-text whitespace-pre-wrap ${enableAddFormula ? 'enable-add-formula' : ''}`}
