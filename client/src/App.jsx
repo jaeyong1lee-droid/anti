@@ -735,7 +735,7 @@ function parseMarkdownTable(questionText) {
           let trimmed = l.trim();
           if (trimmed.startsWith('|')) trimmed = trimmed.substring(1);
           if (trimmed.endsWith('|')) trimmed = trimmed.substring(0, trimmed.length - 1);
-          return trimmed.split('|').map(cell => cell.replace(/<[^>]*>/g, '').replace(/[\r\n]+/g, ' ').trim());
+          return trimmed.split('|').map(cell => cell.replace(/<[^>]*>/g, '').trim());
         };
 
         const headers = parseRow(lines[i]);
