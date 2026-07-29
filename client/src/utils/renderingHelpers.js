@@ -716,6 +716,7 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
 
 
 
+  if (isMarkdown) {
     tempText = tempText.replace(/\n\n/g, '<div style="height: 1.2rem;"></div>');
     tempText = tempText.replace(/\n/g, '<br/>');
   } else {
