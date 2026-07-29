@@ -713,8 +713,42 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
       return `<h1 style="margin-top: 1.2rem; margin-bottom: 0.6rem; font-weight: 950; color: #f8fafc; font-size: 1.2rem; border-bottom: 1px solid rgba(71, 85, 105, 0.3); padding-bottom: 0.35rem;">${title}</h1>`;
     }
   });
+  // Convert markdown unordered list items (*, -, or • at line start) into styled HTML <ul><li> blocks
+  // Supports 2-level nesting: top-level (disc •), sub-level (circle ◦ + indentation)
+  tempText = tempText.replace(/((?:^[ \t]*[-*•▪▫·]\s*.+(?:\n|$))+)/gm, (block) => {
+    const lines = block.split('\n');
+    let html = '';
+    let inOuter = false;
+    let inInner = false;
 
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const match = line.match(/^([ \t]*)([-*•▪▫·])\s*(.+)$/);
+      if (!match) continue;
+      
+      const indentLen = match[1].replace(/\t/g, '  ').length;
+      let content = match[3].replace(/^[ \t]*[•\-*▪▫·][ \t]*/g, '').trim();
+      content = content.replace(/^정의\s*:\s*/, '');
+      if (!content) continue;
 
+      const isSubItem = indentLen > 0 || (i > 0 && /:$/.test(lines[i - 1].trim()));
+
+      if (!isSubItem) {
+        // Outer top-level item (solid disc •)
+        if (inInner) { html += '</ul>'; inInner = false; }
+        if (!inOuter) { html += '<ul style="list-style-type: disc; padding-left: 1.4rem; margin: 0.3rem 0 0.3rem 0;">'; inOuter = true; }
+        html += `<li style="margin-bottom: 0.2rem; line-height: 1.65;">${content}</li>`;
+      } else {
+        // Nested sub-item (open circle ◦ with indentation)
+        if (!inOuter) { html += '<ul style="list-style-type: disc; padding-left: 1.4rem; margin: 0.3rem 0 0.3rem 0;">'; inOuter = true; }
+        if (!inInner) { html += '<ul style="list-style-type: circle; padding-left: 1.2rem; margin: 0.1rem 0;">'; inInner = true; }
+        html += `<li style="margin-bottom: 0.2rem; line-height: 1.65;">${content}</li>`;
+      }
+    }
+    if (inInner) html += '</ul>';
+    if (inOuter) html += '</ul>';
+    return html;
+  });
 
   if (isMarkdown) {
     tempText = tempText.replace(/\n\n/g, '<div style="height: 1.2rem;"></div>');
