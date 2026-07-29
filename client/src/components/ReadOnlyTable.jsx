@@ -211,28 +211,15 @@ export const ReadOnlyTable = React.memo(function ReadOnlyTable({
         const deltaPercent = (deltaX / totalWidth) * 100;
         setColWidths(prev => {
           const next = [...prev];
-          if (idx === 0) {
-            const newFirstWidth = Math.max(10, Math.min(80, percentWidths[0] + deltaPercent));
-            next[0] = newFirstWidth;
-            const remaining = 100 - newFirstWidth;
-            const eachWidth = remaining / (colCount - 1);
-            for (let i = 1; i < colCount; i++) {
-              next[i] = eachWidth;
-            }
-          } else {
-            // 2열 이상 조절 시 1열(next[0])은 100% 절대 불변(고정)!
-            if (idx < colCount - 1) {
-              const sum = percentWidths[idx] + percentWidths[idx + 1];
-              const newLeftWidth = Math.max(5, percentWidths[idx] + deltaPercent);
-              const actualLeft = Math.min(sum - 5, newLeftWidth);
-              const actualRight = sum - actualLeft;
+          if (idx < colCount - 1) {
+            const sum = percentWidths[idx] + percentWidths[idx + 1];
+            const minColWidth = 5;
+            const desiredLeft = percentWidths[idx] + deltaPercent;
+            const actualLeft = Math.max(minColWidth, Math.min(sum - minColWidth, desiredLeft));
+            const actualRight = sum - actualLeft;
 
-              next[idx] = actualLeft;
-              next[idx + 1] = actualRight;
-            } else {
-              const maxAllowed = 100 - percentWidths[0] - (colCount - 2) * 5;
-              next[idx] = Math.max(5, Math.min(maxAllowed, percentWidths[idx] + deltaPercent));
-            }
+            next[idx] = actualLeft;
+            next[idx + 1] = actualRight;
           }
 
           try {
