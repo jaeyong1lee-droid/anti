@@ -460,13 +460,14 @@ export const TableQuiz = React.memo(function TableQuiz({
         setCompColWidths(prev => {
           const next = [...prev];
           if (idx === 0) {
-            const newFirstWidth = Math.max(10, Math.min(80, percentWidths[0] + deltaPercent));
-            next[0] = newFirstWidth;
-            const remaining = 100 - newFirstWidth;
-            const eachWidth = remaining / (compColCount - 1);
-            for (let i = 1; i < compColCount; i++) {
-              next[i] = eachWidth;
-            }
+            const sum = percentWidths[0] + percentWidths[1];
+            const minColWidth = 5;
+            const desiredLeft = percentWidths[0] + deltaPercent;
+            const actualLeft = Math.max(minColWidth, Math.min(sum - minColWidth, desiredLeft));
+            const actualRight = sum - actualLeft;
+
+            next[0] = actualLeft;
+            next[1] = actualRight;
           } else {
             // 2열 이상 조절 시 1열(next[0])은 100% 절대 불변(고정)!
             if (idx < compColCount - 1) {
