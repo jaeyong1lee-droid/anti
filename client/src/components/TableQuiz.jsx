@@ -10,7 +10,6 @@ const cleanCellText = (cell) => {
   if (typeof cell !== 'string') return cell;
   let clean = cell.replace(/&lt;/gi, '<').replace(/&gt;/gi, '>').replace(/&amp;/gi, '&').replace(/&quot;/gi, '"');
   clean = clean.replace(/<[^>]*>/g, '');
-  clean = clean.replace(/([^\n])\s*•\s*/g, '$1\n• ');
   return clean.trim();
 };
 
