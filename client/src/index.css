@@ -986,7 +986,7 @@ div[class*="overflow-y-auto"] {
 .markdown-table th,
 .markdown-table td {
   padding: 5px 4px !important; /* Minimize padding on mobile */
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.22) !important; /* Bright light grey border */
 }
 @media (min-width: 768px) {
   .markdown-table th,
