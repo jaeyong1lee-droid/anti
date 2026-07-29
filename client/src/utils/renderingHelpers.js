@@ -666,17 +666,13 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
 
   // Bold & Italics text highlight
   const yellowColor = '#fbbf24';
-  if (isTutor) {
-    tempText = tempText.replace(/\*\*\*([^\*]+?)\*\*\*/g, `<strong style="color: ${yellowColor}; font-style: italic; font-weight: 800;">$1</strong>`);
-    tempText = tempText.replace(/\*\*([^\*]+?)\*\*/g, `<strong style="color: ${yellowColor}; font-weight: 700;">$1</strong>`);
+  const shouldHighlight = isMarkdown || isTutor || isExplanation || highlightBold;
+  const boldColor = shouldHighlight ? yellowColor : '#f1f5f9';
+  
+  tempText = tempText.replace(/\*\*\*([^\*]+?)\*\*\*/g, `<strong style="color: ${boldColor}; font-style: italic; font-weight: 800;">$1</strong>`);
+  tempText = tempText.replace(/\*\*([^\*]+?)\*\*/g, `<strong style="color: ${boldColor}; font-weight: 700;">$1</strong>`);
+  if (shouldHighlight) {
     tempText = tempText.replace(/'([^'\n]+?)'/g, `<span style="color: ${yellowColor}; font-weight: normal;">'$1'</span>`);
-  } else {
-    const boldColor = (isMarkdown && highlightBold) ? yellowColor : '#f1f5f9';
-    tempText = tempText.replace(/\*\*\*([^\*]+?)\*\*\*/g, `<strong style="color: ${boldColor}; font-style: italic; font-weight: 800;">$1</strong>`);
-    tempText = tempText.replace(/\*\*([^\*]+?)\*\*/g, `<strong style="color: ${boldColor}; font-weight: 700;">$1</strong>`);
-    if (isMarkdown && highlightBold) {
-      tempText = tempText.replace(/'([^'\n]+?)'/g, `<span style="color: ${yellowColor}; font-weight: normal;">'$1'</span>`);
-    }
   }
 
   // Standalone horizontal rule divider
