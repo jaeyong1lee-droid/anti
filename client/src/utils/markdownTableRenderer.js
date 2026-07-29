@@ -99,7 +99,7 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false,
   if (hideWrapper) {
     // Render clean table container without Comparison Table card, buttons, or extra headers
     html += `<div class="markdown-table-container w-full my-2 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/20">`;
-    html += `<table class="${tableClass} w-full table-auto text-center border-collapse text-[14px] sm:text-[15px] min-w-full">`;
+    html += `<table class="${tableClass} w-full table-auto border-collapse text-[14px] sm:text-[15px] min-w-full">`;
     html += `<thead>`;
     html += `<tr class="bg-slate-900/80 text-slate-355 border-b border-slate-800">`;
     headers.forEach((h, hIdx) => {
@@ -123,9 +123,10 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false,
       if (row.length === 0 || (row.length === 1 && row[0] === '')) return;
       
       html += `<tr class="border-b border-slate-800 last:border-b-0 hover:bg-slate-900/20 group">`;
-      row.forEach(cell => {
+      row.forEach((cell, cIdx) => {
         const renderedCell = renderCellMath(cell);
-        html += `<td class="p-1 sm:p-1.5 border-r border-slate-800 text-slate-200 font-semibold">${renderedCell}</td>`;
+        const cellAlign = (cIdx === 0 || cIdx === 1) ? 'text-center' : 'text-left';
+        html += `<td class="p-1 sm:p-1.5 border-r border-slate-800 text-slate-200 font-semibold ${cellAlign}">${renderedCell}</td>`;
       });
       if (row.length < colCount) {
         for (let k = row.length; k < colCount; k++) {
@@ -167,7 +168,7 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false,
   html += `</div>`;
 
   html += `<div class="markdown-table-container w-full overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40">`;
-  html += `<table class="${tableClass} w-full table-auto text-center border-collapse text-[14px] sm:text-[15px] min-w-full">`;
+  html += `<table class="${tableClass} w-full table-auto border-collapse text-[14px] sm:text-[15px] min-w-full">`;
   html += `<thead>`;
   html += `<tr class="bg-slate-900/80 text-slate-350 border-b border-slate-800">`;
   headers.forEach((h, hIdx) => {
@@ -191,9 +192,10 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false,
     if (row.length === 0 || (row.length === 1 && row[0] === '')) return;
     
     html += `<tr class="border-b border-slate-800 last:border-b-0 hover:bg-slate-900/20 group">`;
-    row.forEach(cell => {
+    row.forEach((cell, cIdx) => {
       const renderedCell = renderCellMath(cell);
-      html += `<td class="p-1 sm:p-1.5 border-r border-slate-800 text-slate-355">${renderedCell}</td>`;
+      const cellAlign = (cIdx === 0 || cIdx === 1) ? 'text-center' : 'text-left';
+      html += `<td class="p-1 sm:p-1.5 border-r border-slate-800 text-slate-355 ${cellAlign}">${renderedCell}</td>`;
     });
     if (row.length < colCount) {
       for (let k = row.length; k < colCount; k++) {
