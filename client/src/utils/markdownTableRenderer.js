@@ -59,8 +59,45 @@ function renderCellMath(text) {
     return match;
   });
 
-  // Convert **bold** markdown to <strong> in table cells
-  temp = temp.replace(/\*\*([^*]+?)\*\*/g, '<strong style="font-weight:700;">$1</strong>');
+  // Convert **bold** markdown to yellow <strong> in table cells
+  temp = temp.replace(/\*\*([^*]+?)\*\*/g, '<strong style="color: #fbbf24; font-weight:700;">$1</strong>');
+
+  // Convert markdown list items (*, -, or •) inside table cells into styled <ul><li> blocks
+  // Top-level: disc •, Sub-level / hyphen lines: open circle ◦ with indentation
+  temp = temp.replace(/((?:^[ \t]*[-*•▪▫·]\s*.+(?:\n|<br\s*\/?>|$))+)/gm, (block) => {
+    const lines = block.split(/\n|<br\s*\/?>/i);
+    let html = '';
+    let inOuter = false;
+    let inInner = false;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const match = line.match(/^([ \t]*)([-*•▪▫·])\s*(.+)$/);
+      if (!match) continue;
+      
+      const indentLen = match[1].replace(/\t/g, '  ').length;
+      let content = match[3].replace(/^[ \t]*[•\-*▪▫·][ \t]*/g, '').trim();
+      content = content.replace(/^정의\s*:\s*/, '');
+      if (!content) continue;
+
+      const isSubItem = indentLen > 0 || (i > 0 && /:$/.test(lines[i - 1].trim())) || (i > 0 && lines[i - 1].includes('</strong>'));
+
+      if (!isSubItem) {
+        // Outer top-level item (solid disc •)
+        if (inInner) { html += '</ul>'; inInner = false; }
+        if (!inOuter) { html += '<ul style="list-style-type: disc; padding-left: 1.2rem; margin: 0.2rem 0; text-align: left;">'; inOuter = true; }
+        html += `<li style="margin-bottom: 0.15rem; line-height: 1.5;">${content}</li>`;
+      } else {
+        // Nested sub-item (open circle ◦ with indentation)
+        if (!inOuter) { html += '<ul style="list-style-type: disc; padding-left: 1.2rem; margin: 0.2rem 0; text-align: left;">'; inOuter = true; }
+        if (!inInner) { html += '<ul style="list-style-type: circle; padding-left: 1.2rem; margin: 0.1rem 0; text-align: left;">'; inInner = true; }
+        html += `<li style="margin-bottom: 0.15rem; line-height: 1.5;">${content}</li>`;
+      }
+    }
+    if (inInner) html += '</ul>';
+    if (inOuter) html += '</ul>';
+    return html;
+  });
 
   // Collapse multiple consecutive <br> tags into a single one, and trim leading/trailing <br>
   temp = temp.replace(/(<br\s*\/?>(\s*<br\s*\/?>)+)/gi, '<br>');
