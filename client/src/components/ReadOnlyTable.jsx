@@ -346,11 +346,11 @@ export const ReadOnlyTable = React.memo(function ReadOnlyTable({
                     <td 
                       key={cIdx} 
                       colSpan={cellColSpan}
-                      className={`p-1.5 sm:p-2 border-r border-slate-800 last:border-r-0 text-slate-300 text-[14px] sm:text-[16px] whitespace-normal break-words select-text ${
+                      className={`p-1.5 sm:p-2 border-r border-slate-800 last:border-r-0 text-slate-300 text-[14px] sm:text-[16px] whitespace-pre-line break-words select-text ${
                         isFirstCol ? 'text-left' : 'text-center'
                       }`}
                     >
-                      <LatexRenderer text={typeof cell === 'string' ? cell.replace(/[\r\n]+/g, ' ').trim() : cell} katexLoaded={katexLoaded} className="inline" />
+                      <LatexRenderer text={typeof cell === 'string' ? cell.trim() : cell} katexLoaded={katexLoaded} className="inline" />
                     </td>
                   );
                 })}

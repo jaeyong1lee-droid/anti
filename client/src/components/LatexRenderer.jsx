@@ -173,7 +173,7 @@ export const LatexRenderer = React.memo(function LatexRenderer({
           .replace(/\\\(([\s\S]*?)\\\)/g, (m, p1) => '$' + p1.trim() + '$')
     : text;
   if ((forceInline || (typeof className === 'string' && className.includes('inline'))) && typeof parsedText === 'string') {
-    parsedText = parsedText.replace(/\$\$/g, '$').replace(/[\r\n]+/g, ' ').trim();
+    parsedText = parsedText.replace(/\$\$/g, '$').trim();
   }
 
   // Only trigger dynamic flowchart wrapping when step numbers like [1], [2], [A], [B], (1), (2), ①, ② are present inside
