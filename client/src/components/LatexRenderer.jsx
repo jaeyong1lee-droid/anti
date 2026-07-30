@@ -605,12 +605,10 @@ export const LatexRenderer = React.memo(function LatexRenderer({
     );
   }
 
-  // (B-1) 단일 달러($) 격리 공백 주입 및 소괄호 $ 위치 자동 보정
+  // (B-1) 소괄호 내 미세 어긋남만 안전 치유 (강제 공백 주입 정규식 제거)
   cleanedText = cleanedText.replace(/\(([^$()\n]+?)\$\)/g, '($$$1$)');
-  cleanedText = cleanedText.replace(/([\uAC00-\uD7A3a-zA-Z0-9])(?<!\$)\$([^\$]+?)\$(?!\$)/g, (m, p1, p2) => `${p1} $${p2}$`);
-  cleanedText = cleanedText.replace(/(?<!\$)\$([^\$]+?)\$(?!\$)([\uAC00-\uD7A3a-zA-Z0-9])/g, (m, p1, p2) => `$${p1}$ ${p2}`);
 
-  // (B-2) 이중 달러($$) 격리 공백 주입
+  // (B-2) 디스플레이 수식 문맥 정리
   cleanedText = cleanedText.replace(/([\uAC00-\uD7A3a-zA-Z0-9])\$\$\s*([\s\S]*?)\s*\$\$/g, (m, p1, p2) => `${p1} $$${p2}$$`);
   cleanedText = cleanedText.replace(/\$\$\s*([\s\S]*?)\s*\$\$\s*([\uAC00-\uD7A3a-zA-Z0-9])/g, (m, p1, p2) => `$$${p1}$$ ${p2}`);
 
@@ -636,6 +634,8 @@ export const LatexRenderer = React.memo(function LatexRenderer({
         }
         return renderKatexString(math.trim(), { displayMode: false, throwOnError: false });
       });
+      // [Self-Healing] Clean up remnant $$ symbols appearing before plain text
+      htmlContent = htmlContent.replace(/(?:^|\n)\s*\$\$\s*(?=\n|[가-힣a-zA-Z])/g, '\n');
     }
 
     const isInlineMode = className.includes('inline') && !htmlContent.includes('<table') && !htmlContent.includes('<div');
