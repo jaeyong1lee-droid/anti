@@ -107,11 +107,17 @@ const parseAndRenderFlowchart = (flowchartText, katexLoaded, questionKey) => {
           const bodyLines = item.content.slice(1);
           const hasBoxNumber = /\[[\d\*\s가-힣a-zA-Z\-]+\]/.test(title) || /\(([A-F])\)/.test(item.content.join('\n'));
           if (!hasBoxNumber) {
-            const fullText = item.content.join('\n');
             return (
-              <pre key={idx} className="w-full font-mono text-[12px] sm:text-[13px] overflow-x-auto whitespace-pre p-3.5 rounded-xl bg-slate-950/80 border border-slate-800/80 text-slate-200 leading-snug my-2.5 select-text shadow-sm">
-                <LatexRenderer text={fullText} katexLoaded={katexLoaded} enableAddFormula={true} questionKey={questionKey} forceInline={true} />
-              </pre>
+              <div key={idx} className="w-full h-auto font-mono whitespace-pre bg-slate-950/70 border border-slate-800/80 p-3 rounded-xl overflow-x-auto text-left leading-relaxed my-2 select-text font-mono text-[12.5px] sm:text-[13.5px] shadow-sm">
+                <div className="font-bold text-slate-200 mb-0.5 w-full h-auto whitespace-pre font-mono">
+                  <LatexRenderer text={title} katexLoaded={katexLoaded} enableAddFormula={true} questionKey={questionKey} forceInline={true} />
+                </div>
+                {bodyLines.map((bl, bIdx) => (
+                  <div key={bIdx} className="text-slate-300 my-0.5 w-full h-auto whitespace-pre font-mono">
+                    <LatexRenderer text={bl} katexLoaded={katexLoaded} enableAddFormula={true} questionKey={questionKey} forceInline={true} />
+                  </div>
+                ))}
+              </div>
             );
           }
           return (
@@ -134,11 +140,17 @@ const parseAndRenderFlowchart = (flowchartText, katexLoaded, questionKey) => {
                 const bodyLines = box.content.slice(1);
                 const hasBoxNumber = /\[[\d\*\s가-힣a-zA-Z\-]+\]/.test(title) || /\(([A-F])\)/.test(box.content.join('\n'));
                 if (!hasBoxNumber) {
-                  const fullText = box.content.join('\n');
                   return (
-                    <pre key={bIdx} className="flex-1 w-full font-mono text-[12px] sm:text-[13px] overflow-x-auto whitespace-pre p-3.5 rounded-xl bg-slate-950/80 border border-slate-800/80 text-slate-200 leading-snug my-2.5 select-text shadow-sm">
-                      <LatexRenderer text={fullText} katexLoaded={katexLoaded} enableAddFormula={true} questionKey={questionKey} forceInline={true} />
-                    </pre>
+                    <div key={bIdx} className="flex-1 w-full h-auto font-mono whitespace-pre bg-slate-950/70 border border-slate-800/80 p-3 rounded-xl overflow-x-auto text-left leading-relaxed my-2 select-text font-mono text-[12.5px] sm:text-[13.5px] shadow-sm">
+                      <div className="font-bold text-slate-200 mb-0.5 w-full h-auto whitespace-pre font-mono">
+                        <LatexRenderer text={title} katexLoaded={katexLoaded} enableAddFormula={true} questionKey={questionKey} forceInline={true} />
+                      </div>
+                      {bodyLines.map((bl, blIdx) => (
+                        <div key={blIdx} className="text-slate-300 my-0.5 w-full h-auto whitespace-pre font-mono">
+                          <LatexRenderer text={bl} katexLoaded={katexLoaded} enableAddFormula={true} questionKey={questionKey} forceInline={true} />
+                        </div>
+                      ))}
+                    </div>
                   );
                 }
                 return (
