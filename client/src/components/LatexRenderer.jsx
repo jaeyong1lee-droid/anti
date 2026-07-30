@@ -278,7 +278,7 @@ export const LatexRenderer = React.memo(function LatexRenderer({
             );
           } else if (part.type === 'ascii') {
             return (
-              <pre key={pIdx} className="w-full font-mono text-[12px] sm:text-[13px] overflow-x-auto whitespace-pre p-3 rounded-xl bg-slate-900/70 border border-slate-700/50 text-slate-200 leading-snug my-2 select-text font-mono">
+              <pre key={pIdx} className="w-auto max-w-full inline-block font-mono text-[12px] sm:text-[13px] overflow-x-auto whitespace-pre p-3 rounded-xl bg-slate-900/70 border border-slate-700/50 text-slate-200 leading-snug my-2 select-text font-mono">
                 <LatexRenderer 
                   text={part.content} 
                   katexLoaded={katexLoaded} 
