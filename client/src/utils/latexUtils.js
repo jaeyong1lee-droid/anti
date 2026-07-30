@@ -510,6 +510,9 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
              .replace(/\\\[([\s\S]*?)\\\]/g, (m, p1) => '$$' + p1.trim() + '$$')
              .replace(/\\\(([\s\S]*?)\\\)/g, (m, p1) => '$' + p1.trim() + '$');
   let processed = healCorruptedKatexHtml(text);
+  // [Self-Healing] Fix misplaced dollar signs inside parentheses like (s_{\infty}$) -> ($s_{\infty}$)
+  processed = processed.replace(/\(([^$()\n]+?)\$\)/g, '($$$1$)');
+
   // [Self-Healing] Fix corrupted HTML entity inequality symbols (&\lt;, &amp;\lt;, etc.)
   processed = processed.replace(/&amp;\\?lt;?/gi, '<')
                        .replace(/&amp;\\?gt;?/gi, '>')
