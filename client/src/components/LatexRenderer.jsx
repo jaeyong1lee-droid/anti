@@ -108,15 +108,8 @@ const parseAndRenderFlowchart = (flowchartText, katexLoaded, questionKey) => {
           const hasBoxNumber = /\[[\d\*\s가-힣a-zA-Z\-]+\]/.test(title) || /\(([A-F])\)/.test(item.content.join('\n'));
           if (!hasBoxNumber) {
             return (
-              <div key={idx} className="w-full h-auto font-mono whitespace-pre bg-slate-950/70 border border-slate-800/80 p-3 rounded-xl overflow-x-auto text-left leading-relaxed my-2 select-text font-mono text-[12.5px] sm:text-[13.5px] shadow-sm">
-                <div className="font-bold text-slate-200 mb-0.5 w-full h-auto whitespace-pre font-mono">
-                  <LatexRenderer text={title} katexLoaded={katexLoaded} enableAddFormula={true} questionKey={questionKey} forceInline={true} />
-                </div>
-                {bodyLines.map((bl, bIdx) => (
-                  <div key={bIdx} className="text-slate-300 my-0.5 w-full h-auto whitespace-pre font-mono">
-                    <LatexRenderer text={bl} katexLoaded={katexLoaded} enableAddFormula={true} questionKey={questionKey} forceInline={true} />
-                  </div>
-                ))}
+              <div key={idx} className="w-full h-auto text-left leading-relaxed my-1 select-text text-[14px] sm:text-[15px] text-slate-200">
+                <LatexRenderer text={item.content.join(' ')} katexLoaded={katexLoaded} enableAddFormula={true} questionKey={questionKey} />
               </div>
             );
           }
