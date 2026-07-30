@@ -1221,15 +1221,22 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
               await gradeSingleTableCell(questionIdx, q, inputId);
             }
           } else {
-            const doc = e.target.ownerDocument || document;
-            const container = e.target.closest('.my-3') || doc;
-            const inputs = Array.from(container.querySelectorAll('input[type="text"]'));
-            const currentIdx = inputs.indexOf(e.target);
-            if (currentIdx !== -1 && currentIdx < inputs.length - 1) {
-              inputs[currentIdx + 1].focus();
-            } else if (currentIdx === inputs.length - 1) {
-              if (onSubmit) {
-                await onSubmit();
+            const boxContainer = e.target.closest('.border-indigo-500\\/30') || e.target.closest('.shadow-md') || e.target.closest('.rounded-xl') || e.target.parentElement;
+            const boxInputs = boxContainer ? Array.from(boxContainer.querySelectorAll('input[type="text"]')) : [e.target];
+            const currentIdxInBox = boxInputs.indexOf(e.target);
+
+            if (currentIdxInBox !== -1 && currentIdxInBox < boxInputs.length - 1) {
+              boxInputs[currentIdxInBox + 1].focus();
+            } else {
+              for (const inputEl of boxInputs) {
+                const targetInputId = inputEl.getAttribute('data-input-id') || inputId;
+                const targetKey = `${questionIdx}_${targetInputId}`;
+                if (gradeSingleTableCell && !cellGradingLoading?.[targetKey]) {
+                  await gradeSingleTableCell(questionIdx, q, targetInputId);
+                }
+              }
+              if (typeof setRevealedQuestions === 'function') {
+                setRevealedQuestions(prev => ({ ...prev, [questionIdx]: true }));
               }
             }
           }
@@ -1262,6 +1269,7 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
               onChange={handleChange}
               onKeyDown={handleKeyDown}
               placeholder={`(${letter}) 입력`}
+              data-input-id={inputId}
               className={`px-2 py-0.5 rounded border bg-slate-950 text-white text-[13px] sm:text-[14px] flowchart-text-force focus:outline-none focus:ring-1 focus:ring-indigo-500 w-full font-bold ${
                 isGradedSingle
                   ? isCorrect
