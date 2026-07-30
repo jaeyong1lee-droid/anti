@@ -19,7 +19,7 @@ function renderCellMath(text) {
   
   const cleanedText = healLatexFormulas(cleanAndSanitizeMathText(text));
   
-  // Replace $$ ... $$ first (block math)
+  // Replace $$ ... $$ first (block math in table cells: render compact without display margins)
   let temp = cleanedText.replace(/\$\$\s*([\s\S]*?)\s*\$\$/g, (match, math) => {
     if (window.katex) {
       try {
@@ -28,7 +28,7 @@ function renderCellMath(text) {
         cleaned = cleaned.replace(/\\{2,}%/g, '\\%');
         cleaned = cleaned.replace(/(?<!\\)%/g, '\\%');
         cleaned = cleaned.replace(/^\$|\$/g, '').trim();
-        return window.katex.renderToString(cleaned, { displayMode: true, throwOnError: false });
+        return window.katex.renderToString(cleaned, { displayMode: false, throwOnError: false });
       } catch (e) {
         console.warn('KaTeX render error in table cell (block):', e);
         return match;
@@ -162,7 +162,7 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false,
       html += `<tr class="border-b border-slate-600 last:border-b-0 hover:bg-slate-900/20 group">`;
       row.forEach((cell, cIdx) => {
         const renderedCell = renderCellMath(cell);
-        const cellAlign = (cIdx === 0 || cIdx === 1) ? 'text-center' : 'text-left';
+        const cellAlign = (cIdx === 0 || cIdx === 1) ? 'text-center break-keep' : 'text-left break-keep';
         html += `<td class="p-1 sm:p-1.5 border-r border-slate-600 text-slate-200 font-semibold ${cellAlign}">${renderedCell}</td>`;
       });
       if (row.length < colCount) {
@@ -229,11 +229,11 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false,
     if (row.length === 0 || (row.length === 1 && row[0] === '')) return;
     
     html += `<tr class="border-b border-slate-600 last:border-b-0 hover:bg-slate-900/20 group">`;
-    row.forEach((cell, cIdx) => {
-      const renderedCell = renderCellMath(cell);
-      const cellAlign = (cIdx === 0 || cIdx === 1) ? 'text-center' : 'text-left';
-      html += `<td class="p-1 sm:p-1.5 border-r border-slate-600 text-slate-355 ${cellAlign}">${renderedCell}</td>`;
-    });
+      row.forEach((cell, cIdx) => {
+        const renderedCell = renderCellMath(cell);
+        const cellAlign = (cIdx === 0 || cIdx === 1) ? 'text-center break-keep' : 'text-left break-keep';
+        html += `<td class="p-1 sm:p-1.5 border-r border-slate-600 text-slate-355 ${cellAlign}">${renderedCell}</td>`;
+      });
     if (row.length < colCount) {
       for (let k = row.length; k < colCount; k++) {
         html += `<td class="p-1 sm:p-1.5 border-r border-slate-600 text-slate-355"></td>`;

@@ -299,7 +299,7 @@ export const ReadOnlyTable = React.memo(function ReadOnlyTable({
               return (
                 <th 
                   key={hIdx} 
-                  className={`relative p-1.5 sm:p-2 font-extrabold border-r border-slate-800 last:border-r-0 whitespace-normal break-words select-text ${
+                  className={`relative p-1.5 sm:p-2 font-extrabold border-r border-slate-800 last:border-r-0 whitespace-normal break-keep select-text ${
                     isFirstCol ? 'text-left cursor-pointer' : 'text-center'
                   }`}
                   onClick={isFirstCol ? handleHeaderClick : undefined}
@@ -333,7 +333,7 @@ export const ReadOnlyTable = React.memo(function ReadOnlyTable({
                     <td 
                       key={cIdx} 
                       colSpan={cellColSpan}
-                      className={`p-1.5 sm:p-2 border-r border-slate-800 last:border-r-0 text-slate-300 text-[14px] sm:text-[16px] whitespace-pre-line break-words select-text ${
+                      className={`p-1.5 sm:p-2 border-r border-slate-800 last:border-r-0 text-slate-300 text-[14px] sm:text-[16px] whitespace-pre-line break-keep select-text ${
                         isFirstCol ? 'text-left' : 'text-center'
                       }`}
                     >
