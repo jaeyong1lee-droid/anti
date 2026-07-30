@@ -106,8 +106,8 @@ const parseAndRenderFlowchart = (flowchartText, katexLoaded, questionKey) => {
           const title = item.content[0] || '';
           const bodyLines = item.content.slice(1);
           return (
-            <div key={idx} className="w-full h-auto min-h-fit border border-indigo-500/20 bg-slate-900/60 p-2.5 rounded-xl text-left leading-relaxed shadow-sm flex flex-col gap-0.5">
-              <div className="font-bold text-[13px] sm:text-[14px] flowchart-text-force text-indigo-400 mb-0.5 w-full h-auto whitespace-pre-wrap break-all">
+            <div key={idx} className="w-full h-auto min-h-fit border border-amber-400/70 bg-slate-900/60 p-2.5 rounded-xl text-left leading-relaxed shadow-sm flex flex-col gap-0.5 shadow-[0_0_12px_rgba(251,191,36,0.12)]">
+              <div className="font-bold text-[13px] sm:text-[14px] flowchart-text-force text-amber-400 mb-0.5 w-full h-auto whitespace-pre-wrap break-all">
                 <LatexRenderer text={title} katexLoaded={katexLoaded} enableAddFormula={true} questionKey={questionKey} forceInline={true} />
               </div>
               {bodyLines.map((bl, bIdx) => (
@@ -124,8 +124,8 @@ const parseAndRenderFlowchart = (flowchartText, katexLoaded, questionKey) => {
                 const title = box.content[0] || '';
                 const bodyLines = box.content.slice(1);
                 return (
-                  <div key={bIdx} className="flex-1 w-full h-auto min-h-fit border border-indigo-500/20 bg-slate-900/60 p-2.5 rounded-xl text-left leading-relaxed shadow-sm flex flex-col gap-0.5">
-                    <div className="font-bold text-[13px] sm:text-[14px] flowchart-text-force text-indigo-400 mb-0.5 w-full h-auto whitespace-pre-wrap break-all">
+                  <div key={bIdx} className="flex-1 w-full h-auto min-h-fit border border-amber-400/70 bg-slate-900/60 p-2.5 rounded-xl text-left leading-relaxed shadow-sm flex flex-col gap-0.5 shadow-[0_0_12px_rgba(251,191,36,0.12)]">
+                    <div className="font-bold text-[13px] sm:text-[14px] flowchart-text-force text-amber-400 mb-0.5 w-full h-auto whitespace-pre-wrap break-all">
                       <LatexRenderer text={title} katexLoaded={katexLoaded} enableAddFormula={true} questionKey={questionKey} forceInline={true} />
                     </div>
                     {bodyLines.map((bl, blIdx) => (

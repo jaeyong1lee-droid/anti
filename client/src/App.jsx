@@ -1367,11 +1367,11 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
 
     if (!isInputBox) {
       return (
-        <div key={boxKeyIdx} className="w-full h-auto min-h-fit border border-indigo-500/30 bg-slate-900/80 p-3 rounded-xl text-left leading-relaxed shadow-md flex items-center justify-between gap-3 select-text">
+        <div key={boxKeyIdx} className="w-full h-auto min-h-fit border border-amber-400/70 bg-slate-900/80 p-3 rounded-xl text-left leading-relaxed shadow-md flex items-center justify-between gap-3 select-text shadow-[0_0_12px_rgba(251,191,36,0.12)]">
           <div className="w-full flex flex-col md:flex-row gap-4 items-stretch">
             {/* 왼쪽: 본문 영역 */}
             <div className="flex-1 flex flex-col gap-0.5 min-w-0 md:pr-4 md:border-r border-slate-800/60">
-              <div className="font-bold text-[13px] sm:text-[14px] text-indigo-400 mb-0.5 w-full h-auto whitespace-pre-wrap break-all">
+              <div className="font-bold text-[13px] sm:text-[14px] text-amber-400 mb-0.5 w-full h-auto whitespace-pre-wrap break-all">
                 {renderLineContent(title)}
               </div>
               {bodyLines.map((bl, bIdx) => (
@@ -1392,7 +1392,7 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
     }
 
     return (
-      <div key={boxKeyIdx} className="w-full h-auto min-h-fit border border-indigo-500/30 bg-slate-900/80 p-3 rounded-xl text-left leading-relaxed shadow-md flex items-center justify-between gap-3 select-text">
+      <div key={boxKeyIdx} className="w-full h-auto min-h-fit border border-amber-400/70 bg-slate-900/80 p-3 rounded-xl text-left leading-relaxed shadow-md flex items-center justify-between gap-3 select-text shadow-[0_0_12px_rgba(251,191,36,0.12)]">
         {/* 왼쪽: 본문 및 입력 필드 영역 */}
         <div className="flex-grow flex flex-col gap-0.5 min-w-0">
           <div className="font-bold text-[13px] sm:text-[14px] text-indigo-400 mb-0.5 w-full h-auto whitespace-pre-wrap break-all">
@@ -1670,8 +1670,8 @@ const renderCompleteFlowchart = (flowchartText, katexLoaded, q) => {
           const title = item.content[0] || '';
           const bodyLines = item.content.slice(1);
           return (
-            <div key={idx} className="w-full h-auto min-h-fit border border-emerald-500/30 bg-slate-900/60 p-2.5 rounded-xl text-left leading-relaxed shadow-sm flex flex-col gap-0.5">
-              <div className="font-bold text-[13px] sm:text-[14px] flowchart-text-force text-emerald-400 mb-0.5 w-full h-auto whitespace-pre-wrap break-all">
+            <div key={idx} className="w-full h-auto min-h-fit border border-amber-400/70 bg-slate-900/60 p-2.5 rounded-xl text-left leading-relaxed shadow-sm flex flex-col gap-0.5 shadow-[0_0_12px_rgba(251,191,36,0.12)]">
+              <div className="font-bold text-[13px] sm:text-[14px] flowchart-text-force text-amber-400 mb-0.5 w-full h-auto whitespace-pre-wrap break-all">
                 {renderLineContent(title)}
               </div>
               {bodyLines.map((bl, bIdx) => (
@@ -1688,8 +1688,8 @@ const renderCompleteFlowchart = (flowchartText, katexLoaded, q) => {
                 const title = box.content[0] || '';
                 const bodyLines = box.content.slice(1);
                 return (
-                  <div key={bIdx} className="flex-1 w-full h-auto min-h-fit border border-emerald-500/30 bg-slate-900/60 p-2.5 rounded-xl text-left leading-relaxed shadow-sm flex flex-col gap-0.5">
-                    <div className="font-bold text-[13px] sm:text-[14px] flowchart-text-force text-emerald-400 mb-0.5 w-full h-auto whitespace-pre-wrap break-all">
+                  <div key={bIdx} className="flex-1 w-full h-auto min-h-fit border border-amber-400/70 bg-slate-900/60 p-2.5 rounded-xl text-left leading-relaxed shadow-sm flex flex-col gap-0.5 shadow-[0_0_12px_rgba(251,191,36,0.12)]">
+                    <div className="font-bold text-[13px] sm:text-[14px] flowchart-text-force text-amber-400 mb-0.5 w-full h-auto whitespace-pre-wrap break-all">
                       {renderLineContent(title)}
                     </div>
                     {bodyLines.map((bl, blIdx) => (
