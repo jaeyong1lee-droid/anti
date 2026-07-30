@@ -370,49 +370,6 @@ export const LatexRenderer = React.memo(function LatexRenderer({
       const num = parseInt(p1, 10);
       return String.fromCharCode(64 + num);
     });
-
-    // Auto-convert exponents and ranges, e.g. "10^-2~10^-3" -> "$10^{-2} \sim 10^{-3}$"
-    renderText = renderText.replace(/\$\$[^$]*\$\$|\$[^$]*\$|((?<!\$)(?:(\d+)\s*\^\s*\{([+-]?\d+)\}|(\d+)\s*\^\s*([+-]?\d+))\s*[~～〜]\s*(?:(\d+)\s*\^\s*\{([+-]?\d+)\}|(\d+)\s*\^\s*([+-]?\d+))(?:\s*\})?(?!\$))/g, (m, p1, b1_1, e1_1, b1_2, e1_2, b2_1, e2_1, b2_2, e2_2) => {
-      if (m.startsWith('$')) return m;
-      const b1 = b1_1 || b1_2;
-      const e1 = e1_1 || e1_2;
-      const b2 = b2_1 || b2_2;
-      const e2 = e2_1 || e2_2;
-      return `$${b1}^{${e1}} \\sim ${b2}^{${e2}}$`;
-    });
-    // Auto-convert single exponent, e.g. "10^-2" -> "$10^{-2}$"
-    renderText = renderText.replace(/\$\$[^$]*\$\$|\$[^$]*\$|((?<!\d)(?:(\d+)\s*\^\s*\{([+-]?\d+)\}|(\d+)\s*\^\s*([+-]?\d+))(?:\s*\})?(?!\d))/g, (m, p1, b1, e1, b2, e2) => {
-      if (m.startsWith('$')) return m;
-      const base = b1 || b2;
-      const exp = e1 || e2;
-      return `$${base}^{${exp}}$`;
-    });
-    // Auto-convert comparison operators with variable, e.g. "k >= 10^-2" -> "$k \ge 10^{-2}$"
-    renderText = renderText.replace(/\$\$[^$]*\$\$|\$[^$]*\$|(\b([kK])\b\s*(>=|<=|>|<|=|\\ge|\\le|\\approx)\s*\$?(?:(\d+)\s*\^\s*\{([+-]?\d+)\}|(\d+)\s*\^\s*([+-]?\d+))(?:\s*\})?\$?)/g, (m, p1, variable, op, b1, e1, b2, e2) => {
-      if (m.startsWith('$')) return m;
-      const base = b1 || b2;
-      const exp = e1 || e2;
-      let latexOp = op;
-      if (op === '>=') latexOp = '\\ge';
-      else if (op === '<=') latexOp = '\\le';
-      else if (op === '>') latexOp = '>';
-      else if (op === '<') latexOp = '<';
-      return `$${variable} ${latexOp} ${base}^{${exp}}$`;
-    });
-    // Auto-convert comparison operators with exponent range
-    renderText = renderText.replace(/\$\$[^$]*\$\$|\$[^$]*\$|(\b([kK])\b\s*(>=|<=|>|<|=|\\ge|\\le|\\approx)\s*\$?(?:(\d+)\s*\^\s*\{([+-]?\d+)\}|(\d+)\s*\^\s*([+-]?\d+))\$?\s*(?:\\sim|[~～〜])\s*\$?(?:(\d+)\s*\^\s*\{([+-]?\d+)\}|(\d+)\s*\^\s*([+-]?\d+))(?:\s*\})?\$?)/g, (m, p1, variable, op, b1_1, e1_1, b1_2, e1_2, b2_1, e2_1, b2_2, e2_2) => {
-      if (m.startsWith('$')) return m;
-      const b1 = b1_1 || b1_2;
-      const e1 = e1_1 || e1_2;
-      const b2 = b2_1 || b2_2;
-      const e2 = e2_1 || e2_2;
-      let latexOp = op;
-      if (op === '>=') latexOp = '\\ge';
-      else if (op === '<=') latexOp = '\\le';
-      else if (op === '>') latexOp = '>';
-      else if (op === '<') latexOp = '<';
-      return `$${variable} ${latexOp} ${b1}^{${e1}} \\sim ${b2}^{${e2}}$`;
-    });
   }
   if (typeof renderText === 'string' && renderText.trim().startsWith('{')) {
     try {
@@ -469,13 +426,6 @@ export const LatexRenderer = React.memo(function LatexRenderer({
   }, [isHeavy, text]);
 
   let processedText = renderText;
-  if (typeof processedText === 'string' && !isHeavy) {
-    if (!processedText.includes('\n')) {
-      processedText = processedText.replace(/([가-힣a-zA-Z0-9])다\.\s+/g, '$1다.\n\n');
-      // 번호 항목(2., 3., ...) 뒤에 줄바꿈이 없으면 자동 삽입 (1.은 문장 시작이므로 제외)
-      processedText = processedText.replace(/([.,:;)]\s+)(\d+\.\s)/g, '$1\n\n$2');
-    }
-  }
 
   // 1) 불필요한 연속 개행을 최소 2개로 압축하여 컴팩트하게 정리
   let cleanedText = processedText;
