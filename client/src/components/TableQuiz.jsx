@@ -105,20 +105,31 @@ export const TableQuiz = React.memo(function TableQuiz({
   const { firstTableInputs, secondTableInputs } = getTableInputIds();
 
   const isFirstTableGraded = revealed || (firstTableInputs.length > 0 && firstTableInputs.every(
-    id => getGradingResult(tableGradingResults, questionIdx, id, false) !== undefined
+    id => {
+      const key = `${questionIdx}_${id}`;
+      if (tableGradingResults && tableGradingResults[key] !== undefined) return true;
+      return getGradingResult(tableGradingResults, questionIdx, id, false) !== undefined;
+    }
   ));
 
-  const isSecondTableGraded = revealed || (secondTableInputs.length > 0 && secondTableInputs.every(
-    id => {
-      const res = getGradingResult(tableGradingResults, questionIdx, id, true);
+  const secondOnlyInputs = secondTableInputs.filter(id => !firstTableInputs.includes(id));
+  const targetSecondInputs = secondOnlyInputs.length > 0 ? secondOnlyInputs : secondTableInputs;
+
+  const isSecondTableGraded = revealed || (
+    isFirstTableGraded &&
+    targetSecondInputs.length > 0 && 
+    targetSecondInputs.every(id => {
+      const key = `${questionIdx}_${id}`;
+      // Exact key in tableGradingResults must exist for step 2 (prevent fallback to step 1 keys)
+      const res = tableGradingResults ? tableGradingResults[key] : undefined;
       if (!res) return false;
       if (res.score === 0 && res.reason && res.reason.includes('미입력')) {
         const userVal = getAnswerValue(tableAnswers, questionIdx, id, true);
         if (!userVal || !userVal.trim()) return false;
       }
       return true;
-    }
-  ));
+    })
+  );
 
   const renderStepFeedback = (targetInputs, title, isStep2 = false) => {
     if (targetInputs.length === 0) return null;

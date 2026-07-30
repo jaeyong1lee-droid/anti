@@ -3746,7 +3746,7 @@ export default function App() {
   const gradeTableQuestion = async (qIdx, q, targetInputs = null, isReevaluation = false) => {
     setGradingLoading(prev => ({ ...prev, [qIdx]: true }));
     let inputs = targetInputs;
-    if (!inputs) {
+    if (!inputs || (Array.isArray(inputs) && inputs.length === 0)) {
       if (isOverviewReview(q)) {
         const firstTableInputs = [];
         const secondTableInputs = [];
@@ -3768,11 +3768,12 @@ export default function App() {
             });
           });
         }
+        const currentGrading = showExam ? examTableGradingResultsRef.current : tableGradingResultsRef.current;
         const isFirstGraded = (firstTableInputs.length > 0 && firstTableInputs.every(
-          id => getGradingResult(tableGradingResultsRef.current, qIdx, id) !== undefined
+          id => currentGrading && currentGrading[`${qIdx}_${id}`] !== undefined
         ));
         if (!isFirstGraded) {
-          inputs = firstTableInputs;
+          inputs = firstTableInputs.length > 0 ? firstTableInputs : Object.keys(q.answers || {});
         } else {
           inputs = secondTableInputs.length > 0 ? secondTableInputs : Object.keys(q.answers || {});
         }
@@ -7996,20 +7997,66 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
           }
         }
       } else if (!isMC && (q.tableData || q.comparisonTableData)) {
-        const inputIds = Object.keys(q.answers || {});
         let needsGrading = false;
-        inputIds.forEach(inputId => {
-          const normalizedId = /^[A-F]$/i.test(inputId) ? `INPUT_${inputId.toUpperCase().charCodeAt(0) - 65 + 1}` : inputId;
-          const val = tableAnswers[`${idx}_${normalizedId}`];
-          const hasVal = val !== undefined && val !== null && String(val).trim() !== '';
-          const hasGraded = tableGradingResults[`${idx}_${normalizedId}`] !== undefined;
-          if (hasVal && !hasGraded) {
-            needsGrading = true;
+        let targetAutoInputs = null;
+        if (isOverviewReview(q)) {
+          const firstTableInputs = [];
+          const secondTableInputs = [];
+          if (q.tableData && q.tableData.rows) {
+            q.tableData.rows.forEach(row => {
+              row.forEach(cell => {
+                if (typeof cell === 'string' && cell.includes('[INPUT_')) {
+                  firstTableInputs.push(cell.replace('[', '').replace(']', '').trim());
+                }
+              });
+            });
           }
-        });
+          if (q.comparisonTableData && q.comparisonTableData.rows) {
+            q.comparisonTableData.rows.forEach(row => {
+              row.forEach(cell => {
+                if (typeof cell === 'string' && cell.includes('[INPUT_')) {
+                  secondTableInputs.push(cell.replace('[', '').replace(']', '').trim());
+                }
+              });
+            });
+          }
+          const isFirstGraded = (firstTableInputs.length > 0 && firstTableInputs.every(
+            id => tableGradingResults[`${idx}_${id}`] !== undefined
+          ));
+          if (!isFirstGraded) {
+            const has1stVal = firstTableInputs.some(id => {
+              const val = tableAnswers[`${idx}_${id}`];
+              return val !== undefined && val !== null && String(val).trim() !== '';
+            });
+            if (has1stVal) {
+              needsGrading = true;
+              targetAutoInputs = firstTableInputs;
+            }
+          } else {
+            const has2ndVal = secondTableInputs.some(id => {
+              const val = tableAnswers[`${idx}_${id}`];
+              return val !== undefined && val !== null && String(val).trim() !== '';
+            });
+            if (has2ndVal) {
+              needsGrading = true;
+              targetAutoInputs = secondTableInputs;
+            }
+          }
+        } else {
+          const inputIds = Object.keys(q.answers || {});
+          inputIds.forEach(inputId => {
+            const normalizedId = /^[A-F]$/i.test(inputId) ? `INPUT_${inputId.toUpperCase().charCodeAt(0) - 65 + 1}` : inputId;
+            const val = tableAnswers[`${idx}_${normalizedId}`];
+            const hasVal = val !== undefined && val !== null && String(val).trim() !== '';
+            const hasGraded = tableGradingResults[`${idx}_${normalizedId}`] !== undefined;
+            if (hasVal && !hasGraded) {
+              needsGrading = true;
+            }
+          });
+        }
         if (needsGrading) {
           console.log(`[Auto-Grading] Grading table question index=${idx} before completion...`);
-          const p = gradeTableQuestion(idx, q).then(res => {
+          const p = gradeTableQuestion(idx, q, targetAutoInputs).then(res => {
             if (res) {
               Object.assign(localGradingResults, res);
             }
