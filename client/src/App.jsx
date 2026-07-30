@@ -1365,7 +1365,7 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
       }
     }
 
-    const hasBoxNumber = !!boxNumMatch || /\[[\d\*\s가-힣A-Z]+\]/.test(title) || boxInputs.length > 0;
+    const hasBoxNumber = !!boxNumMatch || /\[[\d\*\s가-힣a-zA-Z\-]+\]/.test(title) || boxInputs.length > 0;
 
     if (!hasBoxNumber) {
       return (
@@ -1686,7 +1686,7 @@ const renderCompleteFlowchart = (flowchartText, katexLoaded, q) => {
         if (item.type === 'box') {
           const title = item.content[0] || '';
           const bodyLines = item.content.slice(1);
-          const hasBoxNumber = /\[[\d\*\s가-힣A-Z]+\]/.test(title) || /\(([A-F])\)/.test(item.content.join('\n'));
+          const hasBoxNumber = /\[[\d\*\s가-힣a-zA-Z\-]+\]/.test(title) || /\(([A-F])\)/.test(item.content.join('\n'));
           if (!hasBoxNumber) {
             return (
               <div key={idx} className="w-full h-auto font-mono whitespace-pre bg-slate-950/70 border border-slate-800/80 p-3 rounded-xl overflow-x-auto text-left leading-relaxed my-2 select-text font-mono text-[12.5px] sm:text-[13.5px] shadow-sm">
@@ -1719,7 +1719,7 @@ const renderCompleteFlowchart = (flowchartText, katexLoaded, q) => {
               {item.boxes.map((box, bIdx) => {
                 const title = box.content[0] || '';
                 const bodyLines = box.content.slice(1);
-                const hasBoxNumber = /\[[\d\*\s가-힣A-Z]+\]/.test(title) || /\(([A-F])\)/.test(box.content.join('\n'));
+                const hasBoxNumber = /\[[\d\*\s가-힣a-zA-Z\-]+\]/.test(title) || /\(([A-F])\)/.test(box.content.join('\n'));
                 if (!hasBoxNumber) {
                   return (
                     <div key={bIdx} className="flex-1 w-full h-auto font-mono whitespace-pre bg-slate-950/70 border border-slate-800/80 p-3 rounded-xl overflow-x-auto text-left leading-relaxed my-2 select-text font-mono text-[12.5px] sm:text-[13.5px] shadow-sm">
