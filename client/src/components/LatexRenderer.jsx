@@ -55,10 +55,8 @@ const renderAsciiGraphBlock = (text, katexLoaded) => {
 };
 
 const parseAndRenderFlowchart = (flowchartText, katexLoaded, questionKey) => {
-  if (!flowchartText) return null;
-
-  // 세로선 │ 또는 ┃ 이 전혀 포함되지 않은 아스키 그림/텍스트는 전역 검사 없이 통으로 렌더링
-  if (!flowchartText.includes('│') && !flowchartText.includes('┃')) {
+  const stepMarkerRegex = /(?:\[\s*(?:단계\s*)?\d+\s*\]|\[\s*Step\s*\d+\s*\]|\[\s*[a-zA-Z]\s*\]|\(\s*\d+\s*\)|[①-⑳])/i;
+  if (!stepMarkerRegex.test(flowchartText)) {
     return (
       <pre className="w-full font-mono text-[12px] sm:text-[13px] overflow-x-auto whitespace-pre p-3.5 rounded-xl bg-slate-950/80 border border-slate-800/80 text-slate-200 leading-snug my-2.5 select-text">
         {renderAsciiGraphBlock(flowchartText, katexLoaded)}
