@@ -228,9 +228,15 @@ export const LatexRenderer = React.memo(function LatexRenderer({
         const stepMatch = blockContent.match(stepMarkerRegex);
         if (stepMatch && stepMatch.index > 0) {
           // Mixed block: Top part is pure ASCII diagram, bottom part is step flowchart
-          const asciiTop = blockContent.substring(0, stepMatch.index).trimEnd();
+          let asciiTop = blockContent.substring(0, stepMatch.index).trimEnd();
+          // Strip orphaned top border line artifacts (e.g. ┌──────────┐ or │) left at the bottom of asciiTop
+          asciiTop = asciiTop.replace(/┌[─\s]*┐?$/g, '').replace(/│\s*$/g, '').trimEnd();
+
           const flowchartBottom = blockContent.substring(stepMatch.index).trim();
-          if (asciiTop) {
+          
+          // Check if asciiTop contains actual diagram/text content (not just box border characters)
+          const hasContent = /[a-zA-Z0-9가-힣$*+/#@⚪⚫▲▼◀▶←→↑↓]/i.test(asciiTop);
+          if (asciiTop && hasContent) {
             parts.push({ type: 'ascii', content: asciiTop });
           }
           if (flowchartBottom) {
@@ -272,8 +278,14 @@ export const LatexRenderer = React.memo(function LatexRenderer({
             );
           } else if (part.type === 'ascii') {
             return (
-              <pre key={pIdx} className="w-full font-mono text-[12px] sm:text-[13px] overflow-x-auto whitespace-pre p-3 rounded-xl bg-slate-900/70 border border-slate-700/50 text-slate-200 leading-snug my-2 select-text">
-                {part.content}
+              <pre key={pIdx} className="w-full font-mono text-[12px] sm:text-[13px] overflow-x-auto whitespace-pre p-3 rounded-xl bg-slate-900/70 border border-slate-700/50 text-slate-200 leading-snug my-2 select-text font-mono">
+                <LatexRenderer 
+                  text={part.content} 
+                  katexLoaded={katexLoaded} 
+                  enableAddFormula={enableAddFormula} 
+                  questionKey={questionKey} 
+                  forceInline={true} 
+                />
               </pre>
             );
           } else {
