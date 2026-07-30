@@ -334,7 +334,7 @@ export const ReadOnlyTable = React.memo(function ReadOnlyTable({
                       key={cIdx} 
                       colSpan={cellColSpan}
                       className={`p-1.5 sm:p-2 border-r border-slate-800 last:border-r-0 text-slate-300 text-[14px] sm:text-[16px] whitespace-pre-line break-keep select-text ${
-                        isFirstCol ? 'text-left' : 'text-center'
+                        isFirstCol ? 'text-center font-extrabold' : 'text-left'
                       }`}
                     >
                       <LatexRenderer text={typeof cell === 'string' ? cell.trim() : cell} katexLoaded={katexLoaded} className="inline" />

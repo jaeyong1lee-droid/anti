@@ -1371,7 +1371,7 @@ export const TableQuiz = React.memo(function TableQuiz({
                         key={cIdx} 
                         colSpan={cellColSpan}
                         className={`p-1 sm:p-1.5 border-r border-slate-800 last:border-r-0 text-slate-355 text-[14px] sm:text-[16px] select-text whitespace-pre-line break-words ${
-                          isFirstCol ? 'text-left break-all' : 'text-center'
+                          isFirstCol ? 'text-center font-extrabold break-all' : 'text-left'
                         }`}
                       >
                         <LatexRenderer text={cleanCellText(cell)} katexLoaded={katexLoaded} className="inline" />
