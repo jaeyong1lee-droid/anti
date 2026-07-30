@@ -1678,7 +1678,7 @@ const renderCompleteFlowchart = (flowchartText, katexLoaded, q) => {
   };
 
   return (
-    <div className="w-full flex flex-col items-center gap-2 select-text my-3 p-3.5 bg-slate-900/40 rounded-2xl border border-slate-800/60 shadow-lg flowchart-text-force">
+    <div className="w-full flex flex-col items-center gap-2 select-text my-3 flowchart-text-force">
       {cleanItems.map((item, idx) => {
         if (item.type === 'box') {
           const title = item.content[0] || '';
