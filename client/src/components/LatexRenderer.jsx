@@ -199,23 +199,50 @@ export const LatexRenderer = React.memo(function LatexRenderer({
     parsedText = parsedText.replace(/\$\$/g, '$').trim();
   }
 
-  // Only trigger dynamic flowchart wrapping when step numbers like [1], [2], [A], [B], (1), (2), ①, ② are present inside
-  const flowchartRegex = new RegExp('```(?:[a-zA-Z]*)?\\n([\\s\\S]*?(?:\\[\\s*(?:단계\\s*)?\\d+\\s*\\]|\\[\\s*Step\\s*\\d+\\s*\\]|\\[\\s*[a-zA-Z]\\s*\\]|\\(\\s*\\d+\\s*\\)|[①-⑳])[\\s\\S]*?)```', 'gi');
-  const hasFlowchart = flowchartRegex.test(parsedText);
-  flowchartRegex.lastIndex = 0;
+  // Option 3: Explicit code block type matching (ascii vs flowchart) with legacy mixed block protection
+  const codeBlockRegex = /```(ascii|ascii-art|flowchart|step|sequence|[a-zA-Z0-9_-]*)?\n([\s\S]*?)```/gi;
+  const hasCodeBlocks = codeBlockRegex.test(parsedText);
+  codeBlockRegex.lastIndex = 0;
 
-  if (hasFlowchart) {
+  if (hasCodeBlocks) {
     const parts = [];
     let lastIndex = 0;
     let match;
-    while ((match = flowchartRegex.exec(parsedText)) !== null) {
+    const stepMarkerRegex = /(?:\[\s*(?:단계\s*)?\d+\s*\]|\{\s*(?:단계\s*)?\d+\s*\}|\[\s*Step\s*\d+\s*\]|\[\s*[a-zA-Z]\s*\]|\(\s*\d+\s*\)|[①-⑳])/i;
+
+    while ((match = codeBlockRegex.exec(parsedText)) !== null) {
       const beforeText = parsedText.substring(lastIndex, match.index);
-      const flowchartText = match[1];
+      const lang = (match[1] || '').toLowerCase().trim();
+      const blockContent = match[2];
+
       if (beforeText) {
         parts.push({ type: 'text', content: beforeText });
       }
-      parts.push({ type: 'flowchart', content: flowchartText });
-      lastIndex = flowchartRegex.lastIndex;
+
+      if (lang === 'ascii' || lang === 'ascii-art') {
+        parts.push({ type: 'ascii', content: blockContent });
+      } else if (lang === 'flowchart' || lang === 'step' || lang === 'sequence') {
+        parts.push({ type: 'flowchart', content: blockContent });
+      } else {
+        // Fallback for unlabeled ``` code blocks
+        const stepMatch = blockContent.match(stepMarkerRegex);
+        if (stepMatch && stepMatch.index > 0) {
+          // Mixed block: Top part is pure ASCII diagram, bottom part is step flowchart
+          const asciiTop = blockContent.substring(0, stepMatch.index).trimEnd();
+          const flowchartBottom = blockContent.substring(stepMatch.index).trim();
+          if (asciiTop) {
+            parts.push({ type: 'ascii', content: asciiTop });
+          }
+          if (flowchartBottom) {
+            parts.push({ type: 'flowchart', content: flowchartBottom });
+          }
+        } else if (stepMatch) {
+          parts.push({ type: 'flowchart', content: blockContent });
+        } else {
+          parts.push({ type: 'ascii', content: blockContent });
+        }
+      }
+      lastIndex = codeBlockRegex.lastIndex;
     }
     const afterText = parsedText.substring(lastIndex);
     if (afterText) {
@@ -242,6 +269,12 @@ export const LatexRenderer = React.memo(function LatexRenderer({
                 isRealTimeTutor={isRealTimeTutor} 
                 hideTableWrapper={hideTableWrapper} 
               />
+            );
+          } else if (part.type === 'ascii') {
+            return (
+              <pre key={pIdx} className="w-full font-mono text-[12px] sm:text-[13px] overflow-x-auto whitespace-pre p-3 rounded-xl bg-slate-900/70 border border-slate-700/50 text-slate-200 leading-snug my-2 select-text">
+                {part.content}
+              </pre>
             );
           } else {
             return (
