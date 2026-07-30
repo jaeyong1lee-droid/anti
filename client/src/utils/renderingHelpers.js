@@ -505,7 +505,6 @@ export const buildSingleButtonHtml = (itemStr, fallbackBody = '') => {
 };
 
 export function transformAsciiGraphToSvg(_code) {
-  // Disabled per user instruction: raw text/code markdown will be preserved without SVG conversion
   return null;
 }
 
@@ -607,12 +606,7 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
     return placeholder;
   });
 
-  // Transform raw text ASCII graph blocks (3+ lines starting with / or containing graph markers)
-  const rawAsciiGraphRegex = /(?:^[ \t]*\/[^\n]*\n){3,}[ \t]*\/[^\n]*/gm;
-  tempText = tempText.replace(rawAsciiGraphRegex, (match) => {
-    const svgChart = transformAsciiGraphToSvg(match);
-    return svgChart ? `\n${svgChart}\n` : match;
-  });
+
   
   // Primary: match table-export-wrapper div from open tag to the two closing </div> tags that follow </table>
   tempText = tempText.replace(/(<div[^>]*class="[^"]*table-export-wrapper[^"]*"[^>]*>[\s\S]*?<\/table>[\s\S]*?<\/div>\s*<\/div>)/g, (match) => {
