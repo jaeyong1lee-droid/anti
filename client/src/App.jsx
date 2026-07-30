@@ -1368,17 +1368,11 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
     const hasBoxNumber = !!boxNumMatch || /\[[\d\*\s가-힣a-zA-Z\-]+\]/.test(title) || boxInputs.length > 0;
 
     if (!hasBoxNumber) {
+      const fullText = [title, ...bodyLines].join('\n');
       return (
-        <div key={boxKeyIdx} className="w-full h-auto font-mono whitespace-pre bg-slate-950/70 border border-slate-800/80 p-3 rounded-xl overflow-x-auto text-left leading-relaxed my-2 select-text font-mono text-[12.5px] sm:text-[13.5px] shadow-sm">
-          <div className="font-bold text-slate-200 mb-0.5 w-full h-auto whitespace-pre font-mono">
-            {renderLineContent(title)}
-          </div>
-          {bodyLines.map((bl, bIdx) => (
-            <div key={bIdx} className="text-slate-300 my-0.5 w-full h-auto whitespace-pre font-mono">
-              {renderLineContent(bl)}
-            </div>
-          ))}
-        </div>
+        <pre key={boxKeyIdx} className="w-full font-mono text-[12px] sm:text-[13px] overflow-x-auto whitespace-pre p-3.5 rounded-xl bg-slate-950/80 border border-slate-800/80 text-slate-200 leading-snug my-2.5 select-text shadow-sm">
+          {renderLineContent(fullText)}
+        </pre>
       );
     }
 
@@ -1688,17 +1682,11 @@ const renderCompleteFlowchart = (flowchartText, katexLoaded, q) => {
           const bodyLines = item.content.slice(1);
           const hasBoxNumber = /\[[\d\*\s가-힣a-zA-Z\-]+\]/.test(title) || /\(([A-F])\)/.test(item.content.join('\n'));
           if (!hasBoxNumber) {
+            const fullText = item.content.join('\n');
             return (
-              <div key={idx} className="w-full h-auto font-mono whitespace-pre bg-slate-950/70 border border-slate-800/80 p-3 rounded-xl overflow-x-auto text-left leading-relaxed my-2 select-text font-mono text-[12.5px] sm:text-[13.5px] shadow-sm">
-                <div className="font-bold text-slate-200 mb-0.5 w-full h-auto whitespace-pre font-mono">
-                  {renderLineContent(title)}
-                </div>
-                {bodyLines.map((bl, bIdx) => (
-                  <div key={bIdx} className="text-slate-300 my-0.5 w-full h-auto whitespace-pre font-mono">
-                    {renderLineContent(bl)}
-                  </div>
-                ))}
-              </div>
+              <pre key={idx} className="w-full font-mono text-[12px] sm:text-[13px] overflow-x-auto whitespace-pre p-3.5 rounded-xl bg-slate-950/80 border border-slate-800/80 text-slate-200 leading-snug my-2.5 select-text shadow-sm">
+                {renderLineContent(fullText)}
+              </pre>
             );
           }
           return (
@@ -1721,17 +1709,11 @@ const renderCompleteFlowchart = (flowchartText, katexLoaded, q) => {
                 const bodyLines = box.content.slice(1);
                 const hasBoxNumber = /\[[\d\*\s가-힣a-zA-Z\-]+\]/.test(title) || /\(([A-F])\)/.test(box.content.join('\n'));
                 if (!hasBoxNumber) {
+                  const fullText = box.content.join('\n');
                   return (
-                    <div key={bIdx} className="flex-1 w-full h-auto font-mono whitespace-pre bg-slate-950/70 border border-slate-800/80 p-3 rounded-xl overflow-x-auto text-left leading-relaxed my-2 select-text font-mono text-[12.5px] sm:text-[13.5px] shadow-sm">
-                      <div className="font-bold text-slate-200 mb-0.5 w-full h-auto whitespace-pre font-mono">
-                        {renderLineContent(title)}
-                      </div>
-                      {bodyLines.map((bl, blIdx) => (
-                        <div key={blIdx} className="text-slate-300 my-0.5 w-full h-auto whitespace-pre font-mono">
-                          {renderLineContent(bl)}
-                        </div>
-                      ))}
-                    </div>
+                    <pre key={bIdx} className="flex-1 w-full font-mono text-[12px] sm:text-[13px] overflow-x-auto whitespace-pre p-3.5 rounded-xl bg-slate-950/80 border border-slate-800/80 text-slate-200 leading-snug my-2.5 select-text shadow-sm">
+                      {renderLineContent(fullText)}
+                    </pre>
                   );
                 }
                 return (
