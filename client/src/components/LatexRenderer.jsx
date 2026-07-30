@@ -108,8 +108,8 @@ const parseAndRenderFlowchart = (flowchartText, katexLoaded, questionKey) => {
           const hasBoxNumber = /\[[\d\*\s가-힣a-zA-Z\-]+\]/.test(title) || /\(([A-F])\)/.test(item.content.join('\n'));
           if (!hasBoxNumber) {
             return (
-              <div key={idx} className="w-full h-auto text-left leading-relaxed my-1 select-text text-[14px] sm:text-[15px] text-slate-200">
-                <LatexRenderer text={item.content.join(' ')} katexLoaded={katexLoaded} enableAddFormula={true} questionKey={questionKey} />
+              <div key={idx} className="w-full h-auto text-left leading-relaxed my-1 select-text text-[14px] sm:text-[15px] text-slate-200 whitespace-pre-wrap">
+                <LatexRenderer text={item.content.join('\n')} katexLoaded={katexLoaded} enableAddFormula={true} questionKey={questionKey} />
               </div>
             );
           }
