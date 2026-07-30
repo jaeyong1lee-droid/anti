@@ -506,6 +506,9 @@ const healCorruptedKatexHtml = (text) => {
 export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = null, forceInline = false) {
   if (!text || typeof text !== 'string') return text;
 
+  // [Self-Healing] Safely restore corrupted (₩t) or (\t) time interval notation to (${\Delta}t$)
+  text = text.replace(/\([₩\\]?t\)/gi, '($\\Delta t$)');
+
   text = text.replace(/₩/g, '\\')
              .replace(/\\\[([\s\S]*?)\\\]/g, (m, p1) => '$$' + p1.trim() + '$$')
              .replace(/\\\(([\s\S]*?)\\\)/g, (m, p1) => '$' + p1.trim() + '$');
