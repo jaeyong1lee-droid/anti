@@ -1307,6 +1307,19 @@ export const TableQuiz = React.memo(function TableQuiz({
                                     if (gradeSingleTableCell && !cellGradingLoading?.[`${questionIdx}_${inputId}`]) {
                                       await gradeSingleTableCell(questionIdx, q, inputId, !!gradingResult);
                                     }
+                                  } else if (isOverviewReview) {
+                                    const isLastOfFirstTable = firstTableInputs.length > 0 && inputId === firstTableInputs[firstTableInputs.length - 1];
+                                    if (tableRef.current) {
+                                      const table1Textareas = Array.from(tableRef.current.querySelectorAll('textarea'));
+                                      const curIdx = table1Textareas.indexOf(e.target);
+                                      if (curIdx !== -1 && curIdx < table1Textareas.length - 1) {
+                                        table1Textareas[curIdx + 1].focus();
+                                        return;
+                                      }
+                                    }
+                                    if (onGradeOverviewStep) {
+                                      await onGradeOverviewStep(1, firstTableInputs);
+                                    }
                                   } else {
                                     const isLastOfFirstTable = firstTableInputs.length > 0 && inputId === firstTableInputs[firstTableInputs.length - 1];
                                     if (isLastOfFirstTable) {
@@ -1629,6 +1642,18 @@ export const TableQuiz = React.memo(function TableQuiz({
                                     if (isCellGraded) {
                                       if (gradeSingleTableCell && !cellGradingLoading?.[`${questionIdx}_${inputId}`]) {
                                         await gradeSingleTableCell(questionIdx, q, inputId, !!gradingResult);
+                                      }
+                                    } else if (isOverviewReview) {
+                                      if (containerRef.current) {
+                                        const textareas = Array.from(containerRef.current.querySelectorAll('textarea'));
+                                        const curIdx = textareas.indexOf(e.target);
+                                        if (curIdx !== -1 && curIdx < textareas.length - 1) {
+                                          textareas[curIdx + 1].focus();
+                                          return;
+                                        }
+                                      }
+                                      if (onGradeOverviewStep) {
+                                        await onGradeOverviewStep(2, secondTableInputs);
                                       }
                                     } else {
                                       if (containerRef.current) {
