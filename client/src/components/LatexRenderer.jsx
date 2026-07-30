@@ -86,10 +86,11 @@ const parseAndRenderFlowchart = (flowchartText, katexLoaded, questionKey) => {
     const trimmed = line.trim();
     if (!trimmed) continue;
 
-    // 가로 테두리선 기호 패스
+    // 가로 테두리선 및 축선 라인 보존 (지우지 않고 보존)
     if (trimmed.startsWith('┌') || trimmed.startsWith('└') || trimmed.startsWith('─') || trimmed.includes('───') || trimmed.includes('━━━')) {
-      flushBoxes();
-      continue;
+      if (currentBoxes && currentBoxes.length > 0) {
+        currentBoxes.forEach(box => box.content.push(line));
+      }
     }
 
     // 본문 줄 (세로선 │ 또는 ┃ 포함)
