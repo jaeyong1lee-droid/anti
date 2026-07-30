@@ -13,12 +13,53 @@ import { convertMarkdownTablesToHtml } from '../utils/markdownTableRenderer';
 import { convertMarkdownAcronymsToHtml } from '../utils/markdownAcronymRenderer';
 import { healLatexFormulas } from '../utils/latexUtils';
 
+const renderAsciiGraphBlock = (text, katexLoaded) => {
+  if (!text) return null;
+  let clean = text
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'");
+
+  const parts = [];
+  let lastIndex = 0;
+  const inlineRegex = /\$((?:[^\$\n]|\\\$)+?)\$/g;
+  let match;
+
+  while ((match = inlineRegex.exec(clean)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push({ type: 'text', content: clean.substring(lastIndex, match.index) });
+    }
+    parts.push({ type: 'math', content: match[1] });
+    lastIndex = inlineRegex.lastIndex;
+  }
+  if (lastIndex < clean.length) {
+    parts.push({ type: 'text', content: clean.substring(lastIndex) });
+  }
+
+  return parts.map((part, pIdx) => {
+    if (part.type === 'math') {
+      if (katexLoaded && window.katex) {
+        try {
+          const html = window.katex.renderToString(part.content, { displayMode: false, throwOnError: false });
+          return <span key={pIdx} className="inline-block mx-0.5" dangerouslySetInnerHTML={{ __html: html }} />;
+        } catch (e) {
+          return <span key={pIdx}>${part.content}$</span>;
+        }
+      }
+      return <span key={pIdx}>${part.content}$</span>;
+    }
+    return <span key={pIdx}>{part.content}</span>;
+  });
+};
+
 const parseAndRenderFlowchart = (flowchartText, katexLoaded, questionKey) => {
   const stepMarkerRegex = /(?:\[\s*(?:단계\s*)?\d+\s*\]|\[\s*Step\s*\d+\s*\]|\[\s*[a-zA-Z]\s*\]|\(\s*\d+\s*\)|[①-⑳])/i;
   if (!stepMarkerRegex.test(flowchartText)) {
     return (
-      <pre className="w-full font-mono text-[12px] sm:text-[13px] overflow-x-auto whitespace-pre p-3 rounded-xl bg-slate-900/70 border border-slate-700/50 text-slate-200 leading-snug my-2 select-text">
-        {flowchartText}
+      <pre className="w-full font-mono text-[12px] sm:text-[13px] overflow-x-auto whitespace-pre p-3.5 rounded-xl bg-slate-950/80 border border-slate-800/80 text-slate-200 leading-snug my-2.5 select-text">
+        {renderAsciiGraphBlock(flowchartText, katexLoaded)}
       </pre>
     );
   }
@@ -110,7 +151,7 @@ const parseAndRenderFlowchart = (flowchartText, katexLoaded, questionKey) => {
             const fullText = item.content.join('\n');
             return (
               <pre key={idx} className="w-full font-mono text-[12px] sm:text-[13px] overflow-x-auto whitespace-pre p-3.5 rounded-xl bg-slate-950/80 border border-slate-800/80 text-slate-200 leading-snug my-2.5 select-text shadow-sm">
-                {fullText}
+                {renderAsciiGraphBlock(fullText, katexLoaded)}
               </pre>
             );
           }
@@ -137,7 +178,7 @@ const parseAndRenderFlowchart = (flowchartText, katexLoaded, questionKey) => {
                   const fullText = box.content.join('\n');
                   return (
                     <pre key={bIdx} className="flex-1 w-full font-mono text-[12px] sm:text-[13px] overflow-x-auto whitespace-pre p-3.5 rounded-xl bg-slate-950/80 border border-slate-800/80 text-slate-200 leading-snug my-2.5 select-text shadow-sm">
-                      {fullText}
+                      {renderAsciiGraphBlock(fullText, katexLoaded)}
                     </pre>
                   );
                 }

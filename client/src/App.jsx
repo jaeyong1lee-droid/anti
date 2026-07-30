@@ -1368,10 +1368,13 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
     const hasBoxNumber = !!boxNumMatch || /\[[\d\*\s가-힣a-zA-Z\-]+\]/.test(title) || boxInputs.length > 0;
 
     if (!hasBoxNumber) {
-      const fullText = [title, ...bodyLines].join('\n');
+      const fullText = [title, ...bodyLines].join('\n')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&amp;/g, '&');
       return (
         <pre key={boxKeyIdx} className="w-full font-mono text-[12px] sm:text-[13px] overflow-x-auto whitespace-pre p-3.5 rounded-xl bg-slate-950/80 border border-slate-800/80 text-slate-200 leading-snug my-2.5 select-text shadow-sm">
-          {fullText}
+          {renderLineContent(fullText)}
         </pre>
       );
     }
@@ -1682,10 +1685,13 @@ const renderCompleteFlowchart = (flowchartText, katexLoaded, q) => {
           const bodyLines = item.content.slice(1);
           const hasBoxNumber = /\[[\d\*\s가-힣a-zA-Z\-]+\]/.test(title) || /\(([A-F])\)/.test(item.content.join('\n'));
           if (!hasBoxNumber) {
-            const fullText = item.content.join('\n');
+            const fullText = item.content.join('\n')
+              .replace(/&lt;/g, '<')
+              .replace(/&gt;/g, '>')
+              .replace(/&amp;/g, '&');
             return (
               <pre key={idx} className="w-full font-mono text-[12px] sm:text-[13px] overflow-x-auto whitespace-pre p-3.5 rounded-xl bg-slate-950/80 border border-slate-800/80 text-slate-200 leading-snug my-2.5 select-text shadow-sm">
-                {fullText}
+                {renderLineContent(fullText)}
               </pre>
             );
           }
@@ -1709,10 +1715,13 @@ const renderCompleteFlowchart = (flowchartText, katexLoaded, q) => {
                 const bodyLines = box.content.slice(1);
                 const hasBoxNumber = /\[[\d\*\s가-힣a-zA-Z\-]+\]/.test(title) || /\(([A-F])\)/.test(box.content.join('\n'));
                 if (!hasBoxNumber) {
-                  const fullText = box.content.join('\n');
+                  const fullText = box.content.join('\n')
+                    .replace(/&lt;/g, '<')
+                    .replace(/&gt;/g, '>')
+                    .replace(/&amp;/g, '&');
                   return (
                     <pre key={bIdx} className="flex-1 w-full font-mono text-[12px] sm:text-[13px] overflow-x-auto whitespace-pre p-3.5 rounded-xl bg-slate-950/80 border border-slate-800/80 text-slate-200 leading-snug my-2.5 select-text shadow-sm">
-                      {fullText}
+                      {renderLineContent(fullText)}
                     </pre>
                   );
                 }
