@@ -14,27 +14,6 @@ import { convertMarkdownAcronymsToHtml } from '../utils/markdownAcronymRenderer'
 import { healLatexFormulas } from '../utils/latexUtils';
 
 const parseAndRenderFlowchart = (flowchartText, katexLoaded, questionKey) => {
-  const stepMarkerRegex = /(?:\[\s*(?:단계\s*)?\d+\s*\]|\[\s*Step\s*\d+\s*\]|\[\s*[a-zA-Z]\s*\]|\(\s*\d+\s*\)|[①-⑳])/i;
-  if (!stepMarkerRegex.test(flowchartText)) {
-    let asciiHtml = flowchartText;
-    if (window.katex || typeof renderKatexString === 'function') {
-      asciiHtml = asciiHtml.replace(/\$\$\s*([\s\S]*?)\s*\$\$/g, (m, math) => {
-        return renderKatexString(math.trim(), { displayMode: false, throwOnError: false });
-      });
-      asciiHtml = asciiHtml.replace(/\$((?:[^\$\n<]|<(?![a-zA-Z/!]))+?)\$/g, (m, math) => {
-        const isReal = !/[\uAC00-\uD7A3]/.test(math) || /\\/.test(math) || /_/.test(math) || /\^/.test(math) || /[=+\-\*\/]/.test(math) || /\\cdot/.test(math);
-        if (!isReal) return m;
-        return renderKatexString(math.trim(), { displayMode: false, throwOnError: false });
-      });
-    }
-    return (
-      <pre 
-        className="w-full font-mono text-[12px] sm:text-[13px] overflow-x-auto whitespace-pre p-3 rounded-xl bg-slate-900/70 border border-slate-700/50 text-slate-200 leading-snug my-2 select-text font-mono"
-        dangerouslySetInnerHTML={{ __html: asciiHtml }}
-      />
-    );
-  }
-
   const lines = flowchartText.split('\n');
   const items = [];
   let currentBoxes = null;
@@ -220,8 +199,6 @@ export const LatexRenderer = React.memo(function LatexRenderer({
     const parts = [];
     let lastIndex = 0;
     let match;
-    const stepMarkerRegex = /(?:\[\s*(?:단계\s*)?\d+\s*\]|\{\s*(?:단계|Step)\s*\d+\s*\}|\[\s*Step\s*\d+\s*\]|\[\s*[a-zA-Z]\s*\]|[①-⑳])/i;
-
     while ((match = codeBlockRegex.exec(parsedText)) !== null) {
       const beforeText = parsedText.substring(lastIndex, match.index);
       const lang = (match[1] || '').toLowerCase().trim();
@@ -231,34 +208,10 @@ export const LatexRenderer = React.memo(function LatexRenderer({
         parts.push({ type: 'text', content: beforeText });
       }
 
-      if (lang === 'ascii' || lang === 'ascii-art') {
-        parts.push({ type: 'ascii', content: blockContent });
-      } else if (lang === 'flowchart' || lang === 'step' || lang === 'sequence') {
+      if (lang === 'flowchart' || lang === 'step' || lang === 'sequence') {
         parts.push({ type: 'flowchart', content: blockContent });
       } else {
-        // Fallback for unlabeled ``` code blocks
-        const stepMatch = blockContent.match(stepMarkerRegex);
-        if (stepMatch && stepMatch.index > 0) {
-          // Mixed block: Top part is pure ASCII diagram, bottom part is step flowchart
-          let asciiTop = blockContent.substring(0, stepMatch.index).trimEnd();
-          // Strip orphaned top border line artifacts (e.g. ┌──────────┐ or │) left at the bottom of asciiTop
-          asciiTop = asciiTop.replace(/┌[─\s]*┐?$/g, '').replace(/│\s*$/g, '').trimEnd();
-
-          const flowchartBottom = blockContent.substring(stepMatch.index).trim();
-          
-          // Check if asciiTop contains actual diagram/text content (not just box border characters)
-          const hasContent = /[a-zA-Z0-9가-힣$*+/#@⚪⚫▲▼◀▶←→↑↓]/i.test(asciiTop);
-          if (asciiTop && hasContent) {
-            parts.push({ type: 'ascii', content: asciiTop });
-          }
-          if (flowchartBottom) {
-            parts.push({ type: 'flowchart', content: flowchartBottom });
-          }
-        } else if (stepMatch) {
-          parts.push({ type: 'flowchart', content: blockContent });
-        } else {
-          parts.push({ type: 'ascii', content: blockContent });
-        }
+        parts.push({ type: 'ascii', content: blockContent });
       }
       lastIndex = codeBlockRegex.lastIndex;
     }
