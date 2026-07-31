@@ -1313,7 +1313,7 @@ router.post('/evaluate-answer', async (req, res) => {
       isCorrect,
       correctAnswer: finalCorrectAnswer,
       correctIndex,
-      explanation: healLatexFormulas(explanation),
+      explanation: explanation || '',
       score: isCorrect ? 8 : 0
     });
 
