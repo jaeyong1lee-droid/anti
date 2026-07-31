@@ -11,6 +11,12 @@ export let otherStandardsList = [
     content: "🚨 [AI 튜터 아스키 순서도(ASCII Flowchart) 의무 표출 철칙]: AI 튜터가 수험생 질문에 답변하거나 모범 답안을 설명할 때, 설계/시공 절차, 시험 순서, 단계별 거동 메커니즘(지반 변형 및 파괴 메커니즘), 공법 적용 과정 등 단계별 흐름을 표현할 수 있는 모든 주제에 대해서는 반드시 답변 내에 마크다운 고정폭 코드 블록(```)으로 감싼 깨끗한 아스키 순서도(ASCII Flowchart)를 직접 정밀 작도하여 시각적으로 명확하게 표출하십시오.",
     updatedAt: new Date().toISOString()
   },
+  {
+    id: "ascii_graph_layout_size_standard",
+    title: "아스키 그래프/도식 크기 제한 및 상하 2단 배치 철칙",
+    content: "📐 [아스키 그래프/도식 크기 제한 및 상하 2단 배치 철칙]: AI 튜터 및 문제 출제자가 아스키 아트(ASCII Art) 도식이나 그래프를 작도할 때, 가로 폭은 모바일/PC 화면 찌그러짐을 방지하기 위해 최대 45~50자 이내로 엄격히 제한하십시오. 특히 2개 이상의 공법/그래프를 비교할 경우 가로(좌/우) 나란히 배치를 절대 금지하며, 반드시 [1] 아사오카법, [2] 쌍곡선법과 같이 상/하 2단으로 각각 독립된 단일 아스키 코드 블록으로 순차 작도하여 표현하십시오.",
+    updatedAt: new Date().toISOString()
+  },
 
   {
     id: "latex_formula_formatting_standard",
