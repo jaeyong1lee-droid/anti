@@ -478,6 +478,10 @@ export const LatexRenderer = React.memo(function LatexRenderer({
 
   cleanedText = healFormulas(cleanedText);
   if (typeof cleanedText === 'string') {
+    // Strip raw HTML inline tags (b, i, em, u...) LLM occasionally emits — applies to ALL paths incl. table cells
+    cleanedText = cleanedText.replace(/<\/?(b|i|em|u|s|mark|small|big|ins|del)\b[^>]*>/gi, '');
+    // Strip blockquote prefix (>) LLM occasionally uses
+    cleanedText = cleanedText.replace(/^>\s?/gm, '');
     // Collapse empty lines between colon-ended lines and list items
     cleanedText = cleanedText.replace(/(:[ \t]*)\n\n+(\s*(?:\d+\.|\d+\)|[a-zA-Z가-힣]\)|\*|-|•|[①-⑳]))/g, '$1\n$2');
 
