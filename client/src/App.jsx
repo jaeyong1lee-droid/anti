@@ -19901,7 +19901,10 @@ ${itemsStr}
                                 <div
                                   key={oIdx}
                                   onClick={async () => {
-                                    if (answered || evaluatingJitKeys[rKey]) return;
+                                    if (evaluatingJitKeys[rKey]) return;
+
+                                    setRevealedQuestions(prev => ({ ...prev, [idx]: true }));
+                                    revealedQuestionsRef.current = { ...revealedQuestionsRef.current, [idx]: true };
 
                                     const jitResult = await handleEvaluateJitAnswer(rKey, {
                                       question: q.question,
