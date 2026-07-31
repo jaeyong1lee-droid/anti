@@ -1197,6 +1197,22 @@ ${getActiveEngineeringStandards()}
 // ============================================================================
 // POST /api/grading/evaluate-answer (Just-In-Time Exact Evaluation & Verification API)
 // ============================================================================
+// 안전한 순수 산술 수식 연산자 (Evaluate Math Expression)
+function evaluateMathExpression(expr) {
+  if (!expr || typeof expr !== 'string') return null;
+  try {
+    const sanitized = expr.replace(/[^0-9.\-+\/*()eE]/g, '');
+    if (!sanitized) return null;
+    const result = new Function(`"use strict"; return (${sanitized});`)();
+    if (typeof result === 'number' && !isNaN(result) && isFinite(result)) {
+      return result;
+    }
+  } catch (e) {
+    return null;
+  }
+  return null;
+}
+
 router.post('/evaluate-answer', async (req, res) => {
   try {
     const { questionText, options, userSelectedOption, category = '', topicTitle = '' } = req.body;
@@ -1204,7 +1220,7 @@ router.post('/evaluate-answer', async (req, res) => {
       return res.status(400).json({ error: 'questionText is required' });
     }
 
-    // 🌟 100% 범용 공학/수학/토목 수치 연산 및 정답/해설 산정 LLM 엔진 🌟
+    // 🌟 2단계 범용 수치 검증 엔진 (1단계: LLM 수식/변수 추론 + 2단계: 서버 정밀 산술 연산) 🌟
     const prompt = `
 [🚨 공학/수학/토목 수치 계산 및 정답/해설 정밀 검증 튜터 🚨]
 당신은 국가기술자격(토목기사, 건축기사, 기술사 등) 및 공학 시험의 문제 계산 및 정답 검증 전문가입니다.
@@ -1220,12 +1236,14 @@ router.post('/evaluate-answer', async (req, res) => {
 [검증 및 연산 수칙]:
 1. 지문의 모든 단위(mm, cm, m, N, kN, N/m², kPa, kN/m³ 등)를 MKS 단위계(SI 표준 단위)로 정확히 환산하여 대입하십시오.
 2. 관의 지름(d)과 반지름(r), 주동토압과 수동토압, 투수계수, 유효응력 등 용어의 공학적 의미를 정확히 분별하여 올바른 공식을 사용하십시오.
-   (예: 모관상승고 산정 시 지름 d 적용 공식 h_c = 4*sigma / (gamma_w * d) 과 반지름 r 적용 공식 h_c = 2*sigma / (gamma_w * r) 을 혼동하지 말고 정확히 연산)
-3. 정답(correctAnswer)은 제시된 보기(Options) 중 물리적/수학적 계산 결과와 가장 완벽히 일치하는 보기 문자열을 그대로 선택하십시오.
-4. 해설(explanation)에는 [적용 공식], [수치 대입 및 단위 환산], [단계별 연산 과정], [최종 정답 산출]을 LaTeX($...$, $$...$$) 표기를 활용하여 명확하고 수려하게 작성하십시오.
+   (예: 모관상승고 산정 시 지름 d 적용 공식 h_c = 4*sigma / (gamma_w * d) 과 반지름 r 적용 공식 h_c = 2*sigma / (gamma_w * r) 을 혼동하지 말고 정확히 수식 도출)
+3. "mathExpression" 필드에는 수치 대입 후 최종 계산할 순수 산술 수식(예: "(4 * 0.0728) / (9810 * 0.00008)")을 작성하십시오.
+4. 정답(correctAnswer)은 산술 계산 결과와 가장 완벽히 일치하는 제시된 보기(Options) 문자열 그대로 지정하십시오.
+5. 해설(explanation)에는 [적용 공식], [수치 대입 및 단위 환산], [단계별 연산 과정], [최종 정답 산출]을 LaTeX($...$, $$...$$) 표기를 활용하여 명확하고 수려하게 작성하십시오.
 
 [반환 JSON 응답 규격]:
 {
+  "mathExpression": "(4 * 0.0728) / (9810 * 0.00008)",
   "correctAnswer": "제시된 보기(Options) 중 하나와 정확히 일치하는 정답 문자열",
   "explanation": "LaTeX 수식이 포함된 명확하고 수려한 정밀 풀이 해설"
 }
@@ -1240,8 +1258,36 @@ router.post('/evaluate-answer', async (req, res) => {
         systemInstruction: "Strict JSON evaluator. Output valid JSON only."
       });
       const parsed = parseLlmJson(llmResult);
-      if (parsed && parsed.correctAnswer) {
-        finalCorrectAnswer = parsed.correctAnswer;
+      if (parsed) {
+        let mathCalculatedValue = null;
+        if (parsed.mathExpression) {
+          mathCalculatedValue = evaluateMathExpression(parsed.mathExpression);
+        }
+
+        // 서버 2단계 정밀 산술 연산 결과가 존재하면, 보기 중 오차가 가장 적은 보기를 정답으로 100% 검증/확정
+        if (mathCalculatedValue !== null && Array.isArray(options) && options.length > 0) {
+          let minDiff = Infinity;
+          let bestMatch = null;
+          options.forEach(opt => {
+            const num = parseFloat(String(opt).replace(/[^0-9.-]/g, ''));
+            if (!isNaN(num)) {
+              const diff = Math.abs(num - mathCalculatedValue);
+              if (diff < minDiff) {
+                minDiff = diff;
+                bestMatch = opt;
+              }
+            }
+          });
+          if (bestMatch && minDiff < 100.0) {
+            finalCorrectAnswer = bestMatch;
+            console.log(`[JIT Math Evaluator] Math Expr "${parsed.mathExpression}" evaluated to ${mathCalculatedValue} -> Matched Option: ${bestMatch}`);
+          }
+        }
+
+        if (!finalCorrectAnswer && parsed.correctAnswer) {
+          finalCorrectAnswer = parsed.correctAnswer;
+        }
+
         explanation = parsed.explanation || '';
       }
     } catch (llmErr) {
