@@ -1140,6 +1140,9 @@ export const cleanAndSanitizeMathText = (rawText) => {
                     .replace(/&gt;/g, '>')
                     .replace(/&amp;/g, '&');
    
+  // Normalize inline HTML bold tags/entities (<b>, strong, &lt;b&gt;, &lt;strong&gt;) into markdown **text**
+  cleaned = cleaned.replace(/(?:<b\b[^>]*>|&lt;b&gt;|<strong\b[^>]*>|&lt;strong&gt;)([\s\S]*?)(?:<\/b>|&lt;\/b&gt;|<\/strong>|&lt;\/strong&gt;)/gi, '**$1**');
+
   cleaned = cleaned.replace(/[–—−]/g, '-');
   
   cleaned = cleaned.replace(/\uD835\uDC58/g, 'k')

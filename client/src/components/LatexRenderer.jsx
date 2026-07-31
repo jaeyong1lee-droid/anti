@@ -478,8 +478,10 @@ export const LatexRenderer = React.memo(function LatexRenderer({
 
   cleanedText = healFormulas(cleanedText);
   if (typeof cleanedText === 'string') {
-    // Strip raw HTML inline tags (b, i, em, u...) LLM occasionally emits — applies to ALL paths incl. table cells
-    cleanedText = cleanedText.replace(/<\/?(b|i|em|u|s|mark|small|big|ins|del)\b[^>]*>/gi, '');
+    // Convert <b> / <strong> HTML tags & entities into markdown bold (**text**)
+    cleanedText = cleanedText.replace(/(?:<b\b[^>]*>|&lt;b&gt;|<strong\b[^>]*>|&lt;strong&gt;)([\s\S]*?)(?:<\/b>|&lt;\/b&gt;|<\/strong>|&lt;\/strong&gt;)/gi, '**$1**');
+    // Strip other raw HTML inline tags (i, em, u...) while preserving content
+    cleanedText = cleanedText.replace(/<\/?(i|em|u|s|mark|small|big|ins|del)\b[^>]*>/gi, '');
     // Strip blockquote prefix (>) LLM occasionally uses
     cleanedText = cleanedText.replace(/^>\s?/gm, '');
     // Collapse empty lines between colon-ended lines and list items

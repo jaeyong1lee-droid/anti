@@ -59,7 +59,8 @@ function renderCellMath(text) {
     return match;
   });
 
-  // Convert **bold** markdown to yellow <strong> in table cells
+  // Convert <b> / <strong> HTML tags & entities or **bold** markdown to yellow <strong> in table cells
+  temp = temp.replace(/(?:<b\b[^>]*>|&lt;b&gt;|<strong\b[^>]*>|&lt;strong&gt;)([\s\S]*?)(?:<\/b>|&lt;\/b&gt;|<\/strong>|&lt;\/strong&gt;)/gi, '<strong style="color: #fbbf24; font-weight:700;">$1</strong>');
   temp = temp.replace(/\*\*([^*]+?)\*\*/g, '<strong style="color: #fbbf24; font-weight:700;">$1</strong>');
 
   // Convert markdown list items (*, -, or •) inside table cells into styled <ul><li> blocks
