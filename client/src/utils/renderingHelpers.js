@@ -584,12 +584,6 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
   });
   tempText = tempText.replace(/:::[a-zA-Z0-9_-]*/g, '');
 
-  // Strip raw HTML inline tags (e.g. <b>, <i>, <em>, <u>) that LLM occasionally emits verbatim
-  tempText = tempText.replace(/<\/?(b|i|em|u|s|mark|small|big|ins|del)\b[^>]*>/gi, '');
-
-  // Strip blockquote prefix (>) that LLM occasionally uses — let existing bullet renderer handle the rest
-  tempText = tempText.replace(/^>\s?/gm, '');
-
   // Always remove inline source citation texts from body to prevent body pollution
   tempText = removeSourceCitationsFromText(tempText);
 
@@ -724,7 +718,7 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
     }
   });
   // Convert markdown list items (*, -, •, or 1., 2.) including multi-level indentation into nested <ul>/<ol>
-  tempText = tempText.replace(/((?:^[ \t]*(?:[-*•▪▫·]|\d+[\.\)])\s*.+(?:\n|$))+)/gm, (block) => {
+  tempText = tempText.replace(/((?:^[ \t]*(?:(?:>|&gt;)\s*)?(?:[-*•▪▫·]|\d+[\.\)])\s*.+(?:\n|$))+)/gm, (block) => {
     const lines = block.split('\n');
     let html = '';
     let inOuter = false;
@@ -732,7 +726,7 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
-      const match = line.match(/^([ \t]*)(?:([-*•▪▫·])|(\d+)[\.\)])\s*(.+)$/);
+      const match = line.match(/^([ \t]*)(?:(?:>|&gt;)\s*)?(?:([-*•▪▫·])|(\d+)[\.\)])\s*(.+)$/);
       if (!match) continue;
       
       const indentLen = match[1].replace(/\t/g, '  ').length;

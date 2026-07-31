@@ -480,10 +480,6 @@ export const LatexRenderer = React.memo(function LatexRenderer({
   if (typeof cleanedText === 'string') {
     // Convert <b> / <strong> HTML tags & entities into markdown bold (**text**)
     cleanedText = cleanedText.replace(/(?:<b\b[^>]*>|&lt;b&gt;|<strong\b[^>]*>|&lt;strong&gt;)([\s\S]*?)(?:<\/b>|&lt;\/b&gt;|<\/strong>|&lt;\/strong&gt;)/gi, '**$1**');
-    // Strip other raw HTML inline tags (i, em, u...) while preserving content
-    cleanedText = cleanedText.replace(/<\/?(i|em|u|s|mark|small|big|ins|del)\b[^>]*>/gi, '');
-    // Strip blockquote prefix (>) LLM occasionally uses
-    cleanedText = cleanedText.replace(/^>\s?/gm, '');
     // Collapse empty lines between colon-ended lines and list items
     cleanedText = cleanedText.replace(/(:[ \t]*)\n\n+(\s*(?:\d+\.|\d+\)|[a-zA-Z가-힣]\)|\*|-|•|[①-⑳]))/g, '$1\n$2');
 
