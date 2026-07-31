@@ -1295,6 +1295,46 @@ export function healQuizQuestionObject(q) {
           "평균 유효응력 $p' = \\frac{\\sigma'_1 + \\sigma'_3}{2}$ 와 축차응력 $q = \\frac{\\sigma_1 - \\sigma_3}{2}$ 가 각각 정의될 때"
         );
       }
+
+      // 3. 모관상승고/공학 수치 문제 산술 연산 100% 자가 치유 (Self-Healing Evaluator)
+      if (q.options && Array.isArray(q.options) && q.options.length > 0) {
+        const dMatch = q.question.match(/(?:d|지름)[^\d]*([\d.]+)\s*mm/i);
+        const sigmaMatch = q.question.match(/(?:sigma|σ|표면장력)[^\d]*([\d.]+)\s*N\/m/i);
+        const gammaMatch = q.question.match(/(?:gamma|γ|단위중량)[^\d]*([\d.]+)\s*kN\/m/i);
+
+        if (dMatch && sigmaMatch && gammaMatch) {
+          const d = parseFloat(dMatch[1]) * 0.001; // mm -> m
+          const sigma = parseFloat(sigmaMatch[1]);
+          const gamma_w = parseFloat(gammaMatch[1]) * 1000;
+
+          if (d > 0 && gamma_w > 0) {
+            const hcCalc = (4 * sigma) / (gamma_w * d);
+            let minDiff = Infinity;
+            let bestMatch = null;
+            q.options.forEach(opt => {
+              const num = parseFloat(String(opt).replace(/[^0-9.-]/g, ''));
+              if (!isNaN(num)) {
+                const diff = Math.abs(num - hcCalc);
+                if (diff < minDiff) {
+                  minDiff = diff;
+                  bestMatch = opt;
+                }
+              }
+            });
+            if (bestMatch && minDiff < 1.0) {
+              q.answer = bestMatch; // DB 세션의 구 오답을 자가 치유로 즉시 정정!
+              q.explanation = `이론적 모관상승고($h_c$) 산정 공학 공식에 따라 다음과 같이 연산됩니다:\n\n` +
+                `$$h_c = \\frac{4\\sigma \\cos\\alpha}{\\gamma_w \\cdot d}$$\n\n` +
+                `**[주어진 조건 대입]**:\n` +
+                `- 지름 $d = ${dMatch[1]}\\text{ mm} = ${(parseFloat(dMatch[1])*0.001).toExponential()}\\text{ m}$\n` +
+                `- 표면장력 $\\sigma = ${sigma}\\text{ N/m}$\n` +
+                `- 단위중량 $\\gamma_w = ${gammaMatch[1]}\\text{ kN/m}^3 = ${gamma_w}\\text{ N/m}^3$\n\n` +
+                `$$h_c = \\frac{4 \\times ${sigma} \\times 1}{${gamma_w} \\times ${(parseFloat(dMatch[1])*0.001).toExponential()}} = \\frac{${(4*sigma).toFixed(4)}}{${(gamma_w*d).toFixed(4)}} \\approx \\mathbf{${bestMatch}}$$\n\n` +
+                `따라서 수식 계산에 따른 정확한 이론적 모관상승고는 **${bestMatch}** 입니다.`;
+            }
+          }
+        }
+      }
     }
 
     // Real-time healing for overview questions to ensure both 학술적 정의 & 공학적 작동 메커니즘 are present
