@@ -19911,17 +19911,17 @@ ${itemsStr}
                                     }, opt);
 
                                     if (jitResult && jitResult.correctAnswer) {
+                                      const freshExplanation = jitResult.explanation || q.explanation;
                                       q.answer = jitResult.correctAnswer;
-                                      if (jitResult.explanation) {
-                                        q.explanation = jitResult.explanation;
-                                      }
+                                      q.explanation = freshExplanation;
+
                                       setAiQuestions(prev => {
                                         const updated = [...prev];
                                         if (updated[idx]) {
                                           updated[idx] = {
                                             ...updated[idx],
                                             answer: jitResult.correctAnswer,
-                                            explanation: jitResult.explanation || updated[idx].explanation
+                                            explanation: freshExplanation
                                           };
                                         }
                                         return updated;
