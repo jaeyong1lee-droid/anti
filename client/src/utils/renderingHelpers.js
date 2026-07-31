@@ -584,6 +584,9 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
   });
   tempText = tempText.replace(/:::[a-zA-Z0-9_-]*/g, '');
 
+  // Strip raw HTML inline tags (e.g. <b>, <i>, <em>, <u>) that LLM occasionally emits verbatim
+  tempText = tempText.replace(/<\/?(b|i|em|u|s|mark|small|big|ins|del)\b[^>]*>/gi, '');
+
   // Always remove inline source citation texts from body to prevent body pollution
   tempText = removeSourceCitationsFromText(tempText);
 
