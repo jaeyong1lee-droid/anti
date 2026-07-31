@@ -29884,3 +29884,4 @@ function DraggableFloatingButton({ currentTab, onToggle, theme = 'violet', onPul
 }
 
 // Vercel build trigger comment - fresh push
+// Rollback commit triggered
