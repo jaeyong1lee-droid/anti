@@ -587,6 +587,9 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
   // Strip raw HTML inline tags (e.g. <b>, <i>, <em>, <u>) that LLM occasionally emits verbatim
   tempText = tempText.replace(/<\/?(b|i|em|u|s|mark|small|big|ins|del)\b[^>]*>/gi, '');
 
+  // Strip blockquote prefix (>) that LLM occasionally uses — let existing bullet renderer handle the rest
+  tempText = tempText.replace(/^>\s?/gm, '');
+
   // Always remove inline source citation texts from body to prevent body pollution
   tempText = removeSourceCitationsFromText(tempText);
 
