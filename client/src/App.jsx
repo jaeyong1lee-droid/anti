@@ -5777,7 +5777,7 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
     if (!questionObj || !selectedOpt) return null;
     setEvaluatingJitKeys(prev => ({ ...prev, [rKey]: true }));
     try {
-      const res = await fetch(`${API_BASE}/api/grading/evaluate-answer`, {
+      let res = await fetch(`${API_BASE}/api/evaluate-answer`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -5788,6 +5788,19 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
           topicTitle: questionObj.topicTitle || ''
         })
       });
+      if (!res.ok) {
+        res = await fetch(`${API_BASE}/api/grading/evaluate-answer`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            questionText: questionObj.question,
+            options: questionObj.options,
+            userSelectedOption: selectedOpt,
+            category: questionObj.category || '',
+            topicTitle: questionObj.topicTitle || ''
+          })
+        });
+      }
       const data = await res.json();
       if (data && data.correctAnswer) {
         return data;
@@ -19902,6 +19915,17 @@ ${itemsStr}
                                       if (jitResult.explanation) {
                                         q.explanation = jitResult.explanation;
                                       }
+                                      setAiQuestions(prev => {
+                                        const updated = [...prev];
+                                        if (updated[idx]) {
+                                          updated[idx] = {
+                                            ...updated[idx],
+                                            answer: jitResult.correctAnswer,
+                                            explanation: jitResult.explanation || updated[idx].explanation
+                                          };
+                                        }
+                                        return updated;
+                                      });
                                     }
 
                                     const nextAnswers = { ...selectedAnswers, [idx]: opt };
