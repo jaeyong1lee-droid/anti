@@ -19990,7 +19990,7 @@ ${itemsStr}
                                     정답: <strong className="inline-block"><LatexRenderer text={q.answer} katexLoaded={katexLoaded} className="inline" enableAddFormula={true} /></strong>
                                   </span>
                                 )}
-                                {q.explanation && <div className="mt-1.5 text-[14px] sm:text-[16px] text-slate-300"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} isExplanation={true} /></div>}
+                                {q.explanation && <div className="mt-1.5 text-[14px] sm:text-[16px] text-slate-300"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} isExplanation={true} formulaSource="tutor" /></div>}
 
                                  {/* AI 해설 및 보기분석 버튼 패널 */}
                                  <div className="mt-3 pt-3 border-t border-slate-700/50">
@@ -20314,7 +20314,7 @@ ${itemsStr}
                                       <div className="mt-2 pt-2 border-t border-current/10 text-[14px] sm:text-[16px] select-text">
                                         <span className="font-extrabold text-amber-400">📝 해설:</span>
                                         <div className="mt-1 text-[14px] sm:text-[16px] text-slate-200 leading-relaxed">
-                                          <LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} isExplanation={true} />
+                                          <LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} isExplanation={true} formulaSource="tutor" />
                                         </div>
                                       </div>
                                     )}
@@ -20436,7 +20436,7 @@ ${itemsStr}
                                       <div className="mt-2 pt-2 border-t border-current/10 text-[14px] sm:text-[16px] select-text">
                                         <span className="font-extrabold text-amber-400">📝 해설:</span>
                                         <div className="mt-1 text-[14px] sm:text-[16px] text-slate-200 leading-relaxed">
-                                          <LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} isExplanation={true} />
+                                          <LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} isExplanation={true} formulaSource="tutor" />
                                         </div>
                                       </div>
                                     )}
@@ -20483,7 +20483,7 @@ ${itemsStr}
                                     {q.explanation && (
                                       <div className="space-y-1 text-left pt-2 border-t border-amber-500/10">
                                         <span className="text-[10px] font-black text-amber-400">📝 해설: </span>
-                                        <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} isExplanation={true} /></div>
+                                        <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} isExplanation={true} formulaSource="tutor" /></div>
                                       </div>
                                     )}
                                     {renderCardTutorChat(rKey, q)}
@@ -23754,7 +23754,7 @@ ${itemsStr}
                                   정답: <strong className="inline-block"><LatexRenderer text={q.answer} katexLoaded={katexLoaded} className="inline" enableAddFormula={true} /></strong>
                                 </span>
                               )}
-                              {q.explanation && <div className="mt-1.5 text-[14px] sm:text-[16px] text-slate-300"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} isExplanation={true} /></div>}
+                              {q.explanation && <div className="mt-1.5 text-[14px] sm:text-[16px] text-slate-300"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} isExplanation={true} formulaSource="tutor" /></div>}
                               
                               {/* AI 해설 및 보기분석 버튼 패널 */}
                               <div className="mt-2 pt-2 border-t border-slate-700/40">
@@ -24018,7 +24018,7 @@ ${itemsStr}
                                       <div className="mt-2 pt-2 border-t border-current/10 text-[14px] sm:text-[16px] select-text">
                                         <span className="font-extrabold text-amber-400">📝 해설:</span>
                                         <div className="mt-1 text-[14px] sm:text-[16px] text-slate-200 leading-relaxed">
-                                          <LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} isExplanation={true} />
+                                          <LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} isExplanation={true} formulaSource="tutor" />
                                         </div>
                                       </div>
                                     )}
@@ -24139,7 +24139,7 @@ ${itemsStr}
                                       <div className="mt-2 pt-2 border-t border-current/10 text-[14px] sm:text-[16px] select-text">
                                         <span className="font-extrabold text-amber-400">📝 해설:</span>
                                         <div className="mt-1 text-[14px] sm:text-[16px] text-slate-200 leading-relaxed">
-                                          <LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} isExplanation={true} />
+                                          <LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} isExplanation={true} formulaSource="tutor" />
                                         </div>
                                       </div>
                                     )}
@@ -24184,7 +24184,7 @@ ${itemsStr}
                                     {q.explanation && (
                                       <div className="space-y-1 text-left pt-2 border-t border-amber-500/10">
                                         <span className="text-[10px] font-black text-amber-400">📝 해설: </span>
-                                        <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} isExplanation={true} /></div>
+                                        <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} isExplanation={true} formulaSource="tutor" /></div>
                                       </div>
                                     )}
                                     {renderCardTutorChat(eKey, q)}

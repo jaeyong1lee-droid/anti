@@ -664,7 +664,9 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
 
   tempText = tempText.replace(/\n\s*\n/g, '\n\n');
   tempText = tempText.replace(/\n{3,}/g, '\n\n');
-  tempText = tempText.replace(/\n+(___BLOCK_MATH_\d+___)\n+/g, '\n$1\n');
+  if (!isTutor && !isExplanation) {
+    tempText = tempText.replace(/\n+(___BLOCK_MATH_\d+___)\n+/g, '\n$1\n');
+  }
 
   // Headings on same line
   tempText = tempText.replace(/([^\n])\s*(#{2,6}\s+)/g, '$1\n\n$2');
