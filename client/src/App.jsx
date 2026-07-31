@@ -5770,6 +5770,36 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
   const [isSavingOtherStandardsList, setIsSavingOtherStandardsList] = useState(false);
   const [isLoadingOtherStandardsList, setIsLoadingOtherStandardsList] = useState(false);
   
+  // Just-In-Time Answer Evaluation States
+  const [evaluatingJitKeys, setEvaluatingJitKeys] = useState({});
+
+  const handleEvaluateJitAnswer = async (rKey, questionObj, selectedOpt) => {
+    if (!questionObj || !selectedOpt) return null;
+    setEvaluatingJitKeys(prev => ({ ...prev, [rKey]: true }));
+    try {
+      const res = await fetch(`${API_BASE}/api/grading/evaluate-answer`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          questionText: questionObj.question,
+          options: questionObj.options,
+          userSelectedOption: selectedOpt,
+          category: questionObj.category || '',
+          topicTitle: questionObj.topicTitle || ''
+        })
+      });
+      const data = await res.json();
+      if (data && data.correctAnswer) {
+        return data;
+      }
+    } catch (err) {
+      console.warn('[JIT Answer Eval Error]:', err);
+    } finally {
+      setEvaluatingJitKeys(prev => ({ ...prev, [rKey]: false }));
+    }
+    return null;
+  };
+  
   const [showManageTopicInstructionsModal, setShowManageTopicInstructionsModal] = useState(false);
   const [showEditTopicInstructionModal, setShowEditTopicInstructionModal] = useState(false);
   const [topicInstructionsList, setTopicInstructionsList] = useState([]);
@@ -19851,8 +19881,22 @@ ${itemsStr}
                               return (
                                 <div
                                   key={oIdx}
-                                  onClick={() => {
-                                    if (answered) return;
+                                  onClick={async () => {
+                                    if (answered || evaluatingJitKeys[rKey]) return;
+
+                                    const jitResult = await handleEvaluateJitAnswer(rKey, {
+                                      question: q.question,
+                                      options: q.options,
+                                      category: selectedTopic?.category,
+                                      topicTitle: selectedTopic?.title
+                                    }, opt);
+
+                                    if (jitResult && jitResult.correctAnswer) {
+                                      q.answer = jitResult.correctAnswer;
+                                      if (jitResult.explanation) {
+                                        q.explanation = jitResult.explanation;
+                                      }
+                                    }
 
                                     const nextAnswers = { ...selectedAnswers, [idx]: opt };
                                     setSelectedAnswers(nextAnswers);

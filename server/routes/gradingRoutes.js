@@ -1194,4 +1194,124 @@ ${getActiveEngineeringStandards()}
   }
 });
 
+// ============================================================================
+// POST /api/grading/evaluate-answer (Just-In-Time Exact Evaluation & Verification API)
+// ============================================================================
+router.post('/evaluate-answer', async (req, res) => {
+  try {
+    const { questionText, options, userSelectedOption, category = '', topicTitle = '' } = req.body;
+    if (!questionText) {
+      return res.status(400).json({ error: 'questionText is required' });
+    }
+
+    // 1. Direct Physics/Engineering Formula Code-Level Evaluator (Double-Check Failsafe)
+    let calculatedCorrectAnswer = null;
+
+    // 모관상승고(Capillary Rise) 물리 공식 정밀 연산 검증
+    if (/모관\s*상승고|모관\s*튜브|표면장력/i.test(questionText)) {
+      const dMatch = questionText.match(/d\s*=\s*([\d.]+)\s*mm/i) || questionText.match(/지름[^\d]*([\d.]+)\s*mm/i);
+      const sigmaMatch = questionText.match(/[\sigma\sigma]\s*=\s*([\d.]+)\s*N\/m/i) || questionText.match(/표면장력[^\d]*([\d.]+)\s*N\/m/i);
+      const gammaMatch = questionText.match(/[\gamma\gamma]_?w?\s*=\s*([\d.]+)\s*kN\/m/i) || questionText.match(/단위중량[^\d]*([\d.]+)\s*kN\/m/i);
+
+      if (dMatch && sigmaMatch && gammaMatch) {
+        const d = parseFloat(dMatch[1]) * 0.001; // mm -> m
+        const sigma = parseFloat(sigmaMatch[1]); // N/m
+        const gamma_w = parseFloat(gammaMatch[1]) * 1000; // kN/m^3 -> N/m^3
+
+        if (d > 0 && gamma_w > 0) {
+          const hcCalc = (4 * sigma) / (gamma_w * d);
+          const hcFormatted = hcCalc.toFixed(3); // e.g. 0.594
+
+          // Find option matching calculated value
+          if (Array.isArray(options) && options.length > 0) {
+            const matchOpt = options.find(opt => {
+              const num = parseFloat(String(opt).replace(/[^0-9.-]/g, ''));
+              return Math.abs(num - hcCalc) < 0.01;
+            });
+            if (matchOpt) {
+              calculatedCorrectAnswer = matchOpt;
+              console.log(`[JIT Evaluator] Capillary Rise calculated: ${hcFormatted} m -> Matched option: ${matchOpt}`);
+            }
+          }
+        }
+      }
+    }
+
+    // 2. LLM Precision Evaluator Prompt (For all general/engineering questions)
+    const prompt = `
+[🚨 정밀 수치 연산 및 정답/해설 산정 전용 튜터 🚨]
+당신은 지반공학 및 토목공학 수치 계산 100% 검증 전문가입니다.
+아래 문제의 질문 지문과 조건 수치를 정밀하게 대입하여 공학 공식을 유도하고, 100% 정확한 물리적 정답 및 해설을 작성하십시오.
+
+[문제 정보]:
+- 주제/토픽: ${topicTitle || category || '공학 퀴즈'}
+- 질문 본문: ${questionText}
+- 제시된 보기(Options): ${JSON.stringify(options || [])}
+- 사용자가 선택한 답: ${userSelectedOption || '미선택'}
+
+[필수 산정 및 작성 철칙]:
+1. 지문의 지름($d$), 반지름($r$), 단위중량($\\gamma_w$), 표면장력($\\sigma$) 등 수치를 정확히 환산하여 표준 수식에 대입하십시오. (예: 모관상승고 지름 $d$ 기준 $h_c = \\frac{4\\sigma}{\\gamma_w d}$)
+2. 정답(correctAnswer)은 제시된 보기(Options) 중 물리적 연산 결과와 가장 일치하는 항목(문자열 그대로)을 지정하십시오.
+3. 수식 유도 과정과 풀이를 LaTeX($...$, $$...$$) 서식을 활용하여 명쾌하고 상세하게 작성하십시오.
+
+[반환 JSON 응답 규격]:
+{
+  "correctAnswer": "정확한 정답 보기 문자열 (예: 0.594 m)",
+  "explanation": "상세 수식 유도 과정 및 풀이 설명"
+}
+`;
+
+    let finalCorrectAnswer = calculatedCorrectAnswer;
+    let explanation = '';
+
+    try {
+      const llmResult = await callLLMWithFailover(prompt, null, {
+        preferredModel: globalPreferredModel,
+        systemInstruction: "Strict JSON evaluator. Output valid JSON only."
+      });
+      const parsed = parseLlmJson(llmResult);
+      if (parsed && parsed.correctAnswer) {
+        if (!finalCorrectAnswer) {
+          finalCorrectAnswer = parsed.correctAnswer;
+        }
+        explanation = parsed.explanation || '';
+      }
+    } catch (llmErr) {
+      console.warn('[JIT Evaluator] LLM call failed, fallback to rules:', llmErr);
+    }
+
+    // Fallback if LLM failed
+    if (!finalCorrectAnswer && Array.isArray(options) && options.length > 0) {
+      finalCorrectAnswer = options[0];
+    }
+
+    // Option index matching
+    let correctIndex = -1;
+    if (Array.isArray(options) && finalCorrectAnswer) {
+      correctIndex = options.findIndex(opt => {
+        if (opt === finalCorrectAnswer) return true;
+        const cleanOpt = String(opt).replace(/[^a-z0-9가-힣.]/gi, '');
+        const cleanAns = String(finalCorrectAnswer).replace(/[^a-z0-9가-힣.]/gi, '');
+        return cleanOpt === cleanAns;
+      });
+    }
+
+    const isCorrect = userSelectedOption 
+      ? (String(userSelectedOption).trim() === String(finalCorrectAnswer).trim() || correctIndex === options.findIndex(o => String(o).trim() === String(userSelectedOption).trim()))
+      : false;
+
+    return res.json({
+      isCorrect,
+      correctAnswer: finalCorrectAnswer,
+      correctIndex,
+      explanation: healLatexFormulas(explanation),
+      score: isCorrect ? 8 : 0
+    });
+
+  } catch (err) {
+    console.error('[POST /evaluate-answer Error]:', err);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;
