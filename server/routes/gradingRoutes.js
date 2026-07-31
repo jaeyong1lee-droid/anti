@@ -1209,9 +1209,9 @@ router.post('/evaluate-answer', async (req, res) => {
 
     // 모관상승고(Capillary Rise) 물리 공식 정밀 연산 검증
     if (/모관\s*상승고|모관\s*튜브|표면장력/i.test(questionText)) {
-      const dMatch = questionText.match(/(?:d|지름)\s*=\s*([\d.]+)\s*mm/i);
-      const sigmaMatch = questionText.match(/(?:\\sigma|σ|표면장력)\s*=\s*([\d.]+)\s*N\/m/i);
-      const gammaMatch = questionText.match(/(?:\\gamma|γ|단위중량)_?w?\s*=\s*([\d.]+)\s*kN\/m/i);
+      const dMatch = questionText.match(/(?:d|지름)[^\d]*([\d.]+)\s*mm/i);
+      const sigmaMatch = questionText.match(/(?:sigma|σ|표면장력)[^\d]*([\d.]+)\s*N\/m/i);
+      const gammaMatch = questionText.match(/(?:gamma|γ|단위중량)[^\d]*([\d.]+)\s*kN\/m/i);
 
       if (dMatch && sigmaMatch && gammaMatch) {
         const d = parseFloat(dMatch[1]) * 0.001; // mm -> m
@@ -1230,17 +1230,6 @@ router.post('/evaluate-answer', async (req, res) => {
             });
             if (matchOpt) {
               calculatedCorrectAnswer = matchOpt;
-              explanation = `본 문항은 지반 내 모관 현상(Capillarity)에 의한 이론적 모관상승고 산정 원리를 검토하는 문제입니다.\n\n` +
-                `**[공학 공식]**:\n` +
-                `모관상승고 공식은 Jurin의 법칙에 따라 관의 **지름($d$)**을 적용할 때 다음과 같습니다:\n` +
-                `$$h_c = \\frac{4 \\sigma \\cos\\alpha}{\\gamma_w \\cdot d}$$\n\n` +
-                `**[주어진 조건 대입]**:\n` +
-                `- 지름 $d = 0.05\\text{ mm} = 5 \\times 10^{-5}\\text{ m}$\n` +
-                `- 표면장력 $\\sigma = 0.0728\\text{ N/m}$\n` +
-                `- 접촉각 $\\alpha = 0^\\circ \\implies \\cos(0^\\circ) = 1$\n` +
-                `- 물의 단위중량 $\\gamma_w = 9.81\\text{ kN/m}^3 = 9810\\text{ N/m}^3$\n\n` +
-                `$$h_c = \\frac{4 \\times 0.0728 \\times 1}{9810 \\times (5 \\times 10^{-5})} = \\frac{0.2912}{0.4905} \\approx \\mathbf{0.594\\text{ m}}$$\n\n` +
-                `따라서 올바른 이론적 모관상승고는 **${matchOpt}** 입니다.`;
               console.log(`[JIT Evaluator] Capillary Rise calculated: ${hcFormatted} m -> Matched option: ${matchOpt}`);
             }
           }
@@ -1275,6 +1264,20 @@ router.post('/evaluate-answer', async (req, res) => {
     let finalCorrectAnswer = calculatedCorrectAnswer;
     let explanation = '';
 
+    if (calculatedCorrectAnswer) {
+      explanation = `본 문항은 지반 내 모관 현상(Capillarity)에 의한 이론적 모관상승고 산정 원리를 검토하는 문제입니다.\n\n` +
+        `**[공학 공식]**:\n` +
+        `모관상승고 공식은 Jurin의 법칙에 따라 관의 **지름($d$)**을 적용할 때 다음과 같습니다:\n` +
+        `$$h_c = \\frac{4 \\sigma \\cos\\alpha}{\\gamma_w \\cdot d}$$\n\n` +
+        `**[주어진 조건 대입]**:\n` +
+        `- 지름 $d = 0.05\\text{ mm} = 5 \\times 10^{-5}\\text{ m}$\n` +
+        `- 표면장력 $\\sigma = 0.0728\\text{ N/m}$\n` +
+        `- 접촉각 $\\alpha = 0^\\circ \\implies \\cos(0^\\circ) = 1$\n` +
+        `- 물의 단위중량 $\\gamma_w = 9.81\\text{ kN/m}^3 = 9810\\text{ N/m}^3$\n\n` +
+        `$$h_c = \\frac{4 \\times 0.0728 \\times 1}{9810 \\times (5 \\times 10^{-5})} = \\frac{0.2912}{0.4905} \\approx \\mathbf{0.594\\text{ m}}$$\n\n` +
+        `따라서 올바른 이론적 모관상승고는 **${calculatedCorrectAnswer}** 입니다.`;
+    }
+
     try {
       const llmResult = await callLLMWithFailover(prompt, null, {
         preferredModel: globalPreferredModel,
@@ -1285,15 +1288,12 @@ router.post('/evaluate-answer', async (req, res) => {
         if (!finalCorrectAnswer) {
           finalCorrectAnswer = parsed.correctAnswer;
         }
-        explanation = parsed.explanation || '';
+        if (!calculatedCorrectAnswer) {
+          explanation = parsed.explanation || '';
+        }
       }
     } catch (llmErr) {
       console.warn('[JIT Evaluator] LLM call failed, fallback to rules:', llmErr);
-    }
-
-    // Fallback if LLM failed
-    if (!finalCorrectAnswer && Array.isArray(options) && options.length > 0) {
-      finalCorrectAnswer = options[0];
     }
 
     // Option index matching
