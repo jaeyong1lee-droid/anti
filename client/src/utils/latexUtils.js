@@ -524,8 +524,6 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
                        .replace(/&lt;/gi, '<')
                        .replace(/&gt;/gi, '>');
 
-  // [Self-Healing] Clean up '...' used on its own line as code block boundary
-  processed = processed.replace(/(?:^|\n)\s*\.\.\.\s*(?=\n)/g, '\n```');
 
   // [Self-Healing] Remove space between backslash and Greek commands (including trailing alphanumeric characters)
   const greekSubscriptFullLetters = 'alpha|beta|gamma|sigma|tau|phi|theta|epsilon|pi|delta|omega|mu|lambda|psi|rho|eta|nu|xi|zeta|chi|upsilon|kappa';
