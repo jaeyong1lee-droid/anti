@@ -1054,20 +1054,20 @@ div[class*="overflow-y-auto"] {
 
 .markdown-table-resize-handle {
   position: absolute;
-  right: 0;
+  right: -10px;
   top: 0;
   bottom: 0;
-  width: 12px; /* Touch-friendly hit box width */
+  width: 24px; /* Expanded touch-friendly hit box for mobile fingers */
   cursor: col-resize;
   user-select: none;
-  z-index: 20;
-  touch-action: none;
+  z-index: 30;
+  touch-action: none !important;
 }
 .markdown-table-resize-handle:hover {
-  background-color: rgba(56, 189, 248, 0.3) !important; /* sky-500/30 */
+  background-color: rgba(56, 189, 248, 0.35) !important; /* sky-500/35 */
 }
 .markdown-table-resize-handle:active {
-  background-color: rgba(56, 189, 248, 0.55) !important; /* sky-500/55 */
+  background-color: rgba(56, 189, 248, 0.65) !important; /* sky-500/65 */
 }
 
 /* Strict compliance for quiz font sizes: PC 16px, Mobile 14px. No bold styling for input/answer cells */

@@ -190,23 +190,36 @@ export const ReadOnlyTable = React.memo(function ReadOnlyTable({
 
       const isMobile = window.innerWidth < 768;
       if (isMobile) {
-        const newWidth = Math.max(idx === 0 ? 50 : 60, targetColStartWidth + deltaX);
-        
-        setMobileColWidths(prev => {
-          const next = [...prev];
-          if (idx === 0) {
-            next[0] = `${newWidth}px`;
-          } else {
+        if (colCount === 2 && idx === 0) {
+          const containerWidth = container ? container.clientWidth : 320;
+          const MIN_W = 60;
+          let newW1 = Math.max(MIN_W, Math.min(containerWidth - MIN_W, targetColStartWidth + deltaX));
+          let newW2 = Math.max(MIN_W, containerWidth - newW1);
+          setMobileColWidths(prev => {
+            const next = [`${newW1}px`, `${newW2}px`];
+            try {
+              localStorage.setItem(`anti_global_mobile_col_widths_${colCount}`, JSON.stringify(next));
+            } catch(e) {}
+            window.dispatchEvent(new CustomEvent('globalMobileTableWidthChanged', {
+              detail: { colCount, widths: next }
+            }));
+            return next;
+          });
+        } else {
+          const newWidth = Math.max(idx === 0 ? 50 : 60, targetColStartWidth + deltaX);
+          
+          setMobileColWidths(prev => {
+            const next = [...prev];
             next[idx] = `${newWidth}px`;
-          }
-          try {
-            localStorage.setItem(`anti_global_mobile_col_widths_${colCount}`, JSON.stringify(next));
-          } catch(e) {}
-          window.dispatchEvent(new CustomEvent('globalMobileTableWidthChanged', {
-            detail: { colCount, widths: next }
-          }));
-          return next;
-        });
+            try {
+              localStorage.setItem(`anti_global_mobile_col_widths_${colCount}`, JSON.stringify(next));
+            } catch(e) {}
+            window.dispatchEvent(new CustomEvent('globalMobileTableWidthChanged', {
+              detail: { colCount, widths: next }
+            }));
+            return next;
+          });
+        }
       } else {
         const deltaPercent = (deltaX / totalWidth) * 100;
         setColWidths(prev => {

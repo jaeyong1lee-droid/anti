@@ -4651,7 +4651,7 @@ export default function App() {
       setSelectionPopup(prev => prev.show ? { ...prev, show: false } : prev);
     };
     
-    // Global double click handler for column 2 header (Equalize remaining columns)
+    // Global double click handler for column 1 or column 2 headers
     window.__handleTableColumnDoubleClick = (e, handleOrTh, colIdx) => {
       if (e) {
         e.preventDefault();
@@ -4666,42 +4666,125 @@ export default function App() {
 
       const allThs = Array.from(tr.querySelectorAll('th'));
       const colCount = allThs.length;
-      const MIN_WIDTH = 84; // 최소 7글자 폭 보장
+      const MIN_WIDTH = 84; // 최소 7글자 폭 보장 (84px)
 
-      // 지침 1: 2열 열헤더(colIdx === 1) 오른쪽 더블클릭 시 1열 제외 나머지 열 너비 동일하게 조정
-      if (colIdx === 1 && colCount > 1) {
+      if (colIdx === 0 && colCount > 1) {
+        // 1열 우측 더블클릭 시: 1열은 현재 너비로 고정하고, 나머지 열들을 폰/PC 튜터창 너비(100%)에 딱 맞춰 분할하여 가로 스크롤바 제거
+        const tableContainer = table.closest('.markdown-table-container') || table.parentElement;
+        const containerWidth = tableContainer ? tableContainer.clientWidth : table.clientWidth;
+
+        const th1Width = allThs[0].offsetWidth || Math.floor(containerWidth * 0.35);
+        const hasRemarks = allThs[colCount - 1] && allThs[colCount - 1].textContent.trim() === '비고';
+        const remarksWidth = hasRemarks ? (allThs[colCount - 1].offsetWidth || 50) : 0;
+
+        const remCount = hasRemarks ? (colCount - 2) : (colCount - 1);
+        if (remCount <= 0) return;
+
+        const remainingWidth = Math.max(0, containerWidth - th1Width - remarksWidth);
+        const targetWidth = Math.max(MIN_WIDTH, Math.floor(remainingWidth / remCount));
+
+        // 1열 너비 고정
+        allThs[0].style.setProperty('width', th1Width + 'px', 'important');
+        allThs[0].style.setProperty('min-width', MIN_WIDTH + 'px', 'important');
+        allThs[0].style.setProperty('max-width', th1Width + 'px', 'important');
+
+        const lastIdx = hasRemarks ? colCount - 1 : colCount;
+        for (let k = 1; k < lastIdx; k++) {
+          allThs[k].style.setProperty('width', targetWidth + 'px', 'important');
+          allThs[k].style.setProperty('min-width', MIN_WIDTH + 'px', 'important');
+          allThs[k].style.setProperty('max-width', targetWidth + 'px', 'important');
+        }
+
+        if (hasRemarks && allThs[colCount - 1]) {
+          allThs[colCount - 1].style.setProperty('width', remarksWidth + 'px', 'important');
+          allThs[colCount - 1].style.setProperty('min-width', '50px', 'important');
+        }
+
+        // 표 전체 너비를 화면/컨테이너 가로폭(100%)에 정확히 맞춰 스크롤바 제거
+        table.style.setProperty('width', '100%', 'important');
+        table.style.setProperty('min-width', '100%', 'important');
+        table.style.setProperty('max-width', '100%', 'important');
+      } else if (colIdx === 1 && colCount > 1) {
+        // 2열 우측 더블클릭 시: 2열의 현재 측정된 너비를 그대로 고정 기준(targetWidth)으로 사용하여 나머지 열들을 2열 너비에 맞춤
         const tableContainer = table.closest('.markdown-table-container') || table.parentElement;
         const containerWidth = tableContainer ? tableContainer.clientWidth : table.clientWidth;
         
         const th1Width = allThs[0].offsetWidth || Math.floor(containerWidth * 0.35);
-        
         const hasRemarks = allThs[colCount - 1] && allThs[colCount - 1].textContent.trim() === '비고';
-        const remarksWidth = hasRemarks ? (allThs[colCount - 1].offsetWidth || 60) : 0;
-        
-        const remCount = hasRemarks ? (colCount - 2) : (colCount - 1);
-        if (remCount <= 0) return;
-        
-        const availWidth = Math.max(remCount * MIN_WIDTH, containerWidth - th1Width - remarksWidth);
-        const equalWidth = Math.max(MIN_WIDTH, Math.floor(availWidth / remCount));
+        const remarksWidth = hasRemarks ? (allThs[colCount - 1].offsetWidth || 50) : 0;
+
+        const targetWidth = Math.max(MIN_WIDTH, allThs[1].offsetWidth);
 
         const lastIdx = hasRemarks ? colCount - 1 : colCount;
+        let totalTableWidth = th1Width + remarksWidth;
+
+        // 1열 너비 고정
+        allThs[0].style.setProperty('width', th1Width + 'px', 'important');
+        allThs[0].style.setProperty('min-width', MIN_WIDTH + 'px', 'important');
+        allThs[0].style.setProperty('max-width', th1Width + 'px', 'important');
+
+        // 2열을 포함하여 3열, 4열 등 나머지 모든 열의 너비를 2열의 원래 너비(targetWidth)로 동일 설정
         for (let k = 1; k < lastIdx; k++) {
-          allThs[k].style.setProperty('width', equalWidth + 'px', 'important');
+          allThs[k].style.setProperty('width', targetWidth + 'px', 'important');
           allThs[k].style.setProperty('min-width', MIN_WIDTH + 'px', 'important');
-          allThs[k].style.setProperty('max-width', equalWidth + 'px', 'important');
+          allThs[k].style.setProperty('max-width', targetWidth + 'px', 'important');
+          totalTableWidth += targetWidth;
         }
+
+        // 전체 표 너비를 확장하여 2열 너비 축소 방지
+        table.style.setProperty('width', totalTableWidth + 'px', 'important');
+        table.style.setProperty('min-width', totalTableWidth + 'px', 'important');
+        table.style.setProperty('max-width', 'none', 'important');
       }
+
+      // 더블클릭 변경 후 변동된 열 너비를 localStorage에 열 개수별(colCount)로 즉시 영구 저장
+      setTimeout(() => {
+        try {
+          const currentWidths = allThs.map(h => h.offsetWidth);
+          if (currentWidths && currentWidths.length > 0) {
+            const isMob = window.innerWidth < 768;
+            const key = isMob ? `anti_global_mobile_col_widths_${colCount}` : `anti_global_desktop_col_widths_${colCount}`;
+            localStorage.setItem(key, JSON.stringify(currentWidths));
+            window.dispatchEvent(new CustomEvent(isMob ? 'globalMobileTableWidthChanged' : 'globalDesktopTableWidthChanged', {
+              detail: { colCount, widths: currentWidths }
+            }));
+          }
+        } catch (e) {}
+      }, 50);
     };
 
-    // Global column resize handler for markdown tables
+    // Global column resize handler for markdown tables with robust mobile touch support
+    let lastHandleTouchTime = 0;
+    let lastTouchColIdx = null;
+
     window.__startMarkdownTableResize = (e, handleEl, colIdx, isTouch) => {
-      e.preventDefault();
+      if (isTouch) {
+        if (e.cancelable) e.preventDefault();
+      } else {
+        e.preventDefault();
+      }
       e.stopPropagation();
+
+      const now = Date.now();
+      // Handle mobile double-tap detection for column 2 equalization (Rule 1)
+      if (isTouch && lastTouchColIdx === colIdx && (now - lastHandleTouchTime < 350)) {
+        lastHandleTouchTime = 0;
+        lastTouchColIdx = null;
+        if (window.__handleTableColumnDoubleClick) {
+          window.__handleTableColumnDoubleClick(e, handleEl, colIdx);
+        }
+        return;
+      }
+      if (isTouch) {
+        lastHandleTouchTime = now;
+        lastTouchColIdx = colIdx;
+      }
       
-      const touch = isTouch ? (e.touches[0] || e.changedTouches[0]) : e;
+      const touch = isTouch ? (e.touches && (e.touches[0] || e.changedTouches[0])) : e;
+      if (!touch) return;
       const startX = touch.clientX;
       
-      const th = handleEl.closest('th');
+      const th = (handleEl && handleEl.closest) ? handleEl.closest('th') : handleEl;
       if (!th) return;
       const tr = th.closest('tr');
       if (!tr) return;
@@ -4710,25 +4793,38 @@ export default function App() {
 
       const allThs = Array.from(tr.querySelectorAll('th'));
       const colCount = allThs.length;
-      const MIN_WIDTH = 84; // 7글자 기준 최소 너비
+      const MIN_WIDTH = 84; // 7글자 기준 최소 너비 (84px)
 
-      const th1StartWidth = allThs[0].offsetWidth;
-      const th2StartWidth = (allThs[1]) ? allThs[1].offsetWidth : 0;
-      const targetStartWidth = (allThs[colIdx]) ? allThs[colIdx].offsetWidth : th.offsetWidth;
+      const thStartWidths = allThs.map(h => h.offsetWidth);
+      const th1StartWidth = thStartWidths[0] || allThs[0].offsetWidth;
+      const targetStartWidth = (allThs[colIdx]) ? thStartWidths[colIdx] : th.offsetWidth;
       
       const tableContainer = table.closest('.markdown-table-container') || table.parentElement;
       const containerWidth = tableContainer ? tableContainer.clientWidth : table.clientWidth;
 
+      if (isTouch && tableContainer) {
+        tableContainer.style.overflowX = 'hidden';
+        tableContainer.style.touchAction = 'none';
+        document.body.style.touchAction = 'none';
+        document.body.style.userSelect = 'none';
+        document.body.style.webkitUserSelect = 'none';
+      }
+
       const doResize = (ev) => {
-        const t = isTouch ? (ev.touches[0] || ev.changedTouches[0]) : ev;
+        if (isTouch) {
+          if (ev.cancelable) ev.preventDefault();
+          ev.stopPropagation();
+        }
+        const t = isTouch ? (ev.touches && (ev.touches[0] || ev.changedTouches[0])) : ev;
+        if (!t) return;
         const deltaX = t.clientX - startX;
         
         const hasRemarks = allThs[colCount - 1] && allThs[colCount - 1].textContent.trim() === '비고';
         const is2DataCols = (colCount === 2) || (colCount === 3 && hasRemarks);
 
-        // 지침 4: 1열 포함하여 2개열일 경우 무조건 한 화면 너비(100%) 내에 포함하고 1열 헤더를 잡고 움직이더라도 그 너비 안에서 유동 조정
+        // 지침 4: 1열 포함하여 2개열일 경우 무조건 한 화면 너비(100%) 내에 포함하고 1열 헤더를 잡고 움직이더라도 그 너비 안에서 유동 연동 조정
         if (is2DataCols && colIdx === 0) {
-          const remarksWidth = hasRemarks ? (allThs[2].offsetWidth || 60) : 0;
+          const remarksWidth = hasRemarks ? (allThs[2].offsetWidth || 50) : 0;
           const availableWidth = containerWidth - remarksWidth;
 
           let newTh1Width = th1StartWidth + deltaX;
@@ -4746,19 +4842,50 @@ export default function App() {
             allThs[1].style.setProperty('max-width', newTh2Width + 'px', 'important');
           }
         } else {
-          // 지침 2 & 5: 3개 열 이상은 각 열이 독립적으로 움직임. 하나를 움직인다고 나머지가 움직이지 않음. 최소 너비는 7글자(84px).
-          const targetTh = (allThs && allThs[colIdx]) ? allThs[colIdx] : th;
+          // 지침 2 & 5: 3개 열 이상은 각 열이 독립적으로 움직임. 한 열을 조절할 때 다른 열의 너비는 고정되고 표 전체 너비가 확장됨.
           const newWidth = Math.max(MIN_WIDTH, targetStartWidth + deltaX);
-          
-          targetTh.style.setProperty('width', newWidth + 'px', 'important');
-          targetTh.style.setProperty('min-width', MIN_WIDTH + 'px', 'important');
+          let totalTableWidth = 0;
+
+          allThs.forEach((h, i) => {
+            const w = (i === colIdx) ? newWidth : (thStartWidths[i] || MIN_WIDTH);
+            h.style.setProperty('width', w + 'px', 'important');
+            h.style.setProperty('min-width', w + 'px', 'important');
+            h.style.setProperty('max-width', w + 'px', 'important');
+            totalTableWidth += w;
+          });
+
+          table.style.setProperty('width', totalTableWidth + 'px', 'important');
+          table.style.setProperty('min-width', totalTableWidth + 'px', 'important');
+          table.style.setProperty('max-width', 'none', 'important');
         }
       };
       
-      const stopResize = () => {
+      const stopResize = (ev) => {
+        if (ev && ev.stopPropagation) ev.stopPropagation();
+        
+        try {
+          const currentWidths = allThs.map(h => h.offsetWidth);
+          if (currentWidths && currentWidths.length > 0) {
+            const isMob = window.innerWidth < 768;
+            const key = isMob ? `anti_global_mobile_col_widths_${colCount}` : `anti_global_desktop_col_widths_${colCount}`;
+            localStorage.setItem(key, JSON.stringify(currentWidths));
+            window.dispatchEvent(new CustomEvent(isMob ? 'globalMobileTableWidthChanged' : 'globalDesktopTableWidthChanged', {
+              detail: { colCount, widths: currentWidths }
+            }));
+          }
+        } catch (err) {}
+
+        if (isTouch && tableContainer) {
+          tableContainer.style.overflowX = '';
+          tableContainer.style.touchAction = '';
+          document.body.style.touchAction = '';
+          document.body.style.userSelect = '';
+          document.body.style.webkitUserSelect = '';
+        }
         if (isTouch) {
           window.removeEventListener('touchmove', doResize);
           window.removeEventListener('touchend', stopResize);
+          window.removeEventListener('touchcancel', stopResize);
         } else {
           window.removeEventListener('mousemove', doResize);
           window.removeEventListener('mouseup', stopResize);
@@ -4768,6 +4895,7 @@ export default function App() {
       if (isTouch) {
         window.addEventListener('touchmove', doResize, { passive: false });
         window.addEventListener('touchend', stopResize);
+        window.addEventListener('touchcancel', stopResize);
       } else {
         window.addEventListener('mousemove', doResize);
         window.addEventListener('mouseup', stopResize);

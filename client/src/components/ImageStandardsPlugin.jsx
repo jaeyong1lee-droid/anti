@@ -6,7 +6,12 @@ export function ImageUploadPanel({ formulaImages, setFormulaImages, handleSaveFo
   const [images, setImages] = useState([]);
   const [description, setDescription] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [showClipboardModal, setShowClipboardModal] = useState(false);
+  const [pasteText, setPasteText] = useState('');
   const pasteAreaRef = useRef(null);
+  const fileInputRefLeft = useRef(null);
+  const fileInputRefModal = useRef(null);
+  const modalPasteAreaRef = useRef(null);
 
   // Handle Ctrl+V Paste inside the document/panel
   useEffect(() => {
@@ -25,7 +30,7 @@ export function ImageUploadPanel({ formulaImages, setFormulaImages, handleSaveFo
           const reader = new FileReader();
           reader.onload = (event) => {
             setImages(prev => [...prev, event.target.result]);
-            showNotification('클립보드 스크린샷이 성공적으로 붙여넣어졌습니다.', 'success');
+            showNotification('클립보드 스크린샷이 붙여넣어졌습니다.', 'success');
           };
           reader.readAsDataURL(file);
           break;
@@ -39,9 +44,101 @@ export function ImageUploadPanel({ formulaImages, setFormulaImages, handleSaveFo
     };
   }, [showNotification]);
 
+  const handleFileChange = (e) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          setImages(prev => [...prev, event.target.result]);
+          showNotification('이미지가 성공적으로 추가되었습니다.', 'success');
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+    e.target.value = '';
+  };
+
+  const handleReadClipboardRight = async () => {
+    let successCount = 0;
+    try {
+      if (navigator.clipboard && typeof navigator.clipboard.read === 'function') {
+        const clipboardItems = await navigator.clipboard.read();
+        for (const item of clipboardItems) {
+          for (const type of item.types) {
+            if (type.startsWith('image/')) {
+              const blob = await item.getType(type);
+              const reader = new FileReader();
+              reader.onload = (e) => {
+                setImages(prev => [...prev, e.target.result]);
+                showNotification('클립보드 이미지를 가져왔습니다.', 'success');
+              };
+              reader.readAsDataURL(blob);
+              successCount++;
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('Direct clipboard.read failed or permission denied:', err);
+    }
+
+    if (successCount === 0) {
+      setShowClipboardModal(true);
+    }
+  };
+
+  const handleModalAreaPaste = (e) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    let hasImage = false;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf('image') !== -1) {
+        const file = items[i].getAsFile();
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          setImages(prev => [...prev, event.target.result]);
+          setShowClipboardModal(false);
+          showNotification('클립보드 스크린샷이 붙여넣어졌습니다.', 'success');
+        };
+        reader.readAsDataURL(file);
+        hasImage = true;
+        break;
+      }
+    }
+    if (!hasImage) {
+      const text = e.clipboardData?.getData('text');
+      if (text && (text.startsWith('data:image/') || text.startsWith('http://') || text.startsWith('https://'))) {
+        setImages(prev => [...prev, text.trim()]);
+        setShowClipboardModal(false);
+        showNotification('클립보드 이미지 링크가 추가되었습니다.', 'success');
+      }
+    }
+  };
+
+  const handleModalPasteTextSubmit = () => {
+    const val = pasteText.trim();
+    if (!val) {
+      showNotification('붙여넣을 이미지 URL 또는 Base64 텍스트를 입력하세요.', 'warning');
+      return;
+    }
+    if (val.startsWith('data:image/') || val.startsWith('http://') || val.startsWith('https://')) {
+      setImages(prev => [...prev, val]);
+      setPasteText('');
+      setShowClipboardModal(false);
+      showNotification('이미지가 추가되었습니다.', 'success');
+    } else {
+      showNotification('올바른 이미지 URL 또는 Data URI 형식이어야 합니다.', 'error');
+    }
+  };
+
   const handleRegisterImageCard = async () => {
     if (images.length === 0) {
-      showNotification('먼저 클립보드 스크린샷을 붙여넣으세요.', 'warning');
+      showNotification('먼저 스크린샷이나 이미지를 추가하세요.', 'warning');
       return;
     }
 
@@ -107,29 +204,99 @@ export function ImageUploadPanel({ formulaImages, setFormulaImages, handleSaveFo
         </div>
       </div>
 
-      {/* Paste Dropzone */}
-      <div
-        ref={pasteAreaRef}
-        tabIndex={0}
-        className={`relative border-2 border-dashed rounded-xl flex flex-col items-center justify-center transition-all duration-200 focus:outline-none cursor-pointer select-none ${
-          compact ? 'p-3 min-h-[80px] gap-1.5' : 'p-6 min-h-[160px] gap-3'
-        } ${
-          images.length > 0 
-            ? 'border-indigo-500/50 bg-indigo-950/10' 
-            : 'border-slate-700/60 hover:border-slate-600 bg-slate-950/30 focus:border-brand-500/50 focus:bg-slate-950/50'
-        }`}
-      >
-        {images.length > 0 ? (
-          <div className="w-full flex flex-col gap-2 overflow-y-auto max-h-[300px] p-1">
+      {/* Hidden File Inputs */}
+      <input
+        type="file"
+        ref={fileInputRefLeft}
+        onChange={handleFileChange}
+        accept="image/*"
+        multiple
+        className="hidden"
+      />
+      <input
+        type="file"
+        ref={fileInputRefModal}
+        onChange={(e) => {
+          handleFileChange(e);
+          setShowClipboardModal(false);
+        }}
+        accept="image/*"
+        multiple
+        className="hidden"
+      />
+
+      {/* 2-Column Upload Boxes */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full select-none">
+        {/* Left Box: Ctrl+V 붙여넣기 및 클릭 앨범/파일 선택 */}
+        <div
+          ref={pasteAreaRef}
+          tabIndex={0}
+          onClick={() => fileInputRefLeft.current?.click()}
+          className={`relative border-2 border-dashed rounded-xl flex flex-col items-center justify-center transition-all duration-200 focus:outline-none cursor-pointer ${
+            compact ? 'p-2.5 min-h-[90px] gap-1.5' : 'p-4 min-h-[130px] gap-2'
+          } ${
+            images.length > 0 
+              ? 'border-indigo-500/50 bg-indigo-950/15 hover:border-indigo-400' 
+              : 'border-slate-700/70 hover:border-slate-500 bg-slate-950/30 hover:bg-slate-950/50 focus:border-brand-500/50'
+          }`}
+          title="클릭하여 파일 선택 또는 Ctrl+V 입력"
+        >
+          <div className="bg-slate-900 border border-slate-800 text-slate-300 rounded-xl p-2.5">
+            <Clipboard size={compact ? 16 : 20} className="text-indigo-400" />
+          </div>
+          <div className="text-center space-y-0.5">
+            <p className={`${compact ? 'text-[11px]' : 'text-[12px]'} font-extrabold text-white`}>
+              [Ctrl+V] 붙여넣기
+            </p>
+            <p className="text-[10px] text-slate-400">
+              클릭 시 앨범/파일 선택 또는 Ctrl+V
+            </p>
+          </div>
+        </div>
+
+        {/* Right Box: 클립보드 팝업 선택 */}
+        <div
+          onClick={handleReadClipboardRight}
+          className={`relative border-2 border-dashed border-amber-500/50 hover:border-amber-400 bg-amber-950/15 hover:bg-amber-950/25 rounded-xl flex flex-col items-center justify-center transition-all duration-200 cursor-pointer ${
+            compact ? 'p-2.5 min-h-[90px] gap-1.5' : 'p-4 min-h-[130px] gap-2'
+          }`}
+          title="누르면 클립보드 읽기 또는 태블릿 팝업 띄우기"
+        >
+          <div className="bg-amber-900/40 border border-amber-500/40 text-amber-300 rounded-xl p-2.5">
+            <Sparkles size={compact ? 16 : 20} className="text-amber-400 animate-pulse" />
+          </div>
+          <div className="text-center space-y-0.5">
+            <p className={`${compact ? 'text-[11px]' : 'text-[12px]'} font-black text-amber-300`}>
+              📋 클립보드 팝업 선택
+            </p>
+            <p className="text-[10px] text-amber-400/80">
+              누르면 클립보드 읽기 / 선택 팝업
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Selected Images Preview */}
+      {images.length > 0 && (
+        <div className="w-full space-y-2 bg-slate-950/40 border border-indigo-500/30 rounded-xl p-3">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-indigo-300">
+              🖼️ 선택된 이미지 ({images.length}개)
+            </span>
+            <button
+              onClick={() => setImages([])}
+              className="text-[10px] text-rose-400 hover:text-rose-300 underline cursor-pointer font-bold"
+            >
+              전체 삭제
+            </button>
+          </div>
+          <div className="w-full flex flex-col gap-2 overflow-y-auto max-h-[260px]">
             {images.map((src, index) => (
-              <div key={index} className={`relative w-full flex items-center justify-center overflow-hidden rounded-lg border border-slate-800 ${compact ? 'max-h-[80px]' : 'max-h-[140px]'}`}>
-                <img src={src} className={`${compact ? 'max-h-[70px]' : 'max-h-[130px]'} object-contain rounded`} alt={`Pasted preview ${index + 1}`} />
+              <div key={index} className="relative w-full flex items-center justify-center overflow-hidden rounded-lg border border-slate-800 bg-slate-950/80 p-1">
+                <img src={src} className="max-h-[120px] object-contain rounded" alt={`Preview ${index + 1}`} />
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setImages(prev => prev.filter((_, idx) => idx !== index));
-                  }}
-                  className="absolute top-1 right-1 p-1 bg-slate-950/80 hover:bg-rose-900 border border-slate-800 text-slate-400 hover:text-white rounded-lg transition-colors cursor-pointer"
+                  onClick={() => setImages(prev => prev.filter((_, idx) => idx !== index))}
+                  className="absolute top-1 right-1 p-1 bg-slate-950/90 hover:bg-rose-900 border border-slate-800 text-slate-300 hover:text-white rounded-lg transition-colors cursor-pointer"
                   title="이미지 삭제"
                 >
                   <Trash2 size={12} />
@@ -137,18 +304,8 @@ export function ImageUploadPanel({ formulaImages, setFormulaImages, handleSaveFo
               </div>
             ))}
           </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center text-center gap-1.5">
-            <div className={`bg-slate-900 border border-slate-800 text-slate-400 rounded-xl ${compact ? 'p-1.5' : 'p-3'}`}>
-              <Clipboard size={compact ? 15 : 22} className="animate-pulse" />
-            </div>
-            <div className="space-y-0.5">
-              <p className={`${compact ? 'text-[11px]' : 'text-[12px]'} font-bold text-white`}>클립보드 스크린샷 붙여넣기</p>
-              {!compact && <p className="text-[10px] text-slate-400">클릭 후 단축키 Ctrl+V를 입력하세요 (2개 이상 가능)</p>}
-            </div>
-          </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Description Textarea */}
       <div className="space-y-1">
@@ -192,6 +349,79 @@ export function ImageUploadPanel({ formulaImages, setFormulaImages, handleSaveFo
           </>
         )}
       </button>
+
+      {/* Tablet Clipboard Selection Popup Modal */}
+      {showClipboardModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in select-none">
+          <div className="bg-slate-900 border border-slate-700/80 rounded-2xl max-w-md w-full p-5 sm:p-6 space-y-4 shadow-2xl text-left">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h3 className="text-sm sm:text-base font-extrabold text-white flex items-center gap-2">
+                <Clipboard className="text-amber-400" size={18} />
+                <span>태블릿 클립보드 & 이미지 선택 팝업</span>
+              </h3>
+              <button
+                onClick={() => setShowClipboardModal(false)}
+                className="text-slate-400 hover:text-white text-xs font-bold px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 cursor-pointer"
+              >
+                ✕ 닫기
+              </button>
+            </div>
+
+            <p className="text-[11px] text-slate-300 leading-relaxed">
+              태블릿 환경에서 아래 방법 중 편하신 방법으로 클립보드 스크린샷이나 이미지를 업로드하세요.
+            </p>
+
+            <div className="space-y-3">
+              {/* Option 1: Gallery / Photo File Selector */}
+              <button
+                onClick={() => fileInputRefModal.current?.click()}
+                className="w-full p-3.5 rounded-xl border border-indigo-500/40 bg-indigo-950/30 hover:bg-indigo-900/40 text-white text-xs font-bold flex items-center justify-between transition-all cursor-pointer shadow-sm active:scale-98"
+              >
+                <span className="flex items-center gap-2">
+                  <ImageIcon size={16} className="text-indigo-400" />
+                  <span>📱 1. 태블릿 앨범 / 갤러리에서 이미지 선택</span>
+                </span>
+                <span className="text-[10px] text-indigo-300 font-extrabold">파일 선택 →</span>
+              </button>
+
+              {/* Option 2: Long press paste box */}
+              <div className="space-y-1.5 bg-slate-950/60 p-3.5 rounded-xl border border-slate-800">
+                <label className="text-[10px] font-bold text-amber-400 flex items-center gap-1">
+                  <FileText size={10} />
+                  <span>📋 2. 터치 붙여넣기 전용 칸 (이곳을 길게 누르고 [붙여넣기])</span>
+                </label>
+                <textarea
+                  ref={modalPasteAreaRef}
+                  onPaste={handleModalAreaPaste}
+                  value={pasteText}
+                  onChange={(e) => setPasteText(e.target.value)}
+                  placeholder="이곳을 길게 눌러 [붙여넣기]를 선택하세요..."
+                  rows={2}
+                  className="w-full bg-slate-900 border border-slate-700 text-white placeholder-slate-500 text-[11px] rounded-lg p-2.5 focus:outline-none focus:border-amber-500 font-semibold resize-none"
+                  autoFocus
+                />
+                {pasteText.trim() && (
+                  <button
+                    onClick={handleModalPasteTextSubmit}
+                    className="w-full mt-1.5 py-2 bg-amber-600 hover:bg-amber-500 text-white text-xs font-extrabold rounded-lg transition-colors cursor-pointer shadow-md"
+                  >
+                    붙여넣은 이미지 추가하기
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-slate-800 flex justify-end">
+              <button
+                onClick={() => setShowClipboardModal(false)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-xl transition-colors cursor-pointer"
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

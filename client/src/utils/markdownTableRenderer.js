@@ -134,6 +134,19 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false,
   const tableLayoutClass = (is2Col || is3Col) ? "table-fixed w-full" : "table-auto w-full";
   const tableClass = is2Col ? `markdown-table markdown-table-2col ${tableLayoutClass}` : `markdown-table ${tableLayoutClass}`;
 
+  let savedWidths = null;
+  try {
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+    const storageKey = isMobile ? `anti_global_mobile_col_widths_${colCount}` : `anti_global_desktop_col_widths_${colCount}`;
+    const raw = typeof window !== 'undefined' ? localStorage.getItem(storageKey) : null;
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length === colCount) {
+        savedWidths = parsed;
+      }
+    }
+  } catch (e) {}
+
   let html = '';
 
   if (hideWrapper) {
@@ -145,12 +158,18 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false,
     headers.forEach((h, hIdx) => {
       const renderedH = renderCellMath(h);
       let colStyle = "position: relative; select-none; min-width: 84px;";
-      if (is2Col) {
-        colStyle += (hIdx === 0) ? " width: 35%;" : " width: 65%;";
-      } else if (is3Col) {
-        colStyle += (hIdx === 0) ? " width: 30%;" : " width: 35%;";
+      if (savedWidths && savedWidths[hIdx]) {
+        const wVal = savedWidths[hIdx];
+        const wStr = (typeof wVal === 'number' || !isNaN(wVal)) ? `${wVal}px` : String(wVal);
+        colStyle += ` width: ${wStr}; min-width: ${wStr}; max-width: ${wStr};`;
+      } else {
+        if (is2Col) {
+          colStyle += (hIdx === 0) ? " width: 35%;" : " width: 65%;";
+        } else if (is3Col) {
+          colStyle += (hIdx === 0) ? " width: 30%;" : " width: 35%;";
+        }
       }
-      const dblClickAttr = (hIdx === 1) ? `ondblclick="if(window.__handleTableColumnDoubleClick) { window.__handleTableColumnDoubleClick(event, this, ${hIdx}) }"` : '';
+      const dblClickAttr = `ondblclick="if(window.__handleTableColumnDoubleClick) { window.__handleTableColumnDoubleClick(event, this, ${hIdx}) }"`;
 
       if (hIdx < colCount - 1) {
         html += `<th class="p-1 sm:p-1.5 font-black border-r border-slate-600 last:border-r-0" style="${colStyle}" ${dblClickAttr}>`;
@@ -222,12 +241,18 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false,
   headers.forEach((h, hIdx) => {
     const renderedH = renderCellMath(h);
     let colStyle = "position: relative; select-none; min-width: 84px;";
-    if (is2Col) {
-      colStyle += (hIdx === 0) ? " width: 35%;" : " width: 65%;";
-    } else if (is3Col) {
-      colStyle += (hIdx === 0) ? " width: 30%;" : " width: 35%;";
+    if (savedWidths && savedWidths[hIdx]) {
+      const wVal = savedWidths[hIdx];
+      const wStr = (typeof wVal === 'number' || !isNaN(wVal)) ? `${wVal}px` : String(wVal);
+      colStyle += ` width: ${wStr}; min-width: ${wStr}; max-width: ${wStr};`;
+    } else {
+      if (is2Col) {
+        colStyle += (hIdx === 0) ? " width: 35%;" : " width: 65%;";
+      } else if (is3Col) {
+        colStyle += (hIdx === 0) ? " width: 30%;" : " width: 35%;";
+      }
     }
-    const dblClickAttr = (hIdx === 1) ? `ondblclick="if(window.__handleTableColumnDoubleClick) { window.__handleTableColumnDoubleClick(event, this, ${hIdx}) }"` : '';
+    const dblClickAttr = `ondblclick="if(window.__handleTableColumnDoubleClick) { window.__handleTableColumnDoubleClick(event, this, ${hIdx}) }"`;
 
     if (hIdx < colCount - 1) {
       html += `<th class="p-1 sm:p-1.5 font-extrabold border-r border-slate-600 last:border-r-0" style="${colStyle}" ${dblClickAttr}>`;
@@ -250,7 +275,7 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false,
     html += `<tr class="border-b border-slate-600 last:border-b-0 hover:bg-slate-900/20 group">`;
       row.forEach((cell, cIdx) => {
         const renderedCell = renderCellMath(cell);
-        const cellAlign = (cIdx === 0 || cIdx === 1) ? 'text-center break-keep' : 'text-left break-keep';
+        const cellAlign = (cIdx === 0) ? 'text-center break-keep' : 'text-left break-keep';
         html += `<td class="p-1 sm:p-1.5 border-r border-slate-600 text-slate-355 ${cellAlign}" style="min-width: 84px;">${renderedCell}</td>`;
       });
     if (row.length < colCount) {
