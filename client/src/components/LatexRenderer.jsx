@@ -220,7 +220,7 @@ export const LatexRenderer = React.memo(function LatexRenderer({
     const parts = [];
     let lastIndex = 0;
     let match;
-    const stepMarkerRegex = /(?:\[\s*(?:단계\s*)?\d+\s*\]|\{\s*(?:단계\s*)?\d+\s*\}|\[\s*Step\s*\d+\s*\]|\[\s*[a-zA-Z]\s*\]|\(\s*\d+\s*\)|[①-⑳])/i;
+    const stepMarkerRegex = /(?:\[\s*(?:단계\s*)?\d+\s*\]|\{\s*(?:단계|Step)\s*\d+\s*\}|\[\s*Step\s*\d+\s*\]|\[\s*[a-zA-Z]\s*\]|[①-⑳])/i;
 
     while ((match = codeBlockRegex.exec(parsedText)) !== null) {
       const beforeText = parsedText.substring(lastIndex, match.index);
