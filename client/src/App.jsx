@@ -4736,21 +4736,6 @@ export default function App() {
         table.style.setProperty('min-width', totalTableWidth + 'px', 'important');
         table.style.setProperty('max-width', 'none', 'important');
       }
-
-      // 더블클릭 변경 후 변동된 열 너비를 localStorage에 열 개수별(colCount)로 즉시 영구 저장
-      setTimeout(() => {
-        try {
-          const currentWidths = allThs.map(h => h.offsetWidth);
-          if (currentWidths && currentWidths.length > 0) {
-            const isMob = window.innerWidth < 768;
-            const key = isMob ? `anti_global_mobile_col_widths_${colCount}` : `anti_global_desktop_col_widths_${colCount}`;
-            localStorage.setItem(key, JSON.stringify(currentWidths));
-            window.dispatchEvent(new CustomEvent(isMob ? 'globalMobileTableWidthChanged' : 'globalDesktopTableWidthChanged', {
-              detail: { colCount, widths: currentWidths }
-            }));
-          }
-        } catch (e) {}
-      }, 50);
     };
 
     // Global column resize handler for markdown tables with robust mobile touch support
@@ -4863,18 +4848,6 @@ export default function App() {
       const stopResize = (ev) => {
         if (ev && ev.stopPropagation) ev.stopPropagation();
         
-        try {
-          const currentWidths = allThs.map(h => h.offsetWidth);
-          if (currentWidths && currentWidths.length > 0) {
-            const isMob = window.innerWidth < 768;
-            const key = isMob ? `anti_global_mobile_col_widths_${colCount}` : `anti_global_desktop_col_widths_${colCount}`;
-            localStorage.setItem(key, JSON.stringify(currentWidths));
-            window.dispatchEvent(new CustomEvent(isMob ? 'globalMobileTableWidthChanged' : 'globalDesktopTableWidthChanged', {
-              detail: { colCount, widths: currentWidths }
-            }));
-          }
-        } catch (err) {}
-
         if (isTouch && tableContainer) {
           tableContainer.style.overflowX = '';
           tableContainer.style.touchAction = '';
