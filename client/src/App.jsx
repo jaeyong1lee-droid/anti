@@ -3254,21 +3254,26 @@ export default function App() {
   const triggerLockscreenQuiz = () => {
     if (!isLockscreenQuizEnabled) return;
 
-    // 락스크린 주기: 핸드폰에서 웹을 이용한 지 10분이 경과되었을 경우 그 이후에 문제 제공
+    // 락스크린 주기: 접속한(로그인) 지 10분이 경과되었을 경우에만 문제 제공 (문제 제출 후 10분이 아님)
     const now = Date.now();
-    const lastTimeStr = localStorage.getItem('anti_last_lockscreen_time');
-    if (!lastTimeStr) {
-      // 최초 웹 이용 시 시각 기록 후 10분 경과 대기
-      localStorage.setItem('anti_last_lockscreen_time', String(now));
+    let connectTimeStr = sessionStorage.getItem('anti_connect_time') || localStorage.getItem('anti_connect_time');
+    if (!connectTimeStr) {
+      // 최초 접속 시 시각 기록 후 10분 경과 대기
+      sessionStorage.setItem('anti_connect_time', String(now));
+      localStorage.setItem('anti_connect_time', String(now));
       return;
     }
 
-    const lastTime = parseInt(lastTimeStr, 10);
-    if (!isNaN(lastTime) && now - lastTime < 10 * 60 * 1000) {
-      // 10분이 미경과된 경우 퀴즈 미제공
+    const connectTime = parseInt(connectTimeStr, 10);
+    if (!isNaN(connectTime) && now - connectTime < 10 * 60 * 1000) {
+      // 접속 후 10분이 미경과된 경우 퀴즈 미제공
       return;
     }
     
+    // 10분 경과로 락스크린 퀴즈를 표출할 때 다음 10분 주기를 위해 접속 기준 시각을 갱신
+    sessionStorage.setItem('anti_connect_time', String(now));
+    localStorage.setItem('anti_connect_time', String(now));
+
     const cached = localStorage.getItem('anti_lockscreen_questions');
     if (cached) {
       try {
@@ -3280,7 +3285,6 @@ export default function App() {
           setLockscreenAnswerResult(null);
           setShowLockscreenQuiz(true);
           setLockscreenLoading(false);
-          localStorage.setItem('anti_last_lockscreen_time', String(Date.now()));
           return;
         }
       } catch (e) {
@@ -3293,7 +3297,6 @@ export default function App() {
     setLockscreenLoading(true);
     setLockscreenSelectedOption(null);
     setLockscreenAnswerResult(null);
-    localStorage.setItem('anti_last_lockscreen_time', String(Date.now()));
 
     generateNewLockscreenQuestion().then(questions => {
       if (questions && Array.isArray(questions) && questions.length > 0) {
@@ -5941,6 +5944,11 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
         lastTickRef.current = now;
         localStorage.setItem('anti_last_tick_time', String(now));
         tickCountRef.current += 1;
+
+        // 접속 10분 경과 시 락스크린 퀴즈 자동 감지 및 트리거
+        if (isLockscreenQuizEnabled) {
+          triggerLockscreenQuiz();
+        }
       }
     }, 1000);
     
@@ -12992,6 +13000,9 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
       if (res.ok && data.success) {
         sessionStorage.setItem('pin_verified', 'true');
         sessionStorage.setItem('just_logged_in', 'true');
+        const connectTimeNow = String(Date.now());
+        sessionStorage.setItem('anti_connect_time', connectTimeNow);
+        localStorage.setItem('anti_connect_time', connectTimeNow);
         setIsPinVerified(true);
         showNotification('성공적으로 인증되었습니다.', 'success');
       } else {

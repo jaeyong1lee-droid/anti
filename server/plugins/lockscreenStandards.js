@@ -26,8 +26,8 @@ export let lockscreenStandardsList = [
   },
   {
     "id": "user_lockscreen_interval_10min",
-    "title": "핸드폰 웹 이용 10분 경과 후 락스크린 제공 지침",
-    "content": "락스크린 주기는 핸드폰에서 웹을 이용한 지 10분이 경과되었을 경우 그 이후에 문제를 제공합니다.",
+    "title": "웹 접속 10분 경과 후 락스크린 제공 지침",
+    "content": "락스크린 주기는 웹 시스템에 접속(인증)한 지 10분이 경과되었을 때 제공하며, 문제 제출 후 10분이 아닙니다.",
     "updatedAt": new Date().toISOString()
   }
 ];
