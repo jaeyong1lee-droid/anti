@@ -4648,6 +4648,48 @@ export default function App() {
       setSelectionPopup(prev => prev.show ? { ...prev, show: false } : prev);
     };
     
+    // Global double click handler for column 2 header (Equalize remaining columns)
+    window.__handleTableColumnDoubleClick = (e, handleOrTh, colIdx) => {
+      if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      const th = (handleOrTh && handleOrTh.closest) ? handleOrTh.closest('th') : handleOrTh;
+      if (!th) return;
+      const tr = th.closest('tr');
+      if (!tr) return;
+      const table = th.closest('table');
+      if (!table) return;
+
+      const allThs = Array.from(tr.querySelectorAll('th'));
+      const colCount = allThs.length;
+      const MIN_WIDTH = 84; // 최소 7글자 폭 보장
+
+      // 지침 1: 2열 열헤더(colIdx === 1) 오른쪽 더블클릭 시 1열 제외 나머지 열 너비 동일하게 조정
+      if (colIdx === 1 && colCount > 1) {
+        const tableContainer = table.closest('.markdown-table-container') || table.parentElement;
+        const containerWidth = tableContainer ? tableContainer.clientWidth : table.clientWidth;
+        
+        const th1Width = allThs[0].offsetWidth || Math.floor(containerWidth * 0.35);
+        
+        const hasRemarks = allThs[colCount - 1] && allThs[colCount - 1].textContent.trim() === '비고';
+        const remarksWidth = hasRemarks ? (allThs[colCount - 1].offsetWidth || 60) : 0;
+        
+        const remCount = hasRemarks ? (colCount - 2) : (colCount - 1);
+        if (remCount <= 0) return;
+        
+        const availWidth = Math.max(remCount * MIN_WIDTH, containerWidth - th1Width - remarksWidth);
+        const equalWidth = Math.max(MIN_WIDTH, Math.floor(availWidth / remCount));
+
+        const lastIdx = hasRemarks ? colCount - 1 : colCount;
+        for (let k = 1; k < lastIdx; k++) {
+          allThs[k].style.setProperty('width', equalWidth + 'px', 'important');
+          allThs[k].style.setProperty('min-width', MIN_WIDTH + 'px', 'important');
+          allThs[k].style.setProperty('max-width', equalWidth + 'px', 'important');
+        }
+      }
+    };
+
     // Global column resize handler for markdown tables
     window.__startMarkdownTableResize = (e, handleEl, colIdx, isTouch) => {
       e.preventDefault();
@@ -4658,20 +4700,56 @@ export default function App() {
       
       const th = handleEl.closest('th');
       if (!th) return;
-      const startWidth = th.offsetWidth;
-      
       const tr = th.closest('tr');
-      const allThs = tr ? Array.from(tr.querySelectorAll('th')) : [th];
+      if (!tr) return;
+      const table = th.closest('table');
+      if (!table) return;
+
+      const allThs = Array.from(tr.querySelectorAll('th'));
+      const colCount = allThs.length;
+      const MIN_WIDTH = 84; // 7글자 기준 최소 너비
+
+      const th1StartWidth = allThs[0].offsetWidth;
+      const th2StartWidth = (allThs[1]) ? allThs[1].offsetWidth : 0;
+      const targetStartWidth = (allThs[colIdx]) ? allThs[colIdx].offsetWidth : th.offsetWidth;
       
+      const tableContainer = table.closest('.markdown-table-container') || table.parentElement;
+      const containerWidth = tableContainer ? tableContainer.clientWidth : table.clientWidth;
+
       const doResize = (ev) => {
         const t = isTouch ? (ev.touches[0] || ev.changedTouches[0]) : ev;
         const deltaX = t.clientX - startX;
-        const newWidth = Math.max(50, startWidth + deltaX);
         
-        const targetTh = (allThs && allThs[colIdx]) ? allThs[colIdx] : th;
-        targetTh.style.setProperty('width', newWidth + 'px', 'important');
-        targetTh.style.setProperty('min-width', newWidth + 'px', 'important');
-        targetTh.style.setProperty('max-width', newWidth + 'px', 'important');
+        const hasRemarks = allThs[colCount - 1] && allThs[colCount - 1].textContent.trim() === '비고';
+        const is2DataCols = (colCount === 2) || (colCount === 3 && hasRemarks);
+
+        // 지침 4: 1열 포함하여 2개열일 경우 무조건 한 화면 너비(100%) 내에 포함하고 1열 헤더를 잡고 움직이더라도 그 너비 안에서 유동 조정
+        if (is2DataCols && colIdx === 0) {
+          const remarksWidth = hasRemarks ? (allThs[2].offsetWidth || 60) : 0;
+          const availableWidth = containerWidth - remarksWidth;
+
+          let newTh1Width = th1StartWidth + deltaX;
+          newTh1Width = Math.max(MIN_WIDTH, Math.min(availableWidth - MIN_WIDTH, newTh1Width));
+          let newTh2Width = availableWidth - newTh1Width;
+          newTh2Width = Math.max(MIN_WIDTH, newTh2Width);
+
+          allThs[0].style.setProperty('width', newTh1Width + 'px', 'important');
+          allThs[0].style.setProperty('min-width', MIN_WIDTH + 'px', 'important');
+          allThs[0].style.setProperty('max-width', newTh1Width + 'px', 'important');
+
+          if (allThs[1]) {
+            allThs[1].style.setProperty('width', newTh2Width + 'px', 'important');
+            allThs[1].style.setProperty('min-width', MIN_WIDTH + 'px', 'important');
+            allThs[1].style.setProperty('max-width', newTh2Width + 'px', 'important');
+          }
+        } else {
+          // 지침 2 & 5: 3개 열 이상은 각 열이 독립적으로 움직임. 하나를 움직인다고 나머지가 움직이지 않음. 최소 너비는 7글자(84px).
+          const targetTh = (allThs && allThs[colIdx]) ? allThs[colIdx] : th;
+          const newWidth = Math.max(MIN_WIDTH, targetStartWidth + deltaX);
+          
+          targetTh.style.setProperty('width', newWidth + 'px', 'important');
+          targetTh.style.setProperty('min-width', MIN_WIDTH + 'px', 'important');
+        }
       };
       
       const stopResize = () => {
@@ -4696,6 +4774,7 @@ export default function App() {
     return () => {
       delete window.__handleFormulaConfirmRequest;
       delete window.__hideSelectionPopup;
+      delete window.__handleTableColumnDoubleClick;
       delete window.__startMarkdownTableResize;
     };
   }, []);

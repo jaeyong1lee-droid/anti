@@ -130,29 +130,39 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false,
   });
   
   const is2Col = colCount === 2;
-  const tableClass = is2Col ? "markdown-table markdown-table-2col" : "markdown-table";
+  const is3Col = colCount === 3;
+  const tableLayoutClass = (is2Col || is3Col) ? "table-fixed w-full" : "table-auto w-full";
+  const tableClass = is2Col ? `markdown-table markdown-table-2col ${tableLayoutClass}` : `markdown-table ${tableLayoutClass}`;
 
   let html = '';
 
   if (hideWrapper) {
     // Render clean table container without Comparison Table card, buttons, or extra headers
     html += `<div class="markdown-table-container w-full my-2 overflow-x-auto rounded-xl border border-slate-600 bg-slate-950/20">`;
-    html += `<table class="${tableClass} w-full table-auto border-collapse text-[14px] sm:text-[15px] min-w-full">`;
+    html += `<table class="${tableClass} border-collapse text-[14px] sm:text-[15px] min-w-full">`;
     html += `<thead>`;
     html += `<tr class="bg-slate-900/80 text-slate-355 border-b border-slate-600">`;
     headers.forEach((h, hIdx) => {
       const renderedH = renderCellMath(h);
+      let colStyle = "position: relative; select-none; min-width: 84px;";
+      if (is2Col) {
+        colStyle += (hIdx === 0) ? " width: 35%;" : " width: 65%;";
+      } else if (is3Col) {
+        colStyle += (hIdx === 0) ? " width: 30%;" : " width: 35%;";
+      }
+      const dblClickAttr = (hIdx === 1) ? `ondblclick="if(window.__handleTableColumnDoubleClick) { window.__handleTableColumnDoubleClick(event, this, ${hIdx}) }"` : '';
+
       if (hIdx < colCount - 1) {
-        html += `<th class="p-1 sm:p-1.5 font-black border-r border-slate-600 last:border-r-0" style="position: relative; select-none;">`;
+        html += `<th class="p-1 sm:p-1.5 font-black border-r border-slate-600 last:border-r-0" style="${colStyle}" ${dblClickAttr}>`;
         html += `${renderedH}`;
-        html += `<div class="markdown-table-resize-handle" onmousedown="if(window.__startMarkdownTableResize) { window.__startMarkdownTableResize(event, this, ${hIdx}, false) }" ontouchstart="if(window.__startMarkdownTableResize) { window.__startMarkdownTableResize(event, this, ${hIdx}, true) }"></div>`;
+        html += `<div class="markdown-table-resize-handle" ${dblClickAttr} onmousedown="if(window.__startMarkdownTableResize) { window.__startMarkdownTableResize(event, this, ${hIdx}, false) }" ontouchstart="if(window.__startMarkdownTableResize) { window.__startMarkdownTableResize(event, this, ${hIdx}, true) }"></div>`;
         html += `</th>`;
       } else {
-        html += `<th class="p-1 sm:p-1.5 font-black border-r border-slate-600 last:border-r-0">${renderedH}</th>`;
+        html += `<th class="p-1 sm:p-1.5 font-black border-r border-slate-600 last:border-r-0" style="${colStyle}">${renderedH}</th>`;
       }
     });
     if (!hideRemarks) {
-      html += `<th class="p-1 sm:p-1.5 font-black border-r border-slate-600 text-rose-400 select-none whitespace-nowrap w-16" style="border-right:0;">비고</th>`;
+      html += `<th class="p-1 sm:p-1.5 font-black border-r border-slate-600 text-rose-400 select-none whitespace-nowrap w-16" style="border-right:0; min-width: 50px;">비고</th>`;
     }
     html += `</tr>`;
     html += `</thead>`;
@@ -164,11 +174,11 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false,
       row.forEach((cell, cIdx) => {
         const renderedCell = renderCellMath(cell);
         const cellAlign = (cIdx === 0) ? 'text-center break-keep' : 'text-left break-keep';
-        html += `<td class="p-1 sm:p-1.5 border-r border-slate-600 text-slate-200 font-semibold ${cellAlign}">${renderedCell}</td>`;
+        html += `<td class="p-1 sm:p-1.5 border-r border-slate-600 text-slate-200 font-semibold ${cellAlign}" style="min-width: 84px;">${renderedCell}</td>`;
       });
       if (row.length < colCount) {
         for (let k = row.length; k < colCount; k++) {
-          html += `<td class="p-1 sm:p-1.5 border-r border-slate-600 text-slate-200 font-semibold"></td>`;
+          html += `<td class="p-1 sm:p-1.5 border-r border-slate-600 text-slate-200 font-semibold" style="min-width: 84px;"></td>`;
         }
       }
       if (!hideRemarks) {
@@ -206,22 +216,30 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false,
   html += `</div>`;
 
   html += `<div class="markdown-table-container w-full overflow-x-auto rounded-xl border border-slate-600 bg-slate-950/40">`;
-  html += `<table class="${tableClass} w-full table-auto border-collapse text-[14px] sm:text-[15px] min-w-full">`;
+  html += `<table class="${tableClass} border-collapse text-[14px] sm:text-[15px] min-w-full">`;
   html += `<thead>`;
   html += `<tr class="bg-slate-900/80 text-slate-350 border-b border-slate-600">`;
   headers.forEach((h, hIdx) => {
     const renderedH = renderCellMath(h);
+    let colStyle = "position: relative; select-none; min-width: 84px;";
+    if (is2Col) {
+      colStyle += (hIdx === 0) ? " width: 35%;" : " width: 65%;";
+    } else if (is3Col) {
+      colStyle += (hIdx === 0) ? " width: 30%;" : " width: 35%;";
+    }
+    const dblClickAttr = (hIdx === 1) ? `ondblclick="if(window.__handleTableColumnDoubleClick) { window.__handleTableColumnDoubleClick(event, this, ${hIdx}) }"` : '';
+
     if (hIdx < colCount - 1) {
-      html += `<th class="p-1 sm:p-1.5 font-extrabold border-r border-slate-600 last:border-r-0" style="position: relative; select-none;">`;
+      html += `<th class="p-1 sm:p-1.5 font-extrabold border-r border-slate-600 last:border-r-0" style="${colStyle}" ${dblClickAttr}>`;
       html += `${renderedH}`;
-      html += `<div class="markdown-table-resize-handle" onmousedown="if(window.__startMarkdownTableResize) { window.__startMarkdownTableResize(event, this, ${hIdx}, false) }" ontouchstart="if(window.__startMarkdownTableResize) { window.__startMarkdownTableResize(event, this, ${hIdx}, true) }"></div>`;
+      html += `<div class="markdown-table-resize-handle" ${dblClickAttr} onmousedown="if(window.__startMarkdownTableResize) { window.__startMarkdownTableResize(event, this, ${hIdx}, false) }" ontouchstart="if(window.__startMarkdownTableResize) { window.__startMarkdownTableResize(event, this, ${hIdx}, true) }"></div>`;
       html += `</th>`;
     } else {
-      html += `<th class="p-1 sm:p-1.5 font-extrabold border-r border-slate-600 last:border-r-0">${renderedH}</th>`;
+      html += `<th class="p-1 sm:p-1.5 font-extrabold border-r border-slate-600 last:border-r-0" style="${colStyle}">${renderedH}</th>`;
     }
   });
   if (!hideRemarks) {
-    html += `<th class="p-1 sm:p-1.5 font-extrabold border-r border-slate-600 text-rose-400 select-none whitespace-nowrap w-16" style="border-right:0;">비고</th>`;
+    html += `<th class="p-1 sm:p-1.5 font-extrabold border-r border-slate-600 text-rose-400 select-none whitespace-nowrap w-16" style="border-right:0; min-width: 50px;">비고</th>`;
   }
   html += `</tr>`;
   html += `</thead>`;
@@ -233,11 +251,11 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false,
       row.forEach((cell, cIdx) => {
         const renderedCell = renderCellMath(cell);
         const cellAlign = (cIdx === 0 || cIdx === 1) ? 'text-center break-keep' : 'text-left break-keep';
-        html += `<td class="p-1 sm:p-1.5 border-r border-slate-600 text-slate-355 ${cellAlign}">${renderedCell}</td>`;
+        html += `<td class="p-1 sm:p-1.5 border-r border-slate-600 text-slate-355 ${cellAlign}" style="min-width: 84px;">${renderedCell}</td>`;
       });
     if (row.length < colCount) {
       for (let k = row.length; k < colCount; k++) {
-        html += `<td class="p-1 sm:p-1.5 border-r border-slate-600 text-slate-355"></td>`;
+        html += `<td class="p-1 sm:p-1.5 border-r border-slate-600 text-slate-355" style="min-width: 84px;"></td>`;
       }
     }
     if (!hideRemarks) {
