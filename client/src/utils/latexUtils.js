@@ -513,6 +513,9 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
              .replace(/\\\[([\s\S]*?)\\\]/g, (m, p1) => '$$' + p1.trim() + '$$')
              .replace(/\\\(([\s\S]*?)\\\)/g, (m, p1) => '$' + p1.trim() + '$');
   let processed = healCorruptedKatexHtml(text);
+  // [Self-Healing] Convert misplaced double dollar ($$) math inside parentheses or sentence flow to single dollar ($) inline math
+  processed = processed.replace(/\(([^()\n]*?)\$\$\s*([\s\S]*?)\s*\$\$\s*([^()\n]*?)\)/g, '($1 $$$2$$ $3)');
+  processed = processed.replace(/([(\[\uAC00-\uD7A3a-zA-Z0-9,])\s*\$\$\s*([^\$\n]+?)\s*\$\$\s*([)\],\.\uAC00-\uD7A3a-zA-Z0-9,])/g, '$1 $$$2$$ $3');
   // [Self-Healing] Fix misplaced dollar signs inside parentheses like (s_{\infty}$) -> ($s_{\infty}$)
   processed = processed.replace(/\(([^$()\n]+?)\$\)/g, '($$$1$)');
 
