@@ -1204,79 +1204,35 @@ router.post('/evaluate-answer', async (req, res) => {
       return res.status(400).json({ error: 'questionText is required' });
     }
 
-    // 1. Direct Physics/Engineering Formula Code-Level Evaluator (Double-Check Failsafe)
-    let calculatedCorrectAnswer = null;
-
-    // 모관상승고(Capillary Rise) 물리 공식 정밀 연산 검증
-    if (/모관\s*상승고|모관\s*튜브|표면장력/i.test(questionText)) {
-      const dMatch = questionText.match(/(?:d|지름)[^\d]*([\d.]+)\s*mm/i);
-      const sigmaMatch = questionText.match(/(?:sigma|σ|표면장력)[^\d]*([\d.]+)\s*N\/m/i);
-      const gammaMatch = questionText.match(/(?:gamma|γ|단위중량)[^\d]*([\d.]+)\s*kN\/m/i);
-
-      if (dMatch && sigmaMatch && gammaMatch) {
-        const d = parseFloat(dMatch[1]) * 0.001; // mm -> m
-        const sigma = parseFloat(sigmaMatch[1]); // N/m
-        const gamma_w = parseFloat(gammaMatch[1]) * 1000; // kN/m^3 -> N/m^3
-
-        if (d > 0 && gamma_w > 0) {
-          const hcCalc = (4 * sigma) / (gamma_w * d);
-          const hcFormatted = hcCalc.toFixed(3); // e.g. 0.594
-
-          // Find option matching calculated value
-          if (Array.isArray(options) && options.length > 0) {
-            const matchOpt = options.find(opt => {
-              const num = parseFloat(String(opt).replace(/[^0-9.-]/g, ''));
-              return Math.abs(num - hcCalc) < 0.01;
-            });
-            if (matchOpt) {
-              calculatedCorrectAnswer = matchOpt;
-              console.log(`[JIT Evaluator] Capillary Rise calculated: ${hcFormatted} m -> Matched option: ${matchOpt}`);
-            }
-          }
-        }
-      }
-    }
-
-    // 2. LLM Precision Evaluator Prompt (For all general/engineering questions)
+    // 🌟 100% 범용 공학/수학/토목 수치 연산 및 정답/해설 산정 LLM 엔진 🌟
     const prompt = `
-[🚨 정밀 수치 연산 및 정답/해설 산정 전용 튜터 🚨]
-당신은 지반공학 및 토목공학 수치 계산 100% 검증 전문가입니다.
-아래 문제의 질문 지문과 조건 수치를 정밀하게 대입하여 공학 공식을 유도하고, 100% 정확한 물리적 정답 및 해설을 작성하십시오.
+[🚨 공학/수학/토목 수치 계산 및 정답/해설 정밀 검증 튜터 🚨]
+당신은 국가기술자격(토목기사, 건축기사, 기술사 등) 및 공학 시험의 문제 계산 및 정답 검증 전문가입니다.
+
+아래 문제의 질문 지문과 조건 수치를 정밀 분석하여, 공학 표준 수식(방정식, 단위 환산 포함)을 직접 도출하고 정밀 연산하십시오.
 
 [문제 정보]:
-- 주제/토픽: ${topicTitle || category || '공학 퀴즈'}
-- 질문 본문: ${questionText}
-- 제시된 보기(Options): ${JSON.stringify(options || [])}
+- 토픽/분야: ${topicTitle || category || '공학 퀴즈'}
+- 질문 지문: ${questionText}
+- 보기 (Options): ${JSON.stringify(options || [])}
 - 사용자가 선택한 답: ${userSelectedOption || '미선택'}
 
-[필수 산정 및 작성 철칙]:
-1. 지문의 지름($d$), 반지름($r$), 단위중량($\\gamma_w$), 표면장력($\\sigma$) 등 수치를 정확히 환산하여 표준 수식에 대입하십시오. (예: 모관상승고 지름 $d$ 기준 $h_c = \\frac{4\\sigma}{\\gamma_w d}$)
-2. 정답(correctAnswer)은 제시된 보기(Options) 중 물리적 연산 결과와 가장 일치하는 항목(문자열 그대로)을 지정하십시오.
-3. 수식 유도 과정과 풀이를 LaTeX($...$, $$...$$) 서식을 활용하여 명쾌하고 상세하게 작성하십시오.
+[검증 및 연산 수칙]:
+1. 지문의 모든 단위(mm, cm, m, N, kN, N/m², kPa, kN/m³ 등)를 MKS 단위계(SI 표준 단위)로 정확히 환산하여 대입하십시오.
+2. 관의 지름(d)과 반지름(r), 주동토압과 수동토압, 투수계수, 유효응력 등 용어의 공학적 의미를 정확히 분별하여 올바른 공식을 사용하십시오.
+   (예: 모관상승고 산정 시 지름 d 적용 공식 h_c = 4*sigma / (gamma_w * d) 과 반지름 r 적용 공식 h_c = 2*sigma / (gamma_w * r) 을 혼동하지 말고 정확히 연산)
+3. 정답(correctAnswer)은 제시된 보기(Options) 중 물리적/수학적 계산 결과와 가장 완벽히 일치하는 보기 문자열을 그대로 선택하십시오.
+4. 해설(explanation)에는 [적용 공식], [수치 대입 및 단위 환산], [단계별 연산 과정], [최종 정답 산출]을 LaTeX($...$, $$...$$) 표기를 활용하여 명확하고 수려하게 작성하십시오.
 
 [반환 JSON 응답 규격]:
 {
-  "correctAnswer": "정확한 정답 보기 문자열 (예: 0.594 m)",
-  "explanation": "상세 수식 유도 과정 및 풀이 설명"
+  "correctAnswer": "제시된 보기(Options) 중 하나와 정확히 일치하는 정답 문자열",
+  "explanation": "LaTeX 수식이 포함된 명확하고 수려한 정밀 풀이 해설"
 }
 `;
 
-    let finalCorrectAnswer = calculatedCorrectAnswer;
+    let finalCorrectAnswer = null;
     let explanation = '';
-
-    if (calculatedCorrectAnswer) {
-      explanation = `본 문항은 지반 내 모관 현상(Capillarity)에 의한 이론적 모관상승고 산정 원리를 검토하는 문제입니다.\n\n` +
-        `**[공학 공식]**:\n` +
-        `모관상승고 공식은 Jurin의 법칙에 따라 관의 **지름($d$)**을 적용할 때 다음과 같습니다:\n` +
-        `$$h_c = \\frac{4 \\sigma \\cos\\alpha}{\\gamma_w \\cdot d}$$\n\n` +
-        `**[주어진 조건 대입]**:\n` +
-        `- 지름 $d = 0.05\\text{ mm} = 5 \\times 10^{-5}\\text{ m}$\n` +
-        `- 표면장력 $\\sigma = 0.0728\\text{ N/m}$\n` +
-        `- 접촉각 $\\alpha = 0^\\circ \\implies \\cos(0^\\circ) = 1$\n` +
-        `- 물의 단위중량 $\\gamma_w = 9.81\\text{ kN/m}^3 = 9810\\text{ N/m}^3$\n\n` +
-        `$$h_c = \\frac{4 \\times 0.0728 \\times 1}{9810 \\times (5 \\times 10^{-5})} = \\frac{0.2912}{0.4905} \\approx \\mathbf{0.594\\text{ m}}$$\n\n` +
-        `따라서 올바른 이론적 모관상승고는 **${calculatedCorrectAnswer}** 입니다.`;
-    }
 
     try {
       const llmResult = await callLLMWithFailover(prompt, null, {
@@ -1285,15 +1241,11 @@ router.post('/evaluate-answer', async (req, res) => {
       });
       const parsed = parseLlmJson(llmResult);
       if (parsed && parsed.correctAnswer) {
-        if (!finalCorrectAnswer) {
-          finalCorrectAnswer = parsed.correctAnswer;
-        }
-        if (!calculatedCorrectAnswer) {
-          explanation = parsed.explanation || '';
-        }
+        finalCorrectAnswer = parsed.correctAnswer;
+        explanation = parsed.explanation || '';
       }
     } catch (llmErr) {
-      console.warn('[JIT Evaluator] LLM call failed, fallback to rules:', llmErr);
+      console.warn('[JIT Evaluator] LLM call failed:', llmErr);
     }
 
     // Option index matching
