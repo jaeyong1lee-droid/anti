@@ -1224,13 +1224,11 @@ export const TableQuiz = React.memo(function TableQuiz({
                   title={isFirstCol ? "더블클릭 시 너비 초기화" : undefined}
                 >
                   <LatexRenderer text={cleanCellText(header)} katexLoaded={katexLoaded} className="inline" />
-                  {hIdx < colCount - 1 && (
-                    <div
-                      className="absolute right-0 top-0 bottom-0 w-4 sm:w-2 cursor-col-resize select-none z-10 hover:bg-sky-500/30 active:bg-sky-500/50 touch-none"
-                      onMouseDown={(e) => startColumnResize(e, hIdx, false)}
-                      onTouchStart={(e) => startColumnResize(e, hIdx, true)}
-                    />
-                  )}
+                  <div
+                    className="absolute right-0 top-0 bottom-0 w-4 sm:w-2 cursor-col-resize select-none z-10 hover:bg-sky-500/30 active:bg-sky-500/50 touch-none"
+                    onMouseDown={(e) => startColumnResize(e, hIdx, false)}
+                    onTouchStart={(e) => startColumnResize(e, hIdx, true)}
+                  />
                 </th>
               );
             })}

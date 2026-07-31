@@ -152,17 +152,17 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false,
       }
       const dblClickAttr = `ondblclick="if(window.__handleTableColumnDoubleClick) { window.__handleTableColumnDoubleClick(event, this, ${hIdx}) }"`;
 
-      if (hIdx < colCount - 1) {
-        html += `<th class="p-1 sm:p-1.5 font-black border-r border-slate-600 last:border-r-0" style="${colStyle}" ${dblClickAttr}>`;
-        html += `${renderedH}`;
-        html += `<div class="markdown-table-resize-handle" ${dblClickAttr} onmousedown="if(window.__startMarkdownTableResize) { window.__startMarkdownTableResize(event, this, ${hIdx}, false) }" ontouchstart="if(window.__startMarkdownTableResize) { window.__startMarkdownTableResize(event, this, ${hIdx}, true) }"></div>`;
-        html += `</th>`;
-      } else {
-        html += `<th class="p-1 sm:p-1.5 font-black border-r border-slate-600 last:border-r-0" style="${colStyle}">${renderedH}</th>`;
-      }
+      html += `<th class="p-1 sm:p-1.5 font-black border-r border-slate-600 last:border-r-0" style="${colStyle}" ${dblClickAttr}>`;
+      html += `${renderedH}`;
+      html += `<div class="markdown-table-resize-handle" ${dblClickAttr} onmousedown="if(window.__startMarkdownTableResize) { window.__startMarkdownTableResize(event, this, ${hIdx}, false) }" ontouchstart="if(window.__startMarkdownTableResize) { window.__startMarkdownTableResize(event, this, ${hIdx}, true) }"></div>`;
+      html += `</th>`;
     });
     if (!hideRemarks) {
-      html += `<th class="p-1 sm:p-1.5 font-black border-r border-slate-600 text-rose-400 select-none whitespace-nowrap w-16" style="border-right:0; min-width: 50px;">비고</th>`;
+      const remarksColIdx = colCount;
+      const remarksDblClickAttr = `ondblclick="if(window.__handleTableColumnDoubleClick) { window.__handleTableColumnDoubleClick(event, this, ${remarksColIdx}) }"`;
+      html += `<th class="p-1 sm:p-1.5 font-black border-r border-slate-600 text-rose-400 select-none whitespace-nowrap w-16" style="border-right:0; min-width: 50px; position: relative;" ${remarksDblClickAttr}>비고`;
+      html += `<div class="markdown-table-resize-handle" ${remarksDblClickAttr} onmousedown="if(window.__startMarkdownTableResize) { window.__startMarkdownTableResize(event, this, ${remarksColIdx}, false) }" ontouchstart="if(window.__startMarkdownTableResize) { window.__startMarkdownTableResize(event, this, ${remarksColIdx}, true) }"></div>`;
+      html += `</th>`;
     }
     html += `</tr>`;
     html += `</thead>`;
@@ -229,18 +229,18 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false,
     }
     const dblClickAttr = `ondblclick="if(window.__handleTableColumnDoubleClick) { window.__handleTableColumnDoubleClick(event, this, ${hIdx}) }"`;
 
-    if (hIdx < colCount - 1) {
       html += `<th class="p-1 sm:p-1.5 font-extrabold border-r border-slate-600 last:border-r-0" style="${colStyle}" ${dblClickAttr}>`;
       html += `${renderedH}`;
       html += `<div class="markdown-table-resize-handle" ${dblClickAttr} onmousedown="if(window.__startMarkdownTableResize) { window.__startMarkdownTableResize(event, this, ${hIdx}, false) }" ontouchstart="if(window.__startMarkdownTableResize) { window.__startMarkdownTableResize(event, this, ${hIdx}, true) }"></div>`;
       html += `</th>`;
-    } else {
-      html += `<th class="p-1 sm:p-1.5 font-extrabold border-r border-slate-600 last:border-r-0" style="${colStyle}">${renderedH}</th>`;
+    });
+    if (!hideRemarks) {
+      const remarksColIdx = colCount;
+      const remarksDblClickAttr = `ondblclick="if(window.__handleTableColumnDoubleClick) { window.__handleTableColumnDoubleClick(event, this, ${remarksColIdx}) }"`;
+      html += `<th class="p-1 sm:p-1.5 font-extrabold border-r border-slate-600 text-rose-400 select-none whitespace-nowrap w-16" style="border-right:0; min-width: 50px; position: relative;" ${remarksDblClickAttr}>비고`;
+      html += `<div class="markdown-table-resize-handle" ${remarksDblClickAttr} onmousedown="if(window.__startMarkdownTableResize) { window.__startMarkdownTableResize(event, this, ${remarksColIdx}, false) }" ontouchstart="if(window.__startMarkdownTableResize) { window.__startMarkdownTableResize(event, this, ${remarksColIdx}, true) }"></div>`;
+      html += `</th>`;
     }
-  });
-  if (!hideRemarks) {
-    html += `<th class="p-1 sm:p-1.5 font-extrabold border-r border-slate-600 text-rose-400 select-none whitespace-nowrap w-16" style="border-right:0; min-width: 50px;">비고</th>`;
-  }
   html += `</tr>`;
   html += `</thead>`;
   html += `<tbody>`;
