@@ -9666,6 +9666,12 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
       }
       return copy;
     });
+    setRevealedQuestions(prev => {
+      const copy = { ...prev };
+      delete copy[idx];
+      revealedQuestionsRef.current = copy;
+      return copy;
+    });
     setReviewOptionExplanations(prev => {
       const copy = { ...prev };
       delete copy[idx];
