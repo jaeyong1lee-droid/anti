@@ -16,10 +16,22 @@ import { healLatexFormulas } from '../utils/latexUtils';
 const parseAndRenderFlowchart = (flowchartText, katexLoaded, questionKey) => {
   const stepMarkerRegex = /(?:\[\s*(?:단계\s*)?\d+\s*\]|\[\s*Step\s*\d+\s*\]|\[\s*[a-zA-Z]\s*\]|\(\s*\d+\s*\)|[①-⑳])/i;
   if (!stepMarkerRegex.test(flowchartText)) {
+    let asciiHtml = flowchartText;
+    if (window.katex || typeof renderKatexString === 'function') {
+      asciiHtml = asciiHtml.replace(/\$\$\s*([\s\S]*?)\s*\$\$/g, (m, math) => {
+        return renderKatexString(math.trim(), { displayMode: false, throwOnError: false });
+      });
+      asciiHtml = asciiHtml.replace(/\$((?:[^\$\n<]|<(?![a-zA-Z/!]))+?)\$/g, (m, math) => {
+        const isReal = !/[\uAC00-\uD7A3]/.test(math) || /\\/.test(math) || /_/.test(math) || /\^/.test(math) || /[=+\-\*\/]/.test(math) || /\\cdot/.test(math);
+        if (!isReal) return m;
+        return renderKatexString(math.trim(), { displayMode: false, throwOnError: false });
+      });
+    }
     return (
-      <pre className="w-full font-mono text-[12px] sm:text-[13px] overflow-x-auto whitespace-pre p-3 rounded-xl bg-slate-900/70 border border-slate-700/50 text-slate-200 leading-snug my-2 select-text">
-        {flowchartText}
-      </pre>
+      <pre 
+        className="w-full font-mono text-[12px] sm:text-[13px] overflow-x-auto whitespace-pre p-3 rounded-xl bg-slate-900/70 border border-slate-700/50 text-slate-200 leading-snug my-2 select-text font-mono"
+        dangerouslySetInnerHTML={{ __html: asciiHtml }}
+      />
     );
   }
 
@@ -277,10 +289,23 @@ export const LatexRenderer = React.memo(function LatexRenderer({
               />
             );
           } else if (part.type === 'ascii') {
+            let asciiHtml = part.content;
+            if (window.katex || typeof renderKatexString === 'function') {
+              asciiHtml = asciiHtml.replace(/\$\$\s*([\s\S]*?)\s*\$\$/g, (m, math) => {
+                return renderKatexString(math.trim(), { displayMode: false, throwOnError: false });
+              });
+              asciiHtml = asciiHtml.replace(/\$((?:[^\$\n<]|<(?![a-zA-Z/!]))+?)\$/g, (m, math) => {
+                const isReal = !/[\uAC00-\uD7A3]/.test(math) || /\\/.test(math) || /_/.test(math) || /\^/.test(math) || /[=+\-\*\/]/.test(math) || /\\cdot/.test(math);
+                if (!isReal) return m;
+                return renderKatexString(math.trim(), { displayMode: false, throwOnError: false });
+              });
+            }
             return (
-              <pre key={pIdx} className="w-auto max-w-full inline-block font-mono text-[12px] sm:text-[13px] overflow-x-auto whitespace-pre p-3 rounded-xl bg-slate-900/70 border border-slate-700/50 text-slate-200 leading-snug my-2 select-text font-mono">
-                {part.content}
-              </pre>
+              <pre 
+                key={pIdx} 
+                className="w-auto max-w-full inline-block font-mono text-[12px] sm:text-[13px] overflow-x-auto whitespace-pre p-3 rounded-xl bg-slate-900/70 border border-slate-700/50 text-slate-200 leading-snug my-2 select-text font-mono"
+                dangerouslySetInnerHTML={{ __html: asciiHtml }}
+              />
             );
           } else {
             return (

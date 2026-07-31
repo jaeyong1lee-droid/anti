@@ -600,7 +600,18 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
   tempText = tempText.replace(/```([a-zA-Z0-9_-]*)\n([\s\S]*?)\n```/g, (match, lang, code) => {
     const placeholder = `___CODE_BLOCK_${codeBlockIndex}___`;
     const svgChart = transformAsciiGraphToSvg(code);
-    const styledHtml = svgChart ? svgChart : `<pre class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-4 overflow-x-auto my-3 font-mono text-xs text-slate-300 leading-relaxed select-text" style="white-space: pre; font-family: monospace;">${code}</pre>`;
+    let codeHtml = code;
+    if (typeof renderKatexString === 'function') {
+      codeHtml = codeHtml.replace(/\$\$\s*([\s\S]*?)\s*\$\$/g, (m, math) => {
+        return renderKatexString(math.trim(), { displayMode: false, throwOnError: false });
+      });
+      codeHtml = codeHtml.replace(/\$((?:[^\$\n<]|<(?![a-zA-Z/!]))+?)\$/g, (m, math) => {
+        const isReal = !/[\uAC00-\uD7A3]/.test(math) || /\\/.test(math) || /_/.test(math) || /\^/.test(math) || /[=+\-\*\/]/.test(math) || /\\cdot/.test(math);
+        if (!isReal) return m;
+        return renderKatexString(math.trim(), { displayMode: false, throwOnError: false });
+      });
+    }
+    const styledHtml = svgChart ? svgChart : `<pre class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-4 overflow-x-auto my-3 font-mono text-xs text-slate-300 leading-relaxed select-text" style="white-space: pre; font-family: monospace;">${codeHtml}</pre>`;
     codeBlocks.push({ placeholder, content: styledHtml });
     codeBlockIndex++;
     return placeholder;
