@@ -4702,71 +4702,38 @@ export default function App() {
         table.style.setProperty('width', '100%', 'important');
         table.style.setProperty('min-width', '100%', 'important');
         table.style.setProperty('max-width', '100%', 'important');
-      } else if (colIdx === 0 && colCount > 1) {
-        // 1열 우측 더블클릭 시: 1열은 현재 너비로 고정하고, 나머지 열들을 폰/PC 튜터창 너비(100%)에 딱 맞춰 분할하여 가로 스크롤바 제거
+      } else {
+        // 더블클릭 시: 선택한 열의 텍스트 길이를 계산하여 해당 열을 내용에 딱 맞추어 자동 너비 조절 (자동 텍스트 줄바꿈 방지)
         const tableContainer = table.closest('.markdown-table-container') || table.parentElement;
-        const containerWidth = tableContainer ? tableContainer.clientWidth : table.clientWidth;
+        const targetTh = allThs[colIdx];
+        if (targetTh) {
+          // 해당 열의 모든 셀(헤더 포함) 텍스트 길이 측정
+          const rows = Array.from(table.querySelectorAll('tr'));
+          let maxLen = (targetTh.textContent || '').trim().length;
+          rows.forEach(r => {
+            const cells = Array.from(r.children);
+            if (cells[colIdx]) {
+              const text = (cells[colIdx].textContent || '').trim();
+              if (text.length > maxLen) maxLen = text.length;
+            }
+          });
 
-        const th1Width = allThs[0].offsetWidth || Math.floor(containerWidth * 0.35);
-        const remarksWidth = hasRemarks ? (allThs[colCount - 1].offsetWidth || 50) : 0;
+          const autoPx = Math.min(500, Math.max(MIN_WIDTH, maxLen * 14 + 32));
+          let totalTableWidth = 0;
 
-        const remCount = hasRemarks ? (colCount - 2) : (colCount - 1);
-        if (remCount <= 0) return;
+          allThs.forEach((h, i) => {
+            const w = (i === colIdx) ? autoPx : (h.offsetWidth || MIN_WIDTH);
+            h.style.setProperty('width', w + 'px', 'important');
+            h.style.setProperty('min-width', w + 'px', 'important');
+            h.style.setProperty('max-width', w + 'px', 'important');
+            totalTableWidth += w;
+          });
 
-        const remainingWidth = Math.max(0, containerWidth - th1Width - remarksWidth);
-        const targetWidth = Math.max(MIN_WIDTH, Math.floor(remainingWidth / remCount));
-
-        // 1열 너비 고정
-        allThs[0].style.setProperty('width', th1Width + 'px', 'important');
-        allThs[0].style.setProperty('min-width', MIN_WIDTH + 'px', 'important');
-        allThs[0].style.setProperty('max-width', th1Width + 'px', 'important');
-
-        const lastIdx = hasRemarks ? colCount - 1 : colCount;
-        for (let k = 1; k < lastIdx; k++) {
-          allThs[k].style.setProperty('width', targetWidth + 'px', 'important');
-          allThs[k].style.setProperty('min-width', MIN_WIDTH + 'px', 'important');
-          allThs[k].style.setProperty('max-width', targetWidth + 'px', 'important');
+          table.style.setProperty('width', totalTableWidth + 'px', 'important');
+          table.style.setProperty('min-width', totalTableWidth + 'px', 'important');
+          table.style.setProperty('max-width', 'none', 'important');
+          if (tableContainer) tableContainer.style.overflowX = 'auto';
         }
-
-        if (hasRemarks && allThs[colCount - 1]) {
-          allThs[colCount - 1].style.setProperty('width', remarksWidth + 'px', 'important');
-          allThs[colCount - 1].style.setProperty('min-width', '50px', 'important');
-        }
-
-        // 표 전체 너비를 화면/컨테이너 가로폭(100%)에 정확히 맞춰 스크롤바 제거
-        table.style.setProperty('width', '100%', 'important');
-        table.style.setProperty('min-width', '100%', 'important');
-        table.style.setProperty('max-width', '100%', 'important');
-      } else if (colIdx === 1 && colCount > 1) {
-        // 2열 우측 더블클릭 시: 2열의 현재 측정된 너비를 그대로 고정 기준(targetWidth)으로 사용하여 나머지 열들을 2열 너비에 맞춤
-        const tableContainer = table.closest('.markdown-table-container') || table.parentElement;
-        const containerWidth = tableContainer ? tableContainer.clientWidth : table.clientWidth;
-        
-        const th1Width = allThs[0].offsetWidth || Math.floor(containerWidth * 0.35);
-        const remarksWidth = hasRemarks ? (allThs[colCount - 1].offsetWidth || 50) : 0;
-
-        const targetWidth = Math.max(MIN_WIDTH, allThs[1].offsetWidth);
-
-        const lastIdx = hasRemarks ? colCount - 1 : colCount;
-        let totalTableWidth = th1Width + remarksWidth;
-
-        // 1열 너비 고정
-        allThs[0].style.setProperty('width', th1Width + 'px', 'important');
-        allThs[0].style.setProperty('min-width', MIN_WIDTH + 'px', 'important');
-        allThs[0].style.setProperty('max-width', th1Width + 'px', 'important');
-
-        // 2열을 포함하여 3열, 4열 등 나머지 모든 열의 너비를 2열의 원래 너비(targetWidth)로 동일 설정
-        for (let k = 1; k < lastIdx; k++) {
-          allThs[k].style.setProperty('width', targetWidth + 'px', 'important');
-          allThs[k].style.setProperty('min-width', MIN_WIDTH + 'px', 'important');
-          allThs[k].style.setProperty('max-width', targetWidth + 'px', 'important');
-          totalTableWidth += targetWidth;
-        }
-
-        // 전체 표 너비를 확장하여 2열 너비 축소 방지
-        table.style.setProperty('width', totalTableWidth + 'px', 'important');
-        table.style.setProperty('min-width', totalTableWidth + 'px', 'important');
-        table.style.setProperty('max-width', 'none', 'important');
       }
     };
 

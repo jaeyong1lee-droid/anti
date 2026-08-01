@@ -275,6 +275,10 @@ function FloatingTableItem({
   const parsed = parseHtmlTable(rawData);
   const colCount = parsed.headers.length;
   const colWidths = getColWidthsForTable(t.id, colCount);
+  const totalTablePx = colWidths.reduce((sum, w) => {
+    const num = (typeof w === 'number') ? w : (parseFloat(w) || 160);
+    return sum + num;
+  }, 50);
 
   return (
     <div 
@@ -282,12 +286,12 @@ function FloatingTableItem({
       className="table-quiz-container floating-table-container custom-col-widths overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40 p-0 select-text animate-fade-in text-[14px] md:text-[16px] relative"
     >
       <table 
-        className="table-quiz-table custom-col-widths w-full table-fixed text-center border-collapse min-w-full"
-        style={{ minWidth: `${Math.max(500, colCount * 130)}px` }}
+        className="table-quiz-table custom-col-widths table-fixed text-center border-collapse"
+        style={{ width: `${totalTablePx}px`, minWidth: `${totalTablePx}px` }}
       >
         <colgroup>
           {colWidths.map((w, idx) => (
-            <col key={idx} style={{ width: typeof w === 'number' ? `${w}%` : w }} />
+            <col key={idx} style={{ width: typeof w === 'number' ? `${w}px` : w }} />
           ))}
           <col style={{ width: '50px' }} />
         </colgroup>
@@ -391,16 +395,16 @@ function FloatingTableItem({
                   )}
 
                   {/* Resizer Handle */}
-                  {hIdx < colCount - 1 && (
+                  {hIdx < colCount && (
                     <div
-                      className="absolute right-0 top-0 bottom-0 w-3 cursor-col-resize select-none z-30 hover:bg-sky-500/40 active:bg-sky-500/70 touch-none flex items-center justify-center group/resizer"
+                      className="absolute right-0 top-0 bottom-0 w-4 cursor-col-resize select-none z-40 hover:bg-sky-500/40 active:bg-sky-500/70 touch-none flex items-center justify-center group/resizer"
                       onMouseDown={(e) => startColumnResize(e, t.id, hIdx, colCount, containerRef.current)}
                       onTouchStart={(e) => startColumnResize(e, t.id, hIdx, colCount, containerRef.current)}
                       onDoubleClick={(e) => {
                         e.stopPropagation();
-                        resetColumnWidths(t.id, colCount);
+                        autoFitColumnWidth(t.id, hIdx, parsed.headers, parsed.rows, containerRef.current);
                       }}
-                      title="드래그: 열 너비 조절 / 더블클릭: 너비 초기화"
+                      title="드래그: 열 너비 조절 / 더블클릭: 내용에 맞춰 자동 너비 조절"
                     >
                       <div className="w-0.5 h-full bg-slate-700/60 group-hover/resizer:bg-sky-400 group-active/resizer:bg-sky-300 transition-colors" />
                     </div>
@@ -522,6 +526,10 @@ function OverviewComparisonTable({
   const colCount = headers.length;
   const tableId = `ov_${ov.id}`;
   const colWidths = getColWidthsForTable(tableId, colCount);
+  const totalOverviewPx = colWidths.reduce((sum, w) => {
+    const num = (typeof w === 'number') ? w : (parseFloat(w) || 160);
+    return sum + num;
+  }, 50);
 
   return (
     <div className="text-slate-200 py-1.5 px-0.5 w-full">
@@ -531,12 +539,12 @@ function OverviewComparisonTable({
         className="w-full my-2 rounded-xl border border-slate-800 bg-slate-950/40 overflow-hidden overflow-x-auto scrollbar-thin relative floating-table-container custom-col-widths"
       >
         <table 
-          className="w-full text-center border-collapse text-[14px] md:text-[16px] table-fixed custom-col-widths min-w-full"
-          style={{ minWidth: `${Math.max(500, colCount * 130)}px` }}
+          className="text-center border-collapse text-[14px] md:text-[16px] table-fixed custom-col-widths"
+          style={{ width: `${totalOverviewPx}px`, minWidth: `${totalOverviewPx}px` }}
         >
           <colgroup>
             {colWidths.map((w, idx) => (
-              <col key={idx} style={{ width: typeof w === 'number' ? `${w}%` : w }} />
+              <col key={idx} style={{ width: typeof w === 'number' ? `${w}px` : w }} />
             ))}
             <col style={{ width: '50px' }} />
           </colgroup>
@@ -548,16 +556,16 @@ function OverviewComparisonTable({
                   className="relative p-2 sm:p-2.5 font-extrabold border-r border-slate-800 last:border-r-0 whitespace-normal break-words group/th"
                 >
                   <LatexRenderer text={h} katexLoaded={katexLoaded} />
-                  {hIdx < colCount - 1 && (
+                  {hIdx < colCount && (
                     <div
-                      className="absolute right-0 top-0 bottom-0 w-3 cursor-col-resize select-none z-30 hover:bg-sky-500/40 active:bg-sky-500/70 touch-none flex items-center justify-center group/resizer"
+                      className="absolute right-0 top-0 bottom-0 w-4 cursor-col-resize select-none z-40 hover:bg-sky-500/40 active:bg-sky-500/70 touch-none flex items-center justify-center group/resizer"
                       onMouseDown={(e) => startColumnResize(e, tableId, hIdx, colCount, containerRef.current)}
                       onTouchStart={(e) => startColumnResize(e, tableId, hIdx, colCount, containerRef.current)}
                       onDoubleClick={(e) => {
                         e.stopPropagation();
-                        resetColumnWidths(tableId, colCount);
+                        autoFitColumnWidth(tableId, hIdx, headers, rows, containerRef.current);
                       }}
-                      title="드래그: 열 너비 조절 / 더블클릭: 너비 초기화"
+                      title="드래그: 열 너비 조절 / 더블클릭: 내용에 맞춰 자동 너비 조절"
                     >
                       <div className="w-0.5 h-full bg-slate-700/60 group-hover/resizer:bg-sky-400 group-active/resizer:bg-sky-300 transition-colors" />
                     </div>
@@ -889,13 +897,11 @@ export function FloatingMemorization({
     if (customColWidths[key] && Array.isArray(customColWidths[key]) && customColWidths[key].length === colCount) {
       return customColWidths[key];
     }
-    if (colCount <= 1) return ['100%'];
-    if (colCount === 2) return ['20%', '80%'];
-    if (colCount === 3) return ['18%', '41%', '41%'];
-    if (colCount === 4) return ['16%', '28%', '28%', '28%'];
-    const first = 15;
-    const others = (100 - first) / (colCount - 1);
-    return [`${first}%`, ...Array(colCount - 1).fill(`${others.toFixed(1)}%`)];
+    if (colCount <= 1) return ['250px'];
+    if (colCount === 2) return ['150px', '280px'];
+    if (colCount === 3) return ['150px', '220px', '220px'];
+    if (colCount === 4) return ['150px', '200px', '200px', '200px'];
+    return ['150px', ...Array(colCount - 1).fill('180px')];
   };
 
   const saveColWidthsForTable = (tableId, colCount, newWidths) => {
@@ -921,6 +927,33 @@ export function FloatingMemorization({
     });
   };
 
+  const autoFitColumnWidth = (tableId, hIdx, headers, rows, containerEl) => {
+    const colCount = headers ? headers.length : 1;
+    const currentWidths = getColWidthsForTable(tableId, colCount);
+
+    let maxLen = (headers[hIdx] || '').length;
+    if (Array.isArray(rows)) {
+      rows.forEach(r => {
+        const cellText = String(r[hIdx] || '').replace(/<[^>]*>/g, '').trim();
+        if (cellText.length > maxLen) {
+          maxLen = cellText.length;
+        }
+      });
+    }
+
+    const neededPx = Math.min(600, Math.max(100, maxLen * 14 + 36));
+
+    const numWidths = currentWidths.map(w => {
+      if (typeof w === 'number') return w;
+      if (typeof w === 'string') return parseFloat(w) || 160;
+      return 160;
+    });
+
+    numWidths[hIdx] = neededPx;
+    const pxWidths = numWidths.map(w => `${w}px`);
+    saveColWidthsForTable(tableId, colCount, pxWidths);
+  };
+
   const startColumnResize = (e, tableId, hIdx, colCount, containerEl) => {
     if (!containerEl) return;
     e.preventDefault();
@@ -928,36 +961,27 @@ export function FloatingMemorization({
 
     const isTouch = e.type === 'touchstart';
     const startX = isTouch ? e.touches[0].clientX : e.clientX;
-    const containerWidth = containerEl.getBoundingClientRect().width || 600;
 
     const currentWidths = getColWidthsForTable(tableId, colCount);
     const numWidths = currentWidths.map(w => {
-      if (typeof w === 'number') return (w / 100) * containerWidth;
-      if (typeof w === 'string' && w.endsWith('%')) return (parseFloat(w) / 100) * containerWidth;
-      if (typeof w === 'string' && w.endsWith('px')) return parseFloat(w);
-      return containerWidth / colCount;
+      if (typeof w === 'number') return w;
+      if (typeof w === 'string') return parseFloat(w) || 160;
+      return 160;
     });
 
-    const startLeft = numWidths[hIdx] || (containerWidth / colCount);
-    const startRight = numWidths[hIdx + 1] || (containerWidth / colCount);
+    const startWidth = numWidths[hIdx] || 160;
 
     const handleMove = (moveEvt) => {
       const currentX = moveEvt.type === 'touchmove' ? moveEvt.touches[0].clientX : moveEvt.clientX;
       const deltaX = currentX - startX;
-      const minW = 40;
+      const minW = 60;
 
-      let newLeft = Math.max(minW, startLeft + deltaX);
-      let newRight = Math.max(minW, startRight - deltaX);
-
+      let newW = Math.max(minW, Math.round(startWidth + deltaX));
       const updated = [...numWidths];
-      updated[hIdx] = newLeft;
-      if (hIdx + 1 < colCount) {
-        updated[hIdx + 1] = newRight;
-      }
+      updated[hIdx] = newW;
 
-      const totalPct = updated.reduce((a, b) => a + b, 0);
-      const pctWidths = updated.map(w => `${((w / totalPct) * 100).toFixed(1)}%`);
-      saveColWidthsForTable(tableId, colCount, pctWidths);
+      const pxWidths = updated.map(w => `${w}px`);
+      saveColWidthsForTable(tableId, colCount, pxWidths);
     };
 
     const handleEnd = () => {
