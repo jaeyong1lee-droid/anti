@@ -131,7 +131,7 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false,
   
   const is2Col = colCount === 2;
   const is3Col = colCount === 3;
-  const tableLayoutClass = (is2Col || is3Col) ? "table-fixed w-full" : "table-auto w-full";
+  const tableLayoutClass = "table-fixed w-full";
   const tableClass = is2Col ? `markdown-table markdown-table-2col ${tableLayoutClass}` : `markdown-table ${tableLayoutClass}`;
 
   let html = '';
@@ -149,6 +149,12 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false,
         colStyle += (hIdx === 0) ? " width: 35%;" : " width: 65%;";
       } else if (is3Col) {
         colStyle += (hIdx === 0) ? " width: 30%;" : " width: 35%;";
+      } else if (colCount === 4) {
+        colStyle += (hIdx === 0) ? " width: 25%;" : " width: 23%;";
+      } else {
+        const first = 25;
+        const others = (95 - first) / (colCount - 1);
+        colStyle += (hIdx === 0) ? ` width: ${first}%;` : ` width: ${others.toFixed(1)}%;`;
       }
       const dblClickAttr = `ondblclick="if(window.__handleTableColumnDoubleClick) { window.__handleTableColumnDoubleClick(event, this, ${hIdx}) }"`;
 
@@ -226,6 +232,12 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false,
       colStyle += (hIdx === 0) ? " width: 35%;" : " width: 65%;";
     } else if (is3Col) {
       colStyle += (hIdx === 0) ? " width: 30%;" : " width: 35%;";
+    } else if (colCount === 4) {
+      colStyle += (hIdx === 0) ? " width: 25%;" : " width: 23%;";
+    } else {
+      const first = 25;
+      const others = (95 - first) / (colCount - 1);
+      colStyle += (hIdx === 0) ? ` width: ${first}%;` : ` width: ${others.toFixed(1)}%;`;
     }
     const dblClickAttr = `ondblclick="if(window.__handleTableColumnDoubleClick) { window.__handleTableColumnDoubleClick(event, this, ${hIdx}) }"`;
 

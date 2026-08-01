@@ -1417,14 +1417,12 @@ export function FloatingMemorization({
                                   <div className="flex flex-col gap-1 w-full">
                                     {steps.map((step, sIdx) => (
                                       <React.Fragment key={sIdx}>
-                                        <div className="text-slate-250 font-semibold leading-relaxed py-1 px-0.5">
-                                          <div className="flex gap-2.5 items-start">
-                                            <span className="flex items-center justify-center w-5 h-5 rounded-full bg-rose-500/10 text-rose-400 text-[10px] font-black border border-rose-500/20 shrink-0 mt-0.5 select-none">
-                                              {sIdx + 1}
-                                            </span>
-                                            <div className="flex-1 text-slate-200 leading-relaxed">
-                                              <LatexRenderer text={step} katexLoaded={katexLoaded} isMarkdown={true} />
-                                            </div>
+                                        <div className="text-slate-250 font-semibold leading-relaxed py-1 px-0.5 flex gap-2.5 items-start">
+                                          <span className="flex items-center justify-center w-5 h-5 rounded-full bg-rose-500/10 text-rose-400 text-[10px] font-black border border-rose-500/20 shrink-0 mt-0.5 select-none">
+                                            {sIdx + 1}
+                                          </span>
+                                          <div className="flex-1 text-slate-200 leading-relaxed">
+                                            <LatexRenderer text={step} katexLoaded={katexLoaded} isMarkdown={true} />
                                           </div>
                                         </div>
                                         {sIdx < steps.length - 1 && (
@@ -1447,7 +1445,25 @@ export function FloatingMemorization({
                                     <div className="text-slate-200 py-1.5 px-0.5 w-full">
                                       <span className="text-[10px] text-emerald-400 font-black block mb-1.5 uppercase tracking-wider select-none">⚖️ 비교표 / 장단점</span>
                                       <div className="w-full my-2 rounded-xl border border-slate-800 bg-slate-950/40 overflow-hidden overflow-x-auto scrollbar-thin">
-                                        <table className="w-full text-center border-collapse text-[14px] md:text-[16px] min-w-full">
+                                        <table className="w-full text-center border-collapse text-[14px] md:text-[16px] table-fixed min-w-full">
+                                          <colgroup>
+                                            {headers.map((_, hIdx) => {
+                                              let widthPct = '25%';
+                                              if (headers.length === 4) {
+                                                widthPct = (hIdx === 0) ? '25%' : '23%';
+                                              } else if (headers.length === 3) {
+                                                widthPct = (hIdx === 0) ? '30%' : '32%';
+                                              } else if (headers.length === 2) {
+                                                widthPct = (hIdx === 0) ? '40%' : '55%';
+                                              } else {
+                                                const first = 25;
+                                                const remaining = (95 - first) / (headers.length - 1);
+                                                widthPct = (hIdx === 0) ? `${first}%` : `${remaining.toFixed(1)}%`;
+                                              }
+                                              return <col key={hIdx} style={{ width: widthPct }} />;
+                                            })}
+                                            <col style={{ width: '50px' }} />
+                                          </colgroup>
                                           <thead>
                                             <tr className="bg-slate-900/80 text-slate-355 border-b border-slate-800">
                                               {headers.map((h, hIdx) => (
