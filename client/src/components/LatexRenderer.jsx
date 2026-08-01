@@ -208,7 +208,11 @@ export const LatexRenderer = React.memo(function LatexRenderer({
         parts.push({ type: 'text', content: beforeText });
       }
 
-      if (lang === 'flowchart' || lang === 'step' || lang === 'sequence') {
+      // Option 3: Differentiate ASCII Flowcharts (KaTeX applied inside boxes) vs ASCII Drawings/Graphs (plain text monospace)
+      const isFlowchart = lang === 'flowchart' || lang === 'step' || lang === 'sequence' || 
+        (blockContent.includes('┌') && (blockContent.includes('▼') || blockContent.includes('│') || blockContent.includes('┃') || blockContent.includes('└')));
+
+      if (isFlowchart) {
         parts.push({ type: 'flowchart', content: blockContent });
       } else {
         parts.push({ type: 'ascii', content: blockContent });
