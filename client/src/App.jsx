@@ -4847,19 +4847,44 @@ export default function App() {
           const remarksWidth = hasRemarks ? (allThs[2].offsetWidth || 50) : 0;
           const availableWidth = containerWidth - remarksWidth;
 
-          let newTh1Width = th1StartWidth + deltaX;
-          newTh1Width = Math.max(MIN_WIDTH, Math.min(availableWidth - MIN_WIDTH, newTh1Width));
-          let newTh2Width = availableWidth - newTh1Width;
-          newTh2Width = Math.max(MIN_WIDTH, newTh2Width);
+          let newTh1Width = Math.max(MIN_WIDTH, th1StartWidth + deltaX);
+          
+          if (newTh1Width > availableWidth - MIN_WIDTH) {
+            // 핸드폰 세로보기 등에서 1열을 오른쪽으로 드래그할 때 제한 없이 확장하여 가로 스크롤 자동 활성화
+            const newTh2Width = Math.max(MIN_WIDTH, thStartWidths[1] || MIN_WIDTH);
+            const totalTableWidth = newTh1Width + newTh2Width + remarksWidth;
 
-          allThs[0].style.setProperty('width', newTh1Width + 'px', 'important');
-          allThs[0].style.setProperty('min-width', MIN_WIDTH + 'px', 'important');
-          allThs[0].style.setProperty('max-width', newTh1Width + 'px', 'important');
+            allThs[0].style.setProperty('width', newTh1Width + 'px', 'important');
+            allThs[0].style.setProperty('min-width', MIN_WIDTH + 'px', 'important');
+            allThs[0].style.setProperty('max-width', newTh1Width + 'px', 'important');
 
-          if (allThs[1]) {
-            allThs[1].style.setProperty('width', newTh2Width + 'px', 'important');
-            allThs[1].style.setProperty('min-width', MIN_WIDTH + 'px', 'important');
-            allThs[1].style.setProperty('max-width', newTh2Width + 'px', 'important');
+            if (allThs[1]) {
+              allThs[1].style.setProperty('width', newTh2Width + 'px', 'important');
+              allThs[1].style.setProperty('min-width', MIN_WIDTH + 'px', 'important');
+              allThs[1].style.setProperty('max-width', newTh2Width + 'px', 'important');
+            }
+
+            table.style.setProperty('width', totalTableWidth + 'px', 'important');
+            table.style.setProperty('min-width', totalTableWidth + 'px', 'important');
+            table.style.setProperty('max-width', 'none', 'important');
+            if (tableContainer) tableContainer.style.overflowX = 'auto';
+          } else {
+            // 한 화면 너비(100%) 내에서 2열과 가변 연동
+            let newTh2Width = Math.max(MIN_WIDTH, availableWidth - newTh1Width);
+
+            allThs[0].style.setProperty('width', newTh1Width + 'px', 'important');
+            allThs[0].style.setProperty('min-width', MIN_WIDTH + 'px', 'important');
+            allThs[0].style.setProperty('max-width', newTh1Width + 'px', 'important');
+
+            if (allThs[1]) {
+              allThs[1].style.setProperty('width', newTh2Width + 'px', 'important');
+              allThs[1].style.setProperty('min-width', MIN_WIDTH + 'px', 'important');
+              allThs[1].style.setProperty('max-width', newTh2Width + 'px', 'important');
+            }
+
+            table.style.setProperty('width', '100%', 'important');
+            table.style.setProperty('min-width', '100%', 'important');
+            table.style.setProperty('max-width', '100%', 'important');
           }
         } else {
           // 지침 2 & 5: 3개 열 이상은 각 열이 독립적으로 움직임. 한 열을 조절할 때 다른 열의 너비는 고정되고 표 전체 너비가 확장됨.
