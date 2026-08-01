@@ -4711,6 +4711,53 @@ export default function App() {
         table.style.setProperty('width', '100%', 'important');
         table.style.setProperty('min-width', '100%', 'important');
         table.style.setProperty('max-width', '100%', 'important');
+      } else if (colIdx === 1 && colCount > 1) {
+        // 2열 더블클릭 시: 2열 너비는 텍스트 자동 맞춤(또는 현재 너비)으로 고정하고, 1열을 제외한 모든 나머지 열(2열, 3열, 4열...)의 너비를 2열과 1:1로 정확히 동일하게 일치시킴!
+        const rows = Array.from(table.querySelectorAll('tr'));
+        let maxLen1 = (allThs[1].textContent || '').trim().length;
+        rows.forEach(r => {
+          const cells = Array.from(r.children);
+          if (cells[1]) {
+            const text = (cells[1].textContent || '').trim();
+            if (text.length > maxLen1) maxLen1 = text.length;
+          }
+        });
+        const col2Width = Math.min(500, Math.max(MIN_WIDTH, maxLen1 * 14 + 32));
+
+        // 1열(구분 열) 너비 고정
+        const col0Width = allThs[0].offsetWidth || MIN_WIDTH;
+        allThs[0].style.setProperty('width', col0Width + 'px', 'important');
+        allThs[0].style.setProperty('min-width', MIN_WIDTH + 'px', 'important');
+        allThs[0].style.setProperty('max-width', col0Width + 'px', 'important');
+
+        // 1열을 제외한 모든 데이터 열(2열, 3열, 4열...) 너비를 2열과 동일하게 1:1 통일
+        let sumAllCols = col0Width;
+        for (let i = 1; i <= lastDataColIdx; i++) {
+          allThs[i].style.setProperty('width', col2Width + 'px', 'important');
+          allThs[i].style.setProperty('min-width', MIN_WIDTH + 'px', 'important');
+          allThs[i].style.setProperty('max-width', col2Width + 'px', 'important');
+          sumAllCols += col2Width;
+        }
+
+        const remarksWidth = hasRemarks ? (allThs[colCount - 1].offsetWidth || 50) : 0;
+        if (hasRemarks && allThs[colCount - 1]) {
+          allThs[colCount - 1].style.setProperty('width', remarksWidth + 'px', 'important');
+          allThs[colCount - 1].style.setProperty('min-width', '50px', 'important');
+          sumAllCols += remarksWidth;
+        }
+
+        const tableContainer = table.closest('.markdown-table-container') || table.parentElement;
+        const containerWidth = tableContainer ? tableContainer.clientWidth : table.clientWidth;
+        if (sumAllCols <= containerWidth) {
+          table.style.setProperty('width', '100%', 'important');
+          table.style.setProperty('min-width', '100%', 'important');
+          table.style.setProperty('max-width', '100%', 'important');
+        } else {
+          table.style.setProperty('width', sumAllCols + 'px', 'important');
+          table.style.setProperty('min-width', sumAllCols + 'px', 'important');
+          table.style.setProperty('max-width', 'none', 'important');
+          if (tableContainer) tableContainer.style.overflowX = 'auto';
+        }
       } else if ((colIdx === lastDataColIdx || colIdx === colCount - 1) && colCount > 1 && colIdx > 0) {
         // 마지막 열(또는 마지막 데이터 열) 헤더 우측 더블클릭 시: 이전 열들의 너비는 그대로 고정하고, 마지막 열 너비만 조정하여 표 오른쪽 끝을 컨테이너 오른쪽 끝에 맞춤
         const tableContainer = table.closest('.markdown-table-container') || table.parentElement;
