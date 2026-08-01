@@ -4671,24 +4671,14 @@ export default function App() {
       const lastDataColIdx = hasRemarks ? (colCount - 2) : (colCount - 1);
 
       if (colIdx === 0) {
-        // 1열(구분 열) 더블클릭 시: 1열 너비는 텍스트 내용에 맞추어 딱 고정(Fixed)하고, 나머지 2, 3열이 남은 화면 공간을 균등 분합하여 100% 꽉 채움
+        // 1열(구분 열) 더블클릭 시: 1열의 현재 너비는 절대로 움직이거나 변경하지 않고 그대로 고정하고, 1열을 제외한 나머지 열(2열, 3열...)이 남은 화면 공간을 균등 분할하여 화면 너비(100%)를 꽉 채움
         const tableContainer = table.closest('.markdown-table-container') || table.parentElement;
         const containerWidth = tableContainer ? tableContainer.clientWidth : table.clientWidth;
 
-        const rows = Array.from(table.querySelectorAll('tr'));
-        let maxLen0 = (allThs[0].textContent || '').trim().length;
-        rows.forEach(r => {
-          const cells = Array.from(r.children);
-          if (cells[0]) {
-            const text = (cells[0].textContent || '').trim();
-            if (text.length > maxLen0) maxLen0 = text.length;
-          }
-        });
-        const col1Width = Math.min(220, Math.max(MIN_WIDTH, maxLen0 * 14 + 28));
-
-        // 1열 너비를 col1Width로 단단히 고정
+        // 1열의 현재 너비를 그대로 고정 (움직임 0)
+        const col1Width = allThs[0].offsetWidth || MIN_WIDTH;
         allThs[0].style.setProperty('width', col1Width + 'px', 'important');
-        allThs[0].style.setProperty('min-width', col1Width + 'px', 'important');
+        allThs[0].style.setProperty('min-width', MIN_WIDTH + 'px', 'important');
         allThs[0].style.setProperty('max-width', col1Width + 'px', 'important');
 
         const remarksWidth = hasRemarks ? (allThs[colCount - 1].offsetWidth || 50) : 0;
