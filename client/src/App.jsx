@@ -3366,7 +3366,8 @@ export default function App() {
     y: 0,
     question: '',
     questionKey: '',
-    tutorType: 'sidebar' // 'sidebar' | 'card'
+    tutorType: 'sidebar', // 'sidebar' | 'card'
+    tableContext: null
   });
 
   const selectionPopupRef = useRef(selectionPopup);
@@ -7013,6 +7014,42 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
             popupY = Math.max(16, Math.min(window.innerHeight - 200, selectionBottom + 8));
           }
 
+          // Extract table cell context (Column Header & Row Header & Table Title) if inside a table
+          let tableCtx = null;
+          const tdEl = anchorEl?.closest('td, th');
+          if (tdEl) {
+            const trEl = tdEl.closest('tr');
+            const tableEl = trEl?.closest('table');
+            if (trEl && tableEl) {
+              const colIdx = Array.from(trEl.children).indexOf(tdEl);
+              const theadTr = tableEl.querySelector('thead tr') || tableEl.querySelector('tr');
+              let colHeader = '';
+              if (theadTr && theadTr.children[colIdx]) {
+                const colTh = theadTr.children[colIdx];
+                colHeader = colTh.getAttribute('data-header-clean') || colTh.textContent.replace(/[\r\n\t]+/g, ' ').replace(/\s+/g, ' ').trim();
+              }
+              let rowHeader = '';
+              if (colIdx > 0 && trEl.children[0]) {
+                rowHeader = trEl.children[0].textContent.replace(/[\r\n\t]+/g, ' ').replace(/\s+/g, ' ').trim();
+              }
+              let tableTitle = '';
+              const wrapperEl = tableEl.closest('.table-export-wrapper, .markdown-table-container, .table-quiz-container, .floating-table-container');
+              if (wrapperEl) {
+                const titleEl = wrapperEl.querySelector('[data-title], .table-title, span.flex-1, h3, h4');
+                if (titleEl) {
+                  tableTitle = titleEl.getAttribute('data-title') || titleEl.textContent.replace(/[\r\n\t]+/g, ' ').replace(/\s+/g, ' ').trim();
+                }
+              }
+              if (colHeader || rowHeader || tableTitle) {
+                tableCtx = {
+                  tableTitle: tableTitle || '',
+                  colHeader: colHeader || '',
+                  rowHeader: rowHeader || ''
+                };
+              }
+            }
+          }
+
           setSelectionPopup(prev => ({
             show: true,
             text: text,
@@ -7020,7 +7057,8 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
             y: popupY,
             question: '',
             questionKey: foundQKey,
-            tutorType: isInsideRealTimeTutor ? 'realtime' : (foundQKey ? prev.tutorType : 'sidebar')
+            tutorType: isInsideRealTimeTutor ? 'realtime' : (foundQKey ? prev.tutorType : 'sidebar'),
+            tableContext: tableCtx
           }));
         } catch (err) {}
       }, 200); // 200ms debounce
@@ -13538,8 +13576,19 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
     const qText = forcedQuestion ? forcedQuestion.trim() : selectionPopup.question.trim();
     if (!qText) return;
     
+    // Build table context string if available
+    const tableCtx = selectionPopup.tableContext;
+    let contextPrefix = '';
+    if (tableCtx && (tableCtx.colHeader || tableCtx.rowHeader || tableCtx.tableTitle)) {
+      const parts = [];
+      if (tableCtx.tableTitle) parts.push(`표: ${tableCtx.tableTitle}`);
+      if (tableCtx.colHeader) parts.push(`열: ${tableCtx.colHeader}`);
+      if (tableCtx.rowHeader) parts.push(`행: ${tableCtx.rowHeader}`);
+      contextPrefix = `[표 위치 맥락]: ${parts.join(' / ')}\n\n`;
+    }
+
     // Construct the prompt
-    const finalPrompt = `[선택한 본문 문구]\n"${selectionPopup.text}"\n\n[이 문구에 대한 질문]\n${qText}`;
+    const finalPrompt = `${contextPrefix}[선택한 본문 문구]\n"${selectionPopup.text}"\n\n[이 문구에 대한 질문]\n${qText}`;
     
     // Check if user selected card tutor and we have a valid question key
     if (selectionPopup.tutorType === 'card' && selectionPopup.questionKey && !showFormulaExam) {
@@ -29046,10 +29095,61 @@ ${itemsStr}
             </div>
           </div>
 
+          {/* Table Context Breadcrumb Badge */}
+          {selectionPopup.tableContext && (selectionPopup.tableContext.colHeader || selectionPopup.tableContext.rowHeader) && (
+            <div className="text-[10.5px] text-amber-300 bg-amber-500/10 border border-amber-500/30 rounded-xl px-2.5 py-1 font-bold flex items-center gap-1 flex-wrap shadow-sm">
+              <span className="text-amber-400/80 font-black">📌</span>
+              {selectionPopup.tableContext.tableTitle && (
+                <span className="text-slate-300 font-semibold">{selectionPopup.tableContext.tableTitle} &gt;</span>
+              )}
+              {selectionPopup.tableContext.colHeader && (
+                <span className="text-amber-300 font-extrabold">[{selectionPopup.tableContext.colHeader}]</span>
+              )}
+              {selectionPopup.tableContext.colHeader && selectionPopup.tableContext.rowHeader && (
+                <span className="text-slate-500 font-bold">/</span>
+              )}
+              {selectionPopup.tableContext.rowHeader && (
+                <span className="text-amber-300 font-extrabold">[{selectionPopup.tableContext.rowHeader}]</span>
+              )}
+            </div>
+          )}
+
           {/* Selected Text Preview */}
           <div className="text-[11px] text-slate-300 bg-slateCustom-950/60 border border-slate-800/80 rounded-xl px-2.5 py-2 max-h-[50px] overflow-y-auto leading-relaxed select-none font-medium custom-vertical-scrollbar">
             <span className="text-slate-400 font-extrabold mr-1">대상 문구:</span>
             "{selectionPopup.text}"
+          </div>
+
+          {/* Quick Preset Buttons (Preset 1 + 3) */}
+          <div className="grid grid-cols-4 gap-1 w-full pt-0.5 select-none">
+            <button
+              onClick={() => handleDragAiSubmit("이 항목의 핵심 역학적/공학적 거동 원리를 초보자도 이해하기 쉽게 직관적으로 설명해줘.")}
+              className="py-1 px-1 bg-slate-800/80 hover:bg-slate-700/80 text-amber-400 border border-amber-500/25 text-[10px] font-black rounded-lg transition-all cursor-pointer active:scale-95 flex items-center justify-center gap-0.5"
+              title="원리/메커니즘 쉽게 설명"
+            >
+              💡 메커니즘
+            </button>
+            <button
+              onClick={() => handleDragAiSubmit("기술사 서술형 답안지에 이 항목을 녹여 쓸 때의 핵심 득점 키워드와 기술사 서술 팁을 알려줘.")}
+              className="py-1 px-1 bg-slate-800/80 hover:bg-slate-700/80 text-sky-400 border border-sky-500/25 text-[10px] font-black rounded-lg transition-all cursor-pointer active:scale-95 flex items-center justify-center gap-0.5"
+              title="기술사 답안 서술 팁"
+            >
+              📝 답안서술
+            </button>
+            <button
+              onClick={() => handleDragAiSubmit("이 항목의 핵심 개념을 안 헷갈리고 오래 기억할 수 있는 암기법을 알려줘.")}
+              className="py-1 px-1 bg-slate-800/80 hover:bg-slate-700/80 text-emerald-400 border border-emerald-500/25 text-[10px] font-black rounded-lg transition-all cursor-pointer active:scale-95 flex items-center justify-center gap-0.5"
+              title="두문자/암기법 팁"
+            >
+              🧠 암기팁
+            </button>
+            <button
+              onClick={() => handleDragAiSubmit("이 항목과 표 내 인접 열/행 상응 항목 간의 결정적 역학적/시공적 차이점을 비교해줘.")}
+              className="py-1 px-1 bg-slate-800/80 hover:bg-slate-700/80 text-rose-400 border border-rose-500/25 text-[10px] font-black rounded-lg transition-all cursor-pointer active:scale-95 flex items-center justify-center gap-0.5"
+              title="상응 항목과의 대조 비교"
+            >
+              ⚖️ 대조비교
+            </button>
           </div>
 
           {/* Input & Submit */}
@@ -29066,12 +29166,6 @@ ${itemsStr}
               placeholder="질문 입력..."
               className="flex-1 min-w-[90px] bg-slateCustom-950 border border-slate-850 focus:border-rose-500/50 text-white text-xs rounded-xl px-2 py-2 focus:outline-none transition-all font-bold placeholder-slate-500"
             />
-            <button
-              onClick={() => handleDragAiSubmit("이 문구의 핵심 개념을 지반공학 기술사 관점에서 초보자도 바로 이해할 수 있게 직관적이고 알기 쉽게 쉽게 설명해줘.")}
-              className="px-2.5 py-2 bg-slate-800 hover:bg-slate-700 text-amber-400 border border-amber-500/30 text-xs font-black rounded-xl transition-all cursor-pointer active:scale-95 flex-shrink-0"
-            >
-              직관
-            </button>
             <button
               onClick={() => handleDragAiSubmit()}
               className="px-3.5 py-2 bg-gradient-to-r from-violet-600 to-rose-600 hover:from-violet-500 hover:to-rose-500 text-white text-xs font-extrabold rounded-xl transition-all cursor-pointer active:scale-95 shadow-md border-none flex-shrink-0"
