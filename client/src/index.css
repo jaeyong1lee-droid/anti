@@ -977,16 +977,12 @@ div[class*="overflow-y-auto"] {
   position: static !important;
   left: auto !important;
   z-index: auto !important;
-  width: auto !important;
-  min-width: 0 !important;
-  max-width: none !important;
   box-shadow: none !important;
 }
 
 .custom-col-widths table,
 .floating-table-container table {
   table-layout: fixed !important;
-  width: 100% !important;
 }
 
 .custom-col-widths th:not(:first-child),
