@@ -1363,20 +1363,25 @@ router.post('/image-standards/analyze', async (req, res) => {
     }));
 
     const systemInstruction = `당신은 대한민국 토질및기초 기술사 자격시험 전문 채점위원이자 튜터입니다.
-사용자가 붙여넣은 공학 그림/그래프/도표를 바탕으로 100% 정확한 학술 및 전공 분석을 수행하십시오.
-그림이 수치 산정식(공식)인지 경험적 경향 도표(도표 그래프, 예: RMR-자립시간 도표)인지를 정확히 구분하고, 관련 없는 타 분야 공식(예: RMR 도표에 압밀침하 공식 등)을 절대로 할루시네이션으로 왜곡하여 작성하지 마십시오.
-반드시 아래 지정된 JSON 형식으로만 응답해야 합니다. 다른 설명 텍스트나 마크다운 코드블록 기호는 절대 포함하지 마십시오.
+사용자가 첨부한 공학 그림/그래프/도표를 시각적으로 직접 판독하여 아래 지정된 JSON 규격으로 응답하십시오.
+그림이 수치 공식식인지 경험적 경향 도표(예: RMR-자립시간 도표)인지를 정확히 구분하여, 도표에 포함된 핵심 공식/경험식과 주요 인자/기호 정의를 시각적 판독 결과로부터 직접 추출하십시오.
 
 JSON 포맷 규격:
 {
   "title": "이 그림/그래프가 무엇을 뜻하는지 가장 명확하고 간결한 핵심 전공 주제명으로 제안(공백 포함 25자 이내)",
-  "analysis": "해당 그림/그래프에 표현된 다양한 구성 요소, 변수 관계, 공학적 의미 및 거동 메커니즘을 상세히 설명하십시오. LaTeX 수식이 들어갈 경우 $수식$ 형태로 표현하십시오. (상세 서술)",
-  "intuitive": "이 복잡한 공학 도표나 그림이 궁극적으로 설명하고자 하는 핵심 본질을 일상생활의 비유나 아주 직관적이고 쉬운 비유적 설명으로 풀어내어 작성하십시오. (최대 2~3문장)"
+  "analysis": "해당 그림/그래프에 표현된 다양한 구성 요소, 변수 관계, 공학적 의미 및 거동 메커니즘을 상세히 설명하십시오. LaTeX 수식이 들어갈 경우 $수식$ 형태로 표현하십시오.",
+  "intuitive": "이 복잡한 공학 도표나 그림이 궁극적으로 설명하고자 하는 핵심 본질을 일상생활의 비유나 아주 직관적이고 쉬운 비유적 설명으로 풀어내어 작성하십시오. (최대 2~3문장)",
+  "formulaTitle": "그림/그래프의 핵심 공식 또는 경험적 관계 제목 (예: RMR 및 무지보 천장폭 대 자립시간 경험적 관계)",
+  "formulaText": "해당 그림의 대표 핵심 수식 또는 경험식 (LaTeX 표기, 예: $W = B + H$ 또는 $\\text{Stand-up Time} = f(RMR, \\text{Span})$)",
+  "params": [
+    { "symbol": "$RMR$", "desc": "암질 평가 지수 (Rock Mass Rating)" },
+    { "symbol": "$\\text{Span (m)}$", "desc": "터널 무지보 천장폭 (m)" }
+  ]
 }`;
 
     const userPrompt = description 
-      ? `사용자가 덧붙인 추가 설명:\n${description}\n\n이 설명과 함께 첨부된 공학 그림/그래프들을 면밀히 판독하여 분석 내용을 작성하십시오.`
-      : `첨부된 공학 그림/그래프의 세부 구조와 기호 정의를 면밀히 판독하여 분석 내용을 작성하십시오.`;
+      ? `사용자가 덧붙인 추가 설명:\n${description}\n\n이 설명과 함께 첨부된 공학 그림/그래프들을 면밀히 판독하여 분석 내용, 핵심 공식 및 인자 정의를 작성하십시오.`
+      : `첨부된 공학 그림/그래프의 세부 구조, 기호 정의, 핵심 공식/경험식을 면밀히 판독하여 작성하십시오.`;
 
     const responseText = await callLLMWithFailover(systemInstruction, userPrompt, imageParts, 'formula');
     let cleanJsonText = responseText.trim();
@@ -1394,7 +1399,10 @@ JSON 포맷 규격:
         ok: true,
         title: result.title || '자동 분석 그림',
         analysis: result.analysis || '분석 정보를 가져올 수 없습니다.',
-        intuitive: result.intuitive || '직관적 의미를 추출할 수 없습니다.'
+        intuitive: result.intuitive || '직관적 의미를 추출할 수 없습니다.',
+        formulaTitle: result.formulaTitle || '',
+        formulaText: result.formulaText || '',
+        params: Array.isArray(result.params) ? result.params : []
       });
     } catch (parseErr) {
       console.error('Gemini image analyze parse error:', parseErr, 'Raw response:', responseText);
@@ -1402,7 +1410,10 @@ JSON 포맷 규격:
         ok: true,
         title: '자동 분석 그림',
         analysis: responseText,
-        intuitive: '텍스트 파싱 오류로 직관적 의미를 가져오지 못했습니다.'
+        intuitive: '텍스트 파싱 오류로 직관적 의미를 가져오지 못했습니다.',
+        formulaTitle: '',
+        formulaText: '',
+        params: []
       });
     }
   } catch (err) {

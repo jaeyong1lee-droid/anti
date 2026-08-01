@@ -175,7 +175,10 @@ export function ImageUploadPanel({ formulaImages, setFormulaImages, handleSaveFo
           base64Images: images,
           description: description.trim(),
           analysis: result.analysis,
-          intuitive: result.intuitive
+          intuitive: result.intuitive,
+          formulaTitle: result.formulaTitle || '',
+          formulaText: result.formulaText || '',
+          params: Array.isArray(result.params) ? result.params : []
         };
 
         const updated = [newCard, ...formulaImages];
@@ -468,7 +471,16 @@ export function ImageUploadPanel({ formulaImages, setFormulaImages, handleSaveFo
 }
 
 // 2. Memorization Modal -> "그림" Subtab list
-function parseFormulaAndParams(analysisText, titleText = '') {
+function parseFormulaAndParams(analysisText, titleText = '', img = null) {
+  // 0. AI 시각 판독 모델(Gemini Vision)이 이미지에서 직접 추출한 공식/인자가 존재하는 경우 최우선 사용
+  if (img && img.formulaText && (img.params?.length > 0 || img.formulaTitle)) {
+    return {
+      formulaTitle: img.formulaTitle || '핵심 공식 & 인자 정의',
+      formulaText: img.formulaText,
+      params: Array.isArray(img.params) ? img.params : []
+    };
+  }
+
   if (!analysisText && !titleText) return null;
 
   const cleanTitle = (titleText || '').toLowerCase();
@@ -983,9 +995,9 @@ export function ImageTabList({ formulaImages, setFormulaImages, handleSaveFormul
                     );
                   })}
 
-                  {/* 📐 핵심 공식 & 인자 정의 요약 카드 (사용자 스크린샷 100% 반영) */}
+                  {/* 📐 핵심 공식 & 인자 정의 요약 카드 (시각적 AI 판독 모델 연동) */}
                   {(() => {
-                    const parsed = parseFormulaAndParams(img.analysis, img.title);
+                    const parsed = parseFormulaAndParams(img.analysis, img.title, img);
                     if (!parsed) return null;
 
                     return (
