@@ -523,6 +523,9 @@ function OverviewComparisonTable({
   rebuildMarkdownTable
 }) {
   const containerRef = useRef(null);
+  const [activeEditCell, setActiveEditCell] = useState(null);
+  const [editingValue, setEditingValue] = useState('');
+
   const colCount = headers.length;
   const tableId = `ov_${ov.id}`;
   const colWidths = getColWidthsForTable(tableId, colCount);
@@ -531,9 +534,71 @@ function OverviewComparisonTable({
     return sum + num;
   }, 50);
 
+  const saveComparisonTable = async (updatedHeaders, updatedRows) => {
+    const newCompTableMd = rebuildMarkdownTable(updatedHeaders, updatedRows, '<br>');
+    let newContent = ov.content;
+    let replaced = false;
+
+    const lines = ov.content.split('\n');
+    const compIdx = lines.findIndex(line => line.trim().match(/^\|\s*(비교표|비교|장단점)\s*\|/i));
+
+    if (compIdx !== -1) {
+      const line = lines[compIdx].trim();
+      const match = line.match(/^(\|\s*(비교표|비교|장단점)\s*\|)(.*)\|$/i);
+      if (match) {
+        lines[compIdx] = `${match[1]} ${newCompTableMd.trim()} |`;
+        newContent = lines.join('\n');
+        replaced = true;
+      }
+    }
+
+    if (!replaced) {
+      const match = ov.content.match(/^([\s\S]*\|\s*(비교표|비교|장단점)\s*\|)(.*?)(?=\s*\|\s*(공학적 의미\/한계성|공학적 의미 및 한계성|의미\/한계성|직관적의미|직관적)\s*\||$)/i);
+      if (match) {
+        let nestedPart = match[3].trim();
+        if (nestedPart.endsWith('|')) {
+          nestedPart = nestedPart.slice(0, -1).trim();
+        }
+        newContent = ov.content.replace(nestedPart, newCompTableMd.trim());
+        replaced = true;
+      }
+    }
+
+    const updated = formulaOverviews.map(item => item.id === ov.id ? { ...item, content: newContent } : item);
+    setFormulaOverviews(updated);
+    if (handleSaveFormulaOverviews) {
+      await handleSaveFormulaOverviews(updated, false);
+    }
+    if (showNotification) {
+      showNotification('비교표 내용이 성공적으로 수정되었습니다.', 'success');
+    }
+  };
+
+  const handleHeaderBlur = async (hIdx) => {
+    if (editingValue !== headers[hIdx]) {
+      const updatedHeaders = headers.map((h, idx) => idx === hIdx ? editingValue : h);
+      await saveComparisonTable(updatedHeaders, rows);
+    }
+    setActiveEditCell(null);
+  };
+
+  const handleCellBlur = async (rIdx, cIdx) => {
+    if (editingValue !== rows[rIdx][cIdx]) {
+      const updatedRows = rows.map((r, rowIdx) => {
+        if (rowIdx !== rIdx) return r;
+        return r.map((c, colIdx) => colIdx === cIdx ? editingValue : c);
+      });
+      await saveComparisonTable(headers, updatedRows);
+    }
+    setActiveEditCell(null);
+  };
+
   return (
     <div className="text-slate-200 py-1.5 px-0.5 w-full">
-      <span className="text-[10px] text-emerald-400 font-black block mb-1.5 uppercase tracking-wider select-none">⚖️ 비교표 / 장단점</span>
+      <div className="flex items-center justify-between mb-1.5 select-none">
+        <span className="text-[10px] text-emerald-400 font-black uppercase tracking-wider">⚖️ 비교표 / 장단점</span>
+        <span className="text-[9px] text-emerald-300 font-bold bg-emerald-950/60 border border-emerald-500/30 px-2 py-0.5 rounded-full">✏️ 셀 클릭 시 내용 수정 가능</span>
+      </div>
       <div 
         ref={containerRef}
         className="w-full my-2 rounded-xl border border-slate-800 bg-slate-950/40 overflow-hidden overflow-x-auto scrollbar-thin relative floating-table-container custom-col-widths"
@@ -550,28 +615,58 @@ function OverviewComparisonTable({
           </colgroup>
           <thead>
             <tr className="bg-slate-900/80 text-slate-355 border-b border-slate-800">
-              {headers.map((h, hIdx) => (
-                <th 
-                  key={hIdx} 
-                  className="relative p-2 sm:p-2.5 font-extrabold border-r border-slate-800 last:border-r-0 whitespace-normal break-words group/th hover:z-40 overflow-visible"
-                >
-                  <LatexRenderer text={h} katexLoaded={katexLoaded} />
-                  {hIdx < colCount && (
-                    <div
-                      className="absolute -right-2 top-0 bottom-0 w-5 cursor-col-resize select-none z-50 hover:bg-sky-400/40 active:bg-sky-400/70 touch-none flex items-center justify-center group/resizer"
-                      onMouseDown={(e) => startColumnResize(e, tableId, hIdx, colCount, containerRef.current)}
-                      onTouchStart={(e) => startColumnResize(e, tableId, hIdx, colCount, containerRef.current)}
-                      onDoubleClick={(e) => {
-                        e.stopPropagation();
-                        autoFitColumnWidth(tableId, hIdx, headers, rows, containerRef.current);
-                      }}
-                      title="드래그: 열 너비 조절 / 더블클릭: 내용에 맞춰 자동 너비 조절"
-                    >
-                      <div className="w-0.5 h-full bg-slate-700/60 group-hover/resizer:bg-sky-400 group-active/resizer:bg-sky-300 transition-colors" />
-                    </div>
-                  )}
-                </th>
-              ))}
+              {headers.map((h, hIdx) => {
+                const isEditing = activeEditCell && activeEditCell.type === 'header' && activeEditCell.hIdx === hIdx;
+                return (
+                  <th 
+                    key={hIdx} 
+                    className="relative p-2 sm:p-2.5 font-extrabold border-r border-slate-800 last:border-r-0 whitespace-normal break-words group/th hover:z-40 overflow-visible cursor-pointer hover:bg-slate-800/60 transition-colors"
+                    onClick={() => {
+                      if (!isEditing) {
+                        setActiveEditCell({ type: 'header', hIdx });
+                        setEditingValue(h);
+                      }
+                    }}
+                    title="클릭하여 헤더 수정"
+                  >
+                    {isEditing ? (
+                      <textarea
+                        autoFocus
+                        value={editingValue}
+                        onChange={(e) => {
+                          setEditingValue(e.target.value);
+                          e.target.style.height = 'auto';
+                          e.target.style.height = `${e.target.scrollHeight}px`;
+                        }}
+                        onBlur={() => handleHeaderBlur(hIdx)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            e.target.blur();
+                          }
+                        }}
+                        className="w-full bg-slate-900 border border-emerald-500 text-emerald-300 font-extrabold text-[13px] rounded p-1.5 focus:outline-none resize-none"
+                      />
+                    ) : (
+                      <LatexRenderer text={h} katexLoaded={katexLoaded} />
+                    )}
+                    {hIdx < colCount && (
+                      <div
+                        className="absolute -right-2 top-0 bottom-0 w-5 cursor-col-resize select-none z-50 hover:bg-sky-400/40 active:bg-sky-400/70 touch-none flex items-center justify-center group/resizer"
+                        onMouseDown={(e) => { e.stopPropagation(); startColumnResize(e, tableId, hIdx, colCount, containerRef.current); }}
+                        onTouchStart={(e) => { e.stopPropagation(); startColumnResize(e, tableId, hIdx, colCount, containerRef.current); }}
+                        onDoubleClick={(e) => {
+                          e.stopPropagation();
+                          autoFitColumnWidth(tableId, hIdx, headers, rows, containerRef.current);
+                        }}
+                        title="드래그: 열 너비 조절 / 더블클릭: 내용에 맞춰 자동 너비 조절"
+                      >
+                        <div className="w-0.5 h-full bg-slate-700/60 group-hover/resizer:bg-sky-400 group-active/resizer:bg-sky-300 transition-colors" />
+                      </div>
+                    )}
+                  </th>
+                );
+              })}
               <th className="p-2 sm:p-2.5 font-extrabold text-rose-400 select-none whitespace-nowrap w-16">
                 비고
               </th>
@@ -582,58 +677,52 @@ function OverviewComparisonTable({
               <tr key={rIdx} className="border-b border-slate-800 last:border-b-0 hover:bg-slate-900/20 group">
                 {row.map((cell, cIdx) => {
                   const isHeader = cIdx === 0;
-                  if (isHeader) {
-                    return (
-                      <td key={cIdx} className="p-2 sm:p-2.5 border-r border-slate-800 font-extrabold text-slate-300 select-text whitespace-normal break-words align-middle text-left bg-slate-950/20">
-                        <LatexRenderer text={cell} katexLoaded={katexLoaded} />
-                      </td>
-                    );
-                  }
+                  const isEditing = activeEditCell && activeEditCell.type === 'cell' && activeEditCell.rIdx === rIdx && activeEditCell.cIdx === cIdx;
                   return (
-                    <td key={cIdx} className="p-2 sm:p-2.5 border-r border-slate-800 last:border-r-0 text-slate-200 select-text whitespace-normal break-words align-middle text-center">
-                      <LatexRenderer text={cell} katexLoaded={katexLoaded} />
+                    <td 
+                      key={cIdx} 
+                      className={`p-2 sm:p-2.5 border-r border-slate-800 ${isHeader ? 'font-extrabold text-slate-300 bg-slate-950/20 text-left' : 'last:border-r-0 text-slate-200 text-center'} select-text whitespace-normal break-words align-middle cursor-pointer hover:bg-slate-800/40 transition-colors`}
+                      onClick={() => {
+                        if (!isEditing) {
+                          setActiveEditCell({ type: 'cell', rIdx, cIdx });
+                          setEditingValue(cell);
+                        }
+                      }}
+                      title="클릭하여 셀 내용 수정"
+                    >
+                      {isEditing ? (
+                        <textarea
+                          autoFocus
+                          value={editingValue}
+                          onChange={(e) => {
+                            setEditingValue(e.target.value);
+                            e.target.style.height = 'auto';
+                            e.target.style.height = `${e.target.scrollHeight}px`;
+                          }}
+                          onBlur={() => handleCellBlur(rIdx, cIdx)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                              e.preventDefault();
+                              e.target.blur();
+                            }
+                          }}
+                          className="w-full bg-slate-900 border border-emerald-500 text-white font-semibold text-[13px] md:text-[14px] rounded p-1.5 focus:outline-none resize-none"
+                        />
+                      ) : (
+                        <LatexRenderer text={cell} katexLoaded={katexLoaded} />
+                      )}
                     </td>
                   );
                 })}
                 <td className="p-2 sm:p-2.5 text-center align-middle whitespace-nowrap bg-slate-950/10">
                   <button
                     onClick={async (e) => {
+                      e.stopPropagation();
                       const currentWindow = e.target.ownerDocument.defaultView || window;
                       if (currentWindow.confirm(`'${row[0] || '이 행'}' 행을 삭제하시겠습니까?`)) {
                         const updatedRows = rows.filter((_, idx) => idx !== rIdx);
-                        const newCompTableMd = rebuildMarkdownTable(headers, updatedRows, '<br>');
-                        let newContent = ov.content;
-                        let replaced = false;
-
-                        const lines = ov.content.split('\n');
-                        const compIdx = lines.findIndex(line => line.trim().match(/^\|\s*(비교표|비교|장단점)\s*\|/i));
-
-                        if (compIdx !== -1) {
-                          const line = lines[compIdx].trim();
-                          const match = line.match(/^(\|\s*(비교표|비교|장단점)\s*\|)(.*)\|$/i);
-                          if (match) {
-                            lines[compIdx] = `${match[1]} ${newCompTableMd.trim()} |`;
-                            newContent = lines.join('\n');
-                            replaced = true;
-                          }
-                        }
-
-                        if (!replaced) {
-                          const match = ov.content.match(/^([\s\S]*\|\s*(비교표|비교|장단점)\s*\|)(.*?)(?=\s*\|\s*(공학적 의미\/한계성|공학적 의미 및 한계성|의미\/한계성|직관적의미|직관적)\s*\||$)/i);
-                          if (match) {
-                            let nestedPart = match[3].trim();
-                            if (nestedPart.endsWith('|')) {
-                              nestedPart = nestedPart.slice(0, -1).trim();
-                            }
-                            newContent = ov.content.replace(nestedPart, newCompTableMd.trim());
-                            replaced = true;
-                          }
-                        }
-
-                        const updated = formulaOverviews.map(item => item.id === ov.id ? { ...item, content: newContent } : item);
-                        setFormulaOverviews(updated);
-                        await handleSaveFormulaOverviews(updated, false);
-                        showNotification('행이 삭제되었습니다.', 'info');
+                        await saveComparisonTable(headers, updatedRows);
+                        if (showNotification) showNotification('행이 삭제되었습니다.', 'info');
                       }
                     }}
                     className="p-1 rounded bg-slate-850 hover:bg-rose-955 text-slate-400 hover:text-rose-400 cursor-pointer transition-all border border-slate-800 hover:border-rose-500/20 md:opacity-0 md:group-hover:opacity-100 opacity-100 flex items-center justify-center mx-auto shrink-0"
