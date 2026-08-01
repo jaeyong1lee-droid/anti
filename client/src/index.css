@@ -974,10 +974,11 @@ div[class*="overflow-y-auto"] {
 .floating-table-container td:first-child,
 .markdown-table.custom-col-widths th:first-child,
 .markdown-table.custom-col-widths td:first-child {
-  position: static !important;
+  position: relative !important;
   left: auto !important;
   z-index: auto !important;
   box-shadow: none !important;
+  max-width: none !important;
 }
 
 .custom-col-widths table,

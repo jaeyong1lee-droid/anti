@@ -144,7 +144,7 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false,
     html += `<tr class="bg-slate-900/80 text-slate-355 border-b border-slate-600">`;
     headers.forEach((h, hIdx) => {
       const renderedH = renderCellMath(h);
-      let colStyle = "position: relative; select-none; min-width: 100px;";
+      let colStyle = "position: relative !important; user-select: none; min-width: 60px;";
       const dblClickAttr = `ondblclick="if(window.__handleTableColumnDoubleClick) { window.__handleTableColumnDoubleClick(event, this, ${hIdx}) }"`;
 
       html += `<th class="p-1 sm:p-1.5 font-black border-r border-slate-600 last:border-r-0" style="${colStyle}" ${dblClickAttr}>`;
@@ -216,7 +216,7 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false,
   html += `<tr class="bg-slate-900/80 text-slate-350 border-b border-slate-600">`;
   headers.forEach((h, hIdx) => {
     const renderedH = renderCellMath(h);
-    let colStyle = "position: relative; select-none; min-width: 100px;";
+    let colStyle = "position: relative !important; user-select: none; min-width: 60px;";
     const dblClickAttr = `ondblclick="if(window.__handleTableColumnDoubleClick) { window.__handleTableColumnDoubleClick(event, this, ${hIdx}) }"`;
 
       html += `<th class="p-1 sm:p-1.5 font-extrabold border-r border-slate-600 last:border-r-0" style="${colStyle}" ${dblClickAttr}>`;
