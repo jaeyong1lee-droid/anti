@@ -486,7 +486,7 @@ export const LatexRenderer = React.memo(function LatexRenderer({
     // Convert <b> / <strong> HTML tags & entities into markdown bold (**text**)
     cleanedText = cleanedText.replace(/(?:<b\b[^>]*>|&lt;b&gt;|<strong\b[^>]*>|&lt;strong&gt;)([\s\S]*?)(?:<\/b>|&lt;\/b&gt;|<\/strong>|&lt;\/strong&gt;)/gi, '**$1**');
     // Collapse empty lines between colon-ended lines and list items
-    cleanedText = cleanedText.replace(/(:[ \t]*)\n\n+(\s*(?:\d+\.|\d+\)|[a-zA-Z가-힣]\)|\*|-|•|[①-⑳]))/g, '$1\n$2');
+    cleanedText = cleanedText.replace(/(:[ \t]*)\n\n+(\s*(?:\d+\.(?!\d)|\d+\)|[a-zA-Z가-힣]\)|\*|-|•|[①-⑳]))/g, '$1\n$2');
 
     cleanedText = cleanedText.replace(/\n{3,}/g, '\n\n').trim();
   }

@@ -718,7 +718,7 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
     }
   });
   // Convert markdown list items (*, -, •, or 1., 2.) including multi-level indentation into nested <ul>/<ol>
-  tempText = tempText.replace(/((?:^[ \t]*(?:(?:>|&gt;)\s*)?(?:[-*•▪▫·]|\d+[\.\)])\s*.+(?:\n|$))+)/gm, (block) => {
+  tempText = tempText.replace(/((?:^[ \t]*(?:(?:>|&gt;)\s*)?(?:[-*•▪▫·]|\d+[\.\)](?!\d))\s*.+(?:\n|$))+)/gm, (block) => {
     const lines = block.split('\n');
     let html = '';
     let inOuter = false;
@@ -726,11 +726,11 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
-      const match = line.match(/^([ \t]*)(?:(?:>|&gt;)\s*)?(?:([-*•▪▫·])|(\d+)[\.\)])\s*(.+)$/);
+      const match = line.match(/^([ \t]*)(?:(?:>|&gt;)\s*)?(?:([-*•▪▫·])|(\d+)[\.\)](?!\d))\s*(.+)$/);
       if (!match) continue;
       
       const indentLen = match[1].replace(/\t/g, '  ').length;
-      let content = match[4].replace(/^[ \t]*(?:[•\-*▪▫·]|\d+[\.\)])[ \t]*/g, '').trim();
+      let content = match[4].replace(/^[ \t]*(?:[•\-*▪▫·]|\d+[\.\)](?!\d))[ \t]*/g, '').trim();
       content = content.replace(/^정의\s*:\s*/, '');
       if (!content) continue;
 

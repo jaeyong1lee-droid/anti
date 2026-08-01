@@ -4338,7 +4338,7 @@ export default function App() {
 
       if (isMC) {
         const userAnswer = examAnswers[idx];
-        const normalizeAns = (s) => (s || '').replace(/^\d+\.\s*/, '').trim();
+        const normalizeAns = (s) => (s || '').replace(/^\d+\.(?!\d)\s*/, '').trim();
         const isCorrect = userAnswer !== undefined && normalizeAns(userAnswer) === normalizeAns(q.answer);
         if (isCorrect) {
           total += W;

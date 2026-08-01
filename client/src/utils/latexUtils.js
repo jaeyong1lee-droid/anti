@@ -916,7 +916,7 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   // Matches bullet points or numbers followed by a CJK-free math variable/symbol and a colon
   if (typeof processed === 'string') {
     processed = processed.split('\n').map(line => {
-      const bulletRegex = /^([ \t]*(?:\*|-|•|▪|▫|·|\d+\.|\d+\)|[a-zA-Z가-힣]\.|\b[a-zA-Z가-힣]\)|[①-⑳]|\[INPUT_\d+(?:_\d+)?\])[ \t]*)(?!\$)([a-zA-Z0-9_\\'\^\(\)\{\}\+\-\*\/=]+)(?!\$)([ \t]*:)/;
+      const bulletRegex = /^([ \t]*(?:\*|-|•|▪|▫|·|\d+\.(?!\d)|\d+\)|[a-zA-Z가-힣]\.|\b[a-zA-Z가-힣]\)|[①-⑳]|\[INPUT_\d+(?:_\d+)?\])[ \t]*)(?!\$)([a-zA-Z0-9_\\'\^\(\)\{\}\+\-\*\/=]+)(?!\$)([ \t]*:)/;
       return line.replace(bulletRegex, (match, p1, p2, p3) => `${p1}$${p2}$${p3}`);
     }).join('\n');
   }
