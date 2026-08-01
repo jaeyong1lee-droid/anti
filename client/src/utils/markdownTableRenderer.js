@@ -111,6 +111,23 @@ function renderCellMath(text) {
   return temp;
 }
 
+export function getTableStorageKey(headers) {
+  if (!headers || !Array.isArray(headers) || headers.length === 0) return null;
+  const sig = headers.map(h => String(h).replace(/<[^>]*>/g, '').trim()).join('|');
+  return `anti_tbl_widths_${sig}`;
+}
+
+export function getSavedTableWidths(headers) {
+  const storageKey = getTableStorageKey(headers);
+  if (!storageKey || typeof window === 'undefined' || !window.localStorage) return null;
+  try {
+    const saved = window.localStorage.getItem(storageKey);
+    return saved ? JSON.parse(saved) : null;
+  } catch (e) {
+    return null;
+  }
+}
+
 function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false, hideRemarks = false) {
   if (tableLines.length < 2) return tableLines.join('\n');
 
@@ -134,17 +151,28 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false,
   const tableLayoutClass = "table-fixed custom-col-widths min-w-full";
   const tableClass = is2Col ? `markdown-table markdown-table-2col ${tableLayoutClass}` : `markdown-table ${tableLayoutClass}`;
 
+  // Check saved table column widths from localStorage
+  const fullHeaders = !hideRemarks ? [...headers, '비고'] : headers;
+  const savedData = getSavedTableWidths(fullHeaders) || getSavedTableWidths(headers);
+  const savedWidths = savedData ? savedData.widths : null;
+  const savedTableWidth = savedData ? savedData.tableWidth : null;
+  const tableAttrStyle = savedTableWidth ? `style="width: ${savedTableWidth} !important; min-width: ${savedTableWidth} !important; max-width: ${savedTableWidth === '100%' ? '100%' : 'none'} !important;"` : '';
+
   let html = '';
 
   if (hideWrapper) {
     // Render clean table container without Comparison Table card, buttons, or extra headers
     html += `<div class="markdown-table-container floating-table-container custom-col-widths w-full my-2 overflow-x-auto rounded-xl border border-slate-600 bg-slate-950/20">`;
-    html += `<table class="${tableClass} border-collapse text-[14px] sm:text-[15px] min-w-full">`;
+    html += `<table class="${tableClass} border-collapse text-[14px] sm:text-[15px] min-w-full" ${tableAttrStyle}>`;
     html += `<thead>`;
     html += `<tr class="bg-slate-900/80 text-slate-355 border-b border-slate-600">`;
     headers.forEach((h, hIdx) => {
       const renderedH = renderCellMath(h);
       let colStyle = "position: relative !important; user-select: none; min-width: 60px;";
+      if (savedWidths && savedWidths[hIdx]) {
+        const w = savedWidths[hIdx];
+        colStyle += ` width: ${w}px !important; min-width: ${w}px !important; max-width: ${w}px !important;`;
+      }
       const dblClickAttr = `ondblclick="if(window.__handleTableColumnDoubleClick) { window.__handleTableColumnDoubleClick(event, this, ${hIdx}) }"`;
 
       html += `<th class="p-1 sm:p-1.5 font-black border-r border-slate-600 last:border-r-0" style="${colStyle}" ${dblClickAttr}>`;
@@ -211,12 +239,16 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false,
   html += `</div>`;
 
   html += `<div class="markdown-table-container floating-table-container custom-col-widths w-full overflow-x-auto rounded-xl border border-slate-600 bg-slate-950/40">`;
-  html += `<table class="${tableClass} border-collapse text-[14px] sm:text-[15px] min-w-full">`;
+  html += `<table class="${tableClass} border-collapse text-[14px] sm:text-[15px] min-w-full" ${tableAttrStyle}>`;
   html += `<thead>`;
   html += `<tr class="bg-slate-900/80 text-slate-350 border-b border-slate-600">`;
   headers.forEach((h, hIdx) => {
     const renderedH = renderCellMath(h);
     let colStyle = "position: relative !important; user-select: none; min-width: 60px;";
+    if (savedWidths && savedWidths[hIdx]) {
+      const w = savedWidths[hIdx];
+      colStyle += ` width: ${w}px !important; min-width: ${w}px !important; max-width: ${w}px !important;`;
+    }
     const dblClickAttr = `ondblclick="if(window.__handleTableColumnDoubleClick) { window.__handleTableColumnDoubleClick(event, this, ${hIdx}) }"`;
 
       html += `<th class="p-1 sm:p-1.5 font-extrabold border-r border-slate-600 last:border-r-0" style="${colStyle}" ${dblClickAttr}>`;

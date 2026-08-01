@@ -4647,10 +4647,61 @@ export default function App() {
       }
       setFormulaConfirmTarget({ math, fullText: contextText, source: source || 'main' });
     };
-    window.__hideSelectionPopup = () => {
-      setSelectionPopup(prev => prev.show ? { ...prev, show: false } : prev);
+    window.__saveTableColumnWidths = (table) => {
+      if (!table) return;
+      const tr = table.querySelector('thead tr') || table.querySelector('tr');
+      if (!tr) return;
+      const ths = Array.from(tr.querySelectorAll('th'));
+      if (ths.length === 0) return;
+      const headers = ths.map(th => th.textContent.trim());
+      const sig = headers.join('|');
+      if (!sig) return;
+
+      const widths = ths.map(th => th.offsetWidth);
+      const tableWidth = table.style.width || '100%';
+
+      try {
+        localStorage.setItem(`anti_tbl_widths_${sig}`, JSON.stringify({ widths, tableWidth }));
+      } catch (e) {
+        console.warn('[TableResize] Failed to save table widths:', e);
+      }
     };
-    
+
+    window.__restoreAllTableColumnWidths = (container = document) => {
+      if (!container) return;
+      const tables = (container.querySelectorAll) ? container.querySelectorAll('.markdown-table-container table') : [];
+      tables.forEach(table => {
+        const tr = table.querySelector('thead tr') || table.querySelector('tr');
+        if (!tr) return;
+        const ths = Array.from(tr.querySelectorAll('th'));
+        if (ths.length === 0) return;
+        const headers = ths.map(th => th.textContent.trim());
+        const sig = headers.join('|');
+        if (!sig) return;
+
+        try {
+          const saved = localStorage.getItem(`anti_tbl_widths_${sig}`);
+          if (saved) {
+            const data = JSON.parse(saved);
+            if (data && Array.isArray(data.widths)) {
+              data.widths.forEach((w, idx) => {
+                if (ths[idx] && w > 0) {
+                  ths[idx].style.setProperty('width', w + 'px', 'important');
+                  ths[idx].style.setProperty('min-width', w + 'px', 'important');
+                  ths[idx].style.setProperty('max-width', w + 'px', 'important');
+                }
+              });
+              if (data.tableWidth) {
+                table.style.setProperty('width', data.tableWidth, 'important');
+                table.style.setProperty('min-width', data.tableWidth, 'important');
+                table.style.setProperty('max-width', data.tableWidth === '100%' ? '100%' : 'none', 'important');
+              }
+            }
+          }
+        } catch (e) {}
+      });
+    };
+
     // Global double click handler for column 1 or column 2 headers
     window.__handleTableColumnDoubleClick = (e, handleOrTh, colIdx) => {
       if (e) {
@@ -4802,6 +4853,8 @@ export default function App() {
           if (tableContainer) tableContainer.style.overflowX = 'auto';
         }
       }
+
+      if (window.__saveTableColumnWidths) window.__saveTableColumnWidths(table);
     };
 
     // Global column resize handler for markdown tables with robust mobile touch support
@@ -4910,6 +4963,8 @@ export default function App() {
           ownerWin.removeEventListener('mousemove', doResize);
           ownerWin.removeEventListener('mouseup', stopResize);
         }
+
+        if (window.__saveTableColumnWidths) window.__saveTableColumnWidths(table);
       };
       
       if (isTouch) {
