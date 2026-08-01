@@ -1,5 +1,5 @@
-import { cleanAndSanitizeMathText } from './renderingHelpers';
-import { healLatexFormulas } from './latexUtils';
+import { cleanAndSanitizeMathText } from './renderingHelpers.js';
+import { healLatexFormulas } from './latexUtils.js';
 
 function parseRow(rowText) {
   if (!rowText) return [];
@@ -186,7 +186,8 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false,
       }
       const dblClickAttr = `ondblclick="if(window.__handleTableColumnDoubleClick) { window.__handleTableColumnDoubleClick(event, this, ${hIdx}) }"`;
 
-      html += `<th class="p-1 sm:p-1.5 font-black border-r border-slate-600 last:border-r-0" style="${colStyle}" ${dblClickAttr}>`;
+      const cleanH = cleanHeaderTitle(h);
+      html += `<th data-header-clean="${cleanH}" class="p-1 sm:p-1.5 font-black border-r border-slate-600 last:border-r-0" style="${colStyle}" ${dblClickAttr}>`;
       html += `${renderedH}`;
       html += `<div class="markdown-table-resize-handle" ${dblClickAttr} onmousedown="if(window.__startMarkdownTableResize) { window.__startMarkdownTableResize(event, this, ${hIdx}, false) }" ontouchstart="if(window.__startMarkdownTableResize) { window.__startMarkdownTableResize(event, this, ${hIdx}, true) }"></div>`;
       html += `</th>`;
@@ -194,7 +195,7 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false,
     if (!hideRemarks) {
       const remarksColIdx = colCount;
       const remarksDblClickAttr = `ondblclick="if(window.__handleTableColumnDoubleClick) { window.__handleTableColumnDoubleClick(event, this, ${remarksColIdx}) }"`;
-      html += `<th class="p-1 sm:p-1.5 font-black border-r border-slate-600 text-rose-400 select-none whitespace-nowrap w-16" style="border-right:0; min-width: 50px; position: relative;" ${remarksDblClickAttr}>비고`;
+      html += `<th data-header-clean="비고" class="p-1 sm:p-1.5 font-black border-r border-slate-600 text-rose-400 select-none whitespace-nowrap w-16" style="border-right:0; min-width: 50px; position: relative;" ${remarksDblClickAttr}>비고`;
       html += `<div class="markdown-table-resize-handle" ${remarksDblClickAttr} onmousedown="if(window.__startMarkdownTableResize) { window.__startMarkdownTableResize(event, this, ${remarksColIdx}, false) }" ontouchstart="if(window.__startMarkdownTableResize) { window.__startMarkdownTableResize(event, this, ${remarksColIdx}, true) }"></div>`;
       html += `</th>`;
     }
@@ -262,7 +263,8 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false,
     }
     const dblClickAttr = `ondblclick="if(window.__handleTableColumnDoubleClick) { window.__handleTableColumnDoubleClick(event, this, ${hIdx}) }"`;
 
-      html += `<th class="p-1 sm:p-1.5 font-extrabold border-r border-slate-600 last:border-r-0" style="${colStyle}" ${dblClickAttr}>`;
+      const cleanH = cleanHeaderTitle(h);
+      html += `<th data-header-clean="${cleanH}" class="p-1 sm:p-1.5 font-extrabold border-r border-slate-600 last:border-r-0" style="${colStyle}" ${dblClickAttr}>`;
       html += `${renderedH}`;
       html += `<div class="markdown-table-resize-handle" ${dblClickAttr} onmousedown="if(window.__startMarkdownTableResize) { window.__startMarkdownTableResize(event, this, ${hIdx}, false) }" ontouchstart="if(window.__startMarkdownTableResize) { window.__startMarkdownTableResize(event, this, ${hIdx}, true) }"></div>`;
       html += `</th>`;
@@ -270,7 +272,7 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false,
     if (!hideRemarks) {
       const remarksColIdx = colCount;
       const remarksDblClickAttr = `ondblclick="if(window.__handleTableColumnDoubleClick) { window.__handleTableColumnDoubleClick(event, this, ${remarksColIdx}) }"`;
-      html += `<th class="p-1 sm:p-1.5 font-extrabold border-r border-slate-600 text-rose-400 select-none whitespace-nowrap w-16" style="border-right:0; min-width: 50px; position: relative;" ${remarksDblClickAttr}>비고`;
+      html += `<th data-header-clean="비고" class="p-1 sm:p-1.5 font-extrabold border-r border-slate-600 text-rose-400 select-none whitespace-nowrap w-16" style="border-right:0; min-width: 50px; position: relative;" ${remarksDblClickAttr}>비고`;
       html += `<div class="markdown-table-resize-handle" ${remarksDblClickAttr} onmousedown="if(window.__startMarkdownTableResize) { window.__startMarkdownTableResize(event, this, ${remarksColIdx}, false) }" ontouchstart="if(window.__startMarkdownTableResize) { window.__startMarkdownTableResize(event, this, ${remarksColIdx}, true) }"></div>`;
       html += `</th>`;
     }
