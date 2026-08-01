@@ -76,19 +76,37 @@ const rebuildTableHtml = (headers, rows) => {
   html += '</span>';
   html += '</div>';
   html += '<div class="w-full overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40">';
-  html += '<table class="w-full table-auto text-center border-collapse text-[13px] sm:text-[15px] min-w-full">';
+  html += '<table class="w-full table-fixed text-center border-collapse text-[13px] sm:text-[15px] min-w-full">';
+  html += '<colgroup>';
+  headers.forEach((_, hIdx) => {
+    let widthPct = '25%';
+    if (headers.length === 4) {
+      widthPct = (hIdx === 0) ? '25%' : '25%';
+    } else if (headers.length === 3) {
+      widthPct = (hIdx === 0) ? '30%' : '35%';
+    } else if (headers.length === 2) {
+      widthPct = (hIdx === 0) ? '28%' : '72%';
+    } else {
+      const first = 25;
+      const remaining = (100 - first) / Math.max(1, headers.length - 1);
+      widthPct = (hIdx === 0) ? `${first}%` : `${remaining.toFixed(1)}%`;
+    }
+    html += `<col style="width: ${widthPct}" />`;
+  });
+  html += '</colgroup>';
   html += '<thead>';
-  html += '<tr class="bg-slate-900/80 text-slate-350 border-b border-slate-800">';
+  html += '<tr class="bg-slate-900/80 text-slate-355 border-b border-slate-800">';
   headers.forEach(h => {
-    html += `<th class="p-1 sm:p-1.5 font-extrabold border-r border-slate-800 last:border-r-0">${h}</th>`;
+    html += `<th class="p-1 sm:p-1.5 font-extrabold border-r border-slate-800 last:border-r-0 whitespace-normal break-words">${h}</th>`;
   });
   html += '</tr>';
   html += '</thead>';
   html += '<tbody>';
   rows.forEach(row => {
     html += '<tr class="border-b border-slate-800 last:border-b-0 hover:bg-slate-900/20">';
-    row.forEach(cell => {
-      html += `<td class="p-1 sm:p-1.5 border-r border-slate-800 last:border-r-0 text-slate-350">${cell}</td>`;
+    row.forEach((cell, cIdx) => {
+      const alignClass = cIdx === 0 ? 'text-left bg-slate-950/20 font-extrabold' : 'text-center';
+      html += `<td class="p-1 sm:p-1.5 border-r border-slate-800 last:border-r-0 text-slate-350 whitespace-normal break-words ${alignClass}">${cell}</td>`;
     });
     html += '</tr>';
   });
@@ -751,7 +769,24 @@ export function FloatingMemorization({
                             const rawData = t.html || t.content || t.comparison || (t.tableData ? JSON.stringify(t.tableData) : '');
                             const parsed = parseHtmlTable(rawData);
                             return (
-                              <table className="table-quiz-table w-full table-auto text-center border-collapse min-w-full">
+                              <table className="table-quiz-table w-full table-fixed text-center border-collapse min-w-full">
+                                <colgroup>
+                                  {parsed.headers.map((_, hIdx) => {
+                                    let widthPct = '25%';
+                                    if (parsed.headers.length === 4) {
+                                      widthPct = (hIdx === 0) ? '25%' : '25%';
+                                    } else if (parsed.headers.length === 3) {
+                                      widthPct = (hIdx === 0) ? '30%' : '35%';
+                                    } else if (parsed.headers.length === 2) {
+                                      widthPct = (hIdx === 0) ? '28%' : '72%';
+                                    } else {
+                                      const first = 25;
+                                      const remaining = (100 - first) / Math.max(1, parsed.headers.length - 1);
+                                      widthPct = (hIdx === 0) ? `${first}%` : `${remaining.toFixed(1)}%`;
+                                    }
+                                    return <col key={hIdx} style={{ width: widthPct }} />;
+                                  })}
+                                </colgroup>
                                 <thead>
                                   <tr className="bg-slate-900/80 text-slate-355 border-b border-slate-800">
                                     {parsed.headers.map((h, hIdx) => {
@@ -759,7 +794,7 @@ export function FloatingMemorization({
                                       return (
                                         <th 
                                           key={hIdx} 
-                                          className="p-1.5 border-r border-slate-800/80 last:border-r-0 align-middle min-w-[90px]"
+                                          className="p-1.5 border-r border-slate-800/80 last:border-r-0 align-middle whitespace-normal break-words"
                                         >
                                           {hIdx === 0 ? (
                                             <div className="relative inline-block select-none" onClick={(e) => e.stopPropagation()}>
@@ -863,7 +898,9 @@ export function FloatingMemorization({
                                         return (
                                           <td 
                                             key={cIdx} 
-                                            className="p-1 border-r border-slate-800/60 last:border-r-0 align-middle min-w-[90px]"
+                                            className={`p-1 border-r border-slate-800/60 last:border-r-0 align-middle whitespace-normal break-words ${
+                                              cIdx === 0 ? 'text-left bg-slate-950/20 font-extrabold text-slate-300' : 'text-center text-slate-200'
+                                            }`}
                                           >
                                             {isEditing ? (
                                               <input
