@@ -1257,12 +1257,12 @@ export const TableQuiz = React.memo(function TableQuiz({
 
   const mainTable = (() => {
     const tableEl = (
-      <div className={isMainFloated ? "flex-1 overflow-auto w-full h-full" : "w-full"}>
+      <div className={isMainFloated ? "flex-1 overflow-auto w-full" : "w-full"}>
         <table 
           ref={tableRef} 
           className={`table-quiz-table w-full table-fixed text-center border-collapse text-[14px] sm:text-[16px] min-w-full ${
             colCount === 2 ? 'sm:min-w-[600px]' : 'sm:min-w-[700px]'
-          } ${isMainFloated ? 'h-full' : ''}`}
+          }`}
         style={{
           '--table-width': isMobileView ? (colCount === 2 ? '100%' : `max(100%, ${mobileColWidths.reduce((sum, w) => sum + parseInt(w || '0', 10), 0)}px)`) : '100%',
           minWidth: '0px'
@@ -1334,13 +1334,13 @@ export const TableQuiz = React.memo(function TableQuiz({
                       <td 
                         key={cIdx} 
                         colSpan={cellColSpan}
-                        className={`p-0 border-r border-slate-800 last:border-r-0 text-slate-200 text-[14px] sm:text-[16px] whitespace-normal break-words text-center align-middle cursor-text ${theme ? theme.cellBg : ''}`}
+                        className={`p-0 border-r border-slate-800 last:border-r-0 text-slate-200 text-[14px] sm:text-[15px] whitespace-normal break-words text-center align-middle cursor-text ${theme ? theme.cellBg : ''}`}
                         onClick={(e) => {
                           const textarea = e.currentTarget.querySelector('textarea');
                           if (textarea) textarea.focus();
                         }}
                       >
-                        <div className="w-full flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-1 p-1 sm:p-1.5 text-[14px] sm:text-[16px]">
+                        <div className="w-full flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-1 p-1 sm:p-1.5 text-[14px] sm:text-[15px]">
                           <div className="flex-grow text-left font-medium">
                             <BufferedTextarea
                               value={value}
@@ -1352,7 +1352,7 @@ export const TableQuiz = React.memo(function TableQuiz({
                               }}
                               placeholder={`${inputLetter} 입력`}
                               data-answer-key={`${questionIdx}_${inputId}`}
-                              className={`table-quiz-input w-full text-[14px] sm:text-[16px] border-0 outline-none focus:outline-none focus:ring-0 py-1 px-1.5 resize-none min-h-[30px] block font-medium align-middle ${
+                              className={`table-quiz-input w-full text-[14px] sm:text-[15px] border-0 outline-none focus:outline-none focus:ring-0 py-0.5 px-1 resize-none min-h-[26px] block font-medium align-middle ${
                                 isCellGraded 
                                   ? 'bg-transparent text-inherit text-left' 
                                   : 'bg-slate-900/10 focus:bg-slate-900/40 text-slate-100 text-center'
@@ -1461,12 +1461,10 @@ export const TableQuiz = React.memo(function TableQuiz({
             initHeight={floatedSize.height}
             storageKey={"anti_popout_table_main_" + mainTableUniqueId}
           >
-            <div className="w-full h-full flex flex-col overflow-hidden text-slate-100 p-4 sm:p-5 bg-[#020617]">
-
-
+            <div className="w-full h-full flex flex-col overflow-auto text-slate-100 p-2 sm:p-2.5 bg-[#020617]">
               {/* Table wrapper with elegant border gradient and shadow */}
-              <div className="flex-1 w-full h-full flex flex-col overflow-hidden bg-slate-900/40 rounded-2xl border border-slate-800/80 p-3 sm:p-4 shadow-[0_20px_50px_rgba(0,0,0,0.5)] relative">
-                <div className="absolute inset-0 rounded-2xl border border-transparent bg-gradient-to-tr from-violet-500/20 via-transparent to-emerald-500/20 pointer-events-none" />
+              <div className="w-full flex-1 flex flex-col overflow-auto bg-slate-900/40 rounded-xl border border-slate-800/80 p-1.5 sm:p-2 shadow-[0_10px_30px_rgba(0,0,0,0.5)] relative">
+                <div className="absolute inset-0 rounded-xl border border-transparent bg-gradient-to-tr from-violet-500/20 via-transparent to-emerald-500/20 pointer-events-none" />
                 {tableEl}
               </div>
             </div>
@@ -1595,10 +1593,10 @@ export const TableQuiz = React.memo(function TableQuiz({
   const compTable = q.comparisonTableData ? (
     (() => {
       const tableEl = (
-        <div className={isCompFloated ? "flex-1 overflow-auto w-full h-full" : "w-full"}>
+        <div className={isCompFloated ? "flex-1 overflow-auto w-full" : "w-full"}>
           <table 
             ref={compTableRef}
-            className={`table-quiz-table w-full table-fixed text-center border-collapse text-[14px] sm:text-[16px] min-w-full ${isCompFloated ? 'h-full' : ''}`}
+            className={`table-quiz-table w-full table-fixed text-center border-collapse text-[14px] sm:text-[15px] min-w-full`}
             style={{
               '--table-width': isMobileView ? (compColCount === 2 ? '100%' : `max(100%, ${compMobileColWidths.reduce((sum, w) => sum + parseInt(w || '0', 10), 0)}px)`) : '100%',
               minWidth: '0px'
@@ -1622,7 +1620,7 @@ export const TableQuiz = React.memo(function TableQuiz({
                 return (
                   <th 
                     key={hIdx} 
-                    className={`relative p-1.5 sm:p-2 font-extrabold border-r border-slate-800 last:border-r-0 select-text whitespace-normal break-words ${
+                    className={`relative p-1 sm:p-1.5 font-extrabold border-r border-slate-800 last:border-r-0 select-text whitespace-normal break-words ${
                       isFirstCol ? 'text-left break-all' : ''
                     }`}
                   >
@@ -1664,14 +1662,14 @@ export const TableQuiz = React.memo(function TableQuiz({
                       return (
                         <td 
                           key={cIdx} 
-                          className={`p-0 border-r border-slate-800 last:border-r-0 text-slate-200 text-[14px] sm:text-[16px] whitespace-normal break-words text-center align-middle cursor-text ${theme ? theme.cellBg : ''}`}
+                          className={`p-0 border-r border-slate-800 last:border-r-0 text-slate-200 text-[14px] sm:text-[15px] whitespace-normal break-words text-center align-middle cursor-text ${theme ? theme.cellBg : ''}`}
                           onClick={(e) => {
                             if (isOverviewReview && !isFirstTableGraded) return;
                             const textarea = e.currentTarget.querySelector('textarea');
                             if (textarea) textarea.focus();
                           }}
                         >
-                          <div className="w-full flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-1 p-1 sm:p-1.5 text-[14px] sm:text-[16px]">
+                          <div className="w-full flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-1 p-1 sm:p-1.5 text-[14px] sm:text-[15px]">
                             <div className="flex-grow text-left font-medium">
                               <BufferedTextarea
                                 value={value}
@@ -1681,7 +1679,7 @@ export const TableQuiz = React.memo(function TableQuiz({
                                 readOnly={isOverviewReview && !isFirstTableGraded}
                                 disabled={isOverviewReview && !isFirstTableGraded}
                                 data-answer-key={`${questionIdx}_${inputId}`}
-                                className={`table-quiz-input w-full text-[14px] sm:text-[16px] border-0 outline-none focus:outline-none focus:ring-0 resize-none min-h-[30px] block align-middle ${
+                                className={`table-quiz-input w-full text-[14px] sm:text-[15px] border-0 outline-none focus:outline-none focus:ring-0 py-0.5 px-1 resize-none min-h-[26px] block align-middle ${
                                   isOverviewReview && !isFirstTableGraded
                                     ? 'bg-slate-950/60 text-slate-500 cursor-not-allowed placeholder-slate-600'
                                     : isCellGraded
@@ -1785,12 +1783,10 @@ export const TableQuiz = React.memo(function TableQuiz({
             initHeight={floatedSize.height}
             storageKey={"anti_popout_table_comp_" + compTableUniqueId}
           >
-            <div className="w-full h-full flex flex-col overflow-hidden text-slate-100 p-4 sm:p-5 bg-[#020617]">
-
-
+            <div className="w-full h-full flex flex-col overflow-auto text-slate-100 p-2 sm:p-2.5 bg-[#020617]">
               {/* Table wrapper with elegant border gradient and shadow */}
-              <div className="flex-1 w-full h-full flex flex-col overflow-hidden bg-slate-900/40 rounded-2xl border border-slate-800/80 p-3 sm:p-4 shadow-[0_20px_50px_rgba(0,0,0,0.5)] relative">
-                <div className="absolute inset-0 rounded-2xl border border-transparent bg-gradient-to-tr from-violet-500/20 via-transparent to-emerald-500/20 pointer-events-none" />
+              <div className="w-full flex-1 flex flex-col overflow-auto bg-slate-900/40 rounded-xl border border-slate-800/80 p-1.5 sm:p-2 shadow-[0_10px_30px_rgba(0,0,0,0.5)] relative">
+                <div className="absolute inset-0 rounded-xl border border-transparent bg-gradient-to-tr from-violet-500/20 via-transparent to-emerald-500/20 pointer-events-none" />
                 {tableEl}
               </div>
             </div>
