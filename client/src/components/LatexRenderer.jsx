@@ -208,10 +208,12 @@ export const LatexRenderer = React.memo(function LatexRenderer({
         parts.push({ type: 'text', content: beforeText });
       }
 
-      // Differentiate STRICTLY by code block language word:
-      // - 'flowchart', 'step', 'sequence' -> Flowchart with KaTeX applied inside boxes
-      // - 'ascii', 'graph', 'ascii-art' or any other -> ASCII Drawing/Graph (Plain text monospace)
-      const isFlowchart = lang === 'flowchart' || lang === 'step' || lang === 'sequence';
+      // Differentiate Flowcharts vs ASCII Drawings/Graphs:
+      // - Language tag is 'flowchart', 'step', 'sequence'
+      // - OR contains box borders (┌, └, │, ▼) AND box numbers ([1], [2], etc.)
+      const isFlowchart = lang === 'flowchart' || lang === 'step' || lang === 'sequence' || 
+        ((blockContent.includes('┌') || blockContent.includes('└') || blockContent.includes('│') || blockContent.includes('▼')) &&
+         /\[[\d\*\s가-힣a-zA-Z\-]+\]/.test(blockContent));
 
       if (isFlowchart) {
         parts.push({ type: 'flowchart', content: blockContent });
