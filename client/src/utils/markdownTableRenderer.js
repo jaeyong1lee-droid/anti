@@ -1,6 +1,18 @@
 import { cleanAndSanitizeMathText } from './renderingHelpers.js';
 import { healLatexFormulas } from './latexUtils.js';
 
+export function getDefaultSmartColWidth(hIdx, totalCols) {
+  if (totalCols <= 1) return '100%';
+  if (hIdx === 0) {
+    if (totalCols === 2) return '28%';
+    if (totalCols === 3) return '22%';
+    return '18%';
+  }
+  const firstColWidthVal = totalCols === 2 ? 28 : (totalCols === 3 ? 22 : 18);
+  const remainingPercent = (100 - firstColWidthVal) / (totalCols - 1);
+  return `${remainingPercent.toFixed(1)}%`;
+}
+
 function parseRow(rowText) {
   if (!rowText) return [];
   let cells = rowText.split('|').map(cell => cell.trim());
