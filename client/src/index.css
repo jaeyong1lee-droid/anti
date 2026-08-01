@@ -1054,9 +1054,6 @@ div[class*="overflow-y-auto"] {
   .markdown-table-2col th:first-child,
   .markdown-table-2col td:first-child {
     position: static !important; /* disable sticky since table fits 100% width and doesn't scroll */
-    width: 60px !important;
-    min-width: 50px !important;
-    max-width: 80px !important;
     white-space: normal !important;
     word-break: keep-all !important;
     background-color: rgba(15, 23, 42, 0.75) !important;
@@ -1064,7 +1061,6 @@ div[class*="overflow-y-auto"] {
   }
   .markdown-table-2col th:not(:first-child),
   .markdown-table-2col td:not(:first-child) {
-    width: calc(100% - 60px) !important;
     white-space: normal !important;
     word-break: keep-all !important;
     overflow-wrap: break-word !important;
