@@ -677,7 +677,7 @@ export function ImageTabList({ formulaImages, setFormulaImages, handleSaveFormul
   const [refreshingId, setRefreshingId] = useState(null);
   const [collapsedIds, setCollapsedIds] = useState({});
   const [zoomedImage, setZoomedImage] = useState(null);
-  const [is2xZoom, setIs2xZoom] = useState(false);
+  const [zoomScale, setZoomScale] = useState(1.5);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -930,11 +930,11 @@ export function ImageTabList({ formulaImages, setFormulaImages, handleSaveFormul
                       <div 
                         key={index} 
                         onClick={() => {
-                          setIs2xZoom(false);
+                          setZoomScale(1.5);
                           setZoomedImage({ url: fullUrl, title: img.title });
                         }}
                         className="overflow-hidden rounded-xl border border-slate-800 bg-slate-950/60 p-2 flex items-center justify-center min-h-[400px] max-h-[650px] w-full select-none cursor-pointer group hover:border-indigo-500/50 transition-all relative"
-                        title="클릭하여 원본 그림 2배 크게 확대하기"
+                        title="클릭하여 원본 그림 1.5배 크게 확대하기"
                       >
                         <img
                           src={fullUrl}
@@ -942,7 +942,7 @@ export function ImageTabList({ formulaImages, setFormulaImages, handleSaveFormul
                           alt={`${img.title} - ${index + 1}`}
                         />
                         <div className="absolute bottom-3 right-3 bg-slate-900/90 text-xs font-bold text-slate-200 px-3 py-1.5 rounded-lg border border-slate-700/80 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1.5 shadow-xl pointer-events-none">
-                          <span className="text-indigo-400 font-extrabold">🔍 2배 확대 보기</span>
+                          <span className="text-indigo-400 font-extrabold">🔍 1.5배 확대 보기</span>
                         </div>
                       </div>
                     );
@@ -1040,38 +1040,61 @@ export function ImageTabList({ formulaImages, setFormulaImages, handleSaveFormul
         );
       })}
 
-      {/* 🔍 이미지 원본 2배 확대 팝업 모달 */}
+      {/* 🔍 이미지 원본 확대 팝업 모달 (기본 1.5배 확대 & 창 짤림 완전 방지) */}
       {zoomedImage && (
         <div 
-          className="fixed inset-0 z-[9999] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-2 sm:p-5 animate-fade-in"
+          className="fixed inset-0 z-[9999] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 animate-fade-in"
           onClick={() => setZoomedImage(null)}
         >
           <div 
-            className="relative max-w-[96vw] max-h-[95vh] flex flex-col items-center justify-center bg-slate-900/95 border border-slate-700/80 rounded-2xl p-3 sm:p-5 shadow-2xl overflow-hidden"
+            className="relative w-[95vw] max-w-[1400px] h-[92vh] flex flex-col items-center justify-between bg-slate-900/95 border border-slate-700/80 rounded-2xl p-3 sm:p-5 shadow-2xl overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* 상단 헤더 바 & 확대 토글 툴바 */}
+            {/* 상단 헤더 바 & 배율 조절 버튼군 */}
             <div className="w-full flex items-center justify-between gap-3 pb-3 mb-2 border-b border-slate-800 shrink-0">
               <div className="flex items-center gap-2 text-white font-extrabold text-sm sm:text-base truncate">
                 <span className="text-lg">🔍</span>
                 <span className="truncate">{zoomedImage.title || '그림 확대 보기'}</span>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setIs2xZoom(!is2xZoom)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer border flex items-center gap-1.5 active:scale-95 shadow-md ${
-                    is2xZoom 
-                      ? 'bg-indigo-600 border-indigo-400 text-white shadow-indigo-500/30 ring-2 ring-indigo-400/40' 
-                      : 'bg-slate-800 hover:bg-indigo-900/60 text-indigo-300 hover:text-white border-indigo-500/40'
-                  }`}
-                  title="2배 확대/축소 토글"
-                >
-                  <span>{is2xZoom ? '🔍 100% 크기로 돌리기' : '🔍 2배 (200%) 확대'}</span>
-                </button>
+              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                <div className="flex items-center bg-slate-950/80 rounded-xl p-1 border border-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => setZoomScale(1.0)}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      zoomScale === 1.0 
+                        ? 'bg-slate-800 text-white border border-slate-600 shadow' 
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    1.0x (100%)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setZoomScale(1.5)}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                      zoomScale === 1.5 
+                        ? 'bg-indigo-600 text-white border border-indigo-400 shadow-md ring-2 ring-indigo-400/30' 
+                        : 'text-indigo-300 hover:text-white'
+                    }`}
+                  >
+                    1.5x (기본)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setZoomScale(2.0)}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                      zoomScale === 2.0 
+                        ? 'bg-violet-600 text-white border border-violet-400 shadow-md ring-2 ring-violet-400/30' 
+                        : 'text-violet-300 hover:text-white'
+                    }`}
+                  >
+                    2.0x (2배)
+                  </button>
+                </div>
                 <button
                   onClick={() => setZoomedImage(null)}
-                  className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-rose-600 text-slate-200 hover:text-white text-xs font-bold transition-all cursor-pointer border border-slate-700 hover:border-rose-500 shrink-0 flex items-center gap-1 active:scale-95"
+                  className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-rose-600 text-slate-200 hover:text-white text-xs font-bold transition-all cursor-pointer border border-slate-700 hover:border-rose-500 shrink-0 flex items-center gap-1 active:scale-95 ml-1"
                   title="닫기 (Esc)"
                 >
                   ✕ 닫기
@@ -1079,30 +1102,31 @@ export function ImageTabList({ formulaImages, setFormulaImages, handleSaveFormul
               </div>
             </div>
 
-            {/* 메인 확대 이미지 (2배 배율 제어 & 스크롤) */}
-            <div className="flex-1 overflow-auto flex items-center justify-center w-full max-h-[82vh] p-2 bg-slate-950/40 rounded-xl scrollbar-thin">
-              <img
-                src={zoomedImage.url}
-                alt={zoomedImage.title}
-                onClick={() => setIs2xZoom(!is2xZoom)}
-                style={{
-                  transform: is2xZoom ? 'scale(2.0)' : 'scale(1.0)',
-                  transformOrigin: 'center center',
-                  margin: is2xZoom ? '35% 0' : '0'
-                }}
-                className={`max-w-full max-h-[80vh] object-contain rounded-xl shadow-2xl transition-transform duration-300 select-none ${
-                  is2xZoom ? 'cursor-zoom-out' : 'cursor-zoom-in'
-                }`}
-                title={is2xZoom ? '클릭하여 100% 크기로 축소' : '클릭하여 2배(200%)로 확대'}
-              />
+            {/* 메인 확대 이미지 (1.5배 기본 적용 & 양방향 자유 스크롤) */}
+            <div className="flex-1 overflow-auto w-full max-h-[82vh] p-3 bg-slate-950/60 rounded-xl scrollbar-thin flex items-start justify-center relative select-none">
+              <div className="min-w-full flex items-center justify-center my-auto">
+                <img
+                  src={zoomedImage.url}
+                  alt={zoomedImage.title}
+                  onClick={() => setZoomScale(prev => (prev === 1.5 ? 2.0 : prev === 2.0 ? 1.0 : 1.5))}
+                  style={{
+                    width: `${zoomScale * 100}%`,
+                    maxWidth: 'none',
+                    maxHeight: 'none',
+                    height: 'auto'
+                  }}
+                  className="object-contain rounded-xl shadow-2xl transition-all duration-200 cursor-zoom-in my-auto mx-auto shrink-0 border border-slate-800/80"
+                  title="클릭하여 확대 배율 변경 (1.5x -> 2.0x -> 1.0x)"
+                />
+              </div>
             </div>
 
             {/* 하단 툴바 및 안내 */}
             <div className="w-full pt-2.5 mt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px] sm:text-xs text-slate-400 font-semibold shrink-0 gap-2">
               <span className="flex items-center gap-1">
-                <span>💡 그림을 클릭하거나 </span>
-                <span className="text-indigo-300 font-bold">[2배 확대]</span>
-                <span> 버튼을 눌러 초고해상도로 보실 수 있습니다.</span>
+                <span>💡 그림을 클릭하거나 상단 버튼으로 확대 배율을 조절하세요 (현재 배율: </span>
+                <span className="text-indigo-300 font-extrabold">{zoomScale}배</span>
+                <span>).</span>
               </span>
               <a
                 href={zoomedImage.url}
