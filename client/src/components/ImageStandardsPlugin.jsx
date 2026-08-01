@@ -474,7 +474,41 @@ function parseFormulaAndParams(analysisText, titleText = '') {
   const cleanTitle = (titleText || '').toLowerCase();
   const cleanText = (analysisText || '').toLowerCase();
 
-  // Case A: 지하시설물 매설 깊이별 점검 범위 (User's 1st screenshot example)
+  // -------------------------------------------------------------
+  // [1. 암반공학 & 터널공학 영역 (최우선 판독)]
+  // -------------------------------------------------------------
+  // Case RMR: RMR 평점에 따른 터널의 자립시간 관계 (Bieniawski Stand-up Time Chart)
+  if (cleanTitle.includes('rmr') || cleanTitle.includes('자립시간') || cleanText.includes('자립시간') || cleanText.includes('rmr평점') || cleanText.includes('bieniawski') || cleanTitle.includes('천장폭')) {
+    return {
+      formulaTitle: 'RMR 평점 및 무지보 천장폭 대 자립시간 경험적 관계 (Bieniawski 도표)',
+      formulaText: '\\text{Stand-up Time} = f(RMR, \\text{Span})',
+      params: [
+        { symbol: '$RMR$', desc: '암질 평가 지수 (Rock Mass Rating, 20 ~ 100)' },
+        { symbol: '$\\text{Span (m)}$', desc: '터널 무지보 천장폭 또는 굴착 경간 (m)' },
+        { symbol: '$\\text{Stand-up Time}$', desc: '터널 굴착 후 지보 없이 붕괴하지 않고 자립 유지 가능한 시간 (시간/일/월/년)' },
+        { symbol: '$\\text{무지보 한계선}$', desc: 'RMR 평점 및 천장폭 조건별 지보공 없이 안정을 유지하는 한계 도표 영역' }
+      ]
+    };
+  }
+
+  // Case Q-System: Q-시스템 기반 터널 지보 (Barton Q-system)
+  if (cleanTitle.includes('q-시스템') || cleanTitle.includes('q-system') || cleanTitle.includes('터널 지보') || cleanText.includes('rqd') || cleanText.includes('esr') || cleanText.includes('지보 설계')) {
+    return {
+      formulaTitle: 'Q-시스템 암반 품질 평가식',
+      formulaText: '$Q = \\frac{RQD}{J_n} \\times \\frac{J_r}{J_a} \\times \\frac{J_w}{SRF}$',
+      params: [
+        { symbol: '$\\frac{RQD}{J_n}$', desc: '암반의 구조적 블록 크기 지표 ($RQD$: 암질지수, $J_n$: 절리군 수)' },
+        { symbol: '$\\frac{J_r}{J_a}$', desc: '절리면 마찰 특성 ($J_r$: 거칠기 계수, $J_a$: 변색/풍화 계수)' },
+        { symbol: '$\\frac{J_w}{SRF}$', desc: '수리적 및 응력 상태 지표 ($J_w$: 지하수 지수, $SRF$: 응력저감계수)' },
+        { symbol: '$De$', desc: '등가 치수 ($De = \\frac{\\text{터널 경간(Span)}}{\\text{굴착지원비(ESR)}}$)' }
+      ]
+    };
+  }
+
+  // -------------------------------------------------------------
+  // [2. 토질역학 & 침하/압밀/토압 영역]
+  // -------------------------------------------------------------
+  // Case A: 지하시설물 매설 깊이별 점검 범위
   if (cleanTitle.includes('지하시설물') || cleanTitle.includes('매설 깊이') || cleanText.includes('b + h') || cleanText.includes('조사범위')) {
     return {
       formulaTitle: '지반안전점검 조사범위',
@@ -487,7 +521,7 @@ function parseFormulaAndParams(analysisText, titleText = '') {
     };
   }
 
-  // Case B: 테일러법 압밀계수 산정 (User's 2nd screenshot example)
+  // Case B: 테일러법 압밀계수 산정
   if (cleanTitle.includes('테일러') || cleanTitle.includes('압밀계수') || cleanText.includes('t_{90}') || cleanText.includes('t90')) {
     return {
       formulaTitle: '압밀계수 산정식',
@@ -502,35 +536,21 @@ function parseFormulaAndParams(analysisText, titleText = '') {
     };
   }
 
-  // Case C1: 다운홀 탐사 (Downhole Test / Seismic Downhole Logging)
-  if (cleanTitle.includes('다운홀') || cleanTitle.includes('downhole') || cleanText.includes('다운홀')) {
+  // Case C: 점성토의 압밀곡선 및 침하량 산정 (엄격한 점성토/압밀 키워드 조건)
+  if ((cleanTitle.includes('점성토') || cleanTitle.includes('압밀침하') || cleanTitle.includes('압밀곡선')) || (cleanText.includes('점성토') && (cleanText.includes('1차 압밀') || cleanText.includes('과잉간극수압')))) {
     return {
-      formulaTitle: '다운홀 탐사 파선 경로 및 보정 전파 시간식',
-      formulaText: '$R = \\sqrt{D^2 + L^2}, \\quad T_C = T_D \\times \\frac{D}{R}$',
+      formulaTitle: '점성토 1차 압밀 침하량 산정식',
+      formulaText: '$S_c = \\frac{C_c}{1+e_0} H \\log\\left(\\frac{\\sigma_0\' + \\Delta\\sigma\'}{\\sigma_0\'}\\right)$',
       params: [
-        { symbol: '$D$', desc: '지표면으로부터 공내 수신기(지오폰)까지의 수직 심도 (Vertical Depth)' },
-        { symbol: '$L$', desc: '타격 진원과 시추공구 사이의 수평 이격 거리 (Offset Distance, $1 \\sim 3\\text{m}$)' },
-        { symbol: '$R$', desc: '타격 지점에서 공내 수신기까지의 경사 직선 파선 경로 ($R = \\sqrt{D^2 + L^2}$)' },
-        { symbol: '$T_D, T_C$', desc: '실측 경사 도달 시간($T_D$) 및 수직 정위치 보정 전파 시간($T_C$)' }
+        { symbol: '$S_e$', desc: '하중 재하 직후 발생하는 즉시 침하량 (Elastic Settlement)' },
+        { symbol: '$S_c$', desc: '과잉간극수압 소산에 의한 1차 압밀 침하량' },
+        { symbol: '$S_s$', desc: '흙 입자의 장기적 재배열에 의한 2차 압밀 침하량' },
+        { symbol: '$\\sigma\'$', desc: '시간 $t$ 경과에 따른 유효연직응력 ($\\sigma\' = \\sigma - u$)' }
       ]
     };
   }
 
-  // Case C2: 주시 곡선 (Time-Distance Curve) / 탄성파 굴절법 (Refraction Method)
-  if (cleanTitle.includes('주시') || cleanTitle.includes('굴절법') || cleanText.includes('v_1') || cleanText.includes('v_2') || cleanText.includes('x_c')) {
-    return {
-      formulaTitle: '탄성파 속도 및 파동 전파식',
-      formulaText: '$v = \\frac{1}{\\text{기울기}}, \\quad v_2 > v_1$',
-      params: [
-        { symbol: '$V_1$', desc: '상부 토사층(Layer 1) 탄성파 전파 속도' },
-        { symbol: '$V_2$', desc: '하부 암반층(Layer 2) 탄성파 전파 속도' },
-        { symbol: '$x_c$', desc: '지층 경계 파동 굴절 교차 거리 (Critical Distance)' },
-        { symbol: '$T$', desc: '발진점(Source)에서 수신기(Geophones)까지의 도달 시간' }
-      ]
-    };
-  }
-
-  // Case D: 토양 내 침투 흐름의 연속방정식 (User's 4th screenshot example I10)
+  // Case D: 토양 내 침투 흐름의 연속방정식
   if (cleanTitle.includes('침투') || cleanTitle.includes('연속방정식') || cleanText.includes('q_{in}') || cleanText.includes('q_{out}') || cleanText.includes('dx\\cdot dy') || cleanText.includes('q_in') || cleanText.includes('q_out')) {
     return {
       formulaTitle: '침투 흐름의 연속방정식',
@@ -544,21 +564,7 @@ function parseFormulaAndParams(analysisText, titleText = '') {
     };
   }
 
-  // Case E: Q-시스템 기반 터널 지보 (Barton Q-system) (User's screenshot I16)
-  if (cleanTitle.includes('q-시스템') || cleanTitle.includes('q-system') || cleanTitle.includes('터널 지보') || cleanText.includes('rqd') || cleanText.includes('esr') || cleanText.includes('지보 설계')) {
-    return {
-      formulaTitle: 'Q-시스템 암반 품질 평가식',
-      formulaText: '$Q = \\frac{RQD}{J_n} \\times \\frac{J_r}{J_a} \\times \\frac{J_w}{SRF}$',
-      params: [
-        { symbol: '$\\frac{RQD}{J_n}$', desc: '암반의 구조적 블록 크기 지표 ($RQD$: 암질지수, $J_n$: 절리군 수)' },
-        { symbol: '$\\frac{J_r}{J_a}$', desc: '절리면 마찰 특성 ($J_r$: 거칠기 계수, $J_a$: 변색/풍화 계수)' },
-        { symbol: '$\\frac{J_w}{SRF}$', desc: '수리적 및 응력 상태 지표 ($J_w$: 지하수 지수, $SRF$: 응력저감계수)' },
-        { symbol: '$De$', desc: '등가 치수 ($De = \\frac{\\text{터널 경간(Span)}}{\\text{굴착지원비(ESR)}}$)' }
-      ]
-    };
-  }
-
-  // Case F: 동결심도 산정 및 동결지수 (User's screenshot I14)
+  // Case E: 동결심도 산정 및 동결지수
   if (cleanTitle.includes('동결') || cleanText.includes('동결지수') || cleanText.includes('동결심도') || cleanText.includes('c\\sqrt{f}') || cleanText.includes('c\\sqrt f')) {
     return {
       formulaTitle: '동결심도 경험 산정식',
@@ -572,7 +578,7 @@ function parseFormulaAndParams(analysisText, titleText = '') {
     };
   }
 
-  // Case G: 주동/수동 토압 및 작용점 (수동토압/주동토압 전용)
+  // Case F: 주동/수동 토압 및 작용점
   if (cleanTitle.includes('토압') || cleanText.includes('수동토압') || cleanText.includes('주동토압') || cleanText.includes('p_p') || cleanText.includes('p_a') || cleanText.includes('y_a') || cleanText.includes('y_p')) {
     return {
       formulaTitle: '주동/수동 토압 및 작용점 산정식',
@@ -586,30 +592,33 @@ function parseFormulaAndParams(analysisText, titleText = '') {
     };
   }
 
-  // Case RMR: RMR 평점에 따른 터널의 자립시간 관계 (Bieniawski Stand-up Time Chart - User's screenshot)
-  if (cleanTitle.includes('rmr') || cleanTitle.includes('자립시간') || cleanText.includes('자립시간') || cleanText.includes('rmr평점') || cleanText.includes('bieniawski') || cleanTitle.includes('천장폭')) {
+  // -------------------------------------------------------------
+  // [3. 지반조사 및 물리탐사 영역]
+  // -------------------------------------------------------------
+  // Case G1: 다운홀 탐사
+  if (cleanTitle.includes('다운홀') || cleanTitle.includes('downhole') || cleanText.includes('다운홀')) {
     return {
-      formulaTitle: 'RMR 평점 및 무지보 천장폭 대 자립시간 경험적 관계 (Bieniawski 도표)',
-      formulaText: '\\text{Stand-up Time} = f(RMR, \\text{Span})',
+      formulaTitle: '다운홀 탐사 파선 경로 및 보정 전파 시간식',
+      formulaText: '$R = \\sqrt{D^2 + L^2}, \\quad T_C = T_D \\times \\frac{D}{R}$',
       params: [
-        { symbol: '$RMR$', desc: '암질 평가 지수 (Rock Mass Rating, 20 ~ 100)' },
-        { symbol: '$\\text{Span (m)}$', desc: '터널 무지보 천장폭 또는 굴착 경간 (m)' },
-        { symbol: '$\\text{Stand-up Time}$', desc: '터널 굴착 후 지보 없이 붕괴하지 않고 자립 유지 가능한 시간 (시간/일/월/년)' },
-        { symbol: '$\\text{무지보 한계선}$', desc: 'RMR 평점 및 천장폭 조건별 지보공 없이 안정을 유지하는 한계 도표 영역' }
+        { symbol: '$D$', desc: '지표면으로부터 공내 수신기(지오폰)까지의 수직 심도 (Vertical Depth)' },
+        { symbol: '$L$', desc: '타격 진원과 시추공구 사이의 수평 이격 거리 (Offset Distance, $1 \\sim 3\\text{m}$)' },
+        { symbol: '$R$', desc: '타격 지점에서 공내 수신기까지의 경사 직선 파선 경로 ($R = \\sqrt{D^2 + L^2}$)' },
+        { symbol: '$T_D, T_C$', desc: '실측 경사 도달 시간($T_D$) 및 수직 정위치 보정 전파 시간($T_C$)' }
       ]
     };
   }
 
-  // Case H: 점성토의 압밀곡선 및 침하량 산정
-  if ((cleanTitle.includes('압밀') || cleanTitle.includes('침하량') || cleanTitle.includes('점성토')) && (cleanText.includes('1차 압밀') || cleanText.includes('2차 압밀') || cleanText.includes('압밀침하') || cleanText.includes('간극수압'))) {
+  // Case G2: 주시 곡선 / 탄성파 굴절법
+  if (cleanTitle.includes('주시') || cleanTitle.includes('굴절법') || cleanText.includes('v_1') || cleanText.includes('v_2') || cleanText.includes('x_c')) {
     return {
-      formulaTitle: '점성토 1차 압밀 침하량 산정식',
-      formulaText: '$S_c = \\frac{C_c}{1+e_0} H \\log\\left(\\frac{\\sigma_0\' + \\Delta\\sigma\'}{\\sigma_0\'}\\right)$',
+      formulaTitle: '탄성파 속도 및 파동 전파식',
+      formulaText: '$v = \\frac{1}{\\text{기울기}}, \\quad v_2 > v_1$',
       params: [
-        { symbol: '$S_e$', desc: '하중 재하 직후 발생하는 즉시 침하량 (Elastic Settlement)' },
-        { symbol: '$S_c$', desc: '과잉간극수압 소산에 의한 1차 압밀 침하량' },
-        { symbol: '$S_s$', desc: '흙 입자의 장기적 재배열에 의한 2차 압밀 침하량' },
-        { symbol: '$\\sigma\'$', desc: '시간 $t$ 경과에 따른 유효연직응력 ($\\sigma\' = \\sigma - u$)' }
+        { symbol: '$V_1$', desc: '상부 토사층(Layer 1) 탄성파 전파 속도' },
+        { symbol: '$V_2$', desc: '하부 암반층(Layer 2) 탄성파 전파 속도' },
+        { symbol: '$x_c$', desc: '지층 경계 파동 굴절 교차 거리 (Critical Distance)' },
+        { symbol: '$T$', desc: '발진점(Source)에서 수신기(Geophones)까지의 도달 시간' }
       ]
     };
   }
