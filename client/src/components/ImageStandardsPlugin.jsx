@@ -677,6 +677,7 @@ export function ImageTabList({ formulaImages, setFormulaImages, handleSaveFormul
   const [refreshingId, setRefreshingId] = useState(null);
   const [collapsedIds, setCollapsedIds] = useState({});
   const [zoomedImage, setZoomedImage] = useState(null);
+  const [is2xZoom, setIs2xZoom] = useState(false);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -928,17 +929,20 @@ export function ImageTabList({ formulaImages, setFormulaImages, handleSaveFormul
                     return (
                       <div 
                         key={index} 
-                        onClick={() => setZoomedImage({ url: fullUrl, title: img.title })}
-                        className="overflow-hidden rounded-xl border border-slate-800 bg-slate-950/60 p-2 flex items-center justify-center max-h-[340px] w-full select-none cursor-pointer group hover:border-indigo-500/50 transition-all relative"
-                        title="클릭하여 원본 그림 크게 확대하기"
+                        onClick={() => {
+                          setIs2xZoom(false);
+                          setZoomedImage({ url: fullUrl, title: img.title });
+                        }}
+                        className="overflow-hidden rounded-xl border border-slate-800 bg-slate-950/60 p-2 flex items-center justify-center min-h-[400px] max-h-[650px] w-full select-none cursor-pointer group hover:border-indigo-500/50 transition-all relative"
+                        title="클릭하여 원본 그림 2배 크게 확대하기"
                       >
                         <img
                           src={fullUrl}
-                          className="max-h-[320px] object-contain rounded-lg max-w-full group-hover:scale-[1.03] transition-transform duration-300 cursor-zoom-in"
+                          className="max-h-[600px] object-contain rounded-lg max-w-full group-hover:scale-[1.02] transition-transform duration-300 cursor-zoom-in"
                           alt={`${img.title} - ${index + 1}`}
                         />
-                        <div className="absolute bottom-3 right-3 bg-slate-900/80 text-xs font-bold text-slate-200 px-2.5 py-1 rounded-lg border border-slate-700/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 shadow-lg pointer-events-none">
-                          <span>🔍 클릭하여 크게 확대</span>
+                        <div className="absolute bottom-3 right-3 bg-slate-900/90 text-xs font-bold text-slate-200 px-3 py-1.5 rounded-lg border border-slate-700/80 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1.5 shadow-xl pointer-events-none">
+                          <span className="text-indigo-400 font-extrabold">🔍 2배 확대 보기</span>
                         </div>
                       </div>
                     );
@@ -1036,43 +1040,70 @@ export function ImageTabList({ formulaImages, setFormulaImages, handleSaveFormul
         );
       })}
 
-      {/* 🔍 이미지 원본 확대 팝업 모달 */}
+      {/* 🔍 이미지 원본 2배 확대 팝업 모달 */}
       {zoomedImage && (
         <div 
-          className="fixed inset-0 z-[9999] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 animate-fade-in"
+          className="fixed inset-0 z-[9999] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-2 sm:p-5 animate-fade-in"
           onClick={() => setZoomedImage(null)}
         >
           <div 
-            className="relative max-w-[94vw] max-h-[92vh] flex flex-col items-center justify-center bg-slate-900/95 border border-slate-700/80 rounded-2xl p-3 sm:p-5 shadow-2xl overflow-hidden"
+            className="relative max-w-[96vw] max-h-[95vh] flex flex-col items-center justify-center bg-slate-900/95 border border-slate-700/80 rounded-2xl p-3 sm:p-5 shadow-2xl overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* 상단 헤더 바 */}
-            <div className="w-full flex items-center justify-between gap-4 pb-3 mb-2 border-b border-slate-800 shrink-0">
+            {/* 상단 헤더 바 & 확대 토글 툴바 */}
+            <div className="w-full flex items-center justify-between gap-3 pb-3 mb-2 border-b border-slate-800 shrink-0">
               <div className="flex items-center gap-2 text-white font-extrabold text-sm sm:text-base truncate">
                 <span className="text-lg">🔍</span>
                 <span className="truncate">{zoomedImage.title || '그림 확대 보기'}</span>
               </div>
-              <button
-                onClick={() => setZoomedImage(null)}
-                className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-rose-600 text-slate-200 hover:text-white text-xs font-bold transition-all cursor-pointer border border-slate-700 hover:border-rose-500 shrink-0 flex items-center gap-1 active:scale-95"
-                title="닫기 (Esc)"
-              >
-                ✕ 닫기
-              </button>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setIs2xZoom(!is2xZoom)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer border flex items-center gap-1.5 active:scale-95 shadow-md ${
+                    is2xZoom 
+                      ? 'bg-indigo-600 border-indigo-400 text-white shadow-indigo-500/30 ring-2 ring-indigo-400/40' 
+                      : 'bg-slate-800 hover:bg-indigo-900/60 text-indigo-300 hover:text-white border-indigo-500/40'
+                  }`}
+                  title="2배 확대/축소 토글"
+                >
+                  <span>{is2xZoom ? '🔍 100% 크기로 돌리기' : '🔍 2배 (200%) 확대'}</span>
+                </button>
+                <button
+                  onClick={() => setZoomedImage(null)}
+                  className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-rose-600 text-slate-200 hover:text-white text-xs font-bold transition-all cursor-pointer border border-slate-700 hover:border-rose-500 shrink-0 flex items-center gap-1 active:scale-95"
+                  title="닫기 (Esc)"
+                >
+                  ✕ 닫기
+                </button>
+              </div>
             </div>
 
-            {/* 메인 확대 이미지 */}
-            <div className="flex-1 overflow-auto flex items-center justify-center w-full max-h-[80vh] p-1">
+            {/* 메인 확대 이미지 (2배 배율 제어 & 스크롤) */}
+            <div className="flex-1 overflow-auto flex items-center justify-center w-full max-h-[82vh] p-2 bg-slate-950/40 rounded-xl scrollbar-thin">
               <img
                 src={zoomedImage.url}
                 alt={zoomedImage.title}
-                className="max-w-full max-h-[78vh] object-contain rounded-xl shadow-2xl hover:scale-[1.02] transition-transform duration-300 cursor-default"
+                onClick={() => setIs2xZoom(!is2xZoom)}
+                style={{
+                  transform: is2xZoom ? 'scale(2.0)' : 'scale(1.0)',
+                  transformOrigin: 'center center',
+                  margin: is2xZoom ? '35% 0' : '0'
+                }}
+                className={`max-w-full max-h-[80vh] object-contain rounded-xl shadow-2xl transition-transform duration-300 select-none ${
+                  is2xZoom ? 'cursor-zoom-out' : 'cursor-zoom-in'
+                }`}
+                title={is2xZoom ? '클릭하여 100% 크기로 축소' : '클릭하여 2배(200%)로 확대'}
               />
             </div>
 
             {/* 하단 툴바 및 안내 */}
             <div className="w-full pt-2.5 mt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px] sm:text-xs text-slate-400 font-semibold shrink-0 gap-2">
-              <span>* 팝업 바깥이나 ✕ 닫기 (Esc)를 누르면 닫힙니다.</span>
+              <span className="flex items-center gap-1">
+                <span>💡 그림을 클릭하거나 </span>
+                <span className="text-indigo-300 font-bold">[2배 확대]</span>
+                <span> 버튼을 눌러 초고해상도로 보실 수 있습니다.</span>
+              </span>
               <a
                 href={zoomedImage.url}
                 download={`${zoomedImage.title || 'engineering_image'}.png`}
@@ -1080,7 +1111,7 @@ export function ImageTabList({ formulaImages, setFormulaImages, handleSaveFormul
                 rel="noopener noreferrer"
                 className="text-indigo-400 hover:text-indigo-300 hover:underline flex items-center gap-1 font-extrabold shrink-0"
               >
-                ⬇️ 원본 이미지 다운로드
+                ⬇️ 원본 파일 다운로드
               </a>
             </div>
           </div>
