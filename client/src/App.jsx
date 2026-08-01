@@ -4670,7 +4670,48 @@ export default function App() {
       const hasRemarks = allThs[colCount - 1] && allThs[colCount - 1].textContent.trim() === '비고';
       const lastDataColIdx = hasRemarks ? (colCount - 2) : (colCount - 1);
 
-      if ((colIdx === lastDataColIdx || colIdx === colCount - 1) && colCount > 1 && colIdx > 0) {
+      if (colIdx === 0) {
+        // 1열(구분 열) 더블클릭 시: 1열 너비는 텍스트 내용에 맞추어 딱 고정(Fixed)하고, 나머지 2, 3열이 남은 화면 공간을 균등 분합하여 100% 꽉 채움
+        const tableContainer = table.closest('.markdown-table-container') || table.parentElement;
+        const containerWidth = tableContainer ? tableContainer.clientWidth : table.clientWidth;
+
+        const rows = Array.from(table.querySelectorAll('tr'));
+        let maxLen0 = (allThs[0].textContent || '').trim().length;
+        rows.forEach(r => {
+          const cells = Array.from(r.children);
+          if (cells[0]) {
+            const text = (cells[0].textContent || '').trim();
+            if (text.length > maxLen0) maxLen0 = text.length;
+          }
+        });
+        const col1Width = Math.min(220, Math.max(MIN_WIDTH, maxLen0 * 14 + 28));
+
+        // 1열 너비를 col1Width로 단단히 고정
+        allThs[0].style.setProperty('width', col1Width + 'px', 'important');
+        allThs[0].style.setProperty('min-width', col1Width + 'px', 'important');
+        allThs[0].style.setProperty('max-width', col1Width + 'px', 'important');
+
+        const remarksWidth = hasRemarks ? (allThs[colCount - 1].offsetWidth || 50) : 0;
+        if (hasRemarks && allThs[colCount - 1]) {
+          allThs[colCount - 1].style.setProperty('width', remarksWidth + 'px', 'important');
+          allThs[colCount - 1].style.setProperty('min-width', '50px', 'important');
+        }
+
+        const numRemainingCols = lastDataColIdx; // 1열을 제외한 2열, 3열... 개수
+        const totalRemWidth = Math.max(MIN_WIDTH * numRemainingCols, containerWidth - col1Width - remarksWidth - 4);
+        const equalRemColWidth = Math.max(MIN_WIDTH, Math.floor(totalRemWidth / numRemainingCols));
+
+        for (let i = 1; i <= lastDataColIdx; i++) {
+          allThs[i].style.setProperty('width', equalRemColWidth + 'px', 'important');
+          allThs[i].style.setProperty('min-width', MIN_WIDTH + 'px', 'important');
+          allThs[i].style.setProperty('max-width', equalRemColWidth + 'px', 'important');
+        }
+
+        // 전체 표 너비를 100%로 설정하여 가로 스크롤 없이 화면 전체 채움
+        table.style.setProperty('width', '100%', 'important');
+        table.style.setProperty('min-width', '100%', 'important');
+        table.style.setProperty('max-width', '100%', 'important');
+      } else if ((colIdx === lastDataColIdx || colIdx === colCount - 1) && colCount > 1 && colIdx > 0) {
         // 마지막 열(또는 마지막 데이터 열) 헤더 우측 더블클릭 시: 이전 열들의 너비는 그대로 고정하고, 마지막 열 너비만 조정하여 표 오른쪽 끝을 컨테이너 오른쪽 끝에 맞춤
         const tableContainer = table.closest('.markdown-table-container') || table.parentElement;
         const containerWidth = tableContainer ? tableContainer.clientWidth : table.clientWidth;
