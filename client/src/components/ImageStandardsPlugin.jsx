@@ -676,6 +676,15 @@ export function ImageTabList({ formulaImages, setFormulaImages, handleSaveFormul
   const [editingText, setEditingText] = useState('');
   const [refreshingId, setRefreshingId] = useState(null);
   const [collapsedIds, setCollapsedIds] = useState({});
+  const [zoomedImage, setZoomedImage] = useState(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') setZoomedImage(null);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const getFullImageUrl = (url) => {
     if (!url) return '';
@@ -914,15 +923,26 @@ export function ImageTabList({ formulaImages, setFormulaImages, handleSaveFormul
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start w-full animate-fade-in">
                 {/* Left Column: Image(s) stacked vertically + Idea 1: Core Formulas & Parameters Card */}
                 <div className="flex flex-col gap-3 w-full">
-                  {(img.base64Images || [img.base64Image]).filter(Boolean).map((src, index) => (
-                    <div key={index} className="overflow-hidden rounded-xl border border-slate-800 bg-slate-950/40 p-2 flex items-center justify-center max-h-[340px] w-full select-none">
-                      <img
-                        src={getFullImageUrl(src)}
-                        className="max-h-[320px] object-contain rounded-lg max-w-full hover:scale-[1.02] transition-transform duration-300"
-                        alt={`${img.title} - ${index + 1}`}
-                      />
-                    </div>
-                  ))}
+                  {(img.base64Images || [img.base64Image]).filter(Boolean).map((src, index) => {
+                    const fullUrl = getFullImageUrl(src);
+                    return (
+                      <div 
+                        key={index} 
+                        onClick={() => setZoomedImage({ url: fullUrl, title: img.title })}
+                        className="overflow-hidden rounded-xl border border-slate-800 bg-slate-950/60 p-2 flex items-center justify-center max-h-[340px] w-full select-none cursor-pointer group hover:border-indigo-500/50 transition-all relative"
+                        title="클릭하여 원본 그림 크게 확대하기"
+                      >
+                        <img
+                          src={fullUrl}
+                          className="max-h-[320px] object-contain rounded-lg max-w-full group-hover:scale-[1.03] transition-transform duration-300 cursor-zoom-in"
+                          alt={`${img.title} - ${index + 1}`}
+                        />
+                        <div className="absolute bottom-3 right-3 bg-slate-900/80 text-xs font-bold text-slate-200 px-2.5 py-1 rounded-lg border border-slate-700/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 shadow-lg pointer-events-none">
+                          <span>🔍 클릭하여 크게 확대</span>
+                        </div>
+                      </div>
+                    );
+                  })}
 
                   {/* 📐 핵심 공식 & 인자 정의 요약 카드 (사용자 스크린샷 100% 반영) */}
                   {(() => {
@@ -1015,6 +1035,57 @@ export function ImageTabList({ formulaImages, setFormulaImages, handleSaveFormul
           </div>
         );
       })}
+
+      {/* 🔍 이미지 원본 확대 팝업 모달 */}
+      {zoomedImage && (
+        <div 
+          className="fixed inset-0 z-[9999] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 animate-fade-in"
+          onClick={() => setZoomedImage(null)}
+        >
+          <div 
+            className="relative max-w-[94vw] max-h-[92vh] flex flex-col items-center justify-center bg-slate-900/95 border border-slate-700/80 rounded-2xl p-3 sm:p-5 shadow-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* 상단 헤더 바 */}
+            <div className="w-full flex items-center justify-between gap-4 pb-3 mb-2 border-b border-slate-800 shrink-0">
+              <div className="flex items-center gap-2 text-white font-extrabold text-sm sm:text-base truncate">
+                <span className="text-lg">🔍</span>
+                <span className="truncate">{zoomedImage.title || '그림 확대 보기'}</span>
+              </div>
+              <button
+                onClick={() => setZoomedImage(null)}
+                className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-rose-600 text-slate-200 hover:text-white text-xs font-bold transition-all cursor-pointer border border-slate-700 hover:border-rose-500 shrink-0 flex items-center gap-1 active:scale-95"
+                title="닫기 (Esc)"
+              >
+                ✕ 닫기
+              </button>
+            </div>
+
+            {/* 메인 확대 이미지 */}
+            <div className="flex-1 overflow-auto flex items-center justify-center w-full max-h-[80vh] p-1">
+              <img
+                src={zoomedImage.url}
+                alt={zoomedImage.title}
+                className="max-w-full max-h-[78vh] object-contain rounded-xl shadow-2xl hover:scale-[1.02] transition-transform duration-300 cursor-default"
+              />
+            </div>
+
+            {/* 하단 툴바 및 안내 */}
+            <div className="w-full pt-2.5 mt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px] sm:text-xs text-slate-400 font-semibold shrink-0 gap-2">
+              <span>* 팝업 바깥이나 ✕ 닫기 (Esc)를 누르면 닫힙니다.</span>
+              <a
+                href={zoomedImage.url}
+                download={`${zoomedImage.title || 'engineering_image'}.png`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-indigo-400 hover:text-indigo-300 hover:underline flex items-center gap-1 font-extrabold shrink-0"
+              >
+                ⬇️ 원본 이미지 다운로드
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
