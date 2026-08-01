@@ -131,14 +131,14 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false,
   
   const is2Col = colCount === 2;
   const is3Col = colCount === 3;
-  const tableLayoutClass = "table-fixed w-full";
+  const tableLayoutClass = "table-fixed w-full custom-col-widths";
   const tableClass = is2Col ? `markdown-table markdown-table-2col ${tableLayoutClass}` : `markdown-table ${tableLayoutClass}`;
 
   let html = '';
 
   if (hideWrapper) {
     // Render clean table container without Comparison Table card, buttons, or extra headers
-    html += `<div class="markdown-table-container w-full my-2 overflow-x-auto rounded-xl border border-slate-600 bg-slate-950/20">`;
+    html += `<div class="markdown-table-container floating-table-container custom-col-widths w-full my-2 overflow-x-auto rounded-xl border border-slate-600 bg-slate-950/20">`;
     html += `<table class="${tableClass} border-collapse text-[14px] sm:text-[15px] min-w-full">`;
     html += `<thead>`;
     html += `<tr class="bg-slate-900/80 text-slate-355 border-b border-slate-600">`;
@@ -221,7 +221,7 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false,
   html += `</button>`;
   html += `</div>`;
 
-  html += `<div class="markdown-table-container w-full overflow-x-auto rounded-xl border border-slate-600 bg-slate-950/40">`;
+  html += `<div class="markdown-table-container floating-table-container custom-col-widths w-full overflow-x-auto rounded-xl border border-slate-600 bg-slate-950/40">`;
   html += `<table class="${tableClass} border-collapse text-[14px] sm:text-[15px] min-w-full">`;
   html += `<thead>`;
   html += `<tr class="bg-slate-900/80 text-slate-350 border-b border-slate-600">`;

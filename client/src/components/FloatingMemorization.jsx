@@ -75,8 +75,8 @@ const rebuildTableHtml = (headers, rows) => {
   html += '📊 비교표';
   html += '</span>';
   html += '</div>';
-  html += '<div class="w-full overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40">';
-  html += '<table class="w-full table-fixed text-center border-collapse text-[13px] sm:text-[15px] min-w-full">';
+  html += '<div class="w-full overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40 floating-table-container custom-col-widths">';
+  html += '<table class="w-full table-fixed custom-col-widths text-center border-collapse text-[13px] sm:text-[15px] min-w-full">';
   html += '<colgroup>';
   headers.forEach((_, hIdx) => {
     let widthPct = '25%';
@@ -279,10 +279,10 @@ function FloatingTableItem({
   return (
     <div 
       ref={containerRef} 
-      className="table-quiz-container overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40 p-0 select-text animate-fade-in text-[14px] md:text-[16px] relative"
+      className="table-quiz-container floating-table-container custom-col-widths overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40 p-0 select-text animate-fade-in text-[14px] md:text-[16px] relative"
     >
       <table 
-        className="table-quiz-table w-full table-fixed text-center border-collapse min-w-full"
+        className="table-quiz-table custom-col-widths w-full table-fixed text-center border-collapse min-w-full"
         style={{ minWidth: `${Math.max(500, colCount * 130)}px` }}
       >
         <colgroup>
@@ -528,10 +528,10 @@ function OverviewComparisonTable({
       <span className="text-[10px] text-emerald-400 font-black block mb-1.5 uppercase tracking-wider select-none">⚖️ 비교표 / 장단점</span>
       <div 
         ref={containerRef}
-        className="w-full my-2 rounded-xl border border-slate-800 bg-slate-950/40 overflow-hidden overflow-x-auto scrollbar-thin relative"
+        className="w-full my-2 rounded-xl border border-slate-800 bg-slate-950/40 overflow-hidden overflow-x-auto scrollbar-thin relative floating-table-container custom-col-widths"
       >
         <table 
-          className="w-full text-center border-collapse text-[14px] md:text-[16px] table-fixed min-w-full"
+          className="w-full text-center border-collapse text-[14px] md:text-[16px] table-fixed custom-col-widths min-w-full"
           style={{ minWidth: `${Math.max(500, colCount * 130)}px` }}
         >
           <colgroup>
