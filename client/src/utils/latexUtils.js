@@ -690,7 +690,6 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
                        .replace(/\x09\s*o\b/g, '\\to');
 
   processed = processed.replace(/\x0d\s*ho\b/g, '\\rho')
-                       .replace(/\x0d\s*ed\b/g, '\\red')
                        .replace(/\x0d\s*ight\b/g, '\\right')
                        .replace(/\x0d\s*ule\b/g, '\\rule')
                        .replace(/\x0d\s*angle\b/g, '\\rangle')
