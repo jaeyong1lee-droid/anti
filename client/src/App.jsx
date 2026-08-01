@@ -4667,14 +4667,47 @@ export default function App() {
       const allThs = Array.from(tr.querySelectorAll('th'));
       const colCount = allThs.length;
       const MIN_WIDTH = 84; // 최소 7글자 폭 보장 (84px)
+      const hasRemarks = allThs[colCount - 1] && allThs[colCount - 1].textContent.trim() === '비고';
+      const lastDataColIdx = hasRemarks ? (colCount - 2) : (colCount - 1);
 
-      if (colIdx === 0 && colCount > 1) {
+      if ((colIdx === lastDataColIdx || colIdx === colCount - 1) && colCount > 1 && colIdx > 0) {
+        // 마지막 열(또는 마지막 데이터 열) 헤더 우측 더블클릭 시: 이전 열들의 너비는 그대로 고정하고, 마지막 열 너비만 조정하여 표 오른쪽 끝을 컨테이너 오른쪽 끝에 맞춤
+        const tableContainer = table.closest('.markdown-table-container') || table.parentElement;
+        const containerWidth = tableContainer ? tableContainer.clientWidth : table.clientWidth;
+
+        const targetLastIdx = (colIdx === colCount - 1 && hasRemarks) ? colCount - 2 : colIdx;
+        let sumPreceding = 0;
+
+        for (let k = 0; k < targetLastIdx; k++) {
+          const w = allThs[k].offsetWidth || MIN_WIDTH;
+          sumPreceding += w;
+          allThs[k].style.setProperty('width', w + 'px', 'important');
+          allThs[k].style.setProperty('min-width', MIN_WIDTH + 'px', 'important');
+          allThs[k].style.setProperty('max-width', w + 'px', 'important');
+        }
+
+        const remarksWidth = hasRemarks ? (allThs[colCount - 1].offsetWidth || 50) : 0;
+        if (hasRemarks && allThs[colCount - 1]) {
+          allThs[colCount - 1].style.setProperty('width', remarksWidth + 'px', 'important');
+          allThs[colCount - 1].style.setProperty('min-width', '50px', 'important');
+        }
+
+        const lastColWidth = Math.max(MIN_WIDTH, containerWidth - sumPreceding - remarksWidth - 2);
+
+        allThs[targetLastIdx].style.setProperty('width', lastColWidth + 'px', 'important');
+        allThs[targetLastIdx].style.setProperty('min-width', MIN_WIDTH + 'px', 'important');
+        allThs[targetLastIdx].style.setProperty('max-width', lastColWidth + 'px', 'important');
+
+        // 전체 표 너비를 화면/컨테이너 가로폭(100%)에 정확히 맞춰 우측 여백 제거
+        table.style.setProperty('width', '100%', 'important');
+        table.style.setProperty('min-width', '100%', 'important');
+        table.style.setProperty('max-width', '100%', 'important');
+      } else if (colIdx === 0 && colCount > 1) {
         // 1열 우측 더블클릭 시: 1열은 현재 너비로 고정하고, 나머지 열들을 폰/PC 튜터창 너비(100%)에 딱 맞춰 분할하여 가로 스크롤바 제거
         const tableContainer = table.closest('.markdown-table-container') || table.parentElement;
         const containerWidth = tableContainer ? tableContainer.clientWidth : table.clientWidth;
 
         const th1Width = allThs[0].offsetWidth || Math.floor(containerWidth * 0.35);
-        const hasRemarks = allThs[colCount - 1] && allThs[colCount - 1].textContent.trim() === '비고';
         const remarksWidth = hasRemarks ? (allThs[colCount - 1].offsetWidth || 50) : 0;
 
         const remCount = hasRemarks ? (colCount - 2) : (colCount - 1);
@@ -4710,7 +4743,6 @@ export default function App() {
         const containerWidth = tableContainer ? tableContainer.clientWidth : table.clientWidth;
         
         const th1Width = allThs[0].offsetWidth || Math.floor(containerWidth * 0.35);
-        const hasRemarks = allThs[colCount - 1] && allThs[colCount - 1].textContent.trim() === '비고';
         const remarksWidth = hasRemarks ? (allThs[colCount - 1].offsetWidth || 50) : 0;
 
         const targetWidth = Math.max(MIN_WIDTH, allThs[1].offsetWidth);
@@ -28857,6 +28889,8 @@ ${itemsStr}
           LatexRenderer={LatexRenderer}
           katexLoaded={katexLoaded}
           isDesktop={isDesktop}
+          handleRegenerateTable={handleRegenerateTable}
+          tableRegeneratingIds={tableRegeneratingIds}
         />
       </React.Suspense>
 

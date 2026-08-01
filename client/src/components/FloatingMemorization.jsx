@@ -278,7 +278,9 @@ export function FloatingMemorization({
   API_BASE,
   LatexRenderer,
   katexLoaded,
-  isDesktop
+  isDesktop,
+  handleRegenerateTable,
+  tableRegeneratingIds
 }) {
   const dragRef = useRef(null);
   const [position, setPosition] = useState(() => {
@@ -457,6 +459,7 @@ export function FloatingMemorization({
   // Local editing states for cells and overviews inside the popup
   const [localActiveEditCell, setLocalActiveEditCell] = useState(null); // { tableId, type, rIdx, colIdx }
   const [localEditingCellValue, setLocalEditingCellValue] = useState('');
+  const [activeAddDropdownTableId, setActiveAddDropdownTableId] = useState(null);
   const [localExpandedOverviewIds, setLocalExpandedOverviewIds] = useState({});
   const [localEditingOverviewId, setLocalEditingOverviewId] = useState(null);
   const [localEditingOverviewText, setLocalEditingOverviewText] = useState('');
@@ -705,10 +708,22 @@ export function FloatingMemorization({
                             </div>
                           )}
                         </div>
-                        <div className="flex items-center gap-1 shrink-0">
+                        <div className="flex items-center gap-1 shrink-0 select-none">
+                          {isExpanded && handleRegenerateTable && (
+                            <button
+                              onClick={() => handleRegenerateTable(t.id)}
+                              disabled={tableRegeneratingIds && tableRegeneratingIds[t.id]}
+                              className="p-1 rounded-lg text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-500/20 border border-slate-700/50 bg-slate-800/40 transition-all cursor-pointer text-[11px] font-bold flex items-center gap-1 disabled:opacity-50 disabled:pointer-events-none"
+                              title="AI 표 내용 재작성"
+                            >
+                              <RefreshCw size={12} className={tableRegeneratingIds && tableRegeneratingIds[t.id] ? "animate-spin text-emerald-400" : ""} />
+                              <span>AI 재작성</span>
+                            </button>
+                          )}
                           <button
                             onClick={() => toggleTableCollapse(t.id)}
-                            className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-all cursor-pointer"
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-violet-400 hover:bg-violet-500/10 hover:border-violet-500/20 border border-slate-700/50 bg-slate-800/40 transition-all cursor-pointer text-[11px] font-bold flex items-center gap-1"
+                            title={isExpanded ? "접기" : "열기"}
                           >
                             {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
                           </button>
@@ -722,7 +737,8 @@ export function FloatingMemorization({
                                 showNotification('표가 삭제되었습니다.', 'info');
                               }
                             }}
-                            className="p-1 rounded bg-red-955/40 border border-red-500/20 text-red-400 hover:bg-red-900 transition-all cursor-pointer"
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-450 hover:bg-rose-500/10 hover:border-rose-500/20 border border-slate-700/50 bg-slate-800/40 transition-all cursor-pointer text-[11px] font-bold flex items-center gap-1"
+                            title="표 삭제"
                           >
                             <Trash2 size={12} />
                           </button>
@@ -743,15 +759,57 @@ export function FloatingMemorization({
                                       return (
                                         <th 
                                           key={hIdx} 
-                                          className="p-1.5 border-r border-slate-800/80 last:border-r-0 align-middle cursor-pointer min-w-[70px]"
-                                          onClick={() => {
-                                            if (!isEditing) {
-                                              setLocalActiveEditCell({ tableId: t.id, type: 'header', colIdx: hIdx });
-                                              setLocalEditingCellValue(h);
-                                            }
-                                          }}
+                                          className="p-1.5 border-r border-slate-800/80 last:border-r-0 align-middle min-w-[90px]"
                                         >
-                                          {isEditing ? (
+                                          {hIdx === 0 ? (
+                                            <div className="relative inline-block select-none" onClick={(e) => e.stopPropagation()}>
+                                              <button
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  setActiveAddDropdownTableId(activeAddDropdownTableId === t.id ? null : t.id);
+                                                }}
+                                                className="px-2 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-black cursor-pointer transition-all active:scale-95 border border-emerald-500/20 flex items-center gap-0.5 mx-auto"
+                                                title="행 또는 열 추가"
+                                              >
+                                                + 행/열 추가
+                                              </button>
+                                              {activeAddDropdownTableId === t.id && (
+                                                <div className="absolute left-1/2 -translate-x-1/2 mt-1.5 w-24 bg-slate-950 border border-slate-800 rounded-lg shadow-xl z-50 flex flex-col overflow-hidden py-1">
+                                                  <button
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      const emptyRow = Array(parsed.headers.length).fill('');
+                                                      const updatedRows = [...parsed.rows, emptyRow];
+                                                      const newHtml = rebuildTableHtml(parsed.headers, updatedRows);
+                                                      const updatedTables = formulaTables.map(item => item.id === t.id ? { ...item, html: newHtml } : item);
+                                                      setFormulaTables(updatedTables);
+                                                      handleSaveFormulaTables(updatedTables, false);
+                                                      setActiveAddDropdownTableId(null);
+                                                    }}
+                                                    className="w-full px-2 py-1.5 hover:bg-slate-900 text-center text-xs font-bold text-slate-200 cursor-pointer border-none bg-transparent"
+                                                  >
+                                                    행 추가
+                                                  </button>
+                                                  <button
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      const newHeader = `열 ${parsed.headers.length + 1}`;
+                                                      const updatedHeaders = [...parsed.headers, newHeader];
+                                                      const updatedRows = parsed.rows.map(row => [...row, '']);
+                                                      const newHtml = rebuildTableHtml(updatedHeaders, updatedRows);
+                                                      const updatedTables = formulaTables.map(item => item.id === t.id ? { ...item, html: newHtml } : item);
+                                                      setFormulaTables(updatedTables);
+                                                      handleSaveFormulaTables(updatedTables, false);
+                                                      setActiveAddDropdownTableId(null);
+                                                    }}
+                                                    className="w-full px-2 py-1.5 hover:bg-slate-900 text-center text-xs font-bold text-slate-200 cursor-pointer border-none bg-transparent"
+                                                  >
+                                                    열 추가
+                                                  </button>
+                                                </div>
+                                              )}
+                                            </div>
+                                          ) : isEditing ? (
                                             <input
                                               type="text"
                                               value={localEditingCellValue}
@@ -778,29 +836,23 @@ export function FloatingMemorization({
                                               autoFocus
                                             />
                                           ) : (
-                                            <div className="w-full text-center p-0.5 text-[14px] md:text-[16px] text-slate-200 font-black">
+                                            <div 
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (!isEditing) {
+                                                  setLocalActiveEditCell({ tableId: t.id, type: 'header', colIdx: hIdx });
+                                                  setLocalEditingCellValue(h);
+                                                }
+                                              }}
+                                              className="w-full text-center p-0.5 text-[14px] md:text-[16px] text-slate-200 font-black cursor-pointer hover:text-violet-300 transition-colors"
+                                              title="클릭하여 헤더 수정"
+                                            >
                                               <LatexRenderer text={h} katexLoaded={katexLoaded} className="inline" />
                                             </div>
                                           )}
                                         </th>
                                       );
                                     })}
-                                    <th className="p-1 text-center align-middle w-16">
-                                      <button
-                                        onClick={() => {
-                                          const emptyRow = Array(parsed.headers.length).fill('');
-                                          const updatedRows = [...parsed.rows, emptyRow];
-                                          const newHtml = rebuildTableHtml(parsed.headers, updatedRows);
-                                          const updatedTables = formulaTables.map(item => item.id === t.id ? { ...item, html: newHtml } : item);
-                                          setFormulaTables(updatedTables);
-                                          handleSaveFormulaTables(updatedTables, false);
-                                        }}
-                                        className="px-1 py-0.2 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-[8px] font-black cursor-pointer"
-                                        title="새 행 추가"
-                                      >
-                                        +행
-                                      </button>
-                                    </th>
                                   </tr>
                                 </thead>
                                 <tbody>
@@ -811,13 +863,7 @@ export function FloatingMemorization({
                                         return (
                                           <td 
                                             key={cIdx} 
-                                            className="p-1 border-r border-slate-800/60 last:border-r-0 align-middle cursor-pointer min-w-[90px]"
-                                            onClick={() => {
-                                              if (!isEditing) {
-                                                setLocalActiveEditCell({ tableId: t.id, type: 'cell', rIdx, colIdx: cIdx });
-                                                setLocalEditingCellValue(cell);
-                                              }
-                                            }}
+                                            className="p-1 border-r border-slate-800/60 last:border-r-0 align-middle min-w-[90px]"
                                           >
                                             {isEditing ? (
                                               <input
@@ -854,7 +900,17 @@ export function FloatingMemorization({
                                                 autoFocus
                                               />
                                             ) : (
-                                              <div className="w-full text-center p-0.5 text-[14px] md:text-[16px] text-slate-200">
+                                              <div 
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  if (!isEditing) {
+                                                    setLocalActiveEditCell({ tableId: t.id, type: 'cell', rIdx, colIdx: cIdx });
+                                                    setLocalEditingCellValue(cell);
+                                                  }
+                                                }}
+                                                className="w-full text-center p-0.5 text-[14px] md:text-[16px] text-slate-200 cursor-pointer hover:text-violet-300 transition-colors"
+                                                title="클릭하여 셀 수정"
+                                              >
                                                 <LatexRenderer text={cell} katexLoaded={katexLoaded} className="inline" />
                                               </div>
                                             )}

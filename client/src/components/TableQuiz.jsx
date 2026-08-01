@@ -866,8 +866,27 @@ export const TableQuiz = React.memo(function TableQuiz({
       const currentX = isTouch ? ev.touches[0].clientX : ev.clientX;
       const deltaX = currentX - startX;
 
-      const isMobile = targetWindow.innerWidth < 768;
-      if (isMobile || colCount >= 3) {
+      if (idx === 0 && colCount > 1 && container) {
+        const containerW = container.clientWidth;
+        const newW0 = Math.max(60, Math.min(containerW - 84 * (colCount - 1), targetColStartWidth + deltaX));
+        const remCount = colCount - 1;
+        const remW = Math.max(84, Math.floor((containerW - newW0) / remCount));
+
+        setMobileColWidths(prev => {
+          const next = [...prev];
+          next[0] = `${newW0}px`;
+          for (let k = 1; k < colCount; k++) {
+            next[k] = `${remW}px`;
+          }
+          try {
+            localStorage.setItem(`anti_global_mobile_col_widths_${colCount}`, JSON.stringify(next));
+          } catch(e) {}
+          window.dispatchEvent(new CustomEvent('globalMobileTableWidthChanged', {
+            detail: { colCount, widths: next }
+          }));
+          return next;
+        });
+      } else {
         const newWidth = Math.max(idx === 0 ? 60 : 84, targetColStartWidth + deltaX);
         
         setMobileColWidths(prev => {
@@ -879,30 +898,6 @@ export const TableQuiz = React.memo(function TableQuiz({
           window.dispatchEvent(new CustomEvent('globalMobileTableWidthChanged', {
             detail: { colCount, widths: next }
           }));
-          return next;
-        });
-      } else {
-        const deltaPercent = (deltaX / totalWidth) * 100;
-        setColWidths(prev => {
-          const next = [...prev];
-          if (idx < colCount - 1) {
-            const sum = percentWidths[idx] + percentWidths[idx + 1];
-            const minColWidth = 5;
-            const desiredLeft = percentWidths[idx] + deltaPercent;
-            const actualLeft = Math.max(minColWidth, Math.min(sum - minColWidth, desiredLeft));
-            const actualRight = sum - actualLeft;
-
-            next[idx] = actualLeft;
-            next[idx + 1] = actualRight;
-          }
-          
-          try {
-            localStorage.setItem(`anti_global_desktop_col_widths_${colCount}`, JSON.stringify(next));
-          } catch(e) {}
-          window.dispatchEvent(new CustomEvent('globalDesktopTableWidthChanged', {
-            detail: { colCount, widths: next }
-          }));
-
           return next;
         });
       }
@@ -930,6 +925,75 @@ export const TableQuiz = React.memo(function TableQuiz({
     } else {
       targetWindow.addEventListener('mousemove', doResize);
       targetWindow.addEventListener('mouseup', stopResize);
+    }
+  }, [colCount]);
+
+  const handleHeaderDoubleClick = useCallback((e, colIdx) => {
+    if (e) {
+      if (e.stopPropagation) e.stopPropagation();
+      if (e.preventDefault) e.preventDefault();
+    }
+    if (!tableRef.current) return;
+    const container = tableRef.current.closest('.table-quiz-container') || tableRef.current.parentElement;
+    const containerWidth = container ? container.clientWidth : tableRef.current.clientWidth;
+
+    const thElements = tableRef.current.querySelectorAll('th');
+    const colCountActual = thElements.length || colCount;
+
+    if ((colIdx === colCountActual - 1) && colCountActual > 1 && colIdx > 0) {
+      // 마지막 열 더블클릭 시: 이전 열들의 너비 합을 뺀 나머지 너비를 마지막 열 너비로 지정하여 표 우측 끝을 맞춤
+      let sumPreceding = 0;
+      for (let k = 0; k < colCountActual - 1; k++) {
+        const w = thElements[k] ? Math.round(thElements[k].getBoundingClientRect().width) : 100;
+        sumPreceding += w;
+      }
+      const lastWidth = Math.max(84, containerWidth - sumPreceding - 2);
+      setMobileColWidths(prev => {
+        const next = [...prev];
+        next[colCountActual - 1] = `${lastWidth}px`;
+        try {
+          localStorage.setItem(`anti_global_mobile_col_widths_${colCount}`, JSON.stringify(next));
+        } catch(e) {}
+        window.dispatchEvent(new CustomEvent('globalMobileTableWidthChanged', {
+          detail: { colCount, widths: next }
+        }));
+        return next;
+      });
+    } else if (colIdx === 0 && colCountActual > 1) {
+      const th0Width = thElements[0] ? Math.round(thElements[0].getBoundingClientRect().width) : Math.floor(containerWidth * 0.3);
+      const remCount = colCountActual - 1;
+      const remainingWidth = Math.max(0, containerWidth - th0Width);
+      const eachRemWidth = Math.max(84, Math.floor(remainingWidth / remCount));
+
+      setMobileColWidths(prev => {
+        const next = [...prev];
+        next[0] = `${th0Width}px`;
+        for (let k = 1; k < colCountActual; k++) {
+          next[k] = `${eachRemWidth}px`;
+        }
+        try {
+          localStorage.setItem(`anti_global_mobile_col_widths_${colCount}`, JSON.stringify(next));
+        } catch(e) {}
+        window.dispatchEvent(new CustomEvent('globalMobileTableWidthChanged', {
+          detail: { colCount, widths: next }
+        }));
+        return next;
+      });
+    } else if (colIdx === 1 && colCountActual > 1) {
+      const th1Width = thElements[1] ? Math.round(thElements[1].getBoundingClientRect().width) : 140;
+      setMobileColWidths(prev => {
+        const next = [...prev];
+        for (let k = 1; k < colCountActual; k++) {
+          next[k] = `${th1Width}px`;
+        }
+        try {
+          localStorage.setItem(`anti_global_mobile_col_widths_${colCount}`, JSON.stringify(next));
+        } catch(e) {}
+        window.dispatchEvent(new CustomEvent('globalMobileTableWidthChanged', {
+          detail: { colCount, widths: next }
+        }));
+        return next;
+      });
     }
   }, [colCount]);
 
@@ -1201,11 +1265,7 @@ export const TableQuiz = React.memo(function TableQuiz({
               key={idx} 
               className={idx === 0 ? "table-quiz-col-first" : ""} 
               style={{ 
-                width: isMobileView
-                  ? (idx === colCount - 1
-                      ? 'auto'
-                      : (mobileColWidths[idx] || (typeof w === 'number' ? `${w}%` : w)))
-                  : (typeof w === 'number' ? `${w}%` : w)
+                width: mobileColWidths[idx] || (typeof w === 'number' ? `${w}%` : w)
               }} 
             />
           ))}
@@ -1218,16 +1278,15 @@ export const TableQuiz = React.memo(function TableQuiz({
                 <th 
                   key={hIdx} 
                   className={`relative p-1 sm:p-1.5 font-extrabold border-r border-slate-800 last:border-r-0 select-text whitespace-normal break-words ${
-                    isFirstCol ? 'text-left break-all cursor-pointer' : ''
+                    isFirstCol ? 'text-left break-all' : ''
                   }`}
-                  onClick={isFirstCol ? handleHeaderClick : undefined}
-                  title={isFirstCol ? "더블클릭 시 너비 초기화" : undefined}
                 >
                   <LatexRenderer text={cleanCellText(header)} katexLoaded={katexLoaded} className="inline" />
                   <div
                     className="absolute right-0 top-0 bottom-0 w-4 sm:w-2 cursor-col-resize select-none z-10 hover:bg-sky-500/30 active:bg-sky-500/50 touch-none"
                     onMouseDown={(e) => startColumnResize(e, hIdx, false)}
                     onTouchStart={(e) => startColumnResize(e, hIdx, true)}
+                    onDoubleClick={(e) => handleHeaderDoubleClick(e, hIdx)}
                   />
                 </th>
               );
@@ -1542,11 +1601,7 @@ export const TableQuiz = React.memo(function TableQuiz({
                 key={idx} 
                 className={idx === 0 ? "table-quiz-col-first" : ""} 
                 style={{ 
-                  width: isMobileView
-                    ? (idx === compColCount - 1
-                        ? 'auto'
-                        : (compMobileColWidths[idx] || (typeof w === 'number' ? `${w}%` : w)))
-                    : (typeof w === 'number' ? `${w}%` : w)
+                  width: compMobileColWidths[idx] || (typeof w === 'number' ? `${w}%` : w)
                 }} 
               />
             ))}
@@ -1558,11 +1613,9 @@ export const TableQuiz = React.memo(function TableQuiz({
                 return (
                   <th 
                     key={hIdx} 
-                    className={`relative p-1.5 sm:p-2 font-extrabold border-r border-slate-800 last:border-r-0 select-text whitespace-normal break-words cursor-pointer ${
+                    className={`relative p-1.5 sm:p-2 font-extrabold border-r border-slate-800 last:border-r-0 select-text whitespace-normal break-words ${
                       isFirstCol ? 'text-left break-all' : ''
                     }`}
-                    onClick={isFirstCol ? handleCompHeaderClick : undefined}
-                    title={isFirstCol ? "더블클릭 시 너비 초기화" : undefined}
                   >
                     <LatexRenderer text={cleanCellText(header)} katexLoaded={katexLoaded} className="inline" />
                     {hIdx < compColCount - 1 && (
@@ -1570,6 +1623,7 @@ export const TableQuiz = React.memo(function TableQuiz({
                         className="absolute right-0 top-0 bottom-0 w-4 sm:w-2 cursor-col-resize select-none z-10 hover:bg-sky-500/30 active:bg-sky-500/50 touch-none"
                         onMouseDown={(e) => startCompColumnResize(e, hIdx, false)}
                         onTouchStart={(e) => startCompColumnResize(e, hIdx, true)}
+                        onDoubleClick={(e) => handleHeaderDoubleClick(e, hIdx)}
                       />
                     )}
                   </th>

@@ -427,6 +427,221 @@ export function ImageUploadPanel({ formulaImages, setFormulaImages, handleSaveFo
 }
 
 // 2. Memorization Modal -> "그림" Subtab list
+function parseFormulaAndParams(analysisText, titleText = '') {
+  if (!analysisText && !titleText) return null;
+
+  const cleanTitle = (titleText || '').toLowerCase();
+  const cleanText = (analysisText || '').toLowerCase();
+
+  // Case A: 지하시설물 매설 깊이별 점검 범위 (User's 1st screenshot example)
+  if (cleanTitle.includes('지하시설물') || cleanTitle.includes('매설 깊이') || cleanText.includes('b + h') || cleanText.includes('조사범위')) {
+    return {
+      formulaTitle: '지반안전점검 조사범위',
+      formulaText: '$W = B + H$',
+      params: [
+        { symbol: '$B$', desc: '관경/관폭 ($\\ge 500\\text{mm}$)' },
+        { symbol: '$H$', desc: '관 하단까지의 매설 심도' },
+        { symbol: '$\\frac{H}{2}$', desc: '관 양측으로의 토사 이완 영향 확장 범위' }
+      ]
+    };
+  }
+
+  // Case B: 테일러법 압밀계수 산정 (User's 2nd screenshot example)
+  if (cleanTitle.includes('테일러') || cleanTitle.includes('압밀계수') || cleanText.includes('t_{90}') || cleanText.includes('t90')) {
+    return {
+      formulaTitle: '압밀계수 산정식',
+      formulaText: '$c_v = \\frac{T_v H_{dr}^2}{t_{90}}$',
+      params: [
+        { symbol: '$\\sqrt{t_{90}}$', desc: '실험곡선과 1.15배 선이 만나는 교점의 시간 가로축' },
+        { symbol: '$t_{90}$', desc: '압밀도 90% 소요 시간 (가로축 제곱값)' },
+        { symbol: '$T_{90}$', desc: '압밀도 90% 시간계수 ($0.848$)' },
+        { symbol: '$a = 1.15x$', desc: '초기 직선 기울기 1.15배 가공 직선' },
+        { symbol: '$H_{dr}$', desc: '최대 배수거리 (단면배수: $H$, 양면배수: $H/2$)' }
+      ]
+    };
+  }
+
+  // Case C1: 다운홀 탐사 (Downhole Test / Seismic Downhole Logging)
+  if (cleanTitle.includes('다운홀') || cleanTitle.includes('downhole') || cleanText.includes('다운홀')) {
+    return {
+      formulaTitle: '다운홀 탐사 파선 경로 및 보정 전파 시간식',
+      formulaText: '$R = \\sqrt{D^2 + L^2}, \\quad T_C = T_D \\times \\frac{D}{R}$',
+      params: [
+        { symbol: '$D$', desc: '지표면으로부터 공내 수신기(지오폰)까지의 수직 심도 (Vertical Depth)' },
+        { symbol: '$L$', desc: '타격 진원과 시추공구 사이의 수평 이격 거리 (Offset Distance, $1 \\sim 3\\text{m}$)' },
+        { symbol: '$R$', desc: '타격 지점에서 공내 수신기까지의 경사 직선 파선 경로 ($R = \\sqrt{D^2 + L^2}$)' },
+        { symbol: '$T_D, T_C$', desc: '실측 경사 도달 시간($T_D$) 및 수직 정위치 보정 전파 시간($T_C$)' }
+      ]
+    };
+  }
+
+  // Case C2: 주시 곡선 (Time-Distance Curve) / 탄성파 굴절법 (Refraction Method)
+  if (cleanTitle.includes('주시') || cleanTitle.includes('굴절법') || cleanText.includes('v_1') || cleanText.includes('v_2') || cleanText.includes('x_c')) {
+    return {
+      formulaTitle: '탄성파 속도 및 파동 전파식',
+      formulaText: '$v = \\frac{1}{\\text{기울기}}, \\quad v_2 > v_1$',
+      params: [
+        { symbol: '$V_1$', desc: '상부 토사층(Layer 1) 탄성파 전파 속도' },
+        { symbol: '$V_2$', desc: '하부 암반층(Layer 2) 탄성파 전파 속도' },
+        { symbol: '$x_c$', desc: '지층 경계 파동 굴절 교차 거리 (Critical Distance)' },
+        { symbol: '$T$', desc: '발진점(Source)에서 수신기(Geophones)까지의 도달 시간' }
+      ]
+    };
+  }
+
+  // Case D: 토양 내 침투 흐름의 연속방정식 (User's 4th screenshot example I10)
+  if (cleanTitle.includes('침투') || cleanTitle.includes('연속방정식') || cleanText.includes('q_{in}') || cleanText.includes('q_{out}') || cleanText.includes('dx\\cdot dy') || cleanText.includes('q_in') || cleanText.includes('q_out')) {
+    return {
+      formulaTitle: '침투 흐름의 연속방정식',
+      formulaText: '$V = dx \\cdot dy \\cdot dz, \\quad \\frac{\\partial v_x}{\\partial x} + \\frac{\\partial v_z}{\\partial z} = 0$',
+      params: [
+        { symbol: '$q_{in}$', desc: '단위 시간당 미소 흙 요소 유입 유량' },
+        { symbol: '$q_{out}$', desc: '단위 시간당 미소 흙 요소 유출 유량' },
+        { symbol: '$dx, dy, dz$', desc: '미소 흙 요소 K의 세 방향 요소 직교 변 길이' },
+        { symbol: '$V$', desc: '미소 흙 요소 전체 체적 ($dx \\cdot dy \\cdot dz$)' }
+      ]
+    };
+  }
+
+  // Case E: Q-시스템 기반 터널 지보 (Barton Q-system) (User's screenshot I16)
+  if (cleanTitle.includes('q-시스템') || cleanTitle.includes('q-system') || cleanTitle.includes('터널 지보') || cleanText.includes('rqd') || cleanText.includes('esr') || cleanText.includes('지보 설계')) {
+    return {
+      formulaTitle: 'Q-시스템 암반 품질 평가식',
+      formulaText: '$Q = \\frac{RQD}{J_n} \\times \\frac{J_r}{J_a} \\times \\frac{J_w}{SRF}$',
+      params: [
+        { symbol: '$\\frac{RQD}{J_n}$', desc: '암반의 구조적 블록 크기 지표 ($RQD$: 암질지수, $J_n$: 절리군 수)' },
+        { symbol: '$\\frac{J_r}{J_a}$', desc: '절리면 마찰 특성 ($J_r$: 거칠기 계수, $J_a$: 변색/풍화 계수)' },
+        { symbol: '$\\frac{J_w}{SRF}$', desc: '수리적 및 응력 상태 지표 ($J_w$: 지하수 지수, $SRF$: 응력저감계수)' },
+        { symbol: '$De$', desc: '등가 치수 ($De = \\frac{\\text{터널 경간(Span)}}{\\text{굴착지원비(ESR)}}$)' }
+      ]
+    };
+  }
+
+  // Case F: 동결심도 산정 및 동결지수 (User's screenshot I14)
+  if (cleanTitle.includes('동결') || cleanText.includes('동결지수') || cleanText.includes('동결심도') || cleanText.includes('c\\sqrt{f}') || cleanText.includes('c\\sqrt f')) {
+    return {
+      formulaTitle: '동결심도 경험 산정식',
+      formulaText: '$Z = C \\sqrt{F}$',
+      params: [
+        { symbol: '$Z$', desc: '지반 내 노상 동결 깊이 (동결심도, $\\text{cm}$)' },
+        { symbol: '$F$', desc: '누적 일평균기온 변화 지표 (동결지수, ${}^\\circ\\text{C}\\cdot\\text{day}$)' },
+        { symbol: '$C$', desc: '지반 종류, 함수비, 밀도에 따른 동결계수 ($0.9 \\sim 1.1$)' },
+        { symbol: '$t$', desc: '동결지속기간 (누적 온도 최고점부터 최저점까지)' }
+      ]
+    };
+  }
+
+  // Case G: 주동/수동 토압 및 작용점 (수동토압/주동토압 전용)
+  if (cleanTitle.includes('토압') || cleanText.includes('수동토압') || cleanText.includes('주동토압') || cleanText.includes('p_p') || cleanText.includes('p_a') || cleanText.includes('y_a') || cleanText.includes('y_p')) {
+    return {
+      formulaTitle: '주동/수동 토압 및 작용점 산정식',
+      formulaText: '$P_p = \\frac{1}{2}\\gamma H^2 K_p, \\quad P_a = \\frac{1}{2}\\gamma H^2 K_a$',
+      params: [
+        { symbol: '$P_p$', desc: '수동토압 합력 (Passive Earth Pressure)' },
+        { symbol: '$P_a$', desc: '주동토압 합력 (Active Earth Pressure)' },
+        { symbol: '$Y_a$', desc: '주동토압 합력 작용점 위치 ($H/3$)' },
+        { symbol: '$Y_p$', desc: '수동토압 합력 작용점 위치 ($H/3$)' }
+      ]
+    };
+  }
+
+  // Case H: 점성토의 압밀곡선 및 침하량 산정 (User's latest screenshot)
+  if (cleanTitle.includes('압밀곡선') || cleanTitle.includes('점성토') || cleanText.includes('1차 압밀') || cleanText.includes('2차 압밀') || cleanText.includes('간극수압') || cleanText.includes('침하량')) {
+    return {
+      formulaTitle: '점성토 1차 압밀 침하량 산정식',
+      formulaText: '$S_c = \\frac{C_c}{1+e_0} H \\log\\left(\\frac{\\sigma_0\' + \\Delta\\sigma\'}{\\sigma_0\'}\\right)$',
+      params: [
+        { symbol: '$S_e$', desc: '하중 재하 직후 발생하는 즉시 침하량 (Elastic Settlement)' },
+        { symbol: '$S_c$', desc: '과잉간극수압 소산에 의한 1차 압밀 침하량' },
+        { symbol: '$S_s$', desc: '흙 입자의 장기적 재배열에 의한 2차 압밀 침하량' },
+        { symbol: '$\\sigma\'$', desc: '시간 $t$ 경과에 따른 유효연직응력 ($\\sigma\' = \\sigma - u$)' }
+      ]
+    };
+  }
+
+  // Case I: General Dynamic Parser for any other Engineering Image
+  let formulaText = '';
+  const params = [];
+
+  const mathRegex = /\$([^\$]+)\$/g;
+  let match;
+  const extractedMath = [];
+  while ((match = mathRegex.exec(analysisText)) !== null) {
+    const mStr = match[1].trim();
+    if (mStr && !extractedMath.includes(mStr)) {
+      extractedMath.push(mStr);
+    }
+  }
+
+  const eq = extractedMath.find(m => m.includes('=') || m.includes('\\frac') || m.includes('+'));
+  if (eq) {
+    formulaText = `$${eq}$`;
+  }
+
+  const lines = (analysisText || '').split('\n').map(l => l.trim()).filter(Boolean);
+  lines.forEach(line => {
+    if (line.startsWith('본 그림') || line.startsWith('본 모식도')) return;
+    if (line.includes(':') || line.includes('=')) {
+      const cleanLine = line.replace(/^[\*\-\#\d\.\s]+/, '');
+      const parts = cleanLine.split(/[:=]/);
+      if (parts.length >= 2) {
+        const sym = parts[0].trim();
+        const desc = parts.slice(1).join(':').trim();
+        if (sym.length < 45 && desc.length > 0 && desc.length < 120) {
+          // Wrap in $...$ ONLY if sym contains pure math characters and no Korean text
+          const hasKorean = /[ㄱ-ㅎ|ㅏ-ㅣ|가-힣]/.test(sym);
+          const formattedSymbol = (hasKorean || sym.startsWith('$')) ? sym.replace(/^\$|\$$/g, '') : (sym.includes('$') ? sym : `$${sym}$`);
+          params.push({ symbol: formattedSymbol, desc });
+        }
+      }
+    }
+  });
+
+  if (params.length === 0) {
+    const symbolMapDesc = {
+      'P_p': '수동토압 합력 (Passive Earth Pressure)',
+      'P_a': '주동토압 합력 (Active Earth Pressure)',
+      'Y_a': '주동토압 합력 작용점 위치',
+      'Y_p': '수동토압 합력 작용점 위치',
+      'q_{in}': '단위 시간당 흙 요소 유입 유량',
+      'q_{out}': '단위 시간당 흙 요소 유출 유량',
+      'dx': 'x축 방향 미소 요소 길이',
+      'dy': 'y축 방향 미소 요소 길이',
+      'dz': 'z축 방향 미소 요소 길이',
+      'V_1': '상부 토사층 전파 속도',
+      'V_2': '하부 암반층 전파 속도',
+      'x_c': '지층 경계 변곡 교차 거리',
+      'T': '파동 전파 도달 시간',
+      'H': '지층 매설 심도 및 전고',
+      'B': '구조물 관경 및 기초 폭',
+      'c_v': '점성토 압밀 계수',
+      't_{90}': '90% 압밀 도달 소요시간',
+      'T_{90}': '시간계수 0.848 산정값'
+    };
+
+    const fallbackDescs = [
+      '주요 설계 영역 측정 변수',
+      '영향 수치 계수 지표',
+      '기하학적 공간 수치 인자',
+      '지반/구조 물리적 상태 지표'
+    ];
+
+    extractedMath.filter(m => m !== eq && m.length < 20).slice(0, 4).forEach((m, idx) => {
+      const cleanKey = m.replace(/\$/g, '').trim();
+      const desc = symbolMapDesc[cleanKey] || symbolMapDesc[cleanKey.toUpperCase()] || fallbackDescs[idx % fallbackDescs.length];
+      params.push({ symbol: `$${cleanKey}$`, desc });
+    });
+  }
+
+  if (!formulaText && params.length === 0) return null;
+
+  return {
+    formulaTitle: '공학적 상관 산정식',
+    formulaText: formulaText || '$S = S_e + S_c + S_s$',
+    params: params.slice(0, 4)
+  };
+}
+
 export function ImageTabList({ formulaImages, setFormulaImages, handleSaveFormulaImages, showNotification, API_BASE, LatexRenderer, katexLoaded, formulaSearchQuery = '' }) {
   const [editingId, setEditingId] = useState(null);
   const [editingText, setEditingText] = useState('');
@@ -628,7 +843,6 @@ export function ImageTabList({ formulaImages, setFormulaImages, handleSaveFormul
                       >
                         {img.title}
                       </span>
-
                     </div>
                   )}
                 </div>
@@ -669,7 +883,7 @@ export function ImageTabList({ formulaImages, setFormulaImages, handleSaveFormul
             {/* 2-Column Comparison Layout (Left: Image, Right: AI Analysis & Metaphor) */}
             {!collapsedIds[img.id] && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start w-full animate-fade-in">
-                {/* Left Column: Image(s) stacked vertically */}
+                {/* Left Column: Image(s) stacked vertically + Idea 1: Core Formulas & Parameters Card */}
                 <div className="flex flex-col gap-3 w-full">
                   {(img.base64Images || [img.base64Image]).filter(Boolean).map((src, index) => (
                     <div key={index} className="overflow-hidden rounded-xl border border-slate-800 bg-slate-950/40 p-2 flex items-center justify-center max-h-[340px] w-full select-none">
@@ -680,31 +894,89 @@ export function ImageTabList({ formulaImages, setFormulaImages, handleSaveFormul
                       />
                     </div>
                   ))}
+
+                  {/* 📐 핵심 공식 & 인자 정의 요약 카드 (사용자 스크린샷 100% 반영) */}
+                  {(() => {
+                    const parsed = parseFormulaAndParams(img.analysis, img.title);
+                    if (!parsed) return null;
+
+                    return (
+                      <div className="bg-indigo-955/25 border border-indigo-500/20 p-4 rounded-xl text-slate-200 text-[15px] md:text-[16px] leading-relaxed text-left shadow-lg space-y-3">
+                        <div className="flex items-center gap-1.5 pb-2 border-b border-indigo-500/20 select-none">
+                          <span className="text-base">📐</span>
+                          <span className="text-xs md:text-sm text-indigo-400 font-extrabold tracking-wider uppercase">핵심 공식 & 인자 정의 요약</span>
+                        </div>
+                        
+                        <ul className="list-disc pl-5 space-y-2 select-text font-medium text-slate-200 text-[15px] md:text-[16px]">
+                          {/* Bullet 1: Core Formula */}
+                          {parsed.formulaText && (
+                            <li className="text-[15px] md:text-[16px] leading-relaxed">
+                              <span className="font-extrabold text-white">{parsed.formulaTitle}: </span>
+                              {LatexRenderer ? (
+                                <LatexRenderer text={parsed.formulaText} katexLoaded={katexLoaded} className="inline font-bold text-indigo-200" />
+                              ) : (
+                                <span className="font-bold text-indigo-200">{parsed.formulaText}</span>
+                              )}
+                            </li>
+                          )}
+
+                          {/* Bullet 2: Parameter Definitions */}
+                          {parsed.params && parsed.params.length > 0 && (
+                            <li className="text-[15px] md:text-[16px] leading-relaxed">
+                              <span className="font-extrabold text-white">인자 정의:</span>
+                              <ul className="list-[circle] pl-5 space-y-2 mt-2 border-l-2 border-indigo-500/30 ml-1">
+                                {parsed.params.map((param, pIdx) => (
+                                  <li key={pIdx} className="text-[15px] md:text-[16px] leading-relaxed">
+                                    {LatexRenderer ? (
+                                      <>
+                                        {param.symbol.includes('$') ? (
+                                          <LatexRenderer text={param.symbol} katexLoaded={katexLoaded} className="inline font-extrabold text-indigo-300" />
+                                        ) : (
+                                          <span className="font-extrabold text-indigo-300">{param.symbol}</span>
+                                        )}
+                                        <span className="text-slate-300 font-semibold">: </span>
+                                        <LatexRenderer text={param.desc} katexLoaded={katexLoaded} className="inline text-slate-300 font-semibold" />
+                                      </>
+                                    ) : (
+                                      <>
+                                        <span className="font-extrabold text-indigo-300">{param.symbol}</span>
+                                        <span className="text-slate-300 font-semibold">: {param.desc}</span>
+                                      </>
+                                    )}
+                                  </li>
+                                ))}
+                              </ul>
+                            </li>
+                          )}
+                        </ul>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Right Column: AI Analysis */}
                 <div className="flex flex-col gap-3">
                   {/* 1. AI Analysis details */}
-                  <div className="bg-slate-900/40 border border-slate-800/60 p-3.5 rounded-xl text-slate-200 text-[14px] leading-relaxed text-left">
-                    <span className="text-[10px] text-slate-400 font-black block mb-1.5 uppercase tracking-wider select-none">📊 그림/그래프 공학적 분석</span>
+                  <div className="bg-slate-900/40 border border-slate-800/60 p-3.5 sm:p-4 rounded-xl text-slate-200 text-[15px] md:text-[16px] leading-relaxed text-left">
+                    <span className="text-xs text-slate-400 font-black block mb-1.5 uppercase tracking-wider select-none">📊 그림/그래프 공학적 분석</span>
                     {LatexRenderer ? (
-                      <div className="text-white leading-relaxed select-text font-semibold">
+                      <div className="text-white text-[15px] md:text-[16px] leading-relaxed select-text font-semibold [&_p]:text-[15px] [&_p]:md:text-[16px] [&_p]:leading-relaxed">
                         <LatexRenderer text={img.analysis} katexLoaded={katexLoaded} isMarkdown={true} formulaSource="tutor" hideTableWrapper={true} />
                       </div>
                     ) : (
-                      <p className="font-bold text-white leading-relaxed whitespace-pre-line select-text">{img.analysis}</p>
+                      <p className="font-bold text-white text-[15px] md:text-[16px] leading-relaxed whitespace-pre-line select-text">{img.analysis}</p>
                     )}
                   </div>
 
                   {/* 2. Intuitive metaphors */}
-                  <div className="bg-violet-950/15 border border-violet-500/10 p-3.5 rounded-xl text-slate-355 text-[14px] font-medium leading-relaxed text-left">
-                    <span className="text-[10px] text-violet-400 font-extrabold block mb-1.5 uppercase tracking-wider select-none">💡 직관적 본질 (비유)</span>
+                  <div className="bg-violet-955/15 border border-violet-500/10 p-3.5 sm:p-4 rounded-xl text-slate-355 text-[15px] md:text-[16px] font-medium leading-relaxed text-left">
+                    <span className="text-xs text-violet-400 font-extrabold block mb-1.5 uppercase tracking-wider select-none">💡 직관적 본질 (비유)</span>
                     {LatexRenderer ? (
-                      <div className="text-slate-300 leading-relaxed select-text">
+                      <div className="text-slate-300 text-[15px] md:text-[16px] leading-relaxed select-text [&_p]:text-[15px] [&_p]:md:text-[16px] [&_p]:leading-relaxed">
                         <LatexRenderer text={img.intuitive} katexLoaded={katexLoaded} isMarkdown={true} formulaSource="tutor" hideTableWrapper={true} />
                       </div>
                     ) : (
-                      <p className="text-slate-300 leading-relaxed select-text">{img.intuitive}</p>
+                      <p className="text-slate-300 text-[15px] md:text-[16px] leading-relaxed select-text">{img.intuitive}</p>
                     )}
                   </div>
                 </div>

@@ -296,11 +296,7 @@ export const ReadOnlyTable = React.memo(function ReadOnlyTable({
               key={idx} 
               className={idx === 0 ? "table-quiz-col-first" : ""} 
               style={{ 
-                width: isMobileView
-                  ? (idx === colCount - 1
-                      ? 'auto'
-                      : (mobileColWidths[idx] || (typeof w === 'number' ? `${w}%` : w)))
-                  : (typeof w === 'number' ? `${w}%` : w)
+                width: mobileColWidths[idx] || (typeof w === 'number' ? `${w}%` : w)
               }} 
             />
           ))}
