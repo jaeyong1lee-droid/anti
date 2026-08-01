@@ -706,11 +706,20 @@ export const TableQuiz = React.memo(function TableQuiz({
   }, [colCount, q.mixedType]);
 
   const [mobileColWidths, setMobileColWidths] = useState(() => {
+    const isPopout = typeof window !== 'undefined' && (window.name === 'anti_popout_window' || window.name?.includes('popout') || window.opener !== null);
     const saved = typeof window !== 'undefined' ? localStorage.getItem(`anti_global_mobile_col_widths_${colCount}`) : null;
-    if (saved) {
+    if (saved && !isPopout) {
       try {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length === colCount) return parsed;
+        if (Array.isArray(parsed) && parsed.length === colCount) {
+          const hasPx = parsed.some(w => typeof w === 'string' && w.includes('px'));
+          if (hasPx) {
+            const nums = parsed.map(w => parseFloat(w) || (100 / colCount));
+            const sum = nums.reduce((a, b) => a + b, 0);
+            if (sum > 0) return nums.map(n => `${((n / sum) * 100).toFixed(1)}%`);
+          }
+          return parsed;
+        }
       } catch (e) {}
     }
     const widths = [];
@@ -725,7 +734,7 @@ export const TableQuiz = React.memo(function TableQuiz({
       const others = (100 - first) / (colCount - 1);
       widths.push(`${first}%`);
       for (let i = 1; i < colCount; i++) {
-        widths.push(`${others}%`);
+        widths.push(`${others.toFixed(1)}%`);
       }
     }
     return widths;
