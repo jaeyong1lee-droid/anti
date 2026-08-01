@@ -470,6 +470,18 @@ export const LatexRenderer = React.memo(function LatexRenderer({
     };
   }, [isHeavy, text]);
 
+  useEffect(() => {
+    if (typeof window !== 'undefined' && typeof window.__restoreAllTableColumnWidths === 'function') {
+      window.__restoreAllTableColumnWidths(document);
+      const timer = setTimeout(() => {
+        if (window.__restoreAllTableColumnWidths) {
+          window.__restoreAllTableColumnWidths(document);
+        }
+      }, 60);
+      return () => clearTimeout(timer);
+    }
+  }, [text, katexLoaded, isMarkdown]);
+
   let processedText = renderText;
 
   // 1) 불필요한 연속 개행을 최소 2개로 압축하여 컴팩트하게 정리

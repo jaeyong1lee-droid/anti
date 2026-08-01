@@ -111,10 +111,21 @@ function renderCellMath(text) {
   return temp;
 }
 
+export function cleanHeaderTitle(h) {
+  if (!h) return '';
+  return String(h)
+    .replace(/<[^>]*>/g, '')
+    .replace(/\$+/g, '')
+    .replace(/\\(dfrac|frac|cdot|sqrt|left|right|text|mathrm)/g, '')
+    .replace(/[\r\n\t]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 export function getTableStorageKey(headers) {
   if (!headers || !Array.isArray(headers) || headers.length === 0) return null;
-  const sig = headers.map(h => String(h).replace(/<[^>]*>/g, '').trim()).join('|');
-  return `anti_tbl_widths_${sig}`;
+  const sig = headers.map(cleanHeaderTitle).filter(Boolean).join('|');
+  return sig ? `anti_tbl_widths_${sig}` : null;
 }
 
 export function getSavedTableWidths(headers) {

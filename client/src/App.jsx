@@ -4647,13 +4647,27 @@ export default function App() {
       }
       setFormulaConfirmTarget({ math, fullText: contextText, source: source || 'main' });
     };
+    const extractCleanThTitle = (th) => {
+      if (!th) return '';
+      const clone = th.cloneNode(true);
+      clone.querySelectorAll('.markdown-table-resize-handle').forEach(el => el.remove());
+      const text = clone.textContent || clone.innerText || '';
+      return text
+        .replace(/<[^>]*>/g, '')
+        .replace(/\$+/g, '')
+        .replace(/\\(dfrac|frac|cdot|sqrt|left|right|text|mathrm)/g, '')
+        .replace(/[\r\n\t]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    };
+
     window.__saveTableColumnWidths = (table) => {
       if (!table) return;
       const tr = table.querySelector('thead tr') || table.querySelector('tr');
       if (!tr) return;
       const ths = Array.from(tr.querySelectorAll('th'));
       if (ths.length === 0) return;
-      const headers = ths.map(th => th.textContent.trim());
+      const headers = ths.map(extractCleanThTitle).filter(Boolean);
       const sig = headers.join('|');
       if (!sig) return;
 
@@ -4675,7 +4689,7 @@ export default function App() {
         if (!tr) return;
         const ths = Array.from(tr.querySelectorAll('th'));
         if (ths.length === 0) return;
-        const headers = ths.map(th => th.textContent.trim());
+        const headers = ths.map(extractCleanThTitle).filter(Boolean);
         const sig = headers.join('|');
         if (!sig) return;
 
@@ -4701,6 +4715,13 @@ export default function App() {
         } catch (e) {}
       });
     };
+
+    // Auto trigger table column width restoration on initial load & refresh
+    if (window.__restoreAllTableColumnWidths) {
+      window.__restoreAllTableColumnWidths(document);
+      setTimeout(() => window.__restoreAllTableColumnWidths(document), 100);
+      setTimeout(() => window.__restoreAllTableColumnWidths(document), 500);
+    }
 
     // Global double click handler for column 1 or column 2 headers
     window.__handleTableColumnDoubleClick = (e, handleOrTh, colIdx) => {
