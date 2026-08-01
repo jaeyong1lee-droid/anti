@@ -4702,27 +4702,22 @@ export default function App() {
         table.style.setProperty('min-width', '100%', 'important');
         table.style.setProperty('max-width', '100%', 'important');
       } else if (colIdx === 1 && colCount > 1) {
-        // 2열 더블클릭 시: 2열 너비는 텍스트 자동 맞춤(또는 현재 너비)으로 고정하고, 1열을 제외한 모든 나머지 열(2열, 3열, 4열...)의 너비를 2열과 1:1로 정확히 동일하게 일치시킴!
-        const rows = Array.from(table.querySelectorAll('tr'));
-        let maxLen1 = (allThs[1].textContent || '').trim().length;
-        rows.forEach(r => {
-          const cells = Array.from(r.children);
-          if (cells[1]) {
-            const text = (cells[1].textContent || '').trim();
-            if (text.length > maxLen1) maxLen1 = text.length;
-          }
-        });
-        const col2Width = Math.min(500, Math.max(MIN_WIDTH, maxLen1 * 14 + 32));
-
-        // 1열(구분 열) 너비 고정
+        // 2열 더블클릭 시: 2열의 현재 너비는 절대로 움직이거나 변경하지 않고 그대로 고정(Fixed)하고, 1열을 제외한 모든 나머지 열(3열, 4열...)의 너비를 2열의 현재 너비와 1:1로 정확히 동일하게 일치시킴!
         const col0Width = allThs[0].offsetWidth || MIN_WIDTH;
+        const col2Width = allThs[1].offsetWidth || MIN_WIDTH;
+
+        // 1열(구분 열) 및 2열 너비 현재 상태 그대로 100% 고정 (움직임 0)
         allThs[0].style.setProperty('width', col0Width + 'px', 'important');
         allThs[0].style.setProperty('min-width', MIN_WIDTH + 'px', 'important');
         allThs[0].style.setProperty('max-width', col0Width + 'px', 'important');
 
-        // 1열을 제외한 모든 데이터 열(2열, 3열, 4열...) 너비를 2열과 동일하게 1:1 통일
-        let sumAllCols = col0Width;
-        for (let i = 1; i <= lastDataColIdx; i++) {
+        allThs[1].style.setProperty('width', col2Width + 'px', 'important');
+        allThs[1].style.setProperty('min-width', MIN_WIDTH + 'px', 'important');
+        allThs[1].style.setProperty('max-width', col2Width + 'px', 'important');
+
+        // 1열과 2열을 제외한 모든 나머지 데이터 열(3열, 4열...) 너비를 2열의 현재 너비(col2Width)와 동일하게 1:1 통일
+        let sumAllCols = col0Width + col2Width;
+        for (let i = 2; i <= lastDataColIdx; i++) {
           allThs[i].style.setProperty('width', col2Width + 'px', 'important');
           allThs[i].style.setProperty('min-width', MIN_WIDTH + 'px', 'important');
           allThs[i].style.setProperty('max-width', col2Width + 'px', 'important');
