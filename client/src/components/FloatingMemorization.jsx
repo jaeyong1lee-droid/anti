@@ -302,7 +302,7 @@ function FloatingTableItem({
               return (
                 <th 
                   key={hIdx} 
-                  className="relative p-1.5 border-r border-slate-800/80 last:border-r-0 align-middle whitespace-normal break-words select-text group/th"
+                  className="relative p-1.5 border-r border-slate-800/80 last:border-r-0 align-middle whitespace-normal break-words select-text group/th hover:z-40 overflow-visible"
                 >
                   {hIdx === 0 ? (
                     <div className="relative inline-block select-none" onClick={(e) => e.stopPropagation()}>
@@ -397,7 +397,7 @@ function FloatingTableItem({
                   {/* Resizer Handle */}
                   {hIdx < colCount && (
                     <div
-                      className="absolute right-0 top-0 bottom-0 w-4 cursor-col-resize select-none z-40 hover:bg-sky-500/40 active:bg-sky-500/70 touch-none flex items-center justify-center group/resizer"
+                      className="absolute -right-2 top-0 bottom-0 w-5 cursor-col-resize select-none z-50 hover:bg-sky-400/40 active:bg-sky-400/70 touch-none flex items-center justify-center group/resizer"
                       onMouseDown={(e) => startColumnResize(e, t.id, hIdx, colCount, containerRef.current)}
                       onTouchStart={(e) => startColumnResize(e, t.id, hIdx, colCount, containerRef.current)}
                       onDoubleClick={(e) => {
@@ -553,12 +553,12 @@ function OverviewComparisonTable({
               {headers.map((h, hIdx) => (
                 <th 
                   key={hIdx} 
-                  className="relative p-2 sm:p-2.5 font-extrabold border-r border-slate-800 last:border-r-0 whitespace-normal break-words group/th"
+                  className="relative p-2 sm:p-2.5 font-extrabold border-r border-slate-800 last:border-r-0 whitespace-normal break-words group/th hover:z-40 overflow-visible"
                 >
                   <LatexRenderer text={h} katexLoaded={katexLoaded} />
                   {hIdx < colCount && (
                     <div
-                      className="absolute right-0 top-0 bottom-0 w-4 cursor-col-resize select-none z-40 hover:bg-sky-500/40 active:bg-sky-500/70 touch-none flex items-center justify-center group/resizer"
+                      className="absolute -right-2 top-0 bottom-0 w-5 cursor-col-resize select-none z-50 hover:bg-sky-400/40 active:bg-sky-400/70 touch-none flex items-center justify-center group/resizer"
                       onMouseDown={(e) => startColumnResize(e, tableId, hIdx, colCount, containerRef.current)}
                       onTouchStart={(e) => startColumnResize(e, tableId, hIdx, colCount, containerRef.current)}
                       onDoubleClick={(e) => {
