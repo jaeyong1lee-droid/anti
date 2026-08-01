@@ -227,30 +227,59 @@ export function ImageUploadPanel({ formulaImages, setFormulaImages, handleSaveFo
 
       {/* 2-Column Upload Boxes */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full select-none">
-        {/* Left Box: Ctrl+V 붙여넣기 및 클릭 앨범/파일 선택 */}
+        {/* Left Box: Ctrl+V 붙여넣기 전용 영역 */}
         <div
           ref={pasteAreaRef}
           tabIndex={0}
-          onClick={() => fileInputRefLeft.current?.click()}
-          className={`relative border-2 border-dashed rounded-xl flex flex-col items-center justify-center transition-all duration-200 focus:outline-none cursor-pointer ${
+          onClick={() => {
+            pasteAreaRef.current?.focus();
+          }}
+          onPaste={(e) => {
+            const items = e.clipboardData?.items;
+            if (!items) return;
+            for (let i = 0; i < items.length; i++) {
+              if (items[i].type.indexOf('image') !== -1) {
+                const file = items[i].getAsFile();
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                  setImages(prev => [...prev, event.target.result]);
+                  showNotification('클립보드 스크린샷이 붙여넣어졌습니다.', 'success');
+                };
+                reader.readAsDataURL(file);
+                break;
+              }
+            }
+          }}
+          className={`relative border-2 border-dashed rounded-xl flex flex-col items-center justify-center transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 cursor-pointer ${
             compact ? 'p-2.5 min-h-[90px] gap-1.5' : 'p-4 min-h-[130px] gap-2'
           } ${
             images.length > 0 
               ? 'border-indigo-500/50 bg-indigo-950/15 hover:border-indigo-400' 
-              : 'border-slate-700/70 hover:border-slate-500 bg-slate-950/30 hover:bg-slate-950/50 focus:border-brand-500/50'
+              : 'border-slate-700/70 hover:border-slate-500 bg-slate-950/30 hover:bg-slate-950/50'
           }`}
-          title="클릭하여 파일 선택 또는 Ctrl+V 입력"
+          title="클릭하여 키보드 초점 설정 후 [Ctrl+V]를 누르세요"
         >
-          <div className="bg-slate-900 border border-slate-800 text-slate-300 rounded-xl p-2.5">
+          <div className="bg-slate-900 border border-slate-800 text-slate-350 rounded-xl p-2.5">
             <Clipboard size={compact ? 16 : 20} className="text-indigo-400" />
           </div>
-          <div className="text-center space-y-0.5">
+          <div className="text-center space-y-1">
             <p className={`${compact ? 'text-[11px]' : 'text-[12px]'} font-extrabold text-white`}>
               [Ctrl+V] 붙여넣기
             </p>
             <p className="text-[10px] text-slate-400">
-              클릭 시 앨범/파일 선택 또는 Ctrl+V
+              클릭 시 포커스 후 <span className="text-indigo-300 font-bold">[Ctrl+V]</span> 입력
             </p>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                fileInputRefLeft.current?.click();
+              }}
+              className="mt-1 text-[10px] text-slate-350 hover:text-white cursor-pointer bg-slate-900 hover:bg-slate-800 px-2 py-0.5 rounded border border-slate-700/60 inline-flex items-center gap-1 transition-all active:scale-95"
+              title="컴퓨터 파일 탐색기 열기"
+            >
+              📁 파일 직접 선택
+            </button>
           </div>
         </div>
 
