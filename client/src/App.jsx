@@ -4671,7 +4671,7 @@ export default function App() {
       const lastDataColIdx = hasRemarks ? (colCount - 2) : (colCount - 1);
 
       if (colIdx === 0) {
-        // 1열(구분 열) 더블클릭 시: 1열의 현재 너비는 절대로 움직이거나 변경하지 않고 그대로 고정하고, 1열을 제외한 나머지 열(2열, 3열...)이 남은 화면 공간을 균등 분할하여 화면 너비(100%)를 꽉 채움
+        // 1열(구분 열) 더블클릭 시: 1열의 현재 너비는 절대로 움직이거나 변경하지 않고 그대로 고정하고, 1열을 제외한 모든 나머지 열(2열, 3열, 4열...)이 남은 화면 공간을 1:1 완벽한 등간격으로 나누어 화면 너비(100%)를 꽉 채움
         const tableContainer = table.closest('.markdown-table-container') || table.parentElement;
         const containerWidth = tableContainer ? tableContainer.clientWidth : table.clientWidth;
 
@@ -4681,17 +4681,11 @@ export default function App() {
         allThs[0].style.setProperty('min-width', MIN_WIDTH + 'px', 'important');
         allThs[0].style.setProperty('max-width', col1Width + 'px', 'important');
 
-        const remarksWidth = hasRemarks ? (allThs[colCount - 1].offsetWidth || 50) : 0;
-        if (hasRemarks && allThs[colCount - 1]) {
-          allThs[colCount - 1].style.setProperty('width', remarksWidth + 'px', 'important');
-          allThs[colCount - 1].style.setProperty('min-width', '50px', 'important');
-        }
-
-        const numRemainingCols = lastDataColIdx; // 1열을 제외한 2열, 3열... 개수
-        const totalRemWidth = Math.max(MIN_WIDTH * numRemainingCols, containerWidth - col1Width - remarksWidth - 4);
+        const numRemainingCols = colCount - 1; // 1열을 제외한 나머지 모든 열(2열, 3열, 4열...) 개수
+        const totalRemWidth = Math.max(MIN_WIDTH * numRemainingCols, containerWidth - col1Width - 4);
         const equalRemColWidth = Math.max(MIN_WIDTH, Math.floor(totalRemWidth / numRemainingCols));
 
-        for (let i = 1; i <= lastDataColIdx; i++) {
+        for (let i = 1; i < colCount; i++) {
           allThs[i].style.setProperty('width', equalRemColWidth + 'px', 'important');
           allThs[i].style.setProperty('min-width', MIN_WIDTH + 'px', 'important');
           allThs[i].style.setProperty('max-width', equalRemColWidth + 'px', 'important');
