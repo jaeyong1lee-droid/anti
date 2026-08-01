@@ -151,6 +151,19 @@ export const PopoutWindow = ({ title, onClose, children, initWidth = 720, initHe
           destHead.appendChild(newStyle);
         });
 
+        // Copy/Proxy global table handlers from main window to popout window context
+        ['__startMarkdownTableResize', '__handleTableColumnDoubleClick', '__handleTableConfirmRequest', '__handleGlobalRowDelete'].forEach((fnName) => {
+          try {
+            Object.defineProperty(newWindow, fnName, {
+              get: () => window[fnName],
+              configurable: true,
+              enumerable: true
+            });
+          } catch (e) {
+            newWindow[fnName] = window[fnName];
+          }
+        });
+
         setContainer(root);
       } catch (err) {
         console.error('Error setting up popout container:', err);

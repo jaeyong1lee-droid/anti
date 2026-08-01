@@ -4776,6 +4776,9 @@ export default function App() {
       const table = th.closest('table');
       if (!table) return;
 
+      const ownerWin = (handleEl && handleEl.ownerDocument && handleEl.ownerDocument.defaultView) || window;
+      const ownerDoc = ownerWin.document;
+
       const allThs = Array.from(tr.querySelectorAll('th'));
       const colCount = allThs.length;
       const MIN_WIDTH = 84; // 7글자 기준 최소 너비 (84px)
@@ -4790,9 +4793,9 @@ export default function App() {
       if (isTouch && tableContainer) {
         tableContainer.style.overflowX = 'hidden';
         tableContainer.style.touchAction = 'none';
-        document.body.style.touchAction = 'none';
-        document.body.style.userSelect = 'none';
-        document.body.style.webkitUserSelect = 'none';
+        ownerDoc.body.style.touchAction = 'none';
+        ownerDoc.body.style.userSelect = 'none';
+        ownerDoc.body.style.webkitUserSelect = 'none';
       }
 
       const doResize = (ev) => {
@@ -4851,27 +4854,27 @@ export default function App() {
         if (isTouch && tableContainer) {
           tableContainer.style.overflowX = '';
           tableContainer.style.touchAction = '';
-          document.body.style.touchAction = '';
-          document.body.style.userSelect = '';
-          document.body.style.webkitUserSelect = '';
+          ownerDoc.body.style.touchAction = '';
+          ownerDoc.body.style.userSelect = '';
+          ownerDoc.body.style.webkitUserSelect = '';
         }
         if (isTouch) {
-          window.removeEventListener('touchmove', doResize);
-          window.removeEventListener('touchend', stopResize);
-          window.removeEventListener('touchcancel', stopResize);
+          ownerWin.removeEventListener('touchmove', doResize);
+          ownerWin.removeEventListener('touchend', stopResize);
+          ownerWin.removeEventListener('touchcancel', stopResize);
         } else {
-          window.removeEventListener('mousemove', doResize);
-          window.removeEventListener('mouseup', stopResize);
+          ownerWin.removeEventListener('mousemove', doResize);
+          ownerWin.removeEventListener('mouseup', stopResize);
         }
       };
       
       if (isTouch) {
-        window.addEventListener('touchmove', doResize, { passive: false });
-        window.addEventListener('touchend', stopResize);
-        window.addEventListener('touchcancel', stopResize);
+        ownerWin.addEventListener('touchmove', doResize, { passive: false });
+        ownerWin.addEventListener('touchend', stopResize);
+        ownerWin.addEventListener('touchcancel', stopResize);
       } else {
-        window.addEventListener('mousemove', doResize);
-        window.addEventListener('mouseup', stopResize);
+        ownerWin.addEventListener('mousemove', doResize);
+        ownerWin.addEventListener('mouseup', stopResize);
       }
     };
 
