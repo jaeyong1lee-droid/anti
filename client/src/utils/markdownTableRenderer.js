@@ -196,7 +196,7 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false,
       html += `<tr class="border-b border-slate-600 last:border-b-0 hover:bg-slate-900/20 group">`;
       row.forEach((cell, cIdx) => {
         const renderedCell = renderCellMath(cell);
-        const cellAlign = (cIdx === 0) ? 'text-center break-keep' : 'text-left break-keep';
+        const cellAlign = (cIdx === 0) ? 'text-center break-words break-all overflow-hidden' : 'text-left break-words break-all overflow-hidden';
         html += `<td class="p-1 sm:p-1.5 border-r border-slate-600 text-slate-200 font-semibold ${cellAlign}" style="min-width: 84px;">${renderedCell}</td>`;
       });
       if (row.length < colCount) {
@@ -272,7 +272,7 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false,
     html += `<tr class="border-b border-slate-600 last:border-b-0 hover:bg-slate-900/20 group">`;
       row.forEach((cell, cIdx) => {
         const renderedCell = renderCellMath(cell);
-        const cellAlign = (cIdx === 0) ? 'text-center break-keep' : 'text-left break-keep';
+        const cellAlign = (cIdx === 0) ? 'text-center break-words break-all overflow-hidden' : 'text-left break-words break-all overflow-hidden';
         html += `<td class="p-1 sm:p-1.5 border-r border-slate-600 text-slate-355 ${cellAlign}" style="min-width: 84px;">${renderedCell}</td>`;
       });
     if (row.length < colCount) {
