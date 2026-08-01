@@ -1762,7 +1762,7 @@ const renderCompleteFlowchart = (flowchartText, katexLoaded, q) => {
 };
 
 const renderResponsiveContent = (text, katexLoaded, questionKey, isMarkdown, questionIdx, tableAnswers, setTableAnswers, revealed, tableGradingResults, q, gradeSingleTableCell, cellGradingLoading, onSubmit, renderCardTutorChat, isExam = false) => {
-  const flowchartRegex = /```(?:[a-zA-Z]*)?\n([\s\S]*?┌[\s\S]*?)```/g;
+  const flowchartRegex = /```(?:flowchart|step|sequence)\n([\s\S]*?)```/gi;
   const hasFlowchart = flowchartRegex.test(text);
   flowchartRegex.lastIndex = 0;
 
