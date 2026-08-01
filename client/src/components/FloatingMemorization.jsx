@@ -252,6 +252,397 @@ const parseOverviewContent = (content) => {
   return result;
 };
 
+function FloatingTableItem({
+  t,
+  localActiveEditCell,
+  setLocalActiveEditCell,
+  localEditingCellValue,
+  setLocalEditingCellValue,
+  activeAddDropdownTableId,
+  setActiveAddDropdownTableId,
+  formulaTables,
+  setFormulaTables,
+  handleSaveFormulaTables,
+  katexLoaded,
+  LatexRenderer,
+  getColWidthsForTable,
+  startColumnResize,
+  resetColumnWidths,
+  rebuildTableHtml
+}) {
+  const containerRef = useRef(null);
+  const rawData = t.html || t.content || t.comparison || (t.tableData ? JSON.stringify(t.tableData) : '');
+  const parsed = parseHtmlTable(rawData);
+  const colCount = parsed.headers.length;
+  const colWidths = getColWidthsForTable(t.id, colCount);
+
+  return (
+    <div 
+      ref={containerRef} 
+      className="table-quiz-container overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40 p-0 select-text animate-fade-in text-[14px] md:text-[16px] relative"
+    >
+      <table 
+        className="table-quiz-table w-full table-fixed text-center border-collapse min-w-full"
+        style={{ minWidth: `${Math.max(500, colCount * 130)}px` }}
+      >
+        <colgroup>
+          {colWidths.map((w, idx) => (
+            <col key={idx} style={{ width: typeof w === 'number' ? `${w}%` : w }} />
+          ))}
+          <col style={{ width: '50px' }} />
+        </colgroup>
+        <thead>
+          <tr className="bg-slate-900/80 text-slate-355 border-b border-slate-800">
+            {parsed.headers.map((h, hIdx) => {
+              const isEditing = localActiveEditCell && localActiveEditCell.tableId === t.id && localActiveEditCell.type === 'header' && localActiveEditCell.colIdx === hIdx;
+              return (
+                <th 
+                  key={hIdx} 
+                  className="relative p-1.5 border-r border-slate-800/80 last:border-r-0 align-middle whitespace-normal break-words select-text group/th"
+                >
+                  {hIdx === 0 ? (
+                    <div className="relative inline-block select-none" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveAddDropdownTableId(activeAddDropdownTableId === t.id ? null : t.id);
+                        }}
+                        className="px-2 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-black cursor-pointer transition-all active:scale-95 border border-emerald-500/20 flex items-center gap-0.5 mx-auto"
+                        title="행 또는 열 추가"
+                      >
+                        + 행/열 추가
+                      </button>
+                      {activeAddDropdownTableId === t.id && (
+                        <div className="absolute left-1/2 -translate-x-1/2 mt-1.5 w-24 bg-slate-950 border border-slate-800 rounded-lg shadow-xl z-50 flex flex-col overflow-hidden py-1">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const emptyRow = Array(parsed.headers.length).fill('');
+                              const updatedRows = [...parsed.rows, emptyRow];
+                              const newHtml = rebuildTableHtml(parsed.headers, updatedRows);
+                              const updatedTables = formulaTables.map(item => item.id === t.id ? { ...item, html: newHtml } : item);
+                              setFormulaTables(updatedTables);
+                              handleSaveFormulaTables(updatedTables, false);
+                              setActiveAddDropdownTableId(null);
+                            }}
+                            className="w-full px-2 py-1.5 hover:bg-slate-900 text-center text-xs font-bold text-slate-200 cursor-pointer border-none bg-transparent"
+                          >
+                            행 추가
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const newHeader = `열 ${parsed.headers.length + 1}`;
+                              const updatedHeaders = [...parsed.headers, newHeader];
+                              const updatedRows = parsed.rows.map(row => [...row, '']);
+                              const newHtml = rebuildTableHtml(updatedHeaders, updatedRows);
+                              const updatedTables = formulaTables.map(item => item.id === t.id ? { ...item, html: newHtml } : item);
+                              setFormulaTables(updatedTables);
+                              handleSaveFormulaTables(updatedTables, false);
+                              setActiveAddDropdownTableId(null);
+                            }}
+                            className="w-full px-2 py-1.5 hover:bg-slate-900 text-center text-xs font-bold text-slate-200 cursor-pointer border-none bg-transparent"
+                          >
+                            열 추가
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ) : isEditing ? (
+                    <input
+                      type="text"
+                      value={localEditingCellValue}
+                      onChange={(e) => setLocalEditingCellValue(e.target.value)}
+                      onBlur={() => {
+                        const updatedHeaders = parsed.headers.map((hdr, idx) => idx === hIdx ? localEditingCellValue : hdr);
+                        const newHtml = rebuildTableHtml(updatedHeaders, parsed.rows);
+                        const updatedTables = formulaTables.map(item => item.id === t.id ? { ...item, html: newHtml } : item);
+                        setFormulaTables(updatedTables);
+                        handleSaveFormulaTables(updatedTables, false);
+                        setLocalActiveEditCell(null);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          const updatedHeaders = parsed.headers.map((hdr, idx) => idx === hIdx ? localEditingCellValue : hdr);
+                          const newHtml = rebuildTableHtml(updatedHeaders, parsed.rows);
+                          const updatedTables = formulaTables.map(item => item.id === t.id ? { ...item, html: newHtml } : item);
+                          setFormulaTables(updatedTables);
+                          handleSaveFormulaTables(updatedTables, false);
+                          setLocalActiveEditCell(null);
+                        }
+                      }}
+                      className="w-full text-center bg-slateCustom-950 border border-slate-700 text-slate-200 font-black focus:outline-none p-0.5 text-[14px] md:text-[16px] rounded"
+                      autoFocus
+                    />
+                  ) : (
+                    <div 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (!isEditing) {
+                          setLocalActiveEditCell({ tableId: t.id, type: 'header', colIdx: hIdx });
+                          setLocalEditingCellValue(h);
+                        }
+                      }}
+                      className="w-full text-center p-0.5 text-[14px] md:text-[16px] text-slate-200 font-black cursor-pointer hover:text-violet-300 transition-colors"
+                      title="클릭하여 헤더 수정"
+                    >
+                      <LatexRenderer text={h} katexLoaded={katexLoaded} className="inline" />
+                    </div>
+                  )}
+
+                  {/* Resizer Handle */}
+                  {hIdx < colCount - 1 && (
+                    <div
+                      className="absolute right-0 top-0 bottom-0 w-3 cursor-col-resize select-none z-30 hover:bg-sky-500/40 active:bg-sky-500/70 touch-none flex items-center justify-center group/resizer"
+                      onMouseDown={(e) => startColumnResize(e, t.id, hIdx, colCount, containerRef.current)}
+                      onTouchStart={(e) => startColumnResize(e, t.id, hIdx, colCount, containerRef.current)}
+                      onDoubleClick={(e) => {
+                        e.stopPropagation();
+                        resetColumnWidths(t.id, colCount);
+                      }}
+                      title="드래그: 열 너비 조절 / 더블클릭: 너비 초기화"
+                    >
+                      <div className="w-0.5 h-full bg-slate-700/60 group-hover/resizer:bg-sky-400 group-active/resizer:bg-sky-300 transition-colors" />
+                    </div>
+                  )}
+                </th>
+              );
+            })}
+            <th className="p-1.5 border-r border-slate-800/80 last:border-r-0 align-middle text-slate-400 text-xs font-bold w-12 select-none">
+              비고
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {parsed.rows.map((row, rIdx) => (
+            <tr key={rIdx} className="border-b border-slate-800/80 last:border-b-0 hover:bg-slate-900/10">
+              {row.map((cell, cIdx) => {
+                const isEditing = localActiveEditCell && localActiveEditCell.tableId === t.id && localActiveEditCell.type === 'cell' && localActiveEditCell.rIdx === rIdx && localActiveEditCell.colIdx === cIdx;
+                return (
+                  <td 
+                    key={cIdx} 
+                    className={`p-1 border-r border-slate-800/60 last:border-r-0 align-middle whitespace-normal break-words ${
+                      cIdx === 0 ? 'text-left bg-slate-950/20 font-extrabold text-slate-300' : 'text-center text-slate-200'
+                    }`}
+                  >
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        value={localEditingCellValue}
+                        onChange={(e) => setLocalEditingCellValue(e.target.value)}
+                        onBlur={() => {
+                          const updatedRows = parsed.rows.map((rowVal, rIdx2) => 
+                            rIdx2 === rIdx 
+                              ? rowVal.map((cellVal, cIdx2) => cIdx2 === cIdx ? localEditingCellValue : cellVal)
+                              : rowVal
+                          );
+                          const newHtml = rebuildTableHtml(parsed.headers, updatedRows);
+                          const updatedTables = formulaTables.map(item => item.id === t.id ? { ...item, html: newHtml } : item);
+                          setFormulaTables(updatedTables);
+                          handleSaveFormulaTables(updatedTables, false);
+                          setLocalActiveEditCell(null);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            const updatedRows = parsed.rows.map((rowVal, rIdx2) => 
+                              rIdx2 === rIdx 
+                                ? rowVal.map((cellVal, cIdx2) => cIdx2 === cIdx ? localEditingCellValue : cellVal)
+                                : rowVal
+                            );
+                            const newHtml = rebuildTableHtml(parsed.headers, updatedRows);
+                            const updatedTables = formulaTables.map(item => item.id === t.id ? { ...item, html: newHtml } : item);
+                            setFormulaTables(updatedTables);
+                            handleSaveFormulaTables(updatedTables, false);
+                            setLocalActiveEditCell(null);
+                          }
+                        }}
+                        className="w-full text-center bg-slateCustom-950 border border-slate-700 text-slate-200 focus:outline-none p-0.5 text-[14px] md:text-[16px] rounded"
+                        autoFocus
+                      />
+                    ) : (
+                      <div 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (!isEditing) {
+                            setLocalActiveEditCell({ tableId: t.id, type: 'cell', rIdx, colIdx: cIdx });
+                            setLocalEditingCellValue(cell);
+                          }
+                        }}
+                        className="w-full text-center p-0.5 text-[14px] md:text-[16px] text-slate-200 cursor-pointer hover:text-violet-300 transition-colors"
+                        title="클릭하여 셀 수정"
+                      >
+                        <LatexRenderer text={cell} katexLoaded={katexLoaded} className="inline" />
+                      </div>
+                    )}
+                  </td>
+                );
+              })}
+              <td className="p-1 text-center align-middle">
+                <button
+                  onClick={(e) => {
+                    const currentWindow = e.target.ownerDocument.defaultView || window;
+                    if (currentWindow.confirm('이 행을 삭제하시겠습니까?')) {
+                      const updatedRows = parsed.rows.filter((_, idx) => idx !== rIdx);
+                      const newHtml = rebuildTableHtml(parsed.headers, updatedRows);
+                      const updatedTables = formulaTables.map(item => item.id === t.id ? { ...item, html: newHtml } : item);
+                      setFormulaTables(updatedTables);
+                      handleSaveFormulaTables(updatedTables, false);
+                    }
+                  }}
+                  className="p-0.5 rounded bg-red-955/40 border border-red-500/10 text-red-400 hover:bg-red-900 transition-all cursor-pointer text-xs"
+                  title="행 삭제"
+                >
+                  삭제
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function OverviewComparisonTable({
+  ov,
+  headers,
+  rows,
+  formulaOverviews,
+  setFormulaOverviews,
+  handleSaveFormulaOverviews,
+  showNotification,
+  katexLoaded,
+  LatexRenderer,
+  getColWidthsForTable,
+  startColumnResize,
+  resetColumnWidths,
+  rebuildMarkdownTable
+}) {
+  const containerRef = useRef(null);
+  const colCount = headers.length;
+  const tableId = `ov_${ov.id}`;
+  const colWidths = getColWidthsForTable(tableId, colCount);
+
+  return (
+    <div className="text-slate-200 py-1.5 px-0.5 w-full">
+      <span className="text-[10px] text-emerald-400 font-black block mb-1.5 uppercase tracking-wider select-none">⚖️ 비교표 / 장단점</span>
+      <div 
+        ref={containerRef}
+        className="w-full my-2 rounded-xl border border-slate-800 bg-slate-950/40 overflow-hidden overflow-x-auto scrollbar-thin relative"
+      >
+        <table 
+          className="w-full text-center border-collapse text-[14px] md:text-[16px] table-fixed min-w-full"
+          style={{ minWidth: `${Math.max(500, colCount * 130)}px` }}
+        >
+          <colgroup>
+            {colWidths.map((w, idx) => (
+              <col key={idx} style={{ width: typeof w === 'number' ? `${w}%` : w }} />
+            ))}
+            <col style={{ width: '50px' }} />
+          </colgroup>
+          <thead>
+            <tr className="bg-slate-900/80 text-slate-355 border-b border-slate-800">
+              {headers.map((h, hIdx) => (
+                <th 
+                  key={hIdx} 
+                  className="relative p-2 sm:p-2.5 font-extrabold border-r border-slate-800 last:border-r-0 whitespace-normal break-words group/th"
+                >
+                  <LatexRenderer text={h} katexLoaded={katexLoaded} />
+                  {hIdx < colCount - 1 && (
+                    <div
+                      className="absolute right-0 top-0 bottom-0 w-3 cursor-col-resize select-none z-30 hover:bg-sky-500/40 active:bg-sky-500/70 touch-none flex items-center justify-center group/resizer"
+                      onMouseDown={(e) => startColumnResize(e, tableId, hIdx, colCount, containerRef.current)}
+                      onTouchStart={(e) => startColumnResize(e, tableId, hIdx, colCount, containerRef.current)}
+                      onDoubleClick={(e) => {
+                        e.stopPropagation();
+                        resetColumnWidths(tableId, colCount);
+                      }}
+                      title="드래그: 열 너비 조절 / 더블클릭: 너비 초기화"
+                    >
+                      <div className="w-0.5 h-full bg-slate-700/60 group-hover/resizer:bg-sky-400 group-active/resizer:bg-sky-300 transition-colors" />
+                    </div>
+                  )}
+                </th>
+              ))}
+              <th className="p-2 sm:p-2.5 font-extrabold text-rose-400 select-none whitespace-nowrap w-16">
+                비고
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, rIdx) => (
+              <tr key={rIdx} className="border-b border-slate-800 last:border-b-0 hover:bg-slate-900/20 group">
+                {row.map((cell, cIdx) => {
+                  const isHeader = cIdx === 0;
+                  if (isHeader) {
+                    return (
+                      <td key={cIdx} className="p-2 sm:p-2.5 border-r border-slate-800 font-extrabold text-slate-300 select-text whitespace-normal break-words align-middle text-left bg-slate-950/20">
+                        <LatexRenderer text={cell} katexLoaded={katexLoaded} />
+                      </td>
+                    );
+                  }
+                  return (
+                    <td key={cIdx} className="p-2 sm:p-2.5 border-r border-slate-800 last:border-r-0 text-slate-200 select-text whitespace-normal break-words align-middle text-center">
+                      <LatexRenderer text={cell} katexLoaded={katexLoaded} />
+                    </td>
+                  );
+                })}
+                <td className="p-2 sm:p-2.5 text-center align-middle whitespace-nowrap bg-slate-950/10">
+                  <button
+                    onClick={async (e) => {
+                      const currentWindow = e.target.ownerDocument.defaultView || window;
+                      if (currentWindow.confirm(`'${row[0] || '이 행'}' 행을 삭제하시겠습니까?`)) {
+                        const updatedRows = rows.filter((_, idx) => idx !== rIdx);
+                        const newCompTableMd = rebuildMarkdownTable(headers, updatedRows, '<br>');
+                        let newContent = ov.content;
+                        let replaced = false;
+
+                        const lines = ov.content.split('\n');
+                        const compIdx = lines.findIndex(line => line.trim().match(/^\|\s*(비교표|비교|장단점)\s*\|/i));
+
+                        if (compIdx !== -1) {
+                          const line = lines[compIdx].trim();
+                          const match = line.match(/^(\|\s*(비교표|비교|장단점)\s*\|)(.*)\|$/i);
+                          if (match) {
+                            lines[compIdx] = `${match[1]} ${newCompTableMd.trim()} |`;
+                            newContent = lines.join('\n');
+                            replaced = true;
+                          }
+                        }
+
+                        if (!replaced) {
+                          const match = ov.content.match(/^([\s\S]*\|\s*(비교표|비교|장단점)\s*\|)(.*?)(?=\s*\|\s*(공학적 의미\/한계성|공학적 의미 및 한계성|의미\/한계성|직관적의미|직관적)\s*\||$)/i);
+                          if (match) {
+                            let nestedPart = match[3].trim();
+                            if (nestedPart.endsWith('|')) {
+                              nestedPart = nestedPart.slice(0, -1).trim();
+                            }
+                            newContent = ov.content.replace(nestedPart, newCompTableMd.trim());
+                            replaced = true;
+                          }
+                        }
+
+                        const updated = formulaOverviews.map(item => item.id === ov.id ? { ...item, content: newContent } : item);
+                        setFormulaOverviews(updated);
+                        await handleSaveFormulaOverviews(updated, false);
+                        showNotification('행이 삭제되었습니다.', 'info');
+                      }
+                    }}
+                    className="p-1 rounded bg-slate-850 hover:bg-rose-955 text-slate-400 hover:text-rose-400 cursor-pointer transition-all border border-slate-800 hover:border-rose-500/20 md:opacity-0 md:group-hover:opacity-100 opacity-100 flex items-center justify-center mx-auto shrink-0"
+                    title="행 삭제"
+                  >
+                    <Trash2 size={11} />
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 export function FloatingMemorization({
   isVisible,
   onClose,
@@ -482,6 +873,107 @@ export function FloatingMemorization({
   const [localEditingOverviewId, setLocalEditingOverviewId] = useState(null);
   const [localEditingOverviewText, setLocalEditingOverviewText] = useState('');
   const [localEditingOverviewContent, setLocalEditingOverviewContent] = useState('');
+
+  const [customColWidths, setCustomColWidths] = useState(() => {
+    if (typeof window === 'undefined') return {};
+    try {
+      const saved = localStorage.getItem('anti_floating_tables_col_widths');
+      return saved ? JSON.parse(saved) : {};
+    } catch (e) {
+      return {};
+    }
+  });
+
+  const getColWidthsForTable = (tableId, colCount) => {
+    const key = `${tableId}_${colCount}`;
+    if (customColWidths[key] && Array.isArray(customColWidths[key]) && customColWidths[key].length === colCount) {
+      return customColWidths[key];
+    }
+    if (colCount <= 1) return ['100%'];
+    if (colCount === 2) return ['20%', '80%'];
+    if (colCount === 3) return ['18%', '41%', '41%'];
+    if (colCount === 4) return ['16%', '28%', '28%', '28%'];
+    const first = 15;
+    const others = (100 - first) / (colCount - 1);
+    return [`${first}%`, ...Array(colCount - 1).fill(`${others.toFixed(1)}%`)];
+  };
+
+  const saveColWidthsForTable = (tableId, colCount, newWidths) => {
+    const key = `${tableId}_${colCount}`;
+    setCustomColWidths(prev => {
+      const next = { ...prev, [key]: newWidths };
+      try {
+        localStorage.setItem('anti_floating_tables_col_widths', JSON.stringify(next));
+      } catch (e) {}
+      return next;
+    });
+  };
+
+  const resetColumnWidths = (tableId, colCount) => {
+    const key = `${tableId}_${colCount}`;
+    setCustomColWidths(prev => {
+      const next = { ...prev };
+      delete next[key];
+      try {
+        localStorage.setItem('anti_floating_tables_col_widths', JSON.stringify(next));
+      } catch (e) {}
+      return next;
+    });
+  };
+
+  const startColumnResize = (e, tableId, hIdx, colCount, containerEl) => {
+    if (!containerEl) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    const isTouch = e.type === 'touchstart';
+    const startX = isTouch ? e.touches[0].clientX : e.clientX;
+    const containerWidth = containerEl.getBoundingClientRect().width || 600;
+
+    const currentWidths = getColWidthsForTable(tableId, colCount);
+    const numWidths = currentWidths.map(w => {
+      if (typeof w === 'number') return (w / 100) * containerWidth;
+      if (typeof w === 'string' && w.endsWith('%')) return (parseFloat(w) / 100) * containerWidth;
+      if (typeof w === 'string' && w.endsWith('px')) return parseFloat(w);
+      return containerWidth / colCount;
+    });
+
+    const startLeft = numWidths[hIdx] || (containerWidth / colCount);
+    const startRight = numWidths[hIdx + 1] || (containerWidth / colCount);
+
+    const handleMove = (moveEvt) => {
+      const currentX = moveEvt.type === 'touchmove' ? moveEvt.touches[0].clientX : moveEvt.clientX;
+      const deltaX = currentX - startX;
+      const minW = 40;
+
+      let newLeft = Math.max(minW, startLeft + deltaX);
+      let newRight = Math.max(minW, startRight - deltaX);
+
+      const updated = [...numWidths];
+      updated[hIdx] = newLeft;
+      if (hIdx + 1 < colCount) {
+        updated[hIdx + 1] = newRight;
+      }
+
+      const totalPct = updated.reduce((a, b) => a + b, 0);
+      const pctWidths = updated.map(w => `${((w / totalPct) * 100).toFixed(1)}%`);
+      saveColWidthsForTable(tableId, colCount, pctWidths);
+    };
+
+    const handleEnd = () => {
+      const win = e.target.ownerDocument.defaultView || window;
+      win.removeEventListener('mousemove', handleMove);
+      win.removeEventListener('mouseup', handleEnd);
+      win.removeEventListener('touchmove', handleMove);
+      win.removeEventListener('touchend', handleEnd);
+    };
+
+    const win = e.target.ownerDocument.defaultView || window;
+    win.addEventListener('mousemove', handleMove);
+    win.addEventListener('mouseup', handleEnd);
+    win.addEventListener('touchmove', handleMove);
+    win.addEventListener('touchend', handleEnd);
+  };
 
   // Drag listeners
   const handleMouseDown = (e) => {
@@ -764,220 +1256,24 @@ export function FloatingMemorization({
                       </div>
 
                       {isExpanded && (
-                        <div className="table-quiz-container overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40 p-0 select-text animate-fade-in text-[14px] md:text-[16px]">
-                          {(() => {
-                            const rawData = t.html || t.content || t.comparison || (t.tableData ? JSON.stringify(t.tableData) : '');
-                            const parsed = parseHtmlTable(rawData);
-                            return (
-                              <table className="table-quiz-table w-full table-fixed text-center border-collapse min-w-full">
-                                <colgroup>
-                                  {parsed.headers.map((_, hIdx) => {
-                                    let widthPct = '25%';
-                                    if (parsed.headers.length === 4) {
-                                      widthPct = (hIdx === 0) ? '25%' : '25%';
-                                    } else if (parsed.headers.length === 3) {
-                                      widthPct = (hIdx === 0) ? '30%' : '35%';
-                                    } else if (parsed.headers.length === 2) {
-                                      widthPct = (hIdx === 0) ? '28%' : '72%';
-                                    } else {
-                                      const first = 25;
-                                      const remaining = (100 - first) / Math.max(1, parsed.headers.length - 1);
-                                      widthPct = (hIdx === 0) ? `${first}%` : `${remaining.toFixed(1)}%`;
-                                    }
-                                    return <col key={hIdx} style={{ width: widthPct }} />;
-                                  })}
-                                </colgroup>
-                                <thead>
-                                  <tr className="bg-slate-900/80 text-slate-355 border-b border-slate-800">
-                                    {parsed.headers.map((h, hIdx) => {
-                                      const isEditing = localActiveEditCell && localActiveEditCell.tableId === t.id && localActiveEditCell.type === 'header' && localActiveEditCell.colIdx === hIdx;
-                                      return (
-                                        <th 
-                                          key={hIdx} 
-                                          className="p-1.5 border-r border-slate-800/80 last:border-r-0 align-middle whitespace-normal break-words"
-                                        >
-                                          {hIdx === 0 ? (
-                                            <div className="relative inline-block select-none" onClick={(e) => e.stopPropagation()}>
-                                              <button
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  setActiveAddDropdownTableId(activeAddDropdownTableId === t.id ? null : t.id);
-                                                }}
-                                                className="px-2 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-black cursor-pointer transition-all active:scale-95 border border-emerald-500/20 flex items-center gap-0.5 mx-auto"
-                                                title="행 또는 열 추가"
-                                              >
-                                                + 행/열 추가
-                                              </button>
-                                              {activeAddDropdownTableId === t.id && (
-                                                <div className="absolute left-1/2 -translate-x-1/2 mt-1.5 w-24 bg-slate-950 border border-slate-800 rounded-lg shadow-xl z-50 flex flex-col overflow-hidden py-1">
-                                                  <button
-                                                    onClick={(e) => {
-                                                      e.stopPropagation();
-                                                      const emptyRow = Array(parsed.headers.length).fill('');
-                                                      const updatedRows = [...parsed.rows, emptyRow];
-                                                      const newHtml = rebuildTableHtml(parsed.headers, updatedRows);
-                                                      const updatedTables = formulaTables.map(item => item.id === t.id ? { ...item, html: newHtml } : item);
-                                                      setFormulaTables(updatedTables);
-                                                      handleSaveFormulaTables(updatedTables, false);
-                                                      setActiveAddDropdownTableId(null);
-                                                    }}
-                                                    className="w-full px-2 py-1.5 hover:bg-slate-900 text-center text-xs font-bold text-slate-200 cursor-pointer border-none bg-transparent"
-                                                  >
-                                                    행 추가
-                                                  </button>
-                                                  <button
-                                                    onClick={(e) => {
-                                                      e.stopPropagation();
-                                                      const newHeader = `열 ${parsed.headers.length + 1}`;
-                                                      const updatedHeaders = [...parsed.headers, newHeader];
-                                                      const updatedRows = parsed.rows.map(row => [...row, '']);
-                                                      const newHtml = rebuildTableHtml(updatedHeaders, updatedRows);
-                                                      const updatedTables = formulaTables.map(item => item.id === t.id ? { ...item, html: newHtml } : item);
-                                                      setFormulaTables(updatedTables);
-                                                      handleSaveFormulaTables(updatedTables, false);
-                                                      setActiveAddDropdownTableId(null);
-                                                    }}
-                                                    className="w-full px-2 py-1.5 hover:bg-slate-900 text-center text-xs font-bold text-slate-200 cursor-pointer border-none bg-transparent"
-                                                  >
-                                                    열 추가
-                                                  </button>
-                                                </div>
-                                              )}
-                                            </div>
-                                          ) : isEditing ? (
-                                            <input
-                                              type="text"
-                                              value={localEditingCellValue}
-                                              onChange={(e) => setLocalEditingCellValue(e.target.value)}
-                                              onBlur={() => {
-                                                const updatedHeaders = parsed.headers.map((hdr, idx) => idx === hIdx ? localEditingCellValue : hdr);
-                                                const newHtml = rebuildTableHtml(updatedHeaders, parsed.rows);
-                                                const updatedTables = formulaTables.map(item => item.id === t.id ? { ...item, html: newHtml } : item);
-                                                setFormulaTables(updatedTables);
-                                                handleSaveFormulaTables(updatedTables, false);
-                                                setLocalActiveEditCell(null);
-                                              }}
-                                              onKeyDown={(e) => {
-                                                if (e.key === 'Enter') {
-                                                  const updatedHeaders = parsed.headers.map((hdr, idx) => idx === hIdx ? localEditingCellValue : hdr);
-                                                  const newHtml = rebuildTableHtml(updatedHeaders, parsed.rows);
-                                                  const updatedTables = formulaTables.map(item => item.id === t.id ? { ...item, html: newHtml } : item);
-                                                  setFormulaTables(updatedTables);
-                                                  handleSaveFormulaTables(updatedTables, false);
-                                                  setLocalActiveEditCell(null);
-                                                }
-                                              }}
-                                              className="w-full text-center bg-slateCustom-950 border border-slate-700 text-slate-200 font-black focus:outline-none p-0.5 text-[14px] md:text-[16px] rounded"
-                                              autoFocus
-                                            />
-                                          ) : (
-                                            <div 
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                if (!isEditing) {
-                                                  setLocalActiveEditCell({ tableId: t.id, type: 'header', colIdx: hIdx });
-                                                  setLocalEditingCellValue(h);
-                                                }
-                                              }}
-                                              className="w-full text-center p-0.5 text-[14px] md:text-[16px] text-slate-200 font-black cursor-pointer hover:text-violet-300 transition-colors"
-                                              title="클릭하여 헤더 수정"
-                                            >
-                                              <LatexRenderer text={h} katexLoaded={katexLoaded} className="inline" />
-                                            </div>
-                                          )}
-                                        </th>
-                                      );
-                                    })}
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {parsed.rows.map((row, rIdx) => (
-                                    <tr key={rIdx} className="border-b border-slate-800/80 last:border-b-0 hover:bg-slate-900/10">
-                                      {row.map((cell, cIdx) => {
-                                        const isEditing = localActiveEditCell && localActiveEditCell.tableId === t.id && localActiveEditCell.type === 'cell' && localActiveEditCell.rIdx === rIdx && localActiveEditCell.colIdx === cIdx;
-                                        return (
-                                          <td 
-                                            key={cIdx} 
-                                            className={`p-1 border-r border-slate-800/60 last:border-r-0 align-middle whitespace-normal break-words ${
-                                              cIdx === 0 ? 'text-left bg-slate-950/20 font-extrabold text-slate-300' : 'text-center text-slate-200'
-                                            }`}
-                                          >
-                                            {isEditing ? (
-                                              <input
-                                                type="text"
-                                                value={localEditingCellValue}
-                                                onChange={(e) => setLocalEditingCellValue(e.target.value)}
-                                                onBlur={() => {
-                                                  const updatedRows = parsed.rows.map((rowVal, rIdx2) => 
-                                                    rIdx2 === rIdx 
-                                                      ? rowVal.map((cellVal, cIdx2) => cIdx2 === cIdx ? localEditingCellValue : cellVal)
-                                                      : rowVal
-                                                  );
-                                                  const newHtml = rebuildTableHtml(parsed.headers, updatedRows);
-                                                  const updatedTables = formulaTables.map(item => item.id === t.id ? { ...item, html: newHtml } : item);
-                                                  setFormulaTables(updatedTables);
-                                                  handleSaveFormulaTables(updatedTables, false);
-                                                  setLocalActiveEditCell(null);
-                                                }}
-                                                onKeyDown={(e) => {
-                                                  if (e.key === 'Enter') {
-                                                    const updatedRows = parsed.rows.map((rowVal, rIdx2) => 
-                                                      rIdx2 === rIdx 
-                                                        ? rowVal.map((cellVal, cIdx2) => cIdx2 === cIdx ? localEditingCellValue : cellVal)
-                                                        : rowVal
-                                                    );
-                                                    const newHtml = rebuildTableHtml(parsed.headers, updatedRows);
-                                                    const updatedTables = formulaTables.map(item => item.id === t.id ? { ...item, html: newHtml } : item);
-                                                    setFormulaTables(updatedTables);
-                                                    handleSaveFormulaTables(updatedTables, false);
-                                                    setLocalActiveEditCell(null);
-                                                  }
-                                                }}
-                                                className="w-full text-center bg-slateCustom-950 border border-slate-700 text-slate-200 focus:outline-none p-0.5 text-[14px] md:text-[16px] rounded"
-                                                autoFocus
-                                              />
-                                            ) : (
-                                              <div 
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  if (!isEditing) {
-                                                    setLocalActiveEditCell({ tableId: t.id, type: 'cell', rIdx, colIdx: cIdx });
-                                                    setLocalEditingCellValue(cell);
-                                                  }
-                                                }}
-                                                className="w-full text-center p-0.5 text-[14px] md:text-[16px] text-slate-200 cursor-pointer hover:text-violet-300 transition-colors"
-                                                title="클릭하여 셀 수정"
-                                              >
-                                                <LatexRenderer text={cell} katexLoaded={katexLoaded} className="inline" />
-                                              </div>
-                                            )}
-                                          </td>
-                                        );
-                                      })}
-                                      <td className="p-1 text-center align-middle">
-                                        <button
-                                          onClick={(e) => {
-                                            const currentWindow = e.target.ownerDocument.defaultView || window;
-                                            if (currentWindow.confirm('이 행을 삭제하시겠습니까?')) {
-                                              const updatedRows = parsed.rows.filter((_, idx) => idx !== rIdx);
-                                              const newHtml = rebuildTableHtml(parsed.headers, updatedRows);
-                                              const updatedTables = formulaTables.map(item => item.id === t.id ? { ...item, html: newHtml } : item);
-                                              setFormulaTables(updatedTables);
-                                              handleSaveFormulaTables(updatedTables, false);
-                                            }
-                                          }}
-                                          className="p-0.5 rounded bg-red-955/40 border border-red-500/10 text-red-400 hover:bg-red-900 transition-all cursor-pointer"
-                                        >
-                                          삭제
-                                        </button>
-                                      </td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            );
-                          })()}
-                        </div>
+                        <FloatingTableItem
+                          t={t}
+                          localActiveEditCell={localActiveEditCell}
+                          setLocalActiveEditCell={setLocalActiveEditCell}
+                          localEditingCellValue={localEditingCellValue}
+                          setLocalEditingCellValue={setLocalEditingCellValue}
+                          activeAddDropdownTableId={activeAddDropdownTableId}
+                          setActiveAddDropdownTableId={setActiveAddDropdownTableId}
+                          formulaTables={formulaTables}
+                          setFormulaTables={setFormulaTables}
+                          handleSaveFormulaTables={handleSaveFormulaTables}
+                          katexLoaded={katexLoaded}
+                          LatexRenderer={LatexRenderer}
+                          getColWidthsForTable={getColWidthsForTable}
+                          startColumnResize={startColumnResize}
+                          resetColumnWidths={resetColumnWidths}
+                          rebuildTableHtml={rebuildTableHtml}
+                        />
                       )}
                     </div>
                   );
@@ -1479,114 +1775,21 @@ export function FloatingMemorization({
                                 if (mdTable && mdTable.tableData && mdTable.tableData.headers) {
                                   const { headers, rows } = mdTable.tableData;
                                   return (
-                                    <div className="text-slate-200 py-1.5 px-0.5 w-full">
-                                      <span className="text-[10px] text-emerald-400 font-black block mb-1.5 uppercase tracking-wider select-none">⚖️ 비교표 / 장단점</span>
-                                      <div className="w-full my-2 rounded-xl border border-slate-800 bg-slate-950/40 overflow-hidden overflow-x-auto scrollbar-thin">
-                                        <table className="w-full text-center border-collapse text-[14px] md:text-[16px] table-fixed min-w-full">
-                                          <colgroup>
-                                            {headers.map((_, hIdx) => {
-                                              let widthPct = '25%';
-                                              if (headers.length === 4) {
-                                                widthPct = (hIdx === 0) ? '25%' : '23%';
-                                              } else if (headers.length === 3) {
-                                                widthPct = (hIdx === 0) ? '30%' : '32%';
-                                              } else if (headers.length === 2) {
-                                                widthPct = (hIdx === 0) ? '40%' : '55%';
-                                              } else {
-                                                const first = 25;
-                                                const remaining = (95 - first) / (headers.length - 1);
-                                                widthPct = (hIdx === 0) ? `${first}%` : `${remaining.toFixed(1)}%`;
-                                              }
-                                              return <col key={hIdx} style={{ width: widthPct }} />;
-                                            })}
-                                            <col style={{ width: '50px' }} />
-                                          </colgroup>
-                                          <thead>
-                                            <tr className="bg-slate-900/80 text-slate-355 border-b border-slate-800">
-                                              {headers.map((h, hIdx) => (
-                                                <th 
-                                                  key={hIdx} 
-                                                  className="p-2 sm:p-2.5 font-extrabold border-r border-slate-800 last:border-r-0 whitespace-normal break-words min-w-[90px]"
-                                                >
-                                                  <LatexRenderer text={h} katexLoaded={katexLoaded} />
-                                                </th>
-                                              ))}
-                                              <th className="p-2 sm:p-2.5 font-extrabold text-rose-400 select-none whitespace-nowrap w-16">
-                                                비고
-                                              </th>
-                                            </tr>
-                                          </thead>
-                                          <tbody>
-                                            {rows.map((row, rIdx) => (
-                                              <tr key={rIdx} className="border-b border-slate-800 last:border-b-0 hover:bg-slate-900/20 group">
-                                                {row.map((cell, cIdx) => {
-                                                  const isHeader = cIdx === 0;
-                                                  if (isHeader) {
-                                                    return (
-                                                      <td key={cIdx} className="p-2 sm:p-2.5 border-r border-slate-800 font-extrabold text-slate-300 select-text whitespace-normal break-words align-middle text-left bg-slate-950/20">
-                                                        <LatexRenderer text={cell} katexLoaded={katexLoaded} />
-                                                      </td>
-                                                    );
-                                                  }
-                                                  return (
-                                                    <td key={cIdx} className="p-2 sm:p-2.5 border-r border-slate-800 last:border-r-0 text-slate-200 select-text whitespace-normal break-words align-middle text-center">
-                                                      <LatexRenderer text={cell} katexLoaded={katexLoaded} />
-                                                    </td>
-                                                  );
-                                                })}
-                                                <td className="p-2 sm:p-2.5 text-center align-middle whitespace-nowrap bg-slate-950/10">
-                                                  <button
-                                                    onClick={async (e) => {
-                                                      const currentWindow = e.target.ownerDocument.defaultView || window;
-                                                      if (currentWindow.confirm(`'${row[0] || '이 행'}' 행을 삭제하시겠습니까?`)) {
-                                                        const updatedRows = rows.filter((_, idx) => idx !== rIdx);
-                                                        const newCompTableMd = rebuildMarkdownTable(headers, updatedRows, '<br>');
-                                                        let newContent = ov.content;
-                                                        let replaced = false;
-
-                                                        const lines = ov.content.split('\n');
-                                                        const compIdx = lines.findIndex(line => line.trim().match(/^\|\s*(비교표|비교|장단점)\s*\|/i));
-
-                                                        if (compIdx !== -1) {
-                                                          const line = lines[compIdx].trim();
-                                                          const match = line.match(/^(\|\s*(비교표|비교|장단점)\s*\|)(.*)\|$/i);
-                                                          if (match) {
-                                                            lines[compIdx] = `${match[1]} ${newCompTableMd.trim()} |`;
-                                                            newContent = lines.join('\n');
-                                                            replaced = true;
-                                                          }
-                                                        }
-
-                                                        if (!replaced) {
-                                                          const match = ov.content.match(/^([\s\S]*\|\s*(비교표|비교|장단점)\s*\|)(.*?)(?=\s*\|\s*(공학적 의미\/한계성|공학적 의미 및 한계성|의미\/한계성|직관적의미|직관적)\s*\||$)/i);
-                                                          if (match) {
-                                                            let nestedPart = match[3].trim();
-                                                            if (nestedPart.endsWith('|')) {
-                                                              nestedPart = nestedPart.slice(0, -1).trim();
-                                                            }
-                                                            newContent = ov.content.replace(nestedPart, newCompTableMd.trim());
-                                                            replaced = true;
-                                                          }
-                                                        }
-
-                                                        const updated = formulaOverviews.map(item => item.id === ov.id ? { ...item, content: newContent } : item);
-                                                        setFormulaOverviews(updated);
-                                                        await handleSaveFormulaOverviews(updated, false);
-                                                        showNotification('행이 삭제되었습니다.', 'info');
-                                                      }
-                                                    }}
-                                                    className="p-1 rounded bg-slate-850 hover:bg-rose-950 text-slate-400 hover:text-rose-400 cursor-pointer transition-all border border-slate-800 hover:border-rose-500/20 md:opacity-0 md:group-hover:opacity-100 opacity-100 flex items-center justify-center mx-auto shrink-0"
-                                                    title="행 삭제"
-                                                  >
-                                                    <Trash2 size={11} />
-                                                  </button>
-                                                </td>
-                                              </tr>
-                                            ))}
-                                          </tbody>
-                                        </table>
-                                      </div>
-                                    </div>
+                                    <OverviewComparisonTable
+                                      ov={ov}
+                                      headers={headers}
+                                      rows={rows}
+                                      formulaOverviews={formulaOverviews}
+                                      setFormulaOverviews={setFormulaOverviews}
+                                      handleSaveFormulaOverviews={handleSaveFormulaOverviews}
+                                      showNotification={showNotification}
+                                      katexLoaded={katexLoaded}
+                                      LatexRenderer={LatexRenderer}
+                                      getColWidthsForTable={getColWidthsForTable}
+                                      startColumnResize={startColumnResize}
+                                      resetColumnWidths={resetColumnWidths}
+                                      rebuildMarkdownTable={rebuildMarkdownTable}
+                                    />
                                   );
                                 }
                                 return (
