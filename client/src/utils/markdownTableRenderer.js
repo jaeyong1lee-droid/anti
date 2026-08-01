@@ -179,10 +179,13 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false,
     html += `<tr class="bg-slate-900/80 text-slate-355 border-b border-slate-600">`;
     headers.forEach((h, hIdx) => {
       const renderedH = renderCellMath(h);
-      let colStyle = "position: relative !important; user-select: none; min-width: 60px;";
+      let colStyle = "position: relative !important; user-select: none;";
       if (savedWidths && savedWidths[hIdx]) {
         const w = savedWidths[hIdx];
         colStyle += ` width: ${w}px !important; min-width: ${w}px !important; max-width: ${w}px !important;`;
+      } else {
+        const defaultSmartW = getDefaultSmartColWidth(hIdx, headers.length);
+        colStyle += ` width: ${defaultSmartW} !important; min-width: 60px;`;
       }
       const dblClickAttr = `ondblclick="if(window.__handleTableColumnDoubleClick) { window.__handleTableColumnDoubleClick(event, this, ${hIdx}) }"`;
 
@@ -256,10 +259,13 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false,
   html += `<tr class="bg-slate-900/80 text-slate-350 border-b border-slate-600">`;
   headers.forEach((h, hIdx) => {
     const renderedH = renderCellMath(h);
-    let colStyle = "position: relative !important; user-select: none; min-width: 60px;";
+    let colStyle = "position: relative !important; user-select: none;";
     if (savedWidths && savedWidths[hIdx]) {
       const w = savedWidths[hIdx];
       colStyle += ` width: ${w}px !important; min-width: ${w}px !important; max-width: ${w}px !important;`;
+    } else {
+      const defaultSmartW = getDefaultSmartColWidth(hIdx, headers.length);
+      colStyle += ` width: ${defaultSmartW} !important; min-width: 60px;`;
     }
     const dblClickAttr = `ondblclick="if(window.__handleTableColumnDoubleClick) { window.__handleTableColumnDoubleClick(event, this, ${hIdx}) }"`;
 
