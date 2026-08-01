@@ -544,6 +544,27 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   processed = processed.replace(deltaGreekRegex, '\\Delta \\$1');
   processed = processed.replace(/\\\s*Delta\s*([a-zA-Z])\b/gi, '\\Delta $1');
 
+  // [Self-Healing] Fix raw bearing capacity formula & space-corrupted gamma terms (e.g. \ gammaBN\gamma -> \gamma B N_\gamma)
+  processed = processed.replace(/\\?\s*gamma\s*BN\\?\s*gamma/gi, '\\gamma B N_\\gamma')
+                       .replace(/\\?\s*gamma\s*B\s*N\s*\\?\s*gamma/gi, '\\gamma B N_\\gamma');
+
+  // [Self-Healing] Auto-wrap raw/un-delimited bearing capacity math expressions (e.g. qa = c Nc + q Nq + 1 / 2 \ gammaBN\gamma)
+  processed = processed.replace(/\(([^()\n]*?(?:qa|qu|q_a|q_u|Nc|Nq|N\\?gamma)[^()\n]*?=[\s\S]*?)\)/gi, (match, body) => {
+    if (body.includes('$')) return match;
+    let healedBody = body
+      .replace(/\bqa\b/g, 'q_a')
+      .replace(/\bqu\b/g, 'q_u')
+      .replace(/\bNc\b/g, 'N_c')
+      .replace(/\bNq\b/g, 'N_q')
+      .replace(/\bN\\?gamma\b/g, 'N_\\gamma')
+      .replace(/\\?\s*gamma\s*BN\\?\s*gamma/gi, '\\gamma B N_\\gamma')
+      .replace(/\\?\s*gamma\s*B\s*N\s*\\?\s*gamma/gi, '\\gamma B N_\\gamma')
+      .replace(/1\s*\/\s*2/g, '\\frac{1}{2}');
+    return `($${healedBody.trim()}$)`;
+  });
+  processed = processed.replace(/(?<!\$)\b(q_?a|q_?u)\s*=\s*c\s*N_?c\s*\+\s*q\s*N_?q\s*\+\s*(?:1\/2|1\s*\/\s*2|\\frac\{1\}\{2\})\s*[\s\S]*?\\?gamma[\s\S]*?(?=\)|$|\n)(?!\$)/gi, (m) => `$${m.trim()}$`);
+
+
   // [🚨 KaTeX HTML 블록 최우선 복원 필터 🚨]
   // 텍스트 내부에 들어있는 KaTeX HTML 사전 렌더링 블록을 감지하여
   // 그 내부에 들어있는 원본 LaTeX 수식 문자열(annotation encoding="application/x-tex")을 추출한 뒤,
