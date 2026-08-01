@@ -29,7 +29,9 @@ export function ImageUploadPanel({ formulaImages, setFormulaImages, handleSaveFo
           const file = items[i].getAsFile();
           const reader = new FileReader();
           reader.onload = (event) => {
-            setImages(prev => [...prev, event.target.result]);
+            const dataUrl = event.target.result;
+            if (!dataUrl) return;
+            setImages(prev => prev.includes(dataUrl) ? prev : [...prev, dataUrl]);
             showNotification('클립보드 스크린샷이 붙여넣어졌습니다.', 'success');
           };
           reader.readAsDataURL(file);
@@ -53,7 +55,9 @@ export function ImageUploadPanel({ formulaImages, setFormulaImages, handleSaveFo
       if (file.type.startsWith('image/')) {
         const reader = new FileReader();
         reader.onload = (event) => {
-          setImages(prev => [...prev, event.target.result]);
+          const dataUrl = event.target.result;
+          if (!dataUrl) return;
+          setImages(prev => prev.includes(dataUrl) ? prev : [...prev, dataUrl]);
           showNotification('이미지가 성공적으로 추가되었습니다.', 'success');
         };
         reader.readAsDataURL(file);
@@ -73,7 +77,9 @@ export function ImageUploadPanel({ formulaImages, setFormulaImages, handleSaveFo
               const blob = await item.getType(type);
               const reader = new FileReader();
               reader.onload = (e) => {
-                setImages(prev => [...prev, e.target.result]);
+                const dataUrl = e.target.result;
+                if (!dataUrl) return;
+                setImages(prev => prev.includes(dataUrl) ? prev : [...prev, dataUrl]);
                 showNotification('클립보드 이미지를 가져왔습니다.', 'success');
               };
               reader.readAsDataURL(blob);
@@ -101,7 +107,9 @@ export function ImageUploadPanel({ formulaImages, setFormulaImages, handleSaveFo
         const file = items[i].getAsFile();
         const reader = new FileReader();
         reader.onload = (event) => {
-          setImages(prev => [...prev, event.target.result]);
+          const dataUrl = event.target.result;
+          if (!dataUrl) return;
+          setImages(prev => prev.includes(dataUrl) ? prev : [...prev, dataUrl]);
           setShowClipboardModal(false);
           showNotification('클립보드 스크린샷이 붙여넣어졌습니다.', 'success');
         };
@@ -113,7 +121,8 @@ export function ImageUploadPanel({ formulaImages, setFormulaImages, handleSaveFo
     if (!hasImage) {
       const text = e.clipboardData?.getData('text');
       if (text && (text.startsWith('data:image/') || text.startsWith('http://') || text.startsWith('https://'))) {
-        setImages(prev => [...prev, text.trim()]);
+        const trimmed = text.trim();
+        setImages(prev => prev.includes(trimmed) ? prev : [...prev, trimmed]);
         setShowClipboardModal(false);
         showNotification('클립보드 이미지 링크가 추가되었습니다.', 'success');
       }
@@ -127,7 +136,7 @@ export function ImageUploadPanel({ formulaImages, setFormulaImages, handleSaveFo
       return;
     }
     if (val.startsWith('data:image/') || val.startsWith('http://') || val.startsWith('https://')) {
-      setImages(prev => [...prev, val]);
+      setImages(prev => prev.includes(val) ? prev : [...prev, val]);
       setPasteText('');
       setShowClipboardModal(false);
       showNotification('이미지가 추가되었습니다.', 'success');
@@ -235,6 +244,7 @@ export function ImageUploadPanel({ formulaImages, setFormulaImages, handleSaveFo
             pasteAreaRef.current?.focus();
           }}
           onPaste={(e) => {
+            if (e) e.stopPropagation();
             const items = e.clipboardData?.items;
             if (!items) return;
             for (let i = 0; i < items.length; i++) {
@@ -242,7 +252,9 @@ export function ImageUploadPanel({ formulaImages, setFormulaImages, handleSaveFo
                 const file = items[i].getAsFile();
                 const reader = new FileReader();
                 reader.onload = (event) => {
-                  setImages(prev => [...prev, event.target.result]);
+                  const dataUrl = event.target.result;
+                  if (!dataUrl) return;
+                  setImages(prev => prev.includes(dataUrl) ? prev : [...prev, dataUrl]);
                   showNotification('클립보드 스크린샷이 붙여넣어졌습니다.', 'success');
                 };
                 reader.readAsDataURL(file);
@@ -574,8 +586,22 @@ function parseFormulaAndParams(analysisText, titleText = '') {
     };
   }
 
-  // Case H: 점성토의 압밀곡선 및 침하량 산정 (User's latest screenshot)
-  if (cleanTitle.includes('압밀곡선') || cleanTitle.includes('점성토') || cleanText.includes('1차 압밀') || cleanText.includes('2차 압밀') || cleanText.includes('간극수압') || cleanText.includes('침하량')) {
+  // Case RMR: RMR 평점에 따른 터널의 자립시간 관계 (Bieniawski Stand-up Time Chart - User's screenshot)
+  if (cleanTitle.includes('rmr') || cleanTitle.includes('자립시간') || cleanText.includes('자립시간') || cleanText.includes('rmr평점') || cleanText.includes('bieniawski') || cleanTitle.includes('천장폭')) {
+    return {
+      formulaTitle: 'RMR 평점 및 무지보 천장폭 대 자립시간 경험적 관계 (Bieniawski 도표)',
+      formulaText: '\\text{Stand-up Time} = f(RMR, \\text{Span})',
+      params: [
+        { symbol: '$RMR$', desc: '암질 평가 지수 (Rock Mass Rating, 20 ~ 100)' },
+        { symbol: '$\\text{Span (m)}$', desc: '터널 무지보 천장폭 또는 굴착 경간 (m)' },
+        { symbol: '$\\text{Stand-up Time}$', desc: '터널 굴착 후 지보 없이 붕괴하지 않고 자립 유지 가능한 시간 (시간/일/월/년)' },
+        { symbol: '$\\text{무지보 한계선}$', desc: 'RMR 평점 및 천장폭 조건별 지보공 없이 안정을 유지하는 한계 도표 영역' }
+      ]
+    };
+  }
+
+  // Case H: 점성토의 압밀곡선 및 침하량 산정
+  if ((cleanTitle.includes('압밀') || cleanTitle.includes('침하량') || cleanTitle.includes('점성토')) && (cleanText.includes('1차 압밀') || cleanText.includes('2차 압밀') || cleanText.includes('압밀침하') || cleanText.includes('간극수압'))) {
     return {
       formulaTitle: '점성토 1차 압밀 침하량 산정식',
       formulaText: '$S_c = \\frac{C_c}{1+e_0} H \\log\\left(\\frac{\\sigma_0\' + \\Delta\\sigma\'}{\\sigma_0\'}\\right)$',
