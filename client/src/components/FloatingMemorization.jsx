@@ -4,6 +4,8 @@ import {
 } from 'lucide-react';
 import { ImageTabList } from './ImageStandardsPlugin';
 import { PopoutWindow } from './PopoutWindow';
+import { TableQuiz } from './TableQuiz';
+import { AcronymQuiz } from './AcronymQuiz';
 
 const parseHtmlTable = (htmlStr) => {
   if (!htmlStr) return { headers: [], rows: [] };
@@ -801,6 +803,8 @@ export function FloatingMemorization({
     return localStorage.getItem('anti_memorization_sub_tab') || 'table';
   });
   const [searchQuery, setSearchQuery] = useState('');
+  const [quizPopupItem, setQuizPopupItem] = useState(null);
+  const [quizPopupType, setQuizPopupType] = useState(null);
 
   useEffect(() => {
     localStorage.setItem('anti_memorization_sub_tab', subTab);
@@ -1344,6 +1348,17 @@ export function FloatingMemorization({
                             </button>
                           )}
                           <button
+                            onClick={() => {
+                              setQuizPopupItem(t);
+                              setQuizPopupType('table');
+                            }}
+                            className="px-2 py-1.5 rounded-lg text-emerald-300 hover:text-white hover:bg-emerald-500/20 border border-emerald-500/30 bg-emerald-950/40 transition-all cursor-pointer text-[11px] font-bold flex items-center gap-1 shrink-0 shadow-xs"
+                            title="믹스복습 표 문제 풀기"
+                          >
+                            <HelpCircle size={12} className="text-emerald-400" />
+                            <span>문제</span>
+                          </button>
+                          <button
                             onClick={() => toggleTableCollapse(t.id)}
                             className="p-1.5 rounded-lg text-slate-400 hover:text-violet-400 hover:bg-violet-500/10 hover:border-violet-500/20 border border-slate-700/50 bg-slate-800/40 transition-all cursor-pointer text-[11px] font-bold flex items-center gap-1"
                             title={isExpanded ? "접기" : "열기"}
@@ -1497,15 +1512,28 @@ export function FloatingMemorization({
                             </div>
                           )}
                         </div>
-                        <button
-                          onClick={(e) => {
-                            const currentWindow = e.target.ownerDocument.defaultView || window;
-                            handleDeleteAcronymCard(ac.id, ac.title, currentWindow);
-                          }}
-                          className="p-1 rounded bg-red-955/40 border border-red-500/20 text-red-400 hover:bg-red-900 transition-all cursor-pointer shrink-0"
-                        >
-                          <Trash2 size={12} />
-                        </button>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            onClick={() => {
+                              setQuizPopupItem(ac);
+                              setQuizPopupType('acronym');
+                            }}
+                            className="px-2 py-1.5 rounded-lg text-emerald-300 hover:text-white hover:bg-emerald-500/20 border border-emerald-500/30 bg-emerald-950/40 transition-all cursor-pointer text-[11px] font-bold flex items-center gap-1 shrink-0 shadow-xs"
+                            title="믹스복습 두문자 문제 풀기"
+                          >
+                            <HelpCircle size={12} className="text-emerald-400" />
+                            <span>문제</span>
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              const currentWindow = e.target.ownerDocument.defaultView || window;
+                              handleDeleteAcronymCard(ac.id, ac.title, currentWindow);
+                            }}
+                            className="p-1 rounded bg-red-955/40 border border-red-500/20 text-red-400 hover:bg-red-900 transition-all cursor-pointer shrink-0"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
                       </div>
 
                       {/* Content editor */}
@@ -1762,7 +1790,18 @@ export function FloatingMemorization({
 
                           </div>
                         </div>
-                        <div className="flex items-center gap-1 shrink-0">
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            onClick={() => {
+                              setQuizPopupItem(ov);
+                              setQuizPopupType('overview');
+                            }}
+                            className="px-2 py-1.5 rounded-lg text-emerald-300 hover:text-white hover:bg-emerald-500/20 border border-emerald-500/30 bg-emerald-950/40 transition-all cursor-pointer text-[11px] font-bold flex items-center gap-1 shrink-0 shadow-xs"
+                            title="믹스복습 개요 문제 풀기"
+                          >
+                            <HelpCircle size={12} className="text-emerald-400" />
+                            <span>문제</span>
+                          </button>
                           <button
                             onClick={() => toggleOverviewCollapse(ov.id)}
                             className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-all cursor-pointer"
@@ -1972,33 +2011,111 @@ export function FloatingMemorization({
       </div>
     );
 
+    const quizPopupModal = (quizPopupItem && quizPopupType) ? (
+      <PopoutWindow
+        title={
+          quizPopupType === 'table' ? `📌 [문제] ${quizPopupItem.title || '표 채우기'}` :
+          quizPopupType === 'acronym' ? `💡 [문제] ${quizPopupItem.title || '두문자 암기'}` :
+          `📖 [문제] ${quizPopupItem.title || '개요 작성'}`
+        }
+        onClose={() => {
+          setQuizPopupItem(null);
+          setQuizPopupType(null);
+        }}
+        initWidth={820}
+        initHeight={920}
+        storageKey={`anti_popout_item_quiz_${quizPopupType}_${quizPopupItem.id || 'quiz'}`}
+      >
+        <div className="w-full h-full flex flex-col overflow-y-auto text-slate-100 p-4 bg-[#020617]">
+          {quizPopupType === 'table' && (
+            <TableQuiz
+              question={{
+                id: quizPopupItem.id,
+                question: quizPopupItem.title,
+                title: quizPopupItem.title,
+                content: quizPopupItem.content,
+                tableData: parseHtmlTable(quizPopupItem.content)
+              }}
+              tableAnswers={{}}
+              setTableAnswers={() => {}}
+              tableGradingResults={{}}
+              setTableGradingResults={() => {}}
+              katexLoaded={katexLoaded}
+              API_BASE={API_BASE}
+              isDesktop={isDesktop}
+              showNotification={showNotification}
+            />
+          )}
+          {quizPopupType === 'acronym' && (
+            <AcronymQuiz
+              question={{
+                id: quizPopupItem.id,
+                title: quizPopupItem.title,
+                acronym: quizPopupItem.title,
+                word: quizPopupItem.title,
+                sentenceText: quizPopupItem.sentenceText || quizPopupItem.content
+              }}
+              katexLoaded={katexLoaded}
+              API_BASE={API_BASE}
+              showNotification={showNotification}
+            />
+          )}
+          {quizPopupType === 'overview' && (
+            <TableQuiz
+              question={{
+                id: quizPopupItem.id,
+                question: `[개요 작성/복습] ${quizPopupItem.title}`,
+                title: quizPopupItem.title,
+                concept: quizPopupItem.content,
+                explanation: quizPopupItem.content
+              }}
+              tableAnswers={{}}
+              setTableAnswers={() => {}}
+              tableGradingResults={{}}
+              setTableGradingResults={() => {}}
+              katexLoaded={katexLoaded}
+              API_BASE={API_BASE}
+              isDesktop={isDesktop}
+              showNotification={showNotification}
+            />
+          )}
+        </div>
+      </PopoutWindow>
+    ) : null;
+
     if (activeUsePopout) {
       return (
-        <PopoutWindow
-          title="플로팅 암기자료 팝업"
-          onClose={onClose}
-          initWidth={720}
-          initHeight={650}
-          storageKey="anti_popout_memorization"
-        >
-          {content}
-        </PopoutWindow>
+        <>
+          <PopoutWindow
+            title="플로팅 암기자료 팝업"
+            onClose={onClose}
+            initWidth={720}
+            initHeight={650}
+            storageKey="anti_popout_memorization"
+          >
+            {content}
+          </PopoutWindow>
+          {quizPopupModal}
+        </>
       );
     }
 
     return (
-      <div
-        ref={dragRef}
-        style={{
-          position: 'fixed',
-          left: `${position.x}px`,
-          top: `${position.y}px`,
-          zIndex: 9998,
-          touchAction: 'none'
-        }}
-        className="floating-memorization-popup w-[92vw] md:w-[720px] h-[80vh] md:h-[650px] bg-slate-900/95 border border-slate-700/60 rounded-2xl shadow-[0_24px_60px_rgba(0,0,0,0.95)] flex flex-col overflow-hidden backdrop-blur-md transition-shadow duration-300 hover:shadow-violet-500/10 hover:border-violet-500/20"
-      >
-        {content}
-      </div>
+      <>
+        <div
+          ref={dragRef}
+          style={{
+            position: 'fixed',
+            left: `${position.x}px`,
+            top: `${position.y}px`,
+            zIndex: 9998,
+            touchAction: 'none'
+          }}
+          className="floating-memorization-popup w-[92vw] md:w-[720px] h-[80vh] md:h-[650px] bg-slate-900/95 border border-slate-700/60 rounded-2xl shadow-[0_24px_60px_rgba(0,0,0,0.95)] flex flex-col overflow-hidden backdrop-blur-md transition-shadow duration-300 hover:shadow-violet-500/10 hover:border-violet-500/20"
+        >
+          {content}
+        </div>
+        {quizPopupModal}
+      </>
     );
   }
