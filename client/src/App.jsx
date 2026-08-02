@@ -3292,25 +3292,16 @@ export default function App() {
   const triggerLockscreenQuiz = () => {
     if (!isLockscreenQuizEnabled) return;
 
-    // 락스크린 주기: 접속한(로그인) 지 10분이 경과되었을 경우에만 문제 제공 (문제 제출 후 10분이 아님)
+    // 락스크린 주기: 마지막 문제 제출 후 10분이 경과되었을 경우에만 문제 제공
     const now = Date.now();
-    let connectTimeStr = sessionStorage.getItem('anti_connect_time') || localStorage.getItem('anti_connect_time');
-    if (!connectTimeStr) {
-      // 최초 접속 시 시각 기록 후 10분 경과 대기
-      sessionStorage.setItem('anti_connect_time', String(now));
-      localStorage.setItem('anti_connect_time', String(now));
-      return;
+    const lastSubmitStr = localStorage.getItem('anti_last_lockscreen_submit_time');
+    if (lastSubmitStr) {
+      const lastSubmitTime = parseInt(lastSubmitStr, 10);
+      if (!isNaN(lastSubmitTime) && now - lastSubmitTime < 10 * 60 * 1000) {
+        // 마지막 문제 제출 후 10분이 미경과된 경우 퀴즈 미제공
+        return;
+      }
     }
-
-    const connectTime = parseInt(connectTimeStr, 10);
-    if (!isNaN(connectTime) && now - connectTime < 10 * 60 * 1000) {
-      // 접속 후 10분이 미경과된 경우 퀴즈 미제공
-      return;
-    }
-    
-    // 10분 경과로 락스크린 퀴즈를 표출할 때 다음 10분 주기를 위해 접속 기준 시각을 갱신
-    sessionStorage.setItem('anti_connect_time', String(now));
-    localStorage.setItem('anti_connect_time', String(now));
 
     const cached = localStorage.getItem('anti_lockscreen_questions');
     if (cached) {
@@ -13190,9 +13181,6 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
       if (res.ok && data.success) {
         sessionStorage.setItem('pin_verified', 'true');
         sessionStorage.setItem('just_logged_in', 'true');
-        const connectTimeNow = String(Date.now());
-        sessionStorage.setItem('anti_connect_time', connectTimeNow);
-        localStorage.setItem('anti_connect_time', connectTimeNow);
         setIsPinVerified(true);
         showNotification('성공적으로 인증되었습니다.', 'success');
       } else {
@@ -17458,6 +17446,7 @@ ${itemsStr}
                       disabled={lockscreenSelectedOption !== null}
                       onClick={() => {
                         setLockscreenSelectedOption(option);
+                        localStorage.setItem('anti_last_lockscreen_submit_time', String(Date.now()));
                         if (isCorrect) {
                           setLockscreenAnswerResult('correct');
                         } else {
@@ -17490,6 +17479,7 @@ ${itemsStr}
                       <button
                         onClick={async () => {
                           const solvedId = currentQuestion.id;
+                          localStorage.setItem('anti_last_lockscreen_submit_time', String(Date.now()));
                           setShowLockscreenQuiz(false);
                           setLockscreenSelectedOption(null);
                           setLockscreenAnswerResult(null);
