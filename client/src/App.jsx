@@ -14239,7 +14239,7 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
       if (res.ok) {
         const body = await res.json();
         if (body && body.data && Array.isArray(body.data.formulaAcronyms)) {
-          loadedData = body.data.formulaAcronyms;
+          loadedData = body.data.formulaAcronyms.map(item => ({ ...item, isOptimizing: false }));
           console.log('[Sync] Loaded formula acronyms from database. Count:', loadedData.length);
         }
       }
@@ -14259,12 +14259,13 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
 
   const handleSaveFormulaAcronyms = async (acronyms = formulaAcronyms, showToast = true) => {
     try {
+      const sanitizedAcronyms = acronyms.map(({ isOptimizing, ...rest }) => rest);
       setFormulaAcronyms(acronyms);
       
       const res = await fetch(`${API_BASE}/api/session/acronyms`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ formulaAcronyms: acronyms })
+        body: JSON.stringify({ formulaAcronyms: sanitizedAcronyms })
       });
 
       if (!res.ok) {
@@ -15056,21 +15057,31 @@ ${itemsStr}
 
       const finalContent = aiText.trim();
 
-      setFormulaAcronyms(prev => {
-        const nextList = prev.map((item) => {
-          if (item.id === acronymId) {
-            return {
-              ...item,
-              title: parsedTitle,
-              content: finalContent,
-              isOptimizing: false
-            };
-          }
-          return item;
-        });
-        handleSaveFormulaAcronyms(nextList, false);
-        return nextList;
+      setFormulaAcronyms(prev => prev.map((item) => {
+        if (item.id === acronymId) {
+          return {
+            ...item,
+            title: parsedTitle,
+            content: finalContent,
+            isOptimizing: false
+          };
+        }
+        return item;
+      }));
+
+      // Get fresh list with updated values for saving
+      const updatedList = formulaAcronyms.map((item) => {
+        if (item.id === acronymId) {
+          return {
+            ...item,
+            title: parsedTitle,
+            content: finalContent,
+            isOptimizing: false
+          };
+        }
+        return item;
       });
+      await handleSaveFormulaAcronyms(updatedList, false);
 
       if (activeAnswerPopupData && activeAnswerPopupData.type === 'acronym' && activeAnswerPopupData.content.id === acronymId) {
         setActiveAnswerPopupData(prev => ({
