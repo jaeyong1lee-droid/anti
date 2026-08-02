@@ -165,6 +165,7 @@ export function getSanitizedMcAnswer(q) {
   if (bestMatch && currentAns) {
     const normCurrent = normalizeMcText(currentAns);
     if (!normalizedTarget.includes(normCurrent) && (bestScore >= 100 || bestScore > 0)) {
+      q.answer = bestMatch;
       return bestMatch;
     }
   }
@@ -20319,19 +20320,22 @@ ${itemsStr}
 
 
                         {/* MC Options */}
-                        {isMC && (
-                          <div className="space-y-2">
-                            {q.options?.map((opt, oIdx) => {
-                              let cls = "w-full text-left px-3 py-2.5 rounded-xl border text-[14px] sm:text-[16px] font-semibold transition-all duration-200 ";
-                              if (!answered) {
-                                cls += "bg-slate-800/60 border-slate-700 text-slate-300 hover:bg-slate-700/70 hover:border-slate-600 cursor-pointer select-none";
-                              } else if (opt === q.answer) {
-                                cls += "bg-emerald-950/70 border-emerald-500 text-emerald-200 font-extrabold cursor-default select-text";
-                              } else if (opt === selectedAnswers[idx] && opt !== q.answer) {
-                                cls += "bg-rose-950/70 border-rose-500 text-rose-200 cursor-default select-text";
-                              } else {
-                                cls += "bg-slate-800/30 border-slate-800/50 text-slate-300 cursor-default select-text";
-                              }
+                        {isMC && (() => {
+                          const targetAns = getSanitizedMcAnswer(q);
+                          return (
+                            <div className="space-y-2">
+                              {q.options?.map((opt, oIdx) => {
+                                let cls = "w-full text-left px-3 py-2.5 rounded-xl border text-[14px] sm:text-[16px] font-semibold transition-all duration-200 ";
+                                const isThisCorrect = opt === targetAns || opt === q.answer;
+                                if (!answered) {
+                                  cls += "bg-slate-800/60 border-slate-700 text-slate-300 hover:bg-slate-700/70 hover:border-slate-600 cursor-pointer select-none";
+                                } else if (isThisCorrect) {
+                                  cls += "bg-emerald-950/70 border-emerald-500 text-emerald-200 font-extrabold cursor-default select-text";
+                                } else if (opt === selectedAnswers[idx] && !isThisCorrect) {
+                                  cls += "bg-rose-950/70 border-rose-500 text-rose-200 cursor-default select-text";
+                                } else {
+                                  cls += "bg-slate-800/30 border-slate-800/50 text-slate-300 cursor-default select-text";
+                                }
                               return (
                                 <div
                                   key={oIdx}
@@ -20413,6 +20417,9 @@ ${itemsStr}
                                 </div>
                               );
                             })}
+                            </div>
+                          );
+                        })()}
                             {answered && (
                               <div className={`mt-2 text-[14px] sm:text-[16px] leading-relaxed ${
                                 (!isDesktop && !isMobileLandscape)
