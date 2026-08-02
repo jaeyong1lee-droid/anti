@@ -64,9 +64,9 @@ async function getLockscreenCandidates() {
     return usageA - usageB;
   });
 
-  // Slice to top 10 to keep the prompt clean and focus LLM on least-used candidates
-  const formulaCandidates = sortedFormulas.slice(0, 10);
-  const finalTopicCandidates = sortedTopics.slice(0, 10).map(t => ({
+  // Slice to top 30 to broaden candidate pool and focus LLM on least-used candidates
+  const formulaCandidates = sortedFormulas.slice(0, 30);
+  const finalTopicCandidates = sortedTopics.slice(0, 30).map(t => ({
     id: t.id,
     title: t.title,
     keywords: t.keywords,
@@ -120,7 +120,7 @@ async function replenishLockscreenPool(req) {
       }
     }
 
-    const targetSize = 5;
+    const targetSize = 15;
     if (pool.length >= targetSize) {
       console.log(`[Lockscreen Pool] Pool has ${pool.length} questions. No replenishment needed.`);
       isLockscreenPoolReplenishing = false;
@@ -203,7 +203,7 @@ router.get('/pool', async (req, res) => {
       }
     }
 
-    if (pool.length < 5) {
+    if (pool.length < 15) {
       console.log(`[Lockscreen Pool API] Pool has only ${pool.length} questions. Replenishing synchronously...`);
       await replenishLockscreenPool(req);
       const updatedPoolRow = await dbQuery.get("SELECT value FROM app_session WHERE key = 'lockscreen_pregenerated_pool'");

@@ -17447,6 +17447,8 @@ ${itemsStr}
                       onClick={() => {
                         setLockscreenSelectedOption(option);
                         localStorage.setItem('anti_last_lockscreen_submit_time', String(Date.now()));
+                        localStorage.removeItem('anti_lockscreen_questions');
+                        generateNewLockscreenQuestion();
                         if (isCorrect) {
                           setLockscreenAnswerResult('correct');
                         } else {
