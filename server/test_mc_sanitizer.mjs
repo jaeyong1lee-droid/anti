@@ -1,4 +1,4 @@
-console.log('=== 🧪 REAL TIME TESTER: RESET & RE-SOLVE SIMULATION ===\n');
+console.log('=== 🧪 REAL TIME TESTER: SCREENSHOT CONTRADICTION FIX TEST ===\n');
 
 function normalizeMcText(s) {
   return (s || '')
@@ -17,6 +17,22 @@ function getSanitizedMcAnswer(q) {
   const exp = q.explanation;
   const currentAns = String(q.answer).trim();
 
+  // 1. "올바른 정답은 'X'입니다" 또는 "정답은 'X'" 특수 패턴 최우선 추출
+  const explicitCorrectMatch = exp.match(/(?:올바른\s*정답은|정답은|최종\s*정답은)\s*['"]?([^'".\n]+)['"]?/i);
+  if (explicitCorrectMatch && explicitCorrectMatch[1]) {
+    const rawTarget = explicitCorrectMatch[1];
+    const normTarget = normalizeMcText(rawTarget);
+    const matchedOpt = options.find(opt => {
+      const normOpt = normalizeMcText(opt);
+      return normOpt && (normTarget.includes(normOpt) || normOpt.includes(normTarget));
+    });
+    if (matchedOpt) {
+      q.answer = matchedOpt;
+      return matchedOpt;
+    }
+  }
+
+  // 2. 일반 결론 문장 추출
   const conclusionMatch = exp.match(/(?:\[최종\s*정답\s*산출\]|따라서|정답은|결론적으로)[\s\S]*$/i);
   const searchTarget = conclusionMatch ? conclusionMatch[0] : exp;
   const normalizedTarget = normalizeMcText(searchTarget);
@@ -45,20 +61,17 @@ function getSanitizedMcAnswer(q) {
     }
   }
 
-  if (bestMatch && currentAns) {
-    const normCurrent = normalizeMcText(currentAns);
-    if (!normalizedTarget.includes(normCurrent) && (bestScore >= 100 || bestScore > 0)) {
-      q.answer = bestMatch;
-      return bestMatch;
-    }
+  if (bestMatch) {
+    q.answer = bestMatch;
+    return bestMatch;
   }
 
   return q.answer;
 }
 
-// 1. Mock Stale Quiz Question (The exact Q11 problem in screenshot)
+// Exact scenario in user screenshot:
 const q = {
-  id: 'q11_test',
+  id: 'q11_user_screenshot',
   type: 'multiple_choice',
   question: '어떤 사실토 기반에 침투주입을 수행할 때...',
   options: [
@@ -67,79 +80,53 @@ const q = {
     '③ 주입 속도는 변화가 없다.',
     '④ 주입 속도가 1/4배로 감소한다.'
   ],
-  answer: '① 주입 속도가 2배 증가한다.', // Stale wrong answer in DB
-  explanation: '[적용 공식] 다카다(Takada) 및 달시의 법칙... [수치 대입 및 단위 환산] ... [최종 정답 산출] 따라서 주입 속도는 기존의 1/4 배로 감소하게 됩니다.'
+  answer: '② 주입 속도가 4배 증가한다.', // Stale wrong answer set by JIT/DB
+  explanation: "다카다(Takada)의 침투주입 이론 및 다르시의 법칙(Darcy's Law)에 따르면, 주입 속도(또는 침투 속도) v는 투수계수 k에 비례하고 주입재의 점성 μ에 반비례합니다. 즉, v = k · i 이며 투수계수 k는 유체의 점성 μ에 반비례하므로(k ∝ 1/μ), 주입재의 점성이 기존 대비 4배로 증가하면 동일한 압력 구배(i) 조건에서 주입 속도는 기존의 1/4배로 감소하게 됩니다. 따라서 사용자가 선택한 '주입 속도가 4배 증가한다'는 오답이며, 올바른 정답은 '주입 속도가 1/4배로 감소한다.'입니다."
 };
 
-console.log('1. Initial Question State:');
-console.log('   Raw Stale Answer in DB:', q.answer);
+console.log('1. User Screenshot Situation Setup:');
+console.log('   Raw Stale Answer in DB/JIT:', q.answer);
+console.log('   User Clicked Choice        :', '② 주입 속도가 4배 증가한다.');
 
 // Step 1: Run Sanitizer
 const targetAns = getSanitizedMcAnswer(q);
 
-console.log('\n2. Sanitizer Execution:');
-console.log('   Sanitized Answer:', targetAns);
-console.log('   Updated q.answer:', q.answer);
+console.log('\n2. Sanitizer Execution Result:');
+console.log('   Sanitized Effective Answer:', targetAns);
+console.log('   Updated q.answer          :', q.answer);
 
-if (q.answer !== '④ 주입 속도가 1/4배로 감소한다.') {
-  console.error('❌ FAIL: q.answer was not updated to option ④!');
+if (targetAns !== '④ 주입 속도가 1/4배로 감소한다.') {
+  console.error('❌ FAIL: Sanitizer failed to pick option ④ as true answer!');
   process.exit(1);
 }
-console.log('   ✅ PASS: q.answer successfully updated to option ④.');
+console.log('   ✅ PASS: Sanitizer correctly extracted option ④!');
 
-// Step 2: Simulate "다시 풀기" (Reset button click)
-console.log('\n3. Simulating [다시 풀기] Button Click:');
-let selectedAnswers = { 0: '① 주입 속도가 2배 증가한다.' }; // Previous submission
-let answered = false;
-delete selectedAnswers[0]; // Reset answer state
+// Step 2: User Choice Evaluation
+const userSelectedOption = '② 주입 속도가 4배 증가한다.';
+const isUserCorrect = (userSelectedOption === targetAns);
 
-console.log('   Reset selectedAnswers state:', selectedAnswers);
-console.log('   answered state set to:', answered);
+console.log('\n3. Scoring & Validation:');
+console.log('   Is User Choice Correct? :', isUserCorrect ? '❌ FAIL (Should be false)' : '✅ PASS (Correctly rated FALSE / 0 score)');
 
-// Verify UI class rendering in reset state
-const optionsResetClasses = q.options.map(opt => {
-  const isThisCorrect = opt === targetAns || opt === q.answer;
-  if (!answered) return 'READY_TO_CLICK (bg-slate-800/60 border-slate-700 hover:bg-slate-700/70)';
-  if (isThisCorrect) return 'CORRECT_GREEN (bg-emerald-950/70 border-emerald-500)';
+// Step 3: Rendered UI Options Styling Check
+const optionClasses = q.options.map(opt => {
+  const isThisCorrect = (opt === targetAns);
+  if (isThisCorrect) return 'CORRECT_GREEN (bg-emerald-950 border-emerald-500)';
+  if (opt === userSelectedOption && !isThisCorrect) return 'WRONG_RED (bg-rose-950 border-rose-500)';
   return 'DEFAULT (bg-slate-800/30)';
 });
 
-console.log('   Rendered option states after Reset:');
-optionsResetClasses.forEach((cls, idx) => {
-  console.log(`     Option ${idx + 1}: ${cls}`);
+console.log('\n4. UI Border Rendering Results:');
+optionClasses.forEach((cls, idx) => {
+  console.log(`   Option ${idx + 1}: ${cls}`);
 });
 
-// Step 3: Re-solving by clicking Option ④
-console.log('\n4. Re-solving: User clicks Option ④ [④ 주입 속도가 1/4배로 감소한다.]:');
-selectedAnswers[0] = '④ 주입 속도가 1/4배로 감소한다.';
-answered = true;
-
-const optionsReSolvedClasses = q.options.map(opt => {
-  const isThisCorrect = opt === targetAns || opt === q.answer;
-  if (!answered) return 'READY_TO_CLICK';
-  if (isThisCorrect) return 'CORRECT_GREEN (bg-emerald-950 border-emerald-500)';
-  if (opt === selectedAnswers[0] && !isThisCorrect) return 'WRONG_RED (bg-rose-950 border-rose-500)';
-  return 'DEFAULT';
-});
-
-console.log('   Rendered option states after Re-solving:');
-optionsReSolvedClasses.forEach((cls, idx) => {
-  console.log(`     Option ${idx + 1}: ${cls}`);
-});
-
-// Verifications
-const option1IsGreen = optionsReSolvedClasses[0].includes('CORRECT_GREEN');
-const option4IsGreen = optionsReSolvedClasses[3].includes('CORRECT_GREEN');
-const userSelectedIsCorrect = (selectedAnswers[0] === targetAns || selectedAnswers[0] === q.answer);
-
-console.log('\n5. Final Real-Time Verification Checks:');
-console.log('   - Is Option ① Green? :', option1IsGreen ? '❌ FAIL (Should not be green)' : '✅ PASS (Not green)');
-console.log('   - Is Option ④ Green? :', option4IsGreen ? '✅ PASS (Green border applied)' : '❌ FAIL (Not green)');
-console.log('   - User Score Check  :', userSelectedIsCorrect ? '✅ PASS (7 / 7 Full Score)' : '❌ FAIL (0 Score)');
-
-if (!option1IsGreen && option4IsGreen && userSelectedIsCorrect) {
-  console.log('\n🎉 ALL TESTS PASSED SUCCESSFULLY! Reset & Re-solve flow verified 100% cleanly.');
+if (optionClasses[1].includes('WRONG_RED') && optionClasses[3].includes('CORRECT_GREEN')) {
+  console.log('\n🎉 ALL CHECKS PASSED PERFECTLY!');
+  console.log('   - Option ② correctly rendered with RED border (Wrong)');
+  console.log('   - Option ④ correctly rendered with GREEN border (Right Answer)');
+  console.log('   - User score correctly set to 0 / 7');
 } else {
-  console.error('\n❌ TEST FAILED!');
+  console.error('❌ FAIL: UI Option Class mismatch!');
   process.exit(1);
 }

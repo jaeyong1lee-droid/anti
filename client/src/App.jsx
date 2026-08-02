@@ -134,6 +134,22 @@ export function getSanitizedMcAnswer(q) {
   const exp = q.explanation;
   const currentAns = String(q.answer).trim();
 
+  // 1. "올바른 정답은 'X'입니다" 또는 "정답은 'X'" 특수 패턴 최우선 추출
+  const explicitCorrectMatch = exp.match(/(?:올바른\s*정답은|정답은|최종\s*정답은)\s*['"]?([^'".\n]+)['"]?/i);
+  if (explicitCorrectMatch && explicitCorrectMatch[1]) {
+    const rawTarget = explicitCorrectMatch[1];
+    const normTarget = normalizeMcText(rawTarget);
+    const matchedOpt = options.find(opt => {
+      const normOpt = normalizeMcText(opt);
+      return normOpt && (normTarget.includes(normOpt) || normOpt.includes(normTarget));
+    });
+    if (matchedOpt) {
+      q.answer = matchedOpt;
+      return matchedOpt;
+    }
+  }
+
+  // 2. 일반 결론 문장 추출
   const conclusionMatch = exp.match(/(?:\[최종\s*정답\s*산출\]|따라서|정답은|결론적으로)[\s\S]*$/i);
   const searchTarget = conclusionMatch ? conclusionMatch[0] : exp;
   const normalizedTarget = normalizeMcText(searchTarget);
@@ -162,12 +178,9 @@ export function getSanitizedMcAnswer(q) {
     }
   }
 
-  if (bestMatch && currentAns) {
-    const normCurrent = normalizeMcText(currentAns);
-    if (!normalizedTarget.includes(normCurrent) && (bestScore >= 100 || bestScore > 0)) {
-      q.answer = bestMatch;
-      return bestMatch;
-    }
+  if (bestMatch) {
+    q.answer = bestMatch;
+    return bestMatch;
   }
 
   return q.answer;
@@ -20024,7 +20037,7 @@ ${itemsStr}
                     const isSubj = !isMC;
                     const answered = selectedAnswers[idx] !== undefined;
                     const effectiveAns = getSanitizedMcAnswer(q);
-                    const isCorrect = answered && (selectedAnswers[idx] === effectiveAns || selectedAnswers[idx] === q.answer);
+                    const isCorrect = answered && (selectedAnswers[idx] === effectiveAns);
                     const isRevd = !!revealedQuestions[idx];
                     const subjIdx = isSubj ? aiQuestions.slice(0, idx).filter(question => {
                       const itemMC = question.type === '객관식' || (question.options && question.options.length > 0);
@@ -20066,7 +20079,7 @@ ${itemsStr}
                                 if (isMC) {
                                   const userAnswer = selectedAnswers[idx];
                                   if (userAnswer !== undefined && userAnswer !== null && userAnswer !== '') {
-                                    const isMcCorrect = userAnswer === effectiveAns || userAnswer === q.answer;
+                                    const isMcCorrect = userAnswer === effectiveAns;
                                     return (
                                       <span className="text-[10px] font-black px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 ml-1">
                                         득점: {isMcCorrect ? W : 0} / {W}점
@@ -20325,7 +20338,7 @@ ${itemsStr}
                             {q.options?.map((opt, oIdx) => {
                               const targetAns = getSanitizedMcAnswer(q);
                               let cls = "w-full text-left px-3 py-2.5 rounded-xl border text-[14px] sm:text-[16px] font-semibold transition-all duration-200 ";
-                              const isThisCorrect = opt === targetAns || opt === q.answer;
+                              const isThisCorrect = opt === targetAns;
                               if (!answered) {
                                 cls += "bg-slate-800/60 border-slate-700 text-slate-300 hover:bg-slate-700/70 hover:border-slate-600 cursor-pointer select-none";
                               } else if (isThisCorrect) {
@@ -20353,7 +20366,12 @@ ${itemsStr}
 
                                     if (jitResult && jitResult.correctAnswer) {
                                       const freshExplanation = jitResult.explanation || q.explanation;
-                                      q.answer = jitResult.correctAnswer;
+                                      const sanitizedJitAns = getSanitizedMcAnswer({
+                                        options: q.options,
+                                        answer: jitResult.correctAnswer,
+                                        explanation: freshExplanation
+                                      });
+                                      q.answer = sanitizedJitAns;
                                       q.explanation = freshExplanation;
 
                                       setAiQuestions(prev => {
@@ -20361,7 +20379,7 @@ ${itemsStr}
                                         if (updated[idx]) {
                                           updated[idx] = {
                                             ...updated[idx],
-                                            answer: jitResult.correctAnswer,
+                                            answer: sanitizedJitAns,
                                             explanation: freshExplanation
                                           };
                                         }
