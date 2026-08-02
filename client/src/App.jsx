@@ -168,11 +168,15 @@ export function getSanitizedMcAnswer(q) {
       break;
     }
 
-    const numKeywords = normOpt.match(/(?:\d+\/\d+|\d+배|변화가\s*없다|증가|감소)/g) || [];
+    const numKeywords = normOpt.match(/(?:\d+\/\d+배?|\d+배|변화가\s*없다|증가|감소)/g) || [];
     if (numKeywords.length > 0) {
-      const matchCount = numKeywords.filter(kw => normalizedTarget.includes(normalizeMcText(kw))).length;
-      if (matchCount > bestScore) {
-        bestScore = matchCount;
+      const matchedKws = numKeywords.filter(kw => normalizedTarget.includes(normalizeMcText(kw)));
+      const matchCount = matchedKws.length;
+      // 더 구체적인 키워드(분수배 등)에 가중치 부여: 1/4배 같은 패턴은 2점 추가
+      const specificityBonus = matchedKws.filter(kw => /\d+\/\d+/.test(kw)).length * 2;
+      const totalScore = matchCount + specificityBonus;
+      if (totalScore > bestScore) {
+        bestScore = totalScore;
         bestMatch = opt;
       }
     }
