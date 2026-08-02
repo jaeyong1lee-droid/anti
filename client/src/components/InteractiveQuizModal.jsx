@@ -527,11 +527,11 @@ export function InteractiveQuizModal({
             <Sparkles size={18} />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <span className={`px-2 py-0.5 text-[10px] font-black rounded-md border ${badge.color}`}>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+              <span className={`px-2.5 py-1 text-xs font-black rounded-lg border w-fit ${badge.color}`}>
                 {badge.name}
               </span>
-              <h3 className="font-extrabold text-sm sm:text-base text-white">
+              <h3 className="font-black text-xl sm:text-2xl text-white tracking-tight leading-snug">
                 {item?.title || '항목 맞춤 퀴즈'}
               </h3>
             </div>
