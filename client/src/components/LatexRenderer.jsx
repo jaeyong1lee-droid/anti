@@ -657,8 +657,8 @@ export const LatexRenderer = React.memo(function LatexRenderer({
         return `<div class="formula-scroll-container py-1.5" style="text-align: center; margin-top: 0.5rem; margin-bottom: 0.5rem; width: 100%;">${rendered}</div>`;
       });
       htmlContent = htmlContent.replace(/\$((?:[^\$\n<]|<(?![a-zA-Z/!]))+?)\$/g, (m, math) => {
-        const isReal = !/[\uAC00-\uD7A3]/.test(math) || /\\/.test(math) || /_/.test(math) || /\^/.test(math) || /[=+\-\*\/]/.test(math) || /\\cdot/.test(math);
-        if (!isReal) {
+        const isRealFormula = /\\/.test(math) || /_/.test(math) || /\^/.test(math) || /=/.test(math) || /\\cdot/.test(math);
+        if (!isRealFormula) {
           return m;
         }
         return renderKatexString(math.trim(), { displayMode: false, throwOnError: false });
@@ -738,12 +738,10 @@ export const LatexRenderer = React.memo(function LatexRenderer({
             let htmlContent = part.content;
             try {
               htmlContent = htmlContent.replace(/\$((?:[^\$\n<]|<(?![a-zA-Z/!]))+?)\$/g, (m, math) => {
-                if (/[\uAC00-\uD7A3]/.test(math)) {
-                  const isRealFormula = /\\/.test(math) || /_/.test(math) || /\^/.test(math) || /[=+\-\*\/]/.test(math) || /\\cdot/.test(math);
+                  const isRealFormula = /\\/.test(math) || /_/.test(math) || /\^/.test(math) || /=/.test(math) || /\\cdot/.test(math);
                   if (!isRealFormula) {
                     return m;
                   }
-                }
                 return renderKatexString(math.trim(), { displayMode: false, throwOnError: false });
               });
             } catch (e) {
