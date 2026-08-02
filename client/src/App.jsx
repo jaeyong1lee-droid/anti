@@ -3949,7 +3949,7 @@ export default function App() {
             progressId
           })
         });
-        clearTimeout(timeoutId);
+        const data = await res.json();
         const suggestedModelAnswer = data.suggestedModelAnswer;
         nextGrading[`${qIdx}_${inputId}`] = {
           isCorrect: data.isCorrect,
