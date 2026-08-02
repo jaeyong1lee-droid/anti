@@ -645,52 +645,7 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
                        .replace(/\x0d\s*angle\b/g, '\\rangle')
                        .replace(/\x0d\s*ightarrow\b/g, '\\rightarrow');
 
-  processed = processed.replace(/\x08\s*eta\b/g, '\\beta')
-                       .replace(/\x08\s*ar\b/g, '\\bar')
-                       .replace(/\x08\s*egin\b/g, '\\begin')
-                       .replace(/\x08\s*ullet\b/g, '\\bullet');
-
-  processed = processed.replace(/\x0c\s*rac\b/g, '\\frac')
-                       .replace(/\x0c\s*orall\b/g, '\\forall')
-                       .replace(/\x0c\s*lat\b/g, '\\flat')
-                       .replace(/\x0c\s*rown\b/g, '\\frown');
-
-  // [Self-Healing] 포아송비 기호 오류 자가치유 (u 나 v 기호를 그리스 문자 \nu 로 변환)
-  // 포아송비 또는 비배수 조건 관련 문맥이 존재하는 경우에만 자가치유 작동 (간극수압 u 기호 오염 방지)
-  let poissonSymbol = passedPoissonSymbol;
-  if (!poissonSymbol) {
-    if (/포아송/i.test(processed)) {
-      // Check for 'u' used as Poisson's ratio ANYWHERE in the text (not just adjacent to 포아송).
-      // Patterns: 1+u, 1-u, 1-2u, $u$, $u_u$, $u'$, 포아송비(u), etc.
-      if (/(?:\b1\s*[-+]\s*(?:2\s*)?u\b|\$u[_']|\$u\$|포아송[^.]{0,20}u)/i.test(processed)) {
-        poissonSymbol = 'u';
-      }
-    }
-    if (!poissonSymbol && /포아송|비배수|탄성/i.test(processed)) {
-      if (/(?:\b1\s*[-+]\s*(?:2\s*)?v\b|\$v[_']|\$v\$|포아송[^.]{0,20}v)/i.test(processed)) {
-        poissonSymbol = 'v';
-      }
-    }
-  }
-
-  if (poissonSymbol) {
-    // Handle subscripted notation: $u_u$ → $\nu_u$, $v_u$ → $\nu_u$ (undrained Poisson's ratio)
-    processed = processed.replace(new RegExp(`\\$${poissonSymbol}(_[a-zA-Z0-9])\\$`, 'g'), (match, sub) => {
-      return `$\\nu${sub}$`;
-    });
-    // Handle primed notation: $u'$ → $\nu'$ (drained Poisson's ratio)
-    processed = processed.replace(new RegExp(`\\$${poissonSymbol}'\\$`, 'g'), "$\\nu'$");
-
-    const standaloneRegex = new RegExp(`(?<!\\\\)(?:\\$${poissonSymbol}\\$|\\b${poissonSymbol}\\b)`, 'g');
-    processed = processed.replace(standaloneRegex, (match) => {
-      return match.includes('$') ? '$\\nu$' : '\\nu';
-    });
-  }
-
-  // 항상 변환해야 하는 일반적인 포아송비 수식 관계식 치유 (예: 3(1-2u), 2(1+u), 3(1-2v), 2(1+v), 1-u, 1-v)
-  processed = processed.replace(/(?<=\b1\s*-\s*2\s*)[uv]\b/g, '\\nu');
-  processed = processed.replace(/(?<=\b1\s*\+\s*)[uv]\b/g, '\\nu');
-  processed = processed.replace(/(?<=\b1\s*-\s*)[uv]\b/g, '\\nu');
+  // [Self-Healing] (포아송비 강제 u/v -> \nu 오치환 로직 완전 삭제 - 간극수압 u 보존)
 
   // [🚨 가독성 수동 개선 필터 (ReDoS 예방 루프 방식) 🚨]
   // 등호나 연산자, 분수가 포함된 수식($...$)들이 콤마나 개행 없이 다닥다닥 붙어 나열되거나, 중간에 짧은 설명만 끼고 나열되는 경우 강제로 단락 줄바꿈(\n\n)을 주입합니다.
@@ -853,7 +808,7 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   );
 
   if (!isNested) {
-    processed = htmlTableToMarkdown(processed, poissonSymbol);
+    processed = htmlTableToMarkdown(processed, null);
     processed = wrapMarkdownTables(processed);
   }
 
@@ -920,7 +875,7 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   const sections = processed.split(/(<!--START_TABLE-->[\s\S]*?<!--END_TABLE-->)/g);
   processed = sections.map(section => {
     if (section.startsWith('<!--START_TABLE-->')) {
-      return healMarkdownTable(section, poissonSymbol); // 표 영역은 개별 셀 치유 및 원본 구조 유지
+      return healMarkdownTable(section, null); // 표 영역은 개별 셀 치유 및 원본 구조 유지
     }
     // 문장 한복판에 쪼개진 단일 줄바꿈(\n)을 공백으로 병합하던 규칙을 비활성화하여 줄바꿈을 보존합니다.
     return section;
