@@ -49,9 +49,16 @@ export const BufferedInput = React.memo(({ value, onChange, onKeystroke, onKeyDo
   );
 });
 
-export const BufferedTextarea = React.memo(({ value, onChange, onKeystroke, onKeyDown, ...props }) => {
+export const BufferedTextarea = React.memo(({ value, onChange, onKeystroke, onKeyDown, onInput, className, ...props }) => {
   const [localVal, setLocalVal] = React.useState(value || '');
   const textareaRef = React.useRef(null);
+
+  const adjustHeight = React.useCallback(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.max(el.scrollHeight, 26)}px`;
+  }, []);
 
   React.useEffect(() => {
     if (typeof document !== 'undefined' && document.activeElement === textareaRef.current) {
@@ -60,18 +67,15 @@ export const BufferedTextarea = React.memo(({ value, onChange, onKeystroke, onKe
     setLocalVal(value || '');
   }, [value]);
 
+  React.useLayoutEffect(() => {
+    adjustHeight();
+  }, [localVal, adjustHeight]);
+
   React.useEffect(() => {
     const el = textareaRef.current;
     if (!el) return;
 
     let lastWidth = el.clientWidth;
-
-    const adjustHeight = () => {
-      el.style.height = 'auto';
-      el.style.height = `${el.scrollHeight}px`;
-    };
-
-    // Run on mount / value change
     adjustHeight();
 
     let resizeObserver = null;
@@ -95,7 +99,7 @@ export const BufferedTextarea = React.memo(({ value, onChange, onKeystroke, onKe
         resizeObserver.disconnect();
       }
     };
-  }, [localVal]);
+  }, [adjustHeight]);
 
   const handleBlur = () => {
     if (onChange && localVal !== value) {
@@ -108,6 +112,13 @@ export const BufferedTextarea = React.memo(({ value, onChange, onKeystroke, onKe
     setLocalVal(val);
     if (onKeystroke) {
       onKeystroke(val);
+    }
+  };
+
+  const handleInput = (e) => {
+    adjustHeight();
+    if (onInput) {
+      onInput(e);
     }
   };
 
@@ -128,8 +139,10 @@ export const BufferedTextarea = React.memo(({ value, onChange, onKeystroke, onKe
       ref={textareaRef}
       value={localVal}
       onChange={handleChange}
+      onInput={handleInput}
       onBlur={handleBlur}
       onKeyDown={handleKeyDown}
+      className={`overflow-hidden resize-none ${className || ''}`}
       spellCheck={false}
     />
   );

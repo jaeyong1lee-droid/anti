@@ -1340,8 +1340,8 @@ export const TableQuiz = React.memo(function TableQuiz({
                           if (textarea) textarea.focus();
                         }}
                       >
-                        <div className="w-full flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-1 p-1 sm:p-1.5 text-[14px] sm:text-[15px]">
-                          <div className="flex-grow text-left font-medium">
+                        <div className="w-full h-full flex flex-col sm:flex-row justify-between items-stretch sm:items-start gap-1 p-1 sm:p-1.5 text-[14px] sm:text-[15px]">
+                          <div className="flex-grow text-left font-medium min-w-0 w-full">
                             <BufferedTextarea
                               value={value}
                               onChange={(val) => {
@@ -1352,7 +1352,7 @@ export const TableQuiz = React.memo(function TableQuiz({
                               }}
                               placeholder={`${inputLetter} 입력`}
                               data-answer-key={`${questionIdx}_${inputId}`}
-                              className={`table-quiz-input w-full text-[14px] sm:text-[15px] border-0 outline-none focus:outline-none focus:ring-0 py-0.5 px-1 resize-none min-h-[26px] block font-medium align-middle ${
+                              className={`table-quiz-input w-full text-[14px] sm:text-[15px] leading-snug border-0 outline-none focus:outline-none focus:ring-0 py-0.5 px-1 resize-none min-h-[26px] block font-medium whitespace-pre-wrap break-words ${
                                 isCellGraded 
                                   ? 'bg-transparent text-inherit text-left' 
                                   : 'bg-slate-900/10 focus:bg-slate-900/40 text-slate-100 text-center'
@@ -1669,8 +1669,8 @@ export const TableQuiz = React.memo(function TableQuiz({
                             if (textarea) textarea.focus();
                           }}
                         >
-                          <div className="w-full flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-1 p-1 sm:p-1.5 text-[14px] sm:text-[15px]">
-                            <div className="flex-grow text-left font-medium">
+                          <div className="w-full h-full flex flex-col sm:flex-row justify-between items-stretch sm:items-start gap-1 p-1 sm:p-1.5 text-[14px] sm:text-[15px]">
+                            <div className="flex-grow text-left font-medium min-w-0 w-full">
                               <BufferedTextarea
                                 value={value}
                                 onChange={(val) => handleInputChange(inputId, val, true)}
@@ -1679,7 +1679,7 @@ export const TableQuiz = React.memo(function TableQuiz({
                                 readOnly={isOverviewReview && !isFirstTableGraded}
                                 disabled={isOverviewReview && !isFirstTableGraded}
                                 data-answer-key={`${questionIdx}_${inputId}`}
-                                className={`table-quiz-input w-full text-[14px] sm:text-[15px] border-0 outline-none focus:outline-none focus:ring-0 py-0.5 px-1 resize-none min-h-[26px] block align-middle ${
+                                className={`table-quiz-input w-full text-[14px] sm:text-[15px] leading-snug border-0 outline-none focus:outline-none focus:ring-0 py-0.5 px-1 resize-none min-h-[26px] block whitespace-pre-wrap break-words ${
                                   isOverviewReview && !isFirstTableGraded
                                     ? 'bg-slate-950/60 text-slate-500 cursor-not-allowed placeholder-slate-600'
                                     : isCellGraded
