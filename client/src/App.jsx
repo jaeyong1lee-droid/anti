@@ -4837,14 +4837,19 @@ export default function App() {
         table.style.setProperty('max-width', 'none', 'important');
         if (tableContainer) tableContainer.style.overflowX = 'auto';
       } else if ((colIdx === lastDataColIdx || colIdx === colCount - 1) && colCount > 1 && colIdx > 0) {
-        // 제일 오른쪽(마지막 열) 헤더/핸들 더블클릭 시: 모든 열의 실제 글자 수(콘텐츠 길이)를 감안하여 전체 열 너비를 AI 최적화 비율로 자동 배분/정렬!
+        // 제일 오른쪽(마지막 열) 헤더/핸들 더블클릭 시: 화살표(→) 등 짧은 기호 열은 50px로 콤팩트 축소하고, 나머지 가로 공간(100%)을 글자 수 비율로 정밀 배분하여 가로 스크롤 없이 칼같이 맞춤!
         const tableContainer = table.closest('.markdown-table-container') || table.parentElement;
         const containerWidth = tableContainer ? tableContainer.clientWidth : table.clientWidth;
         const rows = Array.from(table.querySelectorAll('tr'));
 
-        // 각 열의 최장 글자 수 및 권장 폭 계산
-        const colNaturalWidths = allThs.map((th, i) => {
-          let maxLen = (th.textContent || '').trim().length;
+        const isFixedShort = [];
+        const finalWidths = new Array(colCount).fill(0);
+        const textWeights = new Array(colCount).fill(0);
+
+        let sumFixedShort = 0;
+
+        for (let i = 0; i < colCount; i++) {
+          let maxLen = (allThs[i].textContent || '').trim().length;
           rows.forEach(r => {
             const cells = Array.from(r.children);
             if (cells[i]) {
@@ -4853,54 +4858,47 @@ export default function App() {
             }
           });
 
-          // 화살표(→, ↔ 등)나 1~2글자 기호 열인 경우 축소 적용
-          if (maxLen <= 2) {
-            return 52;
-          } else if (maxLen <= 4) {
-            return 68;
+          // 3글자 이하의 짧은 기호/화살표 열은 50px로 고정 콤팩트 축소
+          if (maxLen <= 3) {
+            isFixedShort[i] = true;
+            finalWidths[i] = 50;
+            sumFixedShort += 50;
+          } else {
+            isFixedShort[i] = false;
+            textWeights[i] = Math.max(MIN_WIDTH, Math.round(maxLen * 13 + 28));
           }
-          // 일반 한글/영문 텍스트: 글자수 비례 폭 계산 (최소 84px, 최대 450px)
-          return Math.min(450, Math.max(MIN_WIDTH, Math.round(maxLen * 13 + 28)));
+        }
+
+        const remainingContainerWidth = Math.max(100, containerWidth - sumFixedShort);
+        const sumTextWeight = textWeights.reduce((a, b) => a + b, 0);
+
+        const textIndices = [];
+        for (let i = 0; i < colCount; i++) {
+          if (!isFixedShort[i]) textIndices.push(i);
+        }
+
+        let allocatedText = 0;
+        textIndices.forEach((cIdx, idx) => {
+          if (idx === textIndices.length - 1) {
+            finalWidths[cIdx] = Math.max(MIN_WIDTH, remainingContainerWidth - allocatedText - 2);
+          } else {
+            const w = Math.max(MIN_WIDTH, Math.floor(remainingContainerWidth * (textWeights[cIdx] / sumTextWeight)));
+            finalWidths[cIdx] = w;
+            allocatedText += w;
+          }
         });
 
-        const totalNaturalSum = colNaturalWidths.reduce((sum, w) => sum + w, 0);
+        allThs.forEach((h, i) => {
+          const w = finalWidths[i];
+          h.style.setProperty('width', w + 'px', 'important');
+          h.style.setProperty('min-width', Math.min(w, MIN_WIDTH) + 'px', 'important');
+          h.style.setProperty('max-width', w + 'px', 'important');
+        });
 
-        if (totalNaturalSum <= containerWidth) {
-          // 화면 공간이 충분한 경우: 각 열의 글자 수 비율에 맞추어 가로폭(100%)을 정밀 비율 배분
-          let allocatedSum = 0;
-          const finalWidths = colNaturalWidths.map((natW, idx) => {
-            if (idx === colNaturalWidths.length - 1) {
-              return Math.max(natW, containerWidth - allocatedSum - 2);
-            }
-            const calculated = Math.max(natW, Math.floor(containerWidth * (natW / totalNaturalSum)));
-            allocatedSum += calculated;
-            return calculated;
-          });
-
-          allThs.forEach((h, i) => {
-            const w = finalWidths[i];
-            h.style.setProperty('width', w + 'px', 'important');
-            h.style.setProperty('min-width', Math.min(w, MIN_WIDTH) + 'px', 'important');
-            h.style.setProperty('max-width', w + 'px', 'important');
-          });
-
-          table.style.setProperty('width', '100%', 'important');
-          table.style.setProperty('min-width', '100%', 'important');
-          table.style.setProperty('max-width', '100%', 'important');
-        } else {
-          // 화면 공간을 넘어서는 경우: 글자 수 최적 폭(naturalWidth)으로 각 열을 설정하고 가로 스크롤 허용
-          allThs.forEach((h, i) => {
-            const w = colNaturalWidths[i];
-            h.style.setProperty('width', w + 'px', 'important');
-            h.style.setProperty('min-width', Math.min(w, MIN_WIDTH) + 'px', 'important');
-            h.style.setProperty('max-width', w + 'px', 'important');
-          });
-
-          table.style.setProperty('width', totalNaturalSum + 'px', 'important');
-          table.style.setProperty('min-width', totalNaturalSum + 'px', 'important');
-          table.style.setProperty('max-width', 'none', 'important');
-          if (tableContainer) tableContainer.style.overflowX = 'auto';
-        }
+        table.style.setProperty('width', '100%', 'important');
+        table.style.setProperty('min-width', '100%', 'important');
+        table.style.setProperty('max-width', '100%', 'important');
+        if (tableContainer) tableContainer.style.overflowX = 'hidden';
       } else {
         // 더블클릭 시: 선택한 열의 텍스트 길이를 계산하여 해당 열을 내용에 딱 맞추어 자동 너비 조절 (자동 텍스트 줄바꿈 방지)
         const tableContainer = table.closest('.markdown-table-container') || table.parentElement;
