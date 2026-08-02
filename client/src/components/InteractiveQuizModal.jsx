@@ -1,9 +1,61 @@
 import React, { useState, useMemo, useRef } from 'react';
-import { X, Sparkles } from 'lucide-react';
+import { X, Sparkles, Eye, EyeOff, BookOpen, CheckCircle, RefreshCw } from 'lucide-react';
 import { TableQuiz } from './TableQuiz';
 import { AcronymQuiz } from './AcronymQuiz';
 import { parseMarkdownTable } from '../utils/latexUtils';
 import { areCellsEqual } from '../utils/renderingHelpers';
+import { LatexRenderer } from './LatexRenderer';
+
+const parseHtmlTable = (htmlStr) => {
+  if (!htmlStr) return { headers: [], rows: [] };
+  if (typeof htmlStr === 'object' && htmlStr !== null) {
+    if (Array.isArray(htmlStr.headers) && Array.isArray(htmlStr.rows)) {
+      return { headers: htmlStr.headers, rows: htmlStr.rows };
+    }
+    if (htmlStr.tableData && Array.isArray(htmlStr.tableData.headers) && Array.isArray(htmlStr.tableData.rows)) {
+      return { headers: htmlStr.tableData.headers, rows: htmlStr.tableData.rows };
+    }
+  }
+
+  const str = typeof htmlStr === 'string' ? htmlStr : String(htmlStr);
+
+  if (str.trim().startsWith('{') || str.trim().startsWith('[')) {
+    try {
+      const parsedJson = JSON.parse(str);
+      if (parsedJson && Array.isArray(parsedJson.headers) && Array.isArray(parsedJson.rows)) {
+        return { headers: parsedJson.headers, rows: parsedJson.rows };
+      }
+      if (parsedJson && parsedJson.tableData && Array.isArray(parsedJson.tableData.headers) && Array.isArray(parsedJson.tableData.rows)) {
+        return { headers: parsedJson.tableData.headers, rows: parsedJson.tableData.rows };
+      }
+    } catch (e) {}
+  }
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(str, 'text/html');
+  
+  let ths = [];
+  const thead = doc.querySelector('thead');
+  if (thead) {
+    ths = Array.from(thead.querySelectorAll('th, td')).map(el => el.textContent.trim());
+  } else {
+    const firstTr = doc.querySelector('tr');
+    if (firstTr) {
+      ths = Array.from(firstTr.querySelectorAll('th, td')).map(el => el.textContent.trim());
+    }
+  }
+  
+  const rows = [];
+  const allTrs = Array.from(doc.querySelectorAll('tr'));
+  const dataTrs = thead ? allTrs.filter(tr => !tr.closest('thead')) : allTrs.slice(1);
+
+  for (const tr of dataTrs) {
+    const tds = Array.from(tr.querySelectorAll('td, th')).map(el => el.textContent.trim());
+    if (tds.length > 0) rows.push(tds);
+  }
+
+  return { headers: ths, rows };
+};
 
 export function InteractiveQuizModal({ item, type, onClose, katexLoaded = true }) {
   const [tableAnswers, setTableAnswers] = useState({});
@@ -11,35 +63,35 @@ export function InteractiveQuizModal({ item, type, onClose, katexLoaded = true }
   const [revealed, setRevealed] = useState(false);
   const [tableGradingResults, setTableGradingResults] = useState({});
   const [gradingLoading, setGradingLoading] = useState(false);
+  const [showExplanation, setShowExplanation] = useState(true);
 
-  // Build question object q according to type
+  // Build exact question object q according to type & actual item structure
   const q = useMemo(() => {
     if (!item) return null;
 
     if (type === 'table') {
-      let mainData = item.tableData || null;
-      let compData = item.comparisonTableData || null;
-      let answers = item.answers ? { ...item.answers } : {};
-
-      // If no pre-built tableData, parse markdown content
-      if (!mainData && !compData) {
-        const textToParse = (item.content || '') + '\n' + (item.html || '');
-        const mdParsed = parseMarkdownTable(textToParse);
-        if (mdParsed && mdParsed.tableData && mdParsed.tableData.headers && mdParsed.tableData.rows) {
-          const compRows = mdParsed.tableData.rows.map((row, rIdx) => {
-            return row.map((cell, cIdx) => {
-              if (cIdx === 0) return cell;
-              const inputId = `INPUT_${rIdx}_${cIdx}`;
-              answers[inputId] = cell;
-              return `[${inputId}]`;
-            });
-          });
-          mainData = {
-            headers: mdParsed.tableData.headers,
-            rows: compRows
-          };
+      const answers = {};
+      let parsed = parseHtmlTable(item.html || item.content);
+      
+      if (!parsed.rows || parsed.rows.length === 0) {
+        const mdParsed = parseMarkdownTable((item.content || '') + '\n' + (item.html || ''));
+        if (mdParsed && mdParsed.tableData) {
+          parsed = mdParsed.tableData;
         }
       }
+
+      const headers = (parsed.headers && parsed.headers.length > 0) 
+        ? parsed.headers 
+        : ['구분', '항목 1', '항목 2'];
+
+      const compRows = (parsed.rows || []).map((row, rIdx) => {
+        return row.map((cell, cIdx) => {
+          if (cIdx === 0) return cell;
+          const inputId = `INPUT_${rIdx}_${cIdx}`;
+          answers[inputId] = cell;
+          return `[${inputId}]`;
+        });
+      });
 
       return {
         id: item.id || `table_${Date.now()}`,
@@ -48,9 +100,13 @@ export function InteractiveQuizModal({ item, type, onClose, katexLoaded = true }
         title: item.title || '비교표 빈칸 채우기',
         question: item.title || '비교표 빈칸 채우기',
         content: item.html || item.content || '',
-        explanation: item.content || '',
-        tableData: mainData,
-        comparisonTableData: compData,
+        explanation: item.content || item.explanation || '',
+        tableData: {
+          headers: headers,
+          rows: compRows
+        },
+        rawHeaders: headers,
+        rawRows: parsed.rows || [],
         answers: answers
       };
     } else if (type === 'acronym') {
@@ -126,7 +182,6 @@ export function InteractiveQuizModal({ item, type, onClose, katexLoaded = true }
     return null;
   }, [item, type]);
 
-  // Handle cell/overall submit & AI grading
   const handleSubmit = async () => {
     setGradingLoading(true);
     try {
@@ -180,39 +235,57 @@ export function InteractiveQuizModal({ item, type, onClose, katexLoaded = true }
   if (!q) return null;
 
   return (
-    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-md animate-fadeIn">
-      <div className="relative w-full max-w-4xl max-h-[92vh] bg-slate-900 border border-slate-700/80 rounded-2xl shadow-2xl flex flex-col overflow-hidden text-slate-100">
-        
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-955/80 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
-              <Sparkles size={20} />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className={`px-2 py-0.5 text-[10px] font-black rounded-md border ${badge.color}`}>
-                  {badge.name}
-                </span>
-                <h3 className="font-extrabold text-base sm:text-lg text-white">
-                  {item?.title || '항목 퀴즈'}
-                </h3>
-              </div>
-              <p className="text-xs text-slate-400 mt-0.5">
-                표/항목 내부 빈칸(Input)에 직접 답안을 입력하고 즉시 채점·복습하세요.
-              </p>
-            </div>
+    <div className="w-full h-full flex flex-col bg-slate-950 text-slate-100 overflow-hidden font-sans select-text">
+      
+      {/* Header */}
+      <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-800 bg-slate-900/90 shrink-0 shadow-md">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-xl bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
+            <Sparkles size={18} />
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
-          >
-            <X size={20} />
-          </button>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className={`px-2 py-0.5 text-[10px] font-black rounded-md border ${badge.color}`}>
+                {badge.name}
+              </span>
+              <h3 className="font-extrabold text-sm sm:text-base text-white">
+                {item?.title || '항목 맞춤 퀴즈'}
+              </h3>
+            </div>
+            <p className="text-[11px] text-slate-400 mt-0.5">
+              표 빈칸(Input)에 직접 답안을 입력하고 채점 및 답안·해설을 확인하세요.
+            </p>
+          </div>
         </div>
 
-        {/* Quiz Body */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 scrollbar-thin scrollbar-thumb-slate-700">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setRevealed(prev => !prev)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border ${
+              revealed 
+                ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' 
+                : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
+            }`}
+          >
+            {revealed ? <EyeOff size={14} /> : <Eye size={14} />}
+            <span>{revealed ? '답안 숨기기' : '🔑 답안 전체 보기'}</span>
+          </button>
+
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+            title="창 닫기"
+          >
+            <X size={18} />
+          </button>
+        </div>
+      </div>
+
+      {/* Main Body (Vertical Scroll Container for plenty of dragging & detailed review) */}
+      <div className="flex-1 overflow-y-auto p-5 space-y-6 scrollbar-thin scrollbar-thumb-slate-700">
+        
+        {/* Table/Acronym Quiz Component */}
+        <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 shadow-xl">
           {type === 'acronym' ? (
             <AcronymQuiz
               questionIdx={0}
@@ -245,28 +318,102 @@ export function InteractiveQuizModal({ item, type, onClose, katexLoaded = true }
           )}
         </div>
 
-        {/* Footer */}
-        <div className="px-6 py-4 border-t border-slate-800 bg-slate-950/80 flex items-center justify-between shrink-0">
+        {/* Model Answer Table (Full Model Answers Display) */}
+        {revealed && q.rawHeaders && q.rawRows && (
+          <div className="bg-slate-900/80 border border-emerald-500/40 rounded-2xl p-5 shadow-2xl space-y-3 animate-fadeIn">
+            <div className="flex items-center gap-2 text-emerald-400 font-extrabold text-sm border-b border-emerald-500/20 pb-2">
+              <CheckCircle size={16} />
+              <span>🔑 전체 모범 답안 비교표</span>
+            </div>
+            <div className="overflow-x-auto rounded-xl border border-slate-800">
+              <table className="w-full text-xs text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-800/80 text-slate-200 border-b border-slate-700">
+                    {q.rawHeaders.map((h, idx) => (
+                      <th key={idx} className="p-2.5 border-r border-slate-700 last:border-r-0 font-bold">
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {q.rawRows.map((r, rIdx) => (
+                    <tr key={rIdx} className="border-b border-slate-800/80 hover:bg-slate-800/40">
+                      {r.map((cell, cIdx) => (
+                        <td key={cIdx} className="p-2.5 border-r border-slate-800 last:border-r-0 font-medium text-slate-200">
+                          <LatexRenderer text={cell} katexLoaded={katexLoaded} isMarkdown={true} />
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Detailed Explanation / Notes (해설 및 추가 공학적 설명) */}
+        {(q.explanation || item?.content) && (
+          <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 shadow-lg space-y-3">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+              <div className="flex items-center gap-2 text-indigo-400 font-extrabold text-sm">
+                <BookOpen size={16} />
+                <span>📖 상세 해설 및 학습 노하우</span>
+              </div>
+              <button
+                onClick={() => setShowExplanation(prev => !prev)}
+                className="text-xs text-slate-400 hover:text-white transition-colors cursor-pointer"
+              >
+                {showExplanation ? '접기' : '펼치기'}
+              </button>
+            </div>
+
+            {showExplanation && (
+              <div className="text-xs sm:text-sm text-slate-300 leading-relaxed space-y-2 pt-1 font-medium">
+                <LatexRenderer 
+                  text={typeof item.content === 'string' ? item.content : (q.explanation || '')} 
+                  katexLoaded={katexLoaded} 
+                  isMarkdown={true} 
+                />
+              </div>
+            )}
+          </div>
+        )}
+
+      </div>
+
+      {/* Footer Controls */}
+      <div className="px-5 py-3 border-t border-slate-800 bg-slate-900/90 flex items-center justify-between shrink-0 shadow-inner">
+        <button
+          onClick={() => {
+            setTableAnswers({});
+            setRevealed(false);
+            setTableGradingResults({});
+          }}
+          className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-xs transition-colors cursor-pointer"
+        >
+          입력 초기화
+        </button>
+
+        <div className="flex items-center gap-3">
           <button
-            onClick={() => {
-              setTableAnswers({});
-              setRevealed(false);
-              setTableGradingResults({});
-            }}
-            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-xs transition-colors cursor-pointer"
+            onClick={handleSubmit}
+            disabled={gradingLoading}
+            className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-xs shadow-md transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
           >
-            입력 초기화
+            {gradingLoading ? <RefreshCw size={14} className="animate-spin" /> : <CheckCircle size={14} />}
+            <span>전체 채점 및 확인</span>
           </button>
 
           <button
             onClick={onClose}
-            className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold text-xs shadow-md transition-all cursor-pointer"
+            className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-bold text-xs transition-colors cursor-pointer"
           >
             닫기
           </button>
         </div>
-
       </div>
+
     </div>
   );
 }

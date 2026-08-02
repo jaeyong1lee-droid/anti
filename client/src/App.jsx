@@ -30082,14 +30082,42 @@ ${itemsStr}
 
       {/* Interactive Quiz Question Generator Modal */}
       {quizPopupItem && (
-        <InteractiveQuizModal
-          item={quizPopupItem}
-          type={quizPopupType}
-          onClose={() => {
-            setQuizPopupItem(null);
-            setQuizPopupType(null);
-          }}
-        />
+        isDesktop ? (
+          <PopoutWindow
+            title={`✏️ 문제출제 퀴즈 - ${quizPopupItem.title || '학습 퀴즈'}`}
+            onClose={() => {
+              setQuizPopupItem(null);
+              setQuizPopupType(null);
+            }}
+            initWidth={900}
+            initHeight={920}
+            storageKey={`anti_quiz_popout_${quizPopupType}`}
+          >
+            <InteractiveQuizModal
+              item={quizPopupItem}
+              type={quizPopupType}
+              onClose={() => {
+                setQuizPopupItem(null);
+                setQuizPopupType(null);
+              }}
+              katexLoaded={katexLoaded}
+            />
+          </PopoutWindow>
+        ) : (
+          <div className="fixed inset-0 z-[99999] flex items-center justify-center p-2 bg-black/80 backdrop-blur-md">
+            <div className="relative w-full max-w-4xl h-[92vh] bg-slate-950 border border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden">
+              <InteractiveQuizModal
+                item={quizPopupItem}
+                type={quizPopupType}
+                onClose={() => {
+                  setQuizPopupItem(null);
+                  setQuizPopupType(null);
+                }}
+                katexLoaded={katexLoaded}
+              />
+            </div>
+          </div>
+        )
       )}
 
       {/* Custom Overview Prompt Modal */}
