@@ -11,8 +11,14 @@ export async function loadPreferredModel() {
   try {
     const row = await dbQuery.get("SELECT value FROM app_session WHERE key = 'preferred_model'");
     if (row && row.value) {
-      globalPreferredModel = row.value;
-      console.log(`[Setting Loaded] Preferred Model: ${globalPreferredModel}`);
+      if (row.value.includes('2.5') || row.value.includes('2.0') || row.value.includes('gemini-2')) {
+        console.log(`[Setting Cleanup] Legacy preferred model '${row.value}' detected in DB. Resetting to gemini-3.5-flash-lite.`);
+        globalPreferredModel = 'gemini-3.5-flash-lite';
+        await saveSessionValue('preferred_model', 'gemini-3.5-flash-lite');
+      } else {
+        globalPreferredModel = row.value;
+        console.log(`[Setting Loaded] Preferred Model: ${globalPreferredModel}`);
+      }
     }
   } catch (e) {
     console.warn("Failed to load preferred model setting:", e);

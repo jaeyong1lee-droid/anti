@@ -24,7 +24,7 @@ const sampleImage = {
 async function testWithPlainString() {
   console.log("\n--- Testing with plain string in array ---");
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-3.5-flash-lite' });
     const result = await model.generateContent([
       "Explain this image.",
       {
@@ -43,7 +43,7 @@ async function testWithPlainString() {
 async function testWithTextObject() {
   console.log("\n--- Testing with { text: ... } object in array ---");
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-3.5-flash-lite' });
     const result = await model.generateContent([
       { text: "Explain this image." },
       {

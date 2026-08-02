@@ -3158,7 +3158,14 @@ export default function App() {
   const [topicFilter, setTopicFilter] = useState('전체');
   const [editingTopicId, setEditingTopicId] = useState(null);
   const [editingTitleText, setEditingTitleText] = useState('');
-  const [preferredModel, setPreferredModel] = useState(() => localStorage.getItem('anti_preferred_model') || 'gemini-3.5-flash-lite');
+  const [preferredModel, setPreferredModel] = useState(() => {
+    const saved = localStorage.getItem('anti_preferred_model');
+    if (saved && (saved.includes('2.5') || saved.includes('2.0') || saved.includes('gemini-2'))) {
+      localStorage.setItem('anti_preferred_model', 'gemini-3.5-flash-lite');
+      return 'gemini-3.5-flash-lite';
+    }
+    return saved || 'gemini-3.5-flash-lite';
+  });
   const preferredModelRef = useRef(preferredModel);
   useEffect(() => {
     preferredModelRef.current = preferredModel;
