@@ -1217,20 +1217,22 @@ router.post('/evaluate-answer', async (req, res) => {
 [검증 및 연산 수칙]:
 1. 지문의 모든 단위(mm, cm, m, N, kN, N/m², kPa, kN/m³ 등)를 MKS 단위계(SI 표준 단위)로 정확히 환산하여 대입하십시오.
 2. 관의 지름(d)과 반지름(r), 주동토압과 수동토압, 투수계수, 유효응력 등 용어의 공학적 의미를 정확히 분별하여 올바른 공식을 사용하십시오.
-   (예: 모관상승고 산정 시 지름 d 적용 공식 h_c = 4*sigma / (gamma_w * d) 과 반지름 r 적용 공식 h_c = 2*sigma / (gamma_w * r) 을 혼동하지 말고 정확히 수식 도출)
 3. "mathExpression" 필드에는 수치 대입 후 최종 계산할 순수 산술 수식(예: "(4 * 0.0728) / (9810 * 0.00008)")을 작성하십시오.
-4. 정답(correctAnswer)은 산술 계산 결과와 가장 완벽히 일치하는 제시된 보기(Options) 문자열 그대로 지정하십시오.
-5. 해설(explanation)에는 [적용 공식], [수치 대입 및 단위 환산], [단계별 연산 과정], [최종 정답 산출]을 문장 내부 수식의 경우 단일 달러 인라인 수식($...$)만 사용하여 문장 흐름이 끊기거나 불필요한 줄바꿈이 발생하지 않고 가로로 매끄럽게 이어지도록 작성하십시오. (참고 출처나 기준 항목(* KDS..., * 원보고서..., * Wikipedia...)을 표기할 때에는 본문 문장 바로 뒤에 이어 붙이지 말고, 반드시 \n\n으로 새 줄을 띄워 독립된 행으로 구분하여 작성하십시오.)
+4. "correctIndex" 필드에는 제시된 보기 목록(Options) 중 정답에 해당하는 항목의 0-based 인덱스 숫자(0, 1, 2, 3 중 하나)를 작성하십시오.
+5. "correctAnswer" 필드는 제시된 보기 목록(Options) 중 correctIndex에 해당하는 정답 보기 문자열 그대로 지정하십시오.
+6. 해설(explanation)에는 [적용 공식], [수치 대입 및 단위 환산], [단계별 연산 과정], [최종 정답 산출]을 작성하십시오.
 
 [반환 JSON 응답 규격]:
 {
   "mathExpression": "(4 * 0.0728) / (9810 * 0.00008)",
+  "correctIndex": 3,
   "correctAnswer": "제시된 보기(Options) 중 하나와 정확히 일치하는 정답 문자열",
   "explanation": "LaTeX 수식이 포함된 명확하고 수려한 정밀 풀이 해설"
 }
 `;
 
     let finalCorrectAnswer = null;
+    let finalCorrectIndex = -1;
     let explanation = '';
 
     try {
@@ -1251,21 +1253,28 @@ router.post('/evaluate-answer', async (req, res) => {
         // 서버 2단계 정밀 산술 연산 결과가 존재하면, 보기 중 오차가 가장 적은 보기를 정답으로 100% 검증/확정
         if (mathCalculatedValue !== null && Array.isArray(options) && options.length > 0) {
           let minDiff = Infinity;
-          let bestMatch = null;
-          options.forEach(opt => {
+          let bestIdx = -1;
+          options.forEach((opt, idx) => {
             const num = parseFloat(String(opt).replace(/[^0-9.-]/g, ''));
             if (!isNaN(num)) {
               const diff = Math.abs(num - mathCalculatedValue);
               if (diff < minDiff) {
                 minDiff = diff;
-                bestMatch = opt;
+                bestIdx = idx;
               }
             }
           });
-          if (bestMatch && minDiff < 100.0) {
-            finalCorrectAnswer = bestMatch;
-            console.log(`[JIT Math Evaluator] Math Expr "${parsed.mathExpression}" evaluated to ${mathCalculatedValue} -> Matched Option: ${bestMatch}`);
+          if (bestIdx >= 0 && minDiff < 100.0) {
+            finalCorrectIndex = bestIdx;
+            finalCorrectAnswer = options[bestIdx];
+            console.log(`[JIT Math Evaluator] Math Expr "${parsed.mathExpression}" evaluated to ${mathCalculatedValue} -> Matched Option [${bestIdx}]: ${options[bestIdx]}`);
           }
+        }
+
+        // AI가 지정한 correctIndex가 유효하면 최우선 채택
+        if (finalCorrectIndex < 0 && typeof parsed.correctIndex === 'number' && parsed.correctIndex >= 0 && parsed.correctIndex < (options || []).length) {
+          finalCorrectIndex = parsed.correctIndex;
+          finalCorrectAnswer = options[parsed.correctIndex];
         }
 
         if (!finalCorrectAnswer && parsed.correctAnswer) {
@@ -1278,9 +1287,9 @@ router.post('/evaluate-answer', async (req, res) => {
       console.warn('[JIT Evaluator] LLM call failed:', llmErr);
     }
 
-    // Option index matching
-    let correctIndex = -1;
-    if (Array.isArray(options) && finalCorrectAnswer) {
+    // Option index matching fallback
+    let correctIndex = finalCorrectIndex;
+    if (correctIndex < 0 && Array.isArray(options) && finalCorrectAnswer) {
       correctIndex = options.findIndex(opt => {
         if (opt === finalCorrectAnswer) return true;
         const cleanOpt = String(opt).replace(/[^a-z0-9가-힣.]/gi, '');
