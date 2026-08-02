@@ -6,6 +6,82 @@ import { parseMarkdownTable } from '../utils/latexUtils';
 import { areCellsEqual } from '../utils/renderingHelpers';
 import { LatexRenderer } from './LatexRenderer';
 
+const parseOverviewContent = (content) => {
+  const result = { definition: '', mechanism: '', comparison: '', significance: '', intuitive: '' };
+  if (!content) return result;
+
+  let healedContent = typeof content === 'string' ? content : String(content || '');
+  healedContent = healedContent.replace(/\|\s*(개요\(\d+~\d+자\)|개요|메커니즘|비교표|비교|장단점|의미|한계성|직관적의미|직관적)\s*\|/gi, '\n| $1 |');
+  healedContent = healedContent.replace(/\|[ \t]*\|/g, '\n|');
+
+  const lines = healedContent.split('\n');
+  let currentKey = null;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed === '|') continue;
+    
+    if ((trimmed.includes(':---') || (trimmed.startsWith('|') && trimmed.includes('구분') && trimmed.includes('내용'))) && !currentKey) {
+      continue;
+    }
+
+    const sectionMatch = trimmed.match(/^\|\s*([^|]+)\s*\|?\s*([\s\S]*)$/);
+    const rawKeyCandidate = sectionMatch ? sectionMatch[1].trim() : '';
+    const isTopLevelKey = 
+      rawKeyCandidate === '개요' || 
+      rawKeyCandidate.startsWith('개요(') || 
+      rawKeyCandidate === '메커니즘' || 
+      rawKeyCandidate === '비교표' || 
+      rawKeyCandidate === '비교' || 
+      rawKeyCandidate === '장단점' || 
+      rawKeyCandidate === '공학적 의미/한계성' || 
+      rawKeyCandidate === '공학적 의미 및 한계성' || 
+      rawKeyCandidate === '의미/한계성' || 
+      rawKeyCandidate === '직관적의미' || 
+      rawKeyCandidate === '직관적';
+
+    if (sectionMatch && isTopLevelKey) {
+      const rawKey = sectionMatch[1].trim();
+      let rawVal = sectionMatch[2].trim();
+      
+      if (rawVal.endsWith('|')) {
+        rawVal = rawVal.slice(0, -1).trim();
+      }
+
+      if (rawKey.includes('개요')) {
+        currentKey = 'definition';
+      } else if (rawKey.includes('메커니즘')) {
+        currentKey = 'mechanism';
+      } else if (rawKey.includes('직관적')) {
+        currentKey = 'intuitive';
+      } else if (rawKey.includes('비교') || rawKey.includes('비교표') || rawKey.includes('장단점')) {
+        currentKey = 'comparison';
+      } else if (rawKey.includes('의미') || rawKey.includes('한계성')) {
+        currentKey = 'significance';
+      }
+
+      result[currentKey] = rawVal;
+    } else {
+      if (currentKey) {
+        result[currentKey] += '\n' + trimmed;
+      }
+    }
+  }
+
+  for (const k in result) {
+    result[k] = result[k].replace(/<br\s*\/?>/gi, '\n').trim();
+    if (result[k].endsWith('|') && !result[k].includes('\n')) {
+      result[k] = result[k].slice(0, -1).trim();
+    }
+  }
+
+  if (!result.definition && !result.mechanism && !result.comparison && !result.significance && !result.intuitive && content) {
+    result.definition = typeof content === 'string' ? content.trim() : String(content).trim();
+  }
+
+  return result;
+};
+
 const parseHtmlTable = (htmlStr) => {
   if (!htmlStr) return { headers: [], rows: [] };
   if (typeof htmlStr === 'object' && htmlStr !== null) {
@@ -63,7 +139,8 @@ export function InteractiveQuizModal({
   onClose, 
   katexLoaded = true, 
   itemList = [], 
-  onSelectNextItem 
+  onSelectNextItem,
+  formulaTables = []
 }) {
   const [tableAnswers, setTableAnswers] = useState({});
   const tableAnswersRef = useRef({});
@@ -180,36 +257,91 @@ export function InteractiveQuizModal({
         content: item.content || ''
       };
     } else if (type === 'overview') {
-      const contentStr = typeof item.content === 'object' ? JSON.stringify(item.content) : (item.content || '');
-      
-      const answers = {
-        'INPUT_0_1': item.content?.definition || contentStr,
-        'INPUT_1_1': item.content?.mechanism || contentStr,
-        'INPUT_2_1': item.content?.significance || contentStr
-      };
+      const contentStr = typeof item.content === 'string' ? item.content : String(item.content || '');
+      const parsed = parseOverviewContent(contentStr);
+      const answers = {};
+      const rows = [];
+      const tableHeaders = ['구분', '내용'];
+      let comparisonTableData = null;
+
+      if (parsed.definition) {
+        answers['INPUT_0_1'] = parsed.definition;
+        rows.push(['학술적 정의', '[INPUT_0_1]']);
+      }
+      if (parsed.mechanism) {
+        const rowIdx = rows.length;
+        answers[`INPUT_${rowIdx}_1`] = parsed.mechanism;
+        rows.push(['공학적 작동 메커니즘', `[INPUT_${rowIdx}_1]`]);
+      }
+      if (rows.length === 0) {
+        const fallbackVal = contentStr || item.title || '학술적 개요 및 핵심 기전 서술';
+        answers['INPUT_0_1'] = fallbackVal;
+        rows.push(['학술적 개요 및 핵심 기전', '[INPUT_0_1]']);
+      }
+
+      let rawCompText = parsed.comparison || '';
+      if (!rawCompText && formulaTables && Array.isArray(formulaTables)) {
+        const matchedTable = formulaTables.find(t => t.title && item.title && (t.title.trim() === item.title.trim() || t.title.includes(item.title) || item.title.includes(t.title)));
+        if (matchedTable) {
+          rawCompText = matchedTable.html || matchedTable.content || '';
+        }
+      }
+
+      if (rawCompText) {
+        let normalizedComparison = rawCompText;
+        normalizedComparison = normalizedComparison.split('\n').map(line => {
+          let l = line.trim();
+          if (l && l.includes('|')) {
+            if (!l.startsWith('|')) l = '| ' + l;
+            if (!l.endsWith('|')) l = l + ' |';
+          }
+          return l;
+        }).join('\n');
+
+        const parsedCompHtml = parseHtmlTable(normalizedComparison);
+        const compTable = (parsedCompHtml.rows && parsedCompHtml.rows.length > 0)
+          ? parsedCompHtml
+          : (parseMarkdownTable(normalizedComparison)?.tableData || null);
+
+        if (compTable && compTable.headers && compTable.rows && compTable.rows.length > 0) {
+          const compRows = compTable.rows.map((row, rIdx) => {
+            return row.map((cell, cIdx) => {
+              if (cIdx === 0) return cell;
+              const inputId = `INPUT_${rows.length + rIdx}_${cIdx}`;
+              answers[inputId] = cell;
+              return `[${inputId}]`;
+            });
+          });
+          comparisonTableData = {
+            headers: compTable.headers,
+            rows: compRows
+          };
+        }
+      }
+
+      let explanationHtml = '';
+      if (parsed.definition) explanationHtml += `📖 **학술적 정의**\n${parsed.definition}\n\n`;
+      if (parsed.mechanism) explanationHtml += `⚙️ **공학적 작동 메커니즘**\n${parsed.mechanism}\n\n`;
+      if (parsed.comparison) explanationHtml += `⚖️ **비교표 / 장단점**\n${parsed.comparison}\n\n`;
 
       return {
         id: item.id || `overview_${Date.now()}`,
-        type: 'overview',
+        type: '주관식 (표채우기)',
         subtype: '개요',
+        mixedType: 'overview',
         title: item.title || '개요/메커니즘 퀴즈',
-        question: `[개요 작성/복습] ${item.title}`,
-        concept: contentStr,
-        explanation: contentStr,
-        content: contentStr,
-        answers: answers,
+        question: '[개요 복습] ' + (item.title || ''),
         tableData: {
-          headers: ['구분', '핵심 기술 내용 (빈칸 입력)'],
-          rows: [
-            ['1. 학술적 정의', '[INPUT_0_1]'],
-            ['2. 메커니즘', '[INPUT_1_1]'],
-            ['3. 공학적 의미', '[INPUT_2_1]']
-          ]
-        }
+          headers: tableHeaders,
+          rows: rows
+        },
+        comparisonTableData: comparisonTableData,
+        answers: answers,
+        explanation: explanationHtml || item.content || item.title
       };
     }
     return null;
-  }, [item, type]);
+  }, [item, type, formulaTables]);
 
   const handleSubmit = async () => {
     setGradingLoading(true);
@@ -252,7 +384,7 @@ export function InteractiveQuizModal({
 
   const getTypeBadge = () => {
     switch (type) {
-      case 'overview': return { name: '개요 빈칸 퀴즈', color: 'bg-rose-500/20 text-rose-300 border-rose-500/30' };
+      case 'overview': return { name: '개요 2단계 복습 퀴즈', color: 'bg-rose-500/20 text-rose-300 border-rose-500/30' };
       case 'table': return { name: '비교표 빈칸 퀴즈', color: 'bg-violet-500/20 text-violet-300 border-violet-500/30' };
       case 'acronym': return { name: '두문자 빈칸 퀴즈', color: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30' };
       default: return { name: '빈칸 퀴즈', color: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30' };
@@ -282,7 +414,9 @@ export function InteractiveQuizModal({
               </h3>
             </div>
             <p className="text-[11px] text-slate-400 mt-0.5">
-              표 빈칸(Input)에 직접 답안을 입력하고 채점 및 답안·해설을 확인하세요.
+              {type === 'overview' 
+                ? '1단계(학술적 개요 및 핵심 기전) 및 2단계(비교표/공학적 의미) 순차 입력 복습' 
+                : '표 빈칸(Input)에 직접 답안을 입력하고 채점 및 답안·해설을 확인하세요.'}
             </p>
           </div>
         </div>

@@ -30102,6 +30102,7 @@ ${itemsStr}
                 quizPopupType === 'overview' ? formulaOverviews : []
               }
               onSelectNextItem={(newItem) => setQuizPopupItem(newItem)}
+              formulaTables={formulaTables}
               onClose={() => {
                 setQuizPopupItem(null);
                 setQuizPopupType(null);
@@ -30121,6 +30122,7 @@ ${itemsStr}
                   quizPopupType === 'overview' ? formulaOverviews : []
                 }
                 onSelectNextItem={(newItem) => setQuizPopupItem(newItem)}
+                formulaTables={formulaTables}
                 onClose={() => {
                   setQuizPopupItem(null);
                   setQuizPopupType(null);
