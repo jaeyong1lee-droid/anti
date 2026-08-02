@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef } from 'react';
-import { X, Sparkles, Eye, EyeOff, BookOpen, CheckCircle, RefreshCw } from 'lucide-react';
+import { X, Sparkles, Eye, EyeOff, BookOpen, CheckCircle, RefreshCw, ChevronRight } from 'lucide-react';
 import { TableQuiz } from './TableQuiz';
 import { AcronymQuiz } from './AcronymQuiz';
 import { parseMarkdownTable } from '../utils/latexUtils';
@@ -57,13 +57,42 @@ const parseHtmlTable = (htmlStr) => {
   return { headers: ths, rows };
 };
 
-export function InteractiveQuizModal({ item, type, onClose, katexLoaded = true }) {
+export function InteractiveQuizModal({ 
+  item, 
+  type, 
+  onClose, 
+  katexLoaded = true, 
+  itemList = [], 
+  onSelectNextItem 
+}) {
   const [tableAnswers, setTableAnswers] = useState({});
   const tableAnswersRef = useRef({});
   const [revealed, setRevealed] = useState(false);
   const [tableGradingResults, setTableGradingResults] = useState({});
   const [gradingLoading, setGradingLoading] = useState(false);
   const [showExplanation, setShowExplanation] = useState(true);
+
+  // Find index of current item in list
+  const currentItemIndex = useMemo(() => {
+    if (!itemList || itemList.length === 0) return -1;
+    return itemList.findIndex(it => (it.id && item?.id) ? it.id === item.id : it.title === item?.title);
+  }, [itemList, item]);
+
+  // Handle switching to next item
+  const handleNextItem = () => {
+    if (!itemList || itemList.length <= 1) return;
+    const nextIdx = (currentItemIndex + 1) % itemList.length;
+    const nextItem = itemList[nextIdx];
+    
+    // Reset local inputs & states
+    setTableAnswers({});
+    setRevealed(false);
+    setTableGradingResults({});
+
+    if (onSelectNextItem) {
+      onSelectNextItem(nextItem);
+    }
+  };
 
   // Build exact question object q according to type & actual item structure
   const q = useMemo(() => {
@@ -382,28 +411,49 @@ export function InteractiveQuizModal({ item, type, onClose, katexLoaded = true }
 
       </div>
 
-      {/* Footer Controls */}
-      <div className="px-5 py-3 border-t border-slate-800 bg-slate-900/90 flex items-center justify-between shrink-0 shadow-inner">
-        <button
-          onClick={() => {
-            setTableAnswers({});
-            setRevealed(false);
-            setTableGradingResults({});
-          }}
-          className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-xs transition-colors cursor-pointer"
-        >
-          입력 초기화
-        </button>
+      {/* Footer Controls (Left: 입력 초기화 + 전체 채점 및 확인 / Right: 다음 문제 + 닫기) */}
+      <div className="px-5 py-3 border-t border-slate-800 bg-slate-900/90 flex items-center justify-between shrink-0 shadow-inner select-none">
+        
+        {/* Left Side Group */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              setTableAnswers({});
+              setRevealed(false);
+              setTableGradingResults({});
+            }}
+            className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-xs transition-colors cursor-pointer active:scale-95"
+          >
+            입력 초기화
+          </button>
 
-        <div className="flex items-center gap-3">
           <button
             onClick={handleSubmit}
             disabled={gradingLoading}
-            className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-xs shadow-md transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+            className="px-4.5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-xs shadow-md transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-50 active:scale-95"
           >
             {gradingLoading ? <RefreshCw size={14} className="animate-spin" /> : <CheckCircle size={14} />}
             <span>전체 채점 및 확인</span>
           </button>
+        </div>
+
+        {/* Right Side Group */}
+        <div className="flex items-center gap-2.5">
+          {itemList && itemList.length > 1 && (
+            <button
+              onClick={handleNextItem}
+              className="px-4.5 py-2.5 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white rounded-xl font-bold text-xs shadow-md transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+              title="다음 항목 퀴즈 풀기"
+            >
+              <span>다음 문제</span>
+              {currentItemIndex >= 0 && (
+                <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded-md font-black">
+                  {currentItemIndex + 1}/{itemList.length}
+                </span>
+              )}
+              <ChevronRight size={14} />
+            </button>
+          )}
 
           <button
             onClick={onClose}
@@ -412,6 +462,7 @@ export function InteractiveQuizModal({ item, type, onClose, katexLoaded = true }
             닫기
           </button>
         </div>
+
       </div>
 
     </div>

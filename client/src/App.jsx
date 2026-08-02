@@ -30096,6 +30096,12 @@ ${itemsStr}
             <InteractiveQuizModal
               item={quizPopupItem}
               type={quizPopupType}
+              itemList={
+                quizPopupType === 'table' ? formulaTables :
+                quizPopupType === 'acronym' ? formulaAcronyms :
+                quizPopupType === 'overview' ? formulaOverviews : []
+              }
+              onSelectNextItem={(newItem) => setQuizPopupItem(newItem)}
               onClose={() => {
                 setQuizPopupItem(null);
                 setQuizPopupType(null);
@@ -30109,6 +30115,12 @@ ${itemsStr}
               <InteractiveQuizModal
                 item={quizPopupItem}
                 type={quizPopupType}
+                itemList={
+                  quizPopupType === 'table' ? formulaTables :
+                  quizPopupType === 'acronym' ? formulaAcronyms :
+                  quizPopupType === 'overview' ? formulaOverviews : []
+                }
+                onSelectNextItem={(newItem) => setQuizPopupItem(newItem)}
                 onClose={() => {
                   setQuizPopupItem(null);
                   setQuizPopupType(null);
