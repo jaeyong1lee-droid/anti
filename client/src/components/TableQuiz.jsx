@@ -662,39 +662,37 @@ export const TableQuiz = React.memo(function TableQuiz({
     const handleResize = () => {
       setIsMobileView(currentWin.innerWidth < 768);
       const isMobilePortrait = currentWin.innerWidth < 768 && currentWin.innerHeight > currentWin.innerWidth;
-      const isMixedTableOrOverview = q.mixedType === 'overview' || q.mixedType === 'table';
-      if (isMixedTableOrOverview) {
-        try {
-          const savedKey = isMobilePortrait ? `anti_global_mobile_col_widths_${colCount}` : `anti_global_desktop_col_widths_${colCount}`;
-          const saved = localStorage.getItem(savedKey);
-          if (saved) {
-            const parsed = JSON.parse(saved);
-            if (Array.isArray(parsed) && parsed.length === colCount) {
-              setColWidths(parsed);
-              return;
-            }
+      
+      try {
+        const savedKey = isMobilePortrait ? `anti_global_mobile_col_widths_${colCount}` : `anti_global_desktop_col_widths_${colCount}`;
+        const saved = localStorage.getItem(savedKey);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length === colCount) {
+            setColWidths(parsed);
+            return;
           }
-        } catch(e) {}
+        }
+      } catch(e) {}
 
-        if (isMobilePortrait) {
-          if (colCount <= 1) {
-            setColWidths(['100%']);
-          } else {
-            const remainingPercent = 100 / (colCount - 1);
-            setColWidths(['85px', ...Array(colCount - 1).fill(`${remainingPercent}%`)]);
-          }
+      if (isMobilePortrait) {
+        if (colCount <= 1) {
+          setColWidths(['100%']);
         } else {
-          if (colCount <= 1) {
-            setColWidths(['100%']);
-          } else if (colCount === 2) {
-            setColWidths([60, 40]);
-          } else if (colCount === 3) {
-            setColWidths([40, 30, 30]);
-          } else {
-            const first = 30;
-            const others = (100 - first) / (colCount - 1);
-            setColWidths([first, ...Array(colCount - 1).fill(others)]);
-          }
+          const remainingPercent = 100 / (colCount - 1);
+          setColWidths(['85px', ...Array(colCount - 1).fill(`${remainingPercent}%`)]);
+        }
+      } else {
+        if (colCount <= 1) {
+          setColWidths(['100%']);
+        } else if (colCount === 2) {
+          setColWidths([30, 70]);
+        } else if (colCount === 3) {
+          setColWidths([25, 37.5, 37.5]);
+        } else {
+          const first = 22;
+          const others = (100 - first) / (colCount - 1);
+          setColWidths([first, ...Array(colCount - 1).fill(others)]);
         }
       }
     };
@@ -703,7 +701,7 @@ export const TableQuiz = React.memo(function TableQuiz({
     handleResize();
 
     return () => currentWin.removeEventListener('resize', handleResize);
-  }, [colCount, q.mixedType]);
+  }, [colCount, q?.id, q?.mixedType]);
 
   const [mobileColWidths, setMobileColWidths] = useState(() => {
     const isPopout = typeof window !== 'undefined' && (window.name === 'anti_popout_window' || window.name?.includes('popout') || window.opener !== null);

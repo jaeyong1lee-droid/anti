@@ -477,6 +477,7 @@ export function InteractiveQuizModal({
         <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 shadow-xl overflow-x-auto">
           {type === 'acronym' ? (
             <AcronymQuiz
+              key={q.id || item?.id || 'acronym_quiz'}
               questionIdx={0}
               q={q}
               tableAnswers={tableAnswers}
@@ -491,6 +492,7 @@ export function InteractiveQuizModal({
             />
           ) : (
             <TableQuiz
+              key={q.id || item?.id || 'table_quiz'}
               questionIdx={0}
               q={q}
               tableAnswers={tableAnswers}

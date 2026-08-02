@@ -30089,7 +30089,7 @@ ${itemsStr}
               setQuizPopupItem(null);
               setQuizPopupType(null);
             }}
-            initWidth={900}
+            initWidth={1000}
             initHeight={920}
             storageKey={`anti_quiz_popout_${quizPopupType}`}
           >
