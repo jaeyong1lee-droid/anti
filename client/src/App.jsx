@@ -14984,12 +14984,22 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
     }
 
     // Show inline optimizing loading status on card
-    setFormulaAcronyms(prev => prev.map((item, i) => {
-      if (i === acronymIdx) {
+    setFormulaAcronyms(prev => prev.map((item) => {
+      if (item.id === acronymId) {
         return { ...item, isOptimizing: true };
       }
       return item;
     }));
+
+    if (activeAnswerPopupData && activeAnswerPopupData.type === 'acronym' && activeAnswerPopupData.content.id === acronymId) {
+      setActiveAnswerPopupData(prev => ({
+        ...prev,
+        content: { ...prev.content, isOptimizing: true }
+      }));
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 45000); // 45s safety timeout
 
     try {
       const currentCombination = rows.map(r => r.acronym).join('');
@@ -15021,6 +15031,7 @@ ${itemsStr}
       const res = await fetch(`${API_BASE}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
         body: JSON.stringify({
           history: [],
           message: query,
@@ -15028,6 +15039,8 @@ ${itemsStr}
           acronymMode: true
         })
       });
+
+      clearTimeout(timeoutId);
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || '앞글자 재조합 실패');
@@ -15059,16 +15072,35 @@ ${itemsStr}
         return nextList;
       });
 
+      if (activeAnswerPopupData && activeAnswerPopupData.type === 'acronym' && activeAnswerPopupData.content.id === acronymId) {
+        setActiveAnswerPopupData(prev => ({
+          ...prev,
+          title: parsedTitle,
+          content: { ...prev.content, title: parsedTitle, content: finalContent, isOptimizing: false }
+        }));
+      }
+
       showNotification(`[${parsedTitle}] 앞글자 암기법이 최적의 조합으로 재구성되었습니다!`, 'success');
     } catch (err) {
+      clearTimeout(timeoutId);
       console.error('Failed to optimize acronym:', err);
+      const errMsg = err.name === 'AbortError' ? '요청 시간이 초과되었습니다 (45초 제한).' : err.message;
+      showNotification(`재조합 실패: ${errMsg}`, 'error');
+    } finally {
+      // Ensure isOptimizing is ALWAYS set back to false
       setFormulaAcronyms(prev => prev.map((item) => {
         if (item.id === acronymId) {
           return { ...item, isOptimizing: false };
         }
         return item;
       }));
-      showNotification(`재조합 실패: ${err.message}`, 'error');
+
+      if (activeAnswerPopupData && activeAnswerPopupData.type === 'acronym' && activeAnswerPopupData.content.id === acronymId) {
+        setActiveAnswerPopupData(prev => ({
+          ...prev,
+          content: { ...prev.content, isOptimizing: false }
+        }));
+      }
     }
   };
 
@@ -25730,20 +25762,20 @@ ${itemsStr}
                                       </button>
                                     )}
 
-                                    {/* 문제 풀기 버튼 */}
+                                    {/* 답안 팝업 버튼 */}
                                     <button
                                       onClick={() => {
                                         setActiveAnswerPopupData({
-                                          type: 'table-quiz',
+                                          type: 'table',
                                           title: t.title,
-                                          item: t
+                                          content: t
                                         });
                                       }}
-                                      className="p-1.5 rounded-lg text-emerald-300 hover:text-white hover:bg-emerald-500/20 border border-emerald-500/30 bg-emerald-950/40 transition-all cursor-pointer text-[11px] font-bold flex items-center gap-1 shrink-0 shadow-xs"
-                                      title="믹스복습 표 문제 풀기"
+                                      className="p-1.5 rounded-lg text-violet-300 hover:text-white hover:bg-violet-500/20 border border-violet-500/30 bg-violet-950/40 transition-all cursor-pointer text-[11px] font-bold flex items-center gap-1 shrink-0 shadow-xs"
+                                      title="비교표 답안 팝업 보기"
                                     >
-                                      <HelpCircle size={12} className="text-emerald-400" />
-                                      <span>문제</span>
+                                      <HelpCircle size={12} className="text-violet-400" />
+                                      <span>답안</span>
                                     </button>
 
                                     {/* 열기/접기 버튼 */}
@@ -26191,20 +26223,20 @@ ${itemsStr}
                                       <span>재조합</span>
                                     </button>
 
-                                    {/* 문제 풀기 버튼 */}
+                                    {/* 답안 팝업 버튼 */}
                                     <button
                                       onClick={() => {
                                         setActiveAnswerPopupData({
-                                          type: 'acronym-quiz',
+                                          type: 'acronym',
                                           title: ac.title,
-                                          item: ac
+                                          content: ac
                                         });
                                       }}
-                                      className="p-1.5 rounded-lg text-emerald-300 hover:text-white hover:bg-emerald-500/20 border border-emerald-500/30 bg-emerald-950/40 transition-all cursor-pointer text-[11px] font-bold flex items-center gap-1 shrink-0 shadow-xs"
-                                      title="믹스복습 두문자 문제 풀기"
+                                      className="p-1.5 rounded-lg text-cyan-300 hover:text-white hover:bg-cyan-500/20 border border-cyan-500/30 bg-cyan-950/40 transition-all cursor-pointer text-[11px] font-bold flex items-center gap-1 shrink-0 shadow-xs"
+                                      title="두문자 답안 팝업 보기"
                                     >
-                                      <HelpCircle size={12} className="text-emerald-400" />
-                                      <span>문제</span>
+                                      <HelpCircle size={12} className="text-cyan-400" />
+                                      <span>답안</span>
                                     </button>
 
                                     {/* 열기/접기 버튼 */}
@@ -26622,20 +26654,20 @@ ${itemsStr}
                                       <span>새로고침</span>
                                     </button>
 
-                                    {/* 문제 풀기 버튼 */}
+                                    {/* 답안 팝업 버튼 */}
                                     <button
                                       onClick={() => {
                                         setActiveAnswerPopupData({
-                                          type: 'overview-quiz',
+                                          type: 'overview',
                                           title: ov.title,
-                                          item: ov
+                                          content: ov
                                         });
                                       }}
-                                      className="p-1.5 rounded-lg text-emerald-300 hover:text-white hover:bg-emerald-500/20 border border-emerald-500/30 bg-emerald-950/40 transition-all cursor-pointer text-[11px] font-bold flex items-center gap-1 shrink-0 shadow-xs"
-                                      title="믹스복습 개요 문제 풀기"
+                                      className="p-1.5 rounded-lg text-rose-300 hover:text-white hover:bg-rose-500/20 border border-rose-500/30 bg-rose-950/40 transition-all cursor-pointer text-[11px] font-bold flex items-center gap-1 shrink-0 shadow-xs"
+                                      title="개요 답안 팝업 보기"
                                     >
-                                      <HelpCircle size={12} className="text-emerald-400" />
-                                      <span>문제</span>
+                                      <HelpCircle size={12} className="text-rose-400" />
+                                      <span>답안</span>
                                     </button>
 
                                     {/* 열기/접기 버튼 */}

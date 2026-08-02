@@ -53,10 +53,11 @@ async function runTests() {
 
   // [TEST 1] Server File Syntax Checks
   console.log('[TEST 1] Node.js Backend Code Syntax Inspection...');
+  const nodeBin = `"${process.execPath}"`;
   try {
-    execSync('node --check server/index.js', { stdio: 'pipe' });
-    execSync('node --check server/routes/quizRoutes.js', { stdio: 'pipe' });
-    execSync('node --check server/database.js', { stdio: 'pipe' });
+    execSync(`${nodeBin} --check server/index.js`, { stdio: 'pipe' });
+    execSync(`${nodeBin} --check server/routes/quizRoutes.js`, { stdio: 'pipe' });
+    execSync(`${nodeBin} --check server/database.js`, { stdio: 'pipe' });
     console.log('  ➜ [SUCCESS] Server JavaScript files syntax check PASSED (0 syntax errors).');
   } catch (err) {
     failedCount++;
@@ -163,11 +164,12 @@ async function runTests() {
     console.log(`  ➜ [FAIL] POST /api/quiz/submit failed (Status: ${submitRes.error || submitRes.statusCode})`);
   }
 
-  // [TEST 7] Vite Full Bundle & React Component Build Check
+  // [TEST 7] REAL Vite Bundle & React Component Compilation Check
   console.log('\n[TEST 7] REAL Vite Bundle & React Component Compilation Check...');
   try {
     const clientPath = path.join(process.cwd(), 'client');
-    execSync('npx vite build', { cwd: clientPath, encoding: 'utf-8', stdio: 'pipe' });
+    const viteJsPath = path.join(clientPath, 'node_modules', 'vite', 'bin', 'vite.js');
+    execSync(`${nodeBin} "${viteJsPath}" build`, { cwd: clientPath, encoding: 'utf-8', stdio: 'pipe' });
     console.log('  ➜ [SUCCESS] Vite Build PASSED (All React components compiled cleanly).');
   } catch (err) {
     failedCount++;
