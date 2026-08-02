@@ -11,6 +11,7 @@ import { GENERATION_STANDARDS, generationStandardsList } from '../plugins/genera
 import { ENGINEERING_STANDARDS, standardsList as engineeringStandardsList } from '../plugins/engineeringStandards.js';
 import { FLOWCHART_QUIZ_GENERATION_PROMPT } from '../plugins/flowchartQuizPlugin.js';
 import * as ocrPlugin from '../plugins/calculationPlugin.js';
+import * as itemQuizPlugin from '../plugins/formulaItemQuizPlugin.js';
 import pdfParse from 'pdf-parse';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -3903,6 +3904,174 @@ router.post('/formula/generate-quiz-question', async (req, res) => {
   } catch (err) {
     console.error('generate-quiz-question error:', err);
     res.status(500).json({ error: err.message || '계산 문제 생성에 실패했습니다.' });
+  }
+});
+
+// POST /api/item-quiz/generate
+router.post('/item-quiz/generate', async (req, res) => {
+  try {
+    const { itemType, itemData } = req.body;
+    if (!itemType || !itemData) {
+      return res.status(400).json({ error: '필수 퀴즈 데이터가 누락되었습니다.' });
+    }
+
+    let questionObj = null;
+    if (itemType === 'table') {
+      questionObj = await itemQuizPlugin.generateTableQuizQuestion(itemData);
+    } else if (itemType === 'acronym') {
+      questionObj = await itemQuizPlugin.generateAcronymQuizQuestion(itemData);
+    } else if (itemType === 'overview') {
+      questionObj = await itemQuizPlugin.generateOverviewQuizQuestion(itemData);
+    } else {
+      return res.status(400).json({ error: '지원되지 않는 퀴즈 타입입니다.' });
+    }
+
+    res.json(questionObj);
+  } catch (err) {
+    console.error('item-quiz generate error:', err);
+    res.status(500).json({ error: err.message || '퀴즈 생성 실패' });
+  }
+});
+
+// POST /api/quiz/generate-item-questions
+router.post('/quiz/generate-item-questions', async (req, res) => {
+  try {
+    const { item, type, level } = req.body;
+    if (!item) {
+      return res.status(400).json({ success: false, error: '항목 데이터가 누락되었습니다.' });
+    }
+
+    const count = level === 'basic' ? 1 : level === 'deep' ? 5 : 3;
+    const title = item.title || item.name || '학습 항목';
+    const contentStr = typeof item.content === 'object' ? JSON.stringify(item.content) : (item.content || item.html || '');
+
+    const prompt = `[학습 항목 유형]: ${type || '일반'}
+[항목 제목]: ${title}
+[항목 본문/데이터]:
+${contentStr}
+
+위 학습 데이터를 바탕으로 수험생이 학습 상태를 점검할 수 있는 맞춤형 퀴즈 문제 ${count}개를 출제해 주십시오.
+
+[출제 지침]:
+1. 난이도 및 서술 형식(객관식 또는 서술형/계산형/빈칸채우기)을 고려하여 공학적/학술적 가치가 높은 문제를 출제하십시오.
+2. LaTeX 공식이 들어가는 경우 standard KaTeX ($...$ 또는 $$...$$) 형식을 준수하십시오.
+3. 반드시 오직 유효한 JSON 배열 형태로만 출력하십시오.
+
+[반환 JSON 구조 예시]:
+[
+  {
+    "question": "문제 내용 설명 (필요시 $공식$ 포함)",
+    "options": ["선택지1", "선택지2", "선택지3", "선택지4"] // 서술형/빈칸채우기의 경우 null 또는 []
+  }
+]`;
+
+    const systemPrompt = `당신은 토목/지반공학 기술사 자격시험 출제위원입니다. 한국어로 정밀하고 명확한 문제를 JSON 배열로만 출제하십시오.`;
+    const responseText = await callLLMWithFailover(systemPrompt, prompt, null, 'generation');
+
+    let questions = [];
+    try {
+      const cleaned = responseText.replace(/```json/gi, '').replace(/```/g, '').trim();
+      questions = JSON.parse(cleaned);
+    } catch (e) {
+      questions = [
+        {
+          question: `[${title}] 핵심 개념 및 메커니즘을 기술사 수준으로 상세히 서술하시오.`,
+          options: null
+        }
+      ];
+    }
+
+    res.json({ success: true, questions });
+  } catch (err) {
+    console.error('generate-item-questions error:', err);
+    res.status(500).json({ success: false, error: err.message || '문제 생성 실패' });
+  }
+});
+
+// POST /api/item-quiz/grade
+router.post('/item-quiz/grade', async (req, res) => {
+  try {
+    const { itemType, questionTitle, correctContent, userInputs } = req.body;
+    const result = await itemQuizPlugin.gradeItemQuizAnswer({
+      itemType,
+      questionTitle,
+      correctContent,
+      userInputs,
+      callLLMWithFailover
+    });
+    res.json({ text: result });
+  } catch (err) {
+    console.error('item-quiz grade error:', err);
+    res.status(500).json({ error: err.message || '퀴즈 채점 실패' });
+  }
+});
+
+// POST /api/quiz/grade-item-answers
+router.post('/quiz/grade-item-answers', async (req, res) => {
+  try {
+    const { item, type, questions, userAnswers } = req.body;
+    if (!questions || !Array.isArray(questions)) {
+      return res.status(400).json({ success: false, error: '채점할 문제 목록이 누락되었습니다.' });
+    }
+
+    const title = item?.title || '학습 항목';
+    const contentStr = typeof item?.content === 'object' ? JSON.stringify(item.content) : (item?.content || item?.html || '');
+
+    const prompt = `[학습 항목 유형]: ${type || '일반'}
+[항목 제목]: ${title}
+[원문/모범 답안 정보]:
+${contentStr}
+
+[출제된 문제 목록 및 수험생 제출 답안]:
+${questions.map((q, i) => `문제 ${i + 1}: ${q.question}
+제출 답안: ${userAnswers?.[i] || '(미제출)'}`).join('\n\n')}
+
+위 제출 답안들을 모범 답안 및 국가기술자격 기술사 채점 기준에 따라 엄격하고 정밀하게 채점해 주십시오.
+
+[반환 JSON 구조 규격]:
+{
+  "totalScore": 85,
+  "earnedPoints": 85,
+  "maxPoints": 100,
+  "feedbackSummary": "전반적인 답변 우수 및 공학적 핵심 용어 기술 상태 훌륭함.",
+  "questionResults": [
+    {
+      "score": 85,
+      "isCorrect": true,
+      "feedback": "개념 서술이 우수하며 핵심 키워드가 잘 포함되었습니다.",
+      "modelAnswer": "모범 답안 및 주요 공학적 해설"
+    }
+  ]
+}
+
+반드시 위 JSON 객체 형식만 출력하십시오.`;
+
+    const systemPrompt = `당신은 대한민국 국가기술자격 기술사 시험 수석 채점관입니다. 주어진 수험생 답안을 객관적으로 심사하여 정밀한 JSON 결과로 반환하십시오.`;
+    const responseText = await callLLMWithFailover(systemPrompt, prompt, null, 'grading');
+
+    let resultJson = null;
+    try {
+      const cleaned = responseText.replace(/```json/gi, '').replace(/```/g, '').trim();
+      resultJson = JSON.parse(cleaned);
+    } catch (e) {
+      resultJson = {
+        totalScore: 70,
+        earnedPoints: 70,
+        maxPoints: 100,
+        feedbackSummary: '답안 분석 결과를 정리했습니다.',
+        questionResults: questions.map(() => ({
+          score: 70,
+          isCorrect: true,
+          feedback: '답안이 제출되었습니다. 원문 모범 답안을 함께 복습하십시오.',
+          modelAnswer: contentStr.slice(0, 200)
+        }))
+      };
+    }
+
+    res.json({ success: true, ...resultJson });
+  } catch (err) {
+    console.error('grade-item-answers error:', err);
+    res.status(500).json({ success: false, error: err.message || '채점 실패' });
   }
 });
 

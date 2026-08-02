@@ -15,6 +15,7 @@ import { TableQuiz } from './components/TableQuiz';
 import { AcronymQuiz } from './components/AcronymQuiz';
 import { ReadOnlyTable } from './components/ReadOnlyTable';
 import { PopoutWindow } from './components/PopoutWindow';
+import { InteractiveQuizModal } from './components/InteractiveQuizModal';
 import { 
   buildHtmlDocument, 
   handleOpenHtmlAnswerPopup, 
@@ -2109,6 +2110,8 @@ export default function App() {
   });
 
   const [activeAnswerPopupData, setActiveAnswerPopupData] = useState(null);
+  const [quizPopupItem, setQuizPopupItem] = useState(null);
+  const [quizPopupType, setQuizPopupType] = useState(null);
 
   const [answerPopupPos, setAnswerPopupPos] = useState(() => {
     try {
@@ -25773,20 +25776,17 @@ ${itemsStr}
                                       </button>
                                     )}
 
-                                    {/* 답안 팝업 버튼 */}
+                                    {/* 문제출제 팝업 버튼 */}
                                     <button
                                       onClick={() => {
-                                        setActiveAnswerPopupData({
-                                          type: 'table',
-                                          title: t.title,
-                                          content: t
-                                        });
+                                        setQuizPopupItem(t);
+                                        setQuizPopupType('table');
                                       }}
                                       className="p-1.5 rounded-lg text-violet-300 hover:text-white hover:bg-violet-500/20 border border-violet-500/30 bg-violet-950/40 transition-all cursor-pointer text-[11px] font-bold flex items-center gap-1 shrink-0 shadow-xs"
-                                      title="비교표 답안 팝업 보기"
+                                      title="비교표 퀴즈 문제 출제 및 풀기 (채점)"
                                     >
                                       <HelpCircle size={12} className="text-violet-400" />
-                                      <span>답안</span>
+                                      <span>문제출제</span>
                                     </button>
 
                                     {/* 열기/접기 버튼 */}
@@ -26234,20 +26234,17 @@ ${itemsStr}
                                       <span>재조합</span>
                                     </button>
 
-                                    {/* 답안 팝업 버튼 */}
+                                    {/* 문제출제 팝업 버튼 */}
                                     <button
                                       onClick={() => {
-                                        setActiveAnswerPopupData({
-                                          type: 'acronym',
-                                          title: ac.title,
-                                          content: ac
-                                        });
+                                        setQuizPopupItem(ac);
+                                        setQuizPopupType('acronym');
                                       }}
                                       className="p-1.5 rounded-lg text-cyan-300 hover:text-white hover:bg-cyan-500/20 border border-cyan-500/30 bg-cyan-950/40 transition-all cursor-pointer text-[11px] font-bold flex items-center gap-1 shrink-0 shadow-xs"
-                                      title="두문자 답안 팝업 보기"
+                                      title="두문자 퀴즈 문제 출제 및 풀기 (채점)"
                                     >
                                       <HelpCircle size={12} className="text-cyan-400" />
-                                      <span>답안</span>
+                                      <span>문제출제</span>
                                     </button>
 
                                     {/* 열기/접기 버튼 */}
@@ -26665,20 +26662,17 @@ ${itemsStr}
                                       <span>새로고침</span>
                                     </button>
 
-                                    {/* 답안 팝업 버튼 */}
+                                    {/* 문제출제 팝업 버튼 */}
                                     <button
                                       onClick={() => {
-                                        setActiveAnswerPopupData({
-                                          type: 'overview',
-                                          title: ov.title,
-                                          content: ov
-                                        });
+                                        setQuizPopupItem(ov);
+                                        setQuizPopupType('overview');
                                       }}
                                       className="p-1.5 rounded-lg text-rose-300 hover:text-white hover:bg-rose-500/20 border border-rose-500/30 bg-rose-950/40 transition-all cursor-pointer text-[11px] font-bold flex items-center gap-1 shrink-0 shadow-xs"
-                                      title="개요 답안 팝업 보기"
+                                      title="개요 퀴즈 문제 출제 및 풀기 (채점)"
                                     >
                                       <HelpCircle size={12} className="text-rose-400" />
-                                      <span>답안</span>
+                                      <span>문제출제</span>
                                     </button>
 
                                     {/* 열기/접기 버튼 */}
@@ -30085,6 +30079,18 @@ ${itemsStr}
           );
         }
       })()}
+
+      {/* Interactive Quiz Question Generator Modal */}
+      {quizPopupItem && (
+        <InteractiveQuizModal
+          item={quizPopupItem}
+          type={quizPopupType}
+          onClose={() => {
+            setQuizPopupItem(null);
+            setQuizPopupType(null);
+          }}
+        />
+      )}
 
       {/* Custom Overview Prompt Modal */}
       {showOverviewPromptModal && (
