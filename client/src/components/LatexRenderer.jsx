@@ -659,7 +659,7 @@ export const LatexRenderer = React.memo(function LatexRenderer({
       htmlContent = htmlContent.replace(/\$((?:[^\$\n<]|<(?![a-zA-Z/!]))+?)\$/g, (m, math) => {
         const isRealFormula = /\\/.test(math) || /_/.test(math) || /\^/.test(math) || /=/.test(math) || /\\cdot/.test(math);
         if (!isRealFormula) {
-          return m;
+          return math;
         }
         return renderKatexString(math.trim(), { displayMode: false, throwOnError: false });
       });
@@ -740,7 +740,7 @@ export const LatexRenderer = React.memo(function LatexRenderer({
               htmlContent = htmlContent.replace(/\$((?:[^\$\n<]|<(?![a-zA-Z/!]))+?)\$/g, (m, math) => {
                   const isRealFormula = /\\/.test(math) || /_/.test(math) || /\^/.test(math) || /=/.test(math) || /\\cdot/.test(math);
                   if (!isRealFormula) {
-                    return m;
+                    return math;
                   }
                 return renderKatexString(math.trim(), { displayMode: false, throwOnError: false });
               });
