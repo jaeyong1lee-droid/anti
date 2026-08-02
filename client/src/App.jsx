@@ -15044,8 +15044,8 @@ ${itemsStr}
       const finalContent = aiText.trim();
 
       setFormulaAcronyms(prev => {
-        const nextList = prev.map((item, i) => {
-          if (i === acronymIdx) {
+        const nextList = prev.map((item) => {
+          if (item.id === acronymId) {
             return {
               ...item,
               title: parsedTitle,
@@ -15062,8 +15062,8 @@ ${itemsStr}
       showNotification(`[${parsedTitle}] 앞글자 암기법이 최적의 조합으로 재구성되었습니다!`, 'success');
     } catch (err) {
       console.error('Failed to optimize acronym:', err);
-      setFormulaAcronyms(prev => prev.map((item, i) => {
-        if (i === acronymIdx) {
+      setFormulaAcronyms(prev => prev.map((item) => {
+        if (item.id === acronymId) {
           return { ...item, isOptimizing: false };
         }
         return item;
@@ -25730,6 +25730,22 @@ ${itemsStr}
                                       </button>
                                     )}
 
+                                    {/* 문제 풀기 버튼 */}
+                                    <button
+                                      onClick={() => {
+                                        setActiveAnswerPopupData({
+                                          type: 'table-quiz',
+                                          title: t.title,
+                                          item: t
+                                        });
+                                      }}
+                                      className="p-1.5 rounded-lg text-emerald-300 hover:text-white hover:bg-emerald-500/20 border border-emerald-500/30 bg-emerald-950/40 transition-all cursor-pointer text-[11px] font-bold flex items-center gap-1 shrink-0 shadow-xs"
+                                      title="믹스복습 표 문제 풀기"
+                                    >
+                                      <HelpCircle size={12} className="text-emerald-400" />
+                                      <span>문제</span>
+                                    </button>
+
                                     {/* 열기/접기 버튼 */}
                                     <button
                                       onClick={() => {
@@ -26175,6 +26191,22 @@ ${itemsStr}
                                       <span>재조합</span>
                                     </button>
 
+                                    {/* 문제 풀기 버튼 */}
+                                    <button
+                                      onClick={() => {
+                                        setActiveAnswerPopupData({
+                                          type: 'acronym-quiz',
+                                          title: ac.title,
+                                          item: ac
+                                        });
+                                      }}
+                                      className="p-1.5 rounded-lg text-emerald-300 hover:text-white hover:bg-emerald-500/20 border border-emerald-500/30 bg-emerald-950/40 transition-all cursor-pointer text-[11px] font-bold flex items-center gap-1 shrink-0 shadow-xs"
+                                      title="믹스복습 두문자 문제 풀기"
+                                    >
+                                      <HelpCircle size={12} className="text-emerald-400" />
+                                      <span>문제</span>
+                                    </button>
+
                                     {/* 열기/접기 버튼 */}
                                     <button
                                       onClick={() => {
@@ -26588,6 +26620,22 @@ ${itemsStr}
                                     >
                                       <RefreshCw size={12} className={ov.isLoading ? "animate-spin text-rose-500" : ""} />
                                       <span>새로고침</span>
+                                    </button>
+
+                                    {/* 문제 풀기 버튼 */}
+                                    <button
+                                      onClick={() => {
+                                        setActiveAnswerPopupData({
+                                          type: 'overview-quiz',
+                                          title: ov.title,
+                                          item: ov
+                                        });
+                                      }}
+                                      className="p-1.5 rounded-lg text-emerald-300 hover:text-white hover:bg-emerald-500/20 border border-emerald-500/30 bg-emerald-950/40 transition-all cursor-pointer text-[11px] font-bold flex items-center gap-1 shrink-0 shadow-xs"
+                                      title="믹스복습 개요 문제 풀기"
+                                    >
+                                      <HelpCircle size={12} className="text-emerald-400" />
+                                      <span>문제</span>
                                     </button>
 
                                     {/* 열기/접기 버튼 */}
