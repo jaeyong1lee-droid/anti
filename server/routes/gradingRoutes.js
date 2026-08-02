@@ -1245,40 +1245,40 @@ router.post('/evaluate-answer', async (req, res) => {
       );
       const parsed = parseLlmJson(llmResult);
       if (parsed) {
-        let mathCalculatedValue = null;
-        if (parsed.mathExpression) {
-          mathCalculatedValue = evaluateMathExpression(parsed.mathExpression);
-        }
-
-        // 서버 2단계 정밀 산술 연산 결과가 존재하면, 보기 중 오차가 가장 적은 보기를 정답으로 100% 검증/확정
-        if (mathCalculatedValue !== null && Array.isArray(options) && options.length > 0) {
-          let minDiff = Infinity;
-          let bestIdx = -1;
-          options.forEach((opt, idx) => {
-            const num = parseFloat(String(opt).replace(/[^0-9.-]/g, ''));
-            if (!isNaN(num)) {
-              const diff = Math.abs(num - mathCalculatedValue);
-              if (diff < minDiff) {
-                minDiff = diff;
-                bestIdx = idx;
-              }
-            }
-          });
-          if (bestIdx >= 0 && minDiff < 100.0) {
-            finalCorrectIndex = bestIdx;
-            finalCorrectAnswer = options[bestIdx];
-            console.log(`[JIT Math Evaluator] Math Expr "${parsed.mathExpression}" evaluated to ${mathCalculatedValue} -> Matched Option [${bestIdx}]: ${options[bestIdx]}`);
+        // 1. AI가 직접 지정한 correctIndex 및 correctAnswer를 최우선(#1) 정답으로 채택
+        if (typeof parsed.correctIndex === 'number' && parsed.correctIndex >= 0 && parsed.correctIndex < (options || []).length) {
+          finalCorrectIndex = parsed.correctIndex;
+          finalCorrectAnswer = options[parsed.correctIndex];
+        } else if (parsed.correctAnswer) {
+          finalCorrectAnswer = parsed.correctAnswer;
+          if (Array.isArray(options)) {
+            const idx = options.findIndex(o => String(o).trim() === String(parsed.correctAnswer).trim());
+            if (idx >= 0) finalCorrectIndex = idx;
           }
         }
 
-        // AI가 지정한 correctIndex가 유효하면 최우선 채택
-        if (finalCorrectIndex < 0 && typeof parsed.correctIndex === 'number' && parsed.correctIndex >= 0 && parsed.correctIndex < (options || []).length) {
-          finalCorrectIndex = parsed.correctIndex;
-          finalCorrectAnswer = options[parsed.correctIndex];
-        }
-
-        if (!finalCorrectAnswer && parsed.correctAnswer) {
-          finalCorrectAnswer = parsed.correctAnswer;
+        // 2. AI가 correctIndex/correctAnswer를 제공하지 못했을 때만 mathCalculatedValue 수치 비교 fallback 가동
+        if (finalCorrectIndex < 0 && parsed.mathExpression && Array.isArray(options) && options.length > 0) {
+          const mathCalculatedValue = evaluateMathExpression(parsed.mathExpression);
+          if (mathCalculatedValue !== null) {
+            let minDiff = Infinity;
+            let bestIdx = -1;
+            options.forEach((opt, idx) => {
+              const num = parseFloat(String(opt).replace(/[^0-9.-]/g, ''));
+              if (!isNaN(num)) {
+                const diff = Math.abs(num - mathCalculatedValue);
+                if (diff < minDiff) {
+                  minDiff = diff;
+                  bestIdx = idx;
+                }
+              }
+            });
+            if (bestIdx >= 0 && minDiff < 100.0) {
+              finalCorrectIndex = bestIdx;
+              finalCorrectAnswer = options[bestIdx];
+              console.log(`[JIT Math Evaluator Fallback] Math Expr "${parsed.mathExpression}" evaluated to ${mathCalculatedValue} -> Fallback Option [${bestIdx}]: ${options[bestIdx]}`);
+            }
+          }
         }
 
         explanation = parsed.explanation || '';
