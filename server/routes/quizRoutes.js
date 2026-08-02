@@ -63,10 +63,69 @@ function getCoreSubjectFromTitle(title) {
   return core.trim();
 }
 
+function normalizeMcText(text) {
+  if (!text) return '';
+  return text
+    .replace(/^[①②③④⑤1-5][\s\.\)\:\s]*/, '')
+    .replace(/\s+/g, '')
+    .replace(/[.~,`'"'']/g, '')
+    .toLowerCase();
+}
+
+function sanitizeMultipleChoiceAnswer(q) {
+  if (!q || !q.options || q.options.length === 0 || !q.explanation) return q;
+
+  const options = q.options;
+  const exp = q.explanation;
+  const currentAns = (q.answer || '').trim();
+
+  const conclusionMatch = exp.match(/(?:\[최종\s*정답\s*산출\]|따라서|정답은|결론적으로)[\s\S]*$/i);
+  const searchTarget = conclusionMatch ? conclusionMatch[0] : exp;
+  const normalizedTarget = normalizeMcText(searchTarget);
+
+  let bestMatch = null;
+  let bestScore = 0;
+
+  for (let i = 0; i < options.length; i++) {
+    const opt = options[i];
+    const normOpt = normalizeMcText(opt);
+    if (!normOpt) continue;
+
+    if (normalizedTarget.includes(normOpt)) {
+      bestMatch = opt;
+      bestScore = 100;
+      break;
+    }
+
+    const numKeywords = normOpt.match(/(?:\d+\/\d+|\d+배|변화가\s*없다|증가|감소)/g) || [];
+    if (numKeywords.length > 0) {
+      const matchCount = numKeywords.filter(kw => normalizedTarget.includes(normalizeMcText(kw))).length;
+      if (matchCount > bestScore) {
+        bestScore = matchCount;
+        bestMatch = opt;
+      }
+    }
+  }
+
+  if (bestMatch && currentAns) {
+    const normCurrent = normalizeMcText(currentAns);
+    if (!normalizedTarget.includes(normCurrent) && (bestScore >= 100 || bestScore > 0)) {
+      console.log(`[MC Answer Sanitized] Original answer '${currentAns}' was inconsistent with explanation. Corrected to '${bestMatch}'`);
+      return {
+        ...q,
+        answer: bestMatch
+      };
+    }
+  }
+
+  return q;
+}
+
 function shuffleMultipleChoice(q) {
   if (!q || !q.options || q.options.length === 0) return q;
-  const originalAnswer = q.answer;
-  const shuffledOptions = [...q.options];
+  const sanitized = sanitizeMultipleChoiceAnswer(q);
+  const originalAnswer = sanitized.answer;
+  const shuffledOptions = [...sanitized.options];
   for (let i = shuffledOptions.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [shuffledOptions[i], shuffledOptions[j]] = [shuffledOptions[j], shuffledOptions[i]];
@@ -74,7 +133,7 @@ function shuffleMultipleChoice(q) {
   const normalize = (s) => (s || '').replace(/^\d+\.(?!\d)\s*/, '').trim();
   const matchedOption = shuffledOptions.find(opt => normalize(opt) === normalize(originalAnswer)) || originalAnswer;
   return {
-    ...q,
+    ...sanitized,
     options: shuffledOptions,
     answer: matchedOption
   };

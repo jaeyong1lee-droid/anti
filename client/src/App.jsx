@@ -117,6 +117,61 @@ const cleanMemorizationTipText = (tip) => {
   return clean;
 };
 
+function normalizeMcText(text) {
+  if (!text) return '';
+  return text
+    .replace(/^[①②③④⑤1-5][\s\.\)\:\s]*/, '')
+    .replace(/\s+/g, '')
+    .replace(/[.~,`'"'']/g, '')
+    .toLowerCase();
+}
+
+export function getSanitizedMcAnswer(q) {
+  if (!q || !q.answer) return q ? q.answer : '';
+  if (!q.options || q.options.length === 0 || !q.explanation) return q.answer;
+
+  const options = q.options;
+  const exp = q.explanation;
+  const currentAns = String(q.answer).trim();
+
+  const conclusionMatch = exp.match(/(?:\[최종\s*정답\s*산출\]|따라서|정답은|결론적으로)[\s\S]*$/i);
+  const searchTarget = conclusionMatch ? conclusionMatch[0] : exp;
+  const normalizedTarget = normalizeMcText(searchTarget);
+
+  let bestMatch = null;
+  let bestScore = 0;
+
+  for (let i = 0; i < options.length; i++) {
+    const opt = options[i];
+    const normOpt = normalizeMcText(opt);
+    if (!normOpt) continue;
+
+    if (normalizedTarget.includes(normOpt)) {
+      bestMatch = opt;
+      bestScore = 100;
+      break;
+    }
+
+    const numKeywords = normOpt.match(/(?:\d+\/\d+|\d+배|변화가\s*없다|증가|감소)/g) || [];
+    if (numKeywords.length > 0) {
+      const matchCount = numKeywords.filter(kw => normalizedTarget.includes(normalizeMcText(kw))).length;
+      if (matchCount > bestScore) {
+        bestScore = matchCount;
+        bestMatch = opt;
+      }
+    }
+  }
+
+  if (bestMatch && currentAns) {
+    const normCurrent = normalizeMcText(currentAns);
+    if (!normalizedTarget.includes(normCurrent) && (bestScore >= 100 || bestScore > 0)) {
+      return bestMatch;
+    }
+  }
+
+  return q.answer;
+}
+
 // ── Lazy-loaded heavy components (excluded from initial bundle) ──
 const FloatingCalculator = React.lazy(() =>
   import('./components/ScientificCalculator').then(m => ({ default: m.FloatingCalculator }))
@@ -4252,7 +4307,8 @@ export default function App() {
 
       if (isMC) {
         const userAnswer = selectedAnswers[idx];
-        const isCorrect = userAnswer !== undefined && userAnswer === q.answer;
+        const targetAns = getSanitizedMcAnswer(q);
+        const isCorrect = userAnswer !== undefined && (userAnswer === targetAns || userAnswer === q.answer);
         if (isCorrect) {
           total += W;
         }
@@ -8645,7 +8701,8 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
       const isMC = q.options && q.options.length > 0;
       if (isMC) {
         const userAnswer = selectedAnswers[idx];
-        const isCorrect = userAnswer === q.answer;
+        const targetAns = getSanitizedMcAnswer(q);
+        const isCorrect = userAnswer !== undefined && (userAnswer === targetAns || userAnswer === q.answer);
         if (isCorrect) {
           totalScoreObtained += W;
           correctCount++;
