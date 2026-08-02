@@ -41,6 +41,27 @@ const router = express.Router();
   }
 })();
 
+// Helper function to deduplicate AI questions
+const deduplicateQuestions = (questions) => {
+  if (!Array.isArray(questions)) return [];
+  const seen = new Set();
+  const result = [];
+
+  for (const q of questions) {
+    if (!q) continue;
+    const titleKey = (q.question || q.title || '').trim().toLowerCase();
+    if (!titleKey) {
+      result.push(q);
+      continue;
+    }
+    if (seen.has(titleKey)) continue;
+    seen.add(titleKey);
+    result.push(q);
+  }
+
+  return result;
+};
+
 function cleanQuizQuestion(q) {
   if (!q) return q;
   const isFlowchart = q.includes('┌──') || q.includes('▼') || q.includes('```') || q.includes('흐름도') || q.includes('플로우차트');
