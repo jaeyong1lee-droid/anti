@@ -2357,12 +2357,6 @@ function extractJsonArray(str) {
 }
 
 async function validateAndHealQuestion(question, callLLMWithFailover, topicTitle = '', topicKeywords = '', fileText = '') {
-  if (question && typeof question === 'object') {
-    if (!question.validationLogs) {
-      question.validationLogs = [];
-    }
-    question.validationLogs.push(`[자가 검증 스킵] 검증 기능 및 validationPlugin 파일이 물리적으로 삭제되어 작동하지 않습니다.`);
-  }
   return question;
 }
 

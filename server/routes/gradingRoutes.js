@@ -790,7 +790,7 @@ ${formatRequirement}`;
 
       if (progressTimer) clearInterval(progressTimer);
       if (progressId) {
-        updateProgress(progressId, 2, '2단계: validationPlugin으로 생성 문제 검증 중...', 50);
+        updateProgress(progressId, 2, '2단계: 생성 문제 정합성 검토 중...', 50);
       }
       const validatedQ = await validateAndHealQuestion(healedQ, localCallLLM, topic.title, topic.keywords, fileText);
       const finalValidatedQ = healQuizQuestionObject({
@@ -898,7 +898,7 @@ ${getActiveEngineeringStandards()}
 
       if (progressTimer) clearInterval(progressTimer);
       if (progressId) {
-        updateProgress(progressId, 2, '2단계: validationPlugin으로 생성 문제 검증 중...', 50);
+        updateProgress(progressId, 2, '2단계: 생성 문제 정합성 검토 중...', 50);
       }
       const validatedQ = await validateAndHealQuestion(healedQ, localCallLLM, activeTopicTitle, activeTopicKeywords, activeTopicFileText);
       const finalValidatedQ = healQuizQuestionObject(validatedQ);
@@ -1028,7 +1028,7 @@ ${getActiveEngineeringStandards()}
 
       if (progressTimer) clearInterval(progressTimer);
       if (progressId) {
-        updateProgress(progressId, 2, '2단계: validationPlugin으로 생성 문제 검증 중...', 50);
+        updateProgress(progressId, 2, '2단계: 생성 문제 정합성 검토 중...', 50);
       }
       const validatedQ = await validateAndHealQuestion(healedQ, localCallLLM, topic.title, topic.keywords, fileText);
       const finalValidatedQ = healQuizQuestionObject({
@@ -1154,7 +1154,7 @@ ${getActiveEngineeringStandards()}
 
       if (progressTimer) clearInterval(progressTimer);
       if (progressId) {
-        updateProgress(progressId, 2, '2단계: validationPlugin으로 생성 문제 검증 중...', 50);
+        updateProgress(progressId, 2, '2단계: 생성 문제 정합성 검토 중...', 50);
       }
       const validatedQ = await validateAndHealQuestion(healedQ, localCallLLM, activeTopicTitle, activeTopicKeywords, activeTopicFileText);
       const finalValidatedQ = healQuizQuestionObject(validatedQ);

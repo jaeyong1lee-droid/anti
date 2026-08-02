@@ -135,7 +135,7 @@ export function reportValidationProgress(progressId, total) {
     step: 2,
     validatedCount,
     totalCount: total,
-    message: `2단계: validationPlugin으로 생성 문제 검증 중... (${validatedCount}/${total} 완료)`,
+    message: `2단계: 생성 문제 정합성 검토 중... (${validatedCount}/${total} 완료)`,
     percentage: Math.min(percentage, 100),
     timestamp: Date.now()
   });
