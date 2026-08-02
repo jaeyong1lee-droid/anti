@@ -45,23 +45,7 @@ function getCoreSubjectFromTitle(title) {
   return title.trim();
 }
 
-async function validateAndHealQuestion(question, callLLMWithFailover, topicTitle = '', topicKeywords = '', fileText = '') {
-  if (question && typeof question === 'object') {
-    if (!question.validationLogs) {
-      question.validationLogs = [];
-    }
-    question.validationLogs.push(`[자가 검증 스킵] 검증 기능 및 validationPlugin 파일이 물리적으로 삭제되어 작동하지 않습니다.`);
-  }
-  return question;
-}
 
-function deduplicateQuestions(questions) {
-  return questions;
-}
-
-function isQuestionMismatched(question, topicTitle, topicKeywords) {
-  return null;
-}
 
 async function getFormattedTopicInstructions(topicId) {
   if (!topicId) return '';
@@ -1253,10 +1237,13 @@ router.post('/evaluate-answer', async (req, res) => {
     let explanation = '';
 
     try {
-      const llmResult = await callLLMWithFailover(prompt, null, {
-        preferredModel: globalPreferredModel,
-        systemInstruction: "Strict JSON evaluator. Output valid JSON only."
-      });
+      const llmResult = await callLLMWithFailover(
+        "Strict JSON evaluator. Output valid JSON only.",
+        prompt,
+        null,
+        'formula',
+        { preferredModel: globalPreferredModel }
+      );
       const parsed = parseLlmJson(llmResult);
       if (parsed) {
         let mathCalculatedValue = null;

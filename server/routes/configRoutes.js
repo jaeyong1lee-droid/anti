@@ -24,14 +24,7 @@ const serverDir = path.resolve(__dirname, '..');
 
 const router = express.Router();
 
-async function pushStandardToProduction(apiPath, standards) {
-  // Disabled as per user instruction. No local-to-production sync.
-  return;
-}
 
-async function purgeAllQuizCaches() {
-  console.log('[Cache Clean] Bypassed automatic quiz cache purging to preserve user review histories.');
-}
 
 // Config In-Memory Cache to bypass DB queries on high frequency reads
 const configMemoryCache = new Map();
@@ -267,7 +260,7 @@ router.post(['/engineering-standards', '/other-standards'], async (req, res) => 
     }
 
     await writeStandardToFile('engineeringStandards.js', stamped);
-    pushStandardToProduction('engineering-standards', stamped).catch(() => {});
+
     await purgeAllQuizCaches();
     res.json({ ok: true });
   } catch (err) {
@@ -325,8 +318,6 @@ router.post('/grading-standards', async (req, res) => {
     }
 
     await writeStandardToFile('gradingStandardsList.js', stamped);
-    pushStandardToProduction('grading-standards', stamped).catch(() => {});
-    await purgeAllQuizCaches();
     res.json({ ok: true });
   } catch (err) {
     console.error('POST /api/grading-standards error:', err);
@@ -371,8 +362,6 @@ router.post('/validation-standards', async (req, res) => {
       console.error('Failed to save validation standards to database:', dbErr.message);
     }
 
-    pushStandardToProduction('validation-standards', stamped).catch(() => {});
-    await purgeAllQuizCaches();
     res.json({ ok: true });
   } catch (err) {
     console.error('POST /api/validation-standards error:', err);
@@ -429,8 +418,6 @@ router.post('/generation-standards', async (req, res) => {
     }
 
     await writeStandardToFile('generationStandards.js', stamped);
-    pushStandardToProduction('generation-standards', stamped).catch(() => {});
-    await purgeAllQuizCaches();
     res.json({ ok: true });
   } catch (err) {
     console.error('POST /api/generation-standards error:', err);
@@ -488,8 +475,6 @@ router.post('/lockscreen-standards', async (req, res) => {
     }
 
     await writeStandardToFile('lockscreenStandards.js', stamped);
-    pushStandardToProduction('lockscreen-standards', stamped).catch(() => {});
-    await purgeAllQuizCaches();
     res.json({ ok: true });
   } catch (err) {
     console.error('POST /api/lockscreen-standards error:', err);

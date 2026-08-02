@@ -151,6 +151,9 @@ export function startBackendProgressTimer(progressId, step, initialMessage, maxP
     const progress = global.progressTracker.get(progressId);
     if (progress) {
       updateProgress(progressId, progress.step || step, progress.message || initialMessage, currentPercent);
+      if (currentPercent >= maxPercentage) {
+        clearInterval(timer);
+      }
     } else {
       clearInterval(timer);
     }
@@ -158,7 +161,10 @@ export function startBackendProgressTimer(progressId, step, initialMessage, maxP
   return timer;
 }
 
-export function stopBackendProgressTimer(progressId, percentage, message, isSuccess) {
+export function stopBackendProgressTimer(progressId, percentage, message, isSuccess, timer = null) {
+  if (timer) {
+    try { clearInterval(timer); } catch (e) {}
+  }
   updateProgress(progressId, 2, message, percentage);
 }
 
@@ -302,24 +308,7 @@ export async function callLLMWithFailover(systemInstruction, userPrompt, image =
           break;
         }
 
-        const isQuotaCheck = err.status === 429 || err.message?.includes('429') || err.message?.includes('Quota') || err.message?.includes('quota') || err.message?.includes('rate');
-        if (isQuotaCheck) {
-          const isVercel = !!process.env.VERCEL;
-          if (isVercel) {
-            console.log('[Vercel 환경] 429 감지. 타임아웃 방지를 위해 즉시 다른 키/모델로 페일오버를 시도합니다.');
-            break;
-          }
-          attempt++;
-          if (attempt < maxAttempts) {
-            console.log(`[지수 백오프] 429 감지. ${delay}ms 후 재시도...`);
-            await sleep(delay);
-            delay *= 2;
-          } else {
-            break;
-          }
-        } else {
-          break;
-        }
+        break;
       }
     }
   }

@@ -80,13 +80,7 @@ function shuffleMultipleChoice(q) {
   };
 }
 
-function isQuestionMismatched(question, topicTitle, topicKeywords) {
-  return null;
-}
 
-function deduplicateQuestions(questions) {
-  return questions;
-}
 
 function shuffleArray(arr) {
   const result = [...arr];
