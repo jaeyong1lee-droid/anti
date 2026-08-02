@@ -112,10 +112,9 @@ function renderCellMath(text) {
     return html;
   });
 
-  // Collapse multiple consecutive <br> tags into a single one, and trim leading/trailing <br>
-  temp = temp.replace(/(<br\s*\/?>(\s*<br\s*\/?>)+)/gi, '<br>');
-  temp = temp.replace(/^(\s*<br\s*\/?>\s*)+/i, '');
-  temp = temp.replace(/(\s*<br\s*\/?>\s*)+$/i, '');
+  // Collapse multiple consecutive newlines (\n\n) or <br> tags into a single <br>, and trim leading/trailing <br>
+  temp = temp.replace(/(?:\r?\n|<br\s*\/?>){2,}/gi, '<br>');
+  temp = temp.replace(/^(\s*<br\s*\/?>\s*)+|(\s*<br\s*\/?>\s*)+$/gi, '');
 
   // Trim whitespace
   temp = temp.trim();
