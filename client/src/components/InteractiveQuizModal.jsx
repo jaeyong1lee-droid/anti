@@ -6,6 +6,64 @@ import { parseMarkdownTable } from '../utils/latexUtils';
 import { areCellsEqual } from '../utils/renderingHelpers';
 import { LatexRenderer } from './LatexRenderer';
 
+const getAcronymRows = (content) => {
+  if (!content) return [];
+  const contentStr = typeof content === 'string' ? content : String(content);
+  
+  if (contentStr.includes('|')) {
+    const lines = contentStr.split('\n');
+    const rows = [];
+    for (const line of lines) {
+      if (!line.includes('|')) continue;
+      let cleanLine = line.trim();
+      if (cleanLine.startsWith('|')) cleanLine = cleanLine.substring(1);
+      if (cleanLine.endsWith('|')) cleanLine = cleanLine.substring(0, cleanLine.length - 1);
+      const parts = cleanLine.split('|').map(p => p ? p.trim() : '');
+      if (parts.length < 3) continue;
+      const col1 = parts[0];
+      const col2 = parts[1];
+      const col3 = parts[2];
+      if (col1 === '두문자' || col1 === '두' || col1 === '글자' || col1.includes('---') || col2.includes('---')) continue;
+      if (!col1 && !col2 && !col3) continue;
+      rows.push({
+        acronym: col1,
+        word: col2,
+        description: col3
+      });
+    }
+    if (rows.length > 0) return rows;
+  }
+
+  // Fallback parser for bullet points
+  const rows = [];
+  const lines = contentStr.split('\n');
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith('•') || trimmed.startsWith('-') || trimmed.startsWith('*')) {
+      const match = trimmed.match(/^[•\-*]\s*([^(:\s]+)\s*\(([^)]+)\)\s*:\s*(.+)$/);
+      if (match) {
+        rows.push({
+          acronym: match[1].trim(),
+          word: match[2].trim(),
+          description: match[3].trim()
+        });
+      } else {
+        const colonIndex = trimmed.indexOf(':');
+        if (colonIndex !== -1) {
+          const left = trimmed.substring(1, colonIndex).trim();
+          const right = trimmed.substring(colonIndex + 1).trim();
+          rows.push({
+            acronym: left[0] || '',
+            word: left,
+            description: right
+          });
+        }
+      }
+    }
+  }
+  return rows;
+};
+
 const parseOverviewContent = (content) => {
   const result = { definition: '', mechanism: '', comparison: '', significance: '', intuitive: '' };
   if (!content) return result;
@@ -244,29 +302,51 @@ export function InteractiveQuizModal({
       let answers = item.answers ? { ...item.answers } : {};
 
       if (!mainData) {
-        const itemsList = item.items || item.list || [];
-        if (itemsList.length > 0) {
-          const rows = itemsList.map((it, rIdx) => {
+        const contentStr = typeof item.content === 'string' ? item.content : String(item.content || '');
+        const parsedRows = getAcronymRows(contentStr);
+
+        if (parsedRows.length > 0) {
+          const rows = parsedRows.map((it, rIdx) => {
             const inputId = `INPUT_${rIdx}_1`;
-            answers[inputId] = it.word || it.name || it.desc || '';
-            return [it.char || it.letter || `${rIdx + 1}`, `[${inputId}]`, it.desc || ''];
+            answers[inputId] = it.word || '';
+            return [it.acronym || `${rIdx + 1}`, `[${inputId}]`, it.description || ''];
           });
           mainData = {
-            headers: ['구분', '암기단어', '연상문장/공학적의미'],
+            headers: ['두문자', '암기단어', '연상문장/공학적의미'],
             rows: rows
           };
         } else {
-          const titleStr = item.title || '';
-          const chars = titleStr.split('');
-          const rows = chars.map((c, rIdx) => {
-            const inputId = `INPUT_${rIdx}_1`;
-            answers[inputId] = item.content || '';
-            return [c, `[${inputId}]`, item.content || ''];
-          });
-          mainData = {
-            headers: ['두문자', '암기단어', '연상문장'],
-            rows: rows
-          };
+          const itemsList = item.items || item.list || [];
+          if (itemsList.length > 0) {
+            const rows = itemsList.map((it, rIdx) => {
+              const inputId = `INPUT_${rIdx}_1`;
+              answers[inputId] = it.word || it.name || it.desc || '';
+              return [it.char || it.letter || `${rIdx + 1}`, `[${inputId}]`, it.desc || ''];
+            });
+            mainData = {
+              headers: ['두문자', '암기단어', '연상문장/공학적의미'],
+              rows: rows
+            };
+          } else {
+            const parsedTable = parseHtmlTable(contentStr).rows.length > 0 
+              ? parseHtmlTable(contentStr) 
+              : (parseMarkdownTable(contentStr)?.tableData || null);
+
+            if (parsedTable && parsedTable.rows && parsedTable.rows.length > 0) {
+              const compRows = parsedTable.rows.map((row, rIdx) => {
+                return row.map((cell, cIdx) => {
+                  if (cIdx === 0) return cell;
+                  const inputId = `INPUT_${rIdx}_${cIdx}`;
+                  answers[inputId] = cell;
+                  return `[${inputId}]`;
+                });
+              });
+              mainData = {
+                headers: parsedTable.headers || ['두문자', '암기단어', '연상문장'],
+                rows: compRows
+              };
+            }
+          }
         }
       }
 
@@ -595,7 +675,7 @@ export function InteractiveQuizModal({
 
       </div>
 
-      {/* Footer Controls (Left: 입력 초기화 + 전체 채점 및 확인 / Right: 다음 문제 + 닫기) */}
+      {/* Footer Controls (Left: 입력 초기화 + 전체 채점 및 확인 / Right: 이전 문제 + 다음 문제 + 닫기) */}
       <div className="px-5 py-3 border-t border-slate-800 bg-slate-900/90 flex items-center justify-between shrink-0 shadow-inner select-none">
         
         {/* Left Side Group */}
