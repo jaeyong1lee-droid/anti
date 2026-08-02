@@ -297,9 +297,8 @@ export async function callLLMWithFailover(systemInstruction, userPrompt, image =
         }
 
         if (isQuota) {
-          failedKeys.add(key);
-          console.log(`[키 장애 감지] ${task.label} (${task.model} -> ${actualModelName}) 쿼터 초과(429). 해당 키를 블랙리스트 처리하고 1.5초 쿨링 후 다음 키로 즉시 페일오버합니다.`);
-          await sleep(1500);
+          console.log(`[모델 쿼터 초과 감지] ${task.label} (${task.model} -> ${actualModelName}) 쿼터 초과(429). 동일 키의 하위 백업 모델로 즉시 순연합니다.`);
+          await sleep(500);
           break;
         }
 
@@ -369,7 +368,7 @@ ${scenarioGuideline}
 
     updateProgress(progressId, 0, '0단계: 사전 절대 지침 준수 분석 중...', 5);
     const genAI = new GoogleGenerativeAI(primaryKey);
-    const targetModelName = preferredModel || 'gemini-2.5-flash';
+    const targetModelName = preferredModel || globalPreferredModel || 'gemini-3.5-flash-lite';
     const model = genAI.getGenerativeModel({
       model: targetModelName,
       systemInstruction: systemInstruction,

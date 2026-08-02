@@ -40,10 +40,7 @@ function cleanQuizQuestion(q) {
   return q.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
-function getCoreSubjectFromTitle(title) {
-  if (!title) return '';
-  return title.trim();
-}
+
 
 
 

@@ -260,8 +260,6 @@ router.post(['/engineering-standards', '/other-standards'], async (req, res) => 
     }
 
     await writeStandardToFile('engineeringStandards.js', stamped);
-
-    await purgeAllQuizCaches();
     res.json({ ok: true });
   } catch (err) {
     console.error('POST /api/engineering-standards error:', err);
