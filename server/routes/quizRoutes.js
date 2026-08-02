@@ -1504,7 +1504,7 @@ router.get('/session/review', async (req, res) => {
           };
         }
         if (Array.isArray(data.questions)) {
-          data.questions = data.questions.map(q => healQuizQuestionObject(q));
+          data.questions = data.questions.map(q => sanitizeMultipleChoiceAnswer(healQuizQuestionObject(q)));
         }
       }
       res.json({ success: true, data });

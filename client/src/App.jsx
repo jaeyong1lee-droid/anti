@@ -17510,7 +17510,8 @@ ${itemsStr}
                 <div className="grid grid-cols-1 gap-3">
                   {q.options && q.options.map((option, idx) => {
                     const isSelected = previewSelectedOption === option;
-                    const isCorrect = option === q.answer;
+                    const targetAns = getSanitizedMcAnswer(q);
+                    const isCorrect = option === targetAns || option === q.answer;
                     
                     let optionClass = 'bg-slate-950/50 border-slate-800 hover:bg-slate-800/60 text-slate-300';
                     if (previewSelectedOption) {
@@ -19571,6 +19572,7 @@ ${itemsStr}
               {/* Left: Quiz Wrapper (Takes exactly 60% width on Desktop) */}
               <div 
                 className={`w-full shrink-0 md:flex-1 md:shrink landscape-w-55 landscape-bg-slate-900 min-w-0 snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30 ${
+{{ ... }}
                   (!isDesktop && !isMobileLandscape && reviewMobileTab !== 'list') ? 'hidden' : ''
                 }`}
               >
@@ -20021,7 +20023,8 @@ ${itemsStr}
                     const isMC = q.type === '객관식' || (q.options && q.options.length > 0);
                     const isSubj = !isMC;
                     const answered = selectedAnswers[idx] !== undefined;
-                    const isCorrect = answered && selectedAnswers[idx] === q.answer;
+                    const effectiveAns = getSanitizedMcAnswer(q);
+                    const isCorrect = answered && (selectedAnswers[idx] === effectiveAns || selectedAnswers[idx] === q.answer);
                     const isRevd = !!revealedQuestions[idx];
                     const subjIdx = isSubj ? aiQuestions.slice(0, idx).filter(question => {
                       const itemMC = question.type === '객관식' || (question.options && question.options.length > 0);
@@ -20063,10 +20066,10 @@ ${itemsStr}
                                 if (isMC) {
                                   const userAnswer = selectedAnswers[idx];
                                   if (userAnswer !== undefined && userAnswer !== null && userAnswer !== '') {
-                                    const isCorrect = userAnswer === q.answer;
+                                    const isMcCorrect = userAnswer === effectiveAns || userAnswer === q.answer;
                                     return (
                                       <span className="text-[10px] font-black px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 ml-1">
-                                        득점: {isCorrect ? W : 0} / {W}점
+                                        득점: {isMcCorrect ? W : 0} / {W}점
                                       </span>
                                     );
                                   }
