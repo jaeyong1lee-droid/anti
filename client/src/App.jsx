@@ -3950,13 +3950,16 @@ export default function App() {
           })
         });
         clearTimeout(timeoutId);
-        const data = await res.json();
+        const suggestedModelAnswer = data.suggestedModelAnswer;
         nextGrading[`${qIdx}_${inputId}`] = {
           isCorrect: data.isCorrect,
           score: data.score,
           reason: data.reason,
-          suggestedModelAnswer: data.suggestedModelAnswer
+          suggestedModelAnswer
         };
+        if (suggestedModelAnswer && q && q.answers) {
+          q.answers[inputId] = suggestedModelAnswer;
+        }
       } catch (err) {
         console.warn('AI cell grading fallback:', inputId, err.message);
         const isMatch = normalize(cleanUser) === normalize(cleanCorrect);
@@ -4187,13 +4190,16 @@ export default function App() {
         })
       });
       clearTimeout(timeoutId);
-      const data = await res.json();
+      const suggestedModelAnswer = data.suggestedModelAnswer;
       nextGrading[key] = {
         isCorrect: data.isCorrect,
         score: data.score,
         reason: data.reason,
-        suggestedModelAnswer: data.suggestedModelAnswer
+        suggestedModelAnswer
       };
+      if (suggestedModelAnswer && q && q.answers && inputId) {
+        q.answers[inputId] = suggestedModelAnswer;
+      }
     } catch (err) {
       console.error('Single cell grading error:', err);
       const normalize = (s) => (s || '').trim().toLowerCase().replace(/\s+/g, '');
