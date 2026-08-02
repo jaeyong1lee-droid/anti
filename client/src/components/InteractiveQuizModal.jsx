@@ -177,20 +177,28 @@ export function InteractiveQuizModal({
 
     if (type === 'table') {
       const answers = {};
-      let parsed = parseHtmlTable(item.html || item.content);
-      
-      if (!parsed.rows || parsed.rows.length === 0) {
-        const mdParsed = parseMarkdownTable((item.content || '') + '\n' + (item.html || ''));
-        if (mdParsed && mdParsed.tableData) {
-          parsed = mdParsed.tableData;
+      let parsed = null;
+
+      // Check pre-parsed tableData or comparisonTableData first
+      if (item.tableData && Array.isArray(item.tableData.headers) && Array.isArray(item.tableData.rows) && item.tableData.rows.length > 0) {
+        parsed = item.tableData;
+      } else if (item.comparisonTableData && Array.isArray(item.comparisonTableData.headers) && Array.isArray(item.comparisonTableData.rows) && item.comparisonTableData.rows.length > 0) {
+        parsed = item.comparisonTableData;
+      } else {
+        parsed = parseHtmlTable(item.html || item.content);
+        if (!parsed.rows || parsed.rows.length === 0) {
+          const mdParsed = parseMarkdownTable((item.content || '') + '\n' + (item.html || ''));
+          if (mdParsed && mdParsed.tableData) {
+            parsed = mdParsed.tableData;
+          }
         }
       }
 
-      const headers = (parsed.headers && parsed.headers.length > 0) 
+      const headers = (parsed && parsed.headers && parsed.headers.length > 0) 
         ? parsed.headers 
         : ['구분', '항목 1', '항목 2'];
 
-      const compRows = (parsed.rows || []).map((row, rIdx) => {
+      const compRows = (parsed && parsed.rows ? parsed.rows : []).map((row, rIdx) => {
         return row.map((cell, cIdx) => {
           if (cIdx === 0) return cell;
           const inputId = `INPUT_${rIdx}_${cIdx}`;
@@ -212,7 +220,7 @@ export function InteractiveQuizModal({
           rows: compRows
         },
         rawHeaders: headers,
-        rawRows: parsed.rows || [],
+        rawRows: (parsed && parsed.rows) ? parsed.rows : [],
         answers: answers
       };
     } else if (type === 'acronym') {
@@ -396,8 +404,26 @@ export function InteractiveQuizModal({
   if (!q) return null;
 
   return (
-    <div className="w-full h-full flex flex-col bg-slate-950 text-slate-100 overflow-hidden font-sans select-text">
-      
+    <div className="w-full h-full flex flex-col bg-slate-950 text-slate-100 overflow-hidden font-sans select-text quiz-modal-container">
+      <style>{`
+        .quiz-modal-container table {
+          table-layout: auto !important;
+          width: 100% !important;
+        }
+        .quiz-modal-container td,
+        .quiz-modal-container th {
+          height: auto !important;
+          padding: 8px 10px !important;
+          vertical-align: middle !important;
+        }
+        .quiz-modal-container textarea,
+        .quiz-modal-container .table-quiz-input {
+          min-height: 32px !important;
+          height: auto !important;
+          max-height: 120px !important;
+        }
+      `}</style>
+
       {/* Header */}
       <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-800 bg-slate-900/90 shrink-0 shadow-md">
         <div className="flex items-center gap-3">
@@ -445,10 +471,10 @@ export function InteractiveQuizModal({
       </div>
 
       {/* Main Body (Vertical Scroll Container for plenty of dragging & detailed review) */}
-      <div className="flex-1 overflow-y-auto p-5 space-y-6 scrollbar-thin scrollbar-thumb-slate-700">
+      <div className="flex-1 overflow-y-auto p-5 space-y-6 scrollbar-thin scrollbar-thumb-slate-700 quiz-modal-table-container">
         
         {/* Table/Acronym Quiz Component */}
-        <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 shadow-xl">
+        <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 shadow-xl overflow-x-auto">
           {type === 'acronym' ? (
             <AcronymQuiz
               questionIdx={0}
