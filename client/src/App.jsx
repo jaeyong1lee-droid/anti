@@ -4805,21 +4805,16 @@ export default function App() {
         table.style.setProperty('min-width', '100%', 'important');
         table.style.setProperty('max-width', '100%', 'important');
       } else if (colIdx === 1 && colCount > 1) {
-        // 2열 더블클릭 시: 1열과 2열의 현재 너비는 절대로 움직이거나 변경하지 않고 그대로 고정(Fixed)하며, 3열 이후의 모든 나머지 열을 2열의 현재 너비에 정확히 1:1 맞춤!
+        // 2열 더블클릭 시: 1열은 현재 상태 그대로 놔두고(건드리지 않음), 2열 및 3열 이후의 모든 열을 2열의 현재 너비에 맞춤!
         const col0Width = allThs[0].offsetWidth || MIN_WIDTH;
         const col2Width = allThs[1].offsetWidth || MIN_WIDTH;
 
-        // 1열(구분 열) 너비 현재 상태 그대로 100% 고정 (움직임 0)
-        allThs[0].style.setProperty('width', col0Width + 'px', 'important');
-        allThs[0].style.setProperty('min-width', MIN_WIDTH + 'px', 'important');
-        allThs[0].style.setProperty('max-width', col0Width + 'px', 'important');
-
-        // 2열 너비 현재 상태 그대로 100% 고정 (움직임 0)
+        // 2열 너비 지정
         allThs[1].style.setProperty('width', col2Width + 'px', 'important');
         allThs[1].style.setProperty('min-width', MIN_WIDTH + 'px', 'important');
         allThs[1].style.setProperty('max-width', col2Width + 'px', 'important');
 
-        // 1열과 2열을 제외한 모든 나머지 데이터 열(3열, 4열...) 너비를 2열의 현재 너비(col2Width)와 동일하게 1:1 통일
+        // 3열 이후의 모든 나머지 데이터 열(3열, 4열...) 너비를 2열의 현재 너비(col2Width)와 동일하게 1:1 통일
         let sumAllCols = col0Width + col2Width;
         for (let i = 2; i <= lastDataColIdx; i++) {
           allThs[i].style.setProperty('width', col2Width + 'px', 'important');
@@ -4836,7 +4831,7 @@ export default function App() {
         }
 
         const tableContainer = table.closest('.markdown-table-container') || table.parentElement;
-        // 전체 표 너비를 sumAllCols로 명시 고정하여 브라우저의 100% 가로 확장(1열, 2열 변형) 현상을 완전 차단
+        // 1열은 현재 상태 그대로 유지되도록 전체 표 너비를 sumAllCols로 명시 설정
         table.style.setProperty('width', sumAllCols + 'px', 'important');
         table.style.setProperty('min-width', sumAllCols + 'px', 'important');
         table.style.setProperty('max-width', 'none', 'important');
