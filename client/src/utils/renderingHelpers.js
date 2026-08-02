@@ -679,10 +679,6 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
   
   tempText = tempText.replace(/\*\*\*([^\*]+?)\*\*\*/g, `<strong style="color: ${boldColor}; font-style: italic; font-weight: 800;">$1</strong>`);
   tempText = tempText.replace(/\*\*([^\*]+?)\*\*/g, `<strong style="color: ${boldColor}; font-weight: 700;">$1</strong>`);
-  if (shouldHighlight) {
-    tempText = tempText.replace(/'([^'\n]+?)'/g, `<span style="color: ${yellowColor}; font-weight: normal;">'$1'</span>`);
-  }
-
   // Standalone horizontal rule divider
   tempText = tempText.replace(/^[ \t]*(?:\* * \*|\*\*\*|---|___)[ \t]*$/gm, '<hr style="border: 0; border-top: 1px solid rgba(255, 255, 255, 0.1); margin: 0.8rem 0;" />');
 
