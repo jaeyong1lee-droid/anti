@@ -126,23 +126,82 @@ function normalizeMcText(text) {
     .toLowerCase();
 }
 
+function extractMcKeywords(text) {
+  const norm = normalizeMcText(text);
+  const matches = norm.match(/(?:\d+\/\d+배?|\d+배|변화가\s*없다|증가|감소)/g) || [];
+  return matches;
+}
+
 export function getSanitizedMcAnswer(q) {
   if (!q || !q.answer) return q ? q.answer : '';
   if (!q.options || q.options.length === 0) return q.answer;
 
   const options = q.options;
   const currentAns = String(q.answer).trim();
+  const exp = q.explanation || '';
 
-  // 1. 보기 중 정확히 일치하는 항목이 있으면 그대로 반환 (JIT API가 이미 정확한 correctAnswer를 세팅한 경우)
+  // 1. 해설(explanation)이 존재할 경우, 해설 결론 구문 기반 자가 치유 (Self-Healing)
+  if (exp) {
+    const conclusionMatch = exp.match(/(?:\[최종\s*정답\s*산출\]|따라서|결론적으로|올바른\s*정답은|정답은)\s*([\s\S]+)$/i);
+    const searchTarget = conclusionMatch ? conclusionMatch[1] : exp;
+    const normTarget = normalizeMcText(searchTarget);
+
+    let bestOptFromExp = null;
+    let maxScore = -1;
+
+    for (let i = 0; i < options.length; i++) {
+      const opt = options[i];
+      const normOpt = normalizeMcText(opt);
+      if (!normOpt) continue;
+
+      let score = 0;
+      // 1) 보기의 전체 텍스트 매칭
+      if (normTarget.includes(normOpt) || normOpt.includes(normTarget)) {
+        score += 100;
+      }
+
+      // 2) 보기의 핵심 키워드(분수배, 감소/증가 등) 교차 매칭
+      const optKws = extractMcKeywords(opt);
+      if (optKws.length > 0) {
+        const matchedKws = optKws.filter(kw => normTarget.includes(kw));
+        score += matchedKws.length * 10;
+
+        // 분수배(1/4배 등) 구체적 키워드가 결론에 포함되면 추가 보너스
+        const hasFractionBonus = matchedKws.some(kw => /\d+\/\d+/.test(kw));
+        if (hasFractionBonus) score += 50;
+
+        // 방향성 상충 패널티 (결론이 감소인데 보기가 증가인 경우)
+        const targetHasDecrease = normTarget.includes('감소');
+        const targetHasIncrease = normTarget.includes('증가');
+        const optHasDecrease = normOpt.includes('감소');
+        const optHasIncrease = normOpt.includes('증가');
+
+        if (targetHasDecrease && optHasIncrease && !optHasDecrease) score -= 80;
+        if (targetHasIncrease && optHasDecrease && !optHasIncrease) score -= 80;
+      }
+
+      if (score > maxScore && score > 30) {
+        maxScore = score;
+        bestOptFromExp = opt;
+      }
+    }
+
+    if (bestOptFromExp) {
+      q.answer = bestOptFromExp;
+      return bestOptFromExp;
+    }
+  }
+
+  // 2. 정확 일치
   const exactMatch = options.find(opt => String(opt).trim() === currentAns);
   if (exactMatch) return exactMatch;
 
-  // 2. 공백·특수문자 제거 후 문자열 매칭
+  // 3. 공백·특수문자 제거 후 문자열 매칭
   const normAns = normalizeMcText(currentAns);
   const normMatch = options.find(opt => normalizeMcText(opt) === normAns);
   if (normMatch) return normMatch;
 
-  // 3. 부분 포함 매칭 (한쪽이 다른 쪽을 포함)
+  // 4. 부분 포함 매칭 (한쪽이 다른 쪽을 포함)
   const partialMatch = options.find(opt => {
     const normOpt = normalizeMcText(opt);
     return normOpt && normAns && (normOpt.includes(normAns) || normAns.includes(normOpt));
