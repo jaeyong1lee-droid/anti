@@ -4805,15 +4805,16 @@ export default function App() {
         table.style.setProperty('min-width', '100%', 'important');
         table.style.setProperty('max-width', '100%', 'important');
       } else if (colIdx === 1 && colCount > 1) {
-        // 2열 더블클릭 시: 2열의 현재 너비는 절대로 움직이거나 변경하지 않고 그대로 고정(Fixed)하고, 1열을 제외한 모든 나머지 열(3열, 4열...)의 너비를 2열의 현재 너비와 1:1로 정확히 동일하게 일치시킴!
+        // 2열 더블클릭 시: 1열과 2열의 현재 너비는 절대로 움직이거나 변경하지 않고 그대로 고정(Fixed)하며, 3열 이후의 모든 나머지 열을 2열의 현재 너비에 정확히 1:1 맞춤!
         const col0Width = allThs[0].offsetWidth || MIN_WIDTH;
         const col2Width = allThs[1].offsetWidth || MIN_WIDTH;
 
-        // 1열(구분 열) 및 2열 너비 현재 상태 그대로 100% 고정 (움직임 0)
+        // 1열(구분 열) 너비 현재 상태 그대로 100% 고정 (움직임 0)
         allThs[0].style.setProperty('width', col0Width + 'px', 'important');
         allThs[0].style.setProperty('min-width', MIN_WIDTH + 'px', 'important');
         allThs[0].style.setProperty('max-width', col0Width + 'px', 'important');
 
+        // 2열 너비 현재 상태 그대로 100% 고정 (움직임 0)
         allThs[1].style.setProperty('width', col2Width + 'px', 'important');
         allThs[1].style.setProperty('min-width', MIN_WIDTH + 'px', 'important');
         allThs[1].style.setProperty('max-width', col2Width + 'px', 'important');
@@ -4835,17 +4836,11 @@ export default function App() {
         }
 
         const tableContainer = table.closest('.markdown-table-container') || table.parentElement;
-        const containerWidth = tableContainer ? tableContainer.clientWidth : table.clientWidth;
-        if (sumAllCols <= containerWidth) {
-          table.style.setProperty('width', '100%', 'important');
-          table.style.setProperty('min-width', '100%', 'important');
-          table.style.setProperty('max-width', '100%', 'important');
-        } else {
-          table.style.setProperty('width', sumAllCols + 'px', 'important');
-          table.style.setProperty('min-width', sumAllCols + 'px', 'important');
-          table.style.setProperty('max-width', 'none', 'important');
-          if (tableContainer) tableContainer.style.overflowX = 'auto';
-        }
+        // 전체 표 너비를 sumAllCols로 명시 고정하여 브라우저의 100% 가로 확장(1열, 2열 변형) 현상을 완전 차단
+        table.style.setProperty('width', sumAllCols + 'px', 'important');
+        table.style.setProperty('min-width', sumAllCols + 'px', 'important');
+        table.style.setProperty('max-width', 'none', 'important');
+        if (tableContainer) tableContainer.style.overflowX = 'auto';
       } else if ((colIdx === lastDataColIdx || colIdx === colCount - 1) && colCount > 1 && colIdx > 0) {
         // 마지막 열(또는 마지막 데이터 열) 헤더 우측 더블클릭 시: 이전 열들의 너비는 그대로 고정하고, 마지막 열 너비만 조정하여 표 오른쪽 끝을 컨테이너 오른쪽 끝에 맞춤
         const tableContainer = table.closest('.markdown-table-container') || table.parentElement;
