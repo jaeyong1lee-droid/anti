@@ -128,64 +128,26 @@ function normalizeMcText(text) {
 
 export function getSanitizedMcAnswer(q) {
   if (!q || !q.answer) return q ? q.answer : '';
-  if (!q.options || q.options.length === 0 || !q.explanation) return q.answer;
+  if (!q.options || q.options.length === 0) return q.answer;
 
   const options = q.options;
-  const exp = q.explanation;
   const currentAns = String(q.answer).trim();
 
-  // 1. "올바른 정답은 'X'입니다" 또는 "정답은 'X'" 특수 패턴 최우선 추출
-  const explicitCorrectMatch = exp.match(/(?:올바른\s*정답은|정답은|최종\s*정답은)\s*['"]?([^'".\n]+)['"]?/i);
-  if (explicitCorrectMatch && explicitCorrectMatch[1]) {
-    const rawTarget = explicitCorrectMatch[1];
-    const normTarget = normalizeMcText(rawTarget);
-    const matchedOpt = options.find(opt => {
-      const normOpt = normalizeMcText(opt);
-      return normOpt && (normTarget.includes(normOpt) || normOpt.includes(normTarget));
-    });
-    if (matchedOpt) {
-      q.answer = matchedOpt;
-      return matchedOpt;
-    }
-  }
+  // 1. 보기 중 정확히 일치하는 항목이 있으면 그대로 반환 (JIT API가 이미 정확한 correctAnswer를 세팅한 경우)
+  const exactMatch = options.find(opt => String(opt).trim() === currentAns);
+  if (exactMatch) return exactMatch;
 
-  // 2. 일반 결론 문장 추출
-  const conclusionMatch = exp.match(/(?:\[최종\s*정답\s*산출\]|따라서|정답은|결론적으로)[\s\S]*$/i);
-  const searchTarget = conclusionMatch ? conclusionMatch[0] : exp;
-  const normalizedTarget = normalizeMcText(searchTarget);
+  // 2. 공백·특수문자 제거 후 문자열 매칭
+  const normAns = normalizeMcText(currentAns);
+  const normMatch = options.find(opt => normalizeMcText(opt) === normAns);
+  if (normMatch) return normMatch;
 
-  let bestMatch = null;
-  let bestScore = 0;
-
-  for (let i = 0; i < options.length; i++) {
-    const opt = options[i];
+  // 3. 부분 포함 매칭 (한쪽이 다른 쪽을 포함)
+  const partialMatch = options.find(opt => {
     const normOpt = normalizeMcText(opt);
-    if (!normOpt) continue;
-
-    if (normalizedTarget.includes(normOpt)) {
-      bestMatch = opt;
-      bestScore = 100;
-      break;
-    }
-
-    const numKeywords = normOpt.match(/(?:\d+\/\d+배?|\d+배|변화가\s*없다|증가|감소)/g) || [];
-    if (numKeywords.length > 0) {
-      const matchedKws = numKeywords.filter(kw => normalizedTarget.includes(normalizeMcText(kw)));
-      const matchCount = matchedKws.length;
-      // 더 구체적인 키워드(분수배 등)에 가중치 부여: 1/4배 같은 패턴은 2점 추가
-      const specificityBonus = matchedKws.filter(kw => /\d+\/\d+/.test(kw)).length * 2;
-      const totalScore = matchCount + specificityBonus;
-      if (totalScore > bestScore) {
-        bestScore = totalScore;
-        bestMatch = opt;
-      }
-    }
-  }
-
-  if (bestMatch) {
-    q.answer = bestMatch;
-    return bestMatch;
-  }
+    return normOpt && normAns && (normOpt.includes(normAns) || normAns.includes(normOpt));
+  });
+  if (partialMatch) return partialMatch;
 
   return q.answer;
 }
@@ -20370,12 +20332,12 @@ ${itemsStr}
 
                                     if (jitResult && jitResult.correctAnswer) {
                                       const freshExplanation = jitResult.explanation || q.explanation;
-                                      const sanitizedJitAns = getSanitizedMcAnswer({
-                                        options: q.options,
-                                        answer: jitResult.correctAnswer,
-                                        explanation: freshExplanation
-                                      });
-                                      q.answer = sanitizedJitAns;
+                                      // JIT API가 반환한 correctAnswer를 보기 배열에서 직접 찾아 사용 (텍스트 파싱 불필요)
+                                      const jitAns = String(jitResult.correctAnswer).trim();
+                                      const matchedOpt = (q.options || []).find(opt => String(opt).trim() === jitAns)
+                                                      || (q.options || []).find(opt => normalizeMcText(opt) === normalizeMcText(jitAns))
+                                                      || jitAns;
+                                      q.answer = matchedOpt;
                                       q.explanation = freshExplanation;
 
                                       setAiQuestions(prev => {
@@ -20383,7 +20345,7 @@ ${itemsStr}
                                         if (updated[idx]) {
                                           updated[idx] = {
                                             ...updated[idx],
-                                            answer: sanitizedJitAns,
+                                            answer: matchedOpt,
                                             explanation: freshExplanation
                                           };
                                         }
