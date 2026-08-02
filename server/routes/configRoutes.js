@@ -323,49 +323,7 @@ router.post('/grading-standards', async (req, res) => {
   }
 });
 
-// GET /api/validation-standards
-router.get('/validation-standards', async (req, res) => {
-  try {
-    try {
-      const row = await dbQuery.get("SELECT value FROM app_session WHERE key = 'validation_standards'");
-      if (row && row.value) {
-        const list = JSON.parse(row.value);
-        return res.json({ standards: list });
-      }
-    } catch (dbErr) {
-      console.error('Failed to read validation standards from database:', dbErr.message);
-    }
-    res.json({ standards: validationStandardsList });
-  } catch (err) {
-    console.error('GET /api/validation-standards error:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
 
-// POST /api/validation-standards
-router.post('/validation-standards', async (req, res) => {
-  try {
-    const { standards } = req.body;
-    if (!Array.isArray(standards)) {
-      return res.status(400).json({ error: 'standards must be an array' });
-    }
-
-    const stamped = stampUpdatedStandards(standards, validationStandardsList);
-    updateLiveValidationStandards(stamped);
-
-    try {
-      await saveSessionValue('validation_standards', JSON.stringify(stamped));
-      console.log('Successfully saved validation standards to database.');
-    } catch (dbErr) {
-      console.error('Failed to save validation standards to database:', dbErr.message);
-    }
-
-    res.json({ ok: true });
-  } catch (err) {
-    console.error('POST /api/validation-standards error:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
 
 // GET /api/generation-standards
 router.get('/generation-standards', async (req, res) => {

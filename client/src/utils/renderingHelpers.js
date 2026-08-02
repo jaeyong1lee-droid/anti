@@ -510,64 +510,13 @@ export function transformAsciiGraphToSvg(_code) {
 
 export function removeSourceCitationsFromText(text) {
   if (!text || typeof text !== 'string') return text;
-  // Ensure source citations (* KDS..., * 원보고서..., * Wikipedia...) start on a clean new line rather than sticking to the last sentence
-  let formatted = text.replace(/([^\n])\s*(\*\s*(?:KDS|KCS|KWCS|KS|ASTM|AASHTO|국토교통부|한국도로공사|원보고서|Wikipedia|출처|참고문헌|설계기준))/gi, '$1\n\n$2');
   // Separate multiple inline citation bullets onto their own lines
-  formatted = formatted.replace(/([^\n])\s+(\*\s*(?:KDS|KCS|KWCS|KS|ASTM|AASHTO|국토교통부|한국도로공사|원보고서|Wikipedia|출처|참고문헌|설계기준))/gi, '$1\n$2');
+  let formatted = text.replace(/([^\n])\s+(\*\s*(?:KDS|KCS|KWCS|KS|ASTM|AASHTO|국토교통부|한국도로공사|원보고서|Wikipedia|출처|참고문헌|설계기준))/gi, '$1\n$2');
   return formatted.replace(/\n{3,}/g, '\n\n').trim();
 }
 
 export function getOnlySourceAccordion(text, qTitle = '') {
   return '';
-}
-
-function _unusedSourceAccordionLogic(text, qTitle = '') {
-
-  const sourceItemRegex = /^[ \t]*(?:\*|-|•|\d+[\.\)]|\[\d+\])?[ \t]*(?:📚|📖|📄|🔖|💡|📌|🔍|📜|📑|📘)?[ \t]*(?:\*\*|\[)?\s*(KDS|KCS|KWCS|KS|ASTM|AASHTO|FHWA|USACE|JHD|국토교통부|국토부|건설교통부|건교부|해양수산부|해수부|환경부|산업통상자원부|한국도로공사|도로공사|LH|LH공사|수자원공사|K-water|농어촌공사|철도공단|철도시설공단|지반공학회|토목학회|발파공학회|터널지하공간학회|서울시|서울특별시|일본도로공단|원보고서|보고서|Wikipedia|위키|http:\/\/|https:\/\/|출처|참고자료|참고문헌|근거|시방서|설계기준|지침|설계지침|시공지침|안전지침|시공기준|기술기준|지반조사|논문|학술지|서적|교재|도서|Soil Mechanics|Lambe|Whitman|Peck|Terzaghi|Bowles|Das|Skempton|Bjerrum|Casagrande|Asaoka|Mesa)([\s\S]*?)(?=\n[ \t]*(?:\*|-|•|\d+[\.\)]|\[\d+\]|#{1,6}\s+)|\n\n|$)/gmi;
-
-  const matches = [...safeText.matchAll(sourceItemRegex)];
-
-  // Extract meaningful body lines from text for dynamic fallback body content
-  const extractFallbackContent = (bodyStr) => {
-    if (!bodyStr) return '';
-    const lines = bodyStr.split('\n')
-      .map(l => l.trim())
-      .filter(l => l.length > 5 && !/^[ \t]*(?:\*|-|•|\d+[\.\)]|\[\d+\])?[ \t]*(?:📜|📚|📖|📄|🔖|💡|📌|🔍|📑|📘)?[ \t]*(?:\*\*|\[)?\s*(KDS|KCS|원보고서|Wikipedia|출처)/i.test(l));
-    if (lines.length === 0) return '';
-    return lines.slice(0, 3).map(l => `• ${l.replace(/^[\*•\-]\s*/, '')}`).join('<br/>');
-  };
-
-  const dynamicFallbackBody = extractFallbackContent(safeText);
-
-  let rawButtons = '';
-  let count = 0;
-
-  if (matches.length > 0) {
-    const uniqueItems = new Set();
-    const btnHtmls = [];
-    for (const m of matches) {
-      const itemStr = m[0].trim();
-      const cleanKey = itemStr.replace(/[^a-zA-Z0-9가-힣]/g, '').substring(0, 30);
-      if (!uniqueItems.has(cleanKey)) {
-        uniqueItems.add(cleanKey);
-        const btn = buildSingleButtonHtml(itemStr, dynamicFallbackBody);
-        if (btn) btnHtmls.push(btn);
-      }
-    }
-    rawButtons = btnHtmls.join('\n');
-    count = btnHtmls.length;
-  }
-
-  if (count === 0) {
-    const defaultBtn1 = buildSingleButtonHtml(`국가 건설기준 KDS / KCS: ${cleanTopicTitle}`, dynamicFallbackBody);
-    const defaultBtn2 = buildSingleButtonHtml(`원보고서 본문: ${cleanTopicTitle}`, dynamicFallbackBody);
-    const defaultBtn3 = buildSingleButtonHtml(`Wikipedia / 학술문헌: ${cleanTopicTitle}`, dynamicFallbackBody);
-
-    rawButtons = [defaultBtn1, defaultBtn2, defaultBtn3].filter(Boolean).join('\n');
-    count = 3;
-  }
-
-  return `<details class="my-2 border border-slate-700/60 rounded-xl overflow-hidden bg-slate-900/90 shadow-md select-text"><summary class="px-3 py-1.5 bg-gradient-to-r from-slate-850 via-slate-900 to-slate-850 hover:from-slate-800 hover:to-slate-800 text-slate-100 font-bold text-xs sm:text-sm cursor-pointer flex items-center justify-between select-none border-b border-slate-800/50 group"><span class="flex items-center gap-2"><span class="px-2 py-0.5 text-[11px] font-black rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0">📜 출처 및 근거 보고서 (${count}개)</span><span class="text-slate-400 text-xs font-normal hidden sm:inline">(클릭 시 열기/접기)</span></span><span class="text-[11px] sm:text-xs text-amber-400 font-semibold px-2 py-0.5 rounded-lg bg-amber-400/10 border border-amber-400/20 flex items-center gap-1 group-hover:bg-amber-400/20 shrink-0"><span>열기 / 접기</span><span class="text-[10px]">▼</span></span></summary><div class="p-1 space-y-0.5 bg-slate-950/80 border-t border-slate-800">${rawButtons}</div></details>`;
 }
 
 export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold = false, isTutor = false, isExplanation = false) {

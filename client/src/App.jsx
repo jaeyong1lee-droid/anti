@@ -6086,14 +6086,7 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
   const [isSavingGradingStandardsList, setIsSavingGradingStandardsList] = useState(false);
   const [isLoadingGradingStandardsList, setIsLoadingGradingStandardsList] = useState(false);
   
-  const [showManageValidationStandardsModal, setShowManageValidationStandardsModal] = useState(false);
-  const [showEditValidationStandardModal, setShowEditValidationStandardModal] = useState(false);
-  const [validationStandardsList, setValidationStandardsList] = useState([]);
-  const [editingValidationStandard, setEditingValidationStandard] = useState(null);
-  const [editingValidationTitle, setEditingValidationTitle] = useState('');
-  const [editingValidationContent, setEditingValidationContent] = useState('');
-  const [isSavingValidationStandardsList, setIsSavingValidationStandardsList] = useState(false);
-  const [isLoadingValidationStandardsList, setIsLoadingValidationStandardsList] = useState(false);
+
   
   const [showManageGenerationStandardsModal, setShowManageGenerationStandardsModal] = useState(false);
   const [showEditGenerationStandardModal, setShowEditGenerationStandardModal] = useState(false);
@@ -12698,8 +12691,7 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
     }
   };
 
-  const editValidationTitleRef = useRef(null);
-  const editValidationContentRef = useRef(null);
+
   const editTopicInstructionTitleRef = useRef(null);
   const editTopicInstructionContentRef = useRef(null);
   const editGenerationTitleRef = useRef(null);
@@ -12729,16 +12721,7 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
     }
   }, [showEditLockscreenStandardModal]);
 
-  useEffect(() => {
-    if (showEditValidationStandardModal) {
-      setTimeout(() => {
-        if (editValidationTitleRef.current) {
-          editValidationTitleRef.current.focus();
-          editValidationTitleRef.current.select();
-        }
-      }, 100);
-    }
-  }, [showEditValidationStandardModal]);
+
 
   useEffect(() => {
     if (showEditGenerationStandardModal) {
@@ -12751,21 +12734,7 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
     }
   }, [showEditGenerationStandardModal]);
 
-  const handleOpenManageValidationStandardsModal = async () => {
-    setShowManageValidationStandardsModal(true);
-    setIsLoadingValidationStandardsList(true);
-    try {
-      const res = await fetch(`${API_BASE}/api/validation-standards`);
-      if (!res.ok) throw new Error('검증 기준 데이터를 불러오지 못했습니다.');
-      const data = await res.json();
-      setValidationStandardsList(data.standards || []);
-    } catch (err) {
-      console.error(err);
-      showNotification(err.message, 'error');
-    } finally {
-      setIsLoadingValidationStandardsList(false);
-    }
-  };
+
 
   const handleOpenManageTopicInstructionsModal = async () => {
     const activeTopic = selectedTopic || examTopic;
@@ -12884,94 +12853,7 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
     }
   };
 
-  const handleDeleteValidationStandard = async (id) => {
-    if (!window.confirm('정말 이 검증 기준을 삭제하시겠습니까?')) return;
-    const updatedList = validationStandardsList.filter(s => s.id !== id);
-    setIsSavingValidationStandardsList(true);
-    try {
-      const res = await fetch(`${API_BASE}/api/validation-standards`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ standards: updatedList })
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || '삭제 저장에 실패했습니다.');
-      }
-      setValidationStandardsList(updatedList);
-      showNotification('검증 기준이 삭제되었습니다.', 'success');
-    } catch (err) {
-      console.error(err);
-      showNotification(err.message, 'error');
-    } finally {
-      setIsSavingValidationStandardsList(false);
-    }
-  };
 
-  const handleOpenAddValidationStandardModal = () => {
-    setEditingValidationStandard(null);
-    setEditingValidationTitle('');
-    setEditingValidationContent('');
-    setShowEditValidationStandardModal(true);
-  };
-
-  const handleOpenEditValidationStandardModal = (std) => {
-    setEditingValidationStandard(std);
-    setEditingValidationTitle(std.title || '');
-    setEditingValidationContent(std.content || '');
-    setShowEditValidationStandardModal(true);
-  };
-
-  const handleSaveEditValidationStandard = async () => {
-    if (!editingValidationTitle.trim()) {
-      showNotification('제목을 입력해주세요.', 'error');
-      return;
-    }
-    if (!editingValidationContent.trim()) {
-      showNotification('내용을 입력해주세요.', 'error');
-      return;
-    }
-
-    let updatedList;
-    if (editingValidationStandard) {
-      // Edit mode
-      updatedList = validationStandardsList.map(s => 
-        s.id === editingValidationStandard.id 
-          ? { ...s, title: editingValidationTitle, content: editingValidationContent } 
-          : s
-      );
-    } else {
-      // Add mode
-      const newId = 'user_validation_' + Math.random().toString(36).substring(2, 9);
-      const newStd = {
-        id: newId,
-        title: editingValidationTitle,
-        content: editingValidationContent
-      };
-      updatedList = [...validationStandardsList, newStd];
-    }
-
-    setIsSavingValidationStandardsList(true);
-    try {
-      const res = await fetch(`${API_BASE}/api/validation-standards`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ standards: updatedList })
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || '저장에 실패했습니다.');
-      }
-      setValidationStandardsList(updatedList);
-      showNotification('검증 기준이 저장되었습니다.', 'success');
-      setShowEditValidationStandardModal(false);
-    } catch (err) {
-      console.error(err);
-      showNotification(err.message, 'error');
-    } finally {
-      setIsSavingValidationStandardsList(false);
-    }
-  };
 
   const handleOpenManageGenerationStandardsModal = async () => {
     setShowManageGenerationStandardsModal(true);
@@ -15743,140 +15625,7 @@ ${itemsStr}
   };
 
   const loadTheoryQuestions = async () => { return []; };
-  const _loadTheoryQuestions_unused = async () => {
-    setLoadingTheory(true);
-    let loadedData = null;
 
-    // 1) Try Database Sync
-    try {
-      const res = await fetch(`${API_BASE}/api/session/theory?t=${Date.now()}`);
-      if (res.ok) {
-        const body = await res.json();
-        if (body && body.data && Array.isArray(body.data.theoryQuestions) && body.data.theoryQuestions.length > 0) {
-          loadedData = body.data.theoryQuestions;
-          console.log('[Sync] Loaded theory questions from database.');
-        }
-      }
-    } catch (err) {
-      console.warn('[Sync] Database theory loading failed:', err);
-    }
-
-    // 2) Fallback to Defaults if still empty
-    if (!loadedData) {
-      const defaultTheories = [
-        {
-          title: "Terzaghi 1차원 압밀 지배방정식 유도",
-          concept: "점토층 내 과잉간극수압의 소산 및 침하 시간적 추이를 물리적으로 정밀 묘사하는 지배방정식",
-          formula: "지배 미분방정식:\n$$\\frac{\\partial u}{\\partial t} = C_v \\frac{\\partial^2 u}{\\partial z^2}$$\n\n[주요 유도 가정]:\n1. 흙입자와 물은 압축성이 없음(비압축성)\n2. 흙 속 물의 흐름은 Darcy 법칙을 따름 ($v = k i$)\n3. 압밀은 1차원으로만 진행되며 흙의 공극비 변화는 유효응력 증가에 선형 비례함 ($a_v$ 일정)"
-        },
-        {
-          title: "Terzaghi 얕은기초 극한지지력 공식의 유도",
-          concept: "기초 저면 아래 지반의 전단 전파 거동(일반 전단 파괴)을 극한 상태 한계 평형으로 수치화한 지지력 공식",
-          formula: "Terzaghi 극한 지지력:\n$$q_{ult} = c N_c + q N_q + 0.5 \\gamma B N_{\\gamma}$$\n\n[유도 메커니즘]:\n- 지반 파괴 영역을 3개 zone(Zone I: 탄성 쐐기, Zone II: 대수나선 방사형 전단 영역, Zone III: Rankine 수동 수평 지반 영역)으로 분할하여 상부 하중 벡터와 전단 저항 한계선 결합"
-        },
-        {
-          title: "Rankine 주동토압 공식의 이론적 유도",
-          concept: "지반이 가설 벽체 배면 방향으로 팽창 변형을 일으켜 한계 인장 소성 상태에 도달할 때의 수평 응력",
-          formula: "주동토압 강도 식:\n$$p_a = \\gamma z K_a - 2 c \\sqrt{K_a}$$\n\n[주요 유도 공식]:\n- Mohr-Coulomb 파괴 포락선과 Mohr 응력원의 접점 기하학적 분석을 통하여 $K_a = \\tan^2(45^\\circ - \\phi/2)$ 수식 도출"
-        }
-      ];
-      loadedData = defaultTheories;
-    }
-
-    const cleaned = (loadedData || []).map(healTheoryQuestionObject);
-    latestTheoryQuestionsRef.current = cleaned;
-    setTheoryQuestions(cleaned);
-    setLoadingTheory(false);
-    return loadedData;
-  };
-
-  const handleSaveTheoryQuestions = async () => {};
-  const _handleSaveTheoryQuestions_unused = async (qs, showToast = true) => {
-    try {
-      const healedQs = Array.isArray(qs) ? qs.map(healTheoryQuestionObject) : qs;
-      latestTheoryQuestionsRef.current = healedQs;
-      setTheoryQuestions(healedQs);
-      
-      // Sync with database for cross-device support (AWAITED to avoid timing issues)
-      const res = await fetch(`${API_BASE}/api/session/theory`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ theoryQuestions: healedQs })
-      });
-
-      if (!res.ok) {
-        throw new Error('Database sync returned non-OK status');
-      }
-
-      if (showToast) {
-        showNotification('이론유도 리스트가 성공적으로 저장되었습니다!', 'success');
-      }
-    } catch (err) {
-      console.warn('이론유도 저장 실패:', err);
-      if (showToast) {
-        showNotification('서버 저장 실패: 저장에 실패했습니다.', 'error');
-      }
-    }
-  };
-
-  const handleUploadTheoryPdf = async () => {};
-  const _handleUploadTheoryPdf_unused = async () => {
-    if (!file) return;
-    const fileNameLower = file.name.toLowerCase();
-    const isPdf = file.type === 'application/pdf' || fileNameLower.endsWith('.pdf');
-    const isHtml = file.type === 'text/html' || fileNameLower.endsWith('.html') || fileNameLower.endsWith('.htm');
-    
-    if (!isPdf && !isHtml) {
-      showNotification('PDF 또는 HTML 파일 형식만 업로드 가능합니다.', 'error');
-      return;
-    }
-
-    setUploadingTheoryPdf(true);
-    showNotification(`[${file.name}] 문서를 업로드하여 AI 분석을 시작합니다...`, 'info');
-
-    try {
-      const formData = new FormData();
-      formData.append('pdf', file);
-      formData.append('fileNameUtf8', file.name);
-
-      const res = await fetch(`${API_BASE}/api/session/theory/upload`, {
-        method: 'POST',
-        body: formData
-      });
-
-      if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.error || 'PDF 분석 실패');
-      }
-
-      const data = await res.json();
-      const theories = data.theories || [];
-      if (theories.length === 0) {
-        throw new Error('AI 분석 결과에서 이론 유도 문제를 생성하지 못했습니다.');
-      }
-
-      // Add to state
-      setTheoryQuestions(prev => {
-        const newItems = theories.map(t => ({
-          title: t.title,
-          concept: t.concept || '업로드한 본문 문서를 기반으로 실시간 AI가 분석한 이론식입니다.',
-          assumptions: t.assumptions || '',
-          formula: t.answer
-        }));
-        const updated = [...newItems, ...prev].map(healTheoryQuestionObject);
-        latestTheoryQuestionsRef.current = updated;
-        handleSaveTheoryQuestions(updated, false);
-        return updated;
-      });
-
-      showNotification(`총 ${theories.length}개의 핵심 이론 유도 문제가 성공적으로 생성되어 리스트 맨 위에 추가되었습니다!`, 'success');
-    } catch (err) {
-      console.error('Theory upload failed:', err);
-      showNotification(err.message || 'PDF 분석 중 오류가 발생했습니다.', 'error');
-    } finally {
-      setUploadingTheoryPdf(false);
-    }
-  };
 
   const handleRefreshTheory = (idx) => {
     if (idx === null || idx === undefined) return;
@@ -16234,20 +15983,7 @@ ${itemsStr}
   }, [expandedTableIds]);
 
   const handleOpenTheoryExam = async () => {};
-  const _handleOpenTheoryExam_unused = async () => {
-    setShowTheoryExam(true);
-    setTheoryMobileTab('list');
-    requestAnimationFrame(() => {
-      if (theorySplitContainerRef.current) theorySplitContainerRef.current.scrollLeft = 0;
-    });
-    
-    // Always load the latest synced data from database to ensure multi-device sync
-    await loadTheoryQuestions();
-    
-    requestAnimationFrame(() => {
-      if (theoryBodyRef.current) theoryBodyRef.current.scrollTop = savedTheoryScroll.current;
-    });
-  };
+
 
   const handleOpenFormulaExam = async () => {
     setShowFormulaExam(true);
@@ -18811,13 +18547,7 @@ ${itemsStr}
                   <span>채점</span>
                 </button>
 
-                <button
-                  type="button"
-                  onClick={handleOpenManageValidationStandardsModal}
-                  className="hidden md:flex items-center justify-center px-3 py-1.5 rounded-xl border border-cyan-500/20 bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20 hover:border-cyan-500/30 transition-all active:scale-98 text-[11px] font-black cursor-pointer shadow-md"
-                >
-                  <span>검증</span>
-                </button>
+
 
                 <button
                   type="button"
@@ -21888,110 +21618,7 @@ ${itemsStr}
         </div>
       )}
 
-      {/* ⚙️ 검증 기준 통합 관리 모달 (Validation Standards Management Modal) */}
-      {showManageValidationStandardsModal && (
-        <div className="fixed inset-0 z-[200] overflow-y-auto flex items-center justify-center p-4 bg-black/45 backdrop-blur-sm transition-all duration-300 animate-fade-in" onClick={() => setShowManageValidationStandardsModal(false)}>
-          <div className="w-full max-w-4xl bg-slateCustom-900 border border-white/20 rounded-2xl overflow-hidden shadow-2xl p-6 space-y-4 animate-scale-up text-left" onClick={(e) => e.stopPropagation()}>
-            
-            {/* Modal Header */}
-            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
-              <div className="flex items-center gap-2">
-                <div className="p-1.5 bg-cyan-500/10 text-cyan-400 rounded-lg">
-                  <Sliders size={18} className="text-cyan-500 animate-pulse" />
-                </div>
-                <h3 className="text-sm font-extrabold text-white">⚙️ 검증 지시 통합 관리</h3>
-              </div>
-              <button
-                onClick={() => setShowManageValidationStandardsModal(false)}
-                className="w-6 h-6 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-200 flex items-center justify-center transition-all cursor-pointer"
-              >
-                <X size={14} />
-              </button>
-            </div>
 
-            {/* Modal Body */}
-            <div className="py-2 space-y-3">
-              <p className="text-[11px] text-slate-400 leading-relaxed font-semibold">
-                💡 문제 생성 자가 검증 시 사용되는 지시 기준 목록입니다. 이곳에 추가된 모든 항목은 AI 검수위원의 **문제 검증** 시 지시사항 프롬프트로 병합되어 실시간 반영됩니다.
-              </p>
-              
-              {isLoadingValidationStandardsList ? (
-                <div className="flex flex-col items-center justify-center py-16 gap-2 w-full">
-                  <div className="w-6 h-6 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
-                  <span className="text-[10px] text-cyan-400 font-bold animate-pulse">서버에서 검증 기준 데이터를 로드하는 중입니다...</span>
-                </div>
-              ) : (
-                <div className="overflow-x-auto border border-slate-800 rounded-xl">
-                  <table className="w-full text-xs text-slate-300 divide-y divide-slate-800">
-                    <thead className="bg-slate-950/60 font-black text-slate-400 select-none">
-                      <tr>
-                        <th className="px-4 py-3 text-left w-12">번호</th>
-                        <th className="px-4 py-3 text-left w-48">기준 제목</th>
-                        <th className="px-4 py-3 text-left">기준 내용 요약</th>
-                        <th className="px-4 py-3 text-center w-36">관리</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-800 bg-slate-900/20">
-                      {validationStandardsList.map((std, idx) => (
-                        <tr key={std.id} className="hover:bg-slate-800/30 transition-colors">
-                          <td className="px-4 py-3 font-semibold text-slate-500">{idx + 1}</td>
-                          <td className="px-4 py-3 font-bold text-white whitespace-nowrap overflow-hidden text-ellipsis max-w-[190px]" title={std.title}>{std.title}</td>
-                          <td className="px-4 py-3 text-slate-400 max-w-[300px] overflow-hidden text-ellipsis whitespace-nowrap" title={std.content}>
-                            {std.content ? std.content.trim().replace(/\n/g, ' ').slice(0, 100) + (std.content.trim().length > 100 ? '...' : '') : ''}
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            <div className="flex justify-center gap-1.5">
-                              <button
-                                type="button"
-                                onClick={() => handleOpenEditValidationStandardModal(std)}
-                                className="px-2 py-1 bg-cyan-600/10 border border-cyan-500/20 hover:bg-cyan-600/20 hover:border-cyan-500/40 text-cyan-400 rounded-lg transition-all text-[10px] font-black cursor-pointer active:scale-95 flex items-center gap-1"
-                              >
-                                <span>✏️ 수정</span>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteValidationStandard(std.id)}
-                                className="px-2 py-1 bg-rose-600/10 border border-rose-500/20 hover:bg-rose-600/20 hover:border-rose-500/40 text-rose-400 rounded-lg transition-all text-[10px] font-black cursor-pointer active:scale-95 flex items-center gap-1"
-                                disabled={isSavingValidationStandardsList}
-                              >
-                                <span>❌ 삭제</span>
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                      {validationStandardsList.length === 0 && (
-                        <tr>
-                          <td colSpan="4" className="px-4 py-8 text-center text-slate-500 font-semibold">
-                            등록된 검증 기준이 없습니다. 새로운 기준을 추가해보세요.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-
-            {/* Modal Footer */}
-            <div className="flex justify-between items-center pt-2 border-t border-slate-800">
-              <button
-                onClick={handleOpenAddValidationStandardModal}
-                disabled={isLoadingValidationStandardsList || isSavingValidationStandardsList}
-                className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer flex items-center gap-1.5"
-              >
-                <span>신규 기준 추가 ➕</span>
-              </button>
-              <button
-                onClick={() => setShowManageValidationStandardsModal(false)}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer"
-              >
-                닫기
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ⚙️ 문제생성 지침 통합 관리 모달 (Generation Standards Management Modal) */}
       {showManageGenerationStandardsModal && (
@@ -22547,87 +22174,7 @@ ${itemsStr}
         </div>
       )}
 
-      {/* ✏️ 검증 기준 추가/수정 서브 모달 (Validation Standard Add/Edit Sub-Modal) */}
-      {showEditValidationStandardModal && (
-        <div className="fixed inset-0 z-[210] overflow-y-auto flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-all duration-300 animate-fade-in" onClick={() => setShowEditValidationStandardModal(false)}>
-          <div className="w-full max-w-2xl bg-slateCustom-900 border border-white/20 rounded-2xl overflow-hidden shadow-2xl p-6 space-y-4 animate-scale-up text-left" onClick={(e) => e.stopPropagation()}>
-            
-            {/* Modal Header */}
-            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
-              <div className="flex items-center gap-2">
-                <div className="p-1.5 bg-cyan-500/10 text-cyan-400 rounded-lg">
-                  <Sliders size={18} className="text-cyan-500" />
-                </div>
-                <h3 className="text-sm font-extrabold text-white">
-                  {editingValidationStandard ? '✏️ 검증 기준 수정' : '➕ 신규 검증 기준 추가'}
-                </h3>
-              </div>
-              <button
-                onClick={() => setShowEditValidationStandardModal(false)}
-                className="w-6 h-6 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-200 flex items-center justify-center transition-all cursor-pointer"
-              >
-                <X size={14} />
-              </button>
-            </div>
 
-            {/* Modal Body */}
-            <div className="py-2 space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-black text-slate-400">기준 제목 (Topic Title)</label>
-                <input
-                  ref={editValidationTitleRef}
-                  type="text"
-                  value={editingValidationTitle}
-                  onChange={(e) => setEditingValidationTitle(e.target.value)}
-                  onFocus={(e) => e.target.select()}
-                  placeholder="예: LaTeX 수식 문법 정밀 검증"
-                  className="w-full bg-slate-950/60 border border-slate-800 focus:border-cyan-500/80 rounded-xl px-3 py-2.5 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-cyan-500 transition-all font-semibold"
-                  disabled={isSavingValidationStandardsList}
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-black text-slate-400">기준 세부 내용 (Prompt Convention Text)</label>
-                <textarea
-                  ref={editValidationContentRef}
-                  value={editingValidationContent}
-                  onChange={(e) => setEditingValidationContent(e.target.value)}
-                  onFocus={(e) => e.target.select()}
-                  placeholder="예:
-지문, 보기, 해설, 정답 내의 모든 LaTeX 수식($기호로 둘러싸인 표현)이 문법적으로 올바른지 확인하고 오류가 있다면 수정하십시오."
-                  className="w-full h-80 bg-slate-950/60 border border-slate-800 focus:border-cyan-500/80 rounded-xl p-3 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-cyan-500 transition-all font-mono leading-relaxed resize-none"
-                  disabled={isSavingValidationStandardsList}
-                />
-              </div>
-            </div>
-
-            {/* Modal Footer */}
-            <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">
-              <button
-                onClick={() => setShowEditValidationStandardModal(false)}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer"
-                disabled={isSavingValidationStandardsList}
-              >
-                취소
-              </button>
-              <button
-                onClick={handleSaveEditValidationStandard}
-                disabled={isSavingValidationStandardsList}
-                className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer flex items-center gap-1.5"
-              >
-                {isSavingValidationStandardsList ? (
-                  <>
-                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    <span>저장 중...</span>
-                  </>
-                ) : (
-                  <span>기준 저장 💾</span>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ⚙️ 토픽 전용 출제 지침 통합 관리 모달 */}
       {showManageTopicInstructionsModal && (
