@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import ReactDOM from 'react-dom';
 
-export const PopoutWindow = ({ title, onClose, children, initWidth = 720, initHeight = 650, storageKey }) => {
+export const PopoutWindow = ({ title, onClose, children, initWidth = 760, initHeight = 880, storageKey }) => {
   const [container, setContainer] = useState(null);
   const windowRef = useRef(null);
   const onCloseRef = useRef(onClose);
@@ -33,8 +33,8 @@ export const PopoutWindow = ({ title, onClose, children, initWidth = 720, initHe
       }
     }
 
-    const w = (savedPos && savedPos.w) ? savedPos.w : initWidth;
-    const h = (savedPos && savedPos.h) ? savedPos.h : initHeight;
+    const w = (savedPos && savedPos.w && savedPos.w >= initWidth) ? savedPos.w : initWidth;
+    const h = (savedPos && savedPos.h && savedPos.h >= initHeight) ? savedPos.h : initHeight;
     
     // Centering fallback relative to main window if no coordinates saved
     const defaultLeft = window.screenX + (window.outerWidth - w) / 2;

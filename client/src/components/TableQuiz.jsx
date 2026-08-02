@@ -269,11 +269,11 @@ export const TableQuiz = React.memo(function TableQuiz({
       if (saved) {
         const parsed = JSON.parse(saved);
         if (typeof parsed.width === 'number' && typeof parsed.height === 'number') {
-          return parsed;
+          return { width: Math.max(parsed.width, 760), height: Math.max(parsed.height, 880) };
         }
       }
     } catch (e) {}
-    return { width: 500, height: 450 };
+    return { width: 760, height: 880 };
   });
 
   const floatedSizeRef = useRef(floatedSize);
@@ -1458,7 +1458,7 @@ export const TableQuiz = React.memo(function TableQuiz({
             title="📌 표 채우기"
             onClose={() => setFloatedTableId(null)}
             initWidth={floatedSize.width}
-            initHeight={floatedSize.height}
+            initHeight={Math.max(floatedSize.height, 880)}
             storageKey={"anti_popout_table_main_" + mainTableUniqueId}
           >
             <div className="w-full h-full flex flex-col overflow-auto text-slate-100 p-2 sm:p-2.5 bg-[#020617]">
@@ -1780,7 +1780,7 @@ export const TableQuiz = React.memo(function TableQuiz({
             title="⚖️ 비교표"
             onClose={() => setFloatedTableId(null)}
             initWidth={floatedSize.width}
-            initHeight={floatedSize.height}
+            initHeight={Math.max(floatedSize.height, 880)}
             storageKey={"anti_popout_table_comp_" + compTableUniqueId}
           >
             <div className="w-full h-full flex flex-col overflow-auto text-slate-100 p-2 sm:p-2.5 bg-[#020617]">

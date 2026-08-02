@@ -29914,8 +29914,8 @@ ${itemsStr}
                 '🔬 공식 답안 - ' + activeAnswerPopupData.title
               }
               onClose={() => setActiveAnswerPopupData(null)}
-              initWidth={768}
-              initHeight={600}
+              initWidth={820}
+              initHeight={920}
               storageKey={"anti_popout_answer_" + activeAnswerPopupData.type}
             >
               <div className="w-full h-full flex flex-col overflow-hidden text-slate-100 p-4">
