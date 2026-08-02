@@ -698,145 +698,17 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   // [Self-Healing] (포아송비 강제 u/v -> \nu 오치환 로직 완전 삭제 - 간극수압 u 보존)
 
   // [🚨 가독성 수동 개선 필터 (ReDoS 예방 루프 방식) 🚨]
-  // 등호나 연산자, 분수가 포함된 수식($...$)들이 콤마나 개행 없이 다닥다닥 붙어 나열되거나, 중간에 짧은 설명만 끼고 나열되는 경우 강제로 단락 줄바꿈(\n\n)을 주입합니다.
+  // 원본 수식 구조($...$ 및 $$...$$)를 훼손하지 않고 안전하게 보존하며 수식 괄호를 정돈합니다.
   const formatConsecutiveFormulas = (text) => {
     if (!text || typeof text !== 'string') return text;
     const parts = text.split('$');
     if (parts.length < 3) return text;
-    
-    const isRelation = [];
-    for (let i = 1; i < parts.length; i += 2) {
-      const f = parts[i];
-      isRelation[i] = f.includes('=') || f.includes('<') || f.includes('>');
-    }
-    
-    const startsWithKoreanParticle = (nextText) => {
-      if (!nextText) return false;
-      const trimmed = nextText.trim();
-      // 닫는 괄호로 시작하면 수식이 괄호 안에 포함된 것이므로 블록 승격 방지
-      if (/^[)\]】」』》]/.test(trimmed)) return true;
-      return /^(?:일\s*때|이므로|이고|이며|와\b|과\b|은\b|는\b|이\b|가\b|을\b|를\b|의\b|에\b|로\b|으로\b|라\s*하면|라\s*할\s*때|에\s*대입|을\s*대입|를\s*대입|의\s*값|을\s*구하면|를\s*구하면|에서\b|보다\b|처럼\b|하고\b|하며\b|의\s*형태|으로\s*정의)/.test(trimmed);
-    };
 
-    const isSentenceEnded = (prevText) => {
-      if (!prevText) return true;
-      const trimmed = prevText.trim();
-      if (trimmed === '') return true;
-      return /[.!?\n]$/.test(trimmed) || /(?:다|요|음|임|함|것|정리됩니다|대입합니다|구합니다|얻어집니다|나타납니다|설정합니다)\.?$/.test(trimmed);
-    };
-
-    const hasBalancedParentheses = (str) => {
-      let p = 0, b = 0, c = 0;
-      for (let char of str) {
-        if (char === '(') p++;
-        else if (char === ')') p--;
-        else if (char === '[') b++;
-        else if (char === ']') b--;
-        else if (char === '{') c++;
-        else if (char === '}') c--;
-      }
-      return p === 0 && b === 0 && c === 0;
-    };
-
-    const elevateToDisplay = new Array(parts.length).fill(false);
-
-    let idx = 1;
-    while (idx < parts.length && !forceInline) {
-      if (isRelation[idx]) {
-        const group = [idx];
-        let nextIdx = idx + 2;
-        while (nextIdx < parts.length) {
-          const separator = parts[nextIdx - 1];
-          const trimmedSep = separator.trim();
-          const isSepSpaceOrComma = trimmedSep === '' || trimmedSep === ',';
-          const isSepShortParenthesis = trimmedSep.startsWith('(') && trimmedSep.endsWith(')') && trimmedSep.length <= 20;
-          // 단위+쉼표 구분자 (예: "kPa,", "m,") → 연속 관계식 그룹으로 병합 허용
-          const isSepUnitComma = trimmedSep.length > 0 && trimmedSep.length <= 15 && /,$/.test(trimmedSep) && !/[\uAC00-\uD7A3]/.test(trimmedSep);
-          
-          if (isRelation[nextIdx] && (isSepSpaceOrComma || isSepShortParenthesis || isSepUnitComma)) {
-            group.push(nextIdx);
-            nextIdx += 2;
-          } else {
-            break;
-          }
-        }
-
-        const lastFormulaIdx = group[group.length - 1];
-        const textAfterGroup = parts[lastFormulaIdx + 1] || '';
-        const isFollowedByParticle = startsWithKoreanParticle(textAfterGroup);
-
-        if (!isFollowedByParticle) {
-          // Check if the overall group parentheses are balanced
-          let combinedFormulaText = '';
-          group.forEach(gIdx => {
-            combinedFormulaText += parts[gIdx];
-          });
-          const isGroupBalanced = hasBalancedParentheses(combinedFormulaText);
-
-          if (isGroupBalanced) {
-            if (group.length > 1) {
-              // 그룹 내 모든 수식이 단순 산술식이면 블록 승격 방지
-              const allSimple = group.every(gIdx => !/\\[a-zA-Z]/.test(parts[gIdx]));
-              if (!allSimple) {
-                group.forEach(gIdx => {
-                  elevateToDisplay[gIdx] = true;
-                });
-              }
-            } else {
-              const textBefore = parts[idx - 1] || '';
-              const textAfter = parts[idx + 1] || '';
-              const isSelfBalanced = hasBalancedParentheses(parts[idx]);
-              // 단순 산술식(LaTeX 명령어 없는 숫자/연산자만)은 인라인 유지 (블록 승격 방지)
-              // 예: "1.65 - 1.2 = 0.45", "0.45/1.5 = 0.3" 등
-              const isSimpleArithmetic = !/\\[a-zA-Z]/.test(parts[idx]);
-              // 앞 텍스트가 여는 괄호로 끝나면 괄호 내부 수식이므로 블록 승격 방지
-              const isInsideParens = /[(\[]\s*$/.test(textBefore.trim());
-              if (isSelfBalanced && isSentenceEnded(textBefore) && !startsWithKoreanParticle(textAfter) && !isSimpleArithmetic && !isInsideParens) {
-                elevateToDisplay[idx] = true;
-              }
-            }
-          }
-        }
-        idx = nextIdx;
-      } else {
-        idx += 2;
-      }
-    }
-    
     let rebuilt = parts[0];
     for (let i = 1; i < parts.length; i += 2) {
       let formula = balanceMathBraces(parts[i]);
-      let plainText = parts[i + 1];
-      
-      const isElevated = elevateToDisplay[i];
-      const nextElevated = elevateToDisplay[i + 2];
-      
-      if (plainText !== undefined && nextElevated) {
-        const trimmed = plainText.trim();
-        if (trimmed.startsWith(',')) {
-          formula = formula.trim() + ',';
-          plainText = plainText.replace(/^\s*,\s*/, '');
-        }
-      }
-      
-      if (isElevated) {
-        // 블록 수식 앞에 텍스트가 있으면 줄바꿈을 삽입하여 한글 줄 감지와 분리
-        if (rebuilt && rebuilt.length > 0 && !rebuilt.endsWith('\n')) {
-          rebuilt += '\n\n';
-        }
-        rebuilt += `$$${formula}$$`;
-      } else {
-        rebuilt += `$${formula}$`;
-      }
-      
-      if (plainText !== undefined) {
-        if (isElevated || nextElevated) {
-          const trimmed = plainText.trim();
-          rebuilt += trimmed ? `\n${trimmed}\n` : '\n';
-        } else {
-          rebuilt += plainText;
-        }
-      }
+      let plainText = parts[i + 1] || '';
+      rebuilt += '$' + formula + '$' + plainText;
     }
     return rebuilt;
   };
