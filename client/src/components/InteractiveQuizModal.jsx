@@ -381,9 +381,9 @@ export function InteractiveQuizModal({
           </div>
         )}
 
-        {/* Detailed Explanation / Notes (해설 및 추가 공학적 설명) */}
-        {(q.explanation || item?.content) && (
-          <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 shadow-lg space-y-3">
+        {/* Detailed Explanation / Notes (해설 및 추가 공학적 설명) - Only visible when revealed */}
+        {revealed && (q.explanation || item?.content) && (
+          <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 shadow-lg space-y-3 animate-fadeIn">
             <div className="flex items-center justify-between border-b border-slate-800 pb-2">
               <div className="flex items-center gap-2 text-indigo-400 font-extrabold text-sm">
                 <BookOpen size={16} />
@@ -406,6 +406,12 @@ export function InteractiveQuizModal({
                 />
               </div>
             )}
+          </div>
+        )}
+
+        {!revealed && (
+          <div className="p-4 rounded-xl border border-slate-800/80 bg-slate-900/30 text-center text-xs text-slate-400 font-medium select-none">
+            🔒 [전체 채점 및 확인] 또는 상단 [🔑 답안 전체 보기]를 누르면 상세 모범 답안과 해설이 표출됩니다.
           </div>
         )}
 
