@@ -342,7 +342,7 @@ export async function callLLMWithFailover(systemInstruction, userPrompt, image =
 
 global.standardsAnalysisCache = global.standardsAnalysisCache || new Map();
 
-export async function analyzeStandardsBeforeTask(progressId, topicTitle, standards, scenario = 'generation') {
+export async function analyzeStandardsBeforeTask(progressId, topicTitle, standards, scenario = 'generation', preferredModel = null) {
   if (progressId && global.standardsAnalysisCache.has(progressId)) {
     return global.standardsAnalysisCache.get(progressId);
   }
@@ -380,8 +380,9 @@ ${scenarioGuideline}
 
     updateProgress(progressId, 0, '0단계: 사전 절대 지침 준수 분석 중...', 5);
     const genAI = new GoogleGenerativeAI(primaryKey);
+    const targetModelName = preferredModel || 'gemini-2.5-flash';
     const model = genAI.getGenerativeModel({
-      model: 'gemini-2.0-flash-lite',
+      model: targetModelName,
       systemInstruction: systemInstruction,
       generationConfig: { temperature: 0.1 }
     }, { apiVersion: 'v1beta' });
