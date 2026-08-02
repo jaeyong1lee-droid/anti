@@ -789,7 +789,7 @@ export const LatexRenderer = React.memo(function LatexRenderer({
           let htmlContent = part.content;
           try {
             htmlContent = htmlContent.replace(/\$((?:[^\$\n<]|<(?![a-zA-Z/!]))+?)\$/g, (m, math) => {
-              if (/[\uAC00-\uD7A3]/.test(math) && !/\\/.test(math) && !/_/.test(math) && !/\^/.test(math) && !/[=+\-\*\/]/.test(math) && !/\\cdot/.test(math)) {
+              if (/[\uAC00-\uD7A3]/.test(math) && !/\\/.test(math) && !/_/.test(math) && !/\^/.test(math) && !/[+=]/.test(math) && !/\\cdot/.test(math)) {
                 return m;
               }
               return renderKatexString(math.trim(), { displayMode: false, throwOnError: false });
