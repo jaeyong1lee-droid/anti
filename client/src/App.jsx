@@ -19572,7 +19572,6 @@ ${itemsStr}
               {/* Left: Quiz Wrapper (Takes exactly 60% width on Desktop) */}
               <div 
                 className={`w-full shrink-0 md:flex-1 md:shrink landscape-w-55 landscape-bg-slate-900 min-w-0 snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30 ${
-{{ ... }}
                   (!isDesktop && !isMobileLandscape && reviewMobileTab !== 'list') ? 'hidden' : ''
                 }`}
               >
