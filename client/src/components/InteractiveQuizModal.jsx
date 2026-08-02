@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef } from 'react';
-import { X, Sparkles, Eye, EyeOff, BookOpen, CheckCircle, RefreshCw, ChevronRight } from 'lucide-react';
+import { X, Sparkles, Eye, EyeOff, BookOpen, CheckCircle, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { TableQuiz } from './TableQuiz';
 import { AcronymQuiz } from './AcronymQuiz';
 import { parseMarkdownTable } from '../utils/latexUtils';
@@ -154,6 +154,22 @@ export function InteractiveQuizModal({
     if (!itemList || itemList.length === 0) return -1;
     return itemList.findIndex(it => (it.id && item?.id) ? it.id === item.id : it.title === item?.title);
   }, [itemList, item]);
+
+  // Handle switching to previous item
+  const handlePrevItem = () => {
+    if (!itemList || itemList.length <= 1) return;
+    const prevIdx = (currentItemIndex - 1 + itemList.length) % itemList.length;
+    const prevItem = itemList[prevIdx];
+    
+    // Reset local inputs & states
+    setTableAnswers({});
+    setRevealed(false);
+    setTableGradingResults({});
+
+    if (onSelectNextItem) {
+      onSelectNextItem(prevItem);
+    }
+  };
 
   // Handle switching to next item
   const handleNextItem = () => {
@@ -606,21 +622,32 @@ export function InteractiveQuizModal({
         </div>
 
         {/* Right Side Group */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2">
           {itemList && itemList.length > 1 && (
-            <button
-              onClick={handleNextItem}
-              className="px-4.5 py-2.5 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white rounded-xl font-bold text-xs shadow-md transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
-              title="다음 항목 퀴즈 풀기"
-            >
-              <span>다음 문제</span>
-              {currentItemIndex >= 0 && (
-                <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded-md font-black">
-                  {currentItemIndex + 1}/{itemList.length}
-                </span>
-              )}
-              <ChevronRight size={14} />
-            </button>
+            <>
+              <button
+                onClick={handlePrevItem}
+                className="px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl font-bold text-xs shadow-md transition-all cursor-pointer flex items-center gap-1.5 active:scale-95 border border-slate-700/80"
+                title="이전 항목 퀴즈 풀기"
+              >
+                <ChevronLeft size={14} />
+                <span>이전 문제</span>
+              </button>
+
+              <button
+                onClick={handleNextItem}
+                className="px-4.5 py-2.5 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white rounded-xl font-bold text-xs shadow-md transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+                title="다음 항목 퀴즈 풀기"
+              >
+                <span>다음 문제</span>
+                {currentItemIndex >= 0 && (
+                  <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded-md font-black">
+                    {currentItemIndex + 1}/{itemList.length}
+                  </span>
+                )}
+                <ChevronRight size={14} />
+              </button>
+            </>
           )}
 
           <button
