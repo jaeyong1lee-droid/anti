@@ -110,8 +110,8 @@ router.post('/grade-subjective', async (req, res) => {
   };
 
   let attempt = 0;
-  const maxAttempts = 2; // 3→2: 재시도 횟수 단축
-  let delay = 500;       // 1000ms→500ms: 재시도 대기 단축
+  const maxAttempts = 3; // 2→3: 순간 랙 및 Quota 지연에 대한 재시도 여유 확보
+  let delay = 300;       // 500ms→300ms: 재시도 반응 속도 단축
   let lastError = null;
 
   try {
