@@ -66,7 +66,7 @@ const parseAndRenderFlowchart = (flowchartText, katexLoaded, questionKey) => {
     } else {
       // 연결 화살표 또는 분기 기호
       flushBoxes();
-      if (trimmed.includes('▼') || trimmed === '│' || trimmed.includes('│') || trimmed === '┃' || trimmed.includes('┃')) {
+      if (trimmed === '│' || trimmed === '┃' || trimmed === '▼' || trimmed === '↓') {
         items.push({ type: 'arrow', text: '▼' });
       } else if (trimmed.includes('┌') || trimmed.includes('┴') || trimmed.includes('┐')) {
         items.push({ type: 'arrow', text: '▼ (분기)' });
