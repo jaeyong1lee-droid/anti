@@ -471,13 +471,17 @@ function FloatingTableItem({
                           e.stopPropagation();
                           if (!isEditing) {
                             setLocalActiveEditCell({ tableId: t.id, type: 'cell', rIdx, colIdx: cIdx });
-                            setLocalEditingCellValue(cell);
+                            setLocalEditingCellValue(cell || '');
                           }
                         }}
-                        className="w-full text-center p-0.5 text-[14px] md:text-[16px] text-slate-200 cursor-pointer hover:text-violet-300 transition-colors"
+                        className="w-full min-h-[32px] flex items-center justify-center text-center p-1 text-[14px] md:text-[16px] text-slate-200 cursor-pointer hover:bg-slate-800/50 hover:text-violet-300 transition-all rounded"
                         title="클릭하여 셀 수정"
                       >
-                        <LatexRenderer text={cell} katexLoaded={katexLoaded} className="inline" />
+                        {cell && String(cell).trim() !== '' ? (
+                          <LatexRenderer text={cell} katexLoaded={katexLoaded} className="inline" />
+                        ) : (
+                          <span className="text-slate-500 italic text-xs select-none">[입력]</span>
+                        )}
                       </div>
                     )}
                   </td>
@@ -711,7 +715,13 @@ function OverviewComparisonTable({
                           className="w-full bg-slate-900 border border-emerald-500 text-white font-semibold text-[13px] md:text-[14px] rounded p-1.5 focus:outline-none resize-none"
                         />
                       ) : (
-                        <LatexRenderer text={cell} katexLoaded={katexLoaded} />
+                        <div className="w-full min-h-[30px] flex items-center justify-center">
+                          {cell && String(cell).trim() !== '' ? (
+                            <LatexRenderer text={cell} katexLoaded={katexLoaded} />
+                          ) : (
+                            <span className="text-slate-500 italic text-xs select-none">[입력]</span>
+                          )}
+                        </div>
                       )}
                     </td>
                   );
