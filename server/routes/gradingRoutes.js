@@ -228,6 +228,49 @@ function parseOverviewContentServer(content) {
   return result;
 }
 
+
+function parseAnyTableServer(tableStr) {
+  if (!tableStr || typeof tableStr !== 'string') return null;
+
+  if (tableStr.includes('<table') || tableStr.includes('<tr')) {
+    const headers = [];
+    const rows = [];
+
+    const thMatches = tableStr.match(/<th[^>]*>(.*?)<\/th>/gis);
+    if (thMatches) {
+      thMatches.forEach(th => {
+        const text = th.replace(/<[^>]*>/g, '').trim();
+        headers.push(text);
+      });
+    }
+
+    const trMatches = tableStr.match(/<tr[^>]*>(.*?)<\/tr>/gis);
+    if (trMatches) {
+      trMatches.forEach((tr, rIdx) => {
+        if (rIdx === 0 && thMatches && thMatches.length > 0) return;
+
+        const rowCells = [];
+        const tdMatches = tr.match(/<td[^>]*>(.*?)<\/td>/gis);
+        if (tdMatches) {
+          tdMatches.forEach(td => {
+            const text = td.replace(/<[^>]*>/g, '').trim();
+            rowCells.push(text);
+          });
+          if (rowCells.length > 0) {
+            rows.push(rowCells);
+          }
+        }
+      });
+    }
+
+    if (headers.length > 0 && rows.length > 0) {
+      return { headers, rows };
+    }
+  }
+
+  return parseMarkdownTableServer(tableStr);
+}
+
 function parseMarkdownTableServer(questionText) {
   if (!questionText) return null;
   const lines = questionText.split('\n');
@@ -556,11 +599,37 @@ ${getActiveGenerationStandards()}`;
         mixedType: isFlowchartQ ? 'table' : mixedType
       };
 
-      // Clean up mismatched properties during conversion to avoid corruption
+      // Clean up mismatched properties & overwrite pre-existing cached comparisonTableData with latest table structure
       if (isFlowchartQ || mixedType === 'table') {
         delete finalQuestion.acronym;
         delete finalQuestion.sentence;
         delete finalQuestion.correctRows;
+
+        // If latestTableContent was provided by client, parse it and forcefully update tableData / comparisonTableData
+        if (latestTableContent) {
+          const parsedLatest = parseAnyTableServer(latestTableContent);
+          if (parsedLatest && parsedLatest.headers && parsedLatest.rows && parsedLatest.headers.length > 0) {
+            const newAnswers = {};
+            const compRows = parsedLatest.rows.map((row, rIdx) => {
+              return row.map((cell, cIdx) => {
+                if (cIdx === 0) return cell;
+                const inputId = `INPUT_${rIdx}_${cIdx}`;
+                newAnswers[inputId] = cell;
+                return `[${inputId}]`;
+              });
+            });
+
+            const newTableObj = {
+              headers: parsedLatest.headers,
+              rows: compRows
+            };
+
+            finalQuestion.tableData = newTableObj;
+            finalQuestion.comparisonTableData = newTableObj;
+            finalQuestion.answers = { ...(finalQuestion.answers || {}), ...newAnswers };
+            console.log('[Table Regenerate] Forcefully updated finalQuestion tableData headers:', parsedLatest.headers);
+          }
+        }
       } else if (mixedType === 'acronym') {
         delete finalQuestion.subtype;
       }
