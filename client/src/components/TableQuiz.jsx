@@ -419,11 +419,19 @@ export const TableQuiz = React.memo(function TableQuiz({
   }, [compColCount]);
 
   const startCompColumnResize = useCallback((e, idx, isTouch) => {
-    if (isTouch) {
+    if (e) {
+      if (e.stopPropagation) e.stopPropagation();
       if (e.cancelable) e.preventDefault();
-    } else {
-      e.preventDefault();
     }
+
+    const now = Date.now();
+    if (lastHandleClickRef.current.colIdx === idx && (now - lastHandleClickRef.current.time < 350)) {
+      lastHandleClickRef.current = { time: 0, colIdx: null };
+      handleHeaderDoubleClick(e, idx);
+      return;
+    }
+    lastHandleClickRef.current = { time: now, colIdx: idx };
+
     if (!compTableRef.current) return;
 
     const thElements = compTableRef.current.querySelectorAll('th');
@@ -648,7 +656,7 @@ export const TableQuiz = React.memo(function TableQuiz({
   const [isMobileView, setIsMobileView] = useState(() => window.innerWidth < 768);
 
   const [usePopout, setUsePopout] = useState(() => {
-    return localStorage.getItem('anti_use_popout_table') !== 'false';
+    return localStorage.getItem('anti_use_popout_table') === 'true';
   });
 
   const togglePopoutMode = () => {
@@ -835,14 +843,22 @@ export const TableQuiz = React.memo(function TableQuiz({
   }, [resetMobileColWidths]);
 
   const tableRef = useRef(null);
+  const lastHandleClickRef = useRef({ time: 0, colIdx: null });
 
   const startColumnResize = useCallback((e, idx, isTouch) => {
-    e.stopPropagation();
-    if (isTouch) {
+    if (e) {
+      if (e.stopPropagation) e.stopPropagation();
       if (e.cancelable) e.preventDefault();
-    } else {
-      e.preventDefault();
     }
+
+    const now = Date.now();
+    if (lastHandleClickRef.current.colIdx === idx && (now - lastHandleClickRef.current.time < 350)) {
+      lastHandleClickRef.current = { time: 0, colIdx: null };
+      handleHeaderDoubleClick(e, idx);
+      return;
+    }
+    lastHandleClickRef.current = { time: now, colIdx: idx };
+
     if (!tableRef.current) return;
 
     const thElements = tableRef.current.querySelectorAll('th');
@@ -940,69 +956,14 @@ export const TableQuiz = React.memo(function TableQuiz({
       if (e.stopPropagation) e.stopPropagation();
       if (e.preventDefault) e.preventDefault();
     }
-    if (!tableRef.current) return;
-    const container = tableRef.current.closest('.table-quiz-container') || tableRef.current.parentElement;
-    const containerWidth = container ? container.clientWidth : tableRef.current.clientWidth;
-
-    const thElements = tableRef.current.querySelectorAll('th');
-    const colCountActual = thElements.length || colCount;
-
-    if ((colIdx === colCountActual - 1) && colCountActual > 1 && colIdx > 0) {
-      // 마지막 열 더블클릭 시: 이전 열들의 너비 합을 뺀 나머지 너비를 마지막 열 너비로 지정하여 표 우측 끝을 맞춤
-      let sumPreceding = 0;
-      for (let k = 0; k < colCountActual - 1; k++) {
-        const w = thElements[k] ? Math.round(thElements[k].getBoundingClientRect().width) : 100;
-        sumPreceding += w;
-      }
-      const lastWidth = Math.max(84, containerWidth - sumPreceding - 2);
-      setMobileColWidths(prev => {
-        const next = [...prev];
-        next[colCountActual - 1] = `${lastWidth}px`;
-        try {
-          localStorage.setItem(`anti_global_mobile_col_widths_${colCount}`, JSON.stringify(next));
-        } catch(e) {}
-        window.dispatchEvent(new CustomEvent('globalMobileTableWidthChanged', {
-          detail: { colCount, widths: next }
-        }));
-        return next;
-      });
-    } else if (colIdx === 0 && colCountActual > 1) {
-      const th0Width = thElements[0] ? Math.round(thElements[0].getBoundingClientRect().width) : Math.floor(containerWidth * 0.3);
-      const remCount = colCountActual - 1;
-      const remainingWidth = Math.max(0, containerWidth - th0Width);
-      const eachRemWidth = Math.max(84, Math.floor(remainingWidth / remCount));
-
-      setMobileColWidths(prev => {
-        const next = [...prev];
-        next[0] = `${th0Width}px`;
-        for (let k = 1; k < colCountActual; k++) {
-          next[k] = `${eachRemWidth}px`;
-        }
-        try {
-          localStorage.setItem(`anti_global_mobile_col_widths_${colCount}`, JSON.stringify(next));
-        } catch(e) {}
-        window.dispatchEvent(new CustomEvent('globalMobileTableWidthChanged', {
-          detail: { colCount, widths: next }
-        }));
-        return next;
-      });
-    } else if (colIdx === 1 && colCountActual > 1) {
-      const th1Width = thElements[1] ? Math.round(thElements[1].getBoundingClientRect().width) : 140;
-      setMobileColWidths(prev => {
-        const next = [...prev];
-        for (let k = 1; k < colCountActual; k++) {
-          next[k] = `${th1Width}px`;
-        }
-        try {
-          localStorage.setItem(`anti_global_mobile_col_widths_${colCount}`, JSON.stringify(next));
-        } catch(e) {}
-        window.dispatchEvent(new CustomEvent('globalMobileTableWidthChanged', {
-          detail: { colCount, widths: next }
-        }));
-        return next;
-      });
+    const targetEl = (e && (e.currentTarget || e.target)) || tableRef.current || compTableRef.current;
+    const win = (targetEl && targetEl.ownerDocument && targetEl.ownerDocument.defaultView) || window;
+    const fn = win.__handleTableColumnDoubleClick || window.__handleTableColumnDoubleClick;
+    if (fn && targetEl) {
+      fn(e, targetEl, colIdx);
+      return;
     }
-  }, [colCount]);
+  }, []);
 
   const startFloatedResizeLeft = useCallback((e) => {
     e.preventDefault();
@@ -1287,6 +1248,7 @@ export const TableQuiz = React.memo(function TableQuiz({
                   className={`relative p-1 sm:p-1.5 font-extrabold border-r border-slate-800 last:border-r-0 select-text whitespace-normal break-words ${
                     isFirstCol ? 'text-left break-all' : ''
                   }`}
+                  onDoubleClick={(e) => handleHeaderDoubleClick(e, hIdx)}
                 >
                   <LatexRenderer text={cleanCellText(header)} katexLoaded={katexLoaded} className="inline" />
                   <div
@@ -1621,16 +1583,15 @@ export const TableQuiz = React.memo(function TableQuiz({
                     className={`relative p-1 sm:p-1.5 font-extrabold border-r border-slate-800 last:border-r-0 select-text whitespace-normal break-words ${
                       isFirstCol ? 'text-left break-all' : ''
                     }`}
+                    onDoubleClick={(e) => handleHeaderDoubleClick(e, hIdx)}
                   >
                     <LatexRenderer text={cleanCellText(header)} katexLoaded={katexLoaded} className="inline" />
-                    {hIdx < compColCount - 1 && (
-                      <div
-                        className="absolute right-0 top-0 bottom-0 w-4 sm:w-2 cursor-col-resize select-none z-10 hover:bg-sky-500/30 active:bg-sky-500/50 touch-none"
-                        onMouseDown={(e) => startCompColumnResize(e, hIdx, false)}
-                        onTouchStart={(e) => startCompColumnResize(e, hIdx, true)}
-                        onDoubleClick={(e) => handleHeaderDoubleClick(e, hIdx)}
-                      />
-                    )}
+                    <div
+                      className="absolute right-0 top-0 bottom-0 w-4 sm:w-2 cursor-col-resize select-none z-10 hover:bg-sky-500/30 active:bg-sky-500/50 touch-none"
+                      onMouseDown={(e) => startCompColumnResize(e, hIdx, false)}
+                      onTouchStart={(e) => startCompColumnResize(e, hIdx, true)}
+                      onDoubleClick={(e) => handleHeaderDoubleClick(e, hIdx)}
+                    />
                   </th>
                 );
               })}

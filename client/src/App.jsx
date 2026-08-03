@@ -2374,17 +2374,19 @@ export default function App() {
   };
 
   const handleOpenAnswerPopup = (q) => {
-    const cleanTitle = q.question.replace(/^\[.*?\]\s*/, '').trim();
-    const lowerQuestion = q.question.toLowerCase();
+    if (!q) return;
+    const rawQuestion = q.question || q.title || '';
+    const cleanTitle = rawQuestion.replace(/^\[.*?\]\s*/, '').trim();
+    const lowerQuestion = rawQuestion.toLowerCase();
     
     let matchedType = '';
-    if (q.question.startsWith('[개요 복습]') || q.mixedType === 'overview' || q.subtype === '개요') {
+    if (rawQuestion.startsWith('[개요 복습]') || q.mixedType === 'overview' || q.subtype === '개요') {
       matchedType = 'overview';
-    } else if (q.question.startsWith('[표 복습]') || q.mixedType === 'table' || q.subtype === '표채우기') {
+    } else if (rawQuestion.startsWith('[표 복습]') || q.mixedType === 'table' || q.subtype === '표채우기') {
       matchedType = 'table';
-    } else if (q.question.startsWith('[앞글자 복습]') || q.mixedType === 'acronym' || q.subtype === '앞글자') {
+    } else if (rawQuestion.startsWith('[앞글자 복습]') || q.mixedType === 'acronym' || q.subtype === '앞글자') {
       matchedType = 'acronym';
-    } else if (q.question.startsWith('[공식 복습]') || q.type === '주관식 (공식)' || q.type === '계산' || q.subtype === '공식') {
+    } else if (rawQuestion.startsWith('[공식 복습]') || q.type === '주관식 (공식)' || q.type === '계산' || q.subtype === '공식') {
       matchedType = 'formula';
     } else {
       if (lowerQuestion.includes('개요')) matchedType = 'overview';
@@ -2398,29 +2400,29 @@ export default function App() {
     let matchedContent = null;
     if (matchedType === 'overview') {
       matchedContent = formulaOverviews.find(ov => ov.id === topicId || ov.title === cleanTitle) 
-        || formulaOverviews.find(ov => ov.title.includes(cleanTitle) || cleanTitle.includes(ov.title));
+        || formulaOverviews.find(ov => (ov.title && ov.title.includes(cleanTitle)) || (cleanTitle && cleanTitle.includes(ov.title)));
     } else if (matchedType === 'table') {
       matchedContent = formulaTables.find(t => t.id === topicId || t.title === cleanTitle)
-        || formulaTables.find(t => t.title.includes(cleanTitle) || cleanTitle.includes(t.title));
+        || formulaTables.find(t => (t.title && t.title.includes(cleanTitle)) || (cleanTitle && cleanTitle.includes(t.title)));
     } else if (matchedType === 'acronym') {
       matchedContent = formulaAcronyms.find(ac => ac.id === topicId || ac.title === cleanTitle)
-        || formulaAcronyms.find(ac => ac.title.includes(cleanTitle) || cleanTitle.includes(ac.title));
+        || formulaAcronyms.find(ac => (ac.title && ac.title.includes(cleanTitle)) || (cleanTitle && cleanTitle.includes(ac.title)));
     } else {
       matchedContent = formulaQuestions.find(f => f.id === topicId || f.title === cleanTitle)
-        || formulaQuestions.find(f => f.title.includes(cleanTitle) || cleanTitle.includes(f.title));
+        || formulaQuestions.find(f => (f.title && f.title.includes(cleanTitle)) || (cleanTitle && cleanTitle.includes(f.title)));
     }
     
     if (matchedContent) {
       setActiveAnswerPopupData({
         type: matchedType,
-        title: matchedContent.title,
+        title: matchedContent.title || cleanTitle || '답안 정보',
         content: matchedContent
       });
     } else {
-      const anyOverview = formulaOverviews.find(ov => ov.title === cleanTitle || ov.title.includes(cleanTitle) || cleanTitle.includes(ov.title));
-      const anyTable = formulaTables.find(t => t.title === cleanTitle || t.title.includes(cleanTitle) || cleanTitle.includes(t.title));
-      const anyAcronym = formulaAcronyms.find(ac => ac.title === cleanTitle || ac.title.includes(cleanTitle) || cleanTitle.includes(ac.title));
-      const anyFormula = formulaQuestions.find(f => f.title === cleanTitle || f.title.includes(cleanTitle) || cleanTitle.includes(f.title));
+      const anyOverview = formulaOverviews.find(ov => ov.title === cleanTitle || (cleanTitle && ov.title && ov.title.includes(cleanTitle)) || (cleanTitle && ov.title && cleanTitle.includes(ov.title)));
+      const anyTable = formulaTables.find(t => t.title === cleanTitle || (cleanTitle && t.title && t.title.includes(cleanTitle)) || (cleanTitle && t.title && cleanTitle.includes(t.title)));
+      const anyAcronym = formulaAcronyms.find(ac => ac.title === cleanTitle || (cleanTitle && ac.title && ac.title.includes(cleanTitle)) || (cleanTitle && ac.title && cleanTitle.includes(ac.title)));
+      const anyFormula = formulaQuestions.find(f => f.title === cleanTitle || (cleanTitle && f.title && f.title.includes(cleanTitle)) || (cleanTitle && f.title && cleanTitle.includes(f.title)));
       
       if (matchedType === 'overview' && anyOverview) {
         setActiveAnswerPopupData({ type: 'overview', title: anyOverview.title, content: anyOverview });
@@ -2437,7 +2439,7 @@ export default function App() {
           if (anyOverview && firstMatch === anyOverview) type = 'overview';
           else if (anyTable && firstMatch === anyTable) type = 'table';
           else if (anyAcronym && firstMatch === anyAcronym) type = 'acronym';
-          setActiveAnswerPopupData({ type, title: firstMatch.title, content: firstMatch });
+          setActiveAnswerPopupData({ type, title: firstMatch.title || '답안 정보', content: firstMatch });
         } else {
           showNotification('해당 토픽의 학습 자료를 찾을 수 없습니다.', 'error');
         }
@@ -4888,11 +4890,17 @@ export default function App() {
           }
         });
 
+        const colEls = Array.from(table.querySelectorAll('colgroup col'));
         allThs.forEach((h, i) => {
           const w = finalWidths[i];
           h.style.setProperty('width', w + 'px', 'important');
           h.style.setProperty('min-width', Math.min(w, MIN_WIDTH) + 'px', 'important');
           h.style.setProperty('max-width', w + 'px', 'important');
+          if (colEls[i]) {
+            colEls[i].style.setProperty('width', w + 'px', 'important');
+            colEls[i].style.setProperty('min-width', Math.min(w, MIN_WIDTH) + 'px', 'important');
+            colEls[i].style.setProperty('max-width', w + 'px', 'important');
+          }
         });
 
         table.style.setProperty('width', '100%', 'important');
@@ -13987,7 +13995,7 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
     const emptyRow = Array(parsed.headers.length).fill('');
     const updatedRows = [...parsed.rows, emptyRow];
     const newHtml = rebuildTableHtml(parsed.headers, updatedRows);
-    const updatedTables = formulaTables.map(item => item.id === tableId ? { ...item, html: newHtml } : item);
+    const updatedTables = formulaTables.map(item => item.id === tableId ? { ...item, html: newHtml, content: newHtml, comparison: newHtml } : item);
     setFormulaTables(updatedTables);
     handleSaveFormulaTables(updatedTables, false);
     showNotification('새 행이 추가되었습니다.', 'success');
@@ -13997,7 +14005,7 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
     const updatedHeaders = [...parsed.headers, '새 열'];
     const updatedRows = parsed.rows.map(row => [...row, '']);
     const newHtml = rebuildTableHtml(updatedHeaders, updatedRows);
-    const updatedTables = formulaTables.map(item => item.id === tableId ? { ...item, html: newHtml } : item);
+    const updatedTables = formulaTables.map(item => item.id === tableId ? { ...item, html: newHtml, content: newHtml, comparison: newHtml } : item);
     setFormulaTables(updatedTables);
     handleSaveFormulaTables(updatedTables, false);
     showNotification('새 열이 추가되었습니다.', 'success');
@@ -23616,7 +23624,12 @@ ${itemsStr}
                           </button>
                           {examTopic?.id && typeof examTopic.id === 'string' && examTopic.id.startsWith('mixed_') && (
                             <button
-                              onClick={() => handleOpenAnswerPopup(q)}
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleOpenAnswerPopup(q);
+                              }}
                               className="flex-1 sm:flex-none justify-center flex items-center gap-0 sm:gap-1.5 text-[9.5px] sm:text-[11px] font-bold px-1.5 py-1 rounded-lg border bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-indigo-950/40 hover:text-indigo-400 hover:border-indigo-500/50 transition-all duration-300 active:scale-95 cursor-pointer whitespace-nowrap"
                               title="답안 확인: 이 문제와 관련된 교재/학습 탭의 원본 암기자료 내용을 팝업으로 조회합니다."
                             >
@@ -25209,7 +25222,7 @@ ${itemsStr}
                     ) : formulaTables.length === 0 ? (
                       <div className="py-24 text-center flex flex-col items-center justify-center gap-4 text-center animate-scale-up">
                         <div className="p-5 bg-slateCustom-950/60 border border-slate-800 text-slate-500 rounded-full flex items-center justify-center">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" className="text-slate-500"><path d="M3 3h18v18H3Z"></path><path d="M21 9H3"></path><path d="M21 15H3"></path><path d="M12 3v18"></path></svg>
+                          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-slate-500"><path d="M3 3h18v18H3Z"></path><path d="M21 9H3"></path><path d="M21 15H3"></path><path d="M12 3v18"></path></svg>
                         </div>
                         <div>
                           <h4 className="text-lg font-bold text-white">저장된 표가 없습니다</h4>
@@ -25407,43 +25420,33 @@ ${itemsStr}
                                                     }}
                                                   >
                                                     {hIdx === 0 ? (
-                                                      <div className="relative inline-block select-none" onClick={(e) => e.stopPropagation()}>
-                                                        <button
-                                                          onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            setActiveAddDropdownTableId(activeAddDropdownTableId === t.id ? null : t.id);
-                                                          }}
-                                                          className="px-2 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-black cursor-pointer transition-all active:scale-95 border border-emerald-500/20 flex items-center gap-0.5 mx-auto"
-                                                          title="행 또는 열 추가"
-                                                        >
-                                                          + 행/열 추가
-                                                        </button>
-                                                        {activeAddDropdownTableId === t.id && (
-                                                          <div className="absolute left-1/2 -translate-x-1/2 mt-1.5 w-24 bg-slate-950 border border-slate-800 rounded-lg shadow-xl z-50 flex flex-col overflow-hidden py-1">
-                                                            <button
-                                                              onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                handleAddRow(t.id, parsed);
-                                                                setActiveAddDropdownTableId(null);
-                                                              }}
-                                                              className="w-full px-2 py-1.5 hover:bg-slate-900 text-center text-xs font-bold text-slate-200 cursor-pointer border-none bg-transparent"
-                                                            >
-                                                              행 추가
-                                                            </button>
-                                                            <button
-                                                              onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                handleAddColumn(t.id, parsed);
-                                                                setActiveAddDropdownTableId(null);
-                                                              }}
-                                                              className="w-full px-2 py-1.5 hover:bg-slate-900 text-center text-xs font-bold text-slate-200 cursor-pointer border-none bg-transparent"
-                                                            >
-                                                              열 추가
-                                                            </button>
-                                                          </div>
-                                                        )}
-                                                      </div>
-                                                    ) : isEditing ? (
+                                                       <div className="flex items-center justify-center gap-1 select-none py-0.5" onClick={(e) => e.stopPropagation()}>
+                                                         <button
+                                                           type="button"
+                                                           onClick={(e) => {
+                                                             e.stopPropagation();
+                                                             e.preventDefault();
+                                                             handleAddRow(t.id, parsed);
+                                                           }}
+                                                           className="px-1.5 py-0.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-black cursor-pointer transition-all active:scale-95 border border-emerald-500/30 shadow-sm flex items-center gap-0.5"
+                                                           title="행 추가 (아래에 빈 행 1줄을 만듭니다)"
+                                                         >
+                                                           + 행 추가
+                                                         </button>
+                                                         <button
+                                                           type="button"
+                                                           onClick={(e) => {
+                                                             e.stopPropagation();
+                                                             e.preventDefault();
+                                                             handleAddColumn(t.id, parsed);
+                                                           }}
+                                                           className="px-1.5 py-0.5 rounded bg-sky-600 hover:bg-sky-500 text-white text-[10px] font-black cursor-pointer transition-all active:scale-95 border border-sky-500/30 shadow-sm flex items-center gap-0.5"
+                                                           title="열 추가 (우측에 새 열 1개를 만듭니다)"
+                                                         >
+                                                           + 열 추가
+                                                         </button>
+                                                       </div>
+                                                     ) : isEditing ? (
                                                       <textarea
                                                         value={editingCellValue}
                                                         onChange={(e) => {
@@ -29129,7 +29132,7 @@ ${itemsStr}
         <div className="fixed inset-0 bg-slateCustom-950/80 backdrop-blur-sm z-[200150] flex items-center justify-center p-4 animate-fade-in select-none">
           <div className="bg-slateCustom-900 border border-white/20 rounded-3xl p-6 max-w-md w-full space-y-4 shadow-[0_20px_50px_rgba(0,0,0,0.6)] animate-scale-up">
             <div className="flex items-center gap-3 text-rose-400">
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h18v18H3Z"></path><path d="M21 9H3"></path><path d="M21 15H3"></path><path d="M12 3v18"></path></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3h18v18H3Z"></path><path d="M21 9H3"></path><path d="M21 15H3"></path><path d="M12 3v18"></path></svg>
               <h3 className="text-lg font-black text-white">필수암기 표로 내보내기</h3>
             </div>
             
@@ -29549,95 +29552,63 @@ ${itemsStr}
           </>
         );
 
-        if (isDesktop) {
-          return (
-            <PopoutWindow
-              title={
-                activeAnswerPopupData.type === 'overview' ? '📖 개요 답안 - ' + activeAnswerPopupData.title :
-                activeAnswerPopupData.type === 'table' ? '⚖️ 비교표 답안 - ' + activeAnswerPopupData.title :
-                activeAnswerPopupData.type === 'acronym' ? '💡 두문자 답안 - ' + activeAnswerPopupData.title :
-                '🔬 공식 답안 - ' + activeAnswerPopupData.title
-              }
-              onClose={() => setActiveAnswerPopupData(null)}
-              initWidth={820}
-              initHeight={920}
-              storageKey={"anti_popout_answer_" + activeAnswerPopupData.type}
-            >
-              <div className="w-full h-full flex flex-col overflow-hidden text-slate-100 p-4">
-                {/* Modal Content */}
-                <div className="flex-1 overflow-y-auto pr-1 space-y-4">
-                  {renderAnswerPopupContent()}
-                </div>
-
-                {/* Modal Footer */}
-                <div className="mt-4 pt-3 border-t border-slate-800/80 flex justify-end select-none">
-                  <button
-                    onClick={() => setActiveAnswerPopupData(null)}
-                    className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
-                  >
-                    닫기
-                  </button>
-                </div>
-              </div>
-            </PopoutWindow>
-          );
-        } else {
-          return (
+        return (
+          <div
+            id="answer-popup-modal"
+            style={{
+              position: 'fixed',
+              left: 'var(--answer-popup-x, 16px)',
+              top: 'var(--answer-popup-y, 80px)',
+              width: 'min(768px, calc(100vw - 32px))',
+              maxHeight: '75vh',
+              zIndex: 9999,
+              display: 'flex',
+              flexDirection: 'column',
+            }}
+            className="bg-slate-900/95 border border-indigo-500/30 rounded-3xl shadow-2xl overflow-hidden glassmorphism select-text animate-fade-in pointer-events-auto"
+          >
+            {/* Modal Header (Draggable) */}
             <div
-              id="answer-popup-modal"
-              style={{
-                position: 'fixed',
-                left: 'var(--answer-popup-x, 16px)',
-                top: 'var(--answer-popup-y, 80px)',
-                width: 'min(768px, calc(100vw - 32px))',
-                maxHeight: '75vh',
-                zIndex: 9999,
-                display: 'flex',
-                flexDirection: 'column',
-              }}
-              className="bg-slate-900/95 border border-white/20 rounded-3xl shadow-2xl overflow-hidden glassmorphism select-text animate-fade-in"
+              onMouseDown={handleAnswerPopupMoveStart}
+              onTouchStart={handleAnswerPopupMoveStart}
+              className="flex items-center justify-between px-6 py-4 border-b border-slate-800/80 bg-slate-955/60 cursor-grab active:cursor-grabbing select-none"
             >
-              {/* Modal Header */}
-              <div
-                onMouseDown={isDesktop ? handleAnswerPopupMoveStart : undefined}
-                onTouchStart={isDesktop ? handleAnswerPopupMoveStart : undefined}
-                className="flex items-center justify-between px-6 py-4 border-b border-slate-800/80 bg-slate-955/40 cursor-grab active:cursor-grabbing select-none"
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black uppercase px-2.5 py-1 rounded-lg bg-indigo-950/60 border border-indigo-500/20 text-indigo-400">
+                  {activeAnswerPopupData.type === 'overview' ? '📖 개요 답안' :
+                   activeAnswerPopupData.type === 'table' ? '⚖️ 비교표 답안' :
+                   activeAnswerPopupData.type === 'acronym' ? '💡 두문자 답안' : '🔬 공식 답안'}
+                </span>
+                <h2 className="text-base font-extrabold text-white truncate max-w-[200px] sm:max-w-md">
+                  {activeAnswerPopupData.title}
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveAnswerPopupData(null)}
+                className="p-1.5 rounded-full hover:bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer"
               >
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-black uppercase px-2.5 py-1 rounded-lg bg-indigo-950/60 border border-indigo-500/20 text-indigo-400">
-                    {activeAnswerPopupData.type === 'overview' ? '📖 개요 답안' :
-                     activeAnswerPopupData.type === 'table' ? '⚖️ 비교표 답안' :
-                     activeAnswerPopupData.type === 'acronym' ? '💡 두문자 답안' : '🔬 공식 답안'}
-                  </span>
-                  <h2 className="text-base font-extrabold text-white truncate max-w-[200px] sm:max-w-md">
-                    {activeAnswerPopupData.title}
-                  </h2>
-                </div>
-                <button
-                  onClick={() => setActiveAnswerPopupData(null)}
-                  className="p-1.5 rounded-full hover:bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-
-              {/* Modal Content */}
-              <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                {renderAnswerPopupContent()}
-              </div>
-
-              {/* Modal Footer */}
-              <div className="px-6 py-4 border-t border-slate-800/80 bg-slate-955/40 flex justify-end select-none">
-                <button
-                  onClick={() => setActiveAnswerPopupData(null)}
-                  className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
-                >
-                  닫기
-                </button>
-              </div>
+                <X size={18} />
+              </button>
             </div>
-          );
-        }
+
+            {/* Modal Content */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+              {renderAnswerPopupContent()}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 border-t border-slate-800/80 bg-slate-955/60 flex justify-end select-none">
+              <button
+                type="button"
+                onClick={() => setActiveAnswerPopupData(null)}
+                className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        );
       })()}
 
       {/* Interactive Quiz Question Generator Modal */}

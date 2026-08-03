@@ -39,8 +39,18 @@ export const PopoutWindow = ({ title, onClose, children, initWidth = 760, initHe
     // Centering fallback relative to main window if no coordinates saved
     const defaultLeft = window.screenX + (window.outerWidth - w) / 2;
     const defaultTop = window.screenY + (window.outerHeight - h) / 2;
-    const x = (savedPos && savedPos.x !== undefined) ? savedPos.x : defaultLeft;
-    const y = (savedPos && savedPos.y !== undefined) ? savedPos.y : defaultTop;
+    const rawX = (savedPos && savedPos.x !== undefined) ? savedPos.x : defaultLeft;
+    const rawY = (savedPos && savedPos.y !== undefined) ? savedPos.y : defaultTop;
+
+    // Clamp to visible screen area so saved positions from other monitors
+    // or off-screen coordinates don't cause the popup to fly outside.
+    const screenLeft = window.screen.availLeft || 0;
+    const screenTop = window.screen.availTop || 0;
+    const screenRight = screenLeft + (window.screen.availWidth || window.screen.width);
+    const screenBottom = screenTop + (window.screen.availHeight || window.screen.height);
+    const margin = 40; // keep at least 40px of the window edge on screen
+    const x = Math.min(Math.max(rawX, screenLeft), screenRight - margin);
+    const y = Math.min(Math.max(rawY, screenTop), screenBottom - margin);
 
     const features = `popup=yes,left=${Math.round(x)},screenX=${Math.round(x)},top=${Math.round(y)},screenY=${Math.round(y)},width=${Math.round(w)},height=${Math.round(h)},resizable=yes`;
     

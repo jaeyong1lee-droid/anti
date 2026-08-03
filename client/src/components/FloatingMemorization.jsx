@@ -273,7 +273,9 @@ function FloatingTableItem({
   rebuildTableHtml
 }) {
   const containerRef = useRef(null);
-  const rawData = t.html || t.content || t.comparison || (t.tableData ? JSON.stringify(t.tableData) : '');
+  const rawData = (typeof t.html === 'string' && t.html.trim()) 
+    ? t.html 
+    : (t.content || t.comparison || (t.tableData ? JSON.stringify(t.tableData) : ''));
   const parsed = parseHtmlTable(rawData);
   const colCount = parsed.headers.length;
   const colWidths = getColWidthsForTable(t.id, colCount);
@@ -285,11 +287,11 @@ function FloatingTableItem({
   return (
     <div 
       ref={containerRef} 
-      className="table-quiz-container floating-table-container custom-col-widths overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40 p-0 select-text animate-fade-in text-[14px] md:text-[16px] relative"
+      className="table-quiz-container floating-table-container custom-col-widths overflow-x-auto rounded-xl border border-slate-800 bg-slate-955/40 p-0 select-text animate-fade-in text-[14px] md:text-[16px] relative"
     >
       <table 
-        className="table-quiz-table custom-col-widths table-fixed text-center border-collapse"
         style={{ width: `${totalTablePx}px`, minWidth: `${totalTablePx}px` }}
+        className="table-quiz-table custom-col-widths table-fixed text-center border-collapse text-[13px] sm:text-[15px]"
       >
         <colgroup>
           {colWidths.map((w, idx) => (
@@ -304,55 +306,53 @@ function FloatingTableItem({
               return (
                 <th 
                   key={hIdx} 
-                  className="relative p-1.5 border-r border-slate-800/80 last:border-r-0 align-middle whitespace-normal break-words select-text group/th hover:z-40 overflow-visible"
+                  className="relative p-1.5 border-r border-slate-800/80 last:border-r-0 align-middle whitespace-normal break-words select-text group/th overflow-visible z-10"
                 >
                   {hIdx === 0 ? (
-                    <div className="relative inline-block select-none" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center justify-center gap-1 select-none py-0.5" onClick={(e) => e.stopPropagation()}>
                       <button
+                        type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          setActiveAddDropdownTableId(activeAddDropdownTableId === t.id ? null : t.id);
+                          e.preventDefault();
+                          const emptyRow = Array(parsed.headers.length).fill('');
+                          const updatedRows = [...parsed.rows, emptyRow];
+                          const newHtml = rebuildTableHtml(parsed.headers, updatedRows);
+                          const updatedTables = formulaTables.map(item => 
+                            item.id === t.id ? { ...item, html: newHtml, content: newHtml, comparison: newHtml } : item
+                          );
+                          setFormulaTables(updatedTables);
+                          if (typeof handleSaveFormulaTables === 'function') {
+                            handleSaveFormulaTables(updatedTables, false);
+                          }
                         }}
-                        className="px-2 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-black cursor-pointer transition-all active:scale-95 border border-emerald-500/20 flex items-center gap-0.5 mx-auto"
-                        title="행 또는 열 추가"
+                        className="px-1.5 py-0.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-black cursor-pointer transition-all active:scale-95 border border-emerald-500/30 shadow-sm flex items-center gap-0.5"
+                        title="행 추가 (아래에 빈 행 1줄을 만듭니다)"
                       >
-                        + 행/열 추가
+                        + 행 추가
                       </button>
-                      {activeAddDropdownTableId === t.id && (
-                        <div className="absolute left-1/2 -translate-x-1/2 mt-1.5 w-24 bg-slate-950 border border-slate-800 rounded-lg shadow-xl z-50 flex flex-col overflow-hidden py-1">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              const emptyRow = Array(parsed.headers.length).fill('');
-                              const updatedRows = [...parsed.rows, emptyRow];
-                              const newHtml = rebuildTableHtml(parsed.headers, updatedRows);
-                              const updatedTables = formulaTables.map(item => item.id === t.id ? { ...item, html: newHtml } : item);
-                              setFormulaTables(updatedTables);
-                              handleSaveFormulaTables(updatedTables, false);
-                              setActiveAddDropdownTableId(null);
-                            }}
-                            className="w-full px-2 py-1.5 hover:bg-slate-900 text-center text-xs font-bold text-slate-200 cursor-pointer border-none bg-transparent"
-                          >
-                            행 추가
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              const newHeader = `열 ${parsed.headers.length + 1}`;
-                              const updatedHeaders = [...parsed.headers, newHeader];
-                              const updatedRows = parsed.rows.map(row => [...row, '']);
-                              const newHtml = rebuildTableHtml(updatedHeaders, updatedRows);
-                              const updatedTables = formulaTables.map(item => item.id === t.id ? { ...item, html: newHtml } : item);
-                              setFormulaTables(updatedTables);
-                              handleSaveFormulaTables(updatedTables, false);
-                              setActiveAddDropdownTableId(null);
-                            }}
-                            className="w-full px-2 py-1.5 hover:bg-slate-900 text-center text-xs font-bold text-slate-200 cursor-pointer border-none bg-transparent"
-                          >
-                            열 추가
-                          </button>
-                        </div>
-                      )}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          const newHeader = `열 ${parsed.headers.length + 1}`;
+                          const updatedHeaders = [...parsed.headers, newHeader];
+                          const updatedRows = parsed.rows.map(row => [...row, '']);
+                          const newHtml = rebuildTableHtml(updatedHeaders, updatedRows);
+                          const updatedTables = formulaTables.map(item => 
+                            item.id === t.id ? { ...item, html: newHtml, content: newHtml, comparison: newHtml } : item
+                          );
+                          setFormulaTables(updatedTables);
+                          if (typeof handleSaveFormulaTables === 'function') {
+                            handleSaveFormulaTables(updatedTables, false);
+                          }
+                        }}
+                        className="px-1.5 py-0.5 rounded bg-sky-600 hover:bg-sky-500 text-white text-[10px] font-black cursor-pointer transition-all active:scale-95 border border-sky-500/30 shadow-sm flex items-center gap-0.5"
+                        title="열 추가 (우측에 새 열 1개를 만듭니다)"
+                      >
+                        + 열 추가
+                      </button>
                     </div>
                   ) : isEditing ? (
                     <input
@@ -1165,7 +1165,7 @@ export function FloatingMemorization({
 
   const [usePopout, setUsePopout] = useState(() => {
     if (!isDesktop) return false;
-    return localStorage.getItem('anti_use_popout_memo') !== 'false';
+    return localStorage.getItem('anti_use_popout_memo') === 'true';
   });
 
   const togglePopoutMode = () => {

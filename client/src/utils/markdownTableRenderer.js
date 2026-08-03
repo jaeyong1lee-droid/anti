@@ -236,7 +236,7 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false,
         const entireTableEscaped = tableLines.join('\n').replace(/"/g, '&quot;').replace(/\$/g, '&#36;').replace(/\n/g, '&#10;');
         html += `<td class="p-1 sm:p-1.5 text-center align-middle whitespace-nowrap bg-slate-950/10" style="border-right:0;">`;
         html += `<button data-row-title="${firstCellSafe}" data-preceding-title="${cleanTitleSafe}" data-entire-table="${entireTableEscaped}" onclick="if(window.__handleGlobalRowDelete) { window.__handleGlobalRowDelete(this) } else { alert('공식 개요 삭제 핸들러가 준비되지 않았습니다.'); }" class="p-1 rounded bg-slate-850 hover:bg-rose-950 text-slate-400 hover:text-rose-400 cursor-pointer transition-all border border-slate-800 hover:border-rose-500/20 md:opacity-0 md:group-hover:opacity-100 opacity-100 flex items-center justify-center mx-auto shrink-0 animate-fade-in" title="행 삭제" style="outline:none; display:inline-flex;">`;
-        html += `<svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>`;
+        html += `<svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>`;
         html += `</button>`;
         html += `</td>`;
       }
@@ -260,7 +260,7 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false,
   html += `</span>`;
   html += `<button data-title="${safeTitleForDataAttr}" onclick="if(window.__handleTableConfirmRequest) { window.__handleTableConfirmRequest(this.closest('.table-export-wrapper').querySelector('table').outerHTML, this.getAttribute('data-title')) }" class="p-1.5 bg-slate-900 hover:bg-rose-600 border border-slate-700/50 rounded-lg text-slate-200 hover:text-white transition-all cursor-pointer flex items-center justify-center shadow-md select-none hover:scale-105 active:scale-95" title="필수암기 표로 내보내기" style="outline: none;">`;
 
-  html += `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="inline-block"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>`;
+  html += `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" class="inline-block"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>`;
   html += `</button>`;
   html += `</div>`;
 
@@ -316,7 +316,7 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false,
       const entireTableEscaped = tableLines.join('\n').replace(/"/g, '&quot;').replace(/\$/g, '&#36;').replace(/\n/g, '&#10;');
       html += `<td class="p-1 sm:p-1.5 text-center align-middle whitespace-nowrap bg-slate-950/10" style="border-right:0;">`;
       html += `<button data-row-title="${firstCellSafe}" data-preceding-title="${cleanTitleSafe}" data-entire-table="${entireTableEscaped}" onclick="if(window.__handleGlobalRowDelete) { window.__handleGlobalRowDelete(this) } else { alert('공식 개요 삭제 핸들러가 준비되지 않았습니다.'); }" class="p-1 rounded bg-slate-850 hover:bg-rose-950 text-slate-400 hover:text-rose-400 cursor-pointer transition-all border border-slate-800 hover:border-rose-500/20 md:opacity-0 md:group-hover:opacity-100 opacity-100 flex items-center justify-center mx-auto shrink-0 animate-fade-in" title="행 삭제" style="outline:none; display:inline-flex;">`;
-      html += `<svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>`;
+      html += `<svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>`;
       html += `</button>`;
       html += `</td>`;
     }
