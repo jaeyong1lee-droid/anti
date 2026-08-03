@@ -25936,6 +25936,17 @@ ${itemsStr}
 
                                   {/* Action Buttons Group */}
                                   <div className="flex items-center gap-2 self-end md:self-auto shrink-0 select-none">
+                                    {/* 완전변경 버튼 */}
+                                    <button
+                                      onClick={() => handleRegenerateAcronym(ac.id)}
+                                      disabled={ac.isLoading || ac.isOptimizing}
+                                      className="p-1.5 rounded-lg text-slate-400 hover:text-amber-400 hover:bg-amber-500/10 hover:border-amber-500/20 border border-slate-700/50 bg-slate-800/40 transition-all cursor-pointer text-[11px] font-bold flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                                      title="현재 생성된 데이터를 소거하고 AI가 완전 새로 생성합니다"
+                                    >
+                                      <RotateCcw size={12} className={ac.isLoading ? "animate-spin text-amber-400" : ""} />
+                                      <span>완전변경</span>
+                                    </button>
+
                                     {/* 새로고침(재조합) 버튼 */}
                                     <button
                                       onClick={() => handleOptimizeAcronym(ac.id)}
@@ -28869,6 +28880,7 @@ ${itemsStr}
           handleUpdateAcronymRowCell={handleUpdateAcronymRowCell}
           handleDeleteAcronymCard={handleDeleteAcronymCard}
           handleOptimizeAcronym={handleOptimizeAcronym}
+          handleRegenerateAcronym={handleRegenerateAcronym}
           handleAddAcronymKeyword={handleAddAcronymKeyword}
           getAcronymRows={getAcronymRows}
           formulaOverviews={formulaOverviews}
