@@ -153,7 +153,8 @@ export const TableQuiz = React.memo(function TableQuiz({
             if (isStep2) {
               letterIdx = firstTableInputs.length + sIdx;
             }
-            const inputLetter = String.fromCharCode(65 + (letterIdx >= 0 ? letterIdx : 0));
+            const safeIdx = letterIdx >= 0 ? letterIdx % 26 : 0;
+            const inputLetter = String.fromCharCode(65 + safeIdx);
             
             const isCorrect = gradingResult 
               ? gradingResult.isCorrect 
@@ -1295,7 +1296,10 @@ export const TableQuiz = React.memo(function TableQuiz({
                       : (normalize(value) === normalize(correctAnswer));
    
                     const inputIdx = inputIds.indexOf(inputId);
-                    const inputLetter = String.fromCharCode(65 + (inputIdx !== -1 ? inputIdx : 0));
+                    const cellInputIdx = firstTableInputs.indexOf(inputId);
+                    const letterIdx = cellInputIdx !== -1 ? cellInputIdx : (inputIdx !== -1 ? inputIdx : 0);
+                    const safeIdx = letterIdx >= 0 ? letterIdx % 26 : 0;
+                    const inputLetter = String.fromCharCode(65 + safeIdx);
                     const isCellGraded = revealed || (getGradingResult(tableGradingResults, questionIdx, inputId) !== undefined);
                     const theme = isCellGraded ? getTableScoreColorTheme(gradingResult, isCorrect, value) : null;
                     return (
@@ -1623,7 +1627,8 @@ export const TableQuiz = React.memo(function TableQuiz({
      
                       const sIdx = rIdx * (row.length - 1) + (cIdx - 1);
                       const letterIdx = isOverviewReview ? (firstTableInputs.length + sIdx) : (inputIds.indexOf(inputId) !== -1 ? inputIds.indexOf(inputId) : sIdx + firstTableInputs.length);
-                      const inputLetter = String.fromCharCode(65 + (letterIdx >= 0 ? letterIdx : 0));
+                      const safeIdx = letterIdx >= 0 ? letterIdx % 26 : 0;
+            const inputLetter = String.fromCharCode(65 + safeIdx);
                       const isCellGraded = revealed || (getGradingResult(tableGradingResults, questionIdx, inputId, true) !== undefined);
                       const theme = isCellGraded ? getTableScoreColorTheme(gradingResult, isCorrect, value) : null;
                       return (
