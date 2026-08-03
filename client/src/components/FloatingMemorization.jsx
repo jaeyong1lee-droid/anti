@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  X, Search, RefreshCw, Trash2, BookOpen, Type, FileText, Image, ChevronDown, ChevronUp, Layers, HelpCircle
+  X, Search, RefreshCw, RotateCcw, Trash2, BookOpen, Type, FileText, Image, ChevronDown, ChevronUp, Layers, HelpCircle
 } from 'lucide-react';
 import { ImageTabList } from './ImageStandardsPlugin';
 import { PopoutWindow } from './PopoutWindow';
@@ -780,6 +780,7 @@ export function FloatingMemorization({
   handleUpdateAcronymRowCell,
   handleDeleteAcronymCard,
   handleOptimizeAcronym,
+  handleRegenerateAcronym,
   handleAddAcronymKeyword,
   getAcronymRows,
   // Overviews
@@ -1579,6 +1580,15 @@ export function FloatingMemorization({
                               className="w-full bg-transparent border-0 text-[10.5px] text-slate-200 focus:outline-none p-0 font-bold disabled:opacity-50"
                             />
                           </div>
+                          <button
+                            onClick={() => handleRegenerateAcronym && handleRegenerateAcronym(ac.id)}
+                            disabled={ac.isLoading || ac.isOptimizing}
+                            className="p-1 bg-slate-800 hover:bg-slate-700 text-amber-300 hover:text-amber-200 rounded border border-slate-750 text-[10px] font-bold cursor-pointer select-none shrink-0 flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                            title="현재 데이터를 소거하고 AI가 완전 새로 생성합니다"
+                          >
+                            <RotateCcw size={10} className={ac.isLoading ? "animate-spin text-amber-300" : ""} />
+                            <span>완전변경</span>
+                          </button>
                           <button
                             onClick={() => handleOptimizeAcronym(ac.id)}
                             className="p-1 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded border border-slate-750 text-[10px] font-bold cursor-pointer select-none shrink-0"

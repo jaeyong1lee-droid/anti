@@ -46,6 +46,7 @@ import {
   Sparkles, 
   PlusCircle, 
   RefreshCw, 
+  RotateCcw,
   Trash2, 
   Clock, 
   ChevronDown, 
@@ -14907,6 +14908,120 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
       setFormulaAcronyms(updated);
       await handleSaveFormulaAcronyms(updated, false);
       showNotification(`[${title}] 앞글자가 삭제되었습니다.`, 'info');
+    }
+  };
+
+  const handleRegenerateAcronym = async (acronymId) => {
+    const acronymIdx = formulaAcronyms.findIndex(item => item.id === acronymId);
+    if (acronymIdx === -1) return;
+    const ac = formulaAcronyms[acronymIdx];
+    const topic = ac.title;
+    const rows = getAcronymRows(ac.content);
+    const count = rows.length > 0 ? rows.length : 4;
+    const originalContent = ac.content;
+
+    // 현재 생성된 데이터 소거 및 로딩 상태 설정
+    setFormulaAcronyms(prev => prev.map(item => {
+      if (item.id === acronymId) {
+        return { ...item, content: '', isLoading: true };
+      }
+      return item;
+    }));
+
+    if (activeAnswerPopupData && activeAnswerPopupData.type === 'acronym' && activeAnswerPopupData.content.id === acronymId) {
+      setActiveAnswerPopupData(prev => ({
+        ...prev,
+        content: { ...prev.content, content: '', isLoading: true }
+      }));
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 45000); // 45s safety timeout
+
+    try {
+      const query = `[완전재생성]\n"${topic}" 토픽에 대한 앞글자(두문자) 암기법을 완전히 처음부터 새로 작성해줘. 총 ${count}개 항목으로 구성해줘. 기존의 두문자나 암기단어에 구애받지 말고, 지반공학 기술사 시험에 부합하는 최고의 암기 효율을 가진 완전히 새로운 두문자, 암기단어, 매칭설명, 연상문장을 창작해줘.`;
+
+      const res = await fetch(`${API_BASE}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
+        body: JSON.stringify({
+          history: [],
+          message: query,
+          image: null,
+          acronymMode: true
+        })
+      });
+
+      clearTimeout(timeoutId);
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '앞글자 완전재생성 실패');
+
+      let aiText = data.text || '';
+      
+      let parsedTitle = topic;
+      const titleMatch = aiText.match(/^제목:\s*([^\n]+)/m);
+      if (titleMatch) {
+        parsedTitle = titleMatch[1].trim();
+        aiText = aiText.replace(/^제목:[^\n]*\n?/m, '');
+      }
+
+      const finalContent = aiText.trim();
+
+      setFormulaAcronyms(prev => prev.map((item) => {
+        if (item.id === acronymId) {
+          return {
+            ...item,
+            title: parsedTitle,
+            content: finalContent,
+            isLoading: false
+          };
+        }
+        return item;
+      }));
+
+      const updatedList = formulaAcronyms.map((item) => {
+        if (item.id === acronymId) {
+          return {
+            ...item,
+            title: parsedTitle,
+            content: finalContent,
+            isLoading: false
+          };
+        }
+        return item;
+      });
+      await handleSaveFormulaAcronyms(updatedList, false);
+
+      if (activeAnswerPopupData && activeAnswerPopupData.type === 'acronym' && activeAnswerPopupData.content.id === acronymId) {
+        setActiveAnswerPopupData(prev => ({
+          ...prev,
+          title: parsedTitle,
+          content: { ...prev.content, title: parsedTitle, content: finalContent, isLoading: false }
+        }));
+      }
+
+      showNotification(`[${parsedTitle}] 앞글자 암기법이 완전히 새로 생성되었습니다!`, 'success');
+    } catch (err) {
+      clearTimeout(timeoutId);
+      console.error('Failed to regenerate acronym:', err);
+      const errMsg = err.name === 'AbortError' ? '요청 시간이 초과되었습니다 (45초 제한).' : err.message;
+      showNotification(`완전변경 실패: ${errMsg}`, 'error');
+
+      setFormulaAcronyms(prev => prev.map((item) => {
+        if (item.id === acronymId) {
+          return { ...item, content: originalContent, isLoading: false };
+        }
+        return item;
+      }));
+
+      if (activeAnswerPopupData && activeAnswerPopupData.type === 'acronym' && activeAnswerPopupData.content.id === acronymId) {
+        setActiveAnswerPopupData(prev => ({
+          ...prev,
+          content: { ...prev.content, content: originalContent, isLoading: false }
+        }));
+      }
     }
   };
 
