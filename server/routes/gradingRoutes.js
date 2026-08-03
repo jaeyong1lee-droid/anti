@@ -273,7 +273,7 @@ function parseMarkdownTableServer(questionText) {
 
 // POST /api/question/regenerate -> Regenerate a single question
 router.post('/question/regenerate', async (req, res) => {
-  const { mode, topicId, currentQuestion, questionIdx, allQuestions, targetTypeSelection } = req.body;
+  const { mode, topicId, currentQuestion, questionIdx, allQuestions, targetTypeSelection, latestTableContent, formulaTables } = req.body;
   const progressId = req.query.progressId || req.body.progressId;
   let standardsAnalysis = '';
   let progressTimer = null;
@@ -448,7 +448,7 @@ router.post('/question/regenerate', async (req, res) => {
         });
       }
       
-      const content = currentQuestion.explanation || '';
+      const content = latestTableContent || currentQuestion.explanation || '';
       let systemPrompt = "당신은 지반공학 기술사 시험 전문 출제위원 및 튜터입니다.";
       let userPrompt = "";
 
@@ -507,7 +507,7 @@ ${fileText || '없음'}
 ${getActiveGenerationStandards()}
 ${getActiveEngineeringStandards()}
 제시된 HTML 테이블 소스를 성실히 반영하여 JSON 포맷으로 재출제해 주십시오.`;
-        userPrompt = `[원본 비교 표 HTML]:\n${content}\n\n[기존 문제 질문]:\n${currentQuestion.question || ''}\n\n위 데이터를 바탕으로 JSON 포맷으로 재출제해 주십시오.`;
+        userPrompt = `[원본 비교 표 HTML (사용자가 행/열을 추가하거나 수정한 최신 표 데이터)]:\n${content}\n\n[기존 문제 질문]:\n${currentQuestion.question || ''}\n\n위 최신 수정 표 데이터를 100% 원본 소스로 삼아, 새로 추가된 행과 열을 모두 반영한 신규 표 빈칸 문제(Table Quiz)로 JSON 포맷 재출제해 주십시오.`;
       } else {
         systemPrompt = `당신은 지반공학 기술사 시험 전문 튜터이자 출제위원입니다.
 제시된 앞글자(두문자) 암기법 데이터를 기반으로 새롭게 두문자 조합 및 연상문장을 반환해 주십시오.

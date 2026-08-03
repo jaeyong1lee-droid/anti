@@ -10645,6 +10645,29 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
         setReviewSessionId(activeSid);
         
         const topicCategory = selectedTopic.category || '믹스';
+        
+        // Find latest updated table content from formulaTables state if available
+        const cleanQTitle = (currentQ?.question || '').replace(/^\[.*?\]\s*/, '').trim();
+        const matchingTable = (formulaTables || []).find(t => 
+          t.id === currentQ?.id || 
+          t.id === currentQ?.originalId || 
+          (t.title && cleanQTitle.includes(t.title)) || 
+          (t.title && t.title.includes(cleanQTitle))
+        );
+        const latestTableContent = matchingTable ? (matchingTable.html || matchingTable.content || matchingTable.comparison) : null;
+
+        const body = {
+          mode,
+          topicId: isReview ? selectedTopic?.id : null,
+          currentQuestion: currentQ,
+          questionIdx: idx,
+          allQuestions: isReview ? aiQuestions : examQuestions,
+          progressId,
+          targetTypeSelection,
+          formulaTables,
+          latestTableContent
+        };
+        
         setAiQuestions(questions.map(q => healQuizQuestionObject({ ...q, category: topicCategory })));
         setSelectedAnswers({});
         setRevealedQuestions({});
@@ -11195,6 +11218,16 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
     startProgressPolling(progressId);
 
     try {
+      // Find latest updated table content from formulaTables state if available
+      const cleanQTitle = (currentQ?.question || '').replace(/^[.*?]s*/, '').trim();
+      const matchingTable = (formulaTables || []).find(t => 
+        t.id === currentQ?.id || 
+        t.id === currentQ?.originalId || 
+        (t.title && cleanQTitle.includes(t.title)) || 
+        (t.title && t.title.includes(cleanQTitle))
+      );
+      const latestTableContent = matchingTable ? (matchingTable.html || matchingTable.content || matchingTable.comparison) : null;
+
       const body = {
         mode,
         topicId: isReview ? selectedTopic?.id : null,
@@ -11202,7 +11235,9 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
         questionIdx: idx,
         allQuestions: isReview ? aiQuestions : examQuestions,
         progressId,
-        targetTypeSelection
+        targetTypeSelection,
+        formulaTables,
+        latestTableContent
       };
 
       console.log('[변환] 요청 시작:', { mode, idx, topicId: body.topicId, type: currentQ?.type, targetTypeSelection });
