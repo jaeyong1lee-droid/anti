@@ -1165,7 +1165,8 @@ export function FloatingMemorization({
 
   const [usePopout, setUsePopout] = useState(() => {
     if (!isDesktop) return false;
-    return localStorage.getItem('anti_use_popout_memo') === 'true';
+    const saved = localStorage.getItem('anti_use_popout_memo');
+    return saved === null ? true : saved !== 'false';
   });
 
   const togglePopoutMode = () => {

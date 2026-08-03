@@ -656,7 +656,9 @@ export const TableQuiz = React.memo(function TableQuiz({
   const [isMobileView, setIsMobileView] = useState(() => window.innerWidth < 768);
 
   const [usePopout, setUsePopout] = useState(() => {
-    return localStorage.getItem('anti_use_popout_table') === 'true';
+    if (window.innerWidth < 768) return false;
+    const saved = localStorage.getItem('anti_use_popout_table');
+    return saved === null ? true : saved !== 'false';
   });
 
   const togglePopoutMode = () => {

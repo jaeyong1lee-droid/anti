@@ -3002,7 +3002,8 @@ export function FloatingCalculator({ isVisible, onClose }) {
   const isMobile = window.innerWidth < 768;
   const [usePopout, setUsePopout] = useState(() => {
     if (isMobile) return false;
-    return localStorage.getItem('anti_use_popout_calc') === 'true';
+    const saved = localStorage.getItem('anti_use_popout_calc');
+    return saved === null ? true : saved !== 'false';
   });
 
   const togglePopoutMode = () => {
