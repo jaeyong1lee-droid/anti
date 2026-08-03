@@ -257,12 +257,51 @@ export const LatexRenderer = React.memo(function LatexRenderer({
                   .replace(/&quot;/gi, '"')
                   .replace(/&#39;/gi, "'")
               : part.content;
+
+            const renderAsciiWithKatex = (asciiText) => {
+              if (!asciiText || typeof asciiText !== 'string') return asciiText;
+              
+              const mathRegex = /(\$\$[\s\S]+?\$\$|\$[^\$\n]+?\$)/g;
+              const subParts = asciiText.split(mathRegex);
+
+              return subParts.map((partStr, i) => {
+                if (!partStr) return null;
+
+                const isDisplayMath = partStr.startsWith('$$') && partStr.endsWith('$$') && partStr.length > 4;
+                const isInlineMath = partStr.startsWith('$') && partStr.endsWith('$') && partStr.length > 2;
+
+                if (isDisplayMath || isInlineMath) {
+                  const rawMath = isDisplayMath 
+                    ? partStr.slice(2, -2) 
+                    : partStr.slice(1, -1);
+                  
+                  try {
+                    const renderedHtml = renderKatexString(rawMath.trim(), {
+                      displayMode: isDisplayMath,
+                      throwOnError: false
+                    });
+                    return (
+                      <span
+                        key={i}
+                        className="inline-block align-middle font-normal"
+                        dangerouslySetInnerHTML={{ __html: renderedHtml }}
+                      />
+                    );
+                  } catch (e) {
+                    return <span key={i}>{partStr}</span>;
+                  }
+                }
+
+                return <React.Fragment key={i}>{partStr}</React.Fragment>;
+              });
+            };
+
             return (
               <pre 
                 key={pIdx} 
                 className="w-auto max-w-full inline-block font-mono text-[12px] sm:text-[13px] overflow-x-auto whitespace-pre p-3 rounded-xl bg-slate-900/70 border border-slate-700/50 text-slate-200 leading-snug my-2 select-text font-mono"
               >
-                {cleanAscii}
+                {renderAsciiWithKatex(cleanAscii)}
               </pre>
             );
           } else {
