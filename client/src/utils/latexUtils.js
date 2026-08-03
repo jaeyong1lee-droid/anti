@@ -510,7 +510,6 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   text = text.replace(/\([₩\\]?t\)/gi, '($\\Delta t$)');
 
   text = text.replace(/₩/g, '\\')
-             .replace(/\\\[([\s\S]*?)\\\]/g, (m, p1) => '$$' + p1.trim() + '$$')
              .replace(/\\\(([\s\S]*?)\\\)/g, (m, p1) => '$' + p1.trim() + '$');
   let processed = healCorruptedKatexHtml(text);
   // [Self-Healing] Fix misplaced dollar signs inside parentheses like (s_{\infty}$) -> ($s_{\infty}$)
@@ -832,7 +831,7 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
       math = healBackslashes(math).replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ');
       math = math.replace(/</g, '\\lt ').replace(/>/g, '\\gt ')
                  .replace(/_\s+/g, '_').replace(/\^\s+/g, '^');
-      return token.type === 'block-math' ? `\n\n$$${math}$$\n\n` : `$${math}$`;
+      return token.type === 'block-math' ? `$$${math}$$` : `$${math}$`;
     }
   }).join('');
 

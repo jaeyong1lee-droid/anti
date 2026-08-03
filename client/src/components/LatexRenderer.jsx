@@ -183,8 +183,7 @@ export const LatexRenderer = React.memo(function LatexRenderer({
   if (!text) return null;
 
   let parsedText = typeof text === 'string' 
-    ? text.replace(/\\\[([\s\S]*?)\\\]/g, (m, p1) => '$$' + p1.trim() + '$$')
-          .replace(/\\\(([\s\S]*?)\\\)/g, (m, p1) => '$' + p1.trim() + '$')
+    ? text.replace(/\\\(([\s\S]*?)\\\)/g, (m, p1) => '$' + p1.trim() + '$')
     : text;
   if ((forceInline || (typeof className === 'string' && className.includes('inline'))) && typeof parsedText === 'string') {
     parsedText = parsedText.replace(/\$\$/g, '$').trim();

@@ -926,7 +926,7 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
       math = healBackslashes(math);
       math = math.replace(/</g, '\\lt ').replace(/>/g, '\\gt ')
                  .replace(/_\s+/g, '_').replace(/\^\s+/g, '^');
-      return token.type === 'block-math' ? `\n\n$$${math}$$\n\n` : `$${math}$`;
+      return token.type === 'block-math' ? `$$${math}$$` : `$${math}$`;
     }
   }).join('');
 
