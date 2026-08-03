@@ -233,6 +233,12 @@ function parseOverviewContentServer(content) {
 function cleanQuestionJunk(qText) {
   if (!qText || typeof qText !== 'string') return qText;
   let cleaned = qText;
+
+  // 1. Delete [A]부터 [D]에 / (A)부터 (D)에 range junk
+  cleaned = cleaned.replace(/표의\s*빈칸\s*\[?[A-Z]\]?\s*(부터|~)\s*\[?[A-Z]\]?에\s*들어갈/gi, '표의 빈칸에 들어갈');
+  cleaned = cleaned.replace(/빈칸\s*\[?[A-Z]\]?\s*(부터|~)\s*\[?[A-Z]\]?에\s*들어갈/gi, '빈칸에 들어갈');
+
+  // 2. Delete noun ending guideline & example junk
   cleaned = cleaned.replace(/명사형\s*종결\s*어미\s*\([^)]*\)/gi, '');
   cleaned = cleaned.replace(/명사형\s*종결\s*어미/gi, '');
   cleaned = cleaned.replace(/\([^)]*~함[^)]*\)/gi, '');
@@ -240,8 +246,11 @@ function cleanQuestionJunk(qText) {
   cleaned = cleaned.replace(/\([^)]*~최적화[^)]*\)/gi, '');
   cleaned = cleaned.replace(/빈칸\s*(\([A-Z]\)\s*,\s*){2,}\([A-Z]\)에\s*들어갈/gi, '빈칸에 들어갈');
   cleaned = cleaned.replace(/빈칸\s*(\([A-Z]\)\s*,\s*)+\([A-Z]\)/gi, '빈칸');
-  cleaned = cleaned.replace(/내용을\s*로\s*(작성|서술)하십시오/gi, '내용을 $1하십시오');
+
+  // 3. Delete trailing particle junk ("설명을 로 작성" -> "설명을 작성")
+  cleaned = cleaned.replace(/(설명|내용|답)을\s*로\s*(작성|서술)/gi, '$1을 $2');
   cleaned = cleaned.replace(/\s+로\s*(작성|서술)하십시오/gi, ' $1하십시오');
+
   cleaned = cleaned.replace(/\s+/g, ' ').trim();
   return cleaned;
 }
