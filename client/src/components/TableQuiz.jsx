@@ -58,6 +58,12 @@ export const TableQuiz = React.memo(function TableQuiz({
   const hasValidMainRows = Array.isArray(q.tableData?.rows) && q.tableData.rows.length > 0;
   const hasValidCompRows = Array.isArray(q.comparisonTableData?.rows) && q.comparisonTableData.rows.length > 0;
 
+  if (hasValidMainRows && hasValidCompRows) {
+    if (JSON.stringify(q.tableData.headers) === JSON.stringify(q.comparisonTableData.headers)) {
+      q.comparisonTableData = null;
+    }
+  }
+
   if (!hasValidMainRows && !hasValidCompRows) {
     const fallbackAnswer = q.answer || q.concept || q.explanation || q.question || '학술적 개요 및 핵심 기전 서술';
     q.tableData = {

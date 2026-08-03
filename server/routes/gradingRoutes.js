@@ -229,6 +229,15 @@ function parseOverviewContentServer(content) {
 }
 
 
+
+function cleanQuestionJunk(qText) {
+  if (!qText || typeof qText !== 'string') return qText;
+  let cleaned = qText.replace(/빈칸s*(([A-Z])s*,s*){2,}([A-Z])에s*들어갈/gi, '빈칸에 들어갈');
+  cleaned = cleaned.replace(/빈칸s*(([A-Z])s*,s*)+([A-Z])/gi, '빈칸');
+  cleaned = cleaned.replace(/s+/g, ' ').trim();
+  return cleaned;
+}
+
 function parseAnyTableServer(tableStr) {
   if (!tableStr || typeof tableStr !== 'string') return null;
 
@@ -596,6 +605,7 @@ ${getActiveGenerationStandards()}`;
       const finalQuestion = {
         ...currentQuestion,
         ...parsed,
+        question: cleanQuestionJunk(parsed.question || currentQuestion.question),
         mixedType: isFlowchartQ ? 'table' : mixedType
       };
 
@@ -625,7 +635,7 @@ ${getActiveGenerationStandards()}`;
             };
 
             finalQuestion.tableData = newTableObj;
-            finalQuestion.comparisonTableData = newTableObj;
+            finalQuestion.comparisonTableData = null; // Prevent duplicate rendering in TableQuiz
             finalQuestion.answers = { ...(finalQuestion.answers || {}), ...newAnswers };
             console.log('[Table Regenerate] Forcefully updated finalQuestion tableData headers:', parsedLatest.headers);
           }
