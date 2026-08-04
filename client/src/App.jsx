@@ -1196,7 +1196,7 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
   let expectedBoxNum = 1;
   const fixTitleSequence = (boxObj) => {
     if (!boxObj || !boxObj.content || boxObj.content.length === 0) return;
-    const title = boxObj.content[0];
+    const title = boxObj.content[0] || '';
     const match = title.match(/\[(\d+|\*)\]/);
     if (match) {
       const numStr = match[1];
@@ -1212,6 +1212,11 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
           expectedBoxNum = num + 1;
         }
       }
+    } else {
+      // 🚨 [자동 단계 헤더 보정]: [N] 타이틀 헤더가 없는 상자인 경우 [expectedBoxNum] 단계 헤더를 자동 주입하여 시각적 박스 무결성 보장
+      const currentNum = expectedBoxNum;
+      expectedBoxNum++;
+      boxObj.content.unshift(`[${currentNum}] 설계 단계명 및 세부 내용 입력`);
     }
   };
 
