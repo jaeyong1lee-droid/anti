@@ -1729,12 +1729,14 @@ router.delete('/session/review/topic/:id', async (req, res) => {
       return res.json({ ok: true });
     }
 
-    // Delete ALL session keys starting with review_questions_topic_${targetTopicId} (catches _round_*, _sess_*, _q, etc.)
+    // Delete ALL session keys containing topic_targetTopicId (catches review_questions_topic_50%, review_questions_schedule_*_topic_50%, review_progress_*, etc.)
     await dbQuery.run(
-      "DELETE FROM app_session WHERE key LIKE ? OR key LIKE ?",
+      "DELETE FROM app_session WHERE key LIKE ? OR key LIKE ? OR key LIKE ? OR key LIKE ?",
       [
+        `%topic_${targetTopicId}%`,
         `review_questions_topic_${targetTopicId}%`,
-        `review_progress_topic_${targetTopicId}%`
+        `review_progress_topic_${targetTopicId}%`,
+        `completed_review_%`
       ]
     );
 
@@ -1744,7 +1746,7 @@ router.delete('/session/review/topic/:id', async (req, res) => {
         for (const s of schedules) {
           await dbQuery.run(
             "DELETE FROM app_session WHERE key LIKE ? OR key LIKE ?",
-            [`review_questions_schedule_${s.id}%`, `review_progress_schedule_${s.id}%`]
+            [`%schedule_${s.id}%`, `%schedule_${s.id}%`]
           );
         }
       }
