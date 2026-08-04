@@ -1228,7 +1228,7 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
     }
   });
 
-  const renderLineContent = (content, allowedLetters = null) => {
+  const renderLineContent = (content) => {
     const hasInput = /\(([A-F])\)/.test(content);
     if (hasInput && tableAnswers && setTableAnswers) {
       const parts = content.split(/\(([A-F])\)/g);
@@ -1265,9 +1265,6 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
             const matchLetter = part.match(/^[A-F]$/);
             if (matchLetter) {
               const curLetter = matchLetter[0];
-              if (allowedLetters && Array.isArray(allowedLetters) && allowedLetters.length > 0 && !allowedLetters.includes(curLetter)) {
-                return null;
-              }
               const curLetterIdx = curLetter.charCodeAt(0) - 65;
               const curInputId = `INPUT_${curLetterIdx + 1}`;
               const curInputKey = `${questionIdx}_${curInputId}`;
@@ -1314,48 +1311,22 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
     );
   };
 
-  let inputBoxCount = 0;
   const renderSingleBox = (box, boxKeyIdx) => {
     const title = box.content[0] || '';
     const bodyLines = box.content.slice(1);
 
-    // Parse step/box number
-    const boxNumMatch = title.match(/\[(\d+|\*)\]/);
-    const boxNum = boxNumMatch ? parseInt(boxNumMatch[1], 10) : null;
-
-    // 1) 이 상자에 할당되는 알파벳 계산 (상자 2 -> A,B / 상자 4 -> C,D 등)
-    let allowedLetters = null;
-    const hasAnyInput = box.content.some(line => /\(([A-F])\)/.test(line));
-    if (hasAnyInput) {
-      inputBoxCount++;
-      if (inputBoxCount === 1) {
-        allowedLetters = ['A', 'B'];
-      } else if (inputBoxCount === 2) {
-        allowedLetters = ['C', 'D'];
-      } else if (inputBoxCount === 3) {
-        allowedLetters = ['E', 'F'];
-      }
-    }
-
-    // 이 상자 내부에 정식 존재하는 허용된 빈칸만 수집
+    // 이 상자 내부에 정식 존재하는 빈칸 수집
     const boxInputs = [];
     box.content.forEach(line => {
-      const matches = line.match(/\(([A-F])\)/g);
-      if (matches) {
-        matches.forEach(m => {
-          const letterMatch = m.match(/\(([A-F])\)/);
-          if (letterMatch) {
-            const letter = letterMatch[1];
-            if (!allowedLetters || allowedLetters.includes(letter)) {
-              const letterIdx = letter.charCodeAt(0) - 65;
-              const inputId = `INPUT_${letterIdx + 1}`;
-              const inputKey = `${questionIdx}_${inputId}`;
-              if (!boxInputs.some(b => b.inputId === inputId)) {
-                boxInputs.push({ letter, inputId, inputKey });
-              }
-            }
-          }
-        });
+      const match = line.match(/\(([A-F])\)/);
+      if (match) {
+        const letter = match[1];
+        const letterIdx = letter.charCodeAt(0) - 65;
+        const inputId = `INPUT_${letterIdx + 1}`;
+        const inputKey = `${questionIdx}_${inputId}`;
+        if (!boxInputs.some(b => b.inputId === inputId)) {
+          boxInputs.push({ letter, inputId, inputKey });
+        }
       }
     });
 
@@ -1460,11 +1431,11 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
         {/* 왼쪽: 본문 및 입력 필드 영역 */}
         <div className="flex-grow flex flex-col gap-0.5 min-w-0">
           <div className="font-bold text-[13px] sm:text-[14px] text-indigo-400 mb-0.5 w-full h-auto whitespace-pre-wrap break-all">
-            {renderLineContent(title, allowedLetters)}
+            {renderLineContent(title)}
           </div>
           {bodyLines.map((bl, bIdx) => (
             <div key={bIdx} className="text-[13px] sm:text-[14px] text-slate-200 pl-1.5 border-l border-slate-700/50 my-0.5 w-full h-auto whitespace-pre-wrap break-all">
-              {renderLineContent(bl, allowedLetters)}
+              {renderLineContent(bl)}
             </div>
           ))}
         </div>
