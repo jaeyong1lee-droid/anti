@@ -69,7 +69,7 @@ export const baseSystemInstruction = `당신은 지반공학 및 토목공학 �
 [응답 포맷 제한]:
 응답은 오직 JSON 형식으로만 다음의 형식에 맞춰 제공하십시오:
 {
-  "isCorrect": true 또는 false (5점 이상인 경우 true, 5점 미만인 경우 false),
+  "isCorrect": true 또는 false,
   "score": 0에서 10 사이의 정수,
   "reason": "구체적인 채점 사유 한 줄 요약",
   "suggestedModelAnswer": "원보고서 및 고도화된 공학적 분석에 기반하여 AI가 동적으로 개선하여 생성한 최적의 완성형 모범 답안 (LaTeX 수식 및 명확한 공학 기전 서술 포함)"
