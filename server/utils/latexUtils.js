@@ -1315,6 +1315,22 @@ export function healQuizQuestionObject(q) {
           };
         }
       }
+      if (q.tableData && Array.isArray(q.tableData.headers)) {
+        q.tableData.headers = q.tableData.headers.map((h, hIdx) => {
+          if (hIdx === 0 || typeof h !== 'string') return h;
+          let cleanH = h.trim();
+          if (cleanH.includes(':')) {
+            cleanH = cleanH.split(':')[0].trim();
+          } else if (cleanH.includes('：')) {
+            cleanH = cleanH.split('：')[0].trim();
+          }
+          const parenMatch = cleanH.match(/^((?:조건|Case|경우)\s*[\(\[]?[A-Za-z0-9가-힣]+[\)\]]?)/i);
+          if (parenMatch) {
+            cleanH = parenMatch[1].trim();
+          }
+          return cleanH;
+        });
+      }
     }
 
     // For table subjective fill-in questions, empty out all cell contents 
