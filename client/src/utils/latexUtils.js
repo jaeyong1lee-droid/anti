@@ -1340,17 +1340,17 @@ export function healQuizQuestionObject(q) {
           };
         } else {
           q.tableData = {
-            headers: ["구분", "조건 (a)", "조건 (b)"],
+            headers: ["구하는 항목", "계산 결과 및 답안"],
             rows: [
-              ["허용지지력 (kN/m²)", "[INPUT_1]", "[INPUT_2]"],
-              ["허용하중 (kN)", "[INPUT_3]", "[INPUT_4]"]
+              ["(1) 핵심 계산 항목 1", "[INPUT_1]"],
+              ["(2) 핵심 계산 항목 2", "[INPUT_2]"],
+              ["(3) 핵심 계산 항목 3", "[INPUT_3]"]
             ]
           };
           q.answers = q.answers || {
-            INPUT_1: "조건(a) 허용지지력 풀이 및 수치 계산값",
-            INPUT_2: "조건(b) 허용지지력 풀이 및 수치 계산값",
-            INPUT_3: "조건(a) 허용하중 풀이 및 수치 계산값",
-            INPUT_4: "조건(b) 허용하중 풀이 및 수치 계산값"
+            INPUT_1: "조건(1) 항목 풀이 및 최종 계산 수치값",
+            INPUT_2: "조건(2) 항목 풀이 및 최종 계산 수치값",
+            INPUT_3: "조건(3) 항목 풀이 및 최종 계산 수치값"
           };
         }
       }
