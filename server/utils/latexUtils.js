@@ -455,7 +455,9 @@ const healCorruptedKatexHtml = (text) => {
 export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = null) {
   if (!text || typeof text !== 'string') return text;
 
-  text = text.replace(/₩/g, '\\');
+  text = text.replace(/₩/g, '\\')
+             .replace(/\(\\\s*\(([\s\S]*?)\\\s*\)\)/g, (m, p1) => '($' + p1.trim() + '$)')
+             .replace(/\\\s*\(([\s\S]*?)\\\s*\)/g, (m, p1) => '$' + p1.trim() + '$');
   let processed = healCorruptedKatexHtml(text);
   // Normalize dashes (en-dash, em-dash, math minus) to standard hyphens
   processed = processed.replace(/[–—−]/g, '-');

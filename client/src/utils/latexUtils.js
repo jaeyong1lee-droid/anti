@@ -510,7 +510,8 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   text = text.replace(/\([₩\\]?t\)/gi, '($\\Delta t$)');
 
   text = text.replace(/₩/g, '\\')
-             .replace(/\\\(([\s\S]*?)\\\)/g, (m, p1) => '$' + p1.trim() + '$');
+             .replace(/\(\\\s*\(([\s\S]*?)\\\s*\)\)/g, (m, p1) => '($' + p1.trim() + '$)')
+             .replace(/\\\s*\(([\s\S]*?)\\\s*\)/g, (m, p1) => '$' + p1.trim() + '$');
   let processed = healCorruptedKatexHtml(text);
   // [Self-Healing] Fix misplaced dollar signs inside parentheses like (s_{\infty}$) -> ($s_{\infty}$)
   processed = processed.replace(/\(([^$()\n]+?)\$\)/g, '($$$1$)');

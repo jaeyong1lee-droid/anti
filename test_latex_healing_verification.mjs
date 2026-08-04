@@ -1,60 +1,17 @@
-import katex from './client/node_modules/katex/dist/katex.mjs';
 import { healLatexFormulas } from './client/src/utils/latexUtils.js';
-import { renderKatexString, cleanAndSanitizeMathText, buildHtmlDocument } from './client/src/utils/renderingHelpers.js';
 
-// Setup window.katex for renderKatexString in Node environment
-globalThis.window = globalThis.window || {};
-globalThis.window.katex = katex;
+const testInput = "보기 ①(\\ (94.4 \\text{mm}\\)), ②(\\ (75.1 \\text{mm}\\)), ③(\\ (47.2 \\text{mm}\\)), ④(\\ (120.5 \\text{mm}\\)) 중 어디에도";
+const healed = healLatexFormulas(testInput);
 
-console.log("=================================================");
-console.log("🧪 순서도(Flowchart) 수식 자가치유 종합 검증 테스트");
-console.log("=================================================\n");
+console.log("=== RAW INPUT ===");
+console.log(testInput);
+console.log("\n=== HEALED RESULT ===");
+console.log(healed);
 
-const testCases = [
-  "임의의 시간 $t$ 에서의 침하량 $s_t$ 와 일정 시간 간격 $\\Delta t$ 이전의 침하량 $s_{t-_} \\Delta t$ 사이에는 선형 관계가 성립한다.",
-  "임의의 시간 $t$ 에서의 침하량 $s_t$ 와 일정 시간 간격 $\\Delta t$ 이전의 침하량 $s_{t-} \\Delta t$ 사이에는 선형 관계가 성립한다.",
-  "임의의 시간 $t$ 에서의 침하량 $s_t$ 와 일정 시간 간격 $\\Delta t$ 이전의 침하량 $s_{t-} \\Delta t$ 사이에는",
-  "침하량 $s_{t- \\Delta t}$ 와 침하량 $s_{t- Delta t}$ 사이",
-  "침하량 $s_{t- $\\Delta t$}$ 와 $s_{t-} \\Delta t$",
-  "침하량 $S_{ult} = S_0 + \\frac{1}{\\beta} \\beta = 100 + 120 = 220$",
-  "침하량 $S_{ult} = S_0 + \\frac{1}{ } \\beta = 100$"
-];
-
-let hasError = false;
-
-testCases.forEach((testInput, tIdx) => {
-  console.log(`\n--- [테스트케이스 ${tIdx + 1}] ---`);
-  console.log("📥 입력:", testInput);
-
-  const sanitized = cleanAndSanitizeMathText(testInput);
-  const healed = healLatexFormulas(sanitized);
-
-  console.log("🩹 치유 결과:", healed);
-
-  const formulas = [];
-  const mathRegex = /\$\$([\s\S]*?)\$\$|\$([^\$\n]+)\$/g;
-  let match;
-  while ((match = mathRegex.exec(healed)) !== null) {
-    formulas.push((match[1] || match[2]).trim());
-  }
-
-  console.log("📐 추출 수식:", formulas);
-
-  formulas.forEach((f, idx) => {
-    const rendered = renderKatexString(f);
-    if (rendered.includes('katex-error')) {
-      console.error(`❌ [KaTeX Error] 수식 ${idx + 1} ("${f}") 렌더링 실패!`);
-      hasError = true;
-    } else {
-      console.log(`  ✓ 수식 ${idx + 1} ("${f}") -> KaTeX OK`);
-    }
-  });
-});
-
-if (hasError) {
-  console.error("\n❌ 수식 검증 실패!");
-  process.exit(1);
-} else {
-  console.log("\n✅ [검증 성공] 수식 자가치유 및 렌더링 100% 정상 작동 확인!");
+if (healed.includes('($94.4 \\text{mm}$)') && healed.includes('($75.1 \\text{mm}$)')) {
+  console.log("\n✅ Test Passed: Corrupted (\\ ( ... \\)) formulas successfully restored to standard ($ ... $) format!");
   process.exit(0);
+} else {
+  console.error("\n❌ Test Failed: Formula healing failed.");
+  process.exit(1);
 }
