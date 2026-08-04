@@ -7,12 +7,46 @@ export const getCorrectAnswerForInput = (q, inputId) => {
   if (!q) return '';
   if (q.answers && q.answers[inputId]) return q.answers[inputId];
 
+  const resolveCalcItem = (items, targetId) => {
+    if (!Array.isArray(items) || items.length === 0 || !targetId) return null;
+    const strId = String(targetId).trim();
+    let hit = items.find(it => String(it.id || '').trim() === strId);
+    if (hit) return hit;
+
+    const numMatch = strId.match(/\d+/);
+    const targetNum = numMatch ? parseInt(numMatch[0], 10) : null;
+
+    let targetLetter = null;
+    const letterMatch = strId.match(/_([A-F])\b/i) || strId.match(/^([A-F])$/i) || strId.match(/([A-F])$/i);
+    if (letterMatch) {
+      targetLetter = letterMatch[1].toUpperCase();
+    }
+    const targetLetterIdx = targetLetter ? targetLetter.charCodeAt(0) - 65 + 1 : null;
+    const targetIndex = targetNum || targetLetterIdx;
+
+    if (targetIndex) {
+      return items.find((it, idx) => {
+        const itemStr = String(it.id || '').trim();
+        const itemNum = (itemStr.match(/\d+/) || [])[0];
+        const itemLetterMatch = itemStr.match(/_([A-F])\b/i) || itemStr.match(/^([A-F])$/i) || (it.label || '').match(/\(([A-F])\)/i);
+        const itemLetter = itemLetterMatch ? itemLetterMatch[1].toUpperCase() : null;
+        const itemLetterIdx = itemLetter ? itemLetter.charCodeAt(0) - 65 + 1 : null;
+
+        const itemIdx = (itemNum ? parseInt(itemNum, 10) : null) || itemLetterIdx || (idx + 1);
+        return itemIdx === targetIndex;
+      }) || (targetIndex <= items.length ? items[targetIndex - 1] : null);
+    }
+    return null;
+  };
+
   if (q.calcItems && Array.isArray(q.calcItems)) {
-    const calcItem = q.calcItems.find(it => it.id === inputId);
+    const calcItem = resolveCalcItem(q.calcItems, inputId);
     if (calcItem) {
       if (calcItem.modelAnswer) return calcItem.modelAnswer;
       if (calcItem.correctAnswer) return calcItem.correctAnswer;
       if (calcItem.answer) return calcItem.answer;
+      if (q.answers && calcItem.id && q.answers[calcItem.id]) return q.answers[calcItem.id];
+      if (calcItem.label) return calcItem.label;
     }
   }
 
