@@ -728,124 +728,41 @@ export const LatexRenderer = React.memo(function LatexRenderer({
     return <div className={`${className} whitespace-pre-line leading-relaxed select-text`}>{cleanedText}</div>;
   }
 
-  // Split by block math $$ ... $$
-  const parts = [];
-  let lastIndex = 0;
-  const blockRegex = /\$\$(.*?)\$\$/gs;
-  let match;
+  // 억지 split/감싸기 100줄 코딩 전격 통삭제!
+  let htmlContent = cleanedText;
+  if (window.katex) {
+    // 1. 디스플레이 수식 $$ ... $$ 렌더링
+    htmlContent = htmlContent.replace(/\$\$\s*([\s\S]*?)\s*\$\$/g, (m, math) => {
+      const rendered = renderKatexString(math.trim(), { displayMode: true, throwOnError: false });
+      return `<div class="formula-scroll-container py-1.5" style="text-align: center; margin-top: 0.5rem; margin-bottom: 0.5rem; width: 100%;">${rendered}</div>`;
+    });
 
-  while ((match = blockRegex.exec(cleanedText)) !== null) {
-    const beforeText = cleanedText.substring(lastIndex, match.index);
-    if (beforeText && beforeText.trim() !== '') {
-      parts.push({ type: 'text', content: beforeText });
-    }
-    parts.push({ type: 'math-block', content: match[1].trim() });
-    lastIndex = blockRegex.lastIndex;
+    // 2. 소괄호 내 억지 개행 정제 및 인라인 수식 $ ... $ 렌더링
+    htmlContent = htmlContent.replace(/\(\s*([^$()\n]+?)\s*\)/g, '($1)');
+    htmlContent = htmlContent.replace(/\$((?:[^\$\n<]|<(?![a-zA-Z/!]))+?)\$/g, (m, math) => {
+      const isRealFormula = /\\/.test(math) || /_/.test(math) || /\^/.test(math) || /=/.test(math) || /\\cdot/.test(math);
+      if (!isRealFormula) return m;
+      return renderKatexString(math.trim(), { displayMode: false, throwOnError: false });
+    });
   }
 
-  const afterText = cleanedText.substring(lastIndex);
-  if (afterText && afterText.trim() !== '') {
-    parts.push({ type: 'text', content: afterText });
-  }
-
-  // Find the index of the last math-block in parts to only show add button there
-  const mathBlockIndices = parts
-    .map((p, i) => (p.type === 'math-block' ? i : -1))
-    .filter((i) => i !== -1);
-  const lastMathBlockIdx = mathBlockIndices.length > 0 ? mathBlockIndices[mathBlockIndices.length - 1] : -1;
-
-  const isInline = className.includes('inline');
-
-  if (isInline) {
+  const isInlineMode = className.includes('inline');
+  if (isInlineMode) {
     return (
       <span 
-        className={`${className} select-text ${enableAddFormula ? 'enable-add-formula' : ''}`}
+        className={`${className} select-text leading-relaxed ${enableAddFormula ? 'enable-add-formula' : ''}`}
         {...eventHandlers}
-      >
-        {parts.map((part, idx) => {
-          if (part.type === 'math-block') {
-            const mathHtml = renderKatexString(part.content, { displayMode: false, throwOnError: false });
-            return (
-              <span 
-                key={idx} 
-                className="inline bg-transparent select-text"
-                dangerouslySetInnerHTML={{ __html: mathHtml }} 
-              />
-            );
-          } else {
-            let htmlContent = part.content;
-            try {
-              htmlContent = htmlContent.replace(/\$((?:[^\$\n<]|<(?![a-zA-Z/!]))+?)\$/g, (m, math) => {
-                  const isRealFormula = /\\/.test(math) || /_/.test(math) || /\^/.test(math) || /=/.test(math) || /\\cdot/.test(math);
-                  if (!isRealFormula) {
-                    return math;
-                  }
-                return renderKatexString(math.trim(), { displayMode: false, throwOnError: false });
-              });
-            } catch (e) {
-              console.warn(e);
-            }
-            return (
-              <span 
-                key={idx}
-                className="leading-relaxed whitespace-pre-line select-text"
-                dangerouslySetInnerHTML={{ __html: htmlContent }}
-              />
-            );
-          }
-        })}
-      </span>
+        dangerouslySetInnerHTML={{ __html: htmlContent }}
+      />
     );
   }
 
   return (
     <div 
-      className={`${className} space-y-1.5 select-text ${enableAddFormula ? 'enable-add-formula' : ''}`}
+      className={`${className} select-text leading-relaxed ${enableAddFormula ? 'enable-add-formula' : ''}`}
       {...eventHandlers}
-    >
-      {parts.map((part, idx) => {
-        if (part.type === 'math-block') {
-          const mathHtml = renderKatexString(part.content, { displayMode: true, throwOnError: false });
-
-          return (
-            <div 
-              key={idx} 
-              className="my-0.5 md:my-1 flex flex-col md:flex-row items-center justify-center gap-4 w-full bg-transparent rounded-none border-0 transition-all duration-300 group shadow-none select-text"
-            >
-              {/* KaTeX 공식 */}
-              <div 
-                className="formula-scroll-container w-full py-1.5 min-w-0 select-text" 
-                onTouchStart={(e) => { if (!enableAddFormula) e.stopPropagation(); }}
-                onTouchMove={(e) => { if (!enableAddFormula) e.stopPropagation(); }}
-                onTouchEnd={(e) => { if (!enableAddFormula) e.stopPropagation(); }}
-                onTouchCancel={(e) => { if (!enableAddFormula) e.stopPropagation(); }}
-                dangerouslySetInnerHTML={{ __html: mathHtml }} 
-              />
-            </div>
-          );
-        } else {
-          let htmlContent = part.content;
-          try {
-            htmlContent = htmlContent.replace(/\$((?:[^\$\n<]|<(?![a-zA-Z/!]))+?)\$/g, (m, math) => {
-              if (/[\uAC00-\uD7A3]/.test(math) && !/\\/.test(math) && !/_/.test(math) && !/\^/.test(math) && !/[+=]/.test(math) && !/\\cdot/.test(math)) {
-                return m;
-              }
-              return renderKatexString(math.trim(), { displayMode: false, throwOnError: false });
-            });
-          } catch (e) {
-            console.warn(e);
-          }
-
-          return (
-            <div 
-              key={idx}
-              className="py-0.5 text-[14px] sm:text-[16px] text-slate-300 leading-relaxed whitespace-pre-wrap select-text block"
-              dangerouslySetInnerHTML={{ __html: htmlContent }}
-            />
-          );
-        }
-      })}
-    </div>
+      dangerouslySetInnerHTML={{ __html: htmlContent }}
+    />
   );
 });
 
