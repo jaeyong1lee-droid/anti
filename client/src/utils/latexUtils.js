@@ -941,26 +941,21 @@ export function cleanQuizQuestion(q) {
   if (!q) return q;
   let cleanText = typeof q === 'string' ? q : String(q || '');
 
-  // 1. Remove bracket garbage from hint box 3 (e.g. "천공 경, (B), (C)...")
-  cleanText = cleanText.replace(/(천공\s*경)\s*,?\s*\([A-Z\s,]*\)/gi, '$1');
-
-  // 2. Sequential Box Header Re-indexing: 1st empty box gets [ (A) ], 2nd gets [ (C) ]
-  let boxCount = 0;
-  cleanText = cleanText.replace(/\[\s*\([A-Z]\)[\s,A-Z\(\)]*\]/gi, () => {
-    boxCount++;
-    if (boxCount === 1) return '[ (A) ]';
-    if (boxCount === 2) return '[ (C) ]';
-    return '[ (E) ]';
+  // 1. Replace (A), (B), (C), (D) list garbage inside flowchart boxes with sequential single placeholders
+  let emptyBoxIdx = 0;
+  cleanText = cleanText.replace(/\[\s*\([^\]]*\)\s*,\s*\([^\]]*\)[\s\S]*?\]/gi, () => {
+    emptyBoxIdx++;
+    return emptyBoxIdx === 1 ? '[ (A) ]' : (emptyBoxIdx === 2 ? '[ (C) ]' : '[ (E) ]');
   });
 
-  // 3. Sequential Box Line Re-indexing: 1st empty box line gets - (B), 2nd gets - (D)
-  let lineCount = 0;
-  cleanText = cleanText.replace(/-\s*\([A-Z]\)[\s,A-Z\(\)]*/gi, () => {
-    lineCount++;
-    if (lineCount === 1) return '- (B)';
-    if (lineCount === 2) return '- (D)';
-    return '- (F)';
+  let emptyLineIdx = 0;
+  cleanText = cleanText.replace(/-\s*\([^)]*\)\s*,\s*\([^)]*\)[\s\S]*?(?=\r?\n|$)/gi, () => {
+    emptyLineIdx++;
+    return emptyLineIdx === 1 ? '- (B)' : (emptyLineIdx === 2 ? '- (D)' : '- (F)');
   });
+
+  // 2. Strip remaining list garbage outside boxes
+  cleanText = cleanText.replace(/,?\s*\([A-Z]\)(?:\s*,\s*\([A-Z]\))+/gi, '');
 
   const isFlowchart = cleanText.includes('┌──') || cleanText.includes('▼') || cleanText.includes('```') || cleanText.includes('흐름도') || cleanText.includes('플로우차트');
   if (isFlowchart) return cleanText.trim();

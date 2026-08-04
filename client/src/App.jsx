@@ -1274,24 +1274,7 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
       };
 
       const parts = content.split(`(${letter})`);
-      const answerVal = getCorrectAnswerForInput(q, inputId);
-      let rightText = parts[1] || '';
-
-      // Universal regex: Strip ALL trailing (B), (C), (D)... list garbage text from rightText span completely
-      rightText = rightText.replace(/,?\s*\([A-Z]\)(?:\s*,\s*\([A-Z]\))+/gi, '');
-      rightText = rightText.replace(/,?\s*\([B-Z]\)(?:\s*,\s*\([B-Z]\))*/gi, '');
-      rightText = rightText.replace(/입력[\s,]*\([B-Z]\)[\s\S]*/gi, '');
-
-      if (answerVal) {
-        const escapedAns = answerVal.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-        const regexStr = escapedAns.trim().replace(/[\s\xa0\u200b]+/g, '[\\s\\xa0\\u200b]*');
-        try {
-          const ansRegex = new RegExp(regexStr, 'gi');
-          rightText = rightText.replace(ansRegex, '').trim();
-        } catch (e) {
-          rightText = rightText.replace(answerVal.trim(), '').trim();
-        }
-      }
+      const rightText = parts[1] || '';
 
       const isGradedSingle = tableGradingResults?.[inputKey] !== undefined;
 
