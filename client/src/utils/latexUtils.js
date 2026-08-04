@@ -1187,8 +1187,9 @@ export function healQuizQuestionObject(q) {
         }
 
         if (rows.length === 0) {
-          answers['INPUT_0_1'] = q.answer || q.concept || '학술적 개요 및 핵심 기전 서술';
-          rows.push(['학술적 개요 및 핵심 기전', '[INPUT_0_1]']);
+          const labelName = (q.title || q.question || '주관식 서술 및 답안').trim();
+          answers['INPUT_0_1'] = q.answer || q.concept || '서술 답안';
+          rows.push([labelName, '[INPUT_0_1]']);
         }
         q.tableData = {
           headers: ['구분', '내용'],

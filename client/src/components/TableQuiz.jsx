@@ -65,10 +65,11 @@ export const TableQuiz = React.memo(function TableQuiz({
   }
 
   if (!hasValidMainRows && !hasValidCompRows) {
-    const fallbackAnswer = q.answer || q.concept || q.explanation || q.question || '학술적 개요 및 핵심 기전 서술';
+    const labelName = (q.title || q.question || '주관식 서술 및 답안').replace(/<[^>]*>/g, '').trim();
+    const fallbackAnswer = q.answer || q.concept || q.explanation || '서술 답안';
     q.tableData = {
       headers: ['구분', '내용'],
-      rows: [['학술적 개요 및 핵심 기전', '[INPUT_0_1]']]
+      rows: [[labelName, '[INPUT_0_1]']]
     };
     q.answers = q.answers || {};
     if (!q.answers['INPUT_0_1']) {
