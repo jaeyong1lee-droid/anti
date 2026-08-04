@@ -964,6 +964,8 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
 
   if (!isNested) {
     result = result.replace(/(?:<!--|\\lt !--|&lt;!--)\s*(?:-\s*)*\s*(?:START|END)_TABLE\s*(?:-\s*)*\s*(?:-->|--\\gt|>|\\gt|--&gt;)\n?/gi, '');
+  }
+
   return result;
 }
 
@@ -971,20 +973,24 @@ export function cleanQuizQuestion(q) {
   if (!q) return q;
   let cleanText = typeof q === 'string' ? q : String(q || '');
 
-  // 1. Universal Box Cleaner: Strip any [ (A), (B), (C)... ] inside boxes to clean single placeholder
+  // 1. Direct Pattern Cleaner for flowchart boxes with (A), (B), (C)... lists
+  cleanText = cleanText.replace(/\[\s*\(\s*A\s*\)\s*,\s*\(\s*B\s*\)[\s\S]*?\]/gi, '[ (A) ]');
+  cleanText = cleanText.replace(/-\s*\(\s*A\s*\)\s*,\s*\(\s*B\s*\)[\s\S]*?(?=\r?\n|$)/gi, '- (B)');
+
+  // 2. Sequential box re-indexing for box 2, 4, 6
   let boxIdx = 0;
-  cleanText = cleanText.replace(/\[\s*\([A-Z]\)[\s,A-Z\(\)]*\]/gi, () => {
+  cleanText = cleanText.replace(/\[\s*\(\s*A\s*\)\s*\]/gi, () => {
     boxIdx++;
     return boxIdx === 1 ? '[ (A) ]' : (boxIdx === 2 ? '[ (C) ]' : '[ (E) ]');
   });
 
   let lineIdx = 0;
-  cleanText = cleanText.replace(/-+\s*\([A-Z]\)[\s,A-Z\(\)]*/gi, () => {
+  cleanText = cleanText.replace(/-\s*\(\s*B\s*\)/gi, () => {
     lineIdx++;
     return lineIdx === 1 ? '- (B)' : (lineIdx === 2 ? '- (D)' : '- (F)');
   });
 
-  // 2. Strip remaining list garbage text
+  // 3. Strip remaining list garbage text
   cleanText = cleanText.replace(/,?\s*\([A-Z]\)(?:\s*,\s*\([A-Z]\))+/gi, '');
   cleanText = cleanText.replace(/,?\s*\([B-Z]\)(?:\s*,\s*\([B-Z]\))*/gi, '');
 
