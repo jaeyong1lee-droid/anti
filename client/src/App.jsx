@@ -1224,92 +1224,77 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
   });
 
   const renderLineContent = (content) => {
-    const letterMatch = content.match(/\(([A-F])\)/);
-    if (letterMatch && tableAnswers && setTableAnswers) {
-      const letter = letterMatch[1];
-      const letterIdx = letter.charCodeAt(0) - 65;
-      const inputId = `INPUT_${letterIdx + 1}`;
-      const inputKey = `${questionIdx}_${inputId}`;
-      const val = tableAnswers[inputKey] || '';
-
-      const isGraded = revealed || (tableGradingResults?.[inputKey] !== undefined);
-      const gradingResult = tableGradingResults?.[inputKey];
-      const isCorrect = gradingResult ? gradingResult.isCorrect : false;
-
-      const handleChange = (e) => {
-        setTableAnswers(prev => ({
-          ...prev,
-          [inputKey]: e.target.value
-        }));
-      };
+    const hasInput = /\(([A-F])\)/.test(content);
+    if (hasInput && tableAnswers && setTableAnswers) {
+      const parts = content.split(/\(([A-F])\)/g);
 
       const handleKeyDown = async (e) => {
         if (e.key === 'Enter') {
           e.preventDefault();
-          if (isGraded) {
-            if (gradeSingleTableCell && !cellGradingLoading?.[inputKey]) {
-              await gradeSingleTableCell(questionIdx, q, inputId);
-            }
-          } else {
-            const boxContainer = e.target.closest('.border-indigo-500\\/30') || e.target.closest('.shadow-md') || e.target.closest('.rounded-xl') || e.target.parentElement;
-            const boxInputs = boxContainer ? Array.from(boxContainer.querySelectorAll('input[type="text"]')) : [e.target];
-            const currentIdxInBox = boxInputs.indexOf(e.target);
+          const boxContainer = e.target.closest('.border-indigo-500\\/30') || e.target.closest('.shadow-md') || e.target.closest('.rounded-xl') || e.target.parentElement;
+          const boxInputs = boxContainer ? Array.from(boxContainer.querySelectorAll('input[type="text"]')) : [e.target];
+          const currentIdxInBox = boxInputs.indexOf(e.target);
 
-            if (currentIdxInBox !== -1 && currentIdxInBox < boxInputs.length - 1) {
-              boxInputs[currentIdxInBox + 1].focus();
-            } else {
-              for (const inputEl of boxInputs) {
-                const targetInputId = inputEl.getAttribute('data-input-id') || inputId;
+          if (currentIdxInBox !== -1 && currentIdxInBox < boxInputs.length - 1) {
+            boxInputs[currentIdxInBox + 1].focus();
+          } else {
+            for (const inputEl of boxInputs) {
+              const targetInputId = inputEl.getAttribute('data-input-id');
+              if (targetInputId) {
                 const targetKey = `${questionIdx}_${targetInputId}`;
                 if (gradeSingleTableCell && !cellGradingLoading?.[targetKey]) {
                   await gradeSingleTableCell(questionIdx, q, targetInputId);
                 }
               }
-              if (typeof setRevealedQuestions === 'function') {
-                setRevealedQuestions(prev => ({ ...prev, [questionIdx]: true }));
-              }
+            }
+            if (typeof setRevealedQuestions === 'function') {
+              setRevealedQuestions(prev => ({ ...prev, [questionIdx]: true }));
             }
           }
         }
       };
 
-      const parts = content.split(`(${letter})`);
-      const answerVal = getCorrectAnswerForInput(q, inputId);
-      let rightText = parts[1] || '';
-      if (answerVal) {
-        const escapedAns = answerVal.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-        const regexStr = escapedAns.trim().replace(/[\s\xa0\u200b]+/g, '[\\s\\xa0\\u200b]*');
-        try {
-          const ansRegex = new RegExp(regexStr, 'gi');
-          rightText = rightText.replace(ansRegex, '').trim();
-        } catch (e) {
-          rightText = rightText.replace(answerVal.trim(), '').trim();
-        }
-      }
-
-      const isGradedSingle = tableGradingResults?.[inputKey] !== undefined;
-
       return (
         <div className="flex items-center gap-1.5 flex-wrap my-0.5 select-text w-full h-auto whitespace-pre-wrap break-all flowchart-text-force">
-          <span>{parts[0]}</span>
-          <div className="flex items-center gap-1.5 flex-grow flex-1 min-w-[170px] relative">
-            <input
-              type="text"
-              value={val}
-              onChange={handleChange}
-              onKeyDown={handleKeyDown}
-              placeholder={`(${letter}) 입력`}
-              data-input-id={inputId}
-              className={`px-2 py-0.5 rounded border bg-slate-950 text-white text-[13px] sm:text-[14px] flowchart-text-force focus:outline-none focus:ring-1 focus:ring-indigo-500 w-full font-bold ${
-                isGradedSingle
-                  ? isCorrect
-                    ? 'border-emerald-500 text-emerald-300 font-bold bg-emerald-950/20'
-                    : 'border-rose-500 text-rose-300 font-bold bg-rose-950/20'
-                  : 'border-indigo-500/50'
-              }`}
-            />
-          </div>
-          <span>{rightText}</span>
+          {parts.map((part, pIdx) => {
+            const matchLetter = part.match(/^[A-F]$/);
+            if (matchLetter) {
+              const curLetter = matchLetter[0];
+              const curLetterIdx = curLetter.charCodeAt(0) - 65;
+              const curInputId = `INPUT_${curLetterIdx + 1}`;
+              const curInputKey = `${questionIdx}_${curInputId}`;
+              const curVal = tableAnswers[curInputKey] || '';
+              const curIsGraded = tableGradingResults?.[curInputKey] !== undefined;
+              const curGrading = tableGradingResults?.[curInputKey];
+              const curIsCorrect = curGrading ? curGrading.isCorrect : false;
+
+              return (
+                <div key={pIdx} className="flex items-center gap-1.5 flex-grow flex-1 min-w-[170px] relative inline-flex my-0.5">
+                  <input
+                    type="text"
+                    value={curVal}
+                    onChange={(e) => {
+                      setTableAnswers(prev => ({
+                        ...prev,
+                        [curInputKey]: e.target.value
+                      }));
+                    }}
+                    onKeyDown={handleKeyDown}
+                    placeholder={`(${curLetter}) 입력`}
+                    data-input-id={curInputId}
+                    className={`px-2 py-0.5 rounded border bg-slate-950 text-white text-[13px] sm:text-[14px] flowchart-text-force focus:outline-none focus:ring-1 focus:ring-indigo-500 w-full font-bold ${
+                      curIsGraded
+                        ? curIsCorrect
+                          ? 'border-emerald-500 text-emerald-300 font-bold bg-emerald-950/20'
+                          : 'border-rose-500 text-rose-300 font-bold bg-rose-950/20'
+                        : 'border-indigo-500/50'
+                    }`}
+                  />
+                </div>
+              );
+            }
+            return <LatexRenderer key={pIdx} text={part} katexLoaded={katexLoaded} enableAddFormula={true} questionKey={questionKey} forceInline={true} />;
+          })}
         </div>
       );
     }
