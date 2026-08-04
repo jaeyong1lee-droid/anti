@@ -19646,17 +19646,21 @@ ${itemsStr}
                       console.warn('세션 초기화 실패:', e);
                     }
 
-                    // Remove both schedule-specific and topic-specific progress keys and session IDs to guarantee complete cleanup
+                    // Complete purge of all related localStorage keys for this topic/schedule
                     const activeSid = reviewSessionId || 'legacy_default';
                     const sId = selectedTopic.schedule_id;
-                    if (sId) {
-                      localStorage.removeItem(`anti_review_progress_sched_${sId}_${activeSid}`);
-                      localStorage.removeItem(`anti_review_progress_sched_${sId}`);
-                      localStorage.removeItem(`anti_session_id_${selectedTopic.id}_${sId}`);
-                    }
+                    try {
+                      const keysToRemove = [];
+                      for (let i = 0; i < localStorage.length; i++) {
+                        const k = localStorage.key(i);
+                        if (k && (k.includes(String(selectedTopic.id)) || (sId && k.includes(String(sId))))) {
+                          keysToRemove.push(k);
+                        }
+                      }
+                      keysToRemove.forEach(k => localStorage.removeItem(k));
+                    } catch (err) {}
                     localStorage.removeItem(`anti_review_progress_${selectedTopic.id}_${activeSid}`);
                     localStorage.removeItem(`anti_review_progress_${selectedTopic.id}`);
-                    localStorage.removeItem(`anti_session_id_${selectedTopic.id}_9999`);
                   }
                   localStorage.removeItem('anti_last_active_review');
                   setLastActiveReview(null);
