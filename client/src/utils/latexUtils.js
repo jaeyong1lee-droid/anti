@@ -1384,6 +1384,9 @@ export function healQuizQuestionObject(q) {
         );
       };
 
+      // Determine if this is a comparison table (3+ columns) vs calculation table (2 columns)
+      const isComparisonTable = Array.isArray(q.tableData.headers) && q.tableData.headers.length >= 3;
+
       // Count total placeholders in comparison table
       let placeholderCount = 0;
       q.tableData.rows.forEach((row) => {

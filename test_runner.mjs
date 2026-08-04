@@ -51,17 +51,18 @@ async function runTests() {
 
   let failedCount = 0;
 
-  // [TEST 1] Server File Syntax Checks
-  console.log('[TEST 1] Node.js Backend Code Syntax Inspection...');
+  // [TEST 1] Server File Syntax & ReferenceError Inspection
+  console.log('[TEST 1] Node.js Backend Code & Runtime ReferenceError Inspection...');
   const nodeBin = `"${process.execPath}"`;
   try {
     execSync(`${nodeBin} --check server/index.js`, { stdio: 'pipe' });
     execSync(`${nodeBin} --check server/routes/quizRoutes.js`, { stdio: 'pipe' });
     execSync(`${nodeBin} --check server/database.js`, { stdio: 'pipe' });
-    console.log('  ➜ [SUCCESS] Server JavaScript files syntax check PASSED (0 syntax errors).');
+    execSync(`${nodeBin} test_syntax_and_references.mjs`, { stdio: 'pipe' });
+    console.log('  ➜ [SUCCESS] Server JavaScript files & Runtime ReferenceError check PASSED (0 errors).');
   } catch (err) {
     failedCount++;
-    console.log(`  ➜ [CRITICAL FAIL] Syntax error detected in server code: ${err.message}`);
+    console.log(`  ➜ [CRITICAL FAIL] Syntax or ReferenceError detected in code: ${err.message}`);
   }
 
   // [TEST 2] Frontend Connection Check
