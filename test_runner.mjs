@@ -213,6 +213,52 @@ async function runTests() {
     console.log(`  ➜ [FAIL] POST /api/grade-subjective failed (Status: ${calcGradeRes.error || calcGradeRes.statusCode})`);
   }
 
+  // [TEST 9] Calculation Item State Preservation Test
+  console.log('\n[TEST 9] Calculation Items (A,B,C,D) State Preservation Test...');
+  const statePayload = {
+    topicId: `calc_state_test_${Date.now()}`,
+    sessionId: `sess_calc_state_${Date.now()}`,
+    questions: [{ id: 'q_terzaghi', type: '주관식 (계산)', question: 'Terzaghi 지지력' }],
+    tableAnswers: {
+      '0_INPUT_1': '632',
+      '0_INPUT_2': '10112',
+      '0_INPUT_3': '813',
+      '0_INPUT_4': '13008'
+    },
+    tableGradingResults: {
+      '0_INPUT_1': { isCorrect: true, score: 10 },
+      '0_INPUT_2': { isCorrect: true, score: 10 },
+      '0_INPUT_3': { isCorrect: true, score: 6.3 },
+      '0_INPUT_4': { isCorrect: true, score: 10 }
+    }
+  };
+
+  const stateSaveRes = await postUrl('http://localhost:3000/api/session/review', statePayload);
+  if (stateSaveRes.statusCode === 200) {
+    const stateLoadRes = await checkUrl(`http://localhost:3000/api/session/review?topicId=${statePayload.topicId}&sessionId=${statePayload.sessionId}`);
+    if (stateLoadRes.statusCode === 200) {
+      try {
+        const loaded = JSON.parse(stateLoadRes.body);
+        const results = loaded.data?.tableGradingResults || {};
+        if (results['0_INPUT_1'] && results['0_INPUT_2'] && results['0_INPUT_3'] && results['0_INPUT_4']) {
+          console.log('  ➜ [PASS] All 4 calculation items (A,B,C,D) preserved 100% in DB and session state.');
+        } else {
+          failedCount++;
+          console.log('  ➜ [FAIL] Calculation sub-items lost in session state:', results);
+        }
+      } catch (e) {
+        failedCount++;
+        console.log(`  ➜ [FAIL] Invalid JSON from session review: ${e.message}`);
+      }
+    } else {
+      failedCount++;
+      console.log(`  ➜ [FAIL] GET /api/session/review failed (Status: ${stateLoadRes.error || stateLoadRes.statusCode})`);
+    }
+  } else {
+    failedCount++;
+    console.log(`  ➜ [FAIL] POST /api/session/review failed (Status: ${stateSaveRes.error || stateSaveRes.statusCode})`);
+  }
+
   console.log('\n====================================================');
   if (failedCount > 0) {
     console.log(`  ❌ TEST FAILED - ${failedCount} CRITICAL ERRORS DETECTED!`);

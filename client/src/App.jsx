@@ -3839,7 +3839,15 @@ export default function App() {
     });
   }, []);
 
-  const [tableGradingResults, setTableGradingResults] = useState({});
+  const [tableGradingResults, _setTableGradingResults] = useState({});
+  const tableGradingResultsRef = useRef({});
+  const setTableGradingResults = useCallback((val) => {
+    _setTableGradingResults(prev => {
+      const next = typeof val === 'function' ? val(prev) : val;
+      tableGradingResultsRef.current = next;
+      return next;
+    });
+  }, []);
   const [floatedTableId, setFloatedTableId] = useState(null);
 
   const [examTableAnswers, _setExamTableAnswers] = useState({});
@@ -3851,7 +3859,15 @@ export default function App() {
       return next;
     });
   }, []);
-  const [examTableGradingResults, setExamTableGradingResults] = useState({});
+  const [examTableGradingResults, _setExamTableGradingResults] = useState({});
+  const examTableGradingResultsRef = useRef({});
+  const setExamTableGradingResults = useCallback((val) => {
+    _setExamTableGradingResults(prev => {
+      const next = typeof val === 'function' ? val(prev) : val;
+      examTableGradingResultsRef.current = next;
+      return next;
+    });
+  }, []);
   const [showAnswersState, setShowAnswersState] = useState({});
   const [examShowAnswersState, setExamShowAnswersState] = useState({});
   const [gradingLoading, setGradingLoading] = useState({});
@@ -3927,7 +3943,9 @@ export default function App() {
     const activeAnswers = showExam ? examTableAnswersRef.current : tableAnswersRef.current;
     const activeSetGradingResults = showExam ? setExamTableGradingResults : setTableGradingResults;
     
-    const currentGrading = showExam ? examTableGradingResultsRef.current : tableGradingResultsRef.current;
+    const currentGrading = showExam 
+      ? { ...examTableGradingResultsRef.current, ...examTableGradingResults } 
+      : { ...tableGradingResultsRef.current, ...tableGradingResults };
     const nextGrading = { ...currentGrading };
     
     const progressId = 'grade_' + Math.random().toString(36).substring(2, 9);
@@ -5262,7 +5280,6 @@ export default function App() {
   const revealedQuestionsRef = useRef({});
   revealedQuestionsRef.current = revealedQuestions;
 
-  const tableGradingResultsRef = useRef({});
   tableGradingResultsRef.current = tableGradingResults;
 
   const chatHistoryRef = useRef([]);
@@ -5283,7 +5300,6 @@ export default function App() {
   const examAnswersRef = useRef({});
   examAnswersRef.current = examAnswers;
 
-  const examTableGradingResultsRef = useRef({});
   examTableGradingResultsRef.current = examTableGradingResults;
 
   // Formula mode states
