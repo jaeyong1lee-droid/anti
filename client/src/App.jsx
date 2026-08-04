@@ -4091,7 +4091,7 @@ export default function App() {
           reason: data.reason,
           suggestedModelAnswer
         };
-        if (suggestedModelAnswer && q && q.answers) {
+        if (suggestedModelAnswer && q && q.answers && data.isCorrect && data.score >= 8) {
           q.answers[inputId] = suggestedModelAnswer;
         }
       } catch (err) {

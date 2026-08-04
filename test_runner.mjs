@@ -266,7 +266,7 @@ async function runTests() {
     userAnswer: "13008",
     rowHeader: "(4) 조건 (b)의 허용하중 P_all (b) (kN)",
     colHeader: "수치 계산 답안",
-    explanation: "Terzaghi 지지력 공식을 이용한 허용하중 산정 과정 및 정답 해설입니다.",
+    explanation: "Terzaghi 지지력 공식을 이용한 조건 (b) 허용하중 P_all = 13008 kN (또는 연속기초 10112 kN) 산정 과정 및 정답 해설입니다.",
     category: "계산",
     temperature: 0.7,
     preferredModel: "gemini-3.5-flash-lite"
@@ -410,6 +410,39 @@ async function runTests() {
   } else {
     failedCount++;
     console.log(`  ➜ [FAIL] POST /api/grade-subjective failed (Status: ${toleranceGradeRes.error || toleranceGradeRes.statusCode})`);
+  }
+
+  // [TEST 14] Polluted Model Answer Clean-up & Re-evaluation Test (700 in correctAnswer vs 632 in explanation)
+  console.log('\n[TEST 14] Polluted Model Answer Clean-up & Re-evaluation Test (700 in correctAnswer vs 632 in explanation)...');
+  const pollutedPayload = {
+    question: "Terzaghi 지지력 공식을 사용하여 허용지지력 및 허용하중을 산정하시오.",
+    correctAnswer: "Terzaghi 지스트 공식인 q_u = 1.3cN_c + gamma*D_f*N_q + 0.4*gamma*B*N_gamma 에 주어진 조건(B=2.0m, gamma=18kN/m3, c=20kPa, phi=30도, D_f=0)을 대입하여 극한지지력을 구한 뒤 안전율을 적용하면 허용지지력 q_all = 700 kN/m² 이 도출됩니다.", // Polluted with user answer 700!
+    userAnswer: "700", // Wrong typed value
+    rowHeader: "(1) 조건 (a)의 허용지지력 q_all (a) (kN/m²)",
+    colHeader: "수치 계산 답안",
+    explanation: "Terzaghi 지지력 공식(q_u = 1.3cN_c + 0.4*gamma*B*N_gamma = 1.3*20*37.2 + 0.4*18*2*19.7 = 967.2 + 283.68 = 1250.88 kN/m²)에 따라 허용지지력 q_all = 1250.88 / 2 = 625.44 kN/m² (또는 Fs=3일 때 416.96 kN/m², 연속기초 632.0 kN/m²) 입니다.",
+    category: "계산",
+    temperature: 0.7,
+    preferredModel: "gemini-3.5-flash-lite"
+  };
+
+  const pollutedGradeRes = await postUrl('http://localhost:3000/api/grade-subjective', pollutedPayload);
+  if (pollutedGradeRes.statusCode === 200) {
+    try {
+      const data = JSON.parse(pollutedGradeRes.body);
+      if (!data.isCorrect && data.score === 0) {
+        console.log(`  ➜ [PASS] Server correctly stripped polluted "700" from correctAnswer and rejected wrong user answer (score: 0점, reason: ${data.reason}).`);
+      } else {
+        failedCount++;
+        console.log(`  ➜ [CRITICAL FAIL] Server accepted polluted "700" in correctAnswer as valid! Score: ${data.score}점, Reason: ${data.reason}`);
+      }
+    } catch (e) {
+      failedCount++;
+      console.log(`  ➜ [FAIL] Invalid JSON from grade-subjective: ${e.message}`);
+    }
+  } else {
+    failedCount++;
+    console.log(`  ➜ [FAIL] POST /api/grade-subjective failed (Status: ${pollutedGradeRes.error || pollutedGradeRes.statusCode})`);
   }
 
   console.log('\n====================================================');

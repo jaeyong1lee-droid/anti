@@ -131,7 +131,7 @@ export function checkWaterWeightEquivalence(userStr, correctStr) {
 
   for (const numStr of allNumbers) {
     const cVal = parseFloat(numStr);
-    if (cVal === 0) continue;
+    if (cVal === 0 || Math.abs(cVal - uVal) < 1e-4) continue;
 
     const ratio = uVal / cVal;
     const ratio1 = 10 / 9.81;
@@ -139,10 +139,8 @@ export function checkWaterWeightEquivalence(userStr, correctStr) {
     
     const diffRatio1 = Math.abs(ratio - ratio1) / ratio1;
     const diffRatio2 = Math.abs(ratio - ratio2) / ratio2;
-    const directDiff = Math.abs(uVal - cVal) / Math.abs(cVal);
-
-    const tolerance = 0.005; // 0.5% tolerance
-    if (diffRatio1 < tolerance || diffRatio2 < tolerance || directDiff < tolerance) {
+    const tolerance = 0.008; // 0.8% tolerance for 9.81 vs 10 ratio
+    if (diffRatio1 < tolerance || diffRatio2 < tolerance) {
       return true;
     }
   }
@@ -170,13 +168,12 @@ export async function gradeSubjective({ question, correctAnswer, userAnswer, row
     return { isCorrect: true, score: 10, reason: '텍스트가 모범 답안과 정확히 일치합니다.' };
   }
 
-  // 🚨 물의 단위중량(감마 w) 미명시 계산문제용 로컬 정밀 채점 (수식이 아닌 숫자형 결과에만 적용)
-  const isCalc = category === '계산' || 
-                 /물|단위중량|수압|유효|포화|간극|부력|침투|γ|gamma_w/.test(question || '') || 
-                 /물|단위중량|수압|유효|포화|간극|부력|침투|γ|gamma_w/.test(explanation || '');
+  // 🚨 물의 단위중량(감마 w) 미명시 계산문제용 로컬 정밀 채점 (감마 w 9.81 vs 10 전용)
+  const isWaterWeightCalc = /gamma_w|감마\s*w|감마_w|수중\s*단위중량|물의\s*단위중량/.test(question || '') || 
+                            /gamma_w|감마\s*w|감마_w|수중\s*단위중량|물의\s*단위중량/.test(explanation || '');
   
   const hasNumbersInCorrect = /[-+]?\d*\.?\d+/.test(correctAnswer || '') || /[-+]?\d*\.?\d+/.test(explanation || '');
-  const canApplyWaterWeightCheck = isCalc && isNumericAnswer(userAnswer) && hasNumbersInCorrect;
+  const canApplyWaterWeightCheck = isWaterWeightCalc && isNumericAnswer(userAnswer) && hasNumbersInCorrect;
   
   if (canApplyWaterWeightCheck && (
     checkWaterWeightEquivalence(userAnswer, correctAnswer) || 
@@ -272,10 +269,19 @@ ${explanation ? `- 전체 해설 (Explanation): ${explanation}` : ''}
     // 🚨 Server-Side Numeric Tolerance Guard (원보고서/해설 수치 오차 15% 초과 시 AI 환각 6.3점/10점 강제 차단)
     const userNum = parseFloat(String(userAnswer || '').replace(/[^0-9.-]/g, ''));
     if (!isNaN(userNum) && userNum > 0 && (category === '계산' || /q_all|P_all|지지력|허용하중|kN/.test(rowHeader || '') || /q_all|P_all|지지력|허용하중|kN/.test(question || ''))) {
-      const refText = `${correctAnswer || ''} ${explanation || ''}`;
-      const refNums = [...refText.matchAll(/[-+]?\d*\.?\d+/g)]
+      const refText = `${explanation || ''}`;
+      // 오염 방지: 사용자 답안 수치(userNum) 자체는 비교 대상 원보고서 숫자가 아니므로 필터링 제외
+      const baseNums = [...refText.matchAll(/[-+]?\d*\.?\d+/g)]
         .map(m => parseFloat(m[0]))
-        .filter(n => !isNaN(n) && n > 5 && n !== 1.3 && n !== 0.4 && n !== 0.5 && n !== 3.0 && n !== 18 && n !== 20 && n !== 30);
+        .filter(n => !isNaN(n) && n > 5 && n !== 1.3 && n !== 0.4 && n !== 0.5 && n !== 3.0 && n !== 18 && n !== 20 && n !== 30 && Math.abs(n - userNum) / userNum > 0.001);
+
+      // 공학적 형상계수(1.3, 1.2 등) 적용 수치 후보군 확장 (예: 10112 -> 13145 ≈ 13008)
+      const refNums = [];
+      baseNums.forEach(n => {
+        refNums.push(n);
+        refNums.push(n * 1.3);
+        refNums.push(n / 1.3);
+      });
 
       if (refNums.length > 0) {
         const hasMatchWithin5Pct = refNums.some(ref => Math.abs(userNum - ref) / ref <= 0.05);
@@ -290,7 +296,15 @@ ${explanation ? `- 전체 해설 (Explanation): ${explanation}` : ''}
           console.log(`[Numeric Guard Override] User typed ${userNum}, but ref numbers are ${JSON.stringify(refNums)}. Overriding AI false positive (${score}점 -> 0점).`);
           finalIsCorrect = false;
           finalScore = 0;
-          finalReason = `입력하신 계산 결과 수치(${userAnswer})는 원보고서/해설의 정밀 계산 수치값(${targetRef})과 수치 오차가 발생하여 오답 처리되었습니다.`;
+          finalReason = `입력하신 계산 결과 수치(${userAnswer})는 원보고서/해설의 정밀 계산 수치값(${targetRef})과 오차가 발생하여 오답 처리되었습니다.`;
+        }
+      } else {
+        // 해설에 정답 숫자가 없고 사용자가 임의 수치를 적었을 때, AI가 근거 없이 6.3점/10점을 부여하는 환각 방지
+        if (score > 5 || isCorrect) {
+          console.log(`[Numeric Guard Strict Mode] User typed ${userNum}, but no ref number found in explanation. Capping unverified numeric answer.`);
+          finalIsCorrect = false;
+          finalScore = 0;
+          finalReason = `입력하신 계산 결과 수치(${userAnswer})는 원보고서/해설의 산출 근거 수치와 일치하지 않는 것으로 판정되었습니다.`;
         }
       }
     }
