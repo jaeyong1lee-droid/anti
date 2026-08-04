@@ -1,4 +1,4 @@
-import { LATEX_PROMPT_INSTRUCTIONS, healQuizQuestionObject } from '../utils/latexUtils.js';
+import { LATEX_PROMPT_INSTRUCTIONS, healQuizQuestionObject, validateAndHealQuestion } from '../utils/latexUtils.js';
 import { ENGINEERING_STANDARDS } from './engineeringStandards.js';
 import { GENERATION_STANDARDS } from './generationStandards.js';
 

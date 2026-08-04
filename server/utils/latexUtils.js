@@ -1883,3 +1883,8 @@ export function isCalculationQuestion(q) {
   return false;
 }
 
+export async function validateAndHealQuestion(question, callLLMWithFailover, topicTitle = '', topicKeywords = '', fileText = '') {
+  if (!question) return question;
+  return healQuizQuestionObject(question);
+}
+

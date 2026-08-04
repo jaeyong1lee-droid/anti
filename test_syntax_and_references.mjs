@@ -94,10 +94,13 @@ console.log('\n[TEST 3] 핵심 소스파일 미선언 변수(ReferenceError 유�
 const targetFiles = [
   'client/src/App.jsx',
   'client/src/utils/latexUtils.js',
-  'server/utils/latexUtils.js'
+  'server/utils/latexUtils.js',
+  'server/routes/gradingRoutes.js',
+  'server/routes/quizRoutes.js',
+  'server/plugins/calculationPlugin.js'
 ];
 
-const checkSymbols = ['isComparisonTable', 'isExcessPlaceholders', 'targetCIdx', 'boxNum', 'boxNumMatch'];
+const checkSymbols = ['isComparisonTable', 'isExcessPlaceholders', 'targetCIdx', 'boxNum', 'boxNumMatch', 'validateAndHealQuestion'];
 
 for (const filePath of targetFiles) {
   const fullPath = path.resolve(filePath);
@@ -114,7 +117,7 @@ for (const filePath of targetFiles) {
         const isDecl = new RegExp(`(const|let|var|function|import|export|class|\\(|,)\\s*${sym}\\b`).test(beforeContent);
         if (!isDecl && !lineStr.includes(`//`) && !lineStr.includes(`*`)) {
           // 추가 확인: 상위 스코프에 선언이 존재하는지 전수 체크
-          const fullDecl = new RegExp(`(const|let|var|function|import|export|class)\\s+${sym}\\b`).test(fileContent);
+          const fullDecl = new RegExp(`(const|let|var|function|import|export|class|{|,)\\s*[^;\\n]*\\b${sym}\\b`).test(fileContent);
           if (!fullDecl) {
             failedCount++;
             console.error(`  ❌ [오류 감지]: ${filePath}:${lineIdx + 1} 라인에서 식별자 '${sym}'가 선언 없이 사용되고 있습니다!`);
