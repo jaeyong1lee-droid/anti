@@ -934,15 +934,15 @@ export function healDeep(obj, parentKey = null, context = null) {
     }
     return healed;
   }
+  return obj;
+}
+
 export function sanitizeGarbageTextFromQuestion(text) {
   if (!text || typeof text !== 'string') return text;
   let clean = text;
   clean = clean.replace(/,?\s*\([B-F]\)\s*(?:,\s*\([B-F]\))+/g, '');
   clean = clean.replace(/,?\s*\(([A-F])\)\s*입력\s*,?\s*\([B-F]\)\s*(?:,\s*\([B-F]\))+/g, ' ($1) 입력');
   return clean;
-}
-
-  return obj;
 }
 
 function parseQuestionTableText(questionText) {

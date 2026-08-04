@@ -65,8 +65,23 @@ const deduplicateQuestions = (questions) => {
 function cleanQuizQuestion(q) {
   if (!q) return q;
   let cleanText = typeof q === 'string' ? q : String(q || '');
-  cleanText = cleanText.replace(/,?\s*\([B-F]\)\s*(?:,\s*\([B-F]\))+/g, '');
-  cleanText = cleanText.replace(/,?\s*\(([A-F])\)\s*입력\s*,?\s*\([B-F]\)\s*(?:,\s*\([B-F]\))+/g, ' ($1) 입력');
+  
+  // Clean up ALL repetitive (A), (B), (C)... lists from flowchart boxes
+  let boxCount = 0;
+  cleanText = cleanText.replace(/\[\s*\(A\)(?:\s*,\s*\([A-Z]\))+\s*\]/gi, () => {
+    boxCount++;
+    return boxCount === 1 ? '[ (A) ]' : (boxCount === 2 ? '[ (C) ]' : '[ (E) ]');
+  });
+  
+  let lineCount = 0;
+  cleanText = cleanText.replace(/-\s*\(A\)(?:\s*,\s*\([A-Z]\))+/gi, () => {
+    lineCount++;
+    return lineCount === 1 ? '- (B)' : (lineCount === 2 ? '- (D)' : '- (F)');
+  });
+
+  // Strip remaining trailing (B), (C), (D)... lists inside box text
+  cleanText = cleanText.replace(/,\s*\([A-Z]\)(?:\s*,\s*\([A-Z]\))+/gi, '');
+
   const isFlowchart = cleanText.includes('┌──') || cleanText.includes('▼') || cleanText.includes('```') || cleanText.includes('흐름도') || cleanText.includes('플로우차트');
   if (isFlowchart) return cleanText.trim();
   return cleanText.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ').trim();

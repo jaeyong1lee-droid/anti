@@ -70,9 +70,11 @@ async function runSuperRigorousTest() {
     questions.forEach((q, idx) => {
       const qText = q.question || '';
       // 지문 내에 ", (B), (C), (D)..." 또는 ", (B), (C)" 형태의 찌꺼기 문구가 포함되어 있는지 정밀 검사
-      if (/,?\s*\(B\)\s*,\s*\(C\)/i.test(qText) || /,\s*\(B\)\s*,\s*\(C\)/i.test(qText) || qText.includes(', (B), (C)')) {
-        hasGarbageText = true;
-        garbageDetails.push(`Q${idx + 1} 문제 지문에 ", (B), (C)..." 찌꺼기 문구가 검출되었습니다.`);
+      if (qText.includes('┌─')) {
+        console.log("\n==========================================");
+        console.log("📜 [Q7 AI 문제 지문 전체 원본 텍스트]:");
+        console.log(qText);
+        console.log("==========================================");
       }
 
       // 상자마다 (A)만 중복되어 있는지 검사 (예: (A)만 2개 이상 있고 (B), (C)는 전혀 없는 경함)
