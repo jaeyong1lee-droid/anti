@@ -9633,7 +9633,7 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
               rows.push(['공학적 작동 메커니즘', `[INPUT_${rowIdx}_1]`]);
             }
             if (rows.length === 0) {
-              const labelName = (item.title || item.question || '주관식 서술 및 답안').trim();
+              const labelName = (item.title && item.title.length <= 30) ? item.title.trim() : '주관식 서술 및 답안';
               const fallbackVal = item.content || item.answer || item.concept || '서술 답안';
               answers['INPUT_0_1'] = fallbackVal;
               rows.push([labelName, '[INPUT_0_1]']);
@@ -10460,7 +10460,7 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
                     });
                   });
                 } else {
-                  const labelName = (item.title || item.question || '주관식 서술 및 답안').trim();
+                  const labelName = (item.title && item.title.length <= 30) ? item.title.trim() : '주관식 서술 및 답안';
                   const fallbackVal = item.content || item.answer || item.concept || '서술 답안';
                   answers['INPUT_0_1'] = fallbackVal;
                   rows.push([labelName, '[INPUT_0_1]']);

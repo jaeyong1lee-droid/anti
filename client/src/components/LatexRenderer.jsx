@@ -183,7 +183,7 @@ export const LatexRenderer = React.memo(function LatexRenderer({
   if (!text) return null;
 
   let parsedText = typeof text === 'string' 
-    ? text.replace(/\\\(([\s\S]*?)\\\)/g, (m, p1) => '$' + p1.trim() + '$')
+    ? text.replace(/\\\s*\(/g, '\\(').replace(/\\\s*\)/g, '\\)').replace(/\\\(([\s\S]*?)\\\)/g, (m, p1) => '$' + p1.trim() + '$')
     : text;
   if ((forceInline || (typeof className === 'string' && className.includes('inline'))) && typeof parsedText === 'string') {
     parsedText = parsedText.replace(/\$\$/g, '$').trim();
@@ -737,7 +737,9 @@ export const LatexRenderer = React.memo(function LatexRenderer({
       return `<div class="formula-scroll-container py-1.5" style="text-align: center; margin-top: 0.5rem; margin-bottom: 0.5rem; width: 100%;">${rendered}</div>`;
     });
 
-    // 2. 소괄호 내 억지 개행 정제 및 인라인 수식 $ ... $ 렌더링
+    // 2. 백슬래시 공백 찌꺼기 정제 (\ ( -> \() 및 \( ... \) -> $ ... $ 변환
+    htmlContent = htmlContent.replace(/\\\s*\(/g, '\\(').replace(/\\\s*\)/g, '\\)');
+    htmlContent = htmlContent.replace(/\\\(([\s\S]*?)\\\)/g, (m, p1) => '$' + p1.trim() + '$');
     htmlContent = htmlContent.replace(/\(\s*([^$()\n]+?)\s*\)/g, '($1)');
     htmlContent = htmlContent.replace(/\$((?:[^\$\n<]|<(?![a-zA-Z/!]))+?)\$/g, (m, math) => {
       const isRealFormula = /\\/.test(math) || /_/.test(math) || /\^/.test(math) || /=/.test(math) || /\\cdot/.test(math);

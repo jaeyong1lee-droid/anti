@@ -65,7 +65,7 @@ export const TableQuiz = React.memo(function TableQuiz({
   }
 
   if (!hasValidMainRows && !hasValidCompRows) {
-    const labelName = (q.title || q.question || '주관식 서술 및 답안').replace(/<[^>]*>/g, '').trim();
+    const labelName = (q.title && q.title.length <= 30) ? q.title.trim() : '주관식 서술 및 답안';
     const fallbackAnswer = q.answer || q.concept || q.explanation || '서술 답안';
     q.tableData = {
       headers: ['구분', '내용'],
