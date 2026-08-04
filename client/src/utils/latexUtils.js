@@ -937,6 +937,32 @@ export function healDeep(obj, parentKey = null, context = null) {
   return obj;
 }
 
+export function cleanQuizQuestion(q) {
+  if (!q) return q;
+  let cleanText = typeof q === 'string' ? q : String(q || '');
+
+  // [찌꺼기 완전 삭제 철칙]: (A), (B), (C), (D)... 나열 문자열 100% 완전 소탕 삭제!
+  cleanText = cleanText.replace(/,?\s*\([A-Z]\)(?:\s*,\s*\([A-Z]\))+/gi, '');
+  cleanText = cleanText.replace(/,?\s*\([B-Z]\)(?:\s*,\s*\([B-Z]\))*/gi, '');
+
+  // 2. 상자 내부 찌꺼기 완전 삭제 후 2번 상자 [ (A) ] / - (B), 4번 상자 [ (C) ] / - (D) 만 깔끔 복원
+  let boxIdx = 0;
+  cleanText = cleanText.replace(/\[\s*\([A-Z]\)[\s,A-Z\(\)]*\]/gi, () => {
+    boxIdx++;
+    return boxIdx === 1 ? '[ (A) ]' : (boxIdx === 2 ? '[ (C) ]' : '[ (E) ]');
+  });
+
+  let lineIdx = 0;
+  cleanText = cleanText.replace(/-+\s*\([A-Z]\)[\s,A-Z\(\)]*/gi, () => {
+    lineIdx++;
+    return lineIdx === 1 ? '- (B)' : (lineIdx === 2 ? '- (D)' : '- (F)');
+  });
+
+  const isFlowchart = cleanText.includes('┌──') || cleanText.includes('▼') || cleanText.includes('```') || cleanText.includes('흐름도') || cleanText.includes('플로우차트');
+  if (isFlowchart) return cleanText.trim();
+  return cleanText.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
 export function sanitizeGarbageTextFromQuestion(text) {
   if (!text || typeof text !== 'string') return text;
   let clean = text;
@@ -1119,6 +1145,7 @@ const localParseHtmlTable = (htmlStr) => {
 export function healQuizQuestionObject(q) {
   if (q && typeof q === 'object') {
     if (q.question && typeof q.question === 'string') {
+      q.question = cleanQuizQuestion(q.question);
       // 1. MIT 방식 명칭 노출 방지 사후 보정
       if (q.question.includes('MIT 방식의')) {
         q.question = q.question.replace(/MIT\s*방식의\s*/g, '');

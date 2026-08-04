@@ -79,6 +79,15 @@ async function runSuperRigorousTest() {
     const questions = quizData.questions || [];
     console.log(`  -> 수신된 문제 개수: ${questions.length}`);
 
+    // Q7 원본 지문 출력
+    const q7 = questions.find(q => (q.question || '').includes('┌─')) || questions[6];
+    if (q7) {
+      console.log("\n==========================================");
+      console.log("📜 [실제 백엔드가 보낸 Q7 지문 원본 텍스트]:");
+      console.log(q7.question);
+      console.log("==========================================");
+    }
+
     // 3단계: React DOM renderLineContent 시뮬레이션 기반 최종 화면 문자열 100% 심층 검사!
     let hasDomGarbage = false;
     let errorLog = [];
