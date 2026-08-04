@@ -1344,11 +1344,22 @@ export function healQuizQuestionObject(q) {
         );
       };
 
-      // Determine if this is a comparison table (3+ columns) vs calculation table (2 columns)
-      const isComparisonTable = Array.isArray(q.tableData.headers) && q.tableData.headers.length >= 3;
+      // Count total placeholders in comparison table
+      let placeholderCount = 0;
+      q.tableData.rows.forEach((row) => {
+        if (Array.isArray(row)) {
+          row.forEach((cell, cIdx) => {
+            if (cIdx > 0 && isCellPlaceholder(cell)) placeholderCount++;
+          });
+        }
+      });
+      const isExcessPlaceholders = isComparisonTable && placeholderCount > 4;
 
       const newRows = q.tableData.rows.map((row, rIdx) => {
         if (!Array.isArray(row)) return [];
+        const colCount = row.length;
+        const targetCIdx = (rIdx % Math.max(1, colCount - 1)) + 1;
+
         return row.map((cell, cIdx) => {
           if (cIdx === 0) return cell; // Keep the row label intact
 
@@ -1356,11 +1367,15 @@ export function healQuizQuestionObject(q) {
           // Pre-filled content cells (=실제 비교 내용이 채워진 셀) are preserved and shown as read-only.
           // For calculation tables (2 columns): all data cells become inputs.
           const cellIsPlaceholder = isCellPlaceholder(cell);
-          const shouldBeInput = isComparisonTable ? cellIsPlaceholder : true;
+          let shouldBeInput = isComparisonTable ? cellIsPlaceholder : true;
+
+          if (isExcessPlaceholders) {
+            shouldBeInput = (cIdx === targetCIdx);
+          }
 
           // For comparison tables: if this cell is not a placeholder, keep it as-is (read-only text)
           if (!shouldBeInput) {
-            return cell;
+            // If it was a placeholder but selected to be reference text, we will resolve its content below
           }
 
           const inputId = `INPUT_${inputCount}`;
@@ -1498,8 +1513,8 @@ export function healQuizQuestionObject(q) {
             }
           }
 
-          if (isComparisonTable && currentCount > 4 && correctAnswer && !isCellPlaceholder(correctAnswer)) {
-            return correctAnswer;
+          if (!shouldBeInput) {
+            return (correctAnswer && !isCellPlaceholder(correctAnswer)) ? correctAnswer : cell;
           }
           newAnswers[inputId] = correctAnswer;
           return `[${inputId}]`;
