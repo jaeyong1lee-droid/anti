@@ -20656,16 +20656,60 @@ ${itemsStr}
                                   {(() => {
                                     const healedQ = healQuizQuestionObject(q);
                                     const items = healedQ.calcItems || [];
+                                    const activeGradingResults = showExam ? examTableGradingResults : tableGradingResults;
                                     
                                     return items.map((item, iIdx) => {
-                                      const inputKey = `${idx}_${item.id || `INPUT_${iIdx+1}`}`;
+                                      const inputId = item.id || `INPUT_${iIdx+1}`;
+                                      const inputKey = `${idx}_${inputId}`;
+                                      const gradingResult = activeGradingResults[inputKey];
+                                      const score = gradingResult?.score;
+                                      const isCorrect = gradingResult ? gradingResult.isCorrect : false;
+
+                                      let textColorClass = 'text-slate-100 border-slate-700/80 focus:border-sky-500 font-medium';
+                                      if (isRevd) {
+                                        if (isCorrect || (score !== undefined && score >= 8)) {
+                                          textColorClass = 'text-emerald-400 font-bold border-emerald-500/50 bg-emerald-950/20';
+                                        } else if (score !== undefined && score >= 5) {
+                                          textColorClass = 'text-yellow-400 font-bold border-yellow-500/50 bg-yellow-950/20';
+                                        } else if (gradingResult) {
+                                          textColorClass = 'text-rose-400 font-bold border-rose-500/50 bg-rose-950/20';
+                                        }
+                                      }
+
                                       return (
                                         <div key={item.id || iIdx} className="space-y-1.5 text-left">
                                           <div className="text-xs sm:text-sm font-bold text-sky-300 flex items-center justify-between pl-0.5">
                                             <LatexRenderer text={item.label || `(${iIdx + 1}) 수치 항목`} katexLoaded={katexLoaded} />
+                                            {isRevd && (
+                                              <button
+                                                type="button"
+                                                disabled={gradingLoading[inputKey] || gradingLoading[idx]}
+                                                onClick={async (e) => {
+                                                  e.stopPropagation();
+                                                  if (gradingLoading[inputKey] || gradingLoading[idx]) return;
+                                                  await gradeTableQuestion(idx, q, [inputId], true);
+                                                }}
+                                                className={`text-xs px-2.5 py-0.5 rounded-lg font-black transition-all cursor-pointer flex items-center gap-1 border shadow-sm ${
+                                                  isCorrect || (score !== undefined && score >= 8)
+                                                    ? 'bg-emerald-950/60 text-emerald-400 border-emerald-500/50 hover:bg-emerald-900/80 active:scale-95'
+                                                    : (score !== undefined && score >= 5
+                                                        ? 'bg-yellow-950/60 text-yellow-400 border-yellow-500/50 hover:bg-yellow-900/80 active:scale-95'
+                                                        : 'bg-rose-950/60 text-rose-400 border-rose-500/50 hover:bg-rose-900/80 active:scale-95')
+                                                }`}
+                                                title="클릭 시 이 수치 항목만 AI 재채점 수행"
+                                              >
+                                                {gradingLoading[inputKey] || gradingLoading[idx] ? (
+                                                  <span className="animate-spin text-[10px]">⏳</span>
+                                                ) : null}
+                                                <span>
+                                                  {score !== undefined ? `${Math.round(((score / 10) * (25 / items.length)) * 10) / 10}점` : '재채점'}
+                                                </span>
+                                                <span className="text-[10px] opacity-75">🔄</span>
+                                              </button>
+                                            )}
                                           </div>
                                           <BufferedTextarea
-                                            disabled={gradingLoading[idx] || isRevd}
+                                            disabled={gradingLoading[idx] || gradingLoading[inputKey]}
                                             data-answer-key={inputKey}
                                             value={tableAnswers[inputKey] || ''}
                                             onChange={(val) => {
@@ -20678,14 +20722,14 @@ ${itemsStr}
                                             onKeyDown={async (e) => {
                                               if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
                                                 e.preventDefault();
-                                                if (!isRevd && !gradingLoading[idx]) {
+                                                if (!gradingLoading[idx]) {
                                                   await gradeTableQuestion(idx, q);
                                                   setRevealedQuestions(prev => ({ ...prev, [idx]: true }));
                                                 }
                                               }
                                             }}
                                             placeholder="계산 공식 대입 과정 및 최종 수치 답안을 입력하세요..."
-                                            className="w-full bg-slate-950 border border-slate-700/80 focus:border-sky-500 rounded-lg p-2.5 text-xs sm:text-sm text-slate-100 font-medium resize-none min-h-[48px] focus:ring-1 focus:ring-sky-500 transition-all"
+                                            className={`w-full bg-slate-950 border rounded-lg p-2.5 text-xs sm:text-sm resize-none min-h-[48px] focus:ring-1 focus:ring-sky-500 transition-all ${textColorClass}`}
                                           />
                                         </div>
                                       );
@@ -24271,16 +24315,60 @@ ${itemsStr}
                                   {(() => {
                                     const healedQ = healQuizQuestionObject(q);
                                     const items = healedQ.calcItems || [];
+                                    const isRevd = !!examRevealed[idx];
                                     
                                     return items.map((item, iIdx) => {
-                                      const inputKey = `${idx}_${item.id || `INPUT_${iIdx+1}`}`;
+                                      const inputId = item.id || `INPUT_${iIdx+1}`;
+                                      const inputKey = `${idx}_${inputId}`;
+                                      const gradingResult = examTableGradingResults[inputKey];
+                                      const score = gradingResult?.score;
+                                      const isCorrect = gradingResult ? gradingResult.isCorrect : false;
+
+                                      let textColorClass = 'text-slate-100 border-slate-700/80 focus:border-sky-500 font-medium';
+                                      if (isRevd) {
+                                        if (isCorrect || (score !== undefined && score >= 8)) {
+                                          textColorClass = 'text-emerald-400 font-bold border-emerald-500/50 bg-emerald-950/20';
+                                        } else if (score !== undefined && score >= 5) {
+                                          textColorClass = 'text-yellow-400 font-bold border-yellow-500/50 bg-yellow-950/20';
+                                        } else if (gradingResult) {
+                                          textColorClass = 'text-rose-400 font-bold border-rose-500/50 bg-rose-950/20';
+                                        }
+                                      }
+
                                       return (
                                         <div key={item.id || iIdx} className="space-y-1.5 text-left">
                                           <div className="text-xs sm:text-sm font-bold text-sky-300 flex items-center justify-between pl-0.5">
                                             <LatexRenderer text={item.label || `(${iIdx + 1}) 수치 항목`} katexLoaded={katexLoaded} />
+                                            {isRevd && (
+                                              <button
+                                                type="button"
+                                                disabled={gradingLoading[inputKey] || gradingLoading[idx]}
+                                                onClick={async (e) => {
+                                                  e.stopPropagation();
+                                                  if (gradingLoading[inputKey] || gradingLoading[idx]) return;
+                                                  await gradeTableQuestion(idx, q, [inputId], true);
+                                                }}
+                                                className={`text-xs px-2.5 py-0.5 rounded-lg font-black transition-all cursor-pointer flex items-center gap-1 border shadow-sm ${
+                                                  isCorrect || (score !== undefined && score >= 8)
+                                                    ? 'bg-emerald-950/60 text-emerald-400 border-emerald-500/50 hover:bg-emerald-900/80 active:scale-95'
+                                                    : (score !== undefined && score >= 5
+                                                        ? 'bg-yellow-950/60 text-yellow-400 border-yellow-500/50 hover:bg-yellow-900/80 active:scale-95'
+                                                        : 'bg-rose-950/60 text-rose-400 border-rose-500/50 hover:bg-rose-900/80 active:scale-95')
+                                                }`}
+                                                title="클릭 시 이 수치 항목만 AI 재채점 수행"
+                                              >
+                                                {gradingLoading[inputKey] || gradingLoading[idx] ? (
+                                                  <span className="animate-spin text-[10px]">⏳</span>
+                                                ) : null}
+                                                <span>
+                                                  {score !== undefined ? `${Math.round(((score / 10) * (25 / items.length)) * 10) / 10}점` : '재채점'}
+                                                </span>
+                                                <span className="text-[10px] opacity-75">🔄</span>
+                                              </button>
+                                            )}
                                           </div>
                                           <BufferedTextarea
-                                            disabled={gradingLoading[idx] || !!examRevealed[idx]}
+                                            disabled={gradingLoading[idx] || gradingLoading[inputKey]}
                                             data-answer-key={inputKey}
                                             value={examTableAnswers[inputKey] || ''}
                                             onChange={(val) => {
@@ -24293,14 +24381,14 @@ ${itemsStr}
                                             onKeyDown={async (e) => {
                                               if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
                                                 e.preventDefault();
-                                                if (!examRevealed[idx] && !gradingLoading[idx]) {
+                                                if (!gradingLoading[idx]) {
                                                   await gradeTableQuestion(idx, q);
                                                   setExamRevealed(prev => ({ ...prev, [idx]: true }));
                                                 }
                                               }
                                             }}
                                             placeholder="계산 공식 대입 과정 및 최종 수치 답안을 입력하세요..."
-                                            className="w-full bg-slate-950 border border-slate-700/80 focus:border-sky-500 rounded-lg p-2.5 text-xs sm:text-sm text-slate-100 font-medium resize-none min-h-[48px] focus:ring-1 focus:ring-sky-500 transition-all"
+                                            className={`w-full bg-slate-950 border rounded-lg p-2.5 text-xs sm:text-sm resize-none min-h-[48px] focus:ring-1 focus:ring-sky-500 transition-all ${textColorClass}`}
                                           />
                                         </div>
                                       );
