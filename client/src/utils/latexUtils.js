@@ -1449,12 +1449,24 @@ export function healQuizQuestionObject(q) {
         );
       };
 
+      // Determine if this is a comparison table (3+ columns) vs calculation table (2 columns)
+      const isComparisonTable = Array.isArray(q.tableData.headers) && q.tableData.headers.length >= 3;
+
       const newRows = q.tableData.rows.map((row, rIdx) => {
         if (!Array.isArray(row)) return [];
         return row.map((cell, cIdx) => {
           if (cIdx === 0) return cell; // Keep the row label intact
 
-          const shouldBeInput = true;
+          // For comparison tables (3+ columns): only cells with [INPUT_N] markers become inputs.
+          // Pre-filled content cells are preserved and shown as read-only text.
+          // For calculation tables (2 columns): all data cells become inputs.
+          const cellIsPlaceholder = isCellPlaceholder(cell);
+          const shouldBeInput = isComparisonTable ? cellIsPlaceholder : true;
+
+          // For comparison tables: if this cell is not a placeholder, keep it as-is (read-only text)
+          if (!shouldBeInput) {
+            return cell;
+          }
 
           const inputId = `INPUT_${inputCount}`;
           const currentCount = inputCount;
