@@ -64,9 +64,12 @@ const deduplicateQuestions = (questions) => {
 
 function cleanQuizQuestion(q) {
   if (!q) return q;
-  const isFlowchart = q.includes('┌──') || q.includes('▼') || q.includes('```') || q.includes('흐름도') || q.includes('플로우차트');
-  if (isFlowchart) return q.trim();
-  return q.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ').trim();
+  let cleanText = typeof q === 'string' ? q : String(q || '');
+  cleanText = cleanText.replace(/,?\s*\([B-F]\)\s*(?:,\s*\([B-F]\))+/g, '');
+  cleanText = cleanText.replace(/,?\s*\(([A-F])\)\s*입력\s*,?\s*\([B-F]\)\s*(?:,\s*\([B-F]\))+/g, ' ($1) 입력');
+  const isFlowchart = cleanText.includes('┌──') || cleanText.includes('▼') || cleanText.includes('```') || cleanText.includes('흐름도') || cleanText.includes('플로우차트');
+  if (isFlowchart) return cleanText.trim();
+  return cleanText.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
 function getCoreSubjectFromTitle(title) {
@@ -832,7 +835,7 @@ ${activeGenerationStandards}
 ${activeEngineeringStandards}
 `;
 
-    const flowchartSpecificInstruction = "이번 흐름도 문제 출제 시, [🚨 1번 상자 채우기 및 2번 상자 빈칸 의무화 지침]: 반드시 1번 상자는 완전한 설명 텍스트를 기입하여 힌트 역할을 하게 채워서 노출해야 하며, 절대로 비워서는 안 됩니다. 빈칸은 반드시 2번 상자부터 시작하여 [ (A) ] 와 - (B) 로 비워 두십시오. (예: 총 상자가 5개 또는 6개인 경우 [2, 4, 6]번 상자를 비우고, 7개인 경우 [2, 4, 7]번 상자를 비워 입력칸으로 만드십시오. 첫 번째 박스는 무조건 보여주어야 합니다.)";
+    const flowchartSpecificInstruction = "이번 흐름도 문제 출제 시, [1번 상자 채우기 지침]: 1번 상자는 설명 텍스트를 채워서 노출하고, 빈칸은 2번 상자부터 시작하여 (A), (B), (C), (D) 순서대로 1개씩 비우십시오. 상자 우측이나 바깥에 (A)~(F) 전체 목록을 덧붙이는 행위는 절대 금지됩니다.";
 
     // Batch prompts for standard topics (non-calculation) to ensure high-quality technical questions
     const promptBatch1 = `

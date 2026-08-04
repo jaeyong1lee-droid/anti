@@ -934,6 +934,14 @@ export function healDeep(obj, parentKey = null, context = null) {
     }
     return healed;
   }
+export function sanitizeGarbageTextFromQuestion(text) {
+  if (!text || typeof text !== 'string') return text;
+  let clean = text;
+  clean = clean.replace(/,?\s*\([B-F]\)\s*(?:,\s*\([B-F]\))+/g, '');
+  clean = clean.replace(/,?\s*\(([A-F])\)\s*입력\s*,?\s*\([B-F]\)\s*(?:,\s*\([B-F]\))+/g, ' ($1) 입력');
+  return clean;
+}
+
   return obj;
 }
 
@@ -1486,28 +1494,7 @@ export function healQuizQuestionObject(q) {
       }
       q.answers = newAnswers;
 
-      // [🚨 주관식 표채우기 지문 빈칸 오표기 보정 로직 🚨]
-      // 실제 생성된 빈칸의 개수(INPUT 개수)와 지문(question) 내의 알파벳 빈칸 표시 (A), (B) 등의 개수를 일치시킵니다.
-      const numInputs = Object.keys(newAnswers).length;
-      if (q.question && numInputs > 0) {
-        const alphabet = [];
-        for (let i = 0; i < numInputs; i++) {
-          alphabet.push(`(${String.fromCharCode(65 + i)})`);
-        }
-        const replacement = alphabet.join(', ');
-
-        const multiPattern = /\([A-Z]\)(?:\s*(?:,|\s+및|\s+또는|와|과|~|-|부터|에서)\s*\([A-Z]\))+/g;
-        if (multiPattern.test(q.question)) {
-          multiPattern.lastIndex = 0;
-          q.question = q.question.replace(multiPattern, replacement);
-        } else if (numInputs > 1) {
-          const singlePattern = /\([A-Z]\)/g;
-          if (singlePattern.test(q.question)) {
-            singlePattern.lastIndex = 0;
-            q.question = q.question.replace(singlePattern, replacement);
-          }
-        }
-      }
+      // Forced replacement of question text with (A), (B), (C) list completely deleted
     }
     
     // [Self-Healing] comparisonTableData의 answers 누락 복구
