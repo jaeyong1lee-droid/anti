@@ -1722,6 +1722,22 @@ router.delete('/session/review/topic/:id', async (req, res) => {
   }
 });
 
+// DELETE /api/session/review/schedule/:id -> Delete specific schedule review session
+router.delete('/session/review/schedule/:id', async (req, res) => {
+  try {
+    await ensureSessionTable();
+    const scheduleId = req.params.id;
+    await dbQuery.run(
+      "DELETE FROM app_session WHERE key = ? OR key LIKE ?",
+      [`review_questions_schedule_${scheduleId}`, `review_questions_schedule_${scheduleId}_sess_%`]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('DELETE /api/session/review/schedule error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/session/completed-review/:scheduleId -> Get completed review state
 router.get('/session/completed-review/:scheduleId', async (req, res) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
