@@ -964,9 +964,33 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
 
   if (!isNested) {
     result = result.replace(/(?:<!--|\\lt !--|&lt;!--)\s*(?:-\s*)*\s*(?:START|END)_TABLE\s*(?:-\s*)*\s*(?:-->|--\\gt|>|\\gt|--&gt;)\n?/gi, '');
-  }
-
   return result;
+}
+
+export function cleanQuizQuestion(q) {
+  if (!q) return q;
+  let cleanText = typeof q === 'string' ? q : String(q || '');
+
+  // 1. Universal Box Cleaner: Strip any [ (A), (B), (C)... ] inside boxes to clean single placeholder
+  let boxIdx = 0;
+  cleanText = cleanText.replace(/\[\s*\([A-Z]\)[\s,A-Z\(\)]*\]/gi, () => {
+    boxIdx++;
+    return boxIdx === 1 ? '[ (A) ]' : (boxIdx === 2 ? '[ (C) ]' : '[ (E) ]');
+  });
+
+  let lineIdx = 0;
+  cleanText = cleanText.replace(/-+\s*\([A-Z]\)[\s,A-Z\(\)]*/gi, () => {
+    lineIdx++;
+    return lineIdx === 1 ? '- (B)' : (lineIdx === 2 ? '- (D)' : '- (F)');
+  });
+
+  // 2. Strip remaining list garbage text
+  cleanText = cleanText.replace(/,?\s*\([A-Z]\)(?:\s*,\s*\([A-Z]\))+/gi, '');
+  cleanText = cleanText.replace(/,?\s*\([B-Z]\)(?:\s*,\s*\([B-Z]\))*/gi, '');
+
+  const isFlowchart = cleanText.includes('┌──') || cleanText.includes('▼') || cleanText.includes('```') || cleanText.includes('흐름도') || cleanText.includes('플로우차트');
+  if (isFlowchart) return cleanText.trim();
+  return cleanText.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
 // 오브젝트 딥 힐러 트리구조
@@ -1150,6 +1174,9 @@ const localParseHtmlTable = (htmlStr) => {
 
 export function healQuizQuestionObject(q) {
   if (q && typeof q === 'object') {
+    if (q.question && typeof q.question === 'string') {
+      q.question = cleanQuizQuestion(q.question);
+    }
     if (q.question && (!q.tableData || !q.tableData.headers || !q.tableData.rows)) {
       const parsed = parseQuestionTableText(q.question);
       if (parsed.tableData) {

@@ -66,11 +66,7 @@ function cleanQuizQuestion(q) {
   if (!q) return q;
   let cleanText = typeof q === 'string' ? q : String(q || '');
 
-  // [찌꺼기 완전 삭제 철칙]: (A), (B), (C), (D)... 나열 문자열 100% 완전 소탕 삭제!
-  cleanText = cleanText.replace(/,?\s*\([A-Z]\)(?:\s*,\s*\([A-Z]\))+/gi, '');
-  cleanText = cleanText.replace(/,?\s*\([B-Z]\)(?:\s*,\s*\([B-Z]\))*/gi, '');
-
-  // 2. 상자 내부 찌꺼기 완전 삭제 후 2번 상자 [ (A) ] / - (B), 4번 상자 [ (C) ] / - (D) 만 깔끔 복원
+  // 1. Universal Box Cleaner: Strip any [ (A), (B), (C)... ] inside boxes to clean single placeholder
   let boxIdx = 0;
   cleanText = cleanText.replace(/\[\s*\([A-Z]\)[\s,A-Z\(\)]*\]/gi, () => {
     boxIdx++;
@@ -82,6 +78,10 @@ function cleanQuizQuestion(q) {
     lineIdx++;
     return lineIdx === 1 ? '- (B)' : (lineIdx === 2 ? '- (D)' : '- (F)');
   });
+
+  // 2. Strip remaining list garbage text
+  cleanText = cleanText.replace(/,?\s*\([A-Z]\)(?:\s*,\s*\([A-Z]\))+/gi, '');
+  cleanText = cleanText.replace(/,?\s*\([B-Z]\)(?:\s*,\s*\([B-Z]\))*/gi, '');
 
   const isFlowchart = cleanText.includes('┌──') || cleanText.includes('▼') || cleanText.includes('```') || cleanText.includes('흐름도') || cleanText.includes('플로우차트');
   if (isFlowchart) return cleanText.trim();
