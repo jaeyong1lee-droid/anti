@@ -951,6 +951,18 @@ export const TableQuiz = React.memo(function TableQuiz({
     const fn = win.__handleTableColumnDoubleClick || window.__handleTableColumnDoubleClick;
     if (fn && targetEl) {
       fn(e, targetEl, colIdx);
+      if (colIdx === 1) {
+        const table = targetEl.closest ? targetEl.closest('table') : null;
+        if (table) {
+          const ths = table.querySelectorAll('th');
+          if (ths && ths[0] && ths[1]) {
+            const w0 = `${ths[0].offsetWidth}px`;
+            const w1 = `${ths[1].offsetWidth}px`;
+            setCompMobileColWidths(prev => prev.map((_, i) => i === 0 ? w0 : w1));
+            setMobileColWidths(prev => prev.map((_, i) => i === 0 ? w0 : w1));
+          }
+        }
+      }
       return;
     }
   }, []);

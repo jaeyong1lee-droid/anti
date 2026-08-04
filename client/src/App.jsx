@@ -4797,20 +4797,25 @@ export default function App() {
         table.style.setProperty('min-width', '100%', 'important');
         table.style.setProperty('max-width', '100%', 'important');
       } else if (colIdx === 1 && colCount > 1) {
-        // 2열 더블클릭 시: 1열은 현재 상태 그대로 놔두고(건드리지 않음), 2열 및 3열 이후의 모든 열을 2열의 현재 너비에 맞춤!
+        // 2열 더블클릭 시: 1열과 2열의 현재 너비(col0Width, col2Width)를 그대로 100% 고정(움직임 0)하고, 3열 이후의 모든 열을 2열 너비에 맞춤!
         const col0Width = allThs[0].offsetWidth || MIN_WIDTH;
         const col2Width = allThs[1].offsetWidth || MIN_WIDTH;
 
-        // 2열 너비 지정
+        // 1열 너비 엄격 고정 (흔들림 및 줄바꿈 차단)
+        allThs[0].style.setProperty('width', col0Width + 'px', 'important');
+        allThs[0].style.setProperty('min-width', col0Width + 'px', 'important');
+        allThs[0].style.setProperty('max-width', col0Width + 'px', 'important');
+
+        // 2열 너비 엄격 고정 (줄바꿈 차단)
         allThs[1].style.setProperty('width', col2Width + 'px', 'important');
-        allThs[1].style.setProperty('min-width', MIN_WIDTH + 'px', 'important');
+        allThs[1].style.setProperty('min-width', col2Width + 'px', 'important');
         allThs[1].style.setProperty('max-width', col2Width + 'px', 'important');
 
         // 3열 이후의 모든 나머지 데이터 열(3열, 4열...) 너비를 2열의 현재 너비(col2Width)와 동일하게 1:1 통일
         let sumAllCols = col0Width + col2Width;
         for (let i = 2; i <= lastDataColIdx; i++) {
           allThs[i].style.setProperty('width', col2Width + 'px', 'important');
-          allThs[i].style.setProperty('min-width', MIN_WIDTH + 'px', 'important');
+          allThs[i].style.setProperty('min-width', col2Width + 'px', 'important');
           allThs[i].style.setProperty('max-width', col2Width + 'px', 'important');
           sumAllCols += col2Width;
         }
@@ -4822,8 +4827,31 @@ export default function App() {
           sumAllCols += remarksWidth;
         }
 
-        const tableContainer = table.closest('.markdown-table-container') || table.parentElement;
-        // 1열은 현재 상태 그대로 유지되도록 전체 표 너비를 sumAllCols로 명시 설정
+        // 전체 tr 요소의 td 셀에도 동일하게 1열, 2열 및 3열~ 너비를 엄격 지정하여 브라우저 재배치에 의한 흔들림/줄바꿈 완벽 차단
+        const allTrs = Array.from(table.querySelectorAll('tr'));
+        allTrs.forEach(r => {
+          const cells = Array.from(r.children);
+          if (cells[0]) {
+            cells[0].style.setProperty('width', col0Width + 'px', 'important');
+            cells[0].style.setProperty('min-width', col0Width + 'px', 'important');
+            cells[0].style.setProperty('max-width', col0Width + 'px', 'important');
+          }
+          if (cells[1]) {
+            cells[1].style.setProperty('width', col2Width + 'px', 'important');
+            cells[1].style.setProperty('min-width', col2Width + 'px', 'important');
+            cells[1].style.setProperty('max-width', col2Width + 'px', 'important');
+          }
+          for (let i = 2; i <= lastDataColIdx; i++) {
+            if (cells[i]) {
+              cells[i].style.setProperty('width', col2Width + 'px', 'important');
+              cells[i].style.setProperty('min-width', col2Width + 'px', 'important');
+              cells[i].style.setProperty('max-width', col2Width + 'px', 'important');
+            }
+          }
+        });
+
+        const tableContainer = table.closest('.markdown-table-container, .table-quiz-container') || table.parentElement;
+        // 1열 및 2열은 현재 상태 그대로 유지되도록 전체 표 너비를 sumAllCols로 명시 설정
         table.style.setProperty('width', sumAllCols + 'px', 'important');
         table.style.setProperty('min-width', sumAllCols + 'px', 'important');
         table.style.setProperty('max-width', 'none', 'important');
