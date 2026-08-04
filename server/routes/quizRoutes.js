@@ -11,6 +11,7 @@ import { GENERATION_STANDARDS, generationStandardsList } from '../plugins/genera
 import { ENGINEERING_STANDARDS, standardsList as engineeringStandardsList } from '../plugins/engineeringStandards.js';
 import { FLOWCHART_QUIZ_GENERATION_PROMPT } from '../plugins/flowchartQuizPlugin.js';
 import * as ocrPlugin from '../plugins/calculationPlugin.js';
+import { generateCalcTopicQuiz } from '../plugins/calculationPlugin.js';
 import * as itemQuizPlugin from '../plugins/formulaItemQuizPlugin.js';
 import pdfParse from 'pdf-parse';
 
@@ -1187,35 +1188,25 @@ ${LATEX_PROMPT_INSTRUCTIONS}
 let parsedArray = null;
 
     if (topic.category === '계산') {
-      let calcImageBase64 = null;
-      if (topic.pdf_url) {
-        try {
-          const headers = {};
-          if (process.env.BLOB_READ_WRITE_TOKEN) {
-            headers['Authorization'] = `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}`;
-          }
-          const imgRes = await fetch(topic.pdf_url, { headers });
-          if (imgRes.ok) {
-            const arrayBuffer = await imgRes.arrayBuffer();
-            const buffer = Buffer.from(arrayBuffer);
-            calcImageBase64 = buffer.toString('base64');
-            console.log(`[Calc Vision] Successfully loaded ${buffer.length} bytes from ${topic.pdf_url} for AI vision analysis`);
-          }
-        } catch (imgErr) {
-          console.warn('[Calc Vision] Failed to fetch topic pdf_url image:', imgErr.message);
-        }
-      }
-
-      const rawText = await localCallLLM(systemInstruction, enrichedGenerationPrompt, calcImageBase64, 'question', { temperature: 1.0 });
-      let text = rawText.trim();
-      if (text.startsWith('```')) {
-        text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
-      }
-      try {
-        parsedArray = parseLlmJson(text);
-      } catch {
-        parsedArray = extractJsonArray(rawText);
-      }
+      console.log('[QuizRoute] Delegating calc topic quiz generation to calculationPlugin');
+      const cleanedCalcQuestions = await generateCalcTopicQuiz(
+        topic,
+        fileText,
+        coreSubject,
+        activeGenerationStandards,
+        activeEngineeringStandards,
+        topicInstructionsPrompt,
+        localCallLLM
+      );
+      // Attach topic metadata and save directly - skip the normalizedParsedArray pipeline
+      const finalCalcQuestions = cleanedCalcQuestions.map(q => ({
+        ...q,
+        topic_id: Number(topicId),
+        category: topic.category,
+      }));
+      // Save to session and return
+      await saveSessionValue(`review_questions_topic_${topicId}`, { questions: finalCalcQuestions });
+      return res.json({ success: true, questions: finalCalcQuestions });
     } else {
       const targetModel = (req.body && req.body.preferredModel) || globalPreferredModel || 'gemini-3.5-flash-lite';
       const [batch1Text, batch2Text, batch3Text] = await Promise.all([

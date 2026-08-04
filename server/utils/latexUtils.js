@@ -1288,14 +1288,7 @@ export function healQuizQuestionObject(q) {
     );
 
     if (q.type === '주관식 (표채우기)' || q.subtype === '표채우기') {
-      // Detect generic/dummy placeholder row labels that AI sometimes outputs as fallback
-      const hasGenericRows = q.tableData && Array.isArray(q.tableData.rows) && q.tableData.rows.length > 0 &&
-        q.tableData.rows.every(row =>
-          Array.isArray(row) && typeof row[0] === 'string' &&
-          /^\(?\d+\)?\s*(?:핵심\s*(?:수치\s*)?계산\s*항목|계산\s*항목|핵심\s*항목)\s*\d+/i.test(row[0].trim())
-        );
-
-      if (!q.tableData || !Array.isArray(q.tableData.rows) || q.tableData.rows.length === 0 || hasGenericRows) {
+      if (!q.tableData || !Array.isArray(q.tableData.rows) || q.tableData.rows.length === 0) {
         const isComp = (q.question || '').includes('비교') || (q.question || '').includes('차이점');
         if (isComp) {
           q.tableData = {
@@ -1309,71 +1302,6 @@ export function healQuizQuestionObject(q) {
             INPUT_1: "전반전단파괴 기반 3개 영역 한계 평형 이론",
             INPUT_2: "지표면 파괴면 확장 및 전단강도 직접 고려"
           };
-        } else {
-          const isCalc = q.category === '계산' || q.mixedType === 'calc' || /계산|구하시오|연산|산정|수치|하중|지지력|수압|경사|침투/i.test(q.question || '');
-          if (isCalc) {
-            const qText = q.question || '';
-            const isTerzaghi = /Terzaghi|기초|지지력|허용하중/i.test(qText);
-            const hasAB = /\(a\)/i.test(qText) || /조건\s*\(?a\)?/i.test(qText);
-
-            if (isTerzaghi && hasAB) {
-              q.tableData = {
-                headers: ["구하는 항목", "계산 결과 및 답안"],
-                rows: [
-                  ["(1) 조건 (a)의 허용지지력 q_all(a) (kN/m²)", "[INPUT_1]"],
-                  ["(2) 조건 (a)의 허용하중 P_all(a) (kN)", "[INPUT_2]"],
-                  ["(3) 조건 (b)의 허용지지력 q_all(b) (kN/m²)", "[INPUT_3]"],
-                  ["(4) 조건 (b)의 허용하중 P_all(b) (kN)", "[INPUT_4]"]
-                ]
-              };
-              q.answers = (hasGenericRows || !q.answers || !q.answers.INPUT_4) ? {
-                INPUT_1: "조건(a) 허용지지력 산정 공식 및 계산값",
-                INPUT_2: "조건(a) 허용하중 산정 공식 및 계산값",
-                INPUT_3: "조건(b) 허용지지력 산정 공식 및 계산값",
-                INPUT_4: "조건(b) 허용하중 산정 공식 및 계산값"
-              } : q.answers;
-            } else if (/댐|유선망|침투|간극수압/i.test(qText)) {
-              q.tableData = {
-                headers: ["구하는 항목", "계산 결과 및 답안"],
-                rows: [
-                  ["(1) 단위폭당 침투유량 q (m³/s/m)", "[INPUT_1]"],
-                  ["(2) 지정 위치 간극수압 u (kN/m²)", "[INPUT_2]"],
-                  ["(3) 출구 유출 동수경사 i_exit", "[INPUT_3]"]
-                ]
-              };
-              q.answers = q.answers || {
-                INPUT_1: "침투유량 q 공식 및 수치 풀이",
-                INPUT_2: "간극수압 u 공식 및 수치 풀이",
-                INPUT_3: "동수경사 i 공식 및 수치 풀이"
-              };
-            } else {
-              q.tableData = {
-                headers: ["구하는 항목", "계산 결과 및 답안"],
-                rows: [
-                  ["(1) 핵심 수치 계산 항목 1", "[INPUT_1]"],
-                  ["(2) 핵심 수치 계산 항목 2", "[INPUT_2]"],
-                  ["(3) 핵심 수치 계산 항목 3", "[INPUT_3]"]
-                ]
-              };
-              q.answers = q.answers || {
-                INPUT_1: "조건(1) 항목 풀이 및 최종 계산 수치값",
-                INPUT_2: "조건(2) 항목 풀이 및 최종 계산 수치값",
-                INPUT_3: "조건(3) 항목 풀이 및 최종 계산 수치값"
-              };
-            }
-          } else {
-            q.tableData = {
-              headers: ["구분 항목", "세부 핵심 내용"],
-              rows: [
-                ["핵심 항목 1", "[INPUT_1]"],
-                ["핵심 항목 2", "[INPUT_2]"]
-              ]
-            };
-            q.answers = q.answers || {
-              INPUT_1: "주요 기술 서술 답안 1",
-              INPUT_2: "주요 기술 서술 답안 2"
-            };
-          }
         }
       }
       if (q.tableData && Array.isArray(q.tableData.headers)) {
@@ -1570,6 +1498,9 @@ export function healQuizQuestionObject(q) {
             }
           }
 
+          if (isComparisonTable && currentCount > 4 && correctAnswer && !isCellPlaceholder(correctAnswer)) {
+            return correctAnswer;
+          }
           newAnswers[inputId] = correctAnswer;
           return `[${inputId}]`;
         });

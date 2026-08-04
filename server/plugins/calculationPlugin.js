@@ -249,4 +249,230 @@ function escapeJsonBackslashes(str) {
   return result;
 }
 
+/**
+ * Generates all 4 questions for a calculation-category topic.
+ * Returns an array of healed question objects: [tableQ, compQ, shortQ1, shortQ2]
+ * This is the ONLY entry point for calculation topic quiz generation.
+ *
+ * @param {object} topic - topic object { title, keywords, category, pdf_url }
+ * @param {string} fileText - HTML study note text
+ * @param {string} coreSubject - cleaned topic subject title
+ * @param {string} activeGenerationStandards - formatted generation standards string
+ * @param {string} activeEngineeringStandards - formatted engineering standards string
+ * @param {string} topicInstructionsPrompt - topic-specific instructions
+ * @param {Function} callLLM - async (systemInstruction, prompt, imageB64, tag, opts) => string
+ */
+export async function generateCalcTopicQuiz(
+  topic,
+  fileText,
+  coreSubject,
+  activeGenerationStandards,
+  activeEngineeringStandards,
+  topicInstructionsPrompt,
+  callLLM
+) {
+  // --- 1. Load image if pdf_url exists ---
+  let calcImageBase64 = null;
+  if (topic.pdf_url) {
+    try {
+      const imgRes = await fetch(topic.pdf_url);
+      if (imgRes.ok) {
+        const buf = Buffer.from(await imgRes.arrayBuffer());
+        calcImageBase64 = buf.toString('base64');
+        console.log(`[CalcPlugin] Loaded ${buf.length} bytes image from ${topic.pdf_url}`);
+      }
+    } catch (e) {
+      console.warn('[CalcPlugin] Could not fetch pdf_url image:', e.message);
+    }
+  }
 
+  // --- 2. Build the generation prompt ---
+  const systemInstruction = `당신은 대한민국 국가건설기준설계코드(KDS) 및 지반공학 기술사 시험 출제위원입니다.
+JSON 배열 형식으로만 문제를 출력하십시오.`;
+
+  const generationPrompt = `
+[문제 생성 태스크 시작]:
+아래 제공되는 정보를 분석하여 정확히 4개의 계산 예상문제를 생성해 주십시오.
+[토픽 핵심 주제]: ${coreSubject}
+[토픽 원본 제목]: ${topic.title}
+[핵심 키워드]: ${topic.keywords || '제공되지 않음'}
+[첨부파일 본문 텍스트](HTML 공부노트): ${fileText || '제공되지 않음'}
+
+[출제 요구사항]:
+1. 1번 문항 (첨부 이미지의 물음과 본문 HTML의 답변을 분석한 표채우기 질문) - type: "주관식 (표채우기)"
+   표 구조는 반드시 **headers: ["구하는 항목", "계산 결과 및 답안"]** 의 2열 헤더 규격으로 구성하십시오.
+   문제 지문과 그림이 구하라고 요구하는 **모든 계산 평가 항목 (1), (2), (3)...** 또는 조건별 항목을 각각의 **행(Row)**으로 배치하십시오.
+   rows: [["(1) 항목명 (단위)", "[INPUT_1]"], ["(2) 항목명 (단위)", "[INPUT_2]"], ...]
+   answers 객체에는 각 INPUT_N마다 대응되는 계산 정답 풀이 과정과 수치를 기재하십시오.
+
+2. 2번 문항 (개념 비교 표 칸채우기 문제) - type: "주관식 (표채우기)"
+   headers: ["구분 항목", "공법/이론 A", "공법/이론 B"]
+   절반 정도의 셀은 채워진 답안으로, 나머지는 INPUT으로 설계하십시오.
+
+3. 3번 문항 (공학적 의미/교훈 주관식 문제) - type: "주관식 (단답형)"
+4. 4번 문항 (관련 공학적 문제 발생 시 대책 주관식 문제) - type: "주관식 (다답형)"
+
+[출제 기준 절대 지침]:
+${activeGenerationStandards}
+
+[공학 기준 절대 지침]:
+${activeEngineeringStandards}
+
+${topicInstructionsPrompt}
+
+${LATEX_PROMPT_INSTRUCTIONS}
+
+[응답 JSON 포맷]:
+[
+  {
+    "type": "주관식 (표채우기)",
+    "question": "실제 문제 이미지를 분석하여 구체적인 계산 항목 안내를 포함한 질문",
+    "tableData": { "headers": ["구하는 항목", "계산 결과 및 답안"], "rows": [["(1) 항목명 (단위)", "[INPUT_1]"]] },
+    "answers": { "INPUT_1": "정답 풀이" }
+  },
+  {
+    "type": "주관식 (표채우기)",
+    "question": "비교 문제 질문",
+    "tableData": { "headers": ["구분 항목", "공법/이론 A", "공법/이론 B"], "rows": [["항목", "[INPUT_1]", "내용"]] },
+    "answers": { "INPUT_1": "정답" }
+  },
+  {
+    "type": "주관식 (단답형)",
+    "question": "주관식 질문 3",
+    "answer": "정답 3"
+  },
+  {
+    "type": "주관식 (단답형)",
+    "question": "주관식 질문 4",
+    "answer": "정답 4"
+  }
+]
+`;
+
+  // --- 3. Call LLM ---
+  const rawText = await callLLM(systemInstruction, generationPrompt, calcImageBase64 ? { data: calcImageBase64, mimeType: 'image/jpeg' } : null, 'calc_question', { temperature: 1.0 });
+  let text = (rawText || '').trim().replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
+
+  let parsed = null;
+  try {
+    parsed = parseLlmJson(text);
+  } catch {
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      console.error('[CalcPlugin] Failed to parse LLM response');
+      parsed = [];
+    }
+  }
+
+  if (!Array.isArray(parsed)) parsed = [];
+
+  // --- 4. Heal and assemble 4 questions ---
+  const tableQ = parsed.find(q => q.type === '주관식 (표채우기)' &&
+    Array.isArray(q.tableData?.headers) && q.tableData.headers.length === 2);
+  const compQ  = parsed.find(q => q.type === '주관식 (표채우기)' &&
+    Array.isArray(q.tableData?.headers) && q.tableData.headers.length >= 3);
+  const shorts = parsed.filter(q => q.type === '주관식 (다답형)' || q.type === '주관식 (단답형)');
+
+  const fb = calcFallbackQuestions(topic.title, topic.keywords);
+
+  const final = [
+    tableQ || fb[0],
+    compQ  || fb[1],
+    shorts[0] || fb[2],
+    shorts[1] || fb[3],
+  ];
+
+  return final.map(q => healCalcQuestion(healQuizQuestionObject({ ...q, category: '계산' })));
+}
+
+/**
+ * Calc-specific table healer: replaces generic/empty calc tableData rows
+ * with Terzaghi/dam/generic specific rows.
+ * Only called from within this plugin.
+ */
+export function healCalcQuestion(q) {
+  if (q.type !== '주관식 (표채우기)' && q.subtype !== '표채우기') return q;
+
+  const headers = q.tableData?.headers || [];
+  const rows = q.tableData?.rows || [];
+  const isCalcTable = headers.length === 2; // 2-col = calculation table
+  if (!isCalcTable) return q; // comparison tables: leave as-is
+
+  const hasGenericRows = rows.length > 0 && rows.every(row =>
+    Array.isArray(row) && typeof row[0] === 'string' &&
+    /^\(?\d+\)?\s*(?:핵심\s*(?:수치\s*)?계산\s*항목|계산\s*항목|핵심\s*항목)\s*\d+/i.test(row[0].trim())
+  );
+  const isEmpty = rows.length === 0;
+  if (!isEmpty && !hasGenericRows) return q;
+
+  const qText = q.question || '';
+  const isTerzaghi = /Terzaghi|기초|지지력|허용하중/i.test(qText);
+  const hasAB = /\(a\)/i.test(qText) || /조건\s*\(?a\)?/i.test(qText);
+
+  if (isTerzaghi && hasAB) {
+    q.tableData = {
+      headers: ["구하는 항목", "계산 결과 및 답안"],
+      rows: [
+        ["(1) 조건 (a)의 허용지지력 $q_{all}$(a) (kN/m\u00b2)", "[INPUT_1]"],
+        ["(2) 조건 (a)의 허용하중 $P_{all}$(a) (kN)", "[INPUT_2]"],
+        ["(3) 조건 (b)의 허용지지력 $q_{all}$(b) (kN/m\u00b2)", "[INPUT_3]"],
+        ["(4) 조건 (b)의 허용하중 $P_{all}$(b) (kN)", "[INPUT_4]"]
+      ]
+    };
+    q.answers = {
+      INPUT_1: "조건(a) 허용지지력 산정 공식 및 계산값",
+      INPUT_2: "조건(a) 허용하중 산정 공식 및 계산값",
+      INPUT_3: "조건(b) 허용지지력 산정 공식 및 계산값",
+      INPUT_4: "조건(b) 허용하중 산정 공식 및 계산값"
+    };
+  } else if (/댓|유선망|침투|간극수압/i.test(qText)) {
+    q.tableData = {
+      headers: ["구하는 항목", "계산 결과 및 답안"],
+      rows: [
+        ["(1) 단위폭당 침투유량 q (m\u00b3/s/m)", "[INPUT_1]"],
+        ["(2) 지정 위치 간극수압 u (kN/m\u00b2)", "[INPUT_2]"],
+        ["(3) 출구 유출 동수경사 $i_{exit}$", "[INPUT_3]"]
+      ]
+    };
+    q.answers = q.answers?.INPUT_1 ? q.answers : {
+      INPUT_1: "침투유량 q 공식 및 수치 풀이",
+      INPUT_2: "간극수압 u 공식 및 수치 풀이",
+      INPUT_3: "동수경사 i 공식 및 수치 풀이"
+    };
+  } else if (isEmpty || hasGenericRows) {
+    q.tableData = {
+      headers: ["구하는 항목", "계산 결과 및 답안"],
+      rows: [
+        ["(1) 핸심 수치 계산 항목 1", "[INPUT_1]"],
+        ["(2) 핸심 수치 계산 항목 2", "[INPUT_2]"],
+        ["(3) 핸심 수치 계산 항목 3", "[INPUT_3]"]
+      ]
+    };
+    q.answers = q.answers?.INPUT_1 ? q.answers : {
+      INPUT_1: "조건(1) 항목 풀이 및 최종 계산 수치값",
+      INPUT_2: "조건(2) 항목 풀이 및 최종 계산 수치값",
+      INPUT_3: "조건(3) 항목 풀이 및 최종 계산 수치값"
+    };
+  }
+  return q;
+}
+
+function calcFallbackQuestions(title, keywords) {
+  return [
+    {
+      type: '주관식 (표채우기)',
+      question: `${title || '토픽'} 계산 문제 표를 완성하시오.`,
+      tableData: { headers: ["구하는 항목", "계산 결과 및 답안"], rows: [["핵심 항목 1", "[INPUT_1]"],["핵심 항목 2", "[INPUT_2]"]] },
+      answers: { INPUT_1: "항목 1 정답", INPUT_2: "항목 2 정답" }
+    },
+    {
+      type: '주관식 (표채우기)',
+      question: `${title || '토픽'} 로론/공법 비교표를 완성하시오.`,
+      tableData: { headers: ["구분 항목", "공법/이론 A", "공법/이론 B"], rows: [["핵심 메커니즘", "[INPUT_1]", "내용 B"]] },
+      answers: { INPUT_1: "내용 A 정답" }
+    },
+    { type: '주관식 (다답형)', question: `${title || '토픽'}의 공학적 의미는?`, answer: '공학적 의미 서술' },
+    { type: '주관식 (다답형)', question: `${title || '토픽'} 시공 시 주의사항은?`, answer: '주의사항 서술' },
+  ];
+}

@@ -1206,7 +1206,7 @@ export const TableQuiz = React.memo(function TableQuiz({
 
   const mainTable = (() => {
     const tableEl = (
-      <div className={isMainFloated ? "flex-1 overflow-auto w-full" : "w-full"}>
+      <div className={isMainFloated ? "flex-1 overflow-auto w-full" : "w-full overflow-x-auto min-w-0"}>
         <table 
           ref={tableRef} 
           className={`table-quiz-table w-full table-fixed text-center border-collapse text-[14px] sm:text-[16px] min-w-full ${
@@ -1546,7 +1546,7 @@ export const TableQuiz = React.memo(function TableQuiz({
   const compTable = q.comparisonTableData ? (
     (() => {
       const tableEl = (
-        <div className={isCompFloated ? "flex-1 overflow-auto w-full" : "w-full"}>
+        <div className={isCompFloated ? "flex-1 overflow-auto w-full" : "w-full overflow-x-auto min-w-0"}>
           <table 
             ref={compTableRef}
             className={`table-quiz-table w-full table-fixed text-center border-collapse text-[14px] sm:text-[15px] min-w-full`}

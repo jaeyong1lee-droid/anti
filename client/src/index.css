@@ -1177,8 +1177,17 @@ div[class*="overflow-y-auto"] {
   ::-webkit-scrollbar {
     display: none !important;
   }
-  * {
+  *:not(.table-quiz-container):not(.overflow-x-auto):not(.overflow-auto):not(.markdown-table-container):not(.formula-scroll-container):not(pre) {
     scrollbar-width: none !important;
+  }
+  .table-quiz-container,
+  .overflow-x-auto,
+  .overflow-auto,
+  .markdown-table-container,
+  .formula-scroll-container,
+  pre {
+    scrollbar-width: thin !important;
+    scrollbar-color: rgba(148, 163, 184, 0.6) rgba(30, 41, 59, 0.5) !important;
   }
 
   .table-quiz-container::-webkit-scrollbar,
