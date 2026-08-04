@@ -1703,22 +1703,24 @@ router.delete('/session/review/topic/:id', async (req, res) => {
       return res.json({ ok: true });
     }
 
+    // Delete ALL session keys starting with review_questions_topic_${targetTopicId} (catches _round_*, _sess_*, _q, etc.)
     await dbQuery.run(
-      "DELETE FROM app_session WHERE key = ? OR key = ? OR key LIKE ?",
+      "DELETE FROM app_session WHERE key LIKE ? OR key LIKE ?",
       [
-        `review_questions_topic_${targetTopicId}`,
-        `review_questions_topic_${targetTopicId}_q`,   // split-storage questions key
-        `review_questions_topic_${targetTopicId}_sess_%` // session variants (also catches _sess_*_q)
+        `review_questions_topic_${targetTopicId}%`,
+        `review_progress_topic_${targetTopicId}%`
       ]
     );
 
-    const schedules = await dbQuery.all('SELECT id FROM schedules WHERE topic_id = ?', [targetTopicId]);
-    if (schedules && schedules.length > 0) {
-      for (const s of schedules) {
-        await dbQuery.run(
-          "DELETE FROM app_session WHERE key = ? OR key LIKE ?",
-          [`review_questions_schedule_${s.id}`, `review_questions_schedule_${s.id}_sess_%`]
-        );
+    if (!isNaN(Number(targetTopicId))) {
+      const schedules = await dbQuery.all('SELECT id FROM schedules WHERE topic_id = ?', [Number(targetTopicId)]);
+      if (schedules && schedules.length > 0) {
+        for (const s of schedules) {
+          await dbQuery.run(
+            "DELETE FROM app_session WHERE key LIKE ? OR key LIKE ?",
+            [`review_questions_schedule_${s.id}%`, `review_progress_schedule_${s.id}%`]
+          );
+        }
       }
     }
 
