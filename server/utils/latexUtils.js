@@ -1432,20 +1432,8 @@ export function healQuizQuestionObject(q) {
         return row.map((cell, cIdx) => {
           if (cIdx === 0) return cell; // Keep the row label intact
 
-          // For comparison tables (3+ columns): only cells with [INPUT_N] markers become inputs.
-          // Pre-filled content cells (=실제 비교 내용이 채워진 셀) are preserved and shown as read-only.
-          // For calculation tables (2 columns): all data cells become inputs.
-          const cellIsPlaceholder = isCellPlaceholder(cell);
-          let shouldBeInput = isComparisonTable ? cellIsPlaceholder : true;
-
-          if (isExcessPlaceholders) {
-            shouldBeInput = (cIdx === targetCIdx);
-          }
-
-          // For comparison tables: if this cell is not a placeholder, keep it as-is (read-only text)
-          if (!shouldBeInput) {
-            // If it was a placeholder but selected to be reference text, we will resolve its content below
-          }
+          // [절대 지침 준수]: 표 채우기(Table Quiz)의 모든 내부 셀(cIdx > 0)은 100% 빈칸 입력을 위한 [INPUT_N]으로 전환되어야 함
+          const shouldBeInput = true;
 
           const inputId = `INPUT_${inputCount}`;
           const currentCount = inputCount;
