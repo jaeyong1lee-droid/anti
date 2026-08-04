@@ -418,7 +418,7 @@ router.post('/topics/:id/ai-questions', async (req, res) => {
   let topic = null;
 
   try {
-    const topicSql = `SELECT * FROM topics WHERE id = ?`;
+    const topicSql = `SELECT id, title, keywords, pdf_name, category, pdf_url, extracted_text FROM topics WHERE id = ?`;
     topic = await dbQuery.get(topicSql, [topicId]);
     if (!topic) {
       return res.status(404).json({ error: '토픽을 찾을 수 없습니다.' });
@@ -1667,38 +1667,51 @@ router.post('/session/review', async (req, res) => {
   }
 });
 
-// DELETE /api/session/review/topic/:id -> Purge ALL session cache for topic and schedule so re-entry ALWAYS forces 100% fresh AI question generation
+// DELETE /api/session/review/topic/:id -> Delete a review session
 router.delete('/session/review/topic/:id', async (req, res) => {
   try {
     await ensureSessionTable();
     const topicId = req.params.id;
-    const scheduleId = req.query.scheduleId;
     const targetTopicId = String(topicId || '');
 
-    // 1. Purge all topic session keys
-    if (targetTopicId) {
+    if (targetTopicId && targetTopicId.startsWith('mixed_')) {
       await dbQuery.run(
         "DELETE FROM app_session WHERE key LIKE ?",
         [`review_questions_topic_${targetTopicId}%`]
       );
+      return res.json({ ok: true });
     }
 
-    // 2. Purge all schedule session keys if scheduleId is provided
-    if (scheduleId && scheduleId !== 'null' && scheduleId !== 'undefined') {
-      await dbQuery.run(
-        "DELETE FROM app_session WHERE key LIKE ?",
-        [`review_questions_schedule_${scheduleId}%`]
-      );
-    }
+    await dbQuery.run(
+      "DELETE FROM app_session WHERE key = ? OR key = ? OR key LIKE ?",
+      [
+        `review_questions_topic_${targetTopicId}`,
+        `review_questions_topic_${targetTopicId}_q`,   // split-storage questions key
+        `review_questions_topic_${targetTopicId}_sess_%` // session variants (also catches _sess_*_q)
+      ]
+    );
 
-    // 3. Purge all related schedule session keys for this topic
     const schedules = await dbQuery.all('SELECT id FROM schedules WHERE topic_id = ?', [targetTopicId]);
     if (schedules && schedules.length > 0) {
       for (const s of schedules) {
         await dbQuery.run(
-          "DELETE FROM app_session WHERE key LIKE ?",
-          [`review_questions_schedule_${s.id}%`]
+          "DELETE FROM app_session WHERE key = ? OR key LIKE ?",
+          [`review_questions_schedule_${s.id}`, `review_questions_schedule_${s.id}_sess_%`]
         );
+      }
+    }
+
+    const allSchedSessions = await dbQuery.all(
+      `SELECT key, value FROM app_session WHERE key LIKE 'review_questions_schedule_%'`
+    );
+    if (allSchedSessions && allSchedSessions.length > 0) {
+      for (const sRow of allSchedSessions) {
+        try {
+          const parsedVal = JSON.parse(sRow.value);
+          if (parsedVal && String(parsedVal.topicId || '') === targetTopicId) {
+            await dbQuery.run('DELETE FROM app_session WHERE key = ?', [sRow.key]);
+          }
+        } catch (err) {}
       }
     }
 

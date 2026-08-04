@@ -1196,7 +1196,7 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
   let expectedBoxNum = 1;
   const fixTitleSequence = (boxObj) => {
     if (!boxObj || !boxObj.content || boxObj.content.length === 0) return;
-    const title = boxObj.content[0] || '';
+    const title = boxObj.content[0];
     const match = title.match(/\[(\d+|\*)\]/);
     if (match) {
       const numStr = match[1];
@@ -1212,11 +1212,6 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
           expectedBoxNum = num + 1;
         }
       }
-    } else {
-      // 🚨 [자동 단계 헤더 보정]: [N] 타이틀 헤더가 없는 상자인 경우 [expectedBoxNum] 단계 헤더를 자동 주입하여 시각적 박스 무결성 보장
-      const currentNum = expectedBoxNum;
-      expectedBoxNum++;
-      boxObj.content.unshift(`[${currentNum}] 설계 단계명 및 세부 내용 입력`);
     }
   };
 
@@ -1330,7 +1325,7 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
     const title = box.content[0] || '';
     const bodyLines = box.content.slice(1);
 
-    // 이 상자 내부에 정식 존재하는 빈칸 수집
+    // 1) 이 상자 내부에 존재하는 모든 빈칸 수집
     const boxInputs = [];
     box.content.forEach(line => {
       const match = line.match(/\(([A-F])\)/);
@@ -1339,9 +1334,7 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
         const letterIdx = letter.charCodeAt(0) - 65;
         const inputId = `INPUT_${letterIdx + 1}`;
         const inputKey = `${questionIdx}_${inputId}`;
-        if (!boxInputs.some(b => b.inputId === inputId)) {
-          boxInputs.push({ letter, inputId, inputKey });
-        }
+        boxInputs.push({ letter, inputId, inputKey });
       }
     });
 
@@ -2036,18 +2029,7 @@ const renderQuestionContent = (
 };
 
 
-const getApiBase = () => {
-  if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
-  if (typeof window !== 'undefined') {
-    const hostname = window.location.hostname;
-    const protocol = window.location.protocol;
-    if (hostname === 'localhost' || hostname === '127.0.0.1' || /^10\.|^192\.168\.|^172\./.test(hostname)) {
-      return `${protocol}//${hostname}:5000`;
-    }
-  }
-  return '';
-};
-const API_BASE = getApiBase();
+const API_BASE = import.meta.env.VITE_API_URL || '';
 
 const cleanOptionText = (text) => {
   if (typeof text !== 'string') return text;
@@ -19673,27 +19655,17 @@ ${itemsStr}
                       console.warn('세션 초기화 실패:', e);
                     }
 
-                    // 1. Clear memory state of reviewSessionId completely
-                    if (typeof setReviewSessionId === 'function') {
-                      setReviewSessionId('');
-                    }
-
-                    // 2. Wipe ALL local storage keys associated with this topic & schedule
+                    // Remove both schedule-specific and topic-specific progress keys and session IDs to guarantee complete cleanup
                     const activeSid = reviewSessionId || 'legacy_default';
                     const sId = selectedTopic.schedule_id;
-                    const tId = selectedTopic.id;
-
-                    for (let i = localStorage.length - 1; i >= 0; i--) {
-                      const key = localStorage.key(i);
-                      if (key && (
-                        (sId && key.includes(`anti_review_progress_sched_${sId}`)) ||
-                        (sId && key.includes(`anti_session_id_${tId}_${sId}`)) ||
-                        key.includes(`anti_review_progress_${tId}`) ||
-                        key.includes(`anti_session_id_${tId}`)
-                      )) {
-                        localStorage.removeItem(key);
-                      }
+                    if (sId) {
+                      localStorage.removeItem(`anti_review_progress_sched_${sId}_${activeSid}`);
+                      localStorage.removeItem(`anti_review_progress_sched_${sId}`);
+                      localStorage.removeItem(`anti_session_id_${selectedTopic.id}_${sId}`);
                     }
+                    localStorage.removeItem(`anti_review_progress_${selectedTopic.id}_${activeSid}`);
+                    localStorage.removeItem(`anti_review_progress_${selectedTopic.id}`);
+                    localStorage.removeItem(`anti_session_id_${selectedTopic.id}_9999`);
                   }
                   localStorage.removeItem('anti_last_active_review');
                   setLastActiveReview(null);
