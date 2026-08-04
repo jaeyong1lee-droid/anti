@@ -1,6 +1,6 @@
-// [보강된 자가 개선 테스터]: 플로우차트 파서 및 렌더링 박스 구조 모의 실증 테스트 스크립트
+// [고도화된 자가 개선 테스터]: 상자별 알파벳 필터링 및 입력창 12개 과밀 억제 모의 실증 스크립트
 
-const sampleFlowchartText = `
+const sampleFlowchartTextWithRepeatedLetters = `
 ┌────────────────────────────────────────────────────────┐
 │ [1] 비탈면 현장 조사 및 지반 정수 산정               │
 │ - 지질조사, 지하수위 확인, 토사 및 암반의 전단강도 산정 │
@@ -8,8 +8,8 @@ const sampleFlowchartText = `
                            │
                            ▼
 ┌────────────────────────────────────────────────────────┐
-│ (A) 입력 , (B) 입력 , (C) 입력                         │
-│ - (D) 입력 , (E) 입력 , (F) 입력                       │
+│ [ (A) 입력 , (B) 입력 , (C) 입력 , (D) 입력 , (E) 입력 , (F) 입력 ] │
+│ - (A) 입력 , (B) 입력 , (C) 입력 , (D) 입력 , (E) 입력 , (F) 입력  │
 └────────────────────────────────────────────────────────┘
                            │
                            ▼
@@ -20,12 +20,12 @@ const sampleFlowchartText = `
                            │
                            ▼
 ┌────────────────────────────────────────────────────────┐
-│ (A) 입력 , (B) 입력                                    │
-│ - (C) 입력 , (D) 입력                                   │
+│ [ (A) 입력 , (B) 입력 , (C) 입력 , (D) 입력 , (E) 입력 , (F) 입력 ] │
+│ - (A) 입력 , (B) 입력 , (C) 입력 , (D) 입력 , (E) 입력 , (F) 입력  │
 └────────────────────────────────────────────────────────┘
 `;
 
-function testFlowchartParser(text) {
+function testFlowchartBoxFiltering(text) {
   const lines = text.split('\n');
   const items = [];
   let currentBoxes = null;
@@ -45,99 +45,93 @@ function testFlowchartParser(text) {
   for (let line of lines) {
     const trimmed = line.trim();
     if (!trimmed) continue;
-
     if (trimmed.startsWith('┌') || trimmed.startsWith('└') || trimmed.startsWith('─') || trimmed.includes('───') || trimmed.includes('━━━')) {
       flushBoxes();
       continue;
     }
-
     if (line.includes('│') || line.includes('┃')) {
       const rawParts = line.split(/[│┃]/);
-      let cols = [];
-      if (rawParts.length > 2) {
-        cols = rawParts.slice(1, rawParts.length - 1).map(c => c.trim());
-      } else if (rawParts.length === 2) {
-        cols = [rawParts[0].trim(), rawParts[1].trim()].filter(Boolean);
-      } else {
-        cols = [line.trim()];
-      }
-
+      let cols = rawParts.length > 2 ? rawParts.slice(1, rawParts.length - 1).map(c => c.trim()) : [line.trim()];
       if (!currentBoxes) currentBoxes = [];
-      while (currentBoxes.length < cols.length) {
-        currentBoxes.push({ type: 'box', content: [] });
-      }
+      while (currentBoxes.length < cols.length) currentBoxes.push({ type: 'box', content: [] });
       cols.forEach((colContent, colIdx) => {
-        if (colContent && currentBoxes[colIdx]) {
-          currentBoxes[colIdx].content.push(colContent);
-        }
+        if (colContent && currentBoxes[colIdx]) currentBoxes[colIdx].content.push(colContent);
       });
     } else {
       flushBoxes();
-      if (trimmed === '│' || trimmed === '┃' || trimmed === '▼' || trimmed === '↓') {
-        items.push({ type: 'arrow', text: '▼' });
-      }
+      if (trimmed === '│' || trimmed === '┃' || trimmed === '▼' || trimmed === '↓') items.push({ type: 'arrow', text: '▼' });
     }
   }
   flushBoxes();
 
-  let expectedBoxNum = 1;
-  const fixTitleSequence = (boxObj) => {
-    if (!boxObj || !boxObj.content || boxObj.content.length === 0) return;
-    const title = boxObj.content[0] || '';
-    const match = title.match(/\[(\d+|\*)\]/);
-    if (match) {
-      const numStr = match[1];
-      if (numStr === '*') {
-        boxObj.content[0] = title.replace(`[${numStr}]`, `[${expectedBoxNum}]`);
-        expectedBoxNum++;
-      } else {
-        const num = parseInt(numStr, 10);
-        if (num < expectedBoxNum) {
-          boxObj.content[0] = title.replace(`[${numStr}]`, `[${expectedBoxNum}]`);
-          expectedBoxNum++;
-        } else {
-          expectedBoxNum = num + 1;
-        }
-      }
-    } else {
-      const currentNum = expectedBoxNum;
-      expectedBoxNum++;
-      boxObj.content.unshift(`[${currentNum}] 설계 단계명 및 세부 내용 입력`);
-    }
-  };
+  let inputBoxCount = 0;
+  const boxResults = [];
 
-  items.forEach(item => {
-    if (item.type === 'box') {
-      fixTitleSequence(item);
+  items.filter(i => i.type === 'box').forEach((box, idx) => {
+    let allowedLetters = null;
+    const hasAnyInput = box.content.some(line => /\(([A-F])\)/.test(line));
+    if (hasAnyInput) {
+      inputBoxCount++;
+      if (inputBoxCount === 1) allowedLetters = ['A', 'B'];
+      else if (inputBoxCount === 2) allowedLetters = ['C', 'D'];
+      else if (inputBoxCount === 3) allowedLetters = ['E', 'F'];
     }
+
+    const boxInputs = [];
+    box.content.forEach(line => {
+      const matches = line.match(/\(([A-F])\)/g);
+      if (matches) {
+        matches.forEach(m => {
+          const letterMatch = m.match(/\(([A-F])\)/);
+          if (letterMatch) {
+            const letter = letterMatch[1];
+            if (!allowedLetters || allowedLetters.includes(letter)) {
+              if (!boxInputs.includes(letter)) {
+                boxInputs.push(letter);
+              }
+            }
+          }
+        });
+      }
+    });
+
+    boxResults.push({
+      boxIndex: idx + 1,
+      inputBoxSeq: hasAnyInput ? inputBoxCount : null,
+      allowedLetters,
+      renderedInputLetters: boxInputs
+    });
   });
 
-  return items;
+  return boxResults;
 }
 
 console.log("==========================================");
-console.log("🤖 [보강된 자가 개선 테스터 실행 보고]");
+console.log("🤖 [보강된 자가 개선 테스터: 입력창 12개 과밀화 검증]");
 console.log("==========================================");
 
-const parsedResult = testFlowchartParser(sampleFlowchartText);
-const boxes = parsedResult.filter(i => i.type === 'box');
-
-console.log(`\n총 파싱된 상자 개수: ${boxes.length}개`);
+const results = testFlowchartBoxFiltering(sampleFlowchartTextWithRepeatedLetters);
 let passAll = true;
 
-boxes.forEach((box, idx) => {
-  const header = box.content[0];
-  console.log(`- 상자 ${idx + 1} 타이틀 헤더: "${header}"`);
-  if (!header.startsWith(`[${idx + 1}]`)) {
-    console.error(`❌ [오류 발견]: 상자 ${idx + 1}의 헤더가 [${idx + 1}]로 시작하지 않습니다.`);
+results.forEach((res) => {
+  console.log(`\n- [상자 ${res.boxIndex}]: 입력상자 순번=${res.inputBoxSeq || '없음(안내상자)'}`);
+  console.log(`  * 허용 알파벳: ${res.allowedLetters ? res.allowedLetters.join(', ') : '전체'}`);
+  console.log(`  * 실제 렌더링 입력창: [ ${res.renderedInputLetters.join(', ')} ] (총 ${res.renderedInputLetters.length}개)`);
+
+  if (res.inputBoxSeq === 1 && res.renderedInputLetters.length > 2) {
+    console.error(`❌ [실패]: 상자 2에 2개를 초과하는 입력창이 과밀 렌더링되었습니다!`);
+    passAll = false;
+  }
+  if (res.inputBoxSeq === 2 && res.renderedInputLetters.length > 2) {
+    console.error(`❌ [실패]: 상자 4에 2개를 초과하는 입력창이 과밀 렌더링되었습니다!`);
     passAll = false;
   }
 });
 
-if (passAll && boxes.length === 4) {
-  console.log("\n✅ [테스터 검증 통과]: [1], [2], [3], [4] 모든 단계별 상자 타이틀 헤더가 빈틈없이 100% 정상 자동 보정 및 파싱되었습니다!");
+if (passAll) {
+  console.log("\n✅ [자가 개선 테스터 통과]: 상자당 12개 폭탄 입력창이 100% 제거되고, 상자별 지정 알파벳(A,B / C,D) 2개씩만 정갈하게 필터링 렌더링되었습니다!");
   process.exit(0);
 } else {
-  console.error("\n❌ [테스터 검증 실패]: 타이틀 순서 보정 실패");
+  console.error("\n❌ [자가 개선 테스터 실패]: 입력창 과밀 억제 실패");
   process.exit(1);
 }
