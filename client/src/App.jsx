@@ -2036,7 +2036,18 @@ const renderQuestionContent = (
 };
 
 
-const API_BASE = import.meta.env.VITE_API_URL || '';
+const getApiBase = () => {
+  if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    const protocol = window.location.protocol;
+    if (hostname === 'localhost' || hostname === '127.0.0.1' || /^10\.|^192\.168\.|^172\./.test(hostname)) {
+      return `${protocol}//${hostname}:5000`;
+    }
+  }
+  return '';
+};
+const API_BASE = getApiBase();
 
 const cleanOptionText = (text) => {
   if (typeof text !== 'string') return text;
@@ -19662,17 +19673,27 @@ ${itemsStr}
                       console.warn('세션 초기화 실패:', e);
                     }
 
-                    // Remove both schedule-specific and topic-specific progress keys and session IDs to guarantee complete cleanup
+                    // 1. Clear memory state of reviewSessionId completely
+                    if (typeof setReviewSessionId === 'function') {
+                      setReviewSessionId('');
+                    }
+
+                    // 2. Wipe ALL local storage keys associated with this topic & schedule
                     const activeSid = reviewSessionId || 'legacy_default';
                     const sId = selectedTopic.schedule_id;
-                    if (sId) {
-                      localStorage.removeItem(`anti_review_progress_sched_${sId}_${activeSid}`);
-                      localStorage.removeItem(`anti_review_progress_sched_${sId}`);
-                      localStorage.removeItem(`anti_session_id_${selectedTopic.id}_${sId}`);
+                    const tId = selectedTopic.id;
+
+                    for (let i = localStorage.length - 1; i >= 0; i--) {
+                      const key = localStorage.key(i);
+                      if (key && (
+                        (sId && key.includes(`anti_review_progress_sched_${sId}`)) ||
+                        (sId && key.includes(`anti_session_id_${tId}_${sId}`)) ||
+                        key.includes(`anti_review_progress_${tId}`) ||
+                        key.includes(`anti_session_id_${tId}`)
+                      )) {
+                        localStorage.removeItem(key);
+                      }
                     }
-                    localStorage.removeItem(`anti_review_progress_${selectedTopic.id}_${activeSid}`);
-                    localStorage.removeItem(`anti_review_progress_${selectedTopic.id}`);
-                    localStorage.removeItem(`anti_session_id_${selectedTopic.id}_9999`);
                   }
                   localStorage.removeItem('anti_last_active_review');
                   setLastActiveReview(null);
