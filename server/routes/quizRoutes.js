@@ -848,24 +848,23 @@ ${adjustments.map((a, idx) => `
 
 [출제 요구사항]:
 1. 1번 문항 (첨부 이미지의 물음과 본문 HTML의 답변을 분석한 표채우기 질문) - type: "주관식 (표채우기)"
-   🚨 **[1번 문항 핵심 원칙 - 반드시 숙지]**:
-   - 본문 HTML을 **반드시 먼저 심층 분석**하여 이미지 문제가 실제로 무엇을 구하는지 파악하십시오.
-   - **표 구조는 이미지/HTML 내용에 완전히 맞게 유연하게 설계**하십시오.
-   - 아래 두 가지 패턴 중 실제 문제에 맞는 것을 선택하고, 필요하면 다른 구조로도 응용하십시오:
+   🚨 **[1번 문항 이미지 시각적 분석 및 표 채우기 dynamic tableData 구성 철칙 - 가장 중요!]**:
+   - 함께 첨부된 문제 이미지(그림/그래프)와 본문 텍스트를 **반드시 시각적으로 심층 분석**하십시오.
+   - 이미지 속 문제 질문이 구하라고 요구하는 **조건 케이스의 수(예: 조건(a), (b), Case 1, 2 등)**와 **구하는 평가 항목의 수(예: (1) 침투수량, (2) 간극수압, (3) 동수경사 등)**를 정확히 시각적으로 파악하고 분석하십시오.
+   - 문제 이미지가 실제로 요구하는 항목과 조건의 개수에 **100% 1:1 대응하는 최적의 행(Row)과 열(Column) 구조를 가진 tableData**를 동적으로 생성하십시오.
 
-   📌 **[패턴 A] 복수 조건/케이스가 있는 경우** (예: 조건(a)/조건(b), 지하수위 경우1/경우2 등):
-   - 조건 케이스를 **열(Column)**에, 구하는 항목을 **행(Row)**에 배치
+   📌 **[유형 A: 복수 조건 케이스가 있는 경우]** (예: 기초 지지력 문제 조건 (a), (b) 각각 허용지지력 및 허용하중):
    - headers: ["구분", "조건 (a)", "조건 (b)"]
-   - rows: [["항목1 (단위)", "[INPUT_1]", "[INPUT_2]"], ["항목2 (단위)", "[INPUT_3]", "[INPUT_4]"]]
+   - rows: [["허용지지력 (kN/m²)", "[INPUT_1]", "[INPUT_2]"], ["허용하중 (kN)", "[INPUT_3]", "[INPUT_4]"]]
 
-   📌 **[패턴 B] 단일 조건에서 여러 항목을 구하는 경우** (예: (1)침투수량 (2)간극수압 (3)동수경사 등):
-   - 구하는 항목을 **행(Row)**에, 답을 **1개 열(Column)**에 배치
-   - headers: ["구하는 항목", "계산 결과"]
-   - rows: [["(1) 항목명1 (단위)", "[INPUT_1]"], ["(2) 항목명2 (단위)", "[INPUT_2]"], ["(3) 항목명3 (단위)", "[INPUT_3]"]]
+   📌 **[유형 B: 단일 조건에서 여러 개별 수치를 구하는 경우]** (예: 댐 유선망 (1)침투수량, (2)간극수압, (3)동수경사 등):
+   - headers: ["구하는 항목", "계산 결과 및 풀이"]
+   - rows: [["(1) 침투수량 q (m³/s/m)", "[INPUT_1]"], ["(2) A,B,C점 간극수압 u (kN/m²)", "[INPUT_2]"], ["(3) 출구 동수경사 i", "[INPUT_3]"]]
 
-   🚨 **절대 원칙**: 위 패턴 예시를 무조건 그대로 복붙하지 마십시오. 반드시 본문 HTML에서 실제 문제가 묻는 항목과 조건을 파악하여 행/열/헤더를 직접 구성하십시오.
-   - 첫 번째 열은 항목명(레이블), 나머지 모든 칸은 [INPUT_N] 형태로 작성하십시오.
-   - answers 객체에는 각 INPUT의 실제 계산 정답(수식/수치 포함)을 기재하십시오.
+   🚨 **빈칸 및 답안 1:1 매칭 철칙**:
+   - 이미지를 정밀 분석하여 실제 문제에서 묻는 **모든 항목/조건마다 1:1로 대응되는 [INPUT_N] 빈칸**을 만드십시오.
+   - 문제에서 묻는 계산 항목이 3개면 [INPUT_1]~[INPUT_3] 3개, 4개면 [INPUT_1]~[INPUT_4] 4개의 빈칸을 정확하게 생성해야 합니다.
+   - answers 객체에는 각 INPUT_N마다 대응되는 공학적 계산 정답 풀이 과정과 정확한 최종 수치(단위 포함)를 기재하십시오.
 
 2. 2번 문항 (개념 비교 표 칸채우기 문제) - type: "주관식 (표채우기)"
    🚨 **[2번 문항 필수 구조 지침]**:
@@ -1173,7 +1172,26 @@ ${LATEX_PROMPT_INSTRUCTIONS}
 let parsedArray = null;
 
     if (topic.category === '계산') {
-      const rawText = await localCallLLM(systemInstruction, enrichedGenerationPrompt, null, 'question', { temperature: 1.0 });
+      let calcImageBase64 = null;
+      if (topic.pdf_url) {
+        try {
+          const headers = {};
+          if (process.env.BLOB_READ_WRITE_TOKEN) {
+            headers['Authorization'] = `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}`;
+          }
+          const imgRes = await fetch(topic.pdf_url, { headers });
+          if (imgRes.ok) {
+            const arrayBuffer = await imgRes.arrayBuffer();
+            const buffer = Buffer.from(arrayBuffer);
+            calcImageBase64 = buffer.toString('base64');
+            console.log(`[Calc Vision] Successfully loaded ${buffer.length} bytes from ${topic.pdf_url} for AI vision analysis`);
+          }
+        } catch (imgErr) {
+          console.warn('[Calc Vision] Failed to fetch topic pdf_url image:', imgErr.message);
+        }
+      }
+
+      const rawText = await localCallLLM(systemInstruction, enrichedGenerationPrompt, calcImageBase64, 'question', { temperature: 1.0 });
       let text = rawText.trim();
       if (text.startsWith('```')) {
         text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
