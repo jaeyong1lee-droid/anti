@@ -1585,7 +1585,26 @@ export function healQuizQuestionObject(q) {
 
 export function healTheoryQuestionObject(t) { return healDeep(t); }
 export function healFormulaQuestionObject(f) { return healDeep(f); }
-export function healAnswersheetQuestionObject(a) { return healQuizQuestionObject(a); }
+export function healAnswersheetQuestionObject(a) {
+  if (!a || typeof a !== 'object') return a;
+  const q = healQuizQuestionObject(a);
+
+  // Terzaghi / 계산 문제에서 "허용지지력"과 "허용하중"을 각각 묻는 경우 표채우기 2행 분리 복원
+  const qText = q.question || q.title || '';
+  if (qText.includes('허용지지력') && qText.includes('허용하중')) {
+    q.tableData = {
+      headers: ['구분', '내용'],
+      rows: [
+        ['1. 허용지지력 ($q_a$)', '[INPUT_1]'],
+        ['2. 허용하중 ($P_a$)', '[INPUT_2]']
+      ]
+    };
+    q.answers = q.answers || {};
+    if (!q.answers['INPUT_1']) q.answers['INPUT_1'] = '허용지지력 산정값 (kN/m²)';
+    if (!q.answers['INPUT_2']) q.answers['INPUT_2'] = '허용하중 산정값 (kN)';
+  }
+  return q;
+}
 
 export const LATEX_PROMPT_INSTRUCTIONS = `
 [🚨 극도로 중요한 LaTeX 수식 및 마크다운 렌더링 절대 준수 수칙]:
