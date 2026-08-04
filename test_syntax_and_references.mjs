@@ -45,6 +45,21 @@ try {
     explanation: '핵심 개념 및 메커니즘'
   };
 
+  const mockTerzaghiCalc = {
+    type: '주관식 (계산)',
+    question: 'Terzaghi 지지력 공식을 사용하여 허용지지력 및 허용하중을 산정하시오. B=2.0m, c=20kPa, phi=30도. (1) 조건(a) 허용지지력 q_all(a) (2) 조건(a) 허용하중 P_all(a) (3) 조건(b) 허용지지력 q_all(b) (4) 조건(b) 허용하중 P_all(b)',
+    tableData: {
+      headers: ['구하는 항목', '계산 결과 및 답안'],
+      rows: [
+        ['(1) 조건 (a)의 허용지지력 q_all(a) (kN/m²)', '[INPUT_1]'],
+        ['(2) 조건 (a)의 허용하중 P_all(a) (kN)', '[INPUT_2]'],
+        ['(3) 조건 (b)의 허용지지력 q_all(b) (kN/m²)', '[INPUT_3]'],
+        ['(4) 조건 (b)의 허용하중 P_all(b) (kN)', '[INPUT_4]']
+      ]
+    },
+    answers: { INPUT_1: '632', INPUT_2: '10112', INPUT_3: '813', INPUT_4: '13008' }
+  };
+
   // healQuizQuestionObject 실전 런타임호출 테스트
   const healedComp = clientLatexUtils.healQuizQuestionObject(mockComparisonQuiz);
   if (!healedComp || !healedComp.tableData) {
@@ -55,6 +70,14 @@ try {
   const healedCalc = clientLatexUtils.healQuizQuestionObject(mockCalcQuiz);
   if (!healedCalc) throw new Error('healQuizQuestionObject(Calc) 반환 구조 결함');
   console.log('  ➜ [PASS] healQuizQuestionObject (계산표 모의 데이터) ReferenceError 없이 통과!');
+
+  const healedTerzaghi = clientLatexUtils.healQuizQuestionObject(mockTerzaghiCalc);
+  if (!healedTerzaghi || !healedTerzaghi.calcItems || healedTerzaghi.calcItems.length !== 4) {
+    throw new Error('healQuizQuestionObject(Terzaghi 4개 수치 항목) 추출 결함');
+  }
+  const isCalcQ = clientLatexUtils.isCalculationQuestion(mockTerzaghiCalc);
+  if (!isCalcQ) throw new Error('isCalculationQuestion(Terzaghi) 판정 오류');
+  console.log('  ➜ [PASS] Terzaghi 수치 계산 문제 4개 항목(A,B,C,D) 100% 감지 및 healQuizQuestionObject 통과!');
 
   const healedOverview = clientLatexUtils.healQuizQuestionObject(mockOverviewQuiz);
   if (!healedOverview) throw new Error('healQuizQuestionObject(Overview) 반환 구조 결함');

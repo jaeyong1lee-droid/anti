@@ -180,6 +180,39 @@ async function runTests() {
     console.log(`     ${errorLines}`);
   }
 
+  // [TEST 8] Calculation Question (D) Item & Single Item AI Re-evaluation Test
+  console.log('\n[TEST 8] Calculation Item (D) & Single-Item AI Re-evaluation Test...');
+  const calcGradingPayload = {
+    question: "Terzaghi 지지력 공식을 사용하여 허용지지력 및 허용하중을 산정하시오. B=2.0m, gamma=18kN/m3, c=20kPa, phi=30도.",
+    correctAnswer: "",
+    userAnswer: "13008",
+    rowHeader: "(4) 조건 (b)의 허용하중 P_all (b) (kN)",
+    colHeader: "수치 계산 답안",
+    explanation: "Terzaghi의 지지력 공식 허용하중 계산 결과입니다.",
+    category: "계산",
+    temperature: 0.7,
+    preferredModel: "gemini-3.5-flash-lite"
+  };
+
+  const calcGradeRes = await postUrl('http://localhost:3000/api/grade-subjective', calcGradingPayload);
+  if (calcGradeRes.statusCode === 200) {
+    try {
+      const data = JSON.parse(calcGradeRes.body);
+      if (data.reason !== '답안이 비어 있습니다.' && typeof data.score === 'number' && data.score >= 0) {
+        console.log(`  ➜ [PASS] POST /api/grade-subjective for item (D) scored ${data.score}점 (Reason: ${data.reason}).`);
+      } else {
+        failedCount++;
+        console.log(`  ➜ [FAIL] POST /api/grade-subjective returned invalid score/reason: ${data.reason}`);
+      }
+    } catch (e) {
+      failedCount++;
+      console.log(`  ➜ [FAIL] POST /api/grade-subjective returned invalid JSON: ${e.message}`);
+    }
+  } else {
+    failedCount++;
+    console.log(`  ➜ [FAIL] POST /api/grade-subjective failed (Status: ${calcGradeRes.error || calcGradeRes.statusCode})`);
+  }
+
   console.log('\n====================================================');
   if (failedCount > 0) {
     console.log(`  ❌ TEST FAILED - ${failedCount} CRITICAL ERRORS DETECTED!`);
