@@ -291,6 +291,58 @@ async function runTests() {
     console.log(`  ➜ [FAIL] POST /api/grade-subjective failed (Status: ${terzaghiGradeRes.error || terzaghiGradeRes.statusCode})`);
   }
 
+  // [TEST 11] Calculation Item Fuzzy ID Resolution Fault Test
+  console.log('\n[TEST 11] Calculation Item Mismatched ID Resolution Test...');
+  const mockCalcItems = [
+    { id: '1', label: '(1) 조건 (a)의 허용지지력' },
+    { id: '2', label: '(2) 조건 (a)의 허용하중' },
+    { id: '3', label: '(3) 조건 (b)의 허용지지력' },
+    { id: '4', label: '(4) 조건 (b)의 허용하중 P_all (b) (kN)' }
+  ];
+
+  const resolveCalcItem = (items, targetId) => {
+    if (!Array.isArray(items) || items.length === 0 || !targetId) return null;
+    const strId = String(targetId).trim();
+    let hit = items.find(it => String(it.id || '').trim() === strId);
+    if (hit) return hit;
+
+    const numMatch = strId.match(/\d+/);
+    const targetNum = numMatch ? parseInt(numMatch[0], 10) : null;
+
+    let targetLetter = null;
+    const letterMatch = strId.match(/_([A-F])\b/i) || strId.match(/^([A-F])$/i) || strId.match(/([A-F])$/i);
+    if (letterMatch) {
+      targetLetter = letterMatch[1].toUpperCase();
+    }
+    const targetLetterIdx = targetLetter ? targetLetter.charCodeAt(0) - 65 + 1 : null;
+    const targetIndex = targetNum || targetLetterIdx;
+
+    if (targetIndex) {
+      return items.find((it, idx) => {
+        const itemStr = String(it.id || '').trim();
+        const itemNum = (itemStr.match(/\d+/) || [])[0];
+        const itemLetterMatch = itemStr.match(/_([A-F])\b/i) || itemStr.match(/^([A-F])$/i) || (it.label || '').match(/\(([A-F])\)/i);
+        const itemLetter = itemLetterMatch ? itemLetterMatch[1].toUpperCase() : null;
+        const itemLetterIdx = itemLetter ? itemLetter.charCodeAt(0) - 65 + 1 : null;
+
+        const itemIdx = (itemNum ? parseInt(itemNum, 10) : null) || itemLetterIdx || (idx + 1);
+        return itemIdx === targetIndex;
+      }) || (targetIndex <= items.length ? items[targetIndex - 1] : null);
+    }
+    return null;
+  };
+
+  const testInputIds = ['INPUT_4', '4', 'INPUT_D', 'D', '(4)'];
+  for (const inputId of testInputIds) {
+    const found = resolveCalcItem(mockCalcItems, inputId);
+    if (found && found.label.includes('(4)')) {
+      console.log(`  ➜ [PASS] Successfully resolved inputId "${inputId}" to calcItem label: "${found.label}"`);
+    } else {
+      failedCount++;
+      console.log(`  ➜ [CRITICAL FAIL] Failed to resolve inputId "${inputId}" to item (D) label! Result: ${found?.label || 'null'}`);
+    }
+  }
+
   console.log('\n====================================================');
   if (failedCount > 0) {
     console.log(`  ❌ TEST FAILED - ${failedCount} CRITICAL ERRORS DETECTED!`);
