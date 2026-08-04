@@ -989,8 +989,8 @@ export function cleanQuizQuestion(q) {
   // 2. Strip remaining list garbage outside boxes
   cleanText = cleanText.replace(/,?\s*\([A-Z]\)(?:\s*,\s*\([A-Z]\))+/gi, '');
 
-  const isFlowchart = cleanText.includes('┌──') || cleanText.includes('▼') || cleanText.includes('```') || cleanText.includes('흐름도') || cleanText.includes('플로우차트');
-  if (isFlowchart) return cleanText.trim();
+  const hasTableOrFlowchart = cleanText.includes('|') || cleanText.includes('┌──') || cleanText.includes('▼') || cleanText.includes('```') || cleanText.includes('흐름도') || cleanText.includes('플로우차트');
+  if (hasTableOrFlowchart) return cleanText.trim();
   return cleanText.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
