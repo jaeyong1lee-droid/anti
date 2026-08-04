@@ -3,7 +3,6 @@ import { LatexRenderer } from './LatexRenderer';
 import { BufferedTextarea } from './BufferedInput';
 import { PopoutWindow } from './PopoutWindow';
 import { getTableScoreColorTheme, areCellsEqual, isOverviewReview as isOverviewReviewHelper, getAnswerValue, getGradingResult, getCorrectAnswerForInput } from '../utils/renderingHelpers';
-import { parseMarkdownTable } from '../utils/latexUtils';
 
 const normalize = (s) => (s || '').trim().toLowerCase().replace(/\s+/g, '');
 const cleanCellText = (cell) => {
@@ -34,26 +33,7 @@ export const TableQuiz = React.memo(function TableQuiz({
 }) {
   const existingRowCount = Array.isArray(q.tableData?.rows) ? q.tableData.rows.length : 0;
   const hasBulletsInCol0 = (q.tableData?.rows || []).some(r => String(r[0] || '').startsWith('•') || String(r[0] || '').startsWith('-') || String(r[0] || '').includes('<strong>'));
-  const textToParse = (q.explanation || '') + '\n' + (q.content || '') + '\n' + (q.question || '');
-  if (!q.comparisonTableData && textToParse.includes('|')) {
-    const mdParsed = parseMarkdownTable(textToParse);
-    if (mdParsed && mdParsed.tableData && mdParsed.tableData.headers && mdParsed.tableData.rows && (mdParsed.tableData.rows.length > existingRowCount || hasBulletsInCol0)) {
-      const answers = {};
-      const compRows = mdParsed.tableData.rows.map((row, rIdx) => {
-        return row.map((cell, cIdx) => {
-          if (cIdx === 0) return cell;
-          const inputId = `INPUT_${rIdx}_${cIdx}`;
-          answers[inputId] = cell;
-          return `[${inputId}]`;
-        });
-      });
-      q.tableData = {
-        headers: mdParsed.tableData.headers,
-        rows: compRows
-      };
-      q.answers = { ...(q.answers || {}), ...answers };
-    }
-  }
+
 
   const hasValidMainRows = Array.isArray(q.tableData?.rows) && q.tableData.rows.length > 0;
   const hasValidCompRows = Array.isArray(q.comparisonTableData?.rows) && q.comparisonTableData.rows.length > 0;
