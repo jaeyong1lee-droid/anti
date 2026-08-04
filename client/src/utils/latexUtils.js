@@ -523,6 +523,10 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
                        .replace(/&lt;/gi, '<')
                        .replace(/&gt;/gi, '>');
 
+  // [Self-Healing] Restore corrupted micro-unit symbols (\text{W유}m -> \mu m, W유m -> \mu m, W유 -> \mu)
+  processed = processed.replace(/\\text\{\s*W유\s*\}m?/gi, '\\mu m')
+                       .replace(/W유m?/gi, '\\mu m');
+
 
   // [Self-Healing] Remove space between backslash and Greek commands (including trailing alphanumeric characters)
   const greekSubscriptFullLetters = 'alpha|beta|gamma|sigma|tau|phi|theta|epsilon|pi|delta|omega|mu|lambda|psi|rho|eta|nu|xi|zeta|chi|upsilon|kappa';

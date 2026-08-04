@@ -695,11 +695,9 @@ export const LatexRenderer = React.memo(function LatexRenderer({
         return `<div class="formula-scroll-container py-1.5" style="text-align: center; margin-top: 0.5rem; margin-bottom: 0.5rem; width: 100%;">${rendered}</div>`;
       });
       htmlContent = htmlContent.replace(/\$((?:[^\$\n<]|<(?![a-zA-Z/!]))+?)\$/g, (m, math) => {
-        const isRealFormula = /\\/.test(math) || /_/.test(math) || /\^/.test(math) || /=/.test(math) || /\\cdot/.test(math);
-        if (!isRealFormula) {
-          return math;
-        }
-        return renderKatexString(math.trim(), { displayMode: false, throwOnError: false });
+        const trimmed = math.trim();
+        if (!trimmed) return m;
+        return renderKatexString(trimmed, { displayMode: false, throwOnError: false });
       });
       // [Self-Healing] Clean up remnant $$ symbols appearing before plain text
       htmlContent = htmlContent.replace(/(?:^|\n)\s*\$\$\s*(?=\n|[가-힣a-zA-Z])/g, '\n');
@@ -742,9 +740,9 @@ export const LatexRenderer = React.memo(function LatexRenderer({
     htmlContent = htmlContent.replace(/\\\(([\s\S]*?)\\\)/g, (m, p1) => '$' + p1.trim() + '$');
     htmlContent = htmlContent.replace(/\(\s*([^$()\n]+?)\s*\)/g, '($1)');
     htmlContent = htmlContent.replace(/\$((?:[^\$\n<]|<(?![a-zA-Z/!]))+?)\$/g, (m, math) => {
-      const isRealFormula = /\\/.test(math) || /_/.test(math) || /\^/.test(math) || /=/.test(math) || /\\cdot/.test(math);
-      if (!isRealFormula) return m;
-      return renderKatexString(math.trim(), { displayMode: false, throwOnError: false });
+      const trimmed = math.trim();
+      if (!trimmed) return m;
+      return renderKatexString(trimmed, { displayMode: false, throwOnError: false });
     });
   }
 
