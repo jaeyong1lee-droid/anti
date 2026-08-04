@@ -1328,7 +1328,14 @@ export function healQuizQuestionObject(q) {
     );
 
     if (q.type === '주관식 (표채우기)' || q.subtype === '표채우기') {
-      if (!q.tableData || !Array.isArray(q.tableData.rows) || q.tableData.rows.length === 0) {
+      // Detect generic/dummy placeholder row labels that AI sometimes outputs as fallback
+      const hasGenericRows = q.tableData && Array.isArray(q.tableData.rows) && q.tableData.rows.length > 0 &&
+        q.tableData.rows.every(row =>
+          Array.isArray(row) && typeof row[0] === 'string' &&
+          /^\(?\d+\)?\s*(?:핵심\s*(?:수치\s*)?계산\s*항목|계산\s*항목|핵심\s*항목)\s*\d+/i.test(row[0].trim())
+        );
+
+      if (!q.tableData || !Array.isArray(q.tableData.rows) || q.tableData.rows.length === 0 || hasGenericRows) {
         const isComp = (q.question || '').includes('비교') || (q.question || '').includes('차이점');
         if (isComp) {
           q.tableData = {
@@ -1359,12 +1366,12 @@ export function healQuizQuestionObject(q) {
                   ["(4) 조건 (b)의 허용하중 P_all(b) (kN)", "[INPUT_4]"]
                 ]
               };
-              q.answers = q.answers || {
+              q.answers = (hasGenericRows || !q.answers || !q.answers.INPUT_4) ? {
                 INPUT_1: "조건(a) 허용지지력 산정 공식 및 계산값",
                 INPUT_2: "조건(a) 허용하중 산정 공식 및 계산값",
                 INPUT_3: "조건(b) 허용지지력 산정 공식 및 계산값",
                 INPUT_4: "조건(b) 허용하중 산정 공식 및 계산값"
-              };
+              } : q.answers;
             } else if (/댐|유선망|침투|간극수압/i.test(qText)) {
               q.tableData = {
                 headers: ["구하는 항목", "계산 결과 및 답안"],
