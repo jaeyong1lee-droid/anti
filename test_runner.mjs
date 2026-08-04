@@ -169,8 +169,7 @@ async function runTests() {
   console.log('\n[TEST 7] REAL Vite Bundle & React Component Compilation Check...');
   try {
     const clientPath = path.join(process.cwd(), 'client');
-    const viteJsPath = path.join(clientPath, 'node_modules', 'vite', 'bin', 'vite.js');
-    execSync(`${nodeBin} "${viteJsPath}" build`, { cwd: clientPath, encoding: 'utf-8', stdio: 'pipe' });
+    execSync(`cmd /c npm run build`, { cwd: clientPath, encoding: 'utf-8', stdio: 'pipe' });
     console.log('  ➜ [SUCCESS] Vite Build PASSED (All React components compiled cleanly).');
   } catch (err) {
     failedCount++;

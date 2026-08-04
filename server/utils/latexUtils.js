@@ -1361,6 +1361,16 @@ export function healQuizQuestionObject(q) {
           }));
         }
       }
+
+      if (Array.isArray(q.calcItems) && q.calcItems.length > 0) {
+        if (!q.answers) q.answers = {};
+        q.calcItems.forEach((it, idx) => {
+          const key = it.id || `INPUT_${idx + 1}`;
+          if (!q.answers[key]) {
+            q.answers[key] = it.modelAnswer || it.correctAnswer || it.label || `(${idx + 1}) 수치 계산 수치값`;
+          }
+        });
+      }
     }
 
     if (q.type === '주관식 (표채우기)' || q.subtype === '표채우기') {
