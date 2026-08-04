@@ -1006,20 +1006,21 @@ const LOCAL_FORMULA_DICTIONARY = [
     keywords: ['C_v', 'm_v', '\\gamma_w', 'u', 'z', 't', '\\partial'],
     title: '테르자기 1차 압밀방정식(Terzaghi 1D Consolidation, $C_v$)',
     concept: '외부 점진/순간 하중 재하 시 시간이 경과함에 따라 과잉간극수압이 상하 배수층을 통해 소산되어 나가는 속도를 규정한 1차원 미분방정식',
-    formula: `지배 미분방정식:
+    formula: `1) 압밀방정식 (Governing Equation):
 $$\\frac{\\partial u}{\\partial t} = C_v \\frac{\\partial^2 u}{\\partial z^2}$$
 
-- $C_v$: 압밀계수 ($C_v = \\frac{k}{m_v \\gamma_w}$)
 - $u$: 과잉간극수압 (Excess Pore Water Pressure)
 - $t$: 압밀 경과 시간 (Time)
 - $z$: 점토층 내의 배수 거리 방향 깊이
+- $C_v$: 압밀계수 (Coefficient of Consolidation)
+
+2) 압밀계수 ($C_v$)의 정의:
+$$C_v = \\frac{k}{m_v \\gamma_w} = \\frac{k(1+e_0)}{a_v \\gamma_w}$$
+
 - $k$: 점토의 투수계수 (Coefficient of Permeability)
 - $m_v$: 체적압축계수(체적변화계수) (Coefficient of Volume Compressibility)
-- $\\gamma_w$: 물의 단위중량`,
-    structure: `- $C_v$: 압밀계수 ($C_v = \\frac{k}{m_v \\gamma_w}$)\n- $u$: 과잉간극수압 (Excess Pore Water Pressure)\n- $t$: 압밀 경과 시간 (Time)\n- $z$: 점토층 내의 배수 거리 방향 깊이
-- $k$: 점토의 투수계수 (Coefficient of Permeability)
-- $m_v$: 체적압축계수(체적변화계수) (Coefficient of Volume Compressibility)
-- $\\gamma_w$: 물의 단위중량`
+- $\\gamma_w$: 물의 단위중량 (Unit Weight of Water)`,
+    structure: `- $u$: 과잉간극수압\n- $t$: 압밀 경과 시간\n- $z$: 배수 거리 깊이\n- $C_v$: 압밀계수`
   },
   {
     keywords: ['q_{ult}', 'N_c', 'N_q', 'N_{\\gamma}', 'c', 'B', 'D_f'],
