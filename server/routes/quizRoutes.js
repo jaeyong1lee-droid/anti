@@ -65,22 +65,23 @@ const deduplicateQuestions = (questions) => {
 function cleanQuizQuestion(q) {
   if (!q) return q;
   let cleanText = typeof q === 'string' ? q : String(q || '');
-  
-  // Clean up ALL repetitive (A), (B), (C)... lists from flowchart boxes
+
+  // Option 2 Backend Source Sanitization: Strip repetitive (A), (B), (C)... lists from flowchart boxes
   let boxCount = 0;
   cleanText = cleanText.replace(/\[\s*\(A\)(?:\s*,\s*\([A-Z]\))+\s*\]/gi, () => {
     boxCount++;
     return boxCount === 1 ? '[ (A) ]' : (boxCount === 2 ? '[ (C) ]' : '[ (E) ]');
   });
-  
+
   let lineCount = 0;
   cleanText = cleanText.replace(/-\s*\(A\)(?:\s*,\s*\([A-Z]\))+/gi, () => {
     lineCount++;
     return lineCount === 1 ? '- (B)' : (lineCount === 2 ? '- (D)' : '- (F)');
   });
 
-  // Strip remaining trailing (B), (C), (D)... lists inside box text
+  // Strip all remaining trailing (B), (C), (D)... list garbage text completely from question string
   cleanText = cleanText.replace(/,\s*\([A-Z]\)(?:\s*,\s*\([A-Z]\))+/gi, '');
+  cleanText = cleanText.replace(/\(([A-F])\)\s*입력[\s,]*\([B-F]\)[\s\S]*?(?=\]|\n|$)/gi, '($1) 입력');
 
   const isFlowchart = cleanText.includes('┌──') || cleanText.includes('▼') || cleanText.includes('```') || cleanText.includes('흐름도') || cleanText.includes('플로우차트');
   if (isFlowchart) return cleanText.trim();
