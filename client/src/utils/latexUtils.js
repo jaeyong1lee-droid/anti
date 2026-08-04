@@ -1169,9 +1169,8 @@ export function healQuizQuestionObject(q) {
       const mainHeaders = (q.tableData.headers || []).join(',');
       const compHeaders = (q.comparisonTableData?.headers || []).join(',');
       const isDuplicated = q.comparisonTableData && mainHeaders === compHeaders && mainHeaders !== '구분,내용';
-      const isSingleRow = Array.isArray(q.tableData.rows) && q.tableData.rows.length === 1;
 
-      if (isDuplicated || isSingleRow) {
+      if (isDuplicated) {
         const parsed = parseOverviewContent(q.explanation || q.content || '');
         const answers = { ...(q.answers || {}) };
         const rows = [];
@@ -1188,16 +1187,13 @@ export function healQuizQuestionObject(q) {
           rows.push(['공학적 작동 메커니즘', `[INPUT_${rowIdx}_1]`]);
         }
 
-        if (rows.length === 0) {
-          const labelName = (q.title || q.question || '주관식 서술 및 답안').trim();
-          answers['INPUT_0_1'] = q.answer || q.concept || '서술 답안';
-          rows.push([labelName, '[INPUT_0_1]']);
+        if (rows.length > 0) {
+          q.tableData = {
+            headers: ['구분', '내용'],
+            rows: rows
+          };
+          q.answers = answers;
         }
-        q.tableData = {
-          headers: ['구분', '내용'],
-          rows: rows
-        };
-        q.answers = answers;
       }
 
       if (q.comparisonTableData && q.comparisonTableData.rows && q.answers) {
