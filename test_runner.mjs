@@ -445,6 +445,33 @@ async function runTests() {
     console.log(`  ➜ [FAIL] POST /api/grade-subjective failed (Status: ${pollutedGradeRes.error || pollutedGradeRes.statusCode})`);
   }
 
+  // [TEST 15] AI Tutor Chat Route Test (/api/chat)
+  console.log('\n[TEST 15] AI Tutor Chat Endpoint Test (/api/chat)...');
+  const chatPayload = {
+    message: "1차 압밀방정식에 대해 설명해줘",
+    history: [],
+    preferredModel: "gemini-3.5-flash-lite"
+  };
+
+  const chatRes = await postUrl('http://localhost:3000/api/chat', chatPayload);
+  if (chatRes.statusCode === 200) {
+    try {
+      const data = JSON.parse(chatRes.body);
+      if (data.text && data.text.length > 10) {
+        console.log(`  ➜ [PASS] POST /api/chat returned valid AI tutor response (Length: ${data.text.length} chars).`);
+      } else {
+        failedCount++;
+        console.log(`  ➜ [CRITICAL FAIL] POST /api/chat returned empty text response! Data: ${JSON.stringify(data)}`);
+      }
+    } catch (e) {
+      failedCount++;
+      console.log(`  ➜ [FAIL] Invalid JSON from /api/chat: ${e.message}`);
+    }
+  } else {
+    failedCount++;
+    console.log(`  ➜ [FAIL] POST /api/chat failed (Status: ${chatRes.error || chatRes.statusCode})`);
+  }
+
   console.log('\n====================================================');
   if (failedCount > 0) {
     console.log(`  ❌ TEST FAILED - ${failedCount} CRITICAL ERRORS DETECTED!`);

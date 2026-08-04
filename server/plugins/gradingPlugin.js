@@ -118,35 +118,6 @@ ${LATEX_PROMPT_INSTRUCTIONS}`;
 
 export const normalize = (s) => (s || '').trim().toLowerCase().replace(/\s+/g, '');
 
-export function checkWaterWeightEquivalence(userStr, correctStr) {
-  const cleanSingle = (s) => {
-    const match = String(s || '').replace(/,/g, '').match(/[-+]?\d*\.?\d+/);
-    return match ? parseFloat(match[0]) : null;
-  };
-  const uVal = cleanSingle(userStr);
-  if (uVal === null || uVal === 0) return false;
-
-  const allNumbers = String(correctStr || '').replace(/,/g, '').match(/[-+]?\d*\.?\d+/g);
-  if (!allNumbers || allNumbers.length === 0) return false;
-
-  for (const numStr of allNumbers) {
-    const cVal = parseFloat(numStr);
-    if (cVal === 0 || Math.abs(cVal - uVal) < 1e-4) continue;
-
-    const ratio = uVal / cVal;
-    const ratio1 = 10 / 9.81;
-    const ratio2 = 9.81 / 10;
-    
-    const diffRatio1 = Math.abs(ratio - ratio1) / ratio1;
-    const diffRatio2 = Math.abs(ratio - ratio2) / ratio2;
-    const tolerance = 0.008; // 0.8% tolerance for 9.81 vs 10 ratio
-    if (diffRatio1 < tolerance || diffRatio2 < tolerance) {
-      return true;
-    }
-  }
-  return false;
-}
-
 export function isNumericAnswer(str) {
   if (!str) return false;
   const cleanStr = str.trim();
@@ -166,25 +137,6 @@ export async function gradeSubjective({ question, correctAnswer, userAnswer, row
 
   if (correctAnswer && normalize(userAnswer) === normalize(correctAnswer)) {
     return { isCorrect: true, score: 10, reason: '텍스트가 모범 답안과 정확히 일치합니다.' };
-  }
-
-  // 🚨 물의 단위중량(감마 w) 미명시 계산문제용 로컬 정밀 채점 (감마 w 9.81 vs 10 전용)
-  const isWaterWeightCalc = /gamma_w|감마\s*w|감마_w|수중\s*단위중량|물의\s*단위중량/.test(question || '') || 
-                            /gamma_w|감마\s*w|감마_w|수중\s*단위중량|물의\s*단위중량/.test(explanation || '');
-  
-  const hasNumbersInCorrect = /[-+]?\d*\.?\d+/.test(correctAnswer || '') || /[-+]?\d*\.?\d+/.test(explanation || '');
-  const canApplyWaterWeightCheck = isWaterWeightCalc && isNumericAnswer(userAnswer) && hasNumbersInCorrect;
-  
-  if (canApplyWaterWeightCheck && (
-    checkWaterWeightEquivalence(userAnswer, correctAnswer) || 
-    (explanation && checkWaterWeightEquivalence(userAnswer, explanation))
-  )) {
-    return { 
-      isCorrect: true, 
-      score: 10, 
-      reason: '물의 단위중량(감마 w)으로 9.81 또는 10을 각각 대입한 계산 결과가 모두 타당하여 정답으로 인정합니다.',
-      suggestedModelAnswer: correctAnswer 
-    };
   }
 
   let targetCorrectAnswer = correctAnswer || '';
