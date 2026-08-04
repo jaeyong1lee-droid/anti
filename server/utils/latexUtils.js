@@ -1289,8 +1289,11 @@ export function healQuizQuestionObject(q) {
 
     // ---------------------------------------------------------
     // [Calculation Question Dynamic Items Healer]
+    // ONLY apply to genuine calculation questions (Q1), NOT to comparison tables (Q2) or theory questions!
     // ---------------------------------------------------------
-    if (q.type === '주관식 (계산)' || q.subtype === '계산' || q.category === '계산' || (q.tableData && q.tableData.headers && q.tableData.headers[0] === '구하는 항목')) {
+    const isCompOrTheory = q.type === '주관식 (표채우기)' || q.subtype === '표채우기' || q.type === '주관식 (서술형)' || /비교하시오|특성을\s*비교|차이점|서술하시오|설명하시오/i.test(q.question || '');
+
+    if (!isCompOrTheory && (q.type === '주관식 (계산)' || q.subtype === '계산' || (q.tableData && q.tableData.headers && q.tableData.headers[0] === '구하는 항목'))) {
       q.type = '주관식 (계산)';
       q.subtype = '계산';
       const qText = q.question || '';
@@ -1301,7 +1304,7 @@ export function healQuizQuestionObject(q) {
       );
 
       if (isGeneric) {
-        if (/Terzaghi|기초|지지력|허용하중/i.test(qText)) {
+        if (/Terzaghi|기초|지지력|허용하중/i.test(qText) && /구하시오|각각|계산|\(a\)/i.test(qText)) {
           q.calcItems = [
             { id: 'INPUT_1', label: '(1) 조건 (a)의 허용지지력 $q_{all}$(a) (kN/m²)' },
             { id: 'INPUT_2', label: '(2) 조건 (a)의 허용하중 $P_{all}$(a) (kN)' },
@@ -1870,8 +1873,12 @@ export function parseLlmJson(text) {
 
 export function isCalculationQuestion(q) {
   if (!q) return false;
+  const qText = q.question || '';
+  // Comparison tables (Q2) and theory questions (Q3) must NEVER be treated as calculation questions
+  if (q.type === '주관식 (표채우기)' || q.subtype === '표채우기' || q.type === '주관식 (서술형)' || /비교하시오|특성을\s*비교|차이점|서술하시오|설명하시오/i.test(qText)) {
+    return false;
+  }
   if (q.type === '주관식 (계산)' || q.subtype === '계산') return true;
-  if (q.category === '계산' && q.tableData && Array.isArray(q.tableData.headers) && q.tableData.headers.length === 2 && q.tableData.headers[0] === '구하는 항목') return true;
   if (q.tableData && Array.isArray(q.tableData.headers) && q.tableData.headers.length === 2 && (q.tableData.headers[0] === '구하는 항목' || q.tableData.headers[1] === '계산 결과 및 답안')) return true;
   return false;
 }
