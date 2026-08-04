@@ -19651,10 +19651,16 @@ ${itemsStr}
               )}
               {selectedTopic && (
                 <button
-                onClick={() => { 
+                onClick={async () => { 
                   if (selectedTopic?.id) {
-                    const deleteUrl = `${API_BASE}/api/session/review/topic/${selectedTopic.id}?scheduleId=${selectedTopic.schedule_id || ''}`;
-                    fetch(deleteUrl, { method: 'DELETE' }).catch(e => console.warn('세션 초기화 실패:', e));
+                    const deleteUrl = selectedTopic.schedule_id
+                      ? `${API_BASE}/api/session/review/topic/${selectedTopic.id}?scheduleId=${selectedTopic.schedule_id}`
+                      : `${API_BASE}/api/session/review/topic/${selectedTopic.id}`;
+                    try {
+                      await fetch(deleteUrl, { method: 'DELETE' });
+                    } catch (e) {
+                      console.warn('세션 초기화 실패:', e);
+                    }
 
                     // Remove both schedule-specific and topic-specific progress keys and session IDs to guarantee complete cleanup
                     const activeSid = reviewSessionId || 'legacy_default';
