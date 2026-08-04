@@ -343,6 +343,75 @@ async function runTests() {
     }
   }
 
+  // [TEST 12] AI Math Hallucination Anti-Echo Test (Terzaghi q_all Calculation)
+  console.log('\n[TEST 12] AI Math Hallucination Anti-Echo Test (Terzaghi Item A)...');
+  const echoTestPayload = {
+    question: "Terzaghi 지지력 공식을 사용하여 허용지지력 및 허용하중을 산정하시오. B=2.0m, Df=0m, gamma=18kN/m3, c=20kPa, phi=30도. (Nc=37.2, Nq=22.5, Ngamma=19.7, Fs=3.0)",
+    correctAnswer: "",
+    userAnswer: "700", // User typed wrong answer 700
+    rowHeader: "(1) 조건 (a)의 허용지지력 q_all (a) (kN/m²)",
+    colHeader: "수치 계산 답안",
+    explanation: "Terzaghi 지지력 공식(q_u = 1.3cN_c + gamma*D_f*N_q + 0.4*gamma*B*N_gamma)을 적용하고 안전율 Fs=3으로 나누어 허용지지력 q_all을 산정합니다.",
+    category: "계산",
+    temperature: 0.7,
+    preferredModel: "gemini-3.5-flash-lite"
+  };
+
+  const echoGradeRes = await postUrl('http://localhost:3000/api/grade-subjective', echoTestPayload);
+  if (echoGradeRes.statusCode === 200) {
+    try {
+      const data = JSON.parse(echoGradeRes.body);
+      const suggested = String(data.suggestedModelAnswer || '');
+      const hasEcho700 = /허용지지력\s*(?:q_all)?\s*=\s*700/i.test(suggested) || /답은\s*700/i.test(suggested);
+      
+      if (hasEcho700) {
+        failedCount++;
+        console.log(`  ➜ [CRITICAL FAIL] AI hallucinated user's wrong answer "700" as model answer! Suggested: "${suggested.slice(0, 100)}..."`);
+      } else {
+        console.log(`  ➜ [PASS] AI correctly calculated true mathematical model answer without echoing "700". Model Answer: "${suggested.slice(0, 100)}..."`);
+      }
+    } catch (e) {
+      failedCount++;
+      console.log(`  ➜ [FAIL] Invalid JSON from grade-subjective: ${e.message}`);
+    }
+  } else {
+    failedCount++;
+    console.log(`  ➜ [FAIL] POST /api/grade-subjective failed (Status: ${echoGradeRes.error || echoGradeRes.statusCode})`);
+  }
+
+  // [TEST 13] Server-Side Numeric Guard Tolerance & False-Positive Override Test
+  console.log('\n[TEST 13] Server-Side Numeric Guard Override Test (700 vs Ref 632)...');
+  const tolerancePayload = {
+    question: "Terzaghi 지지력 공식을 사용하여 허용지지력 및 허용하중을 산정하시오.",
+    correctAnswer: "632.0",
+    userAnswer: "700", // Wrong typed value
+    rowHeader: "(1) 조건 (a)의 허용지지력 q_all (a) (kN/m²)",
+    colHeader: "수치 계산 답안",
+    explanation: "Terzaghi 지지력 공식 대입 결과 q_all = 632.0 kN/m² 입니다.",
+    category: "계산",
+    temperature: 0.7,
+    preferredModel: "gemini-3.5-flash-lite"
+  };
+
+  const toleranceGradeRes = await postUrl('http://localhost:3000/api/grade-subjective', tolerancePayload);
+  if (toleranceGradeRes.statusCode === 200) {
+    try {
+      const data = JSON.parse(toleranceGradeRes.body);
+      if (!data.isCorrect && data.score === 0) {
+        console.log(`  ➜ [PASS] Server-Side Numeric Guard correctly rejected wrong answer "700" (score: 0점, reason: ${data.reason}).`);
+      } else {
+        failedCount++;
+        console.log(`  ➜ [CRITICAL FAIL] Server-Side Guard failed to reject wrong answer "700"! Score: ${data.score}점, Reason: ${data.reason}`);
+      }
+    } catch (e) {
+      failedCount++;
+      console.log(`  ➜ [FAIL] Invalid JSON from grade-subjective: ${e.message}`);
+    }
+  } else {
+    failedCount++;
+    console.log(`  ➜ [FAIL] POST /api/grade-subjective failed (Status: ${toleranceGradeRes.error || toleranceGradeRes.statusCode})`);
+  }
+
   console.log('\n====================================================');
   if (failedCount > 0) {
     console.log(`  ❌ TEST FAILED - ${failedCount} CRITICAL ERRORS DETECTED!`);
