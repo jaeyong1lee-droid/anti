@@ -1300,19 +1300,34 @@ export function healQuizQuestionObject(q) {
             INPUT_2: "지표면 파괴면 확장 및 전단강도 직접 고려"
           };
         } else {
-          q.tableData = {
-            headers: ["구하는 항목", "계산 결과 및 답안"],
-            rows: [
-              ["(1) 핵심 계산 항목 1", "[INPUT_1]"],
-              ["(2) 핵심 계산 항목 2", "[INPUT_2]"],
-              ["(3) 핵심 계산 항목 3", "[INPUT_3]"]
-            ]
-          };
-          q.answers = q.answers || {
-            INPUT_1: "조건(1) 항목 풀이 및 최종 계산 수치값",
-            INPUT_2: "조건(2) 항목 풀이 및 최종 계산 수치값",
-            INPUT_3: "조건(3) 항목 풀이 및 최종 계산 수치값"
-          };
+          const isCalc = q.category === '계산' || q.mixedType === 'calc' || /계산|구하시오|연산|산정|수치|하중|지지력|수압|경사|침투/i.test(q.question || '');
+          if (isCalc) {
+            q.tableData = {
+              headers: ["구하는 항목", "계산 결과 및 답안"],
+              rows: [
+                ["(1) 핵심 계산 항목 1", "[INPUT_1]"],
+                ["(2) 핵심 계산 항목 2", "[INPUT_2]"],
+                ["(3) 핵심 계산 항목 3", "[INPUT_3]"]
+              ]
+            };
+            q.answers = q.answers || {
+              INPUT_1: "조건(1) 항목 풀이 및 최종 계산 수치값",
+              INPUT_2: "조건(2) 항목 풀이 및 최종 계산 수치값",
+              INPUT_3: "조건(3) 항목 풀이 및 최종 계산 수치값"
+            };
+          } else {
+            q.tableData = {
+              headers: ["구분 항목", "세부 핵심 내용"],
+              rows: [
+                ["핵심 항목 1", "[INPUT_1]"],
+                ["핵심 항목 2", "[INPUT_2]"]
+              ]
+            };
+            q.answers = q.answers || {
+              INPUT_1: "주요 기술 서술 답안 1",
+              INPUT_2: "주요 기술 서술 답안 2"
+            };
+          }
         }
       }
       if (q.tableData && Array.isArray(q.tableData.headers)) {
