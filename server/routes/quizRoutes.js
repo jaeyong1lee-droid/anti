@@ -66,22 +66,21 @@ function cleanQuizQuestion(q) {
   if (!q) return q;
   let cleanText = typeof q === 'string' ? q : String(q || '');
 
-  // Option 2 Backend Source Sanitization: Strip repetitive (A), (B), (C)... lists from flowchart boxes
-  let boxCount = 0;
-  cleanText = cleanText.replace(/\[\s*\(A\)(?:\s*,\s*\([A-Z]\))+\s*\]/gi, () => {
-    boxCount++;
-    return boxCount === 1 ? '[ (A) ]' : (boxCount === 2 ? '[ (C) ]' : '[ (E) ]');
-  });
-
-  let lineCount = 0;
-  cleanText = cleanText.replace(/-\s*\(A\)(?:\s*,\s*\([A-Z]\))+/gi, () => {
-    lineCount++;
-    return lineCount === 1 ? '- (B)' : (lineCount === 2 ? '- (D)' : '- (F)');
-  });
-
-  // Strip all remaining trailing (B), (C), (D)... list garbage text completely from question string
+  // 1. Strip extra trailing list text (e.g. ", (B), (C), (D)...")
   cleanText = cleanText.replace(/,\s*\([A-Z]\)(?:\s*,\s*\([A-Z]\))+/gi, '');
-  cleanText = cleanText.replace(/\(([A-F])\)\s*입력[\s,]*\([B-F]\)[\s\S]*?(?=\]|\n|$)/gi, '($1) 입력');
+  cleanText = cleanText.replace(/,\s*\([B-Z]\)(?:\s*,\s*\([B-Z]\))*/gi, '');
+
+  // 2. Sequential Re-indexing: Re-assign (A), (B), (C), (D), (E), (F) in exact appearance order
+  let inputIdx = 0;
+  cleanText = cleanText.replace(/\[?\s*\(([A-Z])\)(?:\s*입력)?\s*\]?/gi, (match) => {
+    // Only re-index if it looks like a flowchart blank slot
+    const letter = String.fromCharCode(65 + inputIdx);
+    inputIdx++;
+    if (match.includes('[')) {
+      return `[ (${letter}) ]`;
+    }
+    return `- (${letter})`;
+  });
 
   const isFlowchart = cleanText.includes('┌──') || cleanText.includes('▼') || cleanText.includes('```') || cleanText.includes('흐름도') || cleanText.includes('플로우차트');
   if (isFlowchart) return cleanText.trim();

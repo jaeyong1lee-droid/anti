@@ -87,6 +87,14 @@ async function runSuperRigorousTest() {
       const qText = q.question || '';
       const lines = qText.split('\n');
 
+      // AAAA 중복 알파벳 도배 감지
+      const matches = qText.match(/\(([A-F])\)/g) || [];
+      const letters = matches.map(m => m.replace(/[\(\)]/g, ''));
+      if (letters.length >= 2 && letters.every(l => l === 'A')) {
+        hasDomGarbage = true;
+        errorLog.push(`Q${qIdx + 1} 문제에 (A)만 ${letters.length}개 중복 도배되어 있습니다! (AAAA 버그 감지)`);
+      }
+
       lines.forEach((line, lIdx) => {
         const rendered = simulateRenderLineContent(line);
         // 화면 오른쪽 <span> 태그에 ", (B), (C)..." 식별 기호 찌꺼기가 노출되는지 검사
