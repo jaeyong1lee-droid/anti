@@ -1327,6 +1327,66 @@ export function healQuizQuestionObject(q) {
       ))
     );
 
+    // ---------------------------------------------------------
+    // [Calculation Question Dynamic Items Healer]
+    // ---------------------------------------------------------
+    if (q.type === '주관식 (계산)' || q.subtype === '계산' || q.category === '계산' || (q.tableData && q.tableData.headers && q.tableData.headers[0] === '구하는 항목')) {
+      q.type = '주관식 (계산)';
+      q.subtype = '계산';
+      const qText = q.question || '';
+      const isGeneric = !q.calcItems || q.calcItems.length === 0 || (
+        Array.isArray(q.calcItems) && q.calcItems.some(it => /핵심\s*(?:수치\s*)?계산\s*항목/i.test(it.label || ''))
+      ) || (
+        q.tableData && Array.isArray(q.tableData.rows) && q.tableData.rows.some(r => Array.isArray(r) && typeof r[0] === 'string' && /핵심\s*(?:수치\s*)?계산\s*항목/i.test(r[0]))
+      );
+
+      if (isGeneric) {
+        if (/Terzaghi|기초|지지력|허용하중/i.test(qText)) {
+          q.calcItems = [
+            { id: 'INPUT_1', label: '(1) 조건 (a)의 허용지지력 $q_{all}$(a) (kN/m²)' },
+            { id: 'INPUT_2', label: '(2) 조건 (a)의 허용하중 $P_{all}$(a) (kN)' },
+            { id: 'INPUT_3', label: '(3) 조건 (b)의 허용지지력 $q_{all}$(b) (kN/m²)' },
+            { id: 'INPUT_4', label: '(4) 조건 (b)의 허용하중 $P_{all}$(b) (kN)' }
+          ];
+          q.answers = {
+            INPUT_1: "조건 (a) 허용지지력 공식 대입 및 계산 수치값",
+            INPUT_2: "조건 (a) 허용하중 공식 대입 및 계산 수치값",
+            INPUT_3: "조건 (b) 허용지지력 공식 대입 및 계산 수치값",
+            INPUT_4: "조건 (b) 허용하중 공식 대입 및 계산 수치값"
+          };
+        } else if (/유선망|침투|간극수압/i.test(qText)) {
+          q.calcItems = [
+            { id: 'INPUT_1', label: '(1) 단위폭당 침투유량 $q$ (m³/s/m)' },
+            { id: 'INPUT_2', label: '(2) 지정 위치 간극수압 $u$ (kN/m²)' },
+            { id: 'INPUT_3', label: '(3) 출구 유출 동수경사 $i_{exit}$' }
+          ];
+          q.answers = q.answers?.INPUT_1 ? q.answers : {
+            INPUT_1: "침투유량 q 공식 및 수치 풀이",
+            INPUT_2: "간극수압 u 공식 및 수치 풀이",
+            INPUT_3: "동수경사 i 공식 및 수치 풀이"
+          };
+        } else {
+          const itemMatches = [...qText.matchAll(/\((\d+)\)\s*([^(),\n]+(?:\(kN[^\)]*\)|\(m[^\)]*\))?)/g)];
+          if (itemMatches.length >= 2) {
+            q.calcItems = itemMatches.map((m, i) => ({
+              id: `INPUT_${i + 1}`,
+              label: `(${m[1]}) ${m[2].trim()}`
+            }));
+          } else {
+            q.calcItems = [
+              { id: 'INPUT_1', label: '(1) 수치 계산 요구 항목 1' },
+              { id: 'INPUT_2', label: '(2) 수치 계산 요구 항목 2' }
+            ];
+          }
+        }
+      } else if (!q.calcItems && q.tableData && Array.isArray(q.tableData.rows)) {
+        q.calcItems = q.tableData.rows.map((row, rIdx) => ({
+          id: `INPUT_${rIdx + 1}`,
+          label: Array.isArray(row) && typeof row[0] === 'string' ? row[0] : `(${rIdx + 1}) 수치 답안`
+        }));
+      }
+    }
+
     if (q.type === '주관식 (표채우기)' || q.subtype === '표채우기') {
       if (!q.tableData || !Array.isArray(q.tableData.rows) || q.tableData.rows.length === 0) {
         const isComp = (q.question || '').includes('비교') || (q.question || '').includes('차이점');

@@ -20635,9 +20635,8 @@ ${itemsStr}
                                   </span>
                                   <span className="text-xs text-slate-400 font-medium">
                                     {(() => {
-                                      const items = (q.calcItems && q.calcItems.length > 0) 
-                                        ? q.calcItems 
-                                        : (q.tableData?.rows?.map((r, i) => ({ id: `INPUT_${i+1}`, label: r[0] })) || [{ id: 'INPUT_1', label: '(1) 수치 계산' }]);
+                                      const healedQ = healQuizQuestionObject(q);
+                                      const items = healedQ.calcItems || [];
                                       return `총 ${items.length}개 항목`;
                                     })()}
                                   </span>
@@ -20645,15 +20644,14 @@ ${itemsStr}
 
                                 <div className="space-y-3">
                                   {(() => {
-                                    const items = (q.calcItems && q.calcItems.length > 0) 
-                                      ? q.calcItems 
-                                      : (q.tableData?.rows?.map((r, i) => ({ id: `INPUT_${i+1}`, label: r[0] })) || [{ id: 'INPUT_1', label: '(1) 수치 계산' }]);
+                                    const healedQ = healQuizQuestionObject(q);
+                                    const items = healedQ.calcItems || [];
                                     
                                     return items.map((item, iIdx) => {
                                       const inputKey = `${idx}_${item.id || `INPUT_${iIdx+1}`}`;
                                       return (
-                                        <div key={item.id || iIdx} className="p-3.5 bg-slate-900/80 rounded-xl border border-slate-800 space-y-2">
-                                          <div className="text-xs sm:text-sm font-bold text-sky-300 flex items-center justify-between">
+                                        <div key={item.id || iIdx} className="space-y-1.5 text-left">
+                                          <div className="text-xs sm:text-sm font-bold text-sky-300 flex items-center justify-between pl-0.5">
                                             <LatexRenderer text={item.label || `(${iIdx + 1}) 수치 항목`} katexLoaded={katexLoaded} />
                                           </div>
                                           <BufferedTextarea
@@ -24252,9 +24250,8 @@ ${itemsStr}
                                   </span>
                                   <span className="text-xs text-slate-400 font-medium">
                                     {(() => {
-                                      const items = (q.calcItems && q.calcItems.length > 0) 
-                                        ? q.calcItems 
-                                        : (q.tableData?.rows?.map((r, i) => ({ id: `INPUT_${i+1}`, label: r[0] })) || [{ id: 'INPUT_1', label: '(1) 수치 계산' }]);
+                                      const healedQ = healQuizQuestionObject(q);
+                                      const items = healedQ.calcItems || [];
                                       return `총 ${items.length}개 항목`;
                                     })()}
                                   </span>
@@ -24262,15 +24259,14 @@ ${itemsStr}
 
                                 <div className="space-y-3">
                                   {(() => {
-                                    const items = (q.calcItems && q.calcItems.length > 0) 
-                                      ? q.calcItems 
-                                      : (q.tableData?.rows?.map((r, i) => ({ id: `INPUT_${i+1}`, label: r[0] })) || [{ id: 'INPUT_1', label: '(1) 수치 계산' }]);
+                                    const healedQ = healQuizQuestionObject(q);
+                                    const items = healedQ.calcItems || [];
                                     
                                     return items.map((item, iIdx) => {
                                       const inputKey = `${idx}_${item.id || `INPUT_${iIdx+1}`}`;
                                       return (
-                                        <div key={item.id || iIdx} className="p-3.5 bg-slate-900/80 rounded-xl border border-slate-800 space-y-2">
-                                          <div className="text-xs sm:text-sm font-bold text-sky-300 flex items-center justify-between">
+                                        <div key={item.id || iIdx} className="space-y-1.5 text-left">
+                                          <div className="text-xs sm:text-sm font-bold text-sky-300 flex items-center justify-between pl-0.5">
                                             <LatexRenderer text={item.label || `(${iIdx + 1}) 수치 항목`} katexLoaded={katexLoaded} />
                                           </div>
                                           <BufferedTextarea
