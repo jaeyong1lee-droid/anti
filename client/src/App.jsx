@@ -2631,8 +2631,12 @@ export default function App() {
   };
 
   const renderDetailedTableFeedback = (idx, q, weight = 10) => {
-    const inputIds = Object.keys(q.answers || {});
-    if (inputIds.length === 0) return null;
+    const calcInputIds = (q.calcItems && Array.isArray(q.calcItems) && q.calcItems.length > 0)
+      ? q.calcItems.map(it => it.id)
+      : Object.keys(q.answers || {});
+
+    if (calcInputIds.length === 0) return null;
+    const inputIds = calcInputIds;
 
     const isOverview = isOverviewReview(q);
     let filteredInputIds = inputIds;
@@ -2681,7 +2685,13 @@ export default function App() {
             
             let rowHeader = '';
             let colHeader = '';
-            if (q.tableData && q.tableData.rows && q.tableData.headers) {
+            if (q.calcItems && Array.isArray(q.calcItems)) {
+              const calcItem = q.calcItems.find(it => it.id === inputId) || q.calcItems[inputIdx];
+              if (calcItem && calcItem.label) {
+                rowHeader = calcItem.label;
+              }
+            }
+            if (!rowHeader && q.tableData && q.tableData.rows && q.tableData.headers) {
               q.tableData.rows.forEach((row) => {
                 row.forEach((cell, colIdx) => {
                   if (typeof cell === 'string' && cell.includes(`[${inputId}]`)) {
