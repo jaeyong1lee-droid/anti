@@ -1000,7 +1000,20 @@ function getConsolidationExpertQuestions(title, keywords) {
     type: '주관식 (공식)',
     question: `테르자기의 1차원 압밀 기본 미분방정식 및 압밀계수($C_v$)의 지반공학적 산정 공식`,
     concept: `점성토층 내부의 깊이($z$)와 시간($t$)에 따른 과잉간극수압($u$)의 감쇄 소산 메커니즘을 규명하는 지반공학 기초 미분 방정식입니다.`,
-    formula: `$\\frac{\\partial u}{\\partial t} = C_v \\frac{\\partial^2 u}{\\partial z^2}$\n- $C_v = \\frac{k}{m_v \\gamma_w}$\n- $u$: 과잉간극수압 (Excess Pore Water Pressure)\n- $t$: 압밀 경과 시간 (Time)\n- $z$: 점토층 내의 배수 거리 방향 깊이\n- $C_v$: 압밀계수 (Coefficient of Consolidation)\n- $k$: 점토의 투수계수 (Coefficient of Permeability)\n- $m_v$: 체적변화계수 (Coefficient of Volume Compressibility)\n- $\\gamma_w$: 물의 단위중량`,
+    formula: `1) 압밀방정식 (Governing Equation):
+$$\\frac{\\partial u}{\\partial t} = C_v \\frac{\\partial^2 u}{\\partial z^2}$$
+
+- $u$: 과잉간극수압 (Excess Pore Water Pressure)
+- $t$: 압밀 경과 시간 (Time)
+- $z$: 점토층 내의 배수 거리 방향 깊이
+- $C_v$: 압밀계수 (Coefficient of Consolidation)
+
+2) 압밀계수 ($C_v$)의 정의:
+$$C_v = \\frac{k}{m_v \\gamma_w} = \\frac{k(1+e_0)}{a_v \\gamma_w}$$
+
+- $k$: 점토의 투수계수 (Coefficient of Permeability)
+- $m_v$: 체적변화계수 (Coefficient of Volume Compressibility)
+- $\\gamma_w$: 물의 단위중량`,
     structure: ''
   };
 
