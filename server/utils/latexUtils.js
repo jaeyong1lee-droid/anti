@@ -1284,6 +1284,39 @@ export function healQuizQuestionObject(q) {
       ))
     );
 
+    if (q.type === '주관식 (표채우기)' || q.subtype === '표채우기') {
+      if (!q.tableData || !Array.isArray(q.tableData.rows) || q.tableData.rows.length === 0) {
+        const isComp = (q.question || '').includes('비교') || (q.question || '').includes('차이점');
+        if (isComp) {
+          q.tableData = {
+            headers: ["구분 항목", "대표 이론/공법 A", "대표 이론/공법 B"],
+            rows: [
+              ["핵심 메커니즘 특성", "[INPUT_1]", "확장 전단 파괴 및 변형 고려"],
+              ["실무 적용 및 한계 범위", "기초 저면 하부 자중 중량 위주 고려", "[INPUT_2]"]
+            ]
+          };
+          q.answers = q.answers || {
+            INPUT_1: "전반전단파괴 기반 3개 영역 한계 평형 이론",
+            INPUT_2: "지표면 파괴면 확장 및 전단강도 직접 고려"
+          };
+        } else {
+          q.tableData = {
+            headers: ["구분", "조건 (a)", "조건 (b)"],
+            rows: [
+              ["허용지지력 (kN/m²)", "[INPUT_1]", "[INPUT_2]"],
+              ["허용하중 (kN)", "[INPUT_3]", "[INPUT_4]"]
+            ]
+          };
+          q.answers = q.answers || {
+            INPUT_1: "조건(a) 허용지지력 풀이 및 수치 계산값",
+            INPUT_2: "조건(b) 허용지지력 풀이 및 수치 계산값",
+            INPUT_3: "조건(a) 허용하중 풀이 및 수치 계산값",
+            INPUT_4: "조건(b) 허용하중 풀이 및 수치 계산값"
+          };
+        }
+      }
+    }
+
     // For table subjective fill-in questions, empty out all cell contents 
     // (except headers and row-label column) and turn them into inputs!
     if ((q.type === '주관식 (표채우기)' || q.subtype === '표채우기' || hasInputPlaceholder) && q.tableData && q.tableData.rows) {
