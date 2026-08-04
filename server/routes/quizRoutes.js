@@ -191,6 +191,28 @@ function shuffleArray(arr) {
 }
 
 function generateCalculationFallbackQuestions(title, keywords) {
+  const isTerzaghi = /Terzaghi|기초|지지력/i.test(title || '');
+  const rows = isTerzaghi ? [
+    ["(1) 조건 (a)의 허용지지력 q_all(a) (kN/m²)", "[INPUT_1]"],
+    ["(2) 조건 (a)의 허용하중 P_all(a) (kN)", "[INPUT_2]"],
+    ["(3) 조건 (b)의 허용지지력 q_all(b) (kN/m²)", "[INPUT_3]"],
+    ["(4) 조건 (b)의 허용하중 P_all(b) (kN)", "[INPUT_4]"]
+  ] : [
+    ["(1) 단위폭당 침투유량 q (m³/s/m)", "[INPUT_1]"],
+    ["(2) 지정 위치 간극수압 u (kN/m²)", "[INPUT_2]"],
+    ["(3) 출구 유출 동수경사 i_exit", "[INPUT_3]"]
+  ];
+  const answers = isTerzaghi ? {
+    INPUT_1: "조건(a) 허용지지력 산정 공식 및 수치 풀이",
+    INPUT_2: "조건(a) 허용하중 산정 공식 및 수치 풀이",
+    INPUT_3: "조건(b) 허용지지력 산정 공식 및 수치 풀이",
+    INPUT_4: "조건(b) 허용하중 산정 공식 및 수치 풀이"
+  } : {
+    INPUT_1: "침투유량 q 공식 및 수치 풀이",
+    INPUT_2: "간극수압 u 공식 및 수치 풀이",
+    INPUT_3: "동수경사 i 공식 및 수치 풀이"
+  };
+
   return [
     {
       type: "주관식 (표채우기)",
@@ -198,17 +220,9 @@ function generateCalculationFallbackQuestions(title, keywords) {
       question: `[${title} 계산 문제] 첨부 그림 및 원보고서 조건에 따른 수치 계산 항목의 정답을 구하여 아래 표의 빈칸을 완성하시오.`,
       tableData: {
         headers: ["구하는 항목", "계산 결과 및 답안"],
-        rows: [
-          ["(1) 핵심 수치 계산 항목 1", "[INPUT_1]"],
-          ["(2) 핵심 수치 계산 항목 2", "[INPUT_2]"],
-          ["(3) 핵심 수치 계산 항목 3", "[INPUT_3]"]
-        ]
+        rows: rows
       },
-      answers: {
-        INPUT_1: "조건(1) 항목 풀이 및 최종 계산 수치값",
-        INPUT_2: "조건(2) 항목 풀이 및 최종 계산 수치값",
-        INPUT_3: "조건(3) 항목 풀이 및 최종 계산 수치값"
-      },
+      answers: answers,
       explanation: "원보고서 및 제공된 스크린샷 이미지의 공학적 설계 조건(지반 종류, 지하수위, 기초폭 등)을 대입하여 계산하는 전개 과정입니다."
     },
     {
