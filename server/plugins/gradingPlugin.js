@@ -162,8 +162,8 @@ export async function gradeSubjective({ question, correctAnswer, userAnswer, row
     return { isCorrect: false, score: 0, reason: '답안이 비어 있습니다.', suggestedModelAnswer: correctAnswer };
   }
 
-  if (!correctAnswer && !explanation) {
-    return { isCorrect: false, score: 0, reason: '답안이 비어 있습니다.' };
+  if (!correctAnswer && !explanation && !question) {
+    return { isCorrect: false, score: 0, reason: '출제 및 해설 정보가 부족하여 AI 채점을 진행할 수 없습니다.' };
   }
 
   if (correctAnswer && normalize(userAnswer) === normalize(correctAnswer)) {
@@ -191,8 +191,8 @@ export async function gradeSubjective({ question, correctAnswer, userAnswer, row
   }
 
   let targetCorrectAnswer = correctAnswer || '';
-  if (!correctAnswer && explanation) {
-    targetCorrectAnswer = `[자가 진단 모드: 모범 답안이 유실되었습니다. 제공된 전체 해설(explanation)을 기반으로 해당 표 칸(행 제목: ${rowHeader || '없음'}, 열 제목: ${colHeader || '없음'})에 들어갈 진짜 정답을 스스로 도출 및 추정한 뒤 채점하십시오.]`;
+  if (!correctAnswer) {
+    targetCorrectAnswer = `[자가 진단 모드: 모범 답안이 유실되었거나 세부 항목에 명시되지 않았습니다. 문제(${question || '없음'})와 전체 해설(${explanation || '없음'})을 기반으로 해당 표/수치 항목(행 제목: ${rowHeader || '없음'}, 열 제목: ${colHeader || '없음'})에 들어갈 진짜 수치/공학 정답을 채점관 스스로 공학 공식을 적용하여 직접 계산/도출한 뒤 사용자의 답안(${userAnswer})을 평가하십시오.]`;
   }
 
   const userPrompt = `

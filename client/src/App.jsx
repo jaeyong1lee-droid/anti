@@ -3835,7 +3835,13 @@ export default function App() {
   const [gradingLoading, setGradingLoading] = useState({});
 
   const gradeTableQuestion = async (qIdx, q, targetInputs = null, isReevaluation = false) => {
-    setGradingLoading(prev => ({ ...prev, [qIdx]: true }));
+    if (targetInputs && Array.isArray(targetInputs) && targetInputs.length === 1) {
+      const singleInputKey = `${qIdx}_${targetInputs[0]}`;
+      setGradingLoading(prev => ({ ...prev, [singleInputKey]: true }));
+    } else {
+      setGradingLoading(prev => ({ ...prev, [qIdx]: true }));
+    }
+
     let inputs = targetInputs;
     if (!inputs || (Array.isArray(inputs) && inputs.length === 0)) {
       if (isOverviewReview(q)) {
@@ -3868,24 +3874,31 @@ export default function App() {
         } else {
           inputs = secondTableInputs.length > 0 ? secondTableInputs : Object.keys(q.answers || {});
         }
-      } else if (q.answers && Object.keys(q.answers).length > 0) {
-        inputs = Object.keys(q.answers);
       } else {
-        const isFlowchart = q.question && (q.question.includes('┌──') || q.question.includes('▼') || q.question.includes('플로우차트') || q.question.includes('흐름도'));
-        if (isFlowchart) {
-          const matches = q.question.match(/\(([A-F])\)/g);
-          if (matches) {
-            const ids = matches.map(m => {
-              const letter = m.match(/\(([A-F])\)/)[1];
-              const idx = letter.charCodeAt(0) - 65;
-              return `INPUT_${idx + 1}`;
-            });
-            inputs = Array.from(new Set(ids));
+        const healedQ = healQuizQuestionObject(q);
+        if (healedQ.calcItems && Array.isArray(healedQ.calcItems) && healedQ.calcItems.length > 0) {
+          inputs = healedQ.calcItems.map(it => it.id);
+        } else if (healedQ.answers && Object.keys(healedQ.answers).length > 0) {
+          inputs = Object.keys(healedQ.answers);
+        } else if (q.answers && Object.keys(q.answers).length > 0) {
+          inputs = Object.keys(q.answers);
+        } else {
+          const isFlowchart = q.question && (q.question.includes('┌──') || q.question.includes('▼') || q.question.includes('플로우차트') || q.question.includes('흐름도'));
+          if (isFlowchart) {
+            const matches = q.question.match(/\(([A-F])\)/g);
+            if (matches) {
+              const ids = matches.map(m => {
+                const letter = m.match(/\(([A-F])\)/)[1];
+                const idx = letter.charCodeAt(0) - 65;
+                return `INPUT_${idx + 1}`;
+              });
+              inputs = Array.from(new Set(ids));
+            } else {
+              inputs = [];
+            }
           } else {
             inputs = [];
           }
-        } else {
-          inputs = [];
         }
       }
     }
@@ -4046,7 +4059,12 @@ export default function App() {
     } catch (e) {
       stopProgressPolling('채점 실패', 100, false);
     } finally {
-      setGradingLoading(prev => ({ ...prev, [qIdx]: false }));
+      if (targetInputs && Array.isArray(targetInputs) && targetInputs.length === 1) {
+        const singleInputKey = `${qIdx}_${targetInputs[0]}`;
+        setGradingLoading(prev => ({ ...prev, [singleInputKey]: false, [qIdx]: false }));
+      } else {
+        setGradingLoading(prev => ({ ...prev, [qIdx]: false }));
+      }
     }
   };
 

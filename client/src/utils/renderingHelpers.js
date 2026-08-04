@@ -4,8 +4,19 @@
 import { healLatexFormulas, balanceMathBraces } from './latexUtils.js';
 
 export const getCorrectAnswerForInput = (q, inputId) => {
-  if (!q || !q.answers) return '';
-  if (q.answers[inputId]) return q.answers[inputId];
+  if (!q) return '';
+  if (q.answers && q.answers[inputId]) return q.answers[inputId];
+
+  if (q.calcItems && Array.isArray(q.calcItems)) {
+    const calcItem = q.calcItems.find(it => it.id === inputId);
+    if (calcItem) {
+      if (calcItem.modelAnswer) return calcItem.modelAnswer;
+      if (calcItem.correctAnswer) return calcItem.correctAnswer;
+      if (calcItem.answer) return calcItem.answer;
+    }
+  }
+
+  if (!q.answers) return '';
 
   const match = String(inputId || '').match(/^INPUT_(\d+)$/i);
   if (match) {
