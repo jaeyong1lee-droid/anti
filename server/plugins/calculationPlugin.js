@@ -459,20 +459,24 @@ export function healCalcQuestion(q) {
 }
 
 function calcFallbackQuestions(title, keywords) {
+  const cleanTitle = title || '공학 토픽';
   return [
     {
-      type: '주관식 (표채우기)',
-      question: `${title || '토픽'} 계산 문제 표를 완성하시오.`,
-      tableData: { headers: ["구하는 항목", "계산 결과 및 답안"], rows: [["핵심 항목 1", "[INPUT_1]"],["핵심 항목 2", "[INPUT_2]"]] },
-      answers: { INPUT_1: "항목 1 정답", INPUT_2: "항목 2 정답" }
+      type: '주관식 (계산)',
+      question: `${cleanTitle} 계산 문제의 요구 항목에 대한 답안을 작성하시오.`,
+      calcItems: [
+        { id: 'INPUT_1', label: '(1) 수치 계산 항목 1' },
+        { id: 'INPUT_2', label: '(2) 수치 계산 항목 2' }
+      ],
+      answers: { INPUT_1: "항목 1 수치 풀이 및 정답", INPUT_2: "항목 2 수치 풀이 및 정답" }
     },
     {
       type: '주관식 (표채우기)',
-      question: `${title || '토픽'} 로론/공법 비교표를 완성하시오.`,
-      tableData: { headers: ["구분 항목", "공법/이론 A", "공법/이론 B"], rows: [["핵심 메커니즘", "[INPUT_1]", "내용 B"]] },
-      answers: { INPUT_1: "내용 A 정답" }
+      question: `${cleanTitle} 관련 메커니즘 및 특성 비교표를 완성하시오.`,
+      tableData: { headers: ["구분 항목", `${cleanTitle} 특성 1`, `${cleanTitle} 특성 2`], rows: [["핵심 메커니즘", "[INPUT_1]", "상세 설명"]] },
+      answers: { INPUT_1: "특성 1 정답 서술" }
     },
-    { type: '주관식 (다답형)', question: `${title || '토픽'}의 공학적 의미는?`, answer: '공학적 의미 서술' },
-    { type: '주관식 (다답형)', question: `${title || '토픽'} 시공 시 주의사항은?`, answer: '주의사항 서술' },
+    { type: '주관식 (다답형)', question: `${cleanTitle}의 공학적 의미는?`, answer: '공학적 의미 서술' },
+    { type: '주관식 (다답형)', question: `${cleanTitle} 시공 시 주의사항은?`, answer: '주의사항 서술' },
   ];
 }

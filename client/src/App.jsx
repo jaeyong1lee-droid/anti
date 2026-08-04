@@ -5,7 +5,8 @@ import {
   healQuizQuestionObject, 
   healTheoryQuestionObject, 
   healFormulaQuestionObject, 
-  healAnswersheetQuestionObject 
+  healAnswersheetQuestionObject,
+  isCalculationQuestion
 } from './utils/latexUtils';
 import { convertMarkdownTablesToHtml } from './utils/markdownTableRenderer';
 import { convertMarkdownAcronymsToHtml } from './utils/markdownAcronymRenderer';
@@ -20625,7 +20626,98 @@ ${itemsStr}
                                 </div>
                               )}
                             </div>
-                          ) : (q.type === '주관식 (표채우기)' || q.subtype === '표채우기' || !!(q.tableData || q.comparisonTableData)) ? (
+                          ) : isCalculationQuestion(q) ? (
+                            <div className="space-y-3 w-full animate-fade-in">
+                              <div className={`p-3.5 sm:p-5 rounded-xl border space-y-4 text-left transition-all ${getSubjectiveContainerClasses(idx, isRevd)}`}>
+                                <div className="flex items-center justify-between border-b border-slate-700/60 pb-2.5">
+                                  <span className="text-xs sm:text-sm font-extrabold text-sky-400 flex items-center gap-1.5">
+                                    <span>🔢</span> 수치 계산 답안 작성
+                                  </span>
+                                  <span className="text-xs text-slate-400 font-medium">
+                                    {(() => {
+                                      const items = (q.calcItems && q.calcItems.length > 0) 
+                                        ? q.calcItems 
+                                        : (q.tableData?.rows?.map((r, i) => ({ id: `INPUT_${i+1}`, label: r[0] })) || [{ id: 'INPUT_1', label: '(1) 수치 계산' }]);
+                                      return `총 ${items.length}개 항목`;
+                                    })()}
+                                  </span>
+                                </div>
+
+                                <div className="space-y-3">
+                                  {(() => {
+                                    const items = (q.calcItems && q.calcItems.length > 0) 
+                                      ? q.calcItems 
+                                      : (q.tableData?.rows?.map((r, i) => ({ id: `INPUT_${i+1}`, label: r[0] })) || [{ id: 'INPUT_1', label: '(1) 수치 계산' }]);
+                                    
+                                    return items.map((item, iIdx) => {
+                                      const inputKey = `${idx}_${item.id || `INPUT_${iIdx+1}`}`;
+                                      return (
+                                        <div key={item.id || iIdx} className="p-3.5 bg-slate-900/80 rounded-xl border border-slate-800 space-y-2">
+                                          <div className="text-xs sm:text-sm font-bold text-sky-300 flex items-center justify-between">
+                                            <LatexRenderer text={item.label || `(${iIdx + 1}) 수치 항목`} katexLoaded={katexLoaded} />
+                                          </div>
+                                          <BufferedTextarea
+                                            disabled={gradingLoading[idx] || isRevd}
+                                            data-answer-key={inputKey}
+                                            value={tableAnswers[inputKey] || ''}
+                                            onChange={(val) => {
+                                              tableAnswersRef.current[inputKey] = val;
+                                              setTableAnswers(prev => ({ ...prev, [inputKey]: val }));
+                                            }}
+                                            onKeystroke={(val) => {
+                                              tableAnswersRef.current[inputKey] = val;
+                                            }}
+                                            onKeyDown={async (e) => {
+                                              if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                                                e.preventDefault();
+                                                if (!isRevd && !gradingLoading[idx]) {
+                                                  await gradeTableQuestion(idx, q);
+                                                  setRevealedQuestions(prev => ({ ...prev, [idx]: true }));
+                                                }
+                                              }
+                                            }}
+                                            placeholder="계산 공식 대입 과정 및 최종 수치 답안을 입력하세요..."
+                                            className="w-full bg-slate-950 border border-slate-700/80 focus:border-sky-500 rounded-lg p-2.5 text-xs sm:text-sm text-slate-100 font-medium resize-none min-h-[48px] focus:ring-1 focus:ring-sky-500 transition-all"
+                                          />
+                                        </div>
+                                      );
+                                    });
+                                  })()}
+                                </div>
+
+                                {!isRevd ? (
+                                  <button
+                                    onClick={async () => {
+                                      if (gradingLoading[idx]) return;
+                                      await gradeTableQuestion(idx, q);
+                                      setRevealedQuestions(prev => ({ ...prev, [idx]: true }));
+                                    }}
+                                    className={`w-full py-3 bg-sky-600 hover:bg-sky-500 text-white border border-sky-400/40 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 shadow-md shadow-sky-600/20 font-black ${
+                                      gradingLoading[idx] ? 'opacity-50 pointer-events-none' : ''
+                                    }`}
+                                  >
+                                    {gradingLoading[idx] ? 'AI 계산 채점 진행 중...' : '계산 답안 제출 및 채점하기 →'}
+                                  </button>
+                                ) : (
+                                  <div className="space-y-3 text-left">
+                                    <div className={`p-3 rounded-xl font-bold text-sm ${getTableBannerTitleClasses(idx, q)}`}>
+                                      <span>{getTableBannerStatusText(idx, q)}</span>
+                                    </div>
+                                    {q.explanation && (
+                                      <div className="p-3 bg-slate-900/90 rounded-xl border border-slate-800 text-xs sm:text-sm leading-relaxed">
+                                        <span className="font-extrabold text-amber-400">📝 풀이 및 해설:</span>
+                                        <div className="mt-1 text-slate-200">
+                                          <LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} isExplanation={true} formulaSource="tutor" />
+                                        </div>
+                                      </div>
+                                    )}
+                                    {renderDetailedTableFeedback(idx, q, 25)}
+                                    {renderCardTutorChat(rKey, q)}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ) : (!isCalculationQuestion(q) && (q.type === '주관식 (표채우기)' || q.subtype === '표채우기' || !!(q.tableData || q.comparisonTableData))) ? (
                             <div className="space-y-3 w-full">
                               {(() => {
                                 const scoredIndices = [];
@@ -24151,7 +24243,98 @@ ${itemsStr}
 
                       {/* Subjective Reveal */}
                       {isSubj && (
-                          (q.type === '주관식 (표채우기)' || q.subtype === '표채우기' || !!(q.tableData || q.comparisonTableData)) ? (
+                          isCalculationQuestion(q) ? (
+                            <div className="space-y-3 w-full animate-fade-in">
+                              <div className={`p-3.5 sm:p-5 rounded-xl border space-y-4 text-left transition-all ${getSubjectiveContainerClasses(idx, !!examRevealed[idx])}`}>
+                                <div className="flex items-center justify-between border-b border-slate-700/60 pb-2.5">
+                                  <span className="text-xs sm:text-sm font-extrabold text-sky-400 flex items-center gap-1.5">
+                                    <span>🔢</span> 수치 계산 답안 작성
+                                  </span>
+                                  <span className="text-xs text-slate-400 font-medium">
+                                    {(() => {
+                                      const items = (q.calcItems && q.calcItems.length > 0) 
+                                        ? q.calcItems 
+                                        : (q.tableData?.rows?.map((r, i) => ({ id: `INPUT_${i+1}`, label: r[0] })) || [{ id: 'INPUT_1', label: '(1) 수치 계산' }]);
+                                      return `총 ${items.length}개 항목`;
+                                    })()}
+                                  </span>
+                                </div>
+
+                                <div className="space-y-3">
+                                  {(() => {
+                                    const items = (q.calcItems && q.calcItems.length > 0) 
+                                      ? q.calcItems 
+                                      : (q.tableData?.rows?.map((r, i) => ({ id: `INPUT_${i+1}`, label: r[0] })) || [{ id: 'INPUT_1', label: '(1) 수치 계산' }]);
+                                    
+                                    return items.map((item, iIdx) => {
+                                      const inputKey = `${idx}_${item.id || `INPUT_${iIdx+1}`}`;
+                                      return (
+                                        <div key={item.id || iIdx} className="p-3.5 bg-slate-900/80 rounded-xl border border-slate-800 space-y-2">
+                                          <div className="text-xs sm:text-sm font-bold text-sky-300 flex items-center justify-between">
+                                            <LatexRenderer text={item.label || `(${iIdx + 1}) 수치 항목`} katexLoaded={katexLoaded} />
+                                          </div>
+                                          <BufferedTextarea
+                                            disabled={gradingLoading[idx] || !!examRevealed[idx]}
+                                            data-answer-key={inputKey}
+                                            value={examTableAnswers[inputKey] || ''}
+                                            onChange={(val) => {
+                                              examTableAnswersRef.current[inputKey] = val;
+                                              setExamTableAnswers(prev => ({ ...prev, [inputKey]: val }));
+                                            }}
+                                            onKeystroke={(val) => {
+                                              examTableAnswersRef.current[inputKey] = val;
+                                            }}
+                                            onKeyDown={async (e) => {
+                                              if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                                                e.preventDefault();
+                                                if (!examRevealed[idx] && !gradingLoading[idx]) {
+                                                  await gradeTableQuestion(idx, q);
+                                                  setExamRevealed(prev => ({ ...prev, [idx]: true }));
+                                                }
+                                              }
+                                            }}
+                                            placeholder="계산 공식 대입 과정 및 최종 수치 답안을 입력하세요..."
+                                            className="w-full bg-slate-950 border border-slate-700/80 focus:border-sky-500 rounded-lg p-2.5 text-xs sm:text-sm text-slate-100 font-medium resize-none min-h-[48px] focus:ring-1 focus:ring-sky-500 transition-all"
+                                          />
+                                        </div>
+                                      );
+                                    });
+                                  })()}
+                                </div>
+
+                                {!examRevealed[idx] ? (
+                                  <button
+                                    onClick={async () => {
+                                      if (gradingLoading[idx]) return;
+                                      await gradeTableQuestion(idx, q);
+                                      setExamRevealed(prev => ({ ...prev, [idx]: true }));
+                                    }}
+                                    className={`w-full py-3 bg-sky-600 hover:bg-sky-500 text-white border border-sky-400/40 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 shadow-md shadow-sky-600/20 font-black ${
+                                      gradingLoading[idx] ? 'opacity-50 pointer-events-none' : ''
+                                    }`}
+                                  >
+                                    {gradingLoading[idx] ? 'AI 계산 채점 진행 중...' : '계산 답안 제출 및 채점하기 →'}
+                                  </button>
+                                ) : (
+                                  <div className="space-y-3 text-left">
+                                    <div className={`p-3 rounded-xl font-bold text-sm ${getTableBannerTitleClasses(idx, q)}`}>
+                                      <span>{getTableBannerStatusText(idx, q)}</span>
+                                    </div>
+                                    {q.explanation && (
+                                      <div className="p-3 bg-slate-900/90 rounded-xl border border-slate-800 text-xs sm:text-sm leading-relaxed">
+                                        <span className="font-extrabold text-amber-400">📝 풀이 및 해설:</span>
+                                        <div className="mt-1 text-slate-200">
+                                          <LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} isExplanation={true} formulaSource="tutor" />
+                                        </div>
+                                      </div>
+                                    )}
+                                    {renderDetailedTableFeedback(idx, q, 25)}
+                                    {renderCardTutorChat(eKey, q)}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ) : (!isCalculationQuestion(q) && (q.type === '주관식 (표채우기)' || q.subtype === '표채우기' || !!(q.tableData || q.comparisonTableData))) ? (
                             <div className="space-y-3 w-full">
                               {(() => {
                                 const scoredIndices = [];

@@ -1331,8 +1331,11 @@ export function healQuizQuestionObject(q) {
       if (!q.tableData || !Array.isArray(q.tableData.rows) || q.tableData.rows.length === 0) {
         const isComp = (q.question || '').includes('비교') || (q.question || '').includes('차이점');
         if (isComp) {
+          const titleMatch = (q.question || '').match(/([가-힣A-Za-z0-9]+)\s*(?:와|과|및|대비|비교)/);
+          const colA = titleMatch ? `${titleMatch[1]} 특성` : '비교 대상 1';
+          const colB = titleMatch ? `${titleMatch[1]} 대비` : '비교 대상 2';
           q.tableData = {
-            headers: ["구분 항목", "대표 이론/공법 A", "대표 이론/공법 B"],
+            headers: ["구분 항목", colA, colB],
             rows: [
               ["핵심 메커니즘 특성", "[INPUT_1]", "확장 전단 파괴 및 변형 고려"],
               ["실무 적용 및 한계 범위", "기초 저면 하부 자중 중량 위주 고려", "[INPUT_2]"]
@@ -1715,4 +1718,11 @@ export const LATEX_CHAT_PROMPT_INSTRUCTIONS = `
 20. 🚨 [수식 변수 및 아래첨자 결합 유지 규칙]: 수학 기호나 공식 내에서 물리량 변수 기호와 그 아래첨자(예: Nc, Df, kh 등)는 절대로 중간에 달러 기호($ 또는 $$)를 끼워 넣어서 서로 다른 블록으로 쪼개서 출력하지 마십시오. 반드시 수식 전체를 감싸서 하나의 수식 블록 내에 모두 포함시켜야 합니다. (예: $N_c$ (O) / N$_c$ (X), $\\text{N}_c$ (O) / \\text{N}$$_c (X))
 21. 🚨 [출처 및 원보고서 실측 내용 상세 작성 철칙]: 답변 중 참고자료나 출처(KDS/KCS, 원보고서, Wikipedia 등)를 언급할 때는 겉핥기식 제목만 딸랑 출력하는 행위를 엄격히 금지합니다. 반드시 각 출처 항목 바로 아래에 들여쓰기(- 또는 *)로 해당 출처/보고서에서 실제 확인한 구체적인 공학적 수치($S_{ult}$, $\beta$, $U\%$), 핵심 제어 기준(예: $1\\text{mm/day}$ 등), 원보고서 실측 데이터 및 수리/구조 역학 공식 내용을 최소 2줄 이상 구체적으로 포함하여 작성하십시오.
 `;
-// Trigger redeployment with clean UTF-8 BOM-less encoding.
+export function isCalculationQuestion(q) {
+  if (!q) return false;
+  if (q.type === '주관식 (계산)' || q.subtype === '계산') return true;
+  if (q.category === '계산' && q.tableData && Array.isArray(q.tableData.headers) && q.tableData.headers.length === 2 && q.tableData.headers[0] === '구하는 항목') return true;
+  if (q.tableData && Array.isArray(q.tableData.headers) && q.tableData.headers.length === 2 && (q.tableData.headers[0] === '구하는 항목' || q.tableData.headers[1] === '계산 결과 및 답안')) return true;
+  return false;
+}
+

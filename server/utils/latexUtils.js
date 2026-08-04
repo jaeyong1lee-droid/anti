@@ -1291,8 +1291,11 @@ export function healQuizQuestionObject(q) {
       if (!q.tableData || !Array.isArray(q.tableData.rows) || q.tableData.rows.length === 0) {
         const isComp = (q.question || '').includes('비교') || (q.question || '').includes('차이점');
         if (isComp) {
+          const titleMatch = (q.question || '').match(/([가-힣A-Za-z0-9]+)\s*(?:와|과|및|대비|비교)/);
+          const colA = titleMatch ? `${titleMatch[1]} 특성` : '비교 대상 1';
+          const colB = titleMatch ? `${titleMatch[1]} 대비` : '비교 대상 2';
           q.tableData = {
-            headers: ["구분 항목", "대표 이론/공법 A", "대표 이론/공법 B"],
+            headers: ["구분 항목", colA, colB],
             rows: [
               ["핵심 메커니즘 특성", "[INPUT_1]", "확장 전단 파괴 및 변형 고려"],
               ["실무 적용 및 한계 범위", "기초 저면 하부 자중 중량 위주 고려", "[INPUT_2]"]
@@ -1804,3 +1807,12 @@ export function parseLlmJson(text) {
     throw err;
   }
 }
+
+export function isCalculationQuestion(q) {
+  if (!q) return false;
+  if (q.type === '주관식 (계산)' || q.subtype === '계산') return true;
+  if (q.category === '계산' && q.tableData && Array.isArray(q.tableData.headers) && q.tableData.headers.length === 2 && q.tableData.headers[0] === '구하는 항목') return true;
+  if (q.tableData && Array.isArray(q.tableData.headers) && q.tableData.headers.length === 2 && (q.tableData.headers[0] === '구하는 항목' || q.tableData.headers[1] === '계산 결과 및 답안')) return true;
+  return false;
+}
+
