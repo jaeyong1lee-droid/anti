@@ -1237,10 +1237,11 @@ let parsedArray = null;
     if (progressTimer) clearInterval(progressTimer);
     console.error('Error generating AI questions, falling back to local questions:', err);
     try {
-      const fallbackQuestions = generateFallbackQuestions(topic.title, topic.keywords, fileText);
+      const safeFileText = typeof topicText !== 'undefined' ? topicText : (topic ? (topic.extracted_text || '') : '');
+      const fallbackQuestions = generateFallbackQuestions(topic.title, topic.keywords, safeFileText);
       const finalQuestions = topic.category === '계산'
         ? assembleFinalCalculationQuestions(fallbackQuestions, topic)
-        : assembleFinalQuestions(fallbackQuestions, topic, carryOverQuestions, fileText);
+        : assembleFinalQuestions(fallbackQuestions, topic, carryOverQuestions, safeFileText);
 
       const cleanedFallback = finalQuestions.map(q => healQuizQuestionObject({
         ...q,
@@ -1591,7 +1592,8 @@ router.post('/session/review', async (req, res) => {
 
       // Save questions separately — saveSessionValue skips write if unchanged (same-value optimization)
       if (questions && Array.isArray(questions) && questions.length > 0) {
-        await saveSessionValue(questionsKey, JSON.stringify(questions));
+        const healedQuestions = questions.map(healQuizQuestionObject);
+        await saveSessionValue(questionsKey, JSON.stringify(healedQuestions));
       }
 
       const mergeStateField = (inc, ext) => {
@@ -1642,7 +1644,8 @@ router.post('/session/review', async (req, res) => {
     // Save questions separately — saveSessionValue skips write if unchanged (same-value optimization)
     // This is the key optimization: questions (~40-100KB) are only written when they actually change
     if (questions && Array.isArray(questions) && questions.length > 0) {
-      await saveSessionValue(questionsKey, JSON.stringify(questions));
+      const healedQuestions = questions.map(healQuizQuestionObject);
+      await saveSessionValue(questionsKey, JSON.stringify(healedQuestions));
     }
 
     const mergeStateField2 = (inc, ext) => {
