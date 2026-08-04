@@ -1289,14 +1289,24 @@ export function healQuizQuestionObject(q) {
 
     // ---------------------------------------------------------
     // [Calculation Question Dynamic Items Healer]
-    // ONLY apply to genuine calculation questions (Q1), NOT to comparison tables (Q2) or theory questions!
     // ---------------------------------------------------------
-    const isCompOrTheory = q.type === '주관식 (표채우기)' || q.subtype === '표채우기' || q.type === '주관식 (서술형)' || /비교하시오|특성을\s*비교|차이점|서술하시오|설명하시오/i.test(q.question || '');
+    const qText = q.question || '';
+    const isExplicitCompOrTheory = /비교하시오|특성을\s*비교|차이점|서술하시오|설명하시오/i.test(qText);
+    const hasCalcHeaders = q.tableData && Array.isArray(q.tableData.headers) && (
+      q.tableData.headers[0] === '구하는 항목' || q.tableData.headers[1] === '계산 결과 및 답안'
+    );
 
-    if (!isCompOrTheory && (q.type === '주관식 (계산)' || q.subtype === '계산' || (q.tableData && q.tableData.headers && q.tableData.headers[0] === '구하는 항목'))) {
+    const isCalcQ = !isExplicitCompOrTheory && (
+      q.type === '주관식 (계산)' || 
+      q.subtype === '계산' || 
+      hasCalcHeaders ||
+      (/Terzaghi|기초|지지력|허용하중|침투유량/i.test(qText) && /산정|계산|구하시오/i.test(qText))
+    );
+
+    if (isCalcQ) {
       q.type = '주관식 (계산)';
       q.subtype = '계산';
-      const qText = q.question || '';
+
       const isGeneric = !q.calcItems || q.calcItems.length === 0 || (
         Array.isArray(q.calcItems) && q.calcItems.some(it => /핵심\s*(?:수치\s*)?계산\s*항목/i.test(it.label || ''))
       ) || (
@@ -1304,7 +1314,7 @@ export function healQuizQuestionObject(q) {
       );
 
       if (isGeneric) {
-        if (/Terzaghi|기초|지지력|허용하중/i.test(qText) && /구하시오|각각|계산|\(a\)/i.test(qText)) {
+        if (/Terzaghi|기초|지지력|허용하중/i.test(qText)) {
           q.calcItems = [
             { id: 'INPUT_1', label: '(1) 조건 (a)의 허용지지력 $q_{all}$(a) (kN/m²)' },
             { id: 'INPUT_2', label: '(2) 조건 (a)의 허용하중 $P_{all}$(a) (kN)' },
@@ -1343,10 +1353,13 @@ export function healQuizQuestionObject(q) {
           }
         }
       } else if (!q.calcItems && q.tableData && Array.isArray(q.tableData.rows)) {
-        q.calcItems = q.tableData.rows.map((row, rIdx) => ({
-          id: `INPUT_${rIdx + 1}`,
-          label: Array.isArray(row) && typeof row[0] === 'string' ? row[0] : `(${rIdx + 1}) 수치 답안`
-        }));
+        const validRows = q.tableData.rows.filter(r => Array.isArray(r) && typeof r[0] === 'string' && !/핵심\s*(?:수치\s*)?계산\s*항목/i.test(r[0]));
+        if (validRows.length > 0) {
+          q.calcItems = validRows.map((row, rIdx) => ({
+            id: `INPUT_${rIdx + 1}`,
+            label: row[0]
+          }));
+        }
       }
     }
 
@@ -1862,12 +1875,25 @@ export function parseLlmJson(text) {
 export function isCalculationQuestion(q) {
   if (!q) return false;
   const qText = q.question || '';
-  // Comparison tables (Q2) and theory questions (Q3) must NEVER be treated as calculation questions
-  if (q.type === '주관식 (표채우기)' || q.subtype === '표채우기' || q.type === '주관식 (서술형)' || /비교하시오|특성을\s*비교|차이점|서술하시오|설명하시오/i.test(qText)) {
-    return false;
-  }
+
+  // Explicit comparison tables (Q2) and theory questions (Q3) are never calculation questions
+  const isExplicitCompOrTheory = /비교하시오|특성을\s*비교|차이점|서술하시오|설명하시오/i.test(qText);
+  if (isExplicitCompOrTheory) return false;
+
+  // Has calculation headers (구하는 항목 / 계산 결과 및 답안) -> 100% Calculation Question 1!
+  const hasCalcHeaders = q.tableData && Array.isArray(q.tableData.headers) && (
+    q.tableData.headers[0] === '구하는 항목' || q.tableData.headers[1] === '계산 결과 및 답안'
+  );
+  if (hasCalcHeaders) return true;
+
   if (q.type === '주관식 (계산)' || q.subtype === '계산') return true;
-  if (q.tableData && Array.isArray(q.tableData.headers) && q.tableData.headers.length === 2 && (q.tableData.headers[0] === '구하는 항목' || q.tableData.headers[1] === '계산 결과 및 답안')) return true;
+  if (q.calcItems && Array.isArray(q.calcItems) && q.calcItems.length > 0) return true;
+
+  // Heuristic for Q1 calculation questions (e.g. Terzaghi 지지력 산정, 허용지지력 산정 등)
+  if (/Terzaghi|기초|지지력|허용하중|침투유량/i.test(qText) && /산정|계산|구하시오/i.test(qText)) {
+    return true;
+  }
+
   return false;
 }
 
