@@ -1353,6 +1353,10 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
 
     const isInputBox = boxInputs.length > 0;
     
+    // Parse step/box number
+    const boxNumMatch = title.match(/\[(\d+|\*)\]/);
+    const boxNum = boxNumMatch ? boxNumMatch[1] : null;
+    
     let intuitiveText = null;
     if (q.flowchartIntuitive) {
       intuitiveText = q.flowchartIntuitive[boxNum] || q.flowchartIntuitive[String(boxNum)];
