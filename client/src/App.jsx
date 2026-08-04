@@ -2750,7 +2750,29 @@ export default function App() {
                     <span className={`font-semibold ${theme.text}`}>{value || '(미입력)'}</span>
                   </div>
                   {gradingResult && gradingResult.score !== undefined && (
-                    <span className={theme.text}>{displayScore}점</span>
+                    <button
+                      type="button"
+                      disabled={gradingLoading[`${idx}_${inputId}`] || gradingLoading[idx]}
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        if (gradingLoading[`${idx}_${inputId}`] || gradingLoading[idx]) return;
+                        await gradeTableQuestion(idx, q, [inputId], true);
+                      }}
+                      className={`text-xs px-2 py-0.5 rounded-lg font-black transition-all cursor-pointer flex items-center gap-1 border shadow-sm ${
+                        isCorrect || (gradingResult.score !== undefined && gradingResult.score >= 8)
+                          ? 'bg-emerald-950/60 text-emerald-400 border-emerald-500/50 hover:bg-emerald-900/80 active:scale-95'
+                          : (gradingResult.score !== undefined && gradingResult.score >= 5
+                              ? 'bg-yellow-950/60 text-yellow-400 border-yellow-500/50 hover:bg-yellow-900/80 active:scale-95'
+                              : 'bg-rose-950/60 text-rose-400 border-rose-500/50 hover:bg-rose-900/80 active:scale-95')
+                      }`}
+                      title="클릭 시 이 수치/빈칸 항목만 AI 개별 재채점 수행"
+                    >
+                      {gradingLoading[`${idx}_${inputId}`] || gradingLoading[idx] ? (
+                        <span className="animate-spin text-[10px]">⏳</span>
+                      ) : null}
+                      <span>{displayScore}점</span>
+                      <span className="text-[10px] opacity-75">🔄</span>
+                    </button>
                   )}
                 </div>
                 {gradingResult?.reason && (
@@ -3941,7 +3963,24 @@ export default function App() {
       
       let rowHeader = '';
       let colHeader = '';
-      if (q.tableData && q.tableData.rows && q.tableData.headers) {
+      if (q.calcItems && Array.isArray(q.calcItems)) {
+        const calcItem = q.calcItems.find(it => it.id === inputId);
+        if (calcItem && calcItem.label) {
+          rowHeader = calcItem.label;
+          colHeader = '수치 계산 답안';
+        }
+      }
+      if (!rowHeader) {
+        const healed = healQuizQuestionObject(q);
+        if (healed.calcItems && Array.isArray(healed.calcItems)) {
+          const calcItem = healed.calcItems.find(it => it.id === inputId);
+          if (calcItem && calcItem.label) {
+            rowHeader = calcItem.label;
+            colHeader = '수치 계산 답안';
+          }
+        }
+      }
+      if (!rowHeader && q.tableData && q.tableData.rows && q.tableData.headers) {
         q.tableData.rows.forEach((row) => {
           row.forEach((cell, colIdx) => {
             if (typeof cell === 'string' && cell.includes(`[${inputId}]`)) {
