@@ -6,7 +6,7 @@ console.log("==========================================");
 console.log("🤖 [보강된 자가 개선 테스터: 해당 회차 세션 캐시 삭제 API 검증]");
 console.log("==========================================");
 
-const targetUrl = 'https://anti-ashy.vercel.app/api/session/review/schedule/299';
+const targetUrl = 'https://anti-ashy.vercel.app/api/session/review/topic/55?scheduleId=299';
 
 function sendDeleteRequest(url) {
   return new Promise((resolve, reject) => {
