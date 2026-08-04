@@ -1614,41 +1614,7 @@ export function healQuizQuestionObject(q) {
 
 export function healTheoryQuestionObject(t) { return healDeep(t); }
 export function healFormulaQuestionObject(f) { return healDeep(f); }
-export function healAnswersheetQuestionObject(a) {
-  if (!a || typeof a !== 'object') return a;
-  const q = healQuizQuestionObject(a);
-  const qText = (q.question || q.title || '') + ' ' + (q.concept || '');
-
-  // 1. Q1 Terzaghi 계산 문제: "허용지지력"과 "허용하중" 각각 2행 분리 복원
-  if (qText.includes('허용지지력') || qText.includes('허용하중') || (qText.includes('Terzaghi') && !qText.includes('Meyerhof'))) {
-    q.tableData = {
-      headers: ['구분', '내용'],
-      rows: [
-        ['1. 허용지지력 ($q_a$)', '[INPUT_1]'],
-        ['2. 허용하중 ($P_a$)', '[INPUT_2]']
-      ]
-    };
-    q.answers = q.answers || {};
-    if (!q.answers['INPUT_1']) q.answers['INPUT_1'] = '허용지지력 산정값 (kN/m²)';
-    if (!q.answers['INPUT_2']) q.answers['INPUT_2'] = '허용하중 산정값 (kN)';
-  }
-
-  // 2. Q2 Terzaghi vs Meyerhof 비교 문제: 타 공법 비교표 3열 복원
-  if (qText.includes('Meyerhof') || qText.includes('마이어호프') || (qText.includes('Terzaghi') && qText.includes('비교'))) {
-    q.tableData = {
-      headers: ['비교 항목', 'Terzaghi 지지력 공식', 'Meyerhof 지지력 공식'],
-      rows: [
-        ['하중 경사 및 편심 고려', '수직/중심 하중 전제 (미반영)', '[INPUT_1]'],
-        ['근입 깊이($D_f$) 전단저항', '기초 상부 흙 중량만 반영 ($q=\\gamma D_f$)', '[INPUT_2]']
-      ]
-    };
-    q.answers = q.answers || {};
-    if (!q.answers['INPUT_1']) q.answers['INPUT_1'] = '하중 경사 및 편심 계수(i, e) 도입 적용';
-    if (!q.answers['INPUT_2']) q.answers['INPUT_2'] = '근입 깊이 지반 전단저항 고려';
-  }
-
-  return q;
-}
+export function healAnswersheetQuestionObject(a) { return healQuizQuestionObject(a); }
 
 export const LATEX_PROMPT_INSTRUCTIONS = `
 [🚨 극도로 중요한 LaTeX 수식 및 마크다운 렌더링 절대 준수 수칙]:
