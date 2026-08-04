@@ -17,6 +17,32 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <!-- 🚀 [Asset 404 Error Auto Recovery]: 새 배포 발생 시 구버전 캐시 404 리소스 에러 자동 감지 및 즉시 리로드 -->
+    <script>
+      window.addEventListener('error', function(e) {
+        if (e.target && (e.target.tagName === 'SCRIPT' || e.target.tagName === 'LINK')) {
+          const src = e.target.src || e.target.href;
+          if (src && src.includes('/assets/') && !window.__isReloadingChunkError) {
+            window.__isReloadingChunkError = true;
+            console.warn('[Asset Auto Recovery] Old bundle 404 detected. Clearing cache and reloading latest assets:', src);
+            if ('serviceWorker' in navigator) {
+              navigator.serviceWorker.getRegistrations().then(function(regs) {
+                let unregCount = 0;
+                if (!regs.length) window.location.reload(true);
+                for (let reg of regs) {
+                  reg.unregister().then(function() {
+                    unregCount++;
+                    if (unregCount >= regs.length) window.location.reload(true);
+                  });
+                }
+              }).catch(function() { window.location.reload(true); });
+            } else {
+              window.location.reload(true);
+            }
+          }
+        }
+      }, true);
+    </script>
   </head>
   <body class="bg-slateCustom-950 text-slate-100 antialiased font-sans h-full min-h-screen">
     <div id="root" class="h-full"></div>
