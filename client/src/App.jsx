@@ -19638,9 +19638,7 @@ ${itemsStr}
                 <button
                 onClick={async () => { 
                   if (selectedTopic?.id) {
-                    const deleteUrl = selectedTopic.schedule_id
-                      ? `${API_BASE}/api/session/review/schedule/${selectedTopic.schedule_id}`
-                      : `${API_BASE}/api/session/review/topic/${selectedTopic.id}`;
+                    const deleteUrl = `${API_BASE}/api/session/review/topic/${selectedTopic.id}?scheduleId=${selectedTopic.schedule_id || ''}`;
                     try {
                       await fetch(deleteUrl, { method: 'DELETE' });
                     } catch (e) {

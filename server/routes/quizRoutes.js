@@ -1667,7 +1667,7 @@ router.post('/session/review', async (req, res) => {
   }
 });
 
-// DELETE /api/session/review/topic/:id -> Delete a review session (supports ?scheduleId= query for schedule-pinpoint clear)
+// DELETE /api/session/review/topic/:id -> Purge review session cache so re-entry ALWAYS triggers 100% fresh AI question generation
 router.delete('/session/review/topic/:id', async (req, res) => {
   try {
     await ensureSessionTable();
@@ -1675,37 +1675,33 @@ router.delete('/session/review/topic/:id', async (req, res) => {
     const scheduleId = req.query.scheduleId;
     const targetTopicId = String(topicId || '');
 
-    // If scheduleId is provided, clear ONLY that specific schedule session (pinpoint deletion)
+    // 1. Purge all schedule-specific session keys
     if (scheduleId && scheduleId !== 'null' && scheduleId !== 'undefined') {
       await dbQuery.run(
-        "DELETE FROM app_session WHERE key = ? OR key = ? OR key LIKE ?",
+        "DELETE FROM app_session WHERE key = ? OR key = ? OR key LIKE ? OR key LIKE ?",
         [
           `review_questions_schedule_${scheduleId}`,
           `review_questions_schedule_${scheduleId}_q`,
-          `review_questions_schedule_${scheduleId}_sess_%`
+          `review_questions_schedule_${scheduleId}_sess_%`,
+          `anti_review_progress_sched_${scheduleId}%`
         ]
       );
-      return res.json({ ok: true, clearedScheduleId: scheduleId });
     }
 
-    if (targetTopicId && targetTopicId.startsWith('mixed_')) {
+    // 2. Purge all topic-specific session keys to ensure zero cache-hit fallback
+    if (targetTopicId) {
       await dbQuery.run(
-        "DELETE FROM app_session WHERE key LIKE ?",
-        [`review_questions_topic_${targetTopicId}%`]
+        "DELETE FROM app_session WHERE key = ? OR key = ? OR key LIKE ? OR key LIKE ?",
+        [
+          `review_questions_topic_${targetTopicId}`,
+          `review_questions_topic_${targetTopicId}_q`,
+          `review_questions_topic_${targetTopicId}_sess_%`,
+          `anti_review_progress_${targetTopicId}%`
+        ]
       );
-      return res.json({ ok: true });
     }
 
-    await dbQuery.run(
-      "DELETE FROM app_session WHERE key = ? OR key = ? OR key LIKE ?",
-      [
-        `review_questions_topic_${targetTopicId}`,
-        `review_questions_topic_${targetTopicId}_q`,
-        `review_questions_topic_${targetTopicId}_sess_%`
-      ]
-    );
-
-    res.json({ ok: true });
+    res.json({ ok: true, clearedTopicId: targetTopicId, clearedScheduleId: scheduleId });
   } catch (err) {
     console.error('DELETE /api/session/review/topic error:', err);
     res.status(500).json({ error: err.message });
