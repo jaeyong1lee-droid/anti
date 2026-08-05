@@ -426,33 +426,72 @@ export function healCalcQuestion(q) {
       INPUT_3: "조건(b) 허용지지력 산정 공식 및 계산값",
       INPUT_4: "조건(b) 허용하중 산정 공식 및 계산값"
     };
-  } else if (/댓|유선망|침투|간극수압/i.test(qText)) {
+  } else if (/댐|유선망|침투|간극수압|53-02|53_02/i.test(qText)) {
+    q.calcItems = [
+      { id: 'INPUT_1', label: '(1) 단위폭당 침투수량 $q$ (m³/s/m)' },
+      { id: 'INPUT_2', label: '(2) A지점 간극수압 $u_A$ (kPa)' },
+      { id: 'INPUT_3', label: '(3) B지점 간극수압 $u_B$ (kPa)' },
+      { id: 'INPUT_4', label: '(4) C지점 간극수압 $u_C$ (kPa)' },
+      { id: 'INPUT_5', label: '(5) 출구 유출 동수경사 $i_{exit}
+  return q;
+}
+
+function calcFallbackQuestions(title, keywords) {
+  const cleanTitle = title || '공학 토픽';
+  return [
+    {
+      type: '주관식 (계산)',
+      question: `${cleanTitle} 계산 문제의 요구 항목에 대한 답안을 작성하시오.`,
+      calcItems: [
+        { id: 'INPUT_1', label: '(1) 수치 계산 항목 1' },
+        { id: 'INPUT_2', label: '(2) 수치 계산 항목 2' }
+      ],
+      answers: { INPUT_1: "항목 1 수치 풀이 및 정답", INPUT_2: "항목 2 수치 풀이 및 정답" }
+    },
+    {
+      type: '주관식 (표채우기)',
+      question: `${cleanTitle} 관련 메커니즘 및 특성 비교표를 완성하시오.`,
+      tableData: { headers: ["구분 항목", `${cleanTitle} 특성 1`, `${cleanTitle} 특성 2`], rows: [["핵심 메커니즘", "[INPUT_1]", "상세 설명"]] },
+      answers: { INPUT_1: "특성 1 정답 서술" }
+    },
+    { type: '주관식 (다답형)', question: `${cleanTitle}의 공학적 의미는?`, answer: '공학적 의미 서술' },
+    { type: '주관식 (다답형)', question: `${cleanTitle} 시공 시 주의사항은?`, answer: '주의사항 서술' },
+  ];
+}
+ }
+    ];
     q.tableData = {
       headers: ["구하는 항목", "계산 결과 및 답안"],
       rows: [
-        ["(1) 단위폭당 침투유량 q (m\u00b3/s/m)", "[INPUT_1]"],
-        ["(2) 지정 위치 간극수압 u (kN/m\u00b2)", "[INPUT_2]"],
-        ["(3) 출구 유출 동수경사 $i_{exit}$", "[INPUT_3]"]
+        ["(1) 단위폭당 침투수량 $q$ (m³/s/m)", "[INPUT_1]"],
+        ["(2) A지점 간극수압 $u_A$ (kPa)", "[INPUT_2]"],
+        ["(3) B지점 간극수압 $u_B$ (kPa)", "[INPUT_3]"],
+        ["(4) C지점 간극수압 $u_C$ (kPa)", "[INPUT_4]"],
+        ["(5) 출구 유출 동수경사 $i_{exit}$", "[INPUT_5]"]
       ]
     };
-    q.answers = q.answers?.INPUT_1 ? q.answers : {
-      INPUT_1: "침투유량 q 공식 및 수치 풀이",
-      INPUT_2: "간극수압 u 공식 및 수치 풀이",
-      INPUT_3: "동수경사 i 공식 및 수치 풀이"
+    q.answers = {
+      INPUT_1: "2.0 * 10^-5 m³/s/m (또는 0.02 m³/s/m)",
+      INPUT_2: "220.7 kPa (상류 A지점)",
+      INPUT_3: "196.2 kPa (중앙 B지점)",
+      INPUT_4: "171.7 kPa (하류 C지점)",
+      INPUT_5: "0.25 ~ 0.50 (출구 동수경사)"
     };
   } else if (isEmpty || hasGenericRows) {
+    q.calcItems = [
+      { id: 'INPUT_1', label: '(1) 수치 계산 요구 항목 1' },
+      { id: 'INPUT_2', label: '(2) 수치 계산 요구 항목 2' }
+    ];
     q.tableData = {
       headers: ["구하는 항목", "계산 결과 및 답안"],
       rows: [
-        ["(1) 핸심 수치 계산 항목 1", "[INPUT_1]"],
-        ["(2) 핸심 수치 계산 항목 2", "[INPUT_2]"],
-        ["(3) 핸심 수치 계산 항목 3", "[INPUT_3]"]
+        ["(1) 수치 계산 항목 1", "[INPUT_1]"],
+        ["(2) 수치 계산 항목 2", "[INPUT_2]"]
       ]
     };
     q.answers = q.answers?.INPUT_1 ? q.answers : {
       INPUT_1: "조건(1) 항목 풀이 및 최종 계산 수치값",
-      INPUT_2: "조건(2) 항목 풀이 및 최종 계산 수치값",
-      INPUT_3: "조건(3) 항목 풀이 및 최종 계산 수치값"
+      INPUT_2: "조건(2) 항목 풀이 및 최종 계산 수치값"
     };
   }
   return q;

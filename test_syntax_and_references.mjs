@@ -233,6 +233,30 @@ for (const lc of lockLeakChecks) {
   }
 }
 
+// [TEST 6] 더미 수치 계산 항목 (수치 계산 항목 1, 2) 감지기 (Dummy Calc Item Fault Detector)
+console.log('\n[TEST 6] 더미 수치 계산 항목 (수치 계산 항목 1, 2) 감지기 (Dummy Calc Item Fault Detector)...');
+const { healQuizQuestionObject } = await import('./client/src/utils/latexUtils.js');
+const mockTopic53Q = {
+  type: '주관식 (계산)',
+  question: "3. 그림에 나타낸 댐에 대하여 (1) 침투수량 (2) A, B 및 C점에서의 간극수압, (3) C점에서 출구까지 동수경사를 구하시오. 단, 흙의 투수계수는 2.0*10^-3 m/s 이다.",
+  topicId: 53,
+  calcItems: [
+    { id: 'INPUT_1', label: '(1) 수치 계산 항목 1' },
+    { id: 'INPUT_2', label: '(2) 수치 계산 항목 2' }
+  ]
+};
+
+const healed53 = healQuizQuestionObject(mockTopic53Q);
+const isDummyPresent = healed53.calcItems.some(it => /수치\s*계산\s*항목/i.test(it.label || ''));
+const isCountInvalid = healed53.calcItems.length !== 5;
+
+if (isDummyPresent || isCountInvalid) {
+  failedCount++;
+  console.error(`  ❌ [더미 수치 계산 항목 감지 오류]: 주제 53에 더미 항목("${healed53.calcItems[0]?.label}") 또는 잘못된 항목 수(${healed53.calcItems.length}개)가 감지되었습니다!`);
+} else {
+  console.log(`  ➜ [PASS] 주제 53 더미 수치 계산 항목 감지기 정상 통과! (더미 항목 0개, 5개 입력창 100% 보정 생성)`);
+}
+
 console.log('\n==========================================================');
 if (failedCount > 0) {
   console.error(`  ❌ 자가 개선 테스터 검증 실패 - ${failedCount}개의 런타임 위험 감지됨!`);

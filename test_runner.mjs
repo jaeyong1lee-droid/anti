@@ -715,6 +715,37 @@ async function runTests() {
     console.log(`  ➜ [CRITICAL FAIL] Topic 53 Dam Seepage analysis generated ${healed53.calcItems?.length || 0} items instead of 5!`);
   }
 
+  // [TEST 24] Q1 Convert Button Restoration & Dummy Item Fault Detection Check
+  console.log('\n[TEST 24] Q1 Convert Button Restoration & Dummy Item Fault Detection Check...');
+  const mockDummyQ = {
+    type: '주관식 (계산)',
+    question: "3. 그림에 나타낸 댐에 대하여 (1) 침투수량 (2) A, B 및 C점에서의 간극수압, (3) C점에서 출구까지 동수경사를 구하시오.",
+    topicId: 53,
+    calcItems: [
+      { id: 'INPUT_1', label: '(1) 수치 계산 항목 1' },
+      { id: 'INPUT_2', label: '(2) 수치 계산 항목 2' }
+    ]
+  };
+  const healedDummy = healQuizQuestionObject(mockDummyQ);
+  const isDummyDetected = healedDummy.calcItems.some(it => /수치\s*계산\s*항목/i.test(it.label || ''));
+  const is53CountValid = healedDummy.calcItems.length === 5;
+
+  if (isDummyDetected || !is53CountValid) {
+    failedCount++;
+    console.log(`  ➜ [CRITICAL FAIL] Tester failed to fix dummy items! DummyDetected: ${isDummyDetected}, Count: ${healedDummy.calcItems.length}`);
+  } else {
+    console.log(`  ➜ [PASS] Tester successfully recognized dummy items as FAULT and healed Topic 53 to 5 dynamic input items!`);
+  }
+
+  // Check App.jsx for Q1 convert button restoration (no hidden condition for calculation Q1)
+  const appSrc = fs.readFileSync(path.resolve('client/src/App.jsx'), 'utf8');
+  if (appSrc.includes("{!(selectedTopic?.category === '계산' && idx === 0) && (")) {
+    failedCount++;
+    console.log(`  ➜ [CRITICAL FAIL] App.jsx still hides Q1 convert button for calculation category!`);
+  } else {
+    console.log(`  ➜ [PASS] Q1 convert button restoration verified in App.jsx!`);
+  }
+
   console.log('\n====================================================');
   if (failedCount > 0) {
     console.log(`  ❌ TEST FAILED - ${failedCount} CRITICAL ERRORS DETECTED!`);

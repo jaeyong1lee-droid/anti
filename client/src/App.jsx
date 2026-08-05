@@ -20408,7 +20408,6 @@ ${itemsStr}
                               </button>
                             )}
                             
-                            {!(selectedTopic?.category === '계산' && idx === 0) && (
                               <button
                                 disabled={regeneratingReview[idx]}
                                 onClick={() => handleRegenerateQuestion('review', idx, q)}
@@ -20429,7 +20428,6 @@ ${itemsStr}
                                 </svg>
                                 {regeneratingReview[idx] ? '변환 중...' : '변환'}
                               </button>
-                            )}
                           </div>
                         </div>
 

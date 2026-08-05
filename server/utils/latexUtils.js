@@ -1311,26 +1311,13 @@ export function healQuizQuestionObject(q) {
       q.subtype = '계산';
 
       const isGeneric = !q.calcItems || q.calcItems.length === 0 || (
-        Array.isArray(q.calcItems) && q.calcItems.some(it => /핵심\s*(?:수치\s*)?계산\s*항목/i.test(it.label || ''))
+        Array.isArray(q.calcItems) && q.calcItems.some(it => /(?:핵심|수치)\s*계산\s*(?:요구\s*)?항목/i.test(it.label || ''))
       ) || (
-        q.tableData && Array.isArray(q.tableData.rows) && q.tableData.rows.some(r => Array.isArray(r) && typeof r[0] === 'string' && /핵심\s*(?:수치\s*)?계산\s*항목/i.test(r[0]))
+        q.tableData && Array.isArray(q.tableData.rows) && q.tableData.rows.some(r => Array.isArray(r) && typeof r[0] === 'string' && /(?:핵심|수치)\s*계산\s*(?:요구\s*)?항목/i.test(r[0]))
       );
 
       if (isGeneric) {
-        if (/Terzaghi|기초|지지력|허용하중/i.test(qText)) {
-          q.calcItems = [
-            { id: 'INPUT_1', label: '(1) 조건 (a)의 허용지지력 $q_{all}$(a) (kN/m²)' },
-            { id: 'INPUT_2', label: '(2) 조건 (a)의 허용하중 $P_{all}$(a) (kN)' },
-            { id: 'INPUT_3', label: '(3) 조건 (b)의 허용지지력 $q_{all}$(b) (kN/m²)' },
-            { id: 'INPUT_4', label: '(4) 조건 (b)의 허용하중 $P_{all}$(b) (kN)' }
-          ];
-          q.answers = {
-            INPUT_1: "조건 (a) 허용지지력 공식 대입 및 계산 수치값",
-            INPUT_2: "조건 (a) 허용하중 공식 대입 및 계산 수치값",
-            INPUT_3: "조건 (b) 허용지지력 공식 대입 및 계산 수치값",
-            INPUT_4: "조건 (b) 허용하중 공식 대입 및 계산 수치값"
-          };
-        } else if (/유선망|침투|간극수압|53-02|53_02/i.test(qText)) {
+        if (q.topicId === 53 || /댐\s*저면|유선망|53-02|53_02/i.test(qText) || (/침투/i.test(qText) && /간극수압/i.test(qText))) {
           q.calcItems = [
             { id: 'INPUT_1', label: '(1) 단위폭당 침투수량 $q$ (m³/s/m)' },
             { id: 'INPUT_2', label: '(2) A지점 간극수압 $u_A$ (kPa)' },
@@ -1344,6 +1331,19 @@ export function healQuizQuestionObject(q) {
             INPUT_3: "196.2 kPa (중앙 B지점)",
             INPUT_4: "171.7 kPa (하류 C지점)",
             INPUT_5: "0.25 ~ 0.50 (출구 동수경사)"
+          };
+        } else if (/Terzaghi|지지력|허용하중/i.test(qText)) {
+          q.calcItems = [
+            { id: 'INPUT_1', label: '(1) 조건 (a)의 허용지지력 $q_{all}$(a) (kN/m²)' },
+            { id: 'INPUT_2', label: '(2) 조건 (a)의 허용하중 $P_{all}$(a) (kN)' },
+            { id: 'INPUT_3', label: '(3) 조건 (b)의 허용지지력 $q_{all}$(b) (kN/m²)' },
+            { id: 'INPUT_4', label: '(4) 조건 (b)의 허용하중 $P_{all}$(b) (kN)' }
+          ];
+          q.answers = {
+            INPUT_1: "조건 (a) 허용지지력 공식 대입 및 계산 수치값",
+            INPUT_2: "조건 (a) 허용하중 공식 대입 및 계산 수치값",
+            INPUT_3: "조건 (b) 허용지지력 공식 대입 및 계산 수치값",
+            INPUT_4: "조건 (b) 허용하중 공식 대입 및 계산 수치값"
           };
         } else {
           const itemMatches = [...qText.matchAll(/\((\d+)\)\s*([^(),\n]+(?:\(kN[^\)]*\)|\(m[^\)]*\))?)/g)];
