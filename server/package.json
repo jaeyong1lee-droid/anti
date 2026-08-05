@@ -5,9 +5,9 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon index.js",
-    "db:backup": "node -e \"import('./backupManager.js').then(m => m.runBackup())\"",
+    "start": "node --dns-result-order=ipv4first index.js",
+    "dev": "nodemon --dns-result-order=ipv4first index.js",
+    "db:backup": "node --dns-result-order=ipv4first -e \"import('./backupManager.js').then(m => m.runBackup())\"",
     "db:backup-local": "node backup_sqlite.js",
     "db:restore": "node restore.js",
     "sync-standards": "node scratch/sync_standards_from_prod.mjs",

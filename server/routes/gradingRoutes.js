@@ -77,7 +77,7 @@ router.post('/grade-subjective', async (req, res) => {
   let standardsAnalysis = '';
   if (progressId) {
     standardsAnalysis = await analyzeStandardsBeforeTask(progressId, question || '주관식 채점', dynamicGradingStandards, 'grading');
-    const modelUpper = (req.body.preferredModel || globalPreferredModel || 'gemini-3.1-flash-lite').toUpperCase();
+    const modelUpper = (req.body.preferredModel || globalPreferredModel || 'gemini-3.5-flash-lite').toUpperCase();
     updateProgress(progressId, 1, `1단계: ${modelUpper} 엔진으로 제출 답안 채점 중...`, 20);
   }
 

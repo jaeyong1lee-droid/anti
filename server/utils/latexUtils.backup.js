@@ -377,13 +377,86 @@ export function balanceMathBraces(str) {
   return result;
 }
 
+const healCorruptedKatexHtml = (text) => {
+  if (!text || typeof text !== 'string') return text;
+  
+  let cleaned = text.replace(/\u200b/g, '');
+  
+  const cleanAndSplitFormula = (formula) => {
+    let clean = (formula || '').trim().replace(/\\+/g, '\\').replace(/₩/g, '\\');
+    // Decode basic HTML entities inside formula before parsing/splitting
+    clean = clean.replace(/&#x27;/g, "'")
+                 .replace(/&quot;/g, '"')
+                 .replace(/&lt;/g, '<')
+                 .replace(/&gt;/g, '>')
+                 .replace(/&amp;/g, '&');
+
+    clean = balanceMathBraces(clean);
+                 
+    // Split by any HTML tags (e.g. </div>, <br>, <a/>)
+    const parts = clean.split(/(?:<[^>]+?>)/gi);
+    return parts.map(p => {
+      const trimmed = balanceMathBraces(p.trim());
+      if (!trimmed) return '';
+      // Math formula check: has math operators/symbols, and is not pure Korean text
+      const isMath = /[\+\-\*\/=_\\^]/.test(trimmed) && !/^[가-힣\s.,:;!]+$/.test(trimmed);
+      const hasKorean = /[가-힣]/.test(trimmed);
+      if (isMath && !hasKorean) {
+        return ` __MATH_FORMULA_START__${trimmed}__MATH_FORMULA_END__ `;
+      } else {
+        return ` ${trimmed} `;
+      }
+    }).join(' ');
+  };
+
+  // 1. Match any annotation block (normal or space-corrupted) and extract formula
+  const annotationRegex = /<\s*annotation[a-z]*\b(?:[^"'>]|"[^"]*"|'[^']*')*?>([\s\S]*?)<\s*\/\s*annotation[a-z]*\s*>/gi;
+  cleaned = cleaned.replace(annotationRegex, (match, formula) => {
+    return cleanAndSplitFormula(formula);
+  });
+  
+  // 1.5. Match any KaTeX error blocks and extract formula from title attribute
+  const errorSpanRegex = /<\s*span\b(?:[^"'>]|"[^"]*"|'[^']*')*?\bclass=["'][^"']*\bkatex-error\b[^"']*["'](?:[^"'>]|"[^"]*"|'[^']*')*?>([\s\S]*?)<\s*\/\s*span\s*>/gi;
+  cleaned = cleaned.replace(errorSpanRegex, (match, errContent) => {
+    const titleMatch = match.match(/title=["']KaTeX error:\s*([\s\S]*?)["']/i);
+    if (titleMatch && titleMatch[1]) {
+      let msg = titleMatch[1];
+      const posIdx = msg.indexOf('at position ');
+      if (posIdx !== -1) {
+        const colonAfter = msg.indexOf(':', posIdx);
+        if (colonAfter !== -1) {
+          msg = msg.substring(colonAfter + 1);
+        }
+      }
+      msg = msg.replace(/^\s*\.\.\.\s*/, '');
+      msg = balanceMathBraces(msg.trim());
+      if (!msg) return '';
+      return cleanAndSplitFormula(msg);
+    }
+    let cleanedErr = balanceMathBraces(errContent.trim());
+    if (!cleanedErr) return '';
+    return cleanedErr;
+  });
+  
+  // 2. Strip all KaTeX-related HTML tags (allowing space corruption suffixes and prefix spaces)
+  // Using quote-safe regex to prevent matching '>' inside attribute values
+  const katexTagsRegex = /<\s*\/?\s*(?:div|span|annotation|semantics|math|mrow|msub|msup|mfrac|msqrt|msubsup|mo|mi|mn|mtext|mspace|mstyle|mtd|mtr|mtable)[a-z]*\b(?:[^"'>]|"[^"]*"|'[^']*')*?>/gi;
+  cleaned = cleaned.replace(katexTagsRegex, '');
+  
+  // 3. Restore formula markers with standard dollar signs
+  cleaned = cleaned.replace(/__MATH_FORMULA_START__([\s\S]*?)__MATH_FORMULA_END__/g, (match, formula) => {
+    return ` $${formula}$ `;
+  });
+  
+  return cleaned;
+};
 
 // 3. 메인 레이아웃 및 수식 복구 마스터 함수
 export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = null) {
   if (!text || typeof text !== 'string') return text;
 
   text = text.replace(/₩/g, '\\');
-  let processed = text;
+  let processed = healCorruptedKatexHtml(text);
   // Normalize dashes (en-dash, em-dash, math minus) to standard hyphens
   processed = processed.replace(/[–—−]/g, '-');
 
@@ -396,14 +469,41 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   // [Self-Healing] Fix duplicated variable right after fraction (e.g. \frac{1}{\beta} \beta -> \frac{1}{\beta})
   processed = processed.replace(/\\(d?frac)\{([^{}\n]+)\}\s*\{\s*([^{}\n]+?)\s*\}\s*\\?\3\b/g, '\\$1{$2}{$3}');
 
-  
+  // [Self-Healing] Fix missing backslash and split subscripts for \Delta t (e.g. s_{t- Delta t}, s_{t-} \Delta t, s_{t-_} \Delta t -> $s_{t-\Delta t}$)
+  processed = processed.replace(/(\$?)([a-zA-Z0-9_']+)_\{([a-zA-Z0-9]+)-_?\}\$?\s*\$?\\?\s*Delta\s*t\$?/gi, (m, p0, p1, p2) => {
+    return `$${p1}_{${p2}-\\Delta t}$`;
+  });
+  processed = processed.replace(/([a-zA-Z0-9_']+)_\{([a-zA-Z0-9]+)-\s*\$?\\?\s*Delta\s*t\$?\}/gi, '$1_{$2-\\Delta t}');
+  processed = processed.replace(/([sS])_\{t-\s*Delta\s*t\}/gi, '$1_{t-\\Delta t}');
+
   // [Self-Healing] Fix split dollar signs inside brace subscripts (e.g. s_{t- $\Delta t$} or s_{t- $\Delta$ t} -> $s_{t-\Delta t}$)
   processed = processed.replace(/(\b\\?[a-zA-Z0-9_']+_\{\s*[^{}\$\n]*)\$([^\$\n]+)\$([^{}\$\n]*\})/g, (match, p1, math, p3) => {
     return `$${p1}${math}${p3}$`;
   });
 
-  
-  
+  // [Self-Healing] Convert plain English geotechnical math variables (e.g. sigma_v0 ', sigma_v, tau, etc.) to standard LaTeX ($...$)
+  const plainGreekLetters = 'sigma|tau|phi|gamma|alpha|beta|theta|epsilon|Delta';
+  const plainGreekRegex = new RegExp(`(?<![\\\\a-zA-Z$])(${plainGreekLetters})(?:\\s*')?(?:_([a-zA-Z0-9{}]+))?(?:\\s*')?(?![a-zA-Z0-9$_])`, 'g');
+  processed = processed.replace(plainGreekRegex, (match, name, sub) => {
+    let latexName = '\\' + name.toLowerCase();
+    if (name === 'Delta') latexName = '\\Delta';
+    
+    const hasPrime = match.includes("'");
+    let latexStr = latexName;
+    if (sub) {
+      const cleanSub = sub.length > 1 ? `{${sub}}` : sub;
+      latexStr += `_${cleanSub}`;
+    }
+    if (hasPrime) {
+      latexStr += "'";
+    }
+    return `$${latexStr}$`;
+  });
+
+  // [Self-Healing] Restore corrupted micro-unit symbols (\text{W유}m -> \mu m, W유m -> \mu m, W유 -> \mu)
+  processed = processed.replace(/\\text\{\s*W유\s*\}m?/gi, '\\mu m')
+                       .replace(/W유m?/gi, '\\mu m');
+
   // [Self-Healing] Remove space between backslash and Greek commands (including trailing alphanumeric characters)
   const greekSubscriptFullLetters = 'alpha|beta|gamma|sigma|tau|phi|theta|epsilon|pi|delta|omega|mu|lambda|psi|rho|eta|nu|xi|zeta|chi|upsilon|kappa';
   const spaceRegex = new RegExp(`\\\\\\s+(${greekSubscriptFullLetters})([a-zA-Z0-9]*)\\b`, 'gi');
@@ -426,7 +526,40 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   // [Self-Healing] Strip KaTeX-unsupported MathJax \pu{...} commands (renders red in KaTeX)
   processed = processed.replace(/\\pu\s*\{([^}]+)\}/gi, '$1');
 
-  
+  // [🚨 KaTeX HTML 블록 최우선 복원 필터 🚨]
+  // 텍스트 내부에 들어있는 KaTeX HTML 사전 렌더링 블록을 감지하여
+  // 그 내부에 들어있는 원본 LaTeX 수식 문자열(annotation encoding="application/x-tex")을 추출한 뒤,
+  // 일반 Markdown 수식($...$)으로 즉시 변환하여 토큰화 오작동 및 텍스트 쪼개짐을 완벽히 방지합니다.
+  try {
+    const rawKatexHtmlRegex = /<(div|span)\b[^>]*?class=["'][^"']*\b(?:formula-scroll-container|katex|inline|katex-display|katex-error)\b[^"']*["'][\s\S]*?<\/\s*\1\s*>/gi;
+    processed = processed.replace(rawKatexHtmlRegex, (htmlBlock) => {
+      const match = htmlBlock.match(/<annotation[^>]*?encoding=["']?application\/x-tex["']?[^>]*?>([\s\S]*?)<\/annotation>/i);
+      if (match && match[1]) {
+        const formula = match[1].trim().replace(/\\+/g, '\\');
+        return ` $${formula}$ `;
+      }
+      const errMatch = htmlBlock.match(/title=["']KaTeX error:\s*([\s\S]*?)["']/i);
+      if (errMatch && errMatch[1]) {
+        const formula = errMatch[1].trim().replace(/\\+/g, '\\');
+        return ` $${formula}$ `;
+      }
+      return '';
+    });
+
+    // 만약 이미 태그 사이에 이상한 띄어쓰기가 삽입되어 망가진 HTML 블록이 있다면 이것도 함께 복원
+    const spaceCorruptedKatexRegex = /<\s*(div|span)\b[\s\S]*?class\s*=\s*["'][^"']*\b(?:formula-scroll-container|katex|inline|katex-display|katex-error)\b[^"']*["'][\s\S]*?<\/\s*\1\s*>/gi;
+    processed = processed.replace(spaceCorruptedKatexRegex, (htmlBlock) => {
+      const match = htmlBlock.match(/<\s*annotation[^>]*encoding\s*=\s*["']?application\/x-tex["']?[^>]*?>([\s\S]*?)<\/\s*annotation\s*>/i);
+      if (match && match[1]) {
+        const formula = match[1].trim().replace(/\\+/g, '\\');
+        return ` $${formula}$ `;
+      }
+      return '';
+    });
+  } catch (e) {
+    console.warn('[healLatexFormulas] Failed to pre-process KaTeX HTML block:', e);
+  }
+
   processed = healInvertedDelimiters(processed);
 
   // Convert Greek letters with numbers (e.g. sigma1, sigma_1 -> \sigma_1)
@@ -484,11 +617,202 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   // Parse root patterns
   processed = replaceRoots(processed);
 
-  
+  // Restore LaTeX commands corrupted by JSON escape sequence parsing (e.g. \neq -> \x0a + eq)
+  processed = processed.replace(/\x0a\s*eq\b/g, '\\neq')
+                       .replace(/\x0a\s*e\b/g, '\\ne')
+                       .replace(/\x0a\s*u\b/g, '\\nu')
+                       .replace(/\x0a\s*abla\b/g, '\\nabla')
+                       .replace(/\x0a\s*earrow\b/g, '\\nearrow')
+                       .replace(/\x0a\s*eg\b/g, '\\neg')
+                       .replace(/\x0a\s*i\b/g, '\\ni')
+                       .replace(/\x0a\s*otin\b/g, '\\notin')
+                       .replace(/\x0a\s*geq\b/g, '\\ngeq')
+                       .replace(/\x0a\s*leq\b/g, '\\nleq')
+                       .replace(/\x0a\s*sim\b/g, '\\nsim')
+                       .replace(/\x0a\s*cong\b/g, '\\ncong')
+                       .replace(/\x0a\s*parallel\b/g, '\\nparallel')
+                       .replace(/\x0a\s*ewline\b/g, '\\newline')
+                       .replace(/\x0a\s*oindent\b/g, '\\noindent');
+
+  processed = processed.replace(/\x09\s*heta\b/g, '\\theta')
+                       .replace(/\x09\s*au\b/g, '\\tau')
+                       .replace(/\x09\s*an\b/g, '\\tan')
+                       .replace(/\x09\s*imes\b/g, '\\times')
+                       .replace(/\x09\s*ilde\b/g, '\\tilde')
+                       .replace(/\x09\s*ext\b/g, '\\text')
+                       .replace(/\x09\s*frac\b/g, '\\tfrac')
+                       .replace(/\x09\s*riangle\b/g, '\\triangle')
+                       .replace(/\x09\s*op\b/g, '\\top')
+                       .replace(/\x09\s*o\b/g, '\\to');
+
+  processed = processed.replace(/\x0d\s*ho\b/g, '\\rho')
+                       .replace(/\x0d\s*ight\b/g, '\\right')
+                       .replace(/\x0d\s*ule\b/g, '\\rule')
+                       .replace(/\x0d\s*angle\b/g, '\\rangle')
+                       .replace(/\x0d\s*ightarrow\b/g, '\\rightarrow');
+
   // [Self-Healing] (포아송비 강제 u/v -> \nu 오치환 로직 완전 삭제 - 간극수압 u 보존)
 
-  
-  
+  // [🚨 가독성 수동 개선 필터 (ReDoS 예방 루프 방식) 🚨]
+  // 등호나 연산자, 분수가 포함된 수식($...$)들이 콤마나 개행 없이 다닥다닥 붙어 나열되거나, 중간에 짧은 설명만 끼고 나열되는 경우 강제로 단락 줄바꿈(\n\n)을 주입합니다.
+  const formatConsecutiveFormulas = (text) => {
+    if (!text || typeof text !== 'string') return text;
+    const parts = text.split('$');
+    if (parts.length < 3) return text;
+    
+    const isRelation = [];
+    for (let i = 1; i < parts.length; i += 2) {
+      const f = parts[i];
+      isRelation[i] = f.includes('=') || f.includes('<') || f.includes('>');
+    }
+    
+    const startsWithKoreanParticle = (nextText) => {
+      if (!nextText) return false;
+      const trimmed = nextText.trim();
+      // 닫는 괄호로 시작하면 수식이 괄호 안에 포함된 것이므로 블록 승격 방지
+      if (/^[)\]】」』》]/.test(trimmed)) return true;
+      return /^(?:일\s*때|이므로|이고|이며|와\b|과\b|은\b|는\b|이\b|가\b|을\b|를\b|의\b|에\b|로\b|으로\b|라\s*하면|라\s*할\s*때|에\s*대입|을\s*대입|를\s*대입|의\s*값|을\s*구하면|를\s*구하면|에서\b|보다\b|처럼\b|하고\b|하며\b|의\s*형태|으로\s*정의)/.test(trimmed);
+    };
+
+    const isSentenceEnded = (prevText) => {
+      if (!prevText) return true;
+      const trimmed = prevText.trim();
+      if (trimmed === '') return true;
+      return /[.!?\n]$/.test(trimmed) || /(?:다|요|음|임|함|것|정리됩니다|대입합니다|구합니다|얻어집니다|나타납니다|설정합니다)\.?$/.test(trimmed);
+    };
+
+    const hasBalancedParentheses = (str) => {
+      let p = 0, b = 0, c = 0;
+      for (let char of str) {
+        if (char === '(') p++;
+        else if (char === ')') p--;
+        else if (char === '[') b++;
+        else if (char === ']') b--;
+        else if (char === '{') c++;
+        else if (char === '}') c--;
+      }
+      return p === 0 && b === 0 && c === 0;
+    };
+
+    const elevateToDisplay = new Array(parts.length).fill(false);
+
+    let idx = 1;
+    while (idx < parts.length) {
+      if (isRelation[idx]) {
+        const group = [idx];
+        let nextIdx = idx + 2;
+        while (nextIdx < parts.length) {
+          const separator = parts[nextIdx - 1];
+          const trimmedSep = separator.trim();
+          const isSepSpaceOrComma = trimmedSep === '' || trimmedSep === ',';
+          const isSepShortParenthesis = trimmedSep.startsWith('(') && trimmedSep.endsWith(')') && trimmedSep.length <= 20;
+          // 단위+쉼표 구분자 (예: "kPa,", "m,") → 연속 관계식 그룹으로 병합 허용
+          const isSepUnitComma = trimmedSep.length > 0 && trimmedSep.length <= 15 && /,$/.test(trimmedSep) && !/[\uAC00-\uD7A3]/.test(trimmedSep);
+          
+          if (isRelation[nextIdx] && (isSepSpaceOrComma || isSepShortParenthesis || isSepUnitComma)) {
+            group.push(nextIdx);
+            nextIdx += 2;
+          } else {
+            break;
+          }
+        }
+
+        const lastFormulaIdx = group[group.length - 1];
+        const textAfterGroup = parts[lastFormulaIdx + 1] || '';
+        const isFollowedByParticle = startsWithKoreanParticle(textAfterGroup);
+
+        if (!isFollowedByParticle) {
+          // Check if the overall group parentheses are balanced
+          let combinedFormulaText = '';
+          group.forEach(gIdx => {
+            combinedFormulaText += parts[gIdx];
+          });
+          const isGroupBalanced = hasBalancedParentheses(combinedFormulaText);
+
+          if (isGroupBalanced) {
+            if (group.length > 1) {
+              // 그룹 내 모든 수식이 단순 산술식이면 블록 승격 방지
+              const allSimple = group.every(gIdx => !/\\[a-zA-Z]/.test(parts[gIdx]));
+              if (!allSimple) {
+                group.forEach(gIdx => {
+                  elevateToDisplay[gIdx] = true;
+                });
+              }
+            } else {
+              const textBefore = parts[idx - 1] || '';
+              const textAfter = parts[idx + 1] || '';
+              const isSelfBalanced = hasBalancedParentheses(parts[idx]);
+              // 단순 산술식(LaTeX 명령어 없는 숫자/연산자만)은 인라인 유지 (블록 승격 방지)
+              // 예: "1.65 - 1.2 = 0.45", "0.45/1.5 = 0.3" 등
+              const isSimpleArithmetic = !/\\[a-zA-Z]/.test(parts[idx]);
+              // 앞 텍스트가 여는 괄호로 끝나면 괄호 내부 수식이므로 블록 승격 방지
+              const isInsideParens = /[(\[]\s*$/.test(textBefore.trim());
+              if (isSelfBalanced && isSentenceEnded(textBefore) && !startsWithKoreanParticle(textAfter) && !isSimpleArithmetic && !isInsideParens) {
+                elevateToDisplay[idx] = true;
+              }
+            }
+          }
+        }
+        idx = nextIdx;
+      } else {
+        idx += 2;
+      }
+    }
+    
+    let rebuilt = parts[0];
+    for (let i = 1; i < parts.length; i += 2) {
+      let formula = balanceMathBraces(parts[i]);
+      let plainText = parts[i + 1];
+      
+      const isElevated = elevateToDisplay[i];
+      const nextElevated = elevateToDisplay[i + 2];
+      
+      if (plainText !== undefined && nextElevated) {
+        const trimmed = plainText.trim();
+        if (trimmed.startsWith(',')) {
+          formula = formula.trim() + ',';
+          plainText = plainText.replace(/^\s*,\s*/, '');
+        }
+      }
+      
+      if (isElevated) {
+        // 블록 수식 앞에 텍스트가 있으면 줄바꿈을 삽입하여 한글 줄 감지와 분리
+        if (rebuilt && rebuilt.length > 0 && !rebuilt.endsWith('\n')) {
+          rebuilt += '\n\n';
+        }
+        rebuilt += `$$${formula}$$`;
+      } else {
+        rebuilt += `$${formula}$`;
+      }
+      
+      if (plainText !== undefined) {
+        if (isElevated || nextElevated) {
+          const trimmed = plainText.trim();
+          rebuilt += trimmed ? `\n${trimmed}\n` : '\n';
+        } else {
+          rebuilt += plainText;
+        }
+      }
+    }
+    return rebuilt;
+  };
+  processed = formatConsecutiveFormulas(processed);
+
+  // [🚨 극단적 비상 복구 필터 🚨]
+  // 이전 버전의 깨진 정규식에 의해 이미 오염되어 DB/세션에 들어간 KaTeX HTML 블록 복원
+  processed = processed.replace(
+    /<\s*(div|span)class\b[\s\S]*?<\/\s*\1\s*>/gi,
+    (htmlBlock) => {
+      const match = htmlBlock.match(/<\s*annotationencoding[^>]*>\s*([\s\S]*?)\s*<\/\s*annotation\s*>/i) ||
+                    htmlBlock.match(/<annotation[^>]*?encoding=["']?application\/x-tex["']?[^>]*?>([\s\S]*?)<\/annotation>/i);
+      if (match && match[1]) {
+        const formula = match[1].trim().replace(/\\+/g, '\\');
+        return ` $${formula}$ `;
+      }
+      return '';
+    }
+  );
+
   if (!isNested) {
     processed = htmlTableToMarkdown(processed, null);
     processed = wrapMarkdownTables(processed);
@@ -517,7 +841,23 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   processed = processed.replace(/(\\quad\s*\\text\{[a-zA-Z]+\}|\b[a-zA-Z]+\b|\b\\text\{[a-zA-Z]+\})\s*\$\$(\s*_[a-zA-Z0-9])/g, '$$$$ $1$2');
   processed = processed.replace(/(\\quad\s*\\text\{[a-zA-Z]+\}|\b[a-zA-Z]+\b|\b\\text\{[a-zA-Z]+\})\s*\$(\s*_[a-zA-Z0-9])/g, '$$ $1$2');
 
-  
+  // Also handle already space-corrupted "eq" symbols (e.g. "k_x eq k_z" -> "k_x \neq k_z", "k_xeqk_z" -> "k_x \neq k_z")
+  const isMathVariable = (str) => {
+    if (/^[a-zA-Z0-9]$/.test(str)) return true;
+    if (/[\\_^]/.test(str)) return true;
+    if (str.startsWith('\\')) return true;
+    return false;
+  };
+  processed = processed.replace(/\b([a-zA-Z0-9_\\'\^]+)\s*eq\s*([a-zA-Z0-9_\\'\^]+)\b/g, (match, p1, p2, offset, string) => {
+    if (string[offset - 1] === '\\') {
+      return match;
+    }
+    if (isMathVariable(p1) && isMathVariable(p2)) {
+      return `${p1} \\neq ${p2}`;
+    }
+    return match;
+  });
+
   // 블록 수식($$) 바로 뒤에 공백이나 줄바꿈을 포함하여 단위가 올 경우, 해당 단위를 수식 블록 안의 \text{}로 병합하여 줄바꿈 방지
   processed = processed.replace(/\$\$\s*([\s\S]*?)\s*\$\$\s*(\n*)\s*(kN\/m\\\^2|kN\/m\^2|kN\/m²|kN\/m\\\^3|kN\/m\^3|kN\/m³|t\/m\\\^3|t\/m\^3|t\/m³|kg\/cm\\\^2|kg\/cm\^2|kg\/cm²|kPa|MPa|kN|N|m|cm|mm|m\\\^2|m\^2|m²|m\\\^3|m\^3|m³|g\/cm\\\^3|g\/cm\^3|g\/cm³|kg\/m\\\^3|kg\/m\^3|kg\/m³|%)(?![a-zA-Z0-9가-힣])/gi, (match, math, newlines, unit) => {
     let katexUnit = unit.replace(/\\/g, '');
@@ -877,7 +1217,25 @@ export function healQuizQuestionObject(q) {
         }
       }
 
+      // 1. 배율 왜곡(10배/100배 스케일링 오염) 복원 처리
+      const optNums = q.options.map(o => parseFloat(String(o || '').replace(/[^0-9.-]/g, ''))).filter(n => !isNaN(n));
+      const ansNum = parseFloat(String(q.answer || '').replace(/[^0-9.-]/g, ''));
+      if (optNums.length === q.options.length && !isNaN(ansNum) && ansNum > 0 && ansNum < 1) {
+        const hasScaledMatch = optNums.some(n => Math.abs(n - ansNum * 100) < 1e-5 || Math.abs(n - ansNum * 10) < 1e-5);
+        const allLargeOrZero = optNums.every(n => n === 0 || n >= 1);
+        if (hasScaledMatch && allLargeOrZero) {
+          console.log(`[HealMC] Detected scaled options. Restoring options from ${JSON.stringify(q.options)} using answer ${q.answer}`);
+          q.options = q.options.map(opt => {
+            const num = parseFloat(String(opt || '').replace(/[^0-9.-]/g, ''));
+            if (isNaN(num)) return opt;
+            const restoredVal = (num / 100).toFixed(2);
+            return restoredVal;
+          });
+          console.log(`[HealMC] Restored options: ${JSON.stringify(q.options)}`);
+        }
+      }
 
+      const hasExactMatch = q.options.includes(q.answer);
       if (!hasExactMatch) {
         let bestOpt = null;
         let maxScore = -1;
@@ -944,7 +1302,8 @@ export function healQuizQuestionObject(q) {
     const isCalcQ = !isExplicitCompOrTheory && (
       q.type === '주관식 (계산)' || 
       q.subtype === '계산' || 
-      hasCalcHeaders
+      hasCalcHeaders ||
+      (/Terzaghi|기초|지지력|허용하중|침투유량/i.test(qText) && /산정|계산|구하시오/i.test(qText))
     );
 
     if (isCalcQ) {
@@ -1032,7 +1391,11 @@ export function healQuizQuestionObject(q) {
           if (cleanH.includes(':')) cleanH = cleanH.split(':')[0].trim();
           if (cleanH.includes('：')) cleanH = cleanH.split('：')[0].trim();
 
-
+          if (/보고서\s*특성\s*1|특성\s*1/i.test(cleanH)) {
+            cleanH = '주요 핵심 역학/해석 특성';
+          } else if (/보고서\s*특성\s*2|특성\s*2/i.test(cleanH)) {
+            cleanH = '대조 관련 공법 및 파괴기준';
+          }
           return cleanH;
         });
       }
@@ -1050,7 +1413,23 @@ export function healQuizQuestionObject(q) {
         });
       }
     } else if (!q.tableData || !Array.isArray(q.tableData.rows) || q.tableData.rows.length === 0) {
-
+      const isComp = (q.question || '').includes('비교') || (q.question || '').includes('차이점');
+      if (isComp) {
+        const titleMatch = (q.question || '').match(/([가-힣A-Za-z0-9]+)\s*(?:와|과|및|대비|비교)/);
+        const colA = titleMatch ? `${titleMatch[1]} 특성` : '비교 대상 1';
+        const colB = titleMatch ? `${titleMatch[1]} 대비` : '비교 대상 2';
+        q.tableData = {
+          headers: ["구분 항목", colA, colB],
+          rows: [
+            ["핵심 메커니즘 특성", "[INPUT_1]", "확장 전단 파괴 및 변형 고려"],
+            ["실무 적용 및 한계 범위", "기초 저면 하부 자중 중량 위주 고려", "[INPUT_2]"]
+          ]
+        };
+        q.answers = q.answers || {
+          INPUT_1: "전반전단파괴 기반 3개 영역 한계 평형 이론",
+          INPUT_2: "지표면 파괴면 확장 및 전단강도 직접 고려"
+        };
+      }
       if (q.tableData && Array.isArray(q.tableData.headers)) {
         q.tableData.headers = q.tableData.headers.map((h, hIdx) => {
           if (hIdx === 0 || typeof h !== 'string') return h;
@@ -1064,7 +1443,11 @@ export function healQuizQuestionObject(q) {
           if (parenMatch) {
             cleanH = parenMatch[1].trim();
           }
-
+          if (/특성\s*1/i.test(cleanH)) {
+            cleanH = '주 공법/이론 (해당 토픽)';
+          } else if (/특성\s*2/i.test(cleanH)) {
+            cleanH = '대조 관련 공법/이론';
+          }
           return cleanH;
         });
       }

@@ -89,6 +89,21 @@ import {
   ArrowDown
 } from 'lucide-react';
 
+const MODEL_DISPLAY_NAMES = {
+  'gemini-3.5-flash-lite': '3.5 Lite',
+  'gemini-3.6-flash': '3.6 Flash',
+  'gemini-3.1-flash-lite': '3.1 Lite',
+  'gemini-3.5-flash': '3.5 Flash',
+  'gemini-3.0-flash': '3.0 Flash',
+  'gemini-2.5-flash': '2.5 Flash'
+};
+
+function getModelDisplayName(modelName) {
+  if (!modelName) return '3.5 Flash';
+  return MODEL_DISPLAY_NAMES[modelName] || modelName;
+}
+
+
 // 공식 암기 팁 텍스트에서 연상법: 및 중복 수식($, $)을 필터링하여 순수 암기 문구만 노출하는 헬퍼 함수
 const cleanMemorizationTipText = (tip) => {
   if (!tip) return '';
@@ -3641,12 +3656,11 @@ export default function App() {
                   const match = data.message.match(/([a-zA-Z0-9.-]+\s*엔진|[a-zA-Z0-9.-]+\s*Model|GEMINI-[a-zA-Z0-9.-]+|GPT-[a-zA-Z0-9.-]+)/i);
                   if (match) {
                     modelName = match[1].replace(/\s*엔진/i, '').trim().toLowerCase();
-                  } else if (data.message.toLowerCase().includes('gemini-3.5-flash')) {
-                    modelName = 'gemini-3.5-flash';
-                  } else if (data.message.toLowerCase().includes('gemini-3.1-flash-lite')) {
-                    modelName = 'gemini-3.1-flash-lite';
-                  } else if (data.message.toLowerCase().includes('gemini-3.0-flash')) {
-                    modelName = 'gemini-3.0-flash';
+                  } else {
+                    const fallbackMatch = data.message.match(/(gemini-[0-9.]+-flash(?:-lite)?)/i);
+                    if (fallbackMatch) {
+                      modelName = fallbackMatch[1].toLowerCase();
+                    }
                   }
 
                   return {
@@ -18923,9 +18937,7 @@ ${itemsStr}
                   className="flex items-center justify-center px-3 py-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 hover:border-emerald-500/40 transition-all active:scale-98 text-[11px] font-black cursor-pointer shadow-md select-none"
                 >
                   <span>
-                    {preferredModel === 'gemini-3.5-flash-lite' ? '3.5 Lite' :
-                     preferredModel === 'gemini-3.6-flash' ? '3.6 Flash' :
-                     preferredModel === 'gemini-3.1-flash-lite' ? '3.1 Lite' : '3.5 Flash'}
+                    {getModelDisplayName(preferredModel)}
                   </span>
                 </button>
 
@@ -19673,9 +19685,7 @@ ${itemsStr}
                   title="Gemini AI API 모델 선택 (3.5 Lite -> 3.6 Flash -> 3.1 Lite -> 3.5 Flash)"
                 >
                   <span>
-                    API: {preferredModel === 'gemini-3.5-flash-lite' ? '3.5 Lite' :
-                          preferredModel === 'gemini-3.6-flash' ? '3.6 Flash' :
-                          preferredModel === 'gemini-3.1-flash-lite' ? '3.1 Lite' : '3.5 Flash'}
+                    API: {getModelDisplayName(preferredModel)}
                   </span>
                 </button>
               )}
@@ -19855,9 +19865,7 @@ ${itemsStr}
                   title="Gemini AI API 모델 선택 (3.5 Lite -> 3.6 Flash -> 3.1 Lite -> 3.5 Flash)"
                 >
                   <span className="whitespace-nowrap">
-                    API: {preferredModel === 'gemini-3.5-flash-lite' ? '3.5 Lite' :
-                          preferredModel === 'gemini-3.6-flash' ? '3.6 Flash' :
-                          preferredModel === 'gemini-3.1-flash-lite' ? '3.1 Lite' : '3.5 Flash'}
+                    API: {getModelDisplayName(preferredModel)}
                   </span>
                 </button>
               )}
@@ -21360,9 +21368,7 @@ ${itemsStr}
                           className="px-2.5 py-1 text-[10px] font-black rounded-lg bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 hover:text-white border border-emerald-500/40 transition-all cursor-pointer active:scale-95 shadow-md select-none"
                           title="Gemini AI API 모델 선택 (3.5 Lite -> 3.6 Flash -> 3.1 Lite -> 3.5 Flash)"
                         >
-                          {preferredModel === 'gemini-3.5-flash-lite' ? '3.5 Lite' :
-                           preferredModel === 'gemini-3.6-flash' ? '3.6 Flash' :
-                           preferredModel === 'gemini-3.1-flash-lite' ? '3.1 Lite' : '3.5 Flash'}
+                          {getModelDisplayName(preferredModel)}
                         </button>
                         <button
                           onClick={async () => { 
@@ -21470,9 +21476,7 @@ ${itemsStr}
                     >
                       <span className="text-emerald-300">⚡</span>
                       <span>
-                        {preferredModel === 'gemini-3.5-flash-lite' ? '3.5 Lite' :
-                         preferredModel === 'gemini-3.6-flash' ? '3.6 Flash' :
-                         preferredModel === 'gemini-3.1-flash-lite' ? '3.1 Lite' : '3.5 Flash'}
+                        {getModelDisplayName(preferredModel)}
                       </span>
                     </button>
                     <button
@@ -25092,9 +25096,7 @@ ${itemsStr}
                     >
                       <span className="text-emerald-300">⚡</span>
                       <span>
-                        {preferredModel === 'gemini-3.5-flash-lite' ? '3.5 Lite' :
-                         preferredModel === 'gemini-3.6-flash' ? '3.6 Flash' :
-                         preferredModel === 'gemini-3.1-flash-lite' ? '3.1 Lite' : '3.5 Flash'}
+                        {getModelDisplayName(preferredModel)}
                       </span>
                     </button>
                     <button
@@ -25526,9 +25528,7 @@ ${itemsStr}
                         >
                           <span className="text-emerald-300 flex-shrink-0">⚡</span>
                           <span>
-                            {preferredModel === 'gemini-3.5-flash-lite' ? '3.5 Lite' :
-                             preferredModel === 'gemini-3.6-flash' ? '3.6 Flash' :
-                             preferredModel === 'gemini-3.1-flash-lite' ? '3.1 Lite' : '3.5 Flash'}
+                            {getModelDisplayName(preferredModel)}
                           </span>
                         </button>
                         <button

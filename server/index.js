@@ -231,7 +231,7 @@ async function startServer() {
   await ensureDbInitialized();
   if (!process.env.VERCEL) {
     startBackupScheduler();
-    app.listen(PORT, () => {
+    app.listen(PORT, '0.0.0.0', () => {
       console.log(`================================================`);
       console.log(`  Antigravity Server is running on port ${PORT}`);
       console.log(`  Mode: ${process.env.NODE_ENV || 'development'}`);

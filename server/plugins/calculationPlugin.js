@@ -407,52 +407,7 @@ export function healCalcQuestion(q) {
   const isEmpty = rows.length === 0;
   if (!isEmpty && !hasGenericRows) return q;
 
-  const qText = q.question || '';
-  const isTerzaghi = /Terzaghi|기초|지지력|허용하중/i.test(qText);
-  const hasAB = /\(a\)/i.test(qText) || /조건\s*\(?a\)?/i.test(qText);
-
-  if (isTerzaghi && hasAB) {
-    q.tableData = {
-      headers: ["구하는 항목", "계산 결과 및 답안"],
-      rows: [
-        ["(1) 조건 (a)의 허용지지력 $q_{all}$(a) (kN/m\u00b2)", "[INPUT_1]"],
-        ["(2) 조건 (a)의 허용하중 $P_{all}$(a) (kN)", "[INPUT_2]"],
-        ["(3) 조건 (b)의 허용지지력 $q_{all}$(b) (kN/m\u00b2)", "[INPUT_3]"],
-        ["(4) 조건 (b)의 허용하중 $P_{all}$(b) (kN)", "[INPUT_4]"]
-      ]
-    };
-    q.answers = {
-      INPUT_1: "조건(a) 허용지지력 산정 공식 및 계산값",
-      INPUT_2: "조건(a) 허용하중 산정 공식 및 계산값",
-      INPUT_3: "조건(b) 허용지지력 산정 공식 및 계산값",
-      INPUT_4: "조건(b) 허용하중 산정 공식 및 계산값"
-    };
-  } else if (/댐|유선망|침투|간극수압|53-02|53_02/i.test(qText)) {
-    q.calcItems = [
-      { id: 'INPUT_1', label: '(1) 단위폭당 침투수량 $q$ (m³/s/m)' },
-      { id: 'INPUT_2', label: '(2) A지점 간극수압 $u_A$ (kPa)' },
-      { id: 'INPUT_3', label: '(3) B지점 간극수압 $u_B$ (kPa)' },
-      { id: 'INPUT_4', label: '(4) C지점 간극수압 $u_C$ (kPa)' },
-      { id: 'INPUT_5', label: '(5) 출구 유출 동수경사 $i_{exit}$' }
-    ];
-    q.tableData = {
-      headers: ["구하는 항목", "계산 결과 및 답안"],
-      rows: [
-        ["(1) 단위폭당 침투수량 $q$ (m³/s/m)", "[INPUT_1]"],
-        ["(2) A지점 간극수압 $u_A$ (kPa)", "[INPUT_2]"],
-        ["(3) B지점 간극수압 $u_B$ (kPa)", "[INPUT_3]"],
-        ["(4) C지점 간극수압 $u_C$ (kPa)", "[INPUT_4]"],
-        ["(5) 출구 유출 동수경사 $i_{exit}$", "[INPUT_5]"]
-      ]
-    };
-    q.answers = {
-      INPUT_1: "2.0 * 10^-5 m³/s/m (또는 0.02 m³/s/m)",
-      INPUT_2: "220.7 kPa (상류 A지점)",
-      INPUT_3: "196.2 kPa (중앙 B지점)",
-      INPUT_4: "171.7 kPa (하류 C지점)",
-      INPUT_5: "0.25 ~ 0.50 (출구 동수경사)"
-    };
-  } else if (isEmpty || hasGenericRows) {
+  if (isEmpty || hasGenericRows) {
     q.calcItems = [
       { id: 'INPUT_1', label: '(1) 수치 산출 항목 1' },
       { id: 'INPUT_2', label: '(2) 수치 산출 항목 2' }
@@ -474,10 +429,7 @@ export function healCalcQuestion(q) {
 
 function calcFallbackQuestions(title, keywords) {
   const cleanTitle = title || '공학 토픽';
-  const isSeepage = /댐|덤|유선망|침투|53/i.test(cleanTitle);
-
-  if (isSeepage) {
-    return [
+  return [
       {
         type: '주관식 (계산)',
         subtype: '계산',

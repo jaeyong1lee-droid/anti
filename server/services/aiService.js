@@ -6,6 +6,12 @@ import { parseLlmJson } from '../utils/latexUtils.js';
 global.progressTracker = global.progressTracker || new Map();
 
 export let globalPreferredModel = 'gemini-3.5-flash-lite';
+export const FALLBACK_MODELS = [
+  'gemini-3.5-flash-lite',
+  'gemini-3.1-flash-lite',
+  'gemini-3.6-flash',
+  'gemini-3.5-flash'
+];
 
 export async function loadPreferredModel() {
   try {
@@ -107,7 +113,7 @@ export function reportLlmProgress(options, scenario, modelName) {
     } else if (scenario === 'formula') {
       stageText = `1단계: ${modelUpper} 엔진으로 수식 분석 및 튜터 답변 생성 중...`;
     } else if (scenario === 'source-search' || scenario === 'source') {
-      stageText = `1단계: GEMINI-3.5-FLASH-LITE 엔진으로 출처 검색 및 국가설계기준 대조 중...`;
+      stageText = `1단계: ${actualModelName.toUpperCase()} 엔진으로 출처 검색 및 국가설계기준 대조 중...`;
     } else if (scenario === 'option-explanation') {
       stageText = `1단계: ${modelUpper} 엔진으로 보기 오답 원인 분석 중...`;
     } else {
@@ -194,15 +200,20 @@ export async function callLLMWithFailover(systemInstruction, userPrompt, image =
   const isSourceSearch = scenario === 'source' || scenario === 'source-search' || options.isSourceSearch;
 
   for (const k of keys) {
+    const targetPref = options.preferredModel || globalPreferredModel || 'gemini-3.5-flash-lite';
+    if (options.preferredModel && options.preferredModel !== globalPreferredModel) {
+      globalPreferredModel = options.preferredModel;
+    }
     const rawFallbacks = isSourceSearch
       ? [
+          targetPref,
           'gemini-3.5-flash-lite',
           'gemini-3.1-flash-lite',
           'gemini-3.6-flash',
           'gemini-3.5-flash'
         ]
       : [
-          options.preferredModel || globalPreferredModel,
+          targetPref,
           'gemini-3.5-flash-lite',
           'gemini-3.1-flash-lite',
           'gemini-3.6-flash',
@@ -273,7 +284,7 @@ export async function callLLMWithFailover(systemInstruction, userPrompt, image =
           }
 
           reportLlmProgress(options, scenario, modelName);
-          const timeoutMs = 30000;
+          const timeoutMs = 60000;
           const timeoutPromise = new Promise((_, reject) =>
             setTimeout(() => reject(new Error(`Gemini request timeout after ${timeoutMs}ms`)), timeoutMs)
           );
