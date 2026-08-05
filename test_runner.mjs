@@ -96,6 +96,7 @@ async function runTests() {
     `/api/topics`,
     `/api/lockscreen/pool`,
     `/api/session/mixed-completed`,
+    `/api/session/last-active-review`,
     `/api/options/lockscreen_quiz_enabled`
   ];
 

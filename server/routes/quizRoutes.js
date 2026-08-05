@@ -1897,39 +1897,30 @@ router.get('/session/last-active-review', async (req, res) => {
     }
 
     const key = row.key;
-    if (key.startsWith('completed_review_schedule_')) {
-      const rawSchedId = key.replace('completed_review_schedule_', '');
-      const scheduleId = parseInt(rawSchedId, 10);
-      if (!isNaN(scheduleId)) {
-        const sched = await dbQuery.get(
-          `SELECT s.id, s.topic_id, s.review_round, t.title, t.keywords, t.pdf_name, t.category 
-           FROM schedules s 
-           JOIN topics t ON s.topic_id = t.id 
-           WHERE s.id = ?`,
-          [scheduleId]
-        );
-        if (sched) {
-          return res.json({
-            success: true,
-            lastActive: {
-              topicId: sched.topic_id,
-              title: sched.title,
-              keywords: sched.keywords || '',
-              pdfName: sched.pdf_name || '',
-              mode: 'completed',
-              scheduleId: sched.id,
-              reviewRound: sched.review_round,
-              isReadOnly: true,
-              isBonus: sched.review_round === 99,
-              category: sched.category || '일반'
-            }
-          });
-        }
+    if (key.startsWith('completed_review_schedule_') || key.startsWith('review_questions_schedule_')) {
+      const isCompleted = key.startsWith('completed_review_schedule_');
+      const rawSchedId = key.replace(isCompleted ? 'completed_review_schedule_' : 'review_questions_schedule_', '');
+      
+      if (rawSchedId.startsWith('mixed_')) {
+        return res.json({
+          success: true,
+          lastActive: {
+            topicId: rawSchedId.includes('_sess_') ? rawSchedId.split('_sess_')[0] : (rawSchedId.startsWith('mixed_schedule_') ? `mixed_${rawSchedId.replace('mixed_schedule_', '')}` : rawSchedId),
+            title: '오늘의 필수 믹스복습 (11제 1세트)',
+            keywords: '',
+            pdfName: 'mixed.html',
+            mode: isCompleted ? 'completed' : 'ai',
+            scheduleId: rawSchedId,
+            reviewRound: 'MIX',
+            isReadOnly: isCompleted,
+            isBonus: false,
+            category: '믹스'
+          }
+        });
       }
-    } else if (key.startsWith('review_questions_schedule_')) {
-      const rawSchedId = key.replace('review_questions_schedule_', '');
+
       const scheduleId = parseInt(rawSchedId, 10);
-      if (!isNaN(scheduleId)) {
+      if (!isNaN(scheduleId) && scheduleId > 0) {
         const sched = await dbQuery.get(
           `SELECT s.id, s.topic_id, s.review_round, t.title, t.keywords, t.pdf_name, t.category 
            FROM schedules s 
@@ -1945,10 +1936,10 @@ router.get('/session/last-active-review', async (req, res) => {
               title: sched.title,
               keywords: sched.keywords || '',
               pdfName: sched.pdf_name || '',
-              mode: 'ai',
+              mode: isCompleted ? 'completed' : 'ai',
               scheduleId: sched.id,
               reviewRound: sched.review_round,
-              isReadOnly: false,
+              isReadOnly: isCompleted,
               isBonus: sched.review_round === 99,
               category: sched.category || '일반'
             }
@@ -1978,30 +1969,32 @@ router.get('/session/last-active-review', async (req, res) => {
         });
       }
       const topicId = parseInt(topicIdRaw, 10);
-      const topicObj = await dbQuery.get(`SELECT id, title, keywords, pdf_name, category FROM topics WHERE id = ?`, [topicId]);
-      if (topicObj) {
-        const sched = await dbQuery.get(`SELECT id, review_round FROM schedules WHERE topic_id = ? AND status = 'pending' LIMIT 1`, [topicId]);
-        return res.json({
-          success: true,
-          lastActive: {
-            topicId: topicObj.id,
-            title: topicObj.title,
-            keywords: topicObj.keywords || '',
-            pdfName: topicObj.pdf_name || '',
-            mode: 'ai',
-            scheduleId: sched ? sched.id : null,
-            reviewRound: sched ? sched.review_round : null,
-            isReadOnly: false,
-            isBonus: sched ? sched.review_round === 99 : false,
-            category: topicObj.category || '일반'
-          }
-        });
+      if (!isNaN(topicId) && topicId > 0) {
+        const topicObj = await dbQuery.get(`SELECT id, title, keywords, pdf_name, category FROM topics WHERE id = ?`, [topicId]);
+        if (topicObj) {
+          const sched = await dbQuery.get(`SELECT id, review_round FROM schedules WHERE topic_id = ? AND status = 'pending' LIMIT 1`, [topicId]);
+          return res.json({
+            success: true,
+            lastActive: {
+              topicId: topicObj.id,
+              title: topicObj.title,
+              keywords: topicObj.keywords || '',
+              pdfName: topicObj.pdf_name || '',
+              mode: 'ai',
+              scheduleId: sched ? sched.id : null,
+              reviewRound: sched ? sched.review_round : null,
+              isReadOnly: false,
+              isBonus: sched ? sched.review_round === 99 : false,
+              category: topicObj.category || '일반'
+            }
+          });
+        }
       }
     }
-    res.json({ success: true, lastActive: null });
+    return res.json({ success: true, lastActive: null });
   } catch (err) {
     console.error('GET /api/session/last-active-review error:', err);
-    res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: err.message });
   }
 });
 
