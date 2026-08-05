@@ -505,7 +505,8 @@ export function InteractiveQuizModal({
       <style>{`
         .quiz-modal-container table {
           table-layout: auto !important;
-          width: 100% !important;
+          width: max-content !important;
+          min-width: 100% !important;
         }
         .quiz-modal-container td,
         .quiz-modal-container th {

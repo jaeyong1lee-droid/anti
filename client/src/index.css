@@ -1000,7 +1000,8 @@ div[class*="overflow-y-auto"] {
   overflow-x: auto;
 }
 .markdown-table {
-  width: 100%;
+  width: max-content;
+  min-width: 100%;
   border-collapse: collapse;
   text-align: center;
   font-size: 14px; /* Mobile font size */
@@ -1018,8 +1019,8 @@ div[class*="overflow-y-auto"] {
 .custom-col-widths td {
   padding: 5px 4px !important; /* Minimize padding on mobile */
   border: 1px solid rgba(255, 255, 255, 0.22) !important; /* Bright light grey border */
-  word-break: break-word !important;
-  overflow-wrap: anywhere !important;
+  word-break: keep-all !important;
+  overflow-wrap: break-word !important;
   overflow: hidden !important;
 }
 @media (min-width: 768px) {
