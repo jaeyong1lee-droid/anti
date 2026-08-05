@@ -266,8 +266,10 @@ ${explanation ? `- 전체 해설 (Explanation): ${explanation}` : ''}
       const refNums = [];
       matchTargetNums.forEach(n => {
         refNums.push(n);
-        refNums.push(n * 1.3);
-        refNums.push(n / 1.3);
+        if (n > 50) {
+          refNums.push(n * 1.3);
+          refNums.push(n / 1.3);
+        }
       });
 
       if (refNums.length > 0) {
