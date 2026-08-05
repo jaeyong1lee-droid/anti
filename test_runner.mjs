@@ -699,6 +699,22 @@ async function runTests() {
     }
   }
 
+  // [TEST 23] Topic 53 Dam Seepage 5 Input Items Dynamic Generation Check
+  console.log('\n[TEST 23] Topic 53 Dam Seepage 5 Input Items Dynamic Generation Check...');
+  const { healQuizQuestionObject } = await import('./client/src/utils/latexUtils.js');
+  const mockTopic53Q = {
+    type: '주관식 (계산)',
+    question: "그림에 나타낸 댐 저면 침투 및 유선망 수리해석에 대하여 (1) 침투수량 (2) A, B, C 지점에서의 간극수압 (3) 동수경사를 구하시오.",
+    topicId: 53
+  };
+  const healed53 = healQuizQuestionObject(mockTopic53Q);
+  if (Array.isArray(healed53.calcItems) && healed53.calcItems.length === 5) {
+    console.log(`  ➜ [PASS] Topic 53 Dam Seepage analysis successfully generated EXACTLY 5 dynamic input items (INPUT_1 ~ INPUT_5).`);
+  } else {
+    failedCount++;
+    console.log(`  ➜ [CRITICAL FAIL] Topic 53 Dam Seepage analysis generated ${healed53.calcItems?.length || 0} items instead of 5!`);
+  }
+
   console.log('\n====================================================');
   if (failedCount > 0) {
     console.log(`  ❌ TEST FAILED - ${failedCount} CRITICAL ERRORS DETECTED!`);

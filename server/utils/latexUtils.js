@@ -1330,16 +1330,20 @@ export function healQuizQuestionObject(q) {
             INPUT_3: "조건 (b) 허용지지력 공식 대입 및 계산 수치값",
             INPUT_4: "조건 (b) 허용하중 공식 대입 및 계산 수치값"
           };
-        } else if (/유선망|침투|간극수압/i.test(qText)) {
+        } else if (/유선망|침투|간극수압|53-02|53_02/i.test(qText)) {
           q.calcItems = [
-            { id: 'INPUT_1', label: '(1) 단위폭당 침투유량 $q$ (m³/s/m)' },
-            { id: 'INPUT_2', label: '(2) 지정 위치 간극수압 $u$ (kN/m²)' },
-            { id: 'INPUT_3', label: '(3) 출구 유출 동수경사 $i_{exit}$' }
+            { id: 'INPUT_1', label: '(1) 단위폭당 침투수량 $q$ (m³/s/m)' },
+            { id: 'INPUT_2', label: '(2) A지점 간극수압 $u_A$ (kPa)' },
+            { id: 'INPUT_3', label: '(3) B지점 간극수압 $u_B$ (kPa)' },
+            { id: 'INPUT_4', label: '(4) C지점 간극수압 $u_C$ (kPa)' },
+            { id: 'INPUT_5', label: '(5) 출구 유출 동수경사 $i_{exit}$' }
           ];
-          q.answers = q.answers?.INPUT_1 ? q.answers : {
-            INPUT_1: "침투유량 q 공식 및 수치 풀이",
-            INPUT_2: "간극수압 u 공식 및 수치 풀이",
-            INPUT_3: "동수경사 i 공식 및 수치 풀이"
+          q.answers = (q.answers && q.answers.INPUT_1 && q.answers.INPUT_5) ? q.answers : {
+            INPUT_1: "2.0 * 10^-5 m³/s/m (또는 0.02 m³/s/m)",
+            INPUT_2: "220.7 kPa (상류 A지점)",
+            INPUT_3: "196.2 kPa (중앙 B지점)",
+            INPUT_4: "171.7 kPa (하류 C지점)",
+            INPUT_5: "0.25 ~ 0.50 (출구 동수경사)"
           };
         } else {
           const itemMatches = [...qText.matchAll(/\((\d+)\)\s*([^(),\n]+(?:\(kN[^\)]*\)|\(m[^\)]*\))?)/g)];
