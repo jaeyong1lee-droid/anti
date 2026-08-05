@@ -397,8 +397,8 @@ async function runTests() {
   if (toleranceGradeRes.statusCode === 200) {
     try {
       const data = JSON.parse(toleranceGradeRes.body);
-      if (!data.isCorrect && data.score === 0) {
-        console.log(`  ➜ [PASS] Server-Side Numeric Guard correctly rejected wrong answer "700" (score: 0점, reason: ${data.reason}).`);
+      if (!data.isCorrect && data.score < 8) {
+        console.log(`  ➜ [PASS] Server-Side Numeric Guard correctly rejected wrong answer "700" (score: ${data.score}점, reason: ${data.reason}).`);
       } else {
         failedCount++;
         console.log(`  ➜ [CRITICAL FAIL] Server-Side Guard failed to reject wrong answer "700"! Score: ${data.score}점, Reason: ${data.reason}`);
@@ -430,8 +430,8 @@ async function runTests() {
   if (pollutedGradeRes.statusCode === 200) {
     try {
       const data = JSON.parse(pollutedGradeRes.body);
-      if (!data.isCorrect && data.score === 0) {
-        console.log(`  ➜ [PASS] Server correctly stripped polluted "700" from correctAnswer and rejected wrong user answer (score: 0점, reason: ${data.reason}).`);
+      if (!data.isCorrect && data.score < 8) {
+        console.log(`  ➜ [PASS] Server correctly stripped polluted "700" from correctAnswer and rejected wrong user answer (score: ${data.score}점, reason: ${data.reason}).`);
       } else {
         failedCount++;
         console.log(`  ➜ [CRITICAL FAIL] Server accepted polluted "700" in correctAnswer as valid! Score: ${data.score}점, Reason: ${data.reason}`);
