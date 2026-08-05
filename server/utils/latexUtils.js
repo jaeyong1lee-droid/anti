@@ -826,9 +826,23 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   // [Self-Healing] Auto-wrap raw LaTeX symbols/variables in bullet lists with $ if missing
   // Matches bullet points or numbers followed by a CJK-free math variable/symbol and a colon
   if (typeof processed === 'string') {
-    processed = processed.split('\n').map(line => {
+    const lines = processed.split('\n');
+    processed = lines.map((line, idx) => {
       const bulletRegex = /^([ \t]*(?:\*|-|•|▪|▫|·|\d+\.|\d+\)|[a-zA-Z가-힣]\.|\b[a-zA-Z가-힣]\)|[①-⑳]|\[INPUT_\d+(?:_\d+)?\])[ \t]*)(?!\$)([a-zA-Z0-9_\\'\^\(\)\{\}\+\-\*\/=]+)(?!\$)([ \t]*:)/;
-      return line.replace(bulletRegex, (match, p1, p2, p3) => `${p1}$${p2}$${p3}`);
+      let newLine = line.replace(bulletRegex, (match, p1, p2, p3) => `${p1}$${p2}$${p3}`);
+
+      // Normalize mismatched bullet indentation (e.g. 2 spaces on first item Nc, 0 spaces on Nq, Ny)
+      const bMatch = newLine.match(/^([ \t]+)([*•▪-]\s+)/);
+      if (bMatch) {
+        const indentStr = bMatch[1];
+        const prevLine = lines[idx - 1] || '';
+        const nextLine = lines[idx + 1] || '';
+        const isNextBullet = /^([ \t]*)([*•▪-]\s+)/.test(nextLine);
+        if (!prevLine.trim().endsWith(':') && isNextBullet && !nextLine.startsWith(' ')) {
+          newLine = newLine.substring(indentStr.length);
+        }
+      }
+      return newLine;
     }).join('\n');
   }
 
