@@ -641,15 +641,16 @@ export function cleanQuizQuestion(q) {
 
   // 1. Replace (A), (B), (C), (D) list garbage inside flowchart boxes with sequential single placeholders
   let emptyBoxIdx = 0;
-  cleanText = cleanText.replace(/\[\s*\([^\]]*\)\s*,\s*\([^\]]*\)[\s\S]*?\]/gi, () => {
+  cleanText = cleanText.replace(/\[[^\]]*\([A-F]\)[^\]]*\([A-F]\)[^\]]*\]/gi, () => {
     emptyBoxIdx++;
     return emptyBoxIdx === 1 ? '[ (A) ]' : (emptyBoxIdx === 2 ? '[ (C) ]' : '[ (E) ]');
   });
 
   let emptyLineIdx = 0;
-  cleanText = cleanText.replace(/-\s*\([^)]*\)\s*,\s*\([^)]*\)[\s\S]*?(?=\r?\n|$)/gi, () => {
+  cleanText = cleanText.replace(/-\s*[^\n]*\([A-F]\)[^\n]*\([A-F]\)[^\n]*(?=\r?\n|$)/gi, (match) => {
     emptyLineIdx++;
-    return emptyLineIdx === 1 ? '- (B)' : (emptyLineIdx === 2 ? '- (D)' : '- (F)');
+    const rightBorder = match.includes('│') ? '                        │' : '';
+    return (emptyLineIdx === 1 ? '- (B)' : (emptyLineIdx === 2 ? '- (D)' : '- (F)')) + rightBorder;
   });
 
   // 2. Strip remaining list garbage outside boxes
