@@ -234,12 +234,18 @@ ${explanation ? `- 전체 해설 (Explanation): ${explanation}` : ''}
           finalIsCorrect = true;
           finalScore = 10;
           finalReason = reason || `입력하신 계산 결과(${userAnswer})가 원보고서/해설의 정밀 계산 수치값과 일치합니다.`;
-        } else if (!hasMatchWithin15Pct && (score > 5 || isCorrect)) {
-          const targetRef = refNums[0];
+        } else if (hasMatchWithin15Pct) {
+          const closestRef = refNums.find(ref => Math.abs(userNum - ref) / ref <= 0.15) || refNums[0];
+          const pctErr = ((Math.abs(userNum - closestRef) / closestRef) * 100).toFixed(1);
+          finalIsCorrect = false;
+          finalScore = 5;
+          finalReason = `제시된 지문 및 수식에 따른 정밀 계산 결과(약 ${closestRef.toFixed(1)})와 비교하여 사용자가 입력한 수치(${userAnswer})는 약 ${pctErr}%의 오차가 존재하여 부분 점수(5점) 처리됩니다.`;
+        } else {
+          const closestRef = refNums[0];
           console.log(`[Numeric Guard Override] User typed ${userNum}, but ref numbers are ${JSON.stringify(refNums)}. Overriding AI false positive (${score}점 -> 0점).`);
           finalIsCorrect = false;
           finalScore = 0;
-          finalReason = `입력하신 계산 결과 수치(${userAnswer})는 원보고서/해설의 정밀 계산 수치값(${targetRef})과 오차가 발생하여 오답 처리되었습니다.`;
+          finalReason = `사용자가 제시한 수치(${userAnswer})는 Terzaghi 지지력 공식에 따른 정밀 계산 결과(약 ${closestRef.toFixed(1)})와 비교하여 허용 오차 범위를 벗어나므로 오답 처리됩니다.`;
         }
       } else {
         // 해설에 정답 숫자가 없고 사용자가 임의 수치를 적었을 때, AI가 근거 없이 6.3점/10점을 부여하는 환각 방지
