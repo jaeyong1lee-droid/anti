@@ -138,6 +138,33 @@ router.get('/topics', async (req, res) => {
     }
 
     const topicIds = topics.map(t => t.id);
+
+    // --- AUTO-HEAL: 자동 일정 정정 로직 (망각곡선 버그로 인한 과거 날짜 픽스) ---
+    try {
+      const pending = await dbQuery.all(`SELECT * FROM schedules WHERE status = 'pending' AND review_round > 1 AND review_round < 99`);
+      for (const p of pending) {
+        const prev = await dbQuery.get(`SELECT * FROM schedules WHERE topic_id = ? AND review_round = ? AND status = 'completed'`, [p.topic_id, p.review_round - 1]);
+        if (prev && prev.completed_at) {
+          let days = 0;
+          if (prev.review_round === 1) days = 4;
+          else if (prev.review_round === 2) days = 7;
+          else if (prev.review_round === 3) days = 14;
+          else if (prev.review_round === 4) days = 35;
+          else if (prev.review_round === 5) days = 60;
+          else days = 30;
+          
+          const expectedDate = fileUtils.getLocalDateString(new Date(prev.completed_at), days);
+          if (p.planned_date !== expectedDate) {
+            await dbQuery.run(`UPDATE schedules SET planned_date = ? WHERE id = ?`, [expectedDate, p.id]);
+            console.log(`[Auto-Heal] Topic ${p.topic_id} Round ${p.review_round}: ${p.planned_date} -> ${expectedDate}`);
+          }
+        }
+      }
+    } catch (healErr) {
+      console.error('[Auto-Heal] Failed to auto-heal schedules:', healErr.message);
+    }
+    // --- END AUTO-HEAL ---
+
     // Batch query all schedules for all topics in one shot (replaces N+1 query)
     const placeholders = topicIds.map(() => '?').join(',');
     const allSchedules = await dbQuery.all(
