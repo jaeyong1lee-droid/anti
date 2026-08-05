@@ -539,6 +539,39 @@ async function runTests() {
     console.log(`  ➜ [FAIL] POST /api/grade-subjective failed (Status: ${itemCGradeRes.error || itemCGradeRes.statusCode})`);
   }
 
+  // [TEST 18] Live Browser Screenshot Case: Item (C) (#3) Re-grading with Empty Explanation & Auto DB Enrichment
+  console.log('\n[TEST 18] Live Browser Screenshot Case: Item (C) (#3) Re-grading with Empty Explanation...');
+  const itemCBrowserPayload = {
+    question: "폭 B=2.0m 인 정방형 기초가 지표면에 설치되어 있다. 흙의 단위중량 gamma=18kN/m³, 점착력 c=20kPa, 내부마찰각 phi=30도 이다. Terzaghi 지지력 공식을 활용하여 다음 항목을 계산하시오.",
+    correctAnswer: "813.42 kN/m² (반올림 시 813 kN/m²)",
+    userAnswer: "813",
+    rowHeader: "(3) 조건 (b)의 허용지지력 q_all (b) (kN/m²)",
+    colHeader: "수치 계산 답안",
+    explanation: "", // Empty string to simulate live browser missing topic context
+    category: "계산",
+    temperature: 0.7,
+    preferredModel: "gemini-3.5-flash-lite"
+  };
+
+  const itemCBrowserRes = await postUrl('http://localhost:3000/api/grade-subjective', itemCBrowserPayload);
+  if (itemCBrowserRes.statusCode === 200) {
+    try {
+      const data = JSON.parse(itemCBrowserRes.body);
+      if (data.isCorrect && data.score >= 8) {
+        console.log(`  ➜ [PASS] Live Browser Single-Item Re-grading correctly recognized valid answer "813" as 10점 (score: ${data.score}점, reason: ${data.reason}).`);
+      } else {
+        failedCount++;
+        console.log(`  ➜ [CRITICAL FAIL] Server falsely rejected live browser answer "813"! Score: ${data.score}점, Reason: ${data.reason}`);
+      }
+    } catch (e) {
+      failedCount++;
+      console.log(`  ➜ [FAIL] Invalid JSON from grade-subjective: ${e.message}`);
+    }
+  } else {
+    failedCount++;
+    console.log(`  ➜ [FAIL] POST /api/grade-subjective failed (Status: ${itemCBrowserRes.error || itemCBrowserRes.statusCode})`);
+  }
+
   console.log('\n====================================================');
   if (failedCount > 0) {
     console.log(`  ❌ TEST FAILED - ${failedCount} CRITICAL ERRORS DETECTED!`);

@@ -277,12 +277,27 @@ ${explanation ? `- 전체 해설 (Explanation): ${explanation}` : ''}
           finalReason = `사용자가 제시한 수치(${userAnswer})는 Terzaghi 지지력 공식에 따른 정밀 계산 결과(약 ${closestRef.toFixed(1)})와 비교하여 허용 오차 범위를 벗어나므로 오답 처리됩니다.`;
         }
       } else {
-        // 해설에 정답 숫자가 없고 사용자가 임의 수치를 적었을 때, AI가 근거 없이 6.3점/10점을 부여하는 환각 방지
+        // 해설에 정답 숫자가 추출되지 않은 경우, AI가 도출한 모범답안(suggestedModelAnswer)이나 피드백(reason)의 정물 수치와 대조
         if (score > 5 || isCorrect) {
-          console.log(`[Numeric Guard Strict Mode] User typed ${userNum}, but no ref number found in explanation. Capping unverified numeric answer.`);
-          finalIsCorrect = false;
-          finalScore = 0;
-          finalReason = `입력하신 계산 결과 수치(${userAnswer})는 원보고서/해설의 산출 근거 수치와 일치하지 않는 것으로 판정되었습니다.`;
+          const aiSuggestedNums = [...(suggestedModelAnswer || '').matchAll(/[-+]?\d*\.?\d+/g)]
+            .map(m => parseFloat(m[0]))
+            .filter(n => !isNaN(n) && n > 50 && n !== 100 && n !== 1000);
+          const aiReasonNums = [...(reason || '').matchAll(/[-+]?\d*\.?\d+/g)]
+            .map(m => parseFloat(m[0]))
+            .filter(n => !isNaN(n) && n > 50 && n !== 100 && n !== 1000);
+          const aiNums = [...aiSuggestedNums, ...aiReasonNums];
+          const matchesAiNum = aiNums.some(an => Math.abs(userNum - an) / an <= 0.05);
+
+          if (matchesAiNum) {
+            finalIsCorrect = true;
+            finalScore = 10;
+            finalReason = reason || `입력하신 계산 결과 수치(${userAnswer})가 공학적 정밀 산출 수치와 일치하여 10점 만점 정답 처리됩니다.`;
+          } else {
+            console.log(`[Numeric Guard Strict Mode] User typed ${userNum}, but no ref number found in explanation. Capping unverified numeric answer.`);
+            finalIsCorrect = false;
+            finalScore = 0;
+            finalReason = `입력하신 계산 결과 수치(${userAnswer})는 원보고서/해설의 산출 근거 수치와 일치하지 않는 것으로 판정되었습니다.`;
+          }
         }
       }
     }
