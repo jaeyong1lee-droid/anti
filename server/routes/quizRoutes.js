@@ -43,7 +43,7 @@ const router = express.Router();
     const activeSessions = await dbQuery.all(
       `SELECT key, value FROM app_session 
        WHERE key LIKE 'review_questions_%' 
-       AND (value LIKE '%특성 1%' OR value LIKE '%특성 2%' OR value LIKE '%A 입력%' OR value LIKE '%수치 계산%')`
+       AND (value LIKE '%?�성 1%' OR value LIKE '%?�성 2%' OR value LIKE '%A ?�력%' OR value LIKE '%?�치 계산%')`
     );
     let scrubbedCount = 0;
     for (const s of activeSessions) {
@@ -116,7 +116,7 @@ function cleanQuizQuestion(q) {
   // 2. Strip remaining list garbage outside boxes
   cleanText = cleanText.replace(/,?\s*\([A-Z]\)(?:\s*,\s*\([A-Z]\))+/gi, '');
 
-  const isFlowchart = cleanText.includes('┌──') || cleanText.includes('▼') || cleanText.includes('```') || cleanText.includes('흐름도') || cleanText.includes('플로우차트');
+  const isFlowchart = cleanText.includes('?��??�') || cleanText.includes('??) || cleanText.includes('```') || cleanText.includes('?�름??) || cleanText.includes('?�로?�차??);
   if (isFlowchart) return cleanText.trim();
   return cleanText.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ').trim();
 }
@@ -126,12 +126,12 @@ function getCoreSubjectFromTitle(title) {
   let core = title.trim();
   // Remove file extensions if any
   core = core.replace(/\.(pdf|hwp|docx?|txt|xlsx?|pptx?)$/i, '');
-  // Remove document-like suffixes (e.g. 공학 해석 보고서, 공부노트, 요약본 등)
-  const suffixPattern = /(?:\s+|_|-)?(?:공학\s*)?(?:해석\s*)?(?:보고서|보고|노트|요약본|요약|정리|공부노트|공부|자료|파일|본|텍스트|StudyNote|studynote|Study|study|문제|과제|질문)$/i;
+  // Remove document-like suffixes (e.g. 공학 ?�석 보고?? 공�??�트, ?�약�???
+  const suffixPattern = /(?:\s+|_|-)?(?:공학\s*)?(?:?�석\s*)?(?:보고??보고|?�트|?�약�??�약|?�리|공�??�트|공�?|?�료|?�일|�??�스??StudyNote|studynote|Study|study|문제|과제|질문)$/i;
   core = core.replace(suffixPattern, '');
   
   // Remove trailing definition, concept, occurrence, method, theory terms to keep it pure engineering subject
-  const conceptPattern = /(?:\s*및\s*|\s+)?(?:정의\s*및\s*발생\s*조건|정의\s*및\s*발생조건|정의\s*및\s*발생\s*메커니즘|정의|발생\s*조건|발생조건|개념|이론|공법)$/i;
+  const conceptPattern = /(?:\s*�?s*|\s+)?(?:?�의\s*�?s*발생\s*조건|?�의\s*�?s*발생조건|?�의\s*�?s*발생\s*메커?�즘|?�의|발생\s*조건|발생조건|개념|?�론|공법)$/i;
   core = core.replace(conceptPattern, '');
   
   return core.trim();
@@ -140,7 +140,7 @@ function getCoreSubjectFromTitle(title) {
 function normalizeMcText(text) {
   if (!text) return '';
   return text
-    .replace(/^[①②③④⑤1-5][\s\.\)\:\s]*/, '')
+    .replace(/^[?�②?�④??-5][\s\.\)\:\s]*/, '')
     .replace(/\s+/g, '')
     .replace(/[.~,`'"'']/g, '')
     .toLowerCase();
@@ -153,7 +153,7 @@ function sanitizeMultipleChoiceAnswer(q) {
   const exp = q.explanation;
   const currentAns = (q.answer || '').trim();
 
-  const conclusionMatch = exp.match(/(?:\[최종\s*정답\s*산출\]|따라서|정답은|결론적으로)[\s\S]*$/i);
+  const conclusionMatch = exp.match(/(?:\[최종\s*?�답\s*?�출\]|?�라???�답?�|결론?�으�?[\s\S]*$/i);
   const searchTarget = conclusionMatch ? conclusionMatch[0] : exp;
   const normalizedTarget = normalizeMcText(searchTarget);
 
@@ -171,7 +171,7 @@ function sanitizeMultipleChoiceAnswer(q) {
       break;
     }
 
-    const numKeywords = normOpt.match(/(?:\d+\/\d+|\d+배|변화가\s*없다|증가|감소)/g) || [];
+    const numKeywords = normOpt.match(/(?:\d+\/\d+|\d+�?변?��?\s*?�다|증�?|감소)/g) || [];
     if (numKeywords.length > 0) {
       const matchCount = numKeywords.filter(kw => normalizedTarget.includes(normalizeMcText(kw))).length;
       if (matchCount > bestScore) {
@@ -224,95 +224,117 @@ function shuffleArray(arr) {
   return result;
 }
 
-function generateCalculationFallbackQuestions(title, keywords) {
-  const isTerzaghi = /Terzaghi|기초|지지력/i.test(title || '');
-  const rows = isTerzaghi ? [
-    ["(1) 조건 (a)의 허용지지력 q_all(a) (kN/m²)", "[INPUT_1]"],
-    ["(2) 조건 (a)의 허용하중 P_all(a) (kN)", "[INPUT_2]"],
-    ["(3) 조건 (b)의 허용지지력 q_all(b) (kN/m²)", "[INPUT_3]"],
-    ["(4) 조건 (b)의 허용하중 P_all(b) (kN)", "[INPUT_4]"]
-  ] : [
-    ["(1) 침투수량", "[INPUT_1]"],
-    ["(2) A, B 및 C점에서의 간극수압", "[INPUT_2]"],
-    ["(3) C점에서 출구까지 동수경사", "[INPUT_3]"]
+/**
+ * ?�스 ?�스??OCR)?�서 (1), (2), (3)... ?�식?�로 명시???�위 질문??추출?�여
+ * ?�떤 ?�픽?�든 ?�적?�로 ?�치 계산 ?�채?�기 ?�을 ?�성?�다.
+ * 추출 ?�패 ??범용 fallback rows�??�용?�다.
+ */
+function extractCalculationRowsFromText(fileText) {
+  if (!fileText) return null;
+
+  // "(1) 구하?�항�? ?�는 "1) 구하?�항�? ?�턴??추출
+  // 구하?�오, 계산?�시?? ?�정?�시????문장?�서 �??�위 ??��???�색
+  const subQuestionPattern = /[�?](\d+)[)�?\s*([^\n(�?+?)(?=\s*[�?]\d+[)�?|\n\n|$)/g;
+  const matches = [];
+  let match;
+  while ((match = subQuestionPattern.exec(fileText)) !== null) {
+    const num = parseInt(match[1]);
+    const text = match[2].trim().replace(/[,�?\s*$/, '').replace(/\s+/g, ' ');
+    // ?�무 짧거??3??미만) ?�무 �?80??초과) ??��, 조건 ?�명 문장 ?��? ?�외
+    if (text.length >= 3 && text.length <= 80 && num >= 1 && num <= 10) {
+      matches.push({ num, text });
+    }
+  }
+
+  // ?�속??번호�?구성??그룹 �?가??길고 ?�전??것을 ?�택
+  if (matches.length < 2) return null;
+
+  // num=1부???�작?�는 가??�??�속 ?�퀀?��? 찾는??
+  let bestGroup = [];
+  for (let i = 0; i < matches.length; i++) {
+    if (matches[i].num === 1) {
+      const group = [matches[i]];
+      for (let j = i + 1; j < matches.length; j++) {
+        if (matches[j].num === group[group.length - 1].num + 1) {
+          group.push(matches[j]);
+        } else if (matches[j].num > group[group.length - 1].num + 1) {
+          break;
+        }
+      }
+      if (group.length > bestGroup.length) bestGroup = group;
+    }
+  }
+
+  if (bestGroup.length < 2) return null;
+
+  // rows �?answers ?�적 ?�성
+  const rows = bestGroup.map(({ num, text }) => [
+    `(${num}) ${text}`,
+    `[INPUT_${num}]`
+  ]);
+  const answers = {};
+  bestGroup.forEach(({ num, text }) => {
+    answers[`INPUT_${num}`] = `(${num}) ${text} 공식 �??�치 ?�??;
+  });
+
+  return { rows, answers };
+}
+
+function generateCalculationFallbackQuestions(title, keywords, fileText) {
+  // 1?�계: ?�스 ?�스?�에???�문 ?�위 질문???�적?�로 추출 ?�도
+  const extracted = extractCalculationRowsFromText(fileText);
+
+  // 2?�계: 추출 ?�패 ??topic ?�워??기반 범용 fallback rows ?�용
+  const rows = extracted ? extracted.rows : [
+    ["(1) 계산 ??�� A", "[INPUT_1]"],
+    ["(2) 계산 ??�� B", "[INPUT_2]"],
+    ["(3) 계산 ??�� C", "[INPUT_3]"]
   ];
-  const answers = isTerzaghi ? {
-    INPUT_1: "조건(a) 허용지지력 산정 공식 및 수치 풀이",
-    INPUT_2: "조건(a) 허용하중 산정 공식 및 수치 풀이",
-    INPUT_3: "조건(b) 허용지지력 산정 공식 및 수치 풀이",
-    INPUT_4: "조건(b) 허용하중 산정 공식 및 수치 풀이"
-  } : {
-    INPUT_1: "침투유량 q 공식 및 수치 풀이",
-    INPUT_2: "간극수압 u 공식 및 수치 풀이",
-    INPUT_3: "동수경사 i 공식 및 수치 풀이"
+  const answers = extracted ? extracted.answers : {
+    INPUT_1: "계산 ??�� A 공식 �??�치 ?�??,
+    INPUT_2: "계산 ??�� B 공식 �??�치 ?�??,
+    INPUT_3: "계산 ??�� C 공식 �??�치 ?�??
   };
 
   return [
     {
-      type: "주관식 (표채우기)",
-      subtype: "표채우기",
-      question: `[${title} 계산 문제] 첨부 그림 및 원보고서 조건에 따른 수치 계산 항목의 정답을 구하여 아래 표의 빈칸을 완성하시오.`,
+      type: "주�???(?�채?�기)",
+      subtype: "?�채?�기",
+      question: `[${title} 계산 문제] 첨�? 그림 �??�보고서 조건???�른 ?�치 계산 ??��???�답??구하???�래 ?�의 빈칸???�성?�시??`,
       tableData: {
-        headers: ["구하는 항목", "계산 결과 및 답안"],
+        headers: ["구하????��", "계산 결과 �??�안"],
         rows: rows
       },
       answers: answers,
-      explanation: "원보고서 및 제공된 스크린샷 이미지의 공학적 설계 조건(지반 종류, 지하수위, 기초폭 등)을 대입하여 계산하는 전개 과정입니다."
+      explanation: "?�보고서 �??�공???�크린샷 ?��?지??공학???�계 조건???�?�하??계산?�는 ?�개 과정?�니??"
     },
     {
-      type: "주관식 (표채우기)",
-      subtype: "표채우기",
-      question: /댐|덤|유선망|침투|53/i.test(title)
-        ? `댐 저면 침투 해석 시 유선망(Flow Net) 도해법과 수치해석법(FEM/FDM) 및 Darcy 1차원 해석법의 수리적 메커니즘 및 특성 비교표를 완성하시오.`
-        : `[${title} 이론 비교] ${title} 관련 핵심 메커니즘 및 고려사항 차이점을 비교하는 표의 빈칸을 서술하시오.`,
-      tableData: /댐|덤|유선망|침투|53/i.test(title) ? {
-        headers: ["구분 항목", "유선망 도해법 (Flow Net)", "수치해석법 (FEM / FDM)", "Darcy 1차원 해석법"],
-        rows: [
-          ["핵심 해석 메커니즘", "2차원 Laplace 방정식 직교 유선격자 도해 해석", "[INPUT_1]", "1차원 직선 침투 구배 공식 대입 ($q=k \\cdot i \\cdot A$)"],
-          ["지반 및 차원 적용성", "2차원 단층/이방성 지반 (단면 변환 필요)", "[INPUT_2]", "1차원 단순 균일 지반 수평 침투 단면"],
-          ["산출 핵심 물리량", "침투수량($q$), 간극수압($u$), 출구동수경사($i$)", "전수두 분포, 침투속도 벡터, 유출 안전율", "단위 폭당 1차원 단순 침투 유량"]
-        ]
-      } : {
-        headers: ["구분 항목", `${title} (주 공법)`, "대조 공법/이론 A", "대조 공법/이론 B"],
-        rows: [
-          ["파괴 메커니즘 특성", "[INPUT_1]", "경사/偏心 하중 고려 전단 파괴 확장", "표준 규격 한계 수치 적용"],
-          ["지상/지중 지보 고려 범위", "기초 저면 상부 지반 자중 중량만 고려", "[INPUT_2]", "지중 보강 구조체 연동 고려"]
-        ]
-      },
-      answers: /댐|덤|유선망|침투|53/i.test(title) ? {
-        INPUT_1: "유한요소 영역 분할 미분방정식 수치 해석",
-        INPUT_2: "3차원 이방성 다층 지반 및 침윤선 위치 추적 가능"
-      } : {
-        INPUT_1: "전반전단파괴 기반 3개 영역 평형 이론",
-        INPUT_2: "지표면까지 파괴면 확장 및 흙의 전단강도 직접 고려"
-      },
-      explanation: "공학적 이론 간의 가정 사항 및 실무적 적용 범위 차이점을 비교 설명하는 문항입니다."
+      type: "주�???(?�답??",
+      question: `[${title} 공학???��?] ??계산 과정 �?결과가 ?�계?� ?�공 ?�무??주는 교훈 ?�는 공학???��?(지�?거동 ?�석, ?�전???��? ??�??�명?�십?�오.`,
+      answer: "?�계 �??�공 조건???�전 ?�유???�보?� 지�?거동 분석??기초 ?�료 ?�공",
+      explanation: "계산 결과�??�해 ?�계 ?�태�??�단?�고, ?�제 지반의 거동 ?�징�?불확?�성??고려???�계 마진 �?공학??교훈???�해?�는 것이 ?�심?�니??"
     },
     {
-      type: "주관식 (단답형)",
-      question: `[${title} 공학적 의미] 이 계산 과정 및 결과가 설계와 시공 실무에 주는 교훈 또는 공학적 의미(지반 거동 해석, 안전성 평가 등)를 설명하십시오.`,
-      answer: "설계 및 시공 조건의 안전 여유도 확보와 지반 거동 분석의 기초 자료 제공",
-      explanation: "계산 결과를 통해 한계 상태를 판단하고, 실제 지반의 거동 특징과 불확실성을 고려한 설계 마진 및 공학적 교훈을 이해하는 것이 핵심입니다."
-    },
-    {
-      type: "주관식 (단답형)",
-      question: `[${title} 공학적 대책] 이 문제의 계산 결과(지지력 부족, 침하량 과다, 불안정 등)와 관련하여 현장에서 공학적 문제가 발생했을 때의 실무적 해결책 및 대책을 서술하십시오.`,
-      answer: "지반 개량 공법 적용, 하중 분산 대책 수립, 계측 관리 강화 및 차수/배수 공법 설계",
-      explanation: "계산치 초과 또는 지반 붕괴 위험 등 불안정성 발생 시 현장에서 취할 수 있는 구체적인 지반 개량(그라우팅, 다짐 등) 및 공법 변경 대책을 제시하는 문항입니다."
+      type: "주�???(?�답??",
+      question: `[${title} 공학???��? ??문제??계산 결과?� 관?�하???�장?�서 공학??문제가 발생?�을 ?�의 ?�무???�결�?�??�책을 ?�술?�십?�오.`,
+      answer: "지�?개량 공법 ?�용, ?�중 분산 ?��??�립, 계측 관�?강화 �?차수/배수 공법 ?�계",
+      explanation: "불안?�성 발생 ???�장?�서 취할 ???�는 구체?�인 지�?개량 �?공법 변�??�책을 ?�시?�는 문항?�니??"
     }
   ];
 }
 
-function assembleFinalCalculationQuestions(questions, topic) {
-  // LLM이 멋대로 만든 표채우기(수치계산 폼)를 버리고, 오직 '단답형'이나 '개요' 등만 살린다.
+
+function assembleFinalCalculationQuestions(questions, topic, fileText) {
+  // 1. LLM???�성???�채?�기???�문 맥락??모르�??�의 ?�성?��?�??�량 ?�기
   let finalQuestions = (questions || []).filter(q =>
-    q.type !== '주관식 (표채우기)'
+    q.type !== '주�???(?�채?�기)'
   );
-  
-  // 로직에 하드코딩된 완벽한 계산 문제 폼(fb[0])을 무조건 첫 번째 문제로 강제 주입한다.
-  const fb = generateCalculationFallbackQuestions(topic.title, topic.keywords);
+
+  // 2. ?�스 ?�스?�에???�문 ?�위 질문???�동 추출?�여 계산 ???�성
+  //    추출 ?�패 ??범용 fallback ?�용
+  const fb = generateCalculationFallbackQuestions(topic.title, topic.keywords, fileText);
   finalQuestions.unshift(fb[0]);
-  
+
   while (finalQuestions.length < 4) {
     finalQuestions.push(fb[finalQuestions.length]);
   }
@@ -340,23 +362,23 @@ function mergeSplitFlowchartQuestions(questions) {
       next &&
       typeof next === 'object' &&
       typeof curr.question === 'string' &&
-      (curr.question.includes('┌') || curr.question.includes('▼') || curr.question.includes('흐름도')) &&
-      (curr.type === '주관식 (단답형)' || curr.type === '주관식 (표채우기)') &&
-      (next.type === '주관식 (표채우기)' || next.subtype === '표채우기') &&
+      (curr.question.includes('??) || curr.question.includes('??) || curr.question.includes('?�름??)) &&
+      (curr.type === '주�???(?�답??' || curr.type === '주�???(?�채?�기)') &&
+      (next.type === '주�???(?�채?�기)' || next.subtype === '?�채?�기') &&
       (!next.question || 
        next.question === 'undefined' || 
        (typeof next.question === 'string' && 
         (next.question.trim().length < 20 || 
          next.question.includes('빈칸 구분') || 
-         next.question.includes('입력 답안'))
+         next.question.includes('?�력 ?�안'))
        )
       )
     ) {
       console.log(`[Flowchart Merger] Merging split flowchart question at index ${i} and ${i + 1}`);
       const mergedQuestion = {
         ...next,
-        type: '주관식 (표채우기)',
-        subtype: '표채우기',
+        type: '주�???(?�채?�기)',
+        subtype: '?�채?�기',
         question: curr.question // Use the flowchart diagram and prompt from curr
       };
       merged.push(mergedQuestion);
@@ -375,31 +397,31 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
 
   const coreSubject = getCoreSubjectFromTitle(topic.title);
 
-  let qIntro = questions.find(q => q.type === '주관식 (개요)');
+  let qIntro = questions.find(q => q.type === '주�???(개요)');
   if (qIntro) {
     qIntro = { ...qIntro };
-    qIntro.type = '주관식 (개요)';
+    qIntro.type = '주�???(개요)';
     delete qIntro.tableData;
     delete qIntro.answers;
     delete qIntro.subtype;
   }
 
-  let qFormula = questions.find(q => q.type === '주관식 (공식)');
+  let qFormula = questions.find(q => q.type === '주�???(공식)');
   if (qFormula) {
     qFormula = { ...qFormula };
-    qFormula.type = '주관식 (공식)';
+    qFormula.type = '주�???(공식)';
     delete qFormula.tableData;
     delete qFormula.answers;
     delete qFormula.subtype;
   }
 
-  const carryOverShorts = (carryOverQuestions || []).filter(q => (q.type || '').includes('단답형') && q !== qIntro && q !== qFormula);
-  const carryOverTables = (carryOverQuestions || []).filter(q => ((q.type || '').includes('표채우기') || q.subtype === '표채우기') && q !== qIntro && q !== qFormula);
-  const carryOverMcs = (carryOverQuestions || []).filter(q => ((q.type || '').includes('객관식') || (q.options && q.options.length > 0)) && q !== qIntro && q !== qFormula);
+  const carryOverShorts = (carryOverQuestions || []).filter(q => (q.type || '').includes('?�답??) && q !== qIntro && q !== qFormula);
+  const carryOverTables = (carryOverQuestions || []).filter(q => ((q.type || '').includes('?�채?�기') || q.subtype === '?�채?�기') && q !== qIntro && q !== qFormula);
+  const carryOverMcs = (carryOverQuestions || []).filter(q => ((q.type || '').includes('객�???) || (q.options && q.options.length > 0)) && q !== qIntro && q !== qFormula);
 
-  const subjsShort = [...questions.filter(q => q.type === '주관식 (단답형)' && q !== qIntro && q !== qFormula), ...carryOverShorts];
-  const subjsTable = [...questions.filter(q => (q.type === '주관식 (표채우기)' || q.subtype === '표채우기') && q !== qIntro && q !== qFormula), ...carryOverTables];
-  const mcs = [...questions.filter(q => (q.type === '객관식 (4지선다)' || (q.options && q.options.length > 0)) && q !== qIntro && q !== qFormula), ...carryOverMcs];
+  const subjsShort = [...questions.filter(q => q.type === '주�???(?�답??' && q !== qIntro && q !== qFormula), ...carryOverShorts];
+  const subjsTable = [...questions.filter(q => (q.type === '주�???(?�채?�기)' || q.subtype === '?�채?�기') && q !== qIntro && q !== qFormula), ...carryOverTables];
+  const mcs = [...questions.filter(q => (q.type === '객�???(4지?�다)' || (q.options && q.options.length > 0)) && q !== qIntro && q !== qFormula), ...carryOverMcs];
 
   // AI-generated short subjectives (remove duplicates)
   let finalSubjsShort = [];
@@ -413,7 +435,7 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
   });
 
   // Separate concept questions and field problem questions
-  const fieldKeywords = ["하자", "대책", "문제점", "시나리오", "현장", "문제 상황", "대처", "countermeasure", "solution", "scenario"];
+  const fieldKeywords = ["?�자", "?��?, "문제??, "?�나리오", "?�장", "문제 ?�황", "?��?, "countermeasure", "solution", "scenario"];
   const fieldQs = [];
   const conceptQs = [];
 
@@ -432,7 +454,7 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
 
   // Extract flowchart and comparison tables
   const flowcharts = subjsTable.filter(q => q && q.question && (
-    q.question.includes('┌') || q.question.includes('▼') || q.question.includes('흐름도') || q.question.includes('플로우차트')
+    q.question.includes('??) || q.question.includes('??) || q.question.includes('?�름??) || q.question.includes('?�로?�차??)
   ));
   const compTables = subjsTable.filter(q => q && !flowcharts.includes(q));
 
@@ -457,19 +479,19 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
 
   // Fixed 13 questions returned list layout
   return [
-    qIntro,                     // 1번 주관식 (index 0)
-    qFormula,                   // 2번 주관식 (index 1)
-    shuffledMcs[0],             // 3번 객관식 (index 2)
-    finalCompTables[0],         // 4번 표채우기 1 (index 3) -> Comparison Table 1
-    shuffledMcs[1],             // 5번 객관식 (index 4)
-    finalShorts4[0],            // 6번 주관식 (index 5) -> Short Subjective 1 (Concept 1)
-    finalFlowchart,             // 7번 표채우기 (index 6) -> Flowchart Table
-    finalCompTables[1],         // 8번 표채우기 2 (index 7) -> Comparison Table 2
-    shuffledMcs[2],             // 9번 객관식 (index 8)
-    finalShorts4[1],            // 10번 주관식 (index 9) -> Short Subjective 2 (Concept 2)
-    shuffledMcs[3],             // 11번 객관식 (index 10)
-    finalShorts4[2],            // 12번 주관식 (index 11) -> Short Subjective 3 (Concept 3)
-    finalShorts4[3]             // 13번 주관식 (index 12) -> Short Subjective 4 (Field/Countermeasure)
+    qIntro,                     // 1�?주�???(index 0)
+    qFormula,                   // 2�?주�???(index 1)
+    shuffledMcs[0],             // 3�?객�???(index 2)
+    finalCompTables[0],         // 4�??�채?�기 1 (index 3) -> Comparison Table 1
+    shuffledMcs[1],             // 5�?객�???(index 4)
+    finalShorts4[0],            // 6�?주�???(index 5) -> Short Subjective 1 (Concept 1)
+    finalFlowchart,             // 7�??�채?�기 (index 6) -> Flowchart Table
+    finalCompTables[1],         // 8�??�채?�기 2 (index 7) -> Comparison Table 2
+    shuffledMcs[2],             // 9�?객�???(index 8)
+    finalShorts4[1],            // 10�?주�???(index 9) -> Short Subjective 2 (Concept 2)
+    shuffledMcs[3],             // 11�?객�???(index 10)
+    finalShorts4[2],            // 12�?주�???(index 11) -> Short Subjective 3 (Concept 3)
+    finalShorts4[3]             // 13�?주�???(index 12) -> Short Subjective 4 (Field/Countermeasure)
   ].filter(Boolean);
 }
 async function ensureSessionTable() {
@@ -511,7 +533,7 @@ async function getFormattedTopicInstructions(topicId) {
       const list = JSON.parse(row.value);
       if (Array.isArray(list) && list.length > 0) {
         const formatted = list.map((item, idx) => (idx + 1) + '. **' + item.title + '**:\n   - ' + item.content).join('\n');
-        return '\n[🚨 이 토픽(' + topicId + ')의 전용 문제 출제 및 변환 지침 - 반드시 반영하십시오]:\n' + formatted + '\n';
+        return '\n[?�� ???�픽(' + topicId + ')???�용 문제 출제 �?변??지�?- 반드??반영?�십?�오]:\n' + formatted + '\n';
       }
     }
   } catch (e) {}
@@ -528,7 +550,7 @@ router.post('/topics/:id/ai-questions', async (req, res) => {
     const topicSql = `SELECT id, title, keywords, pdf_name, category, pdf_url, extracted_text FROM topics WHERE id = ?`;
     topic = await dbQuery.get(topicSql, [topicId]);
     if (!topic) {
-      return res.status(404).json({ error: '토픽을 찾을 수 없습니다.' });
+      return res.status(404).json({ error: '?�픽??찾을 ???�습?�다.' });
     }
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -676,7 +698,7 @@ router.post('/topics/:id/ai-questions', async (req, res) => {
     };
 
     if (progressId) {
-      progressTimer = startBackendProgressTimer(progressId, 1, '1단계: AI 예상 문제 생성 시작...', 50, 1500, 5);
+      progressTimer = startBackendProgressTimer(progressId, 1, '1?�계: AI ?�상 문제 ?�성 ?�작...', 50, 1500, 5);
       standardsAnalysis = await analyzeStandardsBeforeTask(progressId, topic.title, GENERATION_STANDARDS, 'generation');
     }
 
@@ -708,7 +730,7 @@ router.post('/topics/:id/ai-questions', async (req, res) => {
         }
       }
     } catch (err) {
-      console.warn('이전 오답 로딩 실패:', err);
+      console.warn('?�전 ?�답 로딩 ?�패:', err);
     }
 
     const carryOverCount = Math.min(incorrectQuestions.length, 5);
@@ -725,25 +747,25 @@ router.post('/topics/:id/ai-questions', async (req, res) => {
     const searchTarget = `${cleanTitle} ${cleanKeywords}`;
 
     const isCoreTopic = 
-      searchTarget.includes('활성도') || searchTarget.includes('activity') ||
-      searchTarget.includes('이중층') || searchTarget.includes('double layer') || searchTarget.includes('ddl') ||
-      searchTarget.includes('압밀') || searchTarget.includes('consolidation') || searchTarget.includes('침하') || searchTarget.includes('settlement') ||
-      searchTarget.includes('샌드매트') || searchTarget.includes('sand mat') ||
-      searchTarget.includes('평사투영') || searchTarget.includes('stereographic') ||
-      searchTarget.includes('인발') || searchTarget.includes('pullout') ||
+      searchTarget.includes('?�성??) || searchTarget.includes('activity') ||
+      searchTarget.includes('?�중�?) || searchTarget.includes('double layer') || searchTarget.includes('ddl') ||
+      searchTarget.includes('?��?') || searchTarget.includes('consolidation') || searchTarget.includes('침하') || searchTarget.includes('settlement') ||
+      searchTarget.includes('?�드매트') || searchTarget.includes('sand mat') ||
+      searchTarget.includes('?�사?�영') || searchTarget.includes('stereographic') ||
+      searchTarget.includes('?�발') || searchTarget.includes('pullout') ||
       searchTarget.includes('q 분류') || searchTarget.includes('q-system') ||
-      searchTarget.includes('싱글쉘') || searchTarget.includes('single shell') ||
-      searchTarget.includes('소일내일') || searchTarget.includes('soil nail') ||
-      searchTarget.includes('프란틀') || searchTarget.includes('prandtl') ||
-      searchTarget.includes('여굴') || searchTarget.includes('overbreak') ||
-      searchTarget.includes('사면안정') || searchTarget.includes('slope stability') ||
-      searchTarget.includes('토압') || searchTarget.includes('earth pressure') ||
-      searchTarget.includes('전단강도') || searchTarget.includes('shear strength') ||
-      searchTarget.includes('투수') || searchTarget.includes('침투') ||
-      searchTarget.includes('흙막이') || searchTarget.includes('탄소성') ||
-      searchTarget.includes('액상화') || searchTarget.includes('liquefaction') ||
+      searchTarget.includes('?��???) || searchTarget.includes('single shell') ||
+      searchTarget.includes('?�일?�일') || searchTarget.includes('soil nail') ||
+      searchTarget.includes('?��??�') || searchTarget.includes('prandtl') ||
+      searchTarget.includes('?�굴') || searchTarget.includes('overbreak') ||
+      searchTarget.includes('?�면?�정') || searchTarget.includes('slope stability') ||
+      searchTarget.includes('?�압') || searchTarget.includes('earth pressure') ||
+      searchTarget.includes('?�단강도') || searchTarget.includes('shear strength') ||
+      searchTarget.includes('?�수') || searchTarget.includes('침투') ||
+      searchTarget.includes('?�막??) || searchTarget.includes('?�소??) ||
+      searchTarget.includes('?�상??) || searchTarget.includes('liquefaction') ||
       searchTarget.includes('보상기초') || searchTarget.includes('compensated foundation') ||
-      searchTarget.includes('수압파쇄') || searchTarget.includes('hydraulic fracturing');
+      searchTarget.includes('?�압?�쇄') || searchTarget.includes('hydraulic fracturing');
 
     const hasAnyAiKey = !!(
       process.env.GEMINI_API_KEY ||
@@ -758,7 +780,7 @@ router.post('/topics/:id/ai-questions', async (req, res) => {
       console.log(`[AI Route Interceptor - Local Fallback] Precision routed core topic "${topic.title}"`);
       const coreQuestions = generateFallbackQuestions(topic.title, topic.keywords, fileText);
       const finalQuestions = topic.category === '계산'
-        ? assembleFinalCalculationQuestions(coreQuestions, topic)
+        ? assembleFinalCalculationQuestions(coreQuestions, topic, fileText)
         : assembleFinalQuestions(coreQuestions, topic, carryOverQuestions, fileText);
       
       const cleanedCore = finalQuestions.map(q => healQuizQuestionObject({
@@ -795,7 +817,7 @@ router.post('/topics/:id/ai-questions', async (req, res) => {
     if (forceLocal || !hasAnyAiKey) {
       const fallbackQuestions = generateFallbackQuestions(topic.title, topic.keywords, fileText);
       const finalQuestions = topic.category === '계산'
-        ? assembleFinalCalculationQuestions(fallbackQuestions, topic)
+        ? assembleFinalCalculationQuestions(fallbackQuestions, topic, fileText)
         : assembleFinalQuestions(fallbackQuestions, topic, carryOverQuestions, fileText);
       
       const cleanedFallback = finalQuestions.map(q => healQuizQuestionObject({
@@ -829,27 +851,27 @@ router.post('/topics/:id/ai-questions', async (req, res) => {
     }
 
     let specialInstructions = '';
-    if (cleanTitle.includes('확대기초') && cleanTitle.includes('거동') && cleanTitle.includes('파괴')) {
+    if (cleanTitle.includes('?��?기초') && cleanTitle.includes('거동') && cleanTitle.includes('?�괴')) {
       specialInstructions = `
-[특별 출제 지침 - 매우 중요]:
-이 토픽은 '프란틀 지지력 공식'이나 '테르자기 극한지지력 공식' 자체의 상세한 유도나 공식 정의를 단독으로 묻는 토픽이 아닙니다.
-1. 기초 아래 지반의 3대 파괴 형태: 전반전단파괴, 국부전단파괴, 관입전단파괴의 구체적 발생 조건 및 기전.
-2. Vesic(1973)이 제안한 예측 도표의 특징.
-3. 접지압 분포 패턴 및 침하 형상 비교.
+[?�별 출제 지�?- 매우 중요]:
+???�픽?� '?��??� 지지??공식'?�나 '?�르?�기 극한지지??공식' ?�체???�세???�도??공식 ?�의�??�독?�로 묻는 ?�픽???�닙?�다.
+1. 기초 ?�래 지반의 3?� ?�괴 ?�태: ?�반?�단?�괴, �???�단?�괴, 관?�전?�파괴의 구체??발생 조건 �?기전.
+2. Vesic(1973)???�안???�측 ?�표???�징.
+3. ?��???분포 ?�턴 �?침하 ?�상 비교.
 `;
     }
 
     let weaknessPrompt = '';
     if (carryOverQuestions.length > 0) {
       weaknessPrompt = `
-[이전 회차 오답 정보 및 출제 지침]:
-아래 오답들은 사용자가 이전 회차에서 틀린 문제입니다.
-이번에 생성할 4개의 객관식 문제 중 앞의 ${carryOverQuestions.length}개 문제(5번부터 ${4 + carryOverQuestions.length}번)는 반드시 아래 오답의 변형 문제로 출제하십시오:
+[?�전 ?�차 ?�답 ?�보 �?출제 지�?:
+?�래 ?�답?��? ?�용?��? ?�전 ?�차?�서 ?��?문제?�니??
+?�번???�성??4개의 객�???문제 �??�의 ${carryOverQuestions.length}�?문제(5번�???${4 + carryOverQuestions.length}�???반드???�래 ?�답??변??문제�?출제?�십?�오:
 ${carryOverQuestions.map((q, idx) => `
-오답 문제 ${idx + 1}:
+?�답 문제 ${idx + 1}:
 - 질문: ${q.question}
 - 보기: ${JSON.stringify(q.options)}
-- 정답: ${q.answer}
+- ?�답: ${q.answer}
 `).join('\n')}
 `;
     }
@@ -865,11 +887,11 @@ ${carryOverQuestions.map((q, idx) => `
         const upvotes = feedbacks.filter(f => f.feedback_type === 'upvote').map(f => f.question_text);
         const downvotes = feedbacks.filter(f => f.feedback_type === 'downvote').map(f => f.question_text);
         feedbackPrompt = `
-[사용자 피드백 지침 - 출제 빈도 반영 및 조정 필수]:
+[?�용???�드�?지�?- 출제 빈도 반영 �?조정 ?�수]:
 1. 추천 질문 목록:
 ${upvotes.map((q, i) => `   - 추천 질문 ${i + 1}: ${q}`).join('\n')}
-2. 비추천 질문 목록 (절대 유사문제 출제 금지):
-${downvotes.map((q, i) => `   - 비추천 질문 ${i + 1}: ${q}`).join('\n')}
+2. 비추�?질문 목록 (?��? ?�사문제 출제 금�?):
+${downvotes.map((q, i) => `   - 비추�?질문 ${i + 1}: ${q}`).join('\n')}
 `;
       }
     } catch (fbErr) {}
@@ -882,12 +904,12 @@ ${downvotes.map((q, i) => `   - 비추천 질문 ${i + 1}: ${q}`).join('\n')}
       );
       if (adjustments.length > 0) {
         adjustmentsPrompt = `
-[사용자 이전 문제 조정(피드백) 내역]:
+[?�용???�전 문제 조정(?�드�? ?�역]:
 ${adjustments.map((a, idx) => `
-조정 이력 ${idx + 1}:
+조정 ?�력 ${idx + 1}:
 - 기존 문제: "${a.question_text}"
-- 사용자의 피드백 요구사항: "${a.user_feedback}"
-- 반영된 최종 문제: "${a.adjusted_text}"
+- ?�용?�의 ?�드�??�구?�항: "${a.user_feedback}"
+- 반영??최종 문제: "${a.adjusted_text}"
 `).join('\n')}
 `;
       }
@@ -904,191 +926,191 @@ ${adjustments.map((a, idx) => `
       : ENGINEERING_STANDARDS;
 
     const prompt = (topic.category === '계산') ? `
-[문제 생성 태스크 시작]:
-아래 제공되는 정보를 분석하여 총 정확히 4개의 계산 예상문제를 생성해 주십시오.
-[토픽 핵심 주제]: ${coreSubject}
-[토픽 원본 제목]: ${topic.title}
-[핵심 키워드]: ${topic.keywords || '제공되지 않음'}
-[첨부파일 본문 텍스트](HTML 공부노트): ${fileText || '제공되지 않음'}
+[문제 ?�성 ?�스???�작]:
+?�래 ?�공?�는 ?�보�?분석?�여 �??�확??4개의 계산 ?�상문제�??�성??주십?�오.
+[?�픽 ?�심 주제]: ${coreSubject}
+[?�픽 ?�본 ?�목]: ${topic.title}
+[?�심 ?�워??: ${topic.keywords || '?�공?��? ?�음'}
+[첨�??�일 본문 ?�스??(HTML 공�??�트): ${fileText || '?�공?��? ?�음'}
 
-[출제 요구사항]:
-1. 1번 문항 (첨부 이미지의 물음과 본문 HTML의 답변을 분석한 표채우기 질문) - type: "주관식 (표채우기)"
-   🚨 **[1번 문항 계산 표채우기 표준 구조 철칙 - 가장 중요!]**:
-   - 함께 첨부된 문제 이미지(그림/그래프)와 본문 텍스트를 시각적으로 심층 분석하십시오.
-   - 문제 지문과 그림이 구하라고 요구하는 **모든 계산 평가 항목 (1), (2), (3)...** 또는 조건별 항목을 각각의 **행(Row)**으로 배치하십시오.
-   - 표 구조는 반드시 **headers: ["구하는 항목", "계산 결과 및 답안"]** 의 2열 헤더 규격으로 구성하십시오.
+[출제 ?�구?�항]:
+1. 1�?문항 (첨�? ?��?지??물음�?본문 HTML???��???분석???�채?�기 질문) - type: "주�???(?�채?�기)"
+   ?�� **[1�?문항 계산 ?�채?�기 ?��? 구조 철칙 - 가??중요!]**:
+   - ?�께 첨�???문제 ?��?지(그림/그래???� 본문 ?�스?��? ?�각?�으�??�층 분석?�십?�오.
+   - 문제 지문과 그림??구하?�고 ?�구?�는 **모든 계산 ?��? ??�� (1), (2), (3)...** ?�는 조건�???��??각각??**??Row)**?�로 배치?�십?�오.
+   - ??구조??반드??**headers: ["구하????��", "계산 결과 �??�안"]** ??2???�더 규격?�로 구성?�십?�오.
 
-   📌 **[표준 구조 예시]**:
-   - headers: ["구하는 항목", "계산 결과 및 답안"]
+   ?�� **[?��? 구조 ?�시]**:
+   - headers: ["구하????��", "계산 결과 �??�안"]
    - rows:
      [
-       ["(1) 구하는 첫번째 항목명 (단위)", "[INPUT_1]"],
-       ["(2) 구하는 두번째 항목명 (단위)", "[INPUT_2]"],
-       ["(3) 구하는 세번째 항목명 (단위)", "[INPUT_3]"],
+       ["(1) 구하??첫번�???���?(?�위)", "[INPUT_1]"],
+       ["(2) 구하???�번�???���?(?�위)", "[INPUT_2]"],
+       ["(3) 구하???�번�???���?(?�위)", "[INPUT_3]"],
        ...
      ]
 
-   🚨 **빈칸 및 답안 1:1 매칭 철칙**:
-   - 문제에서 묻는 계산 요구 항목이 N개이면, 행의 개수도 N개가 되며 반드시 [INPUT_1]부터 [INPUT_N]까지 N개의 빈칸을 생성하십시오.
-   - answers 객체에는 각 INPUT_N마다 대응되는 공학적 계산 정답 풀이 과정과 정확한 최종 수치(단위 포함)를 기재하십시오.
+   ?�� **빈칸 �??�안 1:1 매칭 철칙**:
+   - 문제?�서 묻는 계산 ?�구 ??��??N개이�? ?�의 개수??N개�? ?�며 반드??[INPUT_1]부??[INPUT_N]까�? N개의 빈칸???�성?�십?�오.
+   - answers 객체?�는 �?INPUT_N마다 ?�?�되??공학??계산 ?�답 ?�??과정�??�확??최종 ?�치(?�위 ?�함)�?기재?�십?�오.
 
-2. 2번 문항 (개념 비교 표 칸채우기 문제) - type: "주관식 (표채우기)"
-   🚨 **[2번 문항 필수 구조 지침]**:
-   - 토픽과 관련된 두 가지 이상의 공법, 이론, 또는 조건을 비교하는 표로 설계하십시오.
-   - 열(Column)에 비교 대상을, 행(Row)에 구분 항목을 배치하십시오.
-   - 절반 정도의 셀은 채워진 답안으로, 나머지는 INPUT으로 설계하십시오.
-   - headers: ["구분 항목", "실제 비교 대상 1 명칭", "실제 비교 대상 2 명칭"]
-   - 🚨 [헤더 하드코딩 금지]: "공법/이론 A", "대표 이론/공법 A"와 같은 더미 찌꺼기 헤더 작성을 절대 금지하며, 반드시 문제 지문이 다루는 실제 비교 명칭으로 헤더를 생성하십시오.
-   - rows: [["비교항목 1", "[INPUT_1]", "채워진 내용"], ["비교항목 2", "채워진 내용", "[INPUT_2]"]]
+2. 2�?문항 (개념 비교 ??칸채?�기 문제) - type: "주�???(?�채?�기)"
+   ?�� **[2�?문항 ?�수 구조 지�?**:
+   - ?�픽�?관?�된 ??가지 ?�상??공법, ?�론, ?�는 조건??비교?�는 ?�로 ?�계?�십?�오.
+   - ??Column)??비교 ?�?�을, ??Row)??구분 ??��??배치?�십?�오.
+   - ?�반 ?�도???�?� 채워�??�안?�로, ?�머지??INPUT?�로 ?�계?�십?�오.
+   - headers: ["구분 ??��", "?�제 비교 ?�??1 명칭", "?�제 비교 ?�??2 명칭"]
+   - ?�� [?�더 ?�드코딩 금�?]: "공법/?�론 A", "?�???�론/공법 A"?� 같�? ?��? 찌꺼�??�더 ?�성???��? 금�??�며, 반드??문제 지문이 ?�루???�제 비교 명칭?�로 ?�더�??�성?�십?�오.
+   - rows: [["비교??�� 1", "[INPUT_1]", "채워�??�용"], ["비교??�� 2", "채워�??�용", "[INPUT_2]"]]
 
-3. 3번 문항 (공학적 의미/교훈 주관식 문제) - type: "주관식 (단답형)"
-4. 4번 문항 (관련 공학적 문제 발생 시 대책 주관식 문제) - type: "주관식 (단답형)"
+3. 3�?문항 (공학???��?/교훈 주�???문제) - type: "주�???(?�답??"
+4. 4�?문항 (관??공학??문제 발생 ???��?주�???문제) - type: "주�???(?�답??"
 ` : `
-[문제 생성 태스크 시작]:
-아래 제공되는 정보를 분석하여 총 정확히 13개의 예상문제를 생성해 주십시오. (객관식 5개, 개요 1개, 공식 1개, 표채우기 2개, 단답형 4개)
-[토픽 핵심 주제]: ${coreSubject}
-[토픽 원본 제목]: ${topic.title}
-[첨부파일 본문 텍스트]: ${fileText || '제공되지 않음'}
+[문제 ?�성 ?�스???�작]:
+?�래 ?�공?�는 ?�보�?분석?�여 �??�확??13개의 ?�상문제�??�성??주십?�오. (객�???5�? 개요 1�? 공식 1�? ?�채?�기 2�? ?�답??4�?
+[?�픽 ?�심 주제]: ${coreSubject}
+[?�픽 ?�본 ?�목]: ${topic.title}
+[첨�??�일 본문 ?�스??: ${fileText || '?�공?��? ?�음'}
 `;
 
-    const systemInstruction = `당신은 대한민국 국가건설기준설계코드(KDS) 및 지반공학 기술사 시험 출제위원입니다.
-JSON 배열 형식으로만 문제를 출력하십시오.`;
+    const systemInstruction = `?�신?� ?�?��?�?�??건설기�??�계코드(KDS) �?지반공??기술???�험 출제?�원?�니??
+JSON 배열 ?�식?�로�?문제�?출력?�십?�오.`;
 
     const enrichedGenerationPrompt = `${prompt}
 
-[🚨 최우선 절대 지침 준수 선언]:
-아래 제공되는 [📋 문제 출제 기준 절대 지침 (Generation Standards)] 및 [🔬 공학 기준 절대 지침 (Engineering Standards)]은 사용자가 지정한 최우선 헌법적 출제 지침입니다. 그 어떤 내부 출제 방식이나 하드코딩된 알고리즘 규격보다 이 지침들이 1순위로 지켜져야 하며, 상충이 발생할 경우 이 지침들의 세부 내용(예: 비교 대상 가나 구분, 소수점 정확도 등)을 최우선적으로 엄격히 적용하십시오.
+[?�� 최우???��? 지�?준???�언]:
+?�래 ?�공?�는 [?�� 문제 출제 기�? ?��? 지�?(Generation Standards)] �?[?�� 공학 기�? ?��? 지�?(Engineering Standards)]?� ?�용?��? 지?�한 최우???�법??출제 지침입?�다. �??�떤 ?��? 출제 방식?�나 ?�드코딩???�고리즘 규격보다 ??지침들??1?�위�?지켜져???�며, ?�충??발생??경우 ??지침들???��? ?�용(?? 비교 ?�??가??구분, ?�수???�확??????최우?�적?�로 ?�격???�용?�십?�오.
 
-[📋 문제 출제 기준 절대 지침 (Generation Standards)]:
+[?�� 문제 출제 기�? ?��? 지�?(Generation Standards)]:
 ${activeGenerationStandards}
 
-[🔬 공학 기준 절대 지침 (Engineering Standards)]:
+[?�� 공학 기�? ?��? 지�?(Engineering Standards)]:
 ${activeEngineeringStandards}
 `;
 
-    const flowchartSpecificInstruction = "이번 흐름도 문제 출제 시, [1번 상자 채우기 지침]: 1번 상자는 설명 텍스트를 채워서 노출하고, 빈칸은 2번 상자부터 시작하여 (A), (B), (C), (D) 순서대로 1개씩 비우십시오. 상자 우측이나 바깥에 (A)~(F) 전체 목록을 덧붙이는 행위는 절대 금지됩니다.";
+    const flowchartSpecificInstruction = "?�번 ?�름??문제 출제 ?? [1�??�자 채우�?지�?: 1�??�자???�명 ?�스?��? 채워???�출?�고, 빈칸?� 2�??�자부???�작?�여 (A), (B), (C), (D) ?�서?��?1개씩 비우??��?? ?�자 ?�측?�나 바깥??(A)~(F) ?�체 목록???�붙?�는 ?�위???��? 금�??�니??";
 
     // Batch prompts for standard topics (non-calculation) to ensure high-quality technical questions
     const promptBatch1 = `
-[🚨 최우선 절대 준수 법규 (Constitutional Guidelines) - 작업을 시작하기 전에 가장 먼저 확인하고 100% 준수하십시오]:
-당신은 대한민국 국가기술자격 기술사(Professional Engineer) 시험 출제위원으로서 문제를 출제하기 전, 아래 명시된 **문제생성 절대 지침들**과 **공학적 이론 기준**을 헌법의 제1조 철칙으로 삼아 이를 먼저 완벽하게 숙지하고 절대적으로 복종하여 문제를 설계 및 출제해야 합니다. 지침을 위반하여 출제된 문제는 시스템 검증 단계에서 즉시 폐기됩니다.
+[?�� 최우???��? 준??법규 (Constitutional Guidelines) - ?�업???�작?�기 ?�에 가??먼�? ?�인?�고 100% 준?�하??��??:
+?�신?� ?�?��?�?�??기술?�격 기술??Professional Engineer) ?�험 출제?�원?�로??문제�?출제?�기 ?? ?�래 명시??**문제?�성 ?��? 지침들**�?**공학???�론 기�?**???�법????�?철칙?�로 ?�아 ?��? 먼�? ?�벽?�게 ?��??�고 ?��??�으�?복종?�여 문제�??�계 �?출제?�야 ?�니?? 지침을 ?�반?�여 출제??문제???�스??검�??�계?�서 즉시 ?�기?�니??
 
-${standardsAnalysis ? `${standardsAnalysis}\n\n` : ''}[🚨 문제 생성 절대 준수 지침]:
+${standardsAnalysis ? `${standardsAnalysis}\n\n` : ''}[?�� 문제 ?�성 ?��? 준??지�?:
 ${activeGenerationStandards}
 
-[🚨 지반공학 표준 이론 및 계산 기준]:
+[?�� 지반공???��? ?�론 �?계산 기�?]:
 ${activeEngineeringStandards}
 
 ${FLOWCHART_QUIZ_GENERATION_PROMPT}
 
-[🚨 이번 회차 흐름도 문제 빈칸 지정 명령 - 매우 중요]:
+[?�� ?�번 ?�차 ?�름??문제 빈칸 지??명령 - 매우 중요]:
 ${flowchartSpecificInstruction}
 
 ---------------------------------------------------------
-[문제 생성 태스크 시작]:
-위의 절대 지침과 기준 법규를 완전히 숙지한 상태에서, 아래 제공되는 [토픽 핵심 주제], [핵심 키워드], [첨부파일 본문 텍스트]를 심층 분석하여, 총 **정확히 7개**의 예상문제(주관식 개요 1개, 주관식 공식 1개, 주관식 표채우기(흐름도) 1개, 주관식 단답형 4개)를 생성해 주십시오.
+[문제 ?�성 ?�스???�작]:
+?�의 ?��? 지침과 기�? 법규�??�전???��????�태?�서, ?�래 ?�공?�는 [?�픽 ?�심 주제], [?�심 ?�워??, [첨�??�일 본문 ?�스??�??�층 분석?�여, �?**?�확??7�?*???�상문제(주�???개요 1�? 주�???공식 1�? 주�????�채?�기(?�름?? 1�? 주�????�답??4�?�??�성??주십?�오.
 
-[토픽 핵심 주제]: ${coreSubject}
-[토픽 원본 제목]: ${topic.title}
-[핵심 키워드]: ${topic.keywords || '제공되지 않음'}
-[핵심 소스 텍스트]: ${fileText || '제공되지 않음'}
+[?�픽 ?�심 주제]: ${coreSubject}
+[?�픽 ?�본 ?�목]: ${topic.title}
+[?�심 ?�워??: ${topic.keywords || '?�공?��? ?�음'}
+[?�심 ?�스 ?�스??: ${fileText || '?�공?��? ?�음'}
 
-[🚨 토픽 범위 엄격 제한 및 출제 범위 확충 — 최우선 준수사항]:
-- **맹목적으로 [첨부파일 본문 텍스트]의 지엽적인 자구에만 국한하여 문제를 출제하지 마십시오.** 
-- 만약 첨부파일 내용이 좁거나 단편적이더라도, 해당 **[토픽 핵심 주제]**가 다루는 전반적인 표준 학술 이론 및 기술사 시험 범위의 표준 개념에 대해 AI의 풍부한 공학 지식을 활용하여 문제를 적극적이고 넓게 출제하십시오.
-- 단, 다른 대주제 토픽의 개념이나 수식으로 완전히 넘어가 출제하는 것은 여전히 **절대 금지**이며, 모든 질문/정답/해설은 오직 현재 **[토픽 핵심 주제]** 범위 내에 머물러야 합니다.
-- **🚨 [토픽 명칭 정제 및 찌꺼기 제거 철칙]**: 문제를 출제할 때 질문 지문에 "공학 해석 보고서", "공부노트", "요약본" 같은 문서 형태를 가리키는 군더되기 찌꺼기 명칭을 그대로 주어로 사용하지 마십시오. 문제 지문에는 오직 순수한 공학 핵심 주제인 **"${coreSubject}"** 명칭만을 활용하여 질문 문장을 다듬으십시오. (예: "~~ 보고서의 장단점을..." (X) -> "~~ 이론의 장단점을..." (O))
+[?�� ?�픽 범위 ?�격 ?�한 �?출제 범위 ?�충 ??최우??준?�사??:
+- **맹목?�으�?[첨�??�일 본문 ?�스????지?�적???�구?�만 �?��?�여 문제�?출제?��? 마십?�오.** 
+- 만약 첨�??�일 ?�용??좁거???�편?�이?�라?? ?�당 **[?�픽 ?�심 주제]**가 ?�루???�반?�인 ?��? ?�술 ?�론 �?기술???�험 범위???��? 개념???�??AI???��???공학 지?�을 ?�용?�여 문제�??�극?�이�??�게 출제?�십?�오.
+- ?? ?�른 ?�주제 ?�픽??개념?�나 ?�식?�로 ?�전???�어가 출제?�는 것�? ?�전??**?��? 금�?**?�며, 모든 질문/?�답/?�설?� ?�직 ?�재 **[?�픽 ?�심 주제]** 범위 ?�에 머물?�야 ?�니??
+- **?�� [?�픽 명칭 ?�제 �?찌꺼�??�거 철칙]**: 문제�?출제????질문 지문에 "공학 ?�석 보고??, "공�??�트", "?�약�? 같�? 문서 ?�태�?가리키??군더?�기 찌꺼�?명칭??그�?�?주어�??�용?��? 마십?�오. 문제 지문에???�직 ?�수??공학 ?�심 주제??**"${coreSubject}"** 명칭만을 ?�용?�여 질문 문장???�듬?�십?�오. (?? "~~ 보고?�의 ?�단?�을..." (X) -> "~~ ?�론???�단?�을..." (O))
 
-[출제 요구사항]:
-반드시 총 6개의 문제를 다음과 같이 구성하여 출제하십시오:
+[출제 ?�구?�항]:
+반드??�?6개의 문제�??�음�?같이 구성?�여 출제?�십?�오:
 
-[1번 문제] 주관식 (개요):
-- 목적: 토픽의 핵심 정의(개요)를 명확하고 짜임새 있게 묻는 질문.
-- "type" 값: 반드시 "주관식 (개요)"
-- "question": 제공된 본문 텍스트 전체를 아우를 수 있는 핵심 공학적 대주제(대제목)를 도출하고, 그 주제에 관한 개요, 원리, 개념적 정의를 깊이 있게 묻는 자연스럽고 전문적인 서술형 질문 문장.
-- "concept": 질문에 정확히 부합하며, 최소 4줄에서 최대 6줄 사이의 분량으로 아주 전문적이고 직관적인 개요 및 개념 설명을 서술. 설명 내에서 채점관이 식별해야 할 핵심 공학적 키워드들은 반드시 일반 마크다운 강조 기호인 **키워드** 형태로 감싸서 작성해 주십시오. (예: **유효 응력**, **간극수압 소산** 등)
-- "formula": (선택사항) 개요 설명에 수식이 필요할 때만 작성하십시오.
-- "structure": 🚨 **[필수사항]** 개요 설명 및 공식에 등장하는 모든 기호(예: $K_a$, $\\phi$, $\\delta$ 등)의 정의를 줄바꿈(\\n)으로 구분하여 반드시 작성하십시오. 기호가 전혀 없는 경우에는 빈 문자열("")로 작성하십시오. (예: "- $K_a$: 주동토압계수\\n- $\\phi$: 흙의 내부마찰각")
+[1�?문제] 주�???(개요):
+- 목적: ?�픽???�심 ?�의(개요)�?명확?�고 짜임???�게 묻는 질문.
+- "type" �? 반드??"주�???(개요)"
+- "question": ?�공??본문 ?�스???�체�??�우�????�는 ?�심 공학???�주제(?�?�목)�??�출?�고, �?주제??관??개요, ?�리, 개념???�의�?깊이 ?�게 묻는 ?�연?�럽�??�문?�인 ?�술??질문 문장.
+- "concept": 질문???�확??부?�하�? 최소 4줄에??최�? 6�??�이??분량?�로 ?�주 ?�문?�이�?직�??�인 개요 �?개념 ?�명???�술. ?�명 ?�에??채점관???�별?�야 ???�심 공학???�워?�들?� 반드???�반 마크?�운 강조 기호??**?�워??* ?�태�?감싸???�성??주십?�오. (?? **?�효 ?�력**, **간극?�압 ?�산** ??
+- "formula": (?�택?�항) 개요 ?�명???�식???�요???�만 ?�성?�십?�오.
+- "structure": ?�� **[?�수?�항]** 개요 ?�명 �?공식???�장?�는 모든 기호(?? $K_a$, $\\phi$, $\\delta$ ?????�의�?줄바�?\\n)?�로 구분?�여 반드???�성?�십?�오. 기호가 ?��? ?�는 경우?�는 �?문자??"")�??�성?�십?�오. (?? "- $K_a$: 주동?�압계수\\n- $\\phi$: ?�의 ?��?마찰�?)
 
-[2번 문제] 주관식 (공식):
-- 목적: 토픽에 적용되는 가장 대표적이고 단순한 공식만 묻는 질문.
-- "type" 값: 반드시 "주관식 (공식)"
-- "question": 토픽을 대표하는 가장 핵심적인 공식의 공식명칭 자체나 핵심 질문 문구만 간결하게 작성.
-- "concept": 공식에 대한 1줄짜리 매우 컴팩트한 요약 설명.
-- "formula": 오직 대표 LaTeX 공식 1개만 순수하게 작성. 문자열이나 설명 기호는 절대 넣지 마십시오. (예: "$t = \\frac{P - 2C \\sin\\varphi}{\\gamma \\tan\\varphi + \\frac{2S}{D}}$")
-- "structure": 🚨 **[필수사항]** 위 formula에서 사용된 모든 기호의 정의를 장황하지 않게 줄바꿈(\n)으로 최소한의 명사형 위주로 반드시 작성하십시오. (예: "- $t$: 숏크리트 두께\n- $P$: 지반압")
+[2�?문제] 주�???(공식):
+- 목적: ?�픽???�용?�는 가???�?�적?�고 ?�순??공식�?묻는 질문.
+- "type" �? 반드??"주�???(공식)"
+- "question": ?�픽???�?�하??가???�심?�인 공식??공식명칭 ?�체???�심 질문 문구�?간결?�게 ?�성.
+- "concept": 공식???�??1줄짜�?매우 컴팩?�한 ?�약 ?�명.
+- "formula": ?�직 ?�??LaTeX 공식 1개만 ?�수?�게 ?�성. 문자?�이???�명 기호???��? ?��? 마십?�오. (?? "$t = \\frac{P - 2C \\sin\\varphi}{\\gamma \\tan\\varphi + \\frac{2S}{D}}$")
+- "structure": ?�� **[?�수?�항]** ??formula?�서 ?�용??모든 기호???�의�??�황?��? ?�게 줄바�?\n)?�로 최소?�의 명사???�주�?반드???�성?�십?�오. (?? "- $t$: ?�크리트 ?�께\n- $P$: 지반압")
 
-[3번 문제] 주관식 (표채우기) (아스키 흐름도):
-- 목적: 토픽의 시공/설계 절차, 시험 순서, 또는 단계별 거동 메커니즘을 도식화한 플로우차트 빈칸 채우기 질문.
-- "type" 값: 반드시 "주관식 (표채우기)"
-- 출제 원칙: 
-  * 모든 토픽에 대하여 반드시 아스키 플로우차트 다이어그램(백틱 \`\`\`으로 감싸여진 다이어그램)을 포함한 주관식 (표채우기) 문제로 100% 무조건 출제하십시오.
-  * tableData와 answers 객체 구조를 100% 갖춘 형태로 작성하십시오.
-  * [🚨 이번 회차 흐름도 문제 빈칸 지정 명령 - 매우 중요]: ${flowchartSpecificInstruction}
-  * answers 객체의 각 INPUT 키("INPUT_1"부터 "INPUT_2*M"까지)에 들어갈 정답은 명사형 종결어미로 간결하게 작성하여 수험생이 명료하게 채점받을 수 있게 설계하십시오.
+[3�?문제] 주�???(?�채?�기) (?�스???�름??:
+- 목적: ?�픽???�공/?�계 ?�차, ?�험 ?�서, ?�는 ?�계�?거동 메커?�즘???�식?�한 ?�로?�차??빈칸 채우�?질문.
+- "type" �? 반드??"주�???(?�채?�기)"
+- 출제 ?�칙: 
+  * 모든 ?�픽???�?�여 반드???�스???�로?�차???�이?�그??백틱 \`\`\`?�로 감싸?�진 ?�이?�그?????�함??주�???(?�채?�기) 문제�?100% 무조�?출제?�십?�오.
+  * tableData?� answers 객체 구조�?100% 갖춘 ?�태�??�성?�십?�오.
+  * [?�� ?�번 ?�차 ?�름??문제 빈칸 지??명령 - 매우 중요]: ${flowchartSpecificInstruction}
+  * answers 객체??�?INPUT ??"INPUT_1"부??"INPUT_2*M"까�?)???�어�??�답?� 명사??종결?��?�?간결?�게 ?�성?�여 ?�험?�이 명료?�게 채점받을 ???�게 ?�계?�십?�오.
 
-[주관식 (단답형) 문제들 (4, 5, 6, 7번 문제)]:
-- 개수: 반드시 정확히 4문제를 출제하십시오.
-- "type" 값: 반드시 "주관식 (단답형)"
-- 🚨 [객관식/선택형 옵션(보기) 제공 절대 금지 규칙 - 극도로 중요!]: 주관식(개요, 공식, 단답형, 표채우기)의 그 어떤 문항에서도 객관식용 보기(options, 예: ①, ②, ③, ④ 등 또는 "options" 필드)를 절대로 설계하거나 기입하여 제공하지 마십시오. 모든 주관식 문항은 오직 서술형 정답만을 요구해야 합니다.
-- 출제 원칙:
-  * **[🚨 단순 단답식 출제 절대 금지 및 기술사 역량 평가 강제]**: 단순히 '무엇인가?'라며 단어나 명칭만을 단답형으로 묻는 수준 낮은 초보적인 문제는 **절대로 출제하지 마십시오.** 기술사(Professional Engineer) 시험 수준에 걸맞게 실무적/역학적 전문성을 요구하는 깊이 있는 서술형 질문으로 출제해야 합니다.
-  * **[출제 유형 예시]**:
-    1. 해당 이론/공법의 공학적 타당성, 기본 가정이 내포하는 한계점 및 이에 대한 공학적 견해 (예: "~~ 이론에 대해서 어떻게 생각하며, 실무적 의의는 무엇인가?")
-    2. 실무 적용 시 발생할 수 있는 주요 역학적/구조적 단점이나 문제점 (예: "~~ 공법 적용 시 설계/시공상 단점 및 극복해야 할 한계는 무엇인가?")
-    3. 구체적인 현장 문제 상황(시나리오)을 제시하고 이를 해결하기 위한 기술사 관점의 대처 방안 (예: "본 공법 적용 시 지반 침하 등 위해 요인이 발생하는 원인은 무엇이며, 이를 방지/해결하기 위한 실무적인 대책은 무엇인가?")
-  * **정답("answer")**: 모범 답안은 단순히 한 단어 키워드가 아니라, 구체적인 공학적 거동 메커니즘과 설계/시공 시 인과관계 대책이 논리적으로 상세히 포함된 서술형(최소 50자에서 최대 120자 내외)으로 명료하게 작성하십시오. 모든 정답의 어미는 반드시 "~다", "~입니다" 등의 평서문을 배제하고, 기술사 시험 답안지 형식인 명사형 종결어미(예: ~함, ~감소, ~방지, ~유도, ~소산, ~확보 등)로 끝나야 합니다. 또한, 이 정답 문장 내에서 채점에 중요도가 가장 높은 필수 공학 키워드들은 반드시 역슬래시 없이 일반 마크다운 강조 기호인 **키워드** 형태로 감싸서 작성해 주십시오. (예: **이중층 두께**, **전단강도 저하** 등)
-  * "explanation": 왜 이 답안이 올바른 공학적 대책/이론인지 상세히 설명하십시오.
+[주�???(?�답?? 문제??(4, 5, 6, 7�?문제)]:
+- 개수: 반드???�확??4문제�?출제?�십?�오.
+- "type" �? 반드??"주�???(?�답??"
+- ?�� [객�????�택???�션(보기) ?�공 ?��? 금�? 규칙 - 극도�?중요!]: 주�???개요, 공식, ?�답?? ?�채?�기)??�??�떤 문항?�서??객�??�용 보기(options, ?? ?? ?? ?? ?????�는 "options" ?�드)�??��?�??�계?�거??기입?�여 ?�공?��? 마십?�오. 모든 주�???문항?� ?�직 ?�술???�답만을 ?�구?�야 ?�니??
+- 출제 ?�칙:
+  * **[?�� ?�순 ?�답??출제 ?��? 금�? �?기술????�� ?��? 강제]**: ?�순??'무엇?��??'?�며 ?�어??명칭만을 ?�답?�으�?묻는 ?��? ??? 초보?�인 문제??**?��?�?출제?��? 마십?�오.** 기술??Professional Engineer) ?�험 ?��???걸맞�??�무????��???�문?�을 ?�구?�는 깊이 ?�는 ?�술??질문?�로 출제?�야 ?�니??
+  * **[출제 ?�형 ?�시]**:
+    1. ?�당 ?�론/공법??공학???�?�성, 기본 가?�이 ?�포?�는 ?�계??�??�에 ?�??공학??견해 (?? "~~ ?�론???�?�서 ?�떻�??�각?�며, ?�무???�의??무엇?��??")
+    2. ?�무 ?�용 ??발생?????�는 주요 ??��??구조???�점?�나 문제??(?? "~~ 공법 ?�용 ???�계/?�공???�점 �?극복?�야 ???�계??무엇?��??")
+    3. 구체?�인 ?�장 문제 ?�황(?�나리오)???�시?�고 ?��? ?�결?�기 ?�한 기술??관?�의 ?��?방안 (?? "�?공법 ?�용 ??지�?침하 ???�해 ?�인??발생?�는 ?�인?� 무엇?�며, ?��? 방�?/?�결?�기 ?�한 ?�무?�인 ?�책�? 무엇?��??")
+  * **?�답("answer")**: 모범 ?�안?� ?�순?????�어 ?�워?��? ?�니?? 구체?�인 공학??거동 메커?�즘�??�계/?�공 ???�과관�??�책이 ?�리?�으�??�세???�함???�술??최소 50?�에??최�? 120???�외)?�로 명료?�게 ?�성?�십?�오. 모든 ?�답???��???반드??"~??, "~?�니?? ?�의 ?�서문을 배제?�고, 기술???�험 ?�안지 ?�식??명사??종결?��?(?? ~?? ~감소, ~방�?, ~?�도, ~?�산, ~?�보 ??�??�나???�니?? ?�한, ???�답 문장 ?�에??채점??중요?��? 가???��? ?�수 공학 ?�워?�들?� 반드????��?�시 ?�이 ?�반 마크?�운 강조 기호??**?�워??* ?�태�?감싸???�성??주십?�오. (?? **?�중�??�께**, **?�단강도 ?�??* ??
+  * "explanation": ?????�안???�바�?공학???��??�론?��? ?�세???�명?�십?�오.
 
 ${topicInstructionsPrompt}
 ${LATEX_PROMPT_INSTRUCTIONS}
 
-[응답 JSON 포맷]:
-반드시 아래 지정된 JSON 배열 포맷으로만 정확히 반환하십시오. 마크다운의 \`\`\`json 코드 블록이나 추가적인 텍스트 설명은 배제하고 순수한 JSON 데이터만 제공해 주십시오.
+[?�답 JSON ?�맷]:
+반드???�래 지?�된 JSON 배열 ?�맷?�로�??�확??반환?�십?�오. 마크?�운??\`\`\`json 코드 블록?�나 추�??�인 ?�스???�명?� 배제?�고 ?�수??JSON ?�이?�만 ?�공??주십?�오.
 [
   {
-    "type": "주관식 (개요)",
-    "question": "토픽의 기본 정의와 핵심 개념을 묻는 질문 내용",
-    "concept": "개요 설명",
+    "type": "주�???(개요)",
+    "question": "?�픽??기본 ?�의?� ?�심 개념??묻는 질문 ?�용",
+    "concept": "개요 ?�명",
     "formula": "",
     "structure": ""
   },
   {
-    "type": "주관식 (공식)",
-    "question": "토픽의 대표 공식명칭 (사족 배제)",
-    "concept": "공식에 대한 한 줄 요약",
+    "type": "주�???(공식)",
+    "question": "?�픽???�??공식명칭 (?�족 배제)",
+    "concept": "공식???�????�??�약",
     "formula": "$LaTeX공식$",
-    "structure": "- $기호1$: 간단한 명사형 의미"
+    "structure": "- $기호1$: 간단??명사???��?"
   },
   {
-    "type": "주관식 (단답형)",
-    "question": "토픽의 가장 중요하고 핵심적인 공학적 정의, 기본 가정, 또는 주요 공학적 의미를 묻는 서술형 질문 1",
-    "answer": "핵심 개념이나 거동 특성을 요약한 1줄 서술형 답안 문구 1",
-    "explanation": "해당 개념의 학술적/공학적 의미에 대한 상세 설명 1"
+    "type": "주�???(?�답??",
+    "question": "?�픽??가??중요?�고 ?�심?�인 공학???�의, 기본 가?? ?�는 주요 공학???��?�?묻는 ?�술??질문 1",
+    "answer": "?�심 개념?�나 거동 ?�성???�약??1�??�술???�안 문구 1",
+    "explanation": "?�당 개념???�술??공학???��????�???�세 ?�명 1"
   },
   {
-    "type": "주관식 (단답형)",
-    "question": "토픽의 가장 중요하고 핵심적인 공학적 정의, 기본 가정, 또는 주요 공학적 의미를 묻는 서술형 질문 2",
-    "answer": "핵심 개념이나 거동 특성을 요약한 1줄 서술형 답안 문구 2",
-    "explanation": "해당 개념의 학술적/공학적 의미에 대한 상세 설명 2"
+    "type": "주�???(?�답??",
+    "question": "?�픽??가??중요?�고 ?�심?�인 공학???�의, 기본 가?? ?�는 주요 공학???��?�?묻는 ?�술??질문 2",
+    "answer": "?�심 개념?�나 거동 ?�성???�약??1�??�술???�안 문구 2",
+    "explanation": "?�당 개념???�술??공학???��????�???�세 ?�명 2"
   },
   {
-    "type": "주관식 (단답형)",
-    "question": "토픽의 또 다른 중요 세부 개념, 원리 또는 장단점을 묻는 서술형 질문 3",
-    "answer": "세부 개념이나 거동 특성을 요약한 1줄 서술형 답안 문구 3",
-    "explanation": "해당 개념의 학술적/공학적 의미에 대한 상세 설명 3"
+    "type": "주�???(?�답??",
+    "question": "?�픽?????�른 중요 ?��? 개념, ?�리 ?�는 ?�단?�을 묻는 ?�술??질문 3",
+    "answer": "?��? 개념?�나 거동 ?�성???�약??1�??�술???�안 문구 3",
+    "explanation": "?�당 개념???�술??공학???��????�???�세 ?�명 3"
   },
   {
-    "type": "주관식 (단답형)",
-    "question": "해당 토픽과 관련된 구체적인 공학적 현장 문제 상황(시나리오)을 제시하고 대처/방지 방안(해결 대책)을 요구하는 질문 4",
-    "answer": "문제 상황에 대처하기 위한 구체적인 공학적 대안 또는 대책 서술형 답안 4",
-    "explanation": "제안한 공학적 대책의 타당성 및 작동 메커니즘 설명 4"
+    "type": "주�???(?�답??",
+    "question": "?�당 ?�픽�?관?�된 구체?�인 공학???�장 문제 ?�황(?�나리오)???�시?�고 ?��?방�? 방안(?�결 ?��????�구?�는 질문 4",
+    "answer": "문제 ?�황???�처하�??�한 구체?�인 공학???�???�는 ?��??�술???�안 4",
+    "explanation": "?�안??공학???�책의 ?�?�성 �??�동 메커?�즘 ?�명 4"
   },
   {
-    "type": "주관식 (표채우기)",
-    "question": "다음 [OOO 분석/설계 절차] 흐름도를 보고 빈칸에 들어갈 올바른 단계를 입력하시오 (마크다운 고정폭 코드블록으로 감싼 아스키 흐름도 포함)",
+    "type": "주�???(?�채?�기)",
+    "question": "?�음 [OOO 분석/?�계 ?�차] ?�름?��? 보고 빈칸???�어�??�바�??�계�??�력?�시??(마크?�운 고정??코드블록?�로 감싼 ?�스???�름???�함)",
     "tableData": {
-      "headers": ["빈칸 구분", "입력 답안"],
+      "headers": ["빈칸 구분", "?�력 ?�안"],
       "rows": [
         ["(A)", "[INPUT_1]"],
         ["(B)", "[INPUT_2]"],
@@ -1097,140 +1119,140 @@ ${LATEX_PROMPT_INSTRUCTIONS}
       ]
     },
     "answers": {
-      "INPUT_1": "(A)의 올바른 정답 문구",
-      "INPUT_2": "(B)의 올바른 정답 문구",
-      "INPUT_3": "(C)의 올바른 정답 문구",
-      "INPUT_4": "(D)의 올바른 정답 문구"
+      "INPUT_1": "(A)???�바�??�답 문구",
+      "INPUT_2": "(B)???�바�??�답 문구",
+      "INPUT_3": "(C)???�바�??�답 문구",
+      "INPUT_4": "(D)???�바�??�답 문구"
     },
-    "explanation": "전체 흐름도의 공학적 해설 및 각 단계별 상세 설명"
+    "explanation": "?�체 ?�름?�의 공학???�설 �?�??�계�??�세 ?�명"
   }
 ]
 `;
 
     const promptBatch2 = `
-[🚨 최우선 절대 준수 법규 (Constitutional Guidelines) - 작업을 시작하기 전에 가장 먼저 확인하고 100% 준수하십시오]:
-당신은 대한민국 국가기술자격 기술사(Professional Engineer) 시험 출제위원으로서 문제를 출제하기 전, 아래 명시된 **문제생성 절대 지침들**과 **공학적 이론 기준**을 헌법의 제1조 철칙으로 삼아 이를 먼저 완벽하게 숙지하고 절대적으로 복종하여 문제를 설계 및 출제해야 합니다. 지침을 위반하여 출제된 문제는 시스템 검증 단계에서 즉시 폐기됩니다.
+[?�� 최우???��? 준??법규 (Constitutional Guidelines) - ?�업???�작?�기 ?�에 가??먼�? ?�인?�고 100% 준?�하??��??:
+?�신?� ?�?��?�?�??기술?�격 기술??Professional Engineer) ?�험 출제?�원?�로??문제�?출제?�기 ?? ?�래 명시??**문제?�성 ?��? 지침들**�?**공학???�론 기�?**???�법????�?철칙?�로 ?�아 ?��? 먼�? ?�벽?�게 ?��??�고 ?��??�으�?복종?�여 문제�??�계 �?출제?�야 ?�니?? 지침을 ?�반?�여 출제??문제???�스??검�??�계?�서 즉시 ?�기?�니??
 
-${standardsAnalysis ? `${standardsAnalysis}\n\n` : ''}[🚨 문제 생성 절대 준수 지침]:
+${standardsAnalysis ? `${standardsAnalysis}\n\n` : ''}[?�� 문제 ?�성 ?��? 준??지�?:
 ${activeGenerationStandards}
 
-[🚨 지반공학 표준 이론 및 계산 기준]:
+[?�� 지반공???��? ?�론 �?계산 기�?]:
 ${activeEngineeringStandards}
 
 ---------------------------------------------------------
-[문제 생성 태스크 시작]:
-위의 절대 지침과 기준 법규를 완전히 숙지한 상태에서, 아래 제공되는 [토픽 핵심 주제], [핵심 키워드], [첨부파일 본문 텍스트]를 심층 분석하여, 총 **정확히 2개**의 예상문제(주관식 표채우기 2개)를 생성해 주십시오.
+[문제 ?�성 ?�스???�작]:
+?�의 ?��? 지침과 기�? 법규�??�전???��????�태?�서, ?�래 ?�공?�는 [?�픽 ?�심 주제], [?�심 ?�워??, [첨�??�일 본문 ?�스??�??�층 분석?�여, �?**?�확??2�?*???�상문제(주�????�채?�기 2�?�??�성??주십?�오.
 
-[토픽 핵심 주제]: ${coreSubject}
-[토픽 원본 제목]: ${topic.title}
-[핵심 키워드]: ${topic.keywords || '제공되지 않음'}
-[첨부파일 본문 텍스트]: ${fileText || '제공되지 않음'}
+[?�픽 ?�심 주제]: ${coreSubject}
+[?�픽 ?�본 ?�목]: ${topic.title}
+[?�심 ?�워??: ${topic.keywords || '?�공?��? ?�음'}
+[첨�??�일 본문 ?�스??: ${fileText || '?�공?��? ?�음'}
 
-[출제 요구사항]:
-반드시 총 2개의 주관식 (표채우기) 문제를 다음과 같이 구성하여 출제하십시오:
-🚨 **[2개 문항 다각화 원칙 - 극도로 중요!]**: 2개의 표채우기 문제는 반드시 **서로 완전히 다른 비교 대상, 다른 관점, 다른 공학적 측면**을 다루어야 합니다. 동일한 비교 대상을 두 문제에 걸쳐 반복 출제하는 것은 절대 금지합니다. 두 문제 모두 반드시 제공된 [토픽 핵심 주제]와 [첨부파일 본문 텍스트]의 범위 내에서만 출제하십시오.
-- **🚨 [토픽 명칭 정제 및 찌꺼기 제거 철칙]**: 문제를 출제할 때 질문 지문에 "공학 해석 보고서", "공부노트", "요약본" 같은 문서 형태를 가리키는 군더더기 찌꺼기 명칭을 그대로 주어로 사용하지 마십시오. 문제 지문에는 오직 순수한 공학 핵심 주제인 **"${coreSubject}"** 명칭만을 활용하여 질문 문장을 다듬으십시오. (예: "~~ 보고서의 장단점을..." (X) -> "~~ 이론의 장단점을..." (O))
+[출제 ?�구?�항]:
+반드??�?2개의 주�???(?�채?�기) 문제�??�음�?같이 구성?�여 출제?�십?�오:
+?�� **[2�?문항 ?�각???�칙 - 극도�?중요!]**: 2개의 ?�채?�기 문제??반드??**?�로 ?�전???�른 비교 ?�?? ?�른 관?? ?�른 공학??측면**???�루?�야 ?�니?? ?�일??비교 ?�?�을 ??문제??걸쳐 반복 출제?�는 것�? ?��? 금�??�니?? ??문제 모두 반드???�공??[?�픽 ?�심 주제]?� [첨�??�일 본문 ?�스????범위 ?�에?�만 출제?�십?�오.
+- **?�� [?�픽 명칭 ?�제 �?찌꺼�??�거 철칙]**: 문제�?출제????질문 지문에 "공학 ?�석 보고??, "공�??�트", "?�약�? 같�? 문서 ?�태�?가리키??군더?�기 찌꺼�?명칭??그�?�?주어�??�용?��? 마십?�오. 문제 지문에???�직 ?�수??공학 ?�심 주제??**"${coreSubject}"** 명칭만을 ?�용?�여 질문 문장???�듬?�십?�오. (?? "~~ 보고?�의 ?�단?�을..." (X) -> "~~ ?�론???�단?�을..." (O))
 
-[주관식 (표채우기) 문제 2개]:
-- 목적: 해당 [토픽 핵심 주제]와 밀접하게 연관된 **대표적인 기법 비교, 공법 비교, 이론 비교** 등 서로 대비되는 핵심 대상을 선정하고, 이들의 역학적 특징, 거동 기전, 또는 장단점을 명확하게 대조하는 유기적인 비교표(Table) 채우기 질문을 출제해 주십시오. (예: 액상화 방지 대책에서 SCP공법과 모래다짐공법 비교, 혹은 정적 액상화와 동적 액상화 이론 비교 등)
-  - 구성 형태: 열(Column)에 비교 대상들을 배치하고, 행(Row)의 첫 번째 열에는 구분/평가 기준(구분 항목)을 둡니다.
-  - 🚨 **[구분 항목(행 제목) 명확화 원칙 - 극도로 중요!]**: 구분 항목(행 제목)은 **그것만 읽어도 이 표가 무슨 주제/토픽에 대한 비교인지, 이 행에 어떤 종류의 답을 써야 하는지 직관적으로 이해할 수 있어야** 합니다. 너무 추상적이거나 무조건 길게 쓰지 마십시오. 사용자가 작성해야 하는 답변 범주(메커니즘, 관리 대책, 특징 등)를 정확히 단순하고 직관적인 단어 또는 명사형 어구로 지시하십시오.
-  - 🚨 **[모범 답안-구분항목 범주 일치 원칙 - 극도로 중요!]**: 각 INPUT의 모범 답안은 반드시 **해당 행의 구분 항목(행 제목)이 요구하는 답변 범주**에 정확히 부합하는 내용이어야 합니다. 예를 들어 구분 항목이 '실무 활용처 및 적용 사례'이면 모범 답안도 '어디에 쓰이는지(활용처)'를 기술해야 하고, '시공 시 유의사항 및 한계'이면 '주의해야 할 점(유의사항)'을 기술해야 합니다. 구분 항목이 묻는 범주와 전혀 다른 범주의 답(예: 유의점을 물었는데 활용처를 답안으로 작성)은 **출제 오류**이므로 절대 발생시키지 마십시오.
-  - "explanation": 표 전체 내용 및 각 빈칸에 대한 공학적 상세 해설.
+[주�???(?�채?�기) 문제 2�?:
+- 목적: ?�당 [?�픽 ?�심 주제]?� 밀?�하�??��???**?�?�적??기법 비교, 공법 비교, ?�론 비교** ???�로 ?�비되???�심 ?�?�을 ?�정?�고, ?�들????��???�징, 거동 기전, ?�는 ?�단?�을 명확?�게 ?�조하???�기?�인 비교??Table) 채우�?질문??출제??주십?�오. (?? ?�상??방�? ?�책에??SCP공법�?모래?�짐공법 비교, ?��? ?�적 ?�상?��? ?�적 ?�상???�론 비교 ??
+  - 구성 ?�태: ??Column)??비교 ?�?�들??배치?�고, ??Row)??�?번째 ?�에??구분/?��? 기�?(구분 ??��)???�니??
+  - ?�� **[구분 ??��(???�목) 명확???�칙 - 극도�?중요!]**: 구분 ??��(???�목)?� **그것�??�어?????��? 무슨 주제/?�픽???�??비교?��?, ???�에 ?�떤 종류???�을 ?�야 ?�는지 직�??�으�??�해?????�어??* ?�니?? ?�무 추상?�이거나 무조�?길게 ?��? 마십?�오. ?�용?��? ?�성?�야 ?�는 ?��? 범주(메커?�즘, 관�??��? ?�징 ??�??�확???�순?�고 직�??�인 ?�어 ?�는 명사???�구�?지?�하??��??
+  - ?�� **[모범 ?�안-구분??�� 범주 ?�치 ?�칙 - 극도�?중요!]**: �?INPUT??모범 ?�안?� 반드??**?�당 ?�의 구분 ??��(???�목)???�구?�는 ?��? 범주**???�확??부?�하???�용?�어???�니?? ?��? ?�어 구분 ??��??'?�무 ?�용�?�??�용 ?��?'?�면 모범 ?�안??'?�디???�이?��?(?�용�?'�?기술?�야 ?�고, '?�공 ???�의?�항 �??�계'?�면 '주의?�야 ?????�의?�항)'??기술?�야 ?�니?? 구분 ??��??묻는 범주?� ?��? ?�른 범주?????? ?�의?�을 물었?�데 ?�용처�? ?�안?�로 ?�성)?� **출제 ?�류**?��?�??��? 발생?�키지 마십?�오.
+  - "explanation": ???�체 ?�용 �?�?빈칸???�??공학???�세 ?�설.
 
 ${topicInstructionsPrompt}
 ${LATEX_PROMPT_INSTRUCTIONS}
 
-[응답 JSON 포맷]:
-반드시 아래 지정된 JSON 배열 포맷으로만 정확히 반환하십시오. 마크다운의 \`\`\`json 코드 블록이나 추가적인 텍스트 설명은 배제하고 순수한 JSON 데이터만 제공해 주십시오.
+[?�답 JSON ?�맷]:
+반드???�래 지?�된 JSON 배열 ?�맷?�로�??�확??반환?�십?�오. 마크?�운??\`\`\`json 코드 블록?�나 추�??�인 ?�스???�명?� 배제?�고 ?�수??JSON ?�이?�만 ?�공??주십?�오.
 [
   {
-    "type": "주관식 (표채우기)",
-    "question": "다음 (비교 대상 공법명) 공법들의 주요 공학적 특징 비교표 빈칸에 들어갈 내용을 알맞게 서술하시오.",
+    "type": "주�???(?�채?�기)",
+    "question": "?�음 (비교 ?�??공법�? 공법?�의 주요 공학???�징 비교??빈칸???�어�??�용???�맞�??�술?�시??",
     "tableData": {
-      "headers": ["구분 항목", "비교대상 A", "비교대상 B"],
+      "headers": ["구분 ??��", "비교?�??A", "비교?�??B"],
       "rows": [
-        ["평가 항목 명칭", "[INPUT_1]", "(기입된 정보)"],
-        ["평가 항목 명칭", "(기입된 정보)", "[INPUT_2]"]
+        ["?��? ??�� 명칭", "[INPUT_1]", "(기입???�보)"],
+        ["?��? ??�� 명칭", "(기입???�보)", "[INPUT_2]"]
       ]
     },
     "answers": {
-      "INPUT_1": "비교대상 A의 공학적 메커니즘을 설명하는 40~80자 서술형 문장",
-      "INPUT_2": "비교대상 B의 공학적 메커니즘을 설명하는 40~80자 서술형 문장"
+      "INPUT_1": "비교?�??A??공학??메커?�즘???�명?�는 40~80???�술??문장",
+      "INPUT_2": "비교?�??B??공학??메커?�즘???�명?�는 40~80???�술??문장"
     },
-    "explanation": "표 내용 및 빈칸에 대한 공학적 상세 해설"
+    "explanation": "???�용 �?빈칸???�??공학???�세 ?�설"
   },
   {
-    "type": "주관식 (표채우기)",
-    "question": "다음 (다른 비교 대상명) 비교표 빈칸에 들어갈 내용을 서술하시오.",
+    "type": "주�???(?�채?�기)",
+    "question": "?�음 (?�른 비교 ?�?�명) 비교??빈칸???�어�??�용???�술?�시??",
     "tableData": {
-      "headers": ["구분 항목", "비교대상 C", "비교대상 D"],
+      "headers": ["구분 ??��", "비교?�??C", "비교?�??D"],
       "rows": [
-        ["평가 항목 명칭", "[INPUT_1]", "(기입된 정보)"],
-        ["평가 항목 명칭", "(기입된 정보)", "[INPUT_2]"]
+        ["?��? ??�� 명칭", "[INPUT_1]", "(기입???�보)"],
+        ["?��? ??�� 명칭", "(기입???�보)", "[INPUT_2]"]
       ]
     },
     "answers": {
-      "INPUT_1": "비교대상 C의 공학적 메커니즘을 설명하는 40~80자 서술형 문장",
-      "INPUT_2": "비교대상 D의 공학적 메커니즘을 설명하는 40~80자 서술형 문장"
+      "INPUT_1": "비교?�??C??공학??메커?�즘???�명?�는 40~80???�술??문장",
+      "INPUT_2": "비교?�??D??공학??메커?�즘???�명?�는 40~80???�술??문장"
     },
-    "explanation": "표 내용 및 빈칸에 대한 공학적 상세 해설"
+    "explanation": "???�용 �?빈칸???�??공학???�세 ?�설"
   }
 ]
 `;
 
     const promptBatch3 = `
-[🚨 최우선 절대 준수 법규 (Constitutional Guidelines) - 작업을 시작하기 전에 가장 먼저 확인하고 100% 준수하십시오]:
-당신은 대한민국 국가기술자격 기술사(Professional Engineer) 시험 출제위원으로서 문제를 출제하기 전, 아래 명시된 **문제생성 절대 지침들**과 **공학적 이론 기준**을 헌법의 제1조 철칙으로 삼아 이를 먼저 완벽하게 숙지하고 절대적으로 복종하여 문제를 설계 및 출제해야 합니다. 지침을 위반하여 출제된 문제는 시스템 검증 단계에서 즉시 폐기됩니다.
+[?�� 최우???��? 준??법규 (Constitutional Guidelines) - ?�업???�작?�기 ?�에 가??먼�? ?�인?�고 100% 준?�하??��??:
+?�신?� ?�?��?�?�??기술?�격 기술??Professional Engineer) ?�험 출제?�원?�로??문제�?출제?�기 ?? ?�래 명시??**문제?�성 ?��? 지침들**�?**공학???�론 기�?**???�법????�?철칙?�로 ?�아 ?��? 먼�? ?�벽?�게 ?��??�고 ?��??�으�?복종?�여 문제�??�계 �?출제?�야 ?�니?? 지침을 ?�반?�여 출제??문제???�스??검�??�계?�서 즉시 ?�기?�니??
 
-${standardsAnalysis ? `${standardsAnalysis}\n\n` : ''}[🚨 문제 생성 절대 준수 지침]:
+${standardsAnalysis ? `${standardsAnalysis}\n\n` : ''}[?�� 문제 ?�성 ?��? 준??지�?:
 ${activeGenerationStandards}
 
-[🚨 지반공학 표준 이론 및 계산 기준]:
+[?�� 지반공???��? ?�론 �?계산 기�?]:
 ${activeEngineeringStandards}
 
 ---------------------------------------------------------
-[문제 생성 태스크 시작]:
-위의 절대 지침과 기준 법규를 완전히 숙지한 상태에서, 아래 제공되는 [토픽 핵심 주제], [핵심 키워드], [첨부파일 본문 텍스트], [이전 회차 오답 정보], [사용자 피드백 지침] 그리고 [사용자 문제 조정 내역]을 심층 분석하여, 총 **정확히 4개**의 예상문제(객관식 4지선다 4개)를 생성해 주십시오.
+[문제 ?�성 ?�스???�작]:
+?�의 ?��? 지침과 기�? 법규�??�전???��????�태?�서, ?�래 ?�공?�는 [?�픽 ?�심 주제], [?�심 ?�워??, [첨�??�일 본문 ?�스??, [?�전 ?�차 ?�답 ?�보], [?�용???�드�?지�? 그리�?[?�용??문제 조정 ?�역]???�층 분석?�여, �?**?�확??4�?*???�상문제(객�???4지?�다 4�?�??�성??주십?�오.
 ${specialInstructions}
 ${weaknessPrompt}
 ${feedbackPrompt}
 ${adjustmentsPrompt}
 
-[토픽 핵심 주제]: ${coreSubject}
-[토픽 원본 제목]: ${topic.title}
-[핵심 키워드]: ${topic.keywords || '제공되지 않음'}
-[첨부파일 본문 텍스트]: ${fileText || '제공되지 않음'}
+[?�픽 ?�심 주제]: ${coreSubject}
+[?�픽 ?�본 ?�목]: ${topic.title}
+[?�심 ?�워??: ${topic.keywords || '?�공?��? ?�음'}
+[첨�??�일 본문 ?�스??: ${fileText || '?�공?��? ?�음'}
 
-- **🚨 [토픽 명칭 정제 및 찌꺼기 제거 철칙]**: 문제를 출제할 때 질문 지문에 "공학 해석 보고서", "공부노트", "요약본" 같은 문서 형태를 가리키는 군더더기 찌꺼기 명칭을 그대로 주어로 사용하지 마십시오. 문제 지문에는 오직 순수한 공학 핵심 주제인 **"${coreSubject}"** 명칭만을 활용하여 질문 문장을 다듬으십시오.
+- **?�� [?�픽 명칭 ?�제 �?찌꺼�??�거 철칙]**: 문제�?출제????질문 지문에 "공학 ?�석 보고??, "공�??�트", "?�약�? 같�? 문서 ?�태�?가리키??군더?�기 찌꺼�?명칭??그�?�?주어�??�용?��? 마십?�오. 문제 지문에???�직 ?�수??공학 ?�심 주제??**"${coreSubject}"** 명칭만을 ?�용?�여 질문 문장???�듬?�십?�오.
 
-[🚨 시험 결과 및 실험 데이터 수치 제시 원칙 — 매우 중요]:
-- 만약 문제가 특정 심도별 시험 결과나 실험 데이터 수치를 해석/분석하여 답안을 채우거나 계산/추론해야 하는 문제인 경우, 분석의 대상이 되는 원본 시험 결과 데이터 테이블을 질문(question) 텍스트 본문 안에 마크다운 표 형태로 반드시 함께 기입하여 보여주십시오.
-- **🚨 [표 작성 개행 규칙 - 극도로 중요!]**: 마크다운 표의 각 행은 반드시 실제 줄바꿈 문자(\\n)를 사용하여 각각 다른 줄에 작성되어야 합니다.
+[?�� ?�험 결과 �??�험 ?�이???�치 ?�시 ?�칙 ??매우 중요]:
+- 만약 문제가 ?�정 ?�도�??�험 결과???�험 ?�이???�치�??�석/분석?�여 ?�안??채우거나 계산/추론?�야 ?�는 문제??경우, 분석???�?�이 ?�는 ?�본 ?�험 결과 ?�이???�이블을 질문(question) ?�스??본문 ?�에 마크?�운 ???�태�?반드???�께 기입?�여 보여주십?�오.
+- **?�� [???�성 개행 규칙 - 극도�?중요!]**: 마크?�운 ?�의 �??��? 반드???�제 줄바�?문자(\\n)�??�용?�여 각각 ?�른 줄에 ?�성?�어???�니??
 
-[출제 요구사항]:
-반드시 총 4개의 객관식 문제를 다음과 같이 구성하여 출제하십시오:
+[출제 ?�구?�항]:
+반드??�?4개의 객�???문제�??�음�?같이 구성?�여 출제?�십?�오:
 
-- 목적: 토픽의 상세한 원리, 메커니즘, 장단점 등을 다각도로 평가하는 고난도 4지선다형 질문.
-- "type" 값: 반드시 "객관식 (4지선다)"
-- [계산문제 비중 조건 - 매우 중요]: 전체 4개의 객관식 문제 중, 반드시 정확히 2개의 문제는 공학적 수치 판단이나 정량적 분석 능력을 평가하는 문제로 출제하십시오. 단, 질문 지문에 공식이나 수치를 미리 제시한 뒤 "이 값을 대입하여 계산하시오" 식의 기계적 계산 문제는 절대로 출제하지 마십시오.
-- [핵심 관통 질문 원칙]: 모든 객관식 문제는 해당 토픽의 가장 본질적인 공학적 메커니즘, 거동 원리, 설계 판단 근거를 관통하는 질문이어야 합니다.
-- 🚨 [객관식 정밀성 및 정답 일치 조건 - 극도로 중요!]: 모든 객관식 계산 문제나 수치/공학적 판단 문제를 출제할 때, 계산으로 도출된 정확한 정답 수치나 조건이 4개의 보기(options) 중 반드시 정확히 1개로 존재해야 합니다.
-- 🚨 [공식 및 공식 수치 범위 노출 절대 금지 규칙 - 극도로 중요!]: 문제 질문(question) 본문 내에 문제를 해결하는 데 필요한 공학 수식 자체나 수식의 특정 수치 범위를 **절대로 직접 텍스트로 적어 제공하지 마십시오.**
-- 🚨 [유사/중복 질문 출제 절대 금지 - 매우 중요!]: 하나의 공식이나 거동 특성에서 파생되는 변수만 바꾼 형태의 유사한 비례/반비례 질문은 **절대로 중복하여 출제하지 마십시오.**
+- 목적: ?�픽???�세???�리, 메커?�즘, ?�단???�을 ?�각?�로 ?��??�는 고난??4지?�다??질문.
+- "type" �? 반드??"객�???(4지?�다)"
+- [계산문제 비중 조건 - 매우 중요]: ?�체 4개의 객�???문제 �? 반드???�확??2개의 문제??공학???�치 ?�단?�나 ?�량??분석 ?�력???��??�는 문제�?출제?�십?�오. ?? 질문 지문에 공식?�나 ?�치�?미리 ?�시????"??값을 ?�?�하??계산?�시?? ?�의 기계??계산 문제???��?�?출제?��? 마십?�오.
+- [?�심 관??질문 ?�칙]: 모든 객�???문제???�당 ?�픽??가??본질?�인 공학??메커?�즘, 거동 ?�리, ?�계 ?�단 근거�?관?�하??질문?�어???�니??
+- ?�� [객�????��???�??�답 ?�치 조건 - 극도�?중요!]: 모든 객�???계산 문제???�치/공학???�단 문제�?출제???? 계산?�로 ?�출???�확???�답 ?�치??조건??4개의 보기(options) �?반드???�확??1개로 존재?�야 ?�니??
+- ?�� [공식 �?공식 ?�치 범위 ?�출 ?��? 금�? 규칙 - 극도�?중요!]: 문제 질문(question) 본문 ?�에 문제�??�결?�는 ???�요??공학 ?�식 ?�체???�식???�정 ?�치 범위�?**?��?�?직접 ?�스?�로 ?�어 ?�공?��? 마십?�오.**
+- ?�� [?�사/중복 질문 출제 ?��? 금�? - 매우 중요!]: ?�나??공식?�나 거동 ?�성?�서 ?�생?�는 변?�만 바꾼 ?�태???�사??비�?/반비례 질문?� **?��?�?중복?�여 출제?��? 마십?�오.**
 
 ${topicInstructionsPrompt}
 ${LATEX_PROMPT_INSTRUCTIONS}
 
-[응답 JSON 포맷]:
-반드시 아래 지정된 JSON 배열 포맷으로만 정확히 반환하십시오. 마크다운의 \`\`\`json 코드 블록이나 추가적인 텍스트 설명은 배제하고 순수한 JSON 데이터만 제공해 주십시오.
+[?�답 JSON ?�맷]:
+반드???�래 지?�된 JSON 배열 ?�맷?�로�??�확??반환?�십?�오. 마크?�운??\`\`\`json 코드 블록?�나 추�??�인 ?�스???�명?� 배제?�고 ?�수??JSON ?�이?�만 ?�공??주십?�오.
 [
   {
-    "type": "객관식 (4지선다)",
-    "question": "질문 내용",
+    "type": "객�???(4지?�다)",
+    "question": "질문 ?�용",
     "options": ["보기 1", "보기 2", "보기 3", "보기 4"],
-    "answer": "정확히 일치하는 정답 보기 텍스트",
-    "explanation": "상세한 해설"
+    "answer": "?�확???�치?�는 ?�답 보기 ?�스??,
+    "explanation": "?�세???�설"
   }
 ]
 `;
@@ -1282,9 +1304,9 @@ let parsedArray = null;
         return Array.isArray(parsed) ? parsed : [];
       };
 
-      const q1 = parseBatch(batch1Text, '1 (주관식 개요/공식/단답)');
-      const q2 = parseBatch(batch2Text, '2 (주관식 표채우기)');
-      const q3 = parseBatch(batch3Text, '3 (객관식)');
+      const q1 = parseBatch(batch1Text, '1 (주�???개요/공식/?�답)');
+      const q2 = parseBatch(batch2Text, '2 (주�????�채?�기)');
+      const q3 = parseBatch(batch3Text, '3 (객�???');
 
       parsedArray = [...q1, ...q2, ...q3];
     }
@@ -1300,29 +1322,29 @@ let parsedArray = null;
       let newType = type;
       let newSubtype = subtype;
       
-      if (type === '주관식') {
-        if (subtype === '개요') { newType = '주관식 (개요)'; }
-        else if (subtype === '공식') { newType = '주관식 (공식)'; }
-        else if (subtype === '표채우기') { newType = '주관식 (표채우기)'; newSubtype = '표채우기'; }
-        else if (subtype === '단답형') { newType = '주관식 (단답형)'; }
-        else if (subtype === '서술') { newType = '주관식 (서술)'; newSubtype = '서술'; }
+      if (type === '주�???) {
+        if (subtype === '개요') { newType = '주�???(개요)'; }
+        else if (subtype === '공식') { newType = '주�???(공식)'; }
+        else if (subtype === '?�채?�기') { newType = '주�???(?�채?�기)'; newSubtype = '?�채?�기'; }
+        else if (subtype === '?�답??) { newType = '주�???(?�답??'; }
+        else if (subtype === '?�술') { newType = '주�???(?�술)'; newSubtype = '?�술'; }
       } else if (type === '개요') {
-        newType = '주관식 (개요)';
+        newType = '주�???(개요)';
         newSubtype = '개요';
       } else if (type === '공식') {
-        newType = '주관식 (공식)';
+        newType = '주�???(공식)';
         newSubtype = '공식';
-      } else if (type === '표채우기') {
-        newType = '주관식 (표채우기)';
-        newSubtype = '표채우기';
-      } else if (type === '단답형') {
-        newType = '주관식 (단답형)';
-        newSubtype = '단답형';
-      } else if (type === '서술') {
-        newType = '주관식 (서술)';
-        newSubtype = '서술';
-      } else if (type === '객관식' || type === '객관식 (4지선다)') {
-        newType = '객관식 (4지선다)';
+      } else if (type === '?�채?�기') {
+        newType = '주�???(?�채?�기)';
+        newSubtype = '?�채?�기';
+      } else if (type === '?�답??) {
+        newType = '주�???(?�답??';
+        newSubtype = '?�답??;
+      } else if (type === '?�술') {
+        newType = '주�???(?�술)';
+        newSubtype = '?�술';
+      } else if (type === '객�??? || type === '객�???(4지?�다)') {
+        newType = '객�???(4지?�다)';
       }
       
       return {
@@ -1333,7 +1355,7 @@ let parsedArray = null;
     });
 
     const finalQuestions = topic.category === '계산'
-      ? assembleFinalCalculationQuestions(normalizedParsedArray, topic)
+      ? assembleFinalCalculationQuestions(normalizedParsedArray, topic, fileText)
       : assembleFinalQuestions(normalizedParsedArray, topic, carryOverQuestions, fileText);
 
     const cleanedQuestions = finalQuestions.map(q => healQuizQuestionObject({
@@ -1365,7 +1387,7 @@ let parsedArray = null;
       const safeFileText = typeof topicText !== 'undefined' ? topicText : (topic ? (topic.extracted_text || '') : '');
       const fallbackQuestions = generateFallbackQuestions(topic.title, topic.keywords, safeFileText);
       const finalQuestions = topic.category === '계산'
-        ? assembleFinalCalculationQuestions(fallbackQuestions, topic)
+        ? assembleFinalCalculationQuestions(fallbackQuestions, topic, fileText)
         : assembleFinalQuestions(fallbackQuestions, topic, carryOverQuestions, safeFileText);
 
       const cleanedFallback = finalQuestions.map(q => healQuizQuestionObject({
@@ -1433,7 +1455,7 @@ router.get('/mixed/random-flow-question', async (req, res) => {
         
         return questions.filter(q => {
           const qText = q.question || '';
-          const isFlow = qText.includes('┌──') || qText.includes('▼') || qText.includes('플로우차트') || qText.includes('흐름도');
+          const isFlow = qText.includes('?��??�') || qText.includes('??) || qText.includes('?�로?�차??) || qText.includes('?�름??);
           if (isFlow && topicId) {
             q.originalTopicId = topicId;
           }
@@ -1516,51 +1538,51 @@ router.get('/mixed/random-flow-question', async (req, res) => {
     // 6. Absolute Fallback: Hardcoded high-quality geotechnical flow question
     const fallbackQuestion = {
       id: "mixed_fallback_flow",
-      type: "주관식 (표채우기)",
-      subtype: "표채우기",
-      question: `[평사투영 암반사면안정 해석 절차]
-아래 흐름도 빈칸에 들어갈 올바른 분석 단계를 서술하시오.
+      type: "주�???(?�채?�기)",
+      subtype: "?�채?�기",
+      question: `[?�사?�영 ?�반?�면?�정 ?�석 ?�차]
+?�래 ?�름??빈칸???�어�??�바�?분석 ?�계�??�술?�시??
 
 \`\`\`
-┌──────────────────────────────────────────────┐
-│           1단계: 불연속면 조사 및 분석         │
-└──────────────────────┬───────────────────────┘
-                       ▼
-┌──────────────────────────────────────────────┐
-│       2단계: 평사투영망 상에 불연속면 투영     │
-└──────────────────────┬───────────────────────┘
-                       ▼
-┌──────────────────────────────────────────────┐
-│           3단계: [INPUT_1] 영역 설정          │
-└──────────────────────┬───────────────────────┘
-                       ▼
-┌──────────────────────────────────────────────┐
-│       4단계: 사면의 경사면 평사투영 투영        │
-└──────────────────────┬───────────────────────┘
-                       ▼
-┌──────────────────────────────────────────────┐
-│       5단계: 위험 영역 내 교점 분석          │
-│          - [INPUT_2] 파괴: 교점이 위험선 내  │
-│          - 전도 파괴: 극점이 전도 영역 내    │
-└──────────────────────────────────────────────┘
+?��??�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�??
+??          1?�계: 불연?�면 조사 �?분석         ??
+?��??�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?��??�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�??
+                       ??
+?��??�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�??
+??      2?�계: ?�사?�영�??�에 불연?�면 ?�영     ??
+?��??�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?��??�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�??
+                       ??
+?��??�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�??
+??          3?�계: [INPUT_1] ?�역 ?�정          ??
+?��??�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?��??�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�??
+                       ??
+?��??�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�??
+??      4?�계: ?�면??경사�??�사?�영 ?�영        ??
+?��??�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?��??�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�??
+                       ??
+?��??�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�??
+??      5?�계: ?�험 ?�역 ??교점 분석          ??
+??         - [INPUT_2] ?�괴: 교점???�험???? ??
+??         - ?�도 ?�괴: 극점???�도 ?�역 ??   ??
+?��??�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�??
 \`\`\``,
       tableData: {
-        headers: ["구분", "내용"],
+        headers: ["구분", "?�용"],
         rows: [
-          ["3단계 분석 영역", "[INPUT_1]"],
-          ["5단계 위험 분석", "[INPUT_2]"]
+          ["3?�계 분석 ?�역", "[INPUT_1]"],
+          ["5?�계 ?�험 분석", "[INPUT_2]"]
         ]
       },
       answers: {
-        INPUT_1: "위험",
-        INPUT_2: "평면"
+        INPUT_1: "?�험",
+        INPUT_2: "?�면"
       },
-      explanation: `평사투영법을 이용한 암반 사면의 안정성 해석 절차:
-1단계: 불연속면(절리, 단층 등)의 방향성(주향/경사)을 현장 조사하여 통계 분석합니다.
-2단계: 조사된 불연속면의 극점(Pole) 또는 대원(Great Circle)을 평사투영망(Stereonet) 상에 투영합니다.
-3단계: 사면의 방향과 경사각을 기준으로 파괴가 발생할 수 있는 '위험 영역(Daylight Envelope 및 마찰각 원)'을 설정합니다.
-4단계: 사면의 실제 경사면을 투영하여 안정성 검토 기준선이 형성됩니다.
-5단계: 위험 영역 내에 불연속면의 교점 또는 극점이 위치하는지 분석하여 평면파괴(교점이 위험선 내에 위치) 또는 전도파괴(극점이 전도 영역에 위치) 가능성을 판정합니다.`,
+      explanation: `?�사?�영법을 ?�용???�반 ?�면???�정???�석 ?�차:
+1?�계: 불연?�면(?�리, ?�층 ????방향??주향/경사)???�장 조사?�여 ?�계 분석?�니??
+2?�계: 조사??불연?�면??극점(Pole) ?�는 ?�??Great Circle)???�사?�영�?Stereonet) ?�에 ?�영?�니??
+3?�계: ?�면??방향�?경사각을 기�??�로 ?�괴가 발생?????�는 '?�험 ?�역(Daylight Envelope �?마찰�???'???�정?�니??
+4?�계: ?�면???�제 경사면을 ?�영?�여 ?�정??검??기�??�이 ?�성?�니??
+5?�계: ?�험 ?�역 ?�에 불연?�면??교점 ?�는 극점???�치?�는지 분석?�여 ?�면?�괴(교점???�험???�에 ?�치) ?�는 ?�도?�괴(극점???�도 ?�역???�치) 가?�성???�정?�니??`,
       mixedType: "overview"
     };
     
@@ -1583,7 +1605,7 @@ router.get('/session/review', async (req, res) => {
     }
 
     if (!rawTopicId) {
-      return res.status(400).json({ error: 'topicId가 누락되었습니다.' });
+      return res.status(400).json({ error: 'topicId가 ?�락?�었?�니??' });
     }
 
     if (targetTopicId && targetTopicId.startsWith('mixed_')) {
@@ -1675,7 +1697,7 @@ router.get('/session/review', async (req, res) => {
       }
       res.json({ success: true, data });
     } else {
-      res.json({ success: false, error: '세션 정보가 없습니다.' });
+      res.json({ success: false, error: '?�션 ?�보가 ?�습?�다.' });
     }
   } catch (err) {
     console.error('GET /api/session/review error:', err);
@@ -1694,7 +1716,7 @@ router.post('/session/review', async (req, res) => {
     }
 
     if (!topicId) {
-      return res.status(400).json({ error: '필수 인자가 누락되었습니다.' });
+      return res.status(400).json({ error: '?�수 ?�자가 ?�락?�었?�니??' });
     }
 
     if (targetTopicId && targetTopicId.startsWith('mixed_')) {
@@ -1715,7 +1737,7 @@ router.post('/session/review', async (req, res) => {
         if (existingRow && existingRow.value) existingData = JSON.parse(existingRow.value);
       } catch (e) {}
 
-      // Save questions separately — saveSessionValue skips write if unchanged (same-value optimization)
+      // Save questions separately ??saveSessionValue skips write if unchanged (same-value optimization)
       if (questions && Array.isArray(questions) && questions.length > 0) {
         const healedQuestions = questions.map(healQuizQuestionObject);
         await saveSessionValue(questionsKey, JSON.stringify(healedQuestions));
@@ -1740,7 +1762,7 @@ router.post('/session/review', async (req, res) => {
         return inc !== undefined ? inc : ext;
       };
 
-      // Save lightweight state object (no questions array — reduces autosave payload by ~80%)
+      // Save lightweight state object (no questions array ??reduces autosave payload by ~80%)
       const value = JSON.stringify({
         sessionId: sessionId || existingData.sessionId || '',
         selectedAnswers: mergeStateField(selectedAnswers, existingData.selectedAnswers),
@@ -1766,7 +1788,7 @@ router.post('/session/review', async (req, res) => {
       if (existingRow2 && existingRow2.value) existingData2 = JSON.parse(existingRow2.value);
     } catch (e) {}
 
-    // Save questions separately — saveSessionValue skips write if unchanged (same-value optimization)
+    // Save questions separately ??saveSessionValue skips write if unchanged (same-value optimization)
     // This is the key optimization: questions (~40-100KB) are only written when they actually change
     if (questions && Array.isArray(questions) && questions.length > 0) {
       const healedQuestions = questions.map(healQuizQuestionObject);
@@ -1792,7 +1814,7 @@ router.post('/session/review', async (req, res) => {
       return inc !== undefined ? inc : ext;
     };
 
-    // Save lightweight state object (no questions array — reduces autosave payload by ~80%)
+    // Save lightweight state object (no questions array ??reduces autosave payload by ~80%)
     const value = JSON.stringify({
       sessionId: sessionId || existingData2.sessionId || '',
       selectedAnswers: mergeStateField2(selectedAnswers, existingData2.selectedAnswers),
@@ -1889,7 +1911,7 @@ router.get('/session/completed-review/:scheduleId', async (req, res) => {
       }
       res.json({ success: true, data });
     } else {
-      res.json({ success: false, error: '해당 복습의 저장된 풀이 기록이 없습니다.' });
+      res.json({ success: false, error: '?�당 복습???�?�된 ?�??기록???�습?�다.' });
     }
   } catch (err) {
     console.error('GET /api/session/completed-review error:', err);
@@ -1902,7 +1924,7 @@ router.get('/session/completed-review/by-topic/:topicId', async (req, res) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   const topicId = parseInt(req.params.topicId, 10);
   if (isNaN(topicId)) {
-    return res.status(400).json({ error: '유효한 topicId가 아닙니다.' });
+    return res.status(400).json({ error: '?�효??topicId가 ?�닙?�다.' });
   }
   try {
     await ensureSessionTable();
@@ -1923,7 +1945,7 @@ router.get('/session/completed-review/by-topic/:topicId', async (req, res) => {
         return res.json({ success: true, scheduleId: schedule.id, data });
       }
     }
-    res.json({ success: false, error: '해당 토픽의 완료된 복습 기록이 없습니다.' });
+    res.json({ success: false, error: '?�당 ?�픽???�료??복습 기록???�습?�다.' });
   } catch (err) {
     console.error('GET /api/session/completed-review/by-topic error:', err);
     res.status(500).json({ error: err.message });
@@ -1956,7 +1978,7 @@ router.get('/session/last-active-review', async (req, res) => {
           success: true,
           lastActive: {
             topicId: rawSchedId.includes('_sess_') ? rawSchedId.split('_sess_')[0] : (rawSchedId.startsWith('mixed_schedule_') ? `mixed_${rawSchedId.replace('mixed_schedule_', '')}` : rawSchedId),
-            title: '오늘의 필수 믹스복습 (11제 1세트)',
+            title: '?�늘???�수 믹스복습 (11??1?�트)',
             keywords: '',
             pdfName: 'mixed.html',
             mode: isCompleted ? 'completed' : 'ai',
@@ -1991,7 +2013,7 @@ router.get('/session/last-active-review', async (req, res) => {
               reviewRound: sched.review_round,
               isReadOnly: isCompleted,
               isBonus: sched.review_round === 99,
-              category: sched.category || '일반'
+              category: sched.category || '?�반'
             }
           });
         }
@@ -2006,7 +2028,7 @@ router.get('/session/last-active-review', async (req, res) => {
           success: true,
           lastActive: {
             topicId: topicIdRaw,
-            title: '오늘의 필수 믹스복습 (11제 1세트)',
+            title: '?�늘???�수 믹스복습 (11??1?�트)',
             keywords: '',
             pdfName: 'mixed.html',
             mode: 'ai',
@@ -2035,7 +2057,7 @@ router.get('/session/last-active-review', async (req, res) => {
               reviewRound: sched ? sched.review_round : null,
               isReadOnly: false,
               isBonus: sched ? sched.review_round === 99 : false,
-              category: topicObj.category || '일반'
+              category: topicObj.category || '?�반'
             }
           });
         }
@@ -2098,7 +2120,7 @@ router.get('/session/answersheet/report/:id', async (req, res) => {
     const reportSql = `SELECT pdf_name, pdf_data, pdf_url FROM answersheet_reports WHERE id = ?`;
     const report = await dbQuery.get(reportSql, [reportId]);
     if (!report) {
-      return res.status(404).send('첨부된 PDF/HTML 원본 파일을 찾을 수 없습니다.');
+      return res.status(404).send('첨�???PDF/HTML ?�본 ?�일??찾을 ???�습?�다.');
     }
 
     let pdfData = report.pdf_data;
@@ -2119,7 +2141,7 @@ router.get('/session/answersheet/report/:id', async (req, res) => {
     }
 
     if (!pdfData || pdfData.length === 0) {
-      return res.status(404).send('첨부된 PDF/HTML 원본 파일을 찾을 수 없습니다.');
+      return res.status(404).send('첨�???PDF/HTML ?�본 ?�일??찾을 ???�습?�다.');
     }
 
     const isHtml = report.pdf_name && (
@@ -2251,7 +2273,7 @@ div, section, article, form, .container, .page, .wrapper, .section, .WordSection
     }
   } catch (error) {
     console.error('Error streaming answersheet report:', error);
-    res.status(500).send('서버 오류로 파일을 스트리밍하지 못했습니다.');
+    res.status(500).send('?�버 ?�류�??�일???�트리밍?��? 못했?�니??');
   }
 });
 
@@ -2263,7 +2285,7 @@ router.post('/schedules/bonus/complete', async (req, res) => {
   const now = new Date().toISOString();
 
   if (!topicId) {
-    return res.status(400).json({ error: '필수 인자 topicId가 누락되었습니다.' });
+    return res.status(400).json({ error: '?�수 ?�자 topicId가 ?�락?�었?�니??' });
   }
 
   try {
@@ -2300,149 +2322,149 @@ router.post('/schedules/bonus/complete', async (req, res) => {
 export const LOCAL_FORMULA_DICTIONARY = [
   {
     keywords: ['C_v', 'm_v', '\\gamma_w', 'u', 'z', 't', '\\partial'],
-    title: '테르자기 1차 압밀방정식(Terzaghi 1D Consolidation, $C_v$)',
-    concept: '외부 점진/순간 하중 재하 시 시간이 경과함에 따라 과잉간극수압이 상하 배수층을 통해 소산되어 나가는 속도를 규정한 1차원 미분방정식',
-    formula: `1) 압밀방정식 (Governing Equation):
+    title: '?�르?�기 1�??��?방정??Terzaghi 1D Consolidation, $C_v$)',
+    concept: '?��? ?�진/?�간 ?�중 ?�하 ???�간??경과?�에 ?�라 과잉간극?�압???�하 배수층을 ?�해 ?�산?�어 ?��????�도�?규정??1차원 미분방정??,
+    formula: `1) ?��?방정??(Governing Equation):
 $$\\frac{\\partial u}{\\partial t} = C_v \\frac{\\partial^2 u}{\\partial z^2}$$
 
-- $u$: 과잉간극수압 (Excess Pore Water Pressure)
-- $t$: 압밀 경과 시간 (Time)
-- $z$: 점토층 내의 배수 거리 방향 깊이
-- $C_v$: 압밀계수 (Coefficient of Consolidation)
+- $u$: 과잉간극?�압 (Excess Pore Water Pressure)
+- $t$: ?��? 경과 ?�간 (Time)
+- $z$: ?�토�??�의 배수 거리 방향 깊이
+- $C_v$: ?��?계수 (Coefficient of Consolidation)
 
-2) 압밀계수 ($C_v$)의 정의:
+2) ?��?계수 ($C_v$)???�의:
 $$C_v = \\frac{k}{m_v \\gamma_w} = \\frac{k(1+e_0)}{a_v \\gamma_w}$$
 
-- $k$: 점토의 투수계수 (Coefficient of Permeability)
-- $m_v$: 체적압축계수(체적변화계수) (Coefficient of Volume Compressibility)
-- $\\gamma_w$: 물의 단위중량 (Unit Weight of Water)`,
-    structure: `- $u$: 과잉간극수압\n- $t$: 압밀 경과 시간\n- $z$: 배수 거리 깊이\n- $C_v$: 압밀계수`
+- $k$: ?�토???�수계수 (Coefficient of Permeability)
+- $m_v$: 체적?�축계수(체적변?�계?? (Coefficient of Volume Compressibility)
+- $\\gamma_w$: 물의 ?�위중량 (Unit Weight of Water)`,
+    structure: `- $u$: 과잉간극?�압\n- $t$: ?��? 경과 ?�간\n- $z$: 배수 거리 깊이\n- $C_v$: ?��?계수`
   },
   {
     keywords: ['q_{ult}', 'N_c', 'N_q', 'N_{\\gamma}', 'c', 'B', 'D_f'],
-    title: '테르자기 극한지지력(Terzaghi Ultimate Bearing Capacity, $q_{ult}$)',
-    concept: '흙의 전단파괴 형상을 대수나선 등으로 모델화하여 기초 저면 아래 지반이 전단 파괴 없이 지탱할 수 있는 최대 하중 강도 식',
-    formula: `Terzaghi 극한 지지력:
+    title: '?�르?�기 극한지지??Terzaghi Ultimate Bearing Capacity, $q_{ult}$)',
+    concept: '?�의 ?�단?�괴 ?�상???�?�나???�으�?모델?�하??기초 ?��??�래 지반이 ?�단 ?�괴 ?�이 지?�할 ???�는 최�? ?�중 강도 ??,
+    formula: `Terzaghi 극한 지지??
 $$q_{ult} = c N_c + q N_q + 0.5 \\gamma B N_{\\gamma}$$
 
-- $q_{ult}$: 극한 지지력
-- $c$: 흙의 점착력
-- $q$: 기초 저면의 유효상재하중 ($\\gamma D_f$)
-- $\\gamma$: 기초 저면 아래 흙의 단위중량
-- $B$: 기초의 폭 (단변 길이)
-- $N_c, N_q, N_{\\gamma}$: 지반 지지력 계수`,
-    structure: `- $q_{ult}$: 극한 지지력\n- $c$: 흙의 점착력\n- $q$: 기초 저면의 유효상재하중 ($\\gamma D_f$)\n- $\\gamma$: 기초 저면 아래 흙의 단위중량\n- $B$: 기초의 폭 (단변 길이)\n- $N_c, N_q, N_{\\gamma}$: 지반 지지력 계수`
+- $q_{ult}$: 극한 지지??
+- $c$: ?�의 ?�착??
+- $q$: 기초 ?�면의 ?�효?�재?�중 ($\\gamma D_f$)
+- $\\gamma$: 기초 ?��??�래 ?�의 ?�위중량
+- $B$: 기초????(?��? 길이)
+- $N_c, N_q, N_{\\gamma}$: 지�?지지??계수`,
+    structure: `- $q_{ult}$: 극한 지지??n- $c$: ?�의 ?�착??n- $q$: 기초 ?�면의 ?�효?�재?�중 ($\\gamma D_f$)\n- $\\gamma$: 기초 ?��??�래 ?�의 ?�위중량\n- $B$: 기초????(?��? 길이)\n- $N_c, N_q, N_{\\gamma}$: 지�?지지??계수`
   },
   {
     keywords: ['Q', 'RQD', 'J_n', 'J_r', 'J_a', 'J_w', 'SRF'],
-    title: '바톤 암반 Q분류(Barton Q-system, $Q$)',
-    concept: '암반의 공학적 특성을 6가지 독립된 변수를 통해 정량화하여 터널 1차 지보 설계를 설계하는 지수 공식',
-    formula: `암반 등급 Q지수 식:
+    title: '바톤 ?�반 Q분류(Barton Q-system, $Q$)',
+    concept: '?�반??공학???�성??6가지 ?�립??변?��? ?�해 ?�량?�하???�널 1�?지�??�계�??�계?�는 지??공식',
+    formula: `?�반 ?�급 Q지????
 $$Q = \\frac{RQD}{J_n} \\times \\frac{J_r}{J_a} \\times \\frac{J_w}{SRF}$$
 
-- $Q$: 암반 등급 지수
-- $RQD$: 암질지수 (Rock Quality Designation)
-- $J_n$: 절리군 수 (Joint set number)
-- $J_r$: 절리면 거칠기 계수 (Joint roughness number)
-- $J_a$: 절리면 변질 계수 (Joint alteration number)
-- $J_w$: 절리수 보정 계수 (Joint water reduction factor)
-- $SRF$: 응력 감소 계수 (Stress Reduction Factor)`,
-    structure: `- $Q$: 암반 등급 지수\n- $RQD$: 암질지수 (Rock Quality Designation)\n- $J_n$: 절리군 수 (Joint set number)\n- $J_r$: 절리면 거칠기 계수 (Joint roughness number)\n- $J_a$: 절리면 변질 계수 (Joint alteration number)\n- $J_w$: 절리수 보정 계수 (Joint water reduction factor)\n- $SRF$: 응력 감소 계수 (Stress Reduction Factor)`
+- $Q$: ?�반 ?�급 지??
+- $RQD$: ?�질지??(Rock Quality Designation)
+- $J_n$: ?�리�???(Joint set number)
+- $J_r$: ?�리�?거칠�?계수 (Joint roughness number)
+- $J_a$: ?�리�?변�?계수 (Joint alteration number)
+- $J_w$: ?�리??보정 계수 (Joint water reduction factor)
+- $SRF$: ?�력 감소 계수 (Stress Reduction Factor)`,
+    structure: `- $Q$: ?�반 ?�급 지??n- $RQD$: ?�질지??(Rock Quality Designation)\n- $J_n$: ?�리�???(Joint set number)\n- $J_r$: ?�리�?거칠�?계수 (Joint roughness number)\n- $J_a$: ?�리�?변�?계수 (Joint alteration number)\n- $J_w$: ?�리??보정 계수 (Joint water reduction factor)\n- $SRF$: ?�력 감소 계수 (Stress Reduction Factor)`
   },
   {
     keywords: ['H', 'q', 'q_a', '\\tan\\theta'],
-    title: '연약지반 샌드매트 최소두께(Sand Mat Minimum Thickness, $H$)',
-    concept: '표층 개량 및 연약지반 상부에 무거운 주행성 장비(Trafficability)를 얹기 위한 하중 지지 소요 두께식',
-    formula: `샌드매트 최소 두께 식:
+    title: '?�약지�??�드매트 최소?�께(Sand Mat Minimum Thickness, $H$)',
+    concept: '?�층 개량 �??�약지�??��???무거??주행???�비(Trafficability)�??�기 ?�한 ?�중 지지 ?�요 ?�께??,
+    formula: `?�드매트 최소 ?�께 ??
 $$H = \\sqrt{\\frac{q - q_a}{\\gamma \\tan \\theta}}$$
 
-- $H$: 샌드매트의 소요 최소 두께
-- $q$: 포설 장비의 접지압
-- $q_a$: 지반의 허용 지지력
-- $\\gamma$: 모래의 단위중량
-- $\\theta$: 하중 분산각 (일반적으로 $45^\\circ$ 적용)`,
-    structure: `- $H$: 샌드매트의 소요 최소 두께\n- $q$: 포설 장비의 접지압\n- $q_a$: 지반의 허용 지지력\n- $\\gamma$: 모래의 단위중량\n- $\\theta$: 하중 분산각 (일반적으로 $45^\\circ$ 적용)`
+- $H$: ?�드매트???�요 최소 ?�께
+- $q$: ?�설 ?�비???��???
+- $q_a$: 지반의 ?�용 지지??
+- $\\gamma$: 모래???�위중량
+- $\\theta$: ?�중 분산�?(?�반?�으�?$45^\\circ$ ?�용)`,
+    structure: `- $H$: ?�드매트???�요 최소 ?�께\n- $q$: ?�설 ?�비???��???n- $q_a$: 지반의 ?�용 지지??n- $\\gamma$: 모래???�위중량\n- $\\theta$: ?�중 분산�?(?�반?�으�?$45^\\circ$ ?�용)`
   },
   {
     keywords: ['r', 'R', '\\alpha', 'sin', '45'],
-    title: '슈미트네트 극점반경(Schmidt Net Pole Radius, $r$)',
-    concept: '통계적 밀도 보정을 위해 면적 왜곡을 줄인 슈미트 네트(Schmidt Net) 평면 변환 투영식',
-    formula: `극점 반경 식:
+    title: '?��??�네??극점반경(Schmidt Net Pole Radius, $r$)',
+    concept: '?�계??밀??보정???�해 면적 ?�곡??줄인 ?��????�트(Schmidt Net) ?�면 변???�영??,
+    formula: `극점 반경 ??
 $$r = \\sqrt{2} R \\sin\\left(45^\\circ - \\frac{\\alpha}{2}\\right)$$
 
-- $r$: 투영원 중심으로부터 극점(Pole)까지의 평면 거리
-- $R$: 투영구(Sphere)의 반경
-- $\\alpha$: 불연속면의 경사각 (Dip angle)`,
-    structure: `- $r$: 투영원 중심으로부터 극점(Pole)까지의 평면 거리\n- $R$: 투영구(Sphere)의 반경\n- $\\alpha$: 불연속면의 경사각 (Dip angle)`
+- $r$: ?�영??중심?�로부??극점(Pole)까�????�면 거리
+- $R$: ?�영�?Sphere)??반경
+- $\\alpha$: 불연?�면??경사�?(Dip angle)`,
+    structure: `- $r$: ?�영??중심?�로부??극점(Pole)까�????�면 거리\n- $R$: ?�영�?Sphere)??반경\n- $\\alpha$: 불연?�면??경사�?(Dip angle)`
   },
   {
     keywords: ['P', '\\tau_{allow}', 'd', 'L', '\\pi'],
-    title: '락볼트 고착력 계산식(Rockbolt Bond Strength, $P$)',
-    concept: '인발 하중 재하 시 천공홀 배면의 마찰 부착 면적을 기반으로 볼트 탈락에 지탱하는 한계 고착력 식',
-    formula: `락볼트 허용 지지력 식:
+    title: '?�볼??고착??계산??Rockbolt Bond Strength, $P$)',
+    concept: '?�발 ?�중 ?�하 ??천공?� 배면??마찰 부�?면적??기반?�로 볼트 ?�락??지?�하???�계 고착????,
+    formula: `?�볼???�용 지지????
 $$P = \\pi d L \\tau_{allow}$$
 
-- $P$: 락볼트의 최대 허용 인발 저항력 (인발 하중)
-- $d$: 락볼트 천공 구멍의 직경
-- $L$: 그라우팅 정착 길이 (고착 영역)
-- $\\tau_{allow}$: 지반과 그라우팅재 간의 허용 부착 전단강도`,
-    structure: `- $P$: 락볼트의 최대 허용 인발 저항력 (인발 하중)\n- $d$: 락볼트 천공 구멍의 직경\n- $L$: 그라우팅 정착 길이 (고착 영역)\n- $\\tau_{allow}$: 지반과 그라우팅재 간의 허용 부착 전단강도`
+- $P$: ?�볼?�의 최�? ?�용 ?�발 ?�??�� (?�발 ?�중)
+- $d$: ?�볼??천공 구멍??직경
+- $L$: 그라?�팅 ?�착 길이 (고착 ?�역)
+- $\\tau_{allow}$: 지반과 그라?�팅??간의 ?�용 부�??�단강도`,
+    structure: `- $P$: ?�볼?�의 최�? ?�용 ?�발 ?�??�� (?�발 ?�중)\n- $d$: ?�볼??천공 구멍??직경\n- $L$: 그라?�팅 ?�착 길이 (고착 ?�역)\n- $\\tau_{allow}$: 지반과 그라?�팅??간의 ?�용 부�??�단강도`
   },
   {
     keywords: ['K_a', 'K_p', 'p_a', '\\phi', '\\sin\\phi'],
-    title: '랭킹 주동토압계수(Rankine Active Earth Pressure Coefficient, $K_a$)',
-    concept: '지반이 인장 변형을 일으켜 한계 주동 소성 평형 상태에 도달할 때 가설 옹벽 배면에 수평으로 밀어내는 토압식',
-    formula: `랭킹 주동토압계수 식:
+    title: '??�� 주동?�압계수(Rankine Active Earth Pressure Coefficient, $K_a$)',
+    concept: '지반이 ?�장 변?�을 ?�으�??�계 주동 ?�성 ?�형 ?�태???�달????가???�벽 배면???�평?�로 밀?�내???�압??,
+    formula: `??�� 주동?�압계수 ??
 $$K_a = \\tan^2\\left(45^\\circ - \\frac{\\phi}{2}\\right) = \\frac{1 - \\sin\\phi}{1 + \\sin\\phi}$$
 
-- $K_a$: 주동토압 계수
-- $K_p$: 수동토압 계수
-- $\\phi$: 흙의 내부마찰각
-- $p_a$: 주동토압 강도
-- $c$: 흙의 점착력
-- $\\gamma$: 흙의 단위중량
-- $z$: 검토 단면 깊이`,
-    structure: `- $K_a$: 주동토압 계수\n- $K_p$: 수동토압 계수\n- $\\phi$: 흙의 내부마찰각\n- $p_a$: 주동토압 강도\n- $c$: 흙의 점착력\n- $\\gamma$: 흙의 단위중량\n- $z$: 검토 단면 깊이`
+- $K_a$: 주동?�압 계수
+- $K_p$: ?�동?�압 계수
+- $\\phi$: ?�의 ?��?마찰�?
+- $p_a$: 주동?�압 강도
+- $c$: ?�의 ?�착??
+- $\\gamma$: ?�의 ?�위중량
+- $z$: 검???�면 깊이`,
+    structure: `- $K_a$: 주동?�압 계수\n- $K_p$: ?�동?�압 계수\n- $\\phi$: ?�의 ?��?마찰�?n- $p_a$: 주동?�압 강도\n- $c$: ?�의 ?�착??n- $\\gamma$: ?�의 ?�위중량\n- $z$: 검???�면 깊이`
   },
   {
     keywords: ['C', 'D_f', 'q_{net}'],
-    title: '보상기초 보상도(Compensated Foundation Safety Factor, $C$)',
-    concept: '구조물 자중을 굴착한 흙의 총 중량으로 완벽히 치환 상쇄하여 순 침하 하중을 Zero로 수렴시키는 평가 공식',
-    formula: `보상기초 보상도 식:
+    title: '보상기초 보상??Compensated Foundation Safety Factor, $C$)',
+    concept: '구조�??�중??굴착???�의 �?중량?�로 ?�벽??치환 ?�쇄?�여 ??침하 ?�중??Zero�??�렴?�키???��? 공식',
+    formula: `보상기초 보상????
 $$C = \\frac{\\gamma D_f}{q}$$
 
-- $C$: 보상도 ($C = 1.0$ 이면 완전 보상)
-- $\\gamma$: 굴착하여 배출한 흙의 단위중량
-- $D_f$: 기초의 굴착 깊이
-- $q$: 상부 구조물 총 자중 및 하중 합산값
-- $q_{net}$: 지반이 추가로 받는 순하중 ($q_{net} = q - \\gamma D_f$)`,
-    structure: `- $C$: 보상도 ($C = 1.0$ 이면 완전 보상)\n- $\\gamma$: 굴착하여 배출한 흙의 단위중량\n- $D_f$: 기초의 굴착 깊이\n- $q$: 상부 구조물 총 자중 및 하중 합산값\n- $q_{net}$: 지반이 추가로 받는 순하중 ($q_{net} = q - \\gamma D_f$)`
+- $C$: 보상??($C = 1.0$ ?�면 ?�전 보상)
+- $\\gamma$: 굴착?�여 배출???�의 ?�위중량
+- $D_f$: 기초??굴착 깊이
+- $q$: ?��? 구조�?�??�중 �??�중 ?�산�?
+- $q_{net}$: 지반이 추�?�?받는 ?�하�?($q_{net} = q - \\gamma D_f$)`,
+    structure: `- $C$: 보상??($C = 1.0$ ?�면 ?�전 보상)\n- $\\gamma$: 굴착?�여 배출???�의 ?�위중량\n- $D_f$: 기초??굴착 깊이\n- $q$: ?��? 구조�?�??�중 �??�중 ?�산�?n- $q_{net}$: 지반이 추�?�?받는 ?�하�?($q_{net} = q - \\gamma D_f$)`
   },
   {
     keywords: ['p_w', '\\gamma_w', 'H'],
-    title: '싱글쉘 터널 설계수압(Single Shell Tunnel Design Water Pressure, $p_w$)',
-    concept: '방수가 완벽히 차단된 비배수 터널 아치 배면에 상부 수위 높이에 비례하여 수직으로 가해지는 정수압식',
-    formula: `설계수압 식:
+    title: '?��????�널 ?�계?�압(Single Shell Tunnel Design Water Pressure, $p_w$)',
+    concept: '방수가 ?�벽??차단??비배???�널 ?�치 배면???��? ?�위 ?�이??비�??�여 ?�직?�로 가?��????�수?�식',
+    formula: `?�계?�압 ??
 $$p_w = \\gamma_w H$$
 
-- $p_w$: 라이닝 배면 작용 설계 수압
-- $\\gamma_w$: 지하수(물)의 단위중량 ($9.81\\,\\text{kN/m}^3$)
-- $H$: 설계 지하수위 면으로부터 터널 아치 정상까지의 수직 거리 (수두 높이)`,
-    structure: `- $p_w$: 라이닝 배면 작용 설계 수압\n- $\\gamma_w$: 지하수(물)의 단위중량 ($9.81\\,\\text{kN/m}^3$)\n- $H$: 설계 지하수위 면으로부터 터널 아치 정상까지의 수직 거리 (수두 높이)`
+- $p_w$: ?�이??배면 ?�용 ?�계 ?�압
+- $\\gamma_w$: 지?�수(�????�위중량 ($9.81\\,\\text{kN/m}^3$)
+- $H$: ?�계 지?�수??면으로�????�널 ?�치 ?�상까�????�직 거리 (?�두 ?�이)`,
+    structure: `- $p_w$: ?�이??배면 ?�용 ?�계 ?�압\n- $\\gamma_w$: 지?�수(�????�위중량 ($9.81\\,\\text{kN/m}^3$)\n- $H$: ?�계 지?�수??면으로�????�널 ?�치 ?�상까�????�직 거리 (?�두 ?�이)`
   },
   {
     keywords: ['k_h', 'k_{h0}', 'B_H', 'E_0', 'N', '2800'],
-    title: '가설흙막이 수평지반반력계수(Temporary Retaining Wall Horizontal Subgrade Reaction Coefficient, $k_h$)',
-    concept: '벽체 배면의 지반 탄소성 반응을 등가의 선형 탄성 연속 압축 스프링 강성값으로 치환하는 반력 산정식',
-    formula: `수평 지반반력계수 식:
+    title: '가?�흙막이 ?�평지반반?�계??Temporary Retaining Wall Horizontal Subgrade Reaction Coefficient, $k_h$)',
+    concept: '벽체 배면??지�??�소??반응???��????�형 ?�성 ?�속 ?�축 ?�프�?강성값으�?치환?�는 반력 ?�정??,
+    formula: `?�평 지반반?�계????
 $$k_h = k_{h0} \\left(\\frac{B_H}{0.3}\\right)^{-3/4}$$
 
-- $k_h$: 설계 수평 지반반력계수 (탄성 스프링 상수)
-- $k_{h0}$: 표준 수평 지반반력계수
-- $B_H$: 가상의 기초 환산폭
-- $E_0$: 지반의 탄성계수 ($E_0 = 2800 N$)
-- $N$: 표준관입시험 N치`,
-    structure: `- $k_h$: 설계 수평 지반반력계수 (탄성 스프링 상수)\n- $k_{h0}$: 표준 수평 지반반력계수\n- $B_H$: 가상의 기초 환산폭\n- $E_0$: 지반의 탄성계수 ($E_0 = 2800 N$)\n- $N$: 표준관입시험 N치`
+- $k_h$: ?�계 ?�평 지반반?�계??(?�성 ?�프�??�수)
+- $k_{h0}$: ?��? ?�평 지반반?�계??
+- $B_H$: 가?�의 기초 ?�산??
+- $E_0$: 지반의 ?�성계수 ($E_0 = 2800 N$)
+- $N$: ?��?관?�시??N�?,
+    structure: `- $k_h$: ?�계 ?�평 지반반?�계??(?�성 ?�프�??�수)\n- $k_{h0}$: ?��? ?�평 지반반?�계??n- $B_H$: 가?�의 기초 ?�산??n- $E_0$: 지반의 ?�성계수 ($E_0 = 2800 N$)\n- $N$: ?��?관?�시??N�?
   }
 ];
 
@@ -2513,8 +2535,8 @@ router.post('/exam/all', async (req, res) => {
   let progressTimer = null;
   let standardsAnalysis = '';
   if (progressId) {
-    updateProgress(progressId, 1, '1단계: 데이터 분석 및 평가 지침 로드 중...', 15);
-    standardsAnalysis = await analyzeStandardsBeforeTask(progressId, '종합평가 시험 출제', GENERATION_STANDARDS, 'generation');
+    updateProgress(progressId, 1, '1?�계: ?�이??분석 �??��? 지�?로드 �?..', 15);
+    standardsAnalysis = await analyzeStandardsBeforeTask(progressId, '종합?��? ?�험 출제', GENERATION_STANDARDS, 'generation');
   }
   try {
     let count = parseInt(req.query.count || req.body.count || 40, 10);
@@ -2532,7 +2554,7 @@ router.post('/exam/all', async (req, res) => {
     const countMC = Math.max(1, poolTarget - (countGaeyo + countGongsik + countTable + countDandap));
 
     if (progressId) {
-      updateProgress(progressId, 2, '2단계: 출제 가이드 정렬 및 소스 텍스트 병합 중...', 40);
+      updateProgress(progressId, 2, '2?�계: 출제 가?�드 ?�렬 �??�스 ?�스??병합 �?..', 40);
     }
     const hasAnyAiKey = !!(
       process.env.GEMINI_API_KEY ||
@@ -2541,12 +2563,12 @@ router.post('/exam/all', async (req, res) => {
       process.env.ANTHROPIC_API_KEY ||
       process.env.OPENAI_API_KEY
     );
-    if (!hasAnyAiKey) return res.status(400).json({ error: '등록된 AI API 키가 존재하지 않습니다.' });
+    if (!hasAnyAiKey) return res.status(400).json({ error: '?�록??AI API ?��? 존재?��? ?�습?�다.' });
 
     // Fetch all topics with extracted_text (fallback to pdf_data if empty)
     const topics = await dbQuery.all(`SELECT id, title, keywords, pdf_name, extracted_text, (CASE WHEN extracted_text IS NULL OR extracted_text = '' THEN pdf_data ELSE NULL END) AS pdf_data FROM topics ORDER BY created_at DESC`);
     if (!topics || topics.length === 0) {
-      return res.status(400).json({ error: '등록된 토픽이 없습니다. 먼저 학습 자료를 등록해주세요.' });
+      return res.status(400).json({ error: '?�록???�픽???�습?�다. 먼�? ?�습 ?�료�??�록?�주?�요.' });
     }
 
     const topicTextMap = {};
@@ -2575,7 +2597,7 @@ router.post('/exam/all', async (req, res) => {
       }
       fileText = fileUtils.smartTruncate(fileText, 10000);
       topicTextMap[topic.id] = fileText;
-      return `<Topic id="${topic.id}" title="${topic.title}" keywords="${topic.keywords || '없음'}">\n${fileText || '소스 없음'}\n</Topic>`;
+      return `<Topic id="${topic.id}" title="${topic.title}" keywords="${topic.keywords || '?�음'}">\n${fileText || '?�스 ?�음'}\n</Topic>`;
     }));
 
     const combinedText = topicTexts.join('\n\n---\n\n');
@@ -2594,16 +2616,16 @@ router.post('/exam/all', async (req, res) => {
         const downvotes = feedbacks.filter(f => f.feedback_type === 'downvote');
         
         feedbackPrompt = `
-[사용자 피드백 지침 - 출제 빈도 조정에 반영 필수]:
-- 아래 질문들과 연관된 주제/개념의 문제를 적극 출제해 주십시오 (출제 빈도 증가 대상):
-${upvotes.map((f, idx) => `  * [토픽: ${f.title}] ${f.question_text}`).join('\n')}
+[?�용???�드�?지�?- 출제 빈도 조정??반영 ?�수]:
+- ?�래 질문?�과 ?��???주제/개념??문제�??�극 출제??주십?�오 (출제 빈도 증�? ?�??:
+${upvotes.map((f, idx) => `  * [?�픽: ${f.title}] ${f.question_text}`).join('\n')}
 
-- 아래 질문들과 동일하거나 유사한 문제는 절대 출제하지 말고 출제 빈도를 대폭 낮추거나 다른 문제로 대체해 주십시오 (출제 빈도 감소/제외 대상):
-${downvotes.map((f, idx) => `  * [토픽: ${f.title}] ${f.question_text}`).join('\n')}
+- ?�래 질문?�과 ?�일?�거???�사??문제???��? 출제?��? 말고 출제 빈도�??�????��거나 ?�른 문제�??�체해 주십?�오 (출제 빈도 감소/?�외 ?�??:
+${downvotes.map((f, idx) => `  * [?�픽: ${f.title}] ${f.question_text}`).join('\n')}
 `;
       }
     } catch (fbErr) {
-      console.warn('종합평가 피드백 로드 실패 (무시하고 진행):', fbErr);
+      console.warn('종합?��? ?�드�?로드 ?�패 (무시?�고 진행):', fbErr);
     }
 
     let adjustmentsPrompt = '';
@@ -2616,18 +2638,18 @@ ${downvotes.map((f, idx) => `  * [토픽: ${f.title}] ${f.question_text}`).join(
       );
       if (adjustments.length > 0) {
         adjustmentsPrompt = `
-[사용자 이전 문제 조정(피드백) 내역 - 출제 시 반드시 참고하여 반영하십시오]:
-사용자가 이전에 종합평가/복습 시 문제를 다음과 같이 조정 요청하여 반영된 이력이 있습니다. 향후 출제 시 아래 피드백 경향을 분석하여 반영해 주십시오:
+[?�용???�전 문제 조정(?�드�? ?�역 - 출제 ??반드??참고?�여 반영?�십?�오]:
+?�용?��? ?�전??종합?��?/복습 ??문제�??�음�?같이 조정 ?�청?�여 반영???�력???�습?�다. ?�후 출제 ???�래 ?�드�?경향??분석?�여 반영??주십?�오:
 ${adjustments.map((a, idx) => `
-조정 이력 ${idx + 1} [토픽: ${a.title}]:
+조정 ?�력 ${idx + 1} [?�픽: ${a.title}]:
 - 기존 문제: "${a.question_text}"
-- 사용자의 피드백 요구사항: "${a.user_feedback}"
-- 반영된 최종 문제: "${a.adjusted_text}"
+- ?�용?�의 ?�드�??�구?�항: "${a.user_feedback}"
+- 반영??최종 문제: "${a.adjusted_text}"
 `).join('\n')}
 `;
       }
     } catch (adjErr) {
-      console.warn('종합평가 문제 조정 이력 로드 실패:', adjErr);
+      console.warn('종합?��? 문제 조정 ?�력 로드 ?�패:', adjErr);
     }
 
     // Collect past questions from app_session
@@ -2657,9 +2679,9 @@ ${adjustments.map((a, idx) => `
           }
         }
       }
-      console.log(`[종합평가] 수집된 기존 복습 문항 수: ${pastQuestionsPool.length}개`);
+      console.log(`[종합?��?] ?�집??기존 복습 문항 ?? ${pastQuestionsPool.length}�?);
     } catch (dbErr) {
-      console.warn('[종합평가] 기존 문항 로드 실패:', dbErr);
+      console.warn('[종합?��?] 기존 문항 로드 ?�패:', dbErr);
     }
 
     const uniqueQuestionsMap = new Map();
@@ -2670,7 +2692,7 @@ ${adjustments.map((a, idx) => `
       }
     }
     const uniquePastQuestions = Array.from(uniqueQuestionsMap.values());
-    console.log(`[종합평가] 중복 제거 후 고유 기존 복습 문항 수: ${uniquePastQuestions.length}개`);
+    console.log(`[종합?��?] 중복 ?�거 ??고유 기존 복습 문항 ?? ${uniquePastQuestions.length}�?);
 
     // Collect local fallback questions for all topics
     let fallbackQuestionsPool = [];
@@ -2700,35 +2722,35 @@ ${adjustments.map((a, idx) => `
           fallbackQuestionsPool.push(...fallbackQs);
         }
       }
-      console.log(`[종합평가] 로컬 생성 예비 문항 수: ${fallbackQuestionsPool.length}개`);
+      console.log(`[종합?��?] 로컬 ?�성 ?�비 문항 ?? ${fallbackQuestionsPool.length}�?);
     } catch (fallbackErr) {
-      console.warn('[종합평가] 로컬 예비 문항 생성 실패:', fallbackErr);
+      console.warn('[종합?��?] 로컬 ?�비 문항 ?�성 ?�패:', fallbackErr);
     }
 
     // Generate new AI questions dynamically based on count (4 batches of 5 max)
     let aggregatedAiQuestions = [];
     const TOTAL_BATCHES = Math.min(4, Math.max(1, Math.ceil(count / 10)));
-    console.log(`[종합평가 병렬 생성 가동] TPM 초과 방지를 위해 5문제씩 총 ${TOTAL_BATCHES}회 병렬 요청을 시작합니다.`);
+    console.log(`[종합?��? 병렬 ?�성 가?? TPM 초과 방�?�??�해 5문제??�?${TOTAL_BATCHES}??병렬 ?�청???�작?�니??`);
     if (progressId) {
-      progressTimer = startBackendProgressTimer(progressId, 3, '3단계: AI 엔진이 예상 문제를 심층 분석 및 생성하는 중...', 90, 1800, 3);
+      progressTimer = startBackendProgressTimer(progressId, 3, '3?�계: AI ?�진???�상 문제�??�층 분석 �??�성?�는 �?..', 90, 1800, 3);
     }
 
     const batchPromises = Array.from({ length: TOTAL_BATCHES }).map(async (_, idx) => {
       const randomSeed = Math.floor(Math.random() * 10000);
       const batchPrompt = `
-당신은 국가기술자격 기술사 시험 출제위원입니다.
-아래 범위 토픽 소스 자료를 참고하여, 다른 문제들과 절대 중복되지 않는 고난도 종합평가 문제 **정확히 5개**를 생성하십시오.
-(현재 분할 출제 회차: ${idx + 1} / ${TOTAL_BATCHES}, 랜덤 시드: ${randomSeed})
+?�신?� �??기술?�격 기술???�험 출제?�원?�니??
+?�래 범위 ?�픽 ?�스 ?�료�?참고?�여, ?�른 문제?�과 ?��? 중복?��? ?�는 고난??종합?��? 문제 **?�확??5�?*�??�성?�십?�오.
+(?�재 분할 출제 ?�차: ${idx + 1} / ${TOTAL_BATCHES}, ?�덤 ?�드: ${randomSeed})
 
-🚨 [출제 출처 한정 및 문맥 격리 규칙 (Topic Isolation) - 극도로 중요!]:
-1. 반드시 아래 제공된 **[평가 범위 토픽 목록]** 및 **[통합 소스 텍스트]**의 각 '<Topic>...</Topic>' 태그에 직접 기술되어 있는 구체적인 개념, 공식, 이론 및 지식의 범위 안에서만 시험 문제를 생성하십시오.
-2. 각 문제를 출제할 때 해당 문제의 출처가 되는 단 하나의 토픽의 범위로 한정하여 문제를 구성하십시오. 절대 특정 토픽에 관한 문제를 낼 때 다른 토픽에 적힌 단어, 수치, 공학적 조건이나 공식들을 혼합(Cross-contamination)하여 보기(options)나 지문을 만드는 '문맥 교차 오염'을 저지르지 마십시오. 각 문제는 소스 상의 독립된 개별 토픽 내용에 완전히 부합해야 합니다.
-3. 제공된 소스 자료 텍스트에 **직접 등장하지 않는 외부의 타 공학/역학 이론이나 일반 상식(예: 지문에 직접 기재되지 않은 동역학, 구조역학, 진동학, 임계감쇠, 단자유도 시스템, 고유진동수, 또는 그 외 외부 임의 주제 등)은 절대로 지문에 주입하거나 날조하여 문제를 만들지 마십시오.**
-4. 오직 제공된 소스 본문 텍스트 내에 **단어 및 수식으로 명시되어 있는 범위 내로만 출제 범위를 100% 철저히 한정**하십시오. 소스에 없는 타분야 내용을 엮거나 상상하여 문제를 구성할 경우 심각한 출제 오류로 간주됩니다.
-5. 객관식 모든 보기(options) 및 해설 역시 오직 소스 문서 내용의 문장과 지식들을 변형/결합하여 만들어야 하며, 본문과 아예 무관한 엉뚱한 외부 용어나 가상의 기술적 지식을 보기에 혼합하는 것을 절대 금지합니다.
+?�� [출제 출처 ?�정 �?문맥 격리 규칙 (Topic Isolation) - 극도�?중요!]:
+1. 반드???�래 ?�공??**[?��? 범위 ?�픽 목록]** �?**[?�합 ?�스 ?�스??**??�?'<Topic>...</Topic>' ?�그??직접 기술?�어 ?�는 구체?�인 개념, 공식, ?�론 �?지?�의 범위 ?�에?�만 ?�험 문제�??�성?�십?�오.
+2. �?문제�?출제?????�당 문제??출처가 ?�는 ???�나???�픽??범위�??�정?�여 문제�?구성?�십?�오. ?��? ?�정 ?�픽??관??문제�??????�른 ?�픽???�힌 ?�어, ?�치, 공학??조건?�나 공식?�을 ?�합(Cross-contamination)?�여 보기(options)??지문을 만드??'문맥 교차 ?�염'???�지르�? 마십?�오. �?문제???�스 ?�의 ?�립??개별 ?�픽 ?�용???�전??부?�해???�니??
+3. ?�공???�스 ?�료 ?�스?�에 **직접 ?�장?��? ?�는 ?��????� 공학/??�� ?�론?�나 ?�반 ?�식(?? 지문에 직접 기재?��? ?��? ?�역?? 구조??��, 진동?? ?�계감쇠, ?�자?�도 ?�스?? 고유진동?? ?�는 �????��? ?�의 주제 ???� ?��?�?지문에 주입?�거???�조?�여 문제�?만들지 마십?�오.**
+4. ?�직 ?�공???�스 본문 ?�스???�에 **?�어 �??�식?�로 명시?�어 ?�는 범위 ?�로�?출제 범위�?100% 철�????�정**?�십?�오. ?�스???�는 ?�분야 ?�용????��???�상?�여 문제�?구성??경우 ?�각??출제 ?�류�?간주?�니??
+5. 객�???모든 보기(options) �??�설 ??�� ?�직 ?�스 문서 ?�용??문장�?지?�들??변??결합?�여 만들?�야 ?�며, 본문�??�예 무�????�뚱???��? ?�어??가?�의 기술??지?�을 보기???�합?�는 것을 ?��? 금�??�니??
 
-[평가 범위 토픽 목록]: ${topicTitles}
-[통합 소스 텍스트]:
+[?��? 범위 ?�픽 목록]: ${topicTitles}
+[?�합 ?�스 ?�스??:
 ${combinedText}
 
 ${feedbackPrompt}
@@ -2736,60 +2758,60 @@ ${feedbackPrompt}
 ${adjustmentsPrompt}
 
 [출제 규칙]:
-1. 이번 회차에서는 **정확히 5개의 문제**만 반환하되 다음 유형별로 각각 정확히 1문제씩 골고루 구성하여 비율을 사수하십시오:
-   - 주관식 (type: "주관식", subtype: "개요"): 1문제 (정의 및 특징을 3~5줄 내외의 깊이 있고 전문적인 서술형 개요 및 개념 설명 모범답안)
-   - 주관식 (type: "주관식", subtype: "공식"): 1문제 (해당 토픽의 대표적인 공학적 수식 및 물리적 관계식을 제시하고 수식을 구성하는 기호들의 정의를 나열하는 공식 문제)
-   - 주관식 (type: "주관식", subtype: "표채우기"): 1문제 (비교 대상이 없는 단일 토픽은 '상태/단계 비교' 또는 '1행(Single-row) 테이블'로 구성하여 동일 열 내 답안 중복을 철저히 배제하고, 아래 "tableData" 필드에 <table> 태그 대신 표 데이터 객체 구조를 채워넣는 칸채우기 주관식 문제)
-   - 주관식 (type: "주관식", subtype: "단답형"): 1문제 (구체적인 실무 문제점/시나리오를 질문으로 제시하고 핵심 키워드 강조가 들어간 1줄 서술형 모범답안으로 답하는 단답형 문제)
-   - 객관식 (type: "객관식"): 1문제 (4지선다형 객관식 문제)
-2. 객관식 문제의 유형 및 구성 비율 지침 (극도로 중요):
-   - 출제되는 객관식 문항들은 반드시 아래 비율을 준수하여 구성하십시오:
-     * **기본 기초 개념 문제 (40%, 약 2문제)**: 토픽의 기본 정의, 핵심 개념, 기초 원리를 직접적으로 묻는 기초 수준 문제. (예: "○○○의 정의로 가장 옳은 것은?", "○○○의 특징이 아닌 것은?"). 기사 수준의 핵심 개념 확인 문제로 출제.
-     * **정량 계산 문제 (30%, 약 1문제)**: 구체적인 조건 수치를 대입하여 최종 값을 계산해내거나 정량 결과를 묻는 수치 계산 문제.
-     * **심화 원리·비교 문제 (30%, 약 1문제)**: 공학적 메커니즘, 장단점, 비교, 실무 시공 유의사항 등 응용 이해형 문제.
+1. ?�번 ?�차?�서??**?�확??5개의 문제**�?반환?�되 ?�음 ?�형별로 각각 ?�확??1문제??골고�?구성?�여 비율???�수?�십?�오:
+   - 주�???(type: "주�???, subtype: "개요"): 1문제 (?�의 �??�징??3~5�??�외??깊이 ?�고 ?�문?�인 ?�술??개요 �?개념 ?�명 모범?�안)
+   - 주�???(type: "주�???, subtype: "공식"): 1문제 (?�당 ?�픽???�?�적??공학???�식 �?물리??관계식???�시?�고 ?�식??구성?�는 기호?�의 ?�의�??�열?�는 공식 문제)
+   - 주�???(type: "주�???, subtype: "?�채?�기"): 1문제 (비교 ?�?�이 ?�는 ?�일 ?�픽?� '?�태/?�계 비교' ?�는 '1??Single-row) ?�이�?�?구성?�여 ?�일 ?????�안 중복??철�???배제?�고, ?�래 "tableData" ?�드??<table> ?�그 ?�?????�이??객체 구조�?채워?�는 칸채?�기 주�???문제)
+   - 주�???(type: "주�???, subtype: "?�답??): 1문제 (구체?�인 ?�무 문제???�나리오�?질문?�로 ?�시?�고 ?�심 ?�워??강조가 ?�어�?1�??�술??모범?�안?�로 ?�하???�답??문제)
+   - 객�???(type: "객�???): 1문제 (4지?�다??객�???문제)
+2. 객�???문제???�형 �?구성 비율 지�?(극도�?중요):
+   - 출제?�는 객�???문항?��? 반드???�래 비율??준?�하??구성?�십?�오:
+     * **기본 기초 개념 문제 (40%, ??2문제)**: ?�픽??기본 ?�의, ?�심 개념, 기초 ?�리�?직접?�으�?묻는 기초 ?��? 문제. (?? "?�○?�의 ?�의�?가???��? 것�??", "?�○?�의 ?�징???�닌 것�??"). 기사 ?��????�심 개념 ?�인 문제�?출제.
+     * **?�량 계산 문제 (30%, ??1문제)**: 구체?�인 조건 ?�치�??�?�하??최종 값을 계산?�내거나 ?�량 결과�?묻는 ?�치 계산 문제.
+     * **?�화 ?�리·비교 문제 (30%, ??1문제)**: 공학??메커?�즘, ?�단?? 비교, ?�무 ?�공 ?�의?�항 ???�용 ?�해??문제.
    
-   - **🚨 [공식 및 공식 수치 범위 노출 절대 금지 규칙 - 극도로 중요!]**: 문제 질문(question) 본문 내에 **문제를 해결하는 데 필요한 공학 수식 자체(예: $E_u = 300 s_u$ 등)나 수식의 특정 수치 범위(예: $E_u = (200 \\sim 500)s_u$ 등), 비례 관계 식 등을 절대로 직접 텍스트로 적어 제공하지 마십시오.** 수식이나 경험적 수치 범위를 지문에 미리 주면 학생의 암기 및 연상 능력을 평가할 수 없습니다. 대신 공식의 명칭("비배수 탄성계수 경험식")이나 변수들의 명칭("비배수 전단강도 $s_u$")만을 제시하고, 학생이 스스로 공식과 범위를 떠올려서 해결하도록 하십시오. (단, 해설(explanation)에서는 학생의 학습을 위해 공식을 상세히 명시하고 계산 과정을 설명해야 합니다.)
-   - 특히 **수치 해석법이나 가설 구조물 해석과 같이 정량적 분석이 필요한 토픽의 경우, 제공된 소스 문서 내에 명시적인 수치나 파라미터가 존재한다면 이를 활용하여 정량 계산 문제를 구성하십시오. 단, 문서에 수치나 수식이 없다면 임의로 비현실적인 수치를 가상 부여하지 마십시오.**
-   - 만약 전형적인 비계산형/정성적 토픽(예: 단순 품질 시험 절차, 단순 행정 제도 등)인 경우에만 일반적인 서술형/이해형 객관식 문제로 출제하되, 이 경우에도 가급적 물리적 변수의 영향도를 묻는 등 최대한 정량화에 가깝게 문제의 수준을 높여 출제하십시오.
-   - **⚠️ [비교/특성 표 출제 규칙 - 극도로 중요!]**: 질문에 비교/특성 표가 필요한 경우, 절대 <table> 등 HTML 태그로 표를 직접 작성하지 말고 일반 텍스트로만 질문을 작성한 뒤 아래의 "tableData" 필드에 표 데이터를 객체 구조로 작성하십시오.
-3. 오답 보기 구성 주의사항 (매우 중요):
-   - 오답 보기(options) 구성 시 **절대로 터무니없거나 극단적인 표현, 혹은 비현실적인 공학적 가정(예: '무한대로 상승시킴', '실시간으로 기하급수적으로 증가함', '영원히 변하지 않음', '아예 발생하지 않음', '폭발함' 등)은 절대로 사용하지 마십시오**. 
-   - 실제 전공 서적이나 실무 기술 기준에 부합하는 **고도로 타당성 있고 그럴듯한 오답(plausible engineering distractors)**으로 구성해 주십시오. 모든 보기는 반드시 원본 소스 및 공학적 상식선에 긴밀히 결합되어야 합니다.
-- **🚨 [객관식 정밀성 및 정답 일치 조건 - 극도로 중요!]**: 모든 객관식(4지선다형) 계산 문제나 수치/공학적 판단 문제를 출제할 때, 계산으로 도출된 정확한 정답 수치나 조건이 4개의 보기(options) 중 반드시 정확히 1개로 존재해야 합니다. 절대로 실제 계산 결과와 보기의 수치가 불일치하여, 해설에서 '실제 계산값은 XX이나 보기 중 가장 가까운 YY를 선택합니다'와 같은 어처구니없는 변명을 적는 출제 오류를 범하지 마십시오. 문제를 생성하기 전에 실제 수식을 대입하여 정답을 한 번 더 직접 엄밀하게 계산하고 검증한 후, 그 결과값(토씨 하나 틀리지 않는 정확한 정답)을 보기와 'answer' 필드에 완벽히 일치하도록 기재하십시오.
-    4. 소스 텍스트의 숨겨진 공학적 개념과 실무 기전을 포착하여 고품격 질문을 던지십시오.
+   - **?�� [공식 �?공식 ?�치 범위 ?�출 ?��? 금�? 규칙 - 극도�?중요!]**: 문제 질문(question) 본문 ?�에 **문제�??�결?�는 ???�요??공학 ?�식 ?�체(?? $E_u = 300 s_u$ ?????�식???�정 ?�치 범위(?? $E_u = (200 \\sim 500)s_u$ ??, 비�? 관�????�을 ?��?�?직접 ?�스?�로 ?�어 ?�공?��? 마십?�오.** ?�식?�나 경험???�치 범위�?지문에 미리 주면 ?�생???�기 �??�상 ?�력???��??????�습?�다. ?�??공식??명칭("비배???�성계수 경험??)?�나 변?�들??명칭("비배???�단강도 $s_u$")만을 ?�시?�고, ?�생???�스�?공식�?범위�??�올?�서 ?�결?�도�??�십?�오. (?? ?�설(explanation)?�서???�생???�습???�해 공식???�세??명시?�고 계산 과정???�명?�야 ?�니??)
+   - ?�히 **?�치 ?�석법이??가??구조�??�석�?같이 ?�량??분석???�요???�픽??경우, ?�공???�스 문서 ?�에 명시?�인 ?�치???�라미터가 존재?�다�??��? ?�용?�여 ?�량 계산 문제�?구성?�십?�오. ?? 문서???�치???�식???�다�??�의�?비현?�적???�치�?가??부?�하지 마십?�오.**
+   - 만약 ?�형?�인 비계?�형/?�성???�픽(?? ?�순 ?�질 ?�험 ?�차, ?�순 ?�정 ?�도 ????경우?�만 ?�반?�인 ?�술???�해??객�???문제�?출제?�되, ??경우?�도 가급적 물리??변?�의 ?�향?��? 묻는 ??최�????�량?�에 가깝게 문제???��????�여 출제?�십?�오.
+   - **?�️ [비교/?�성 ??출제 규칙 - 극도�?중요!]**: 질문??비교/?�성 ?��? ?�요??경우, ?��? <table> ??HTML ?�그�??��? 직접 ?�성?��? 말고 ?�반 ?�스?�로�?질문???�성?????�래??"tableData" ?�드?????�이?��? 객체 구조�??�성?�십?�오.
+3. ?�답 보기 구성 주의?�항 (매우 중요):
+   - ?�답 보기(options) 구성 ??**?��?�??�무?�없거나 극단?�인 ?�현, ?��? 비현?�적??공학??가???? '무한?��??�승?�킴', '?�시간으�?기하급수?�으�?증�???, '?�원??변?��? ?�음', '?�예 발생?��? ?�음', '??��?? ???� ?��?�??�용?��? 마십?�오**. 
+   - ?�제 ?�공 ?�적?�나 ?�무 기술 기�???부?�하??**고도�??�?�성 ?�고 그럴??�� ?�답(plausible engineering distractors)**?�로 구성??주십?�오. 모든 보기??반드???�본 ?�스 �?공학???�식?�에 긴�???결합?�어???�니??
+- **?�� [객�????��???�??�답 ?�치 조건 - 극도�?중요!]**: 모든 객�???4지?�다?? 계산 문제???�치/공학???�단 문제�?출제???? 계산?�로 ?�출???�확???�답 ?�치??조건??4개의 보기(options) �?반드???�확??1개로 존재?�야 ?�니?? ?��?�??�제 계산 결과?� 보기???�치가 불일치하?? ?�설?�서 '?�제 계산값�? XX?�나 보기 �?가??가까운 YY�??�택?�니???� 같�? ?�처구니?�는 변명을 ?�는 출제 ?�류�?범하지 마십?�오. 문제�??�성?�기 ?�에 ?�제 ?�식???�?�하???�답????�???직접 ?��??�게 계산?�고 검증한 ?? �?결과�??�씨 ?�나 ?�리�? ?�는 ?�확???�답)??보기?� 'answer' ?�드???�벽???�치?�도�?기재?�십?�오.
+    4. ?�스 ?�스?�의 ?�겨�?공학??개념�??�무 기전???�착?�여 고품�?질문???��???��??
 
-[환각 방지 철칙 (Anti-Hallucination Constraints)]:
-1. 제공된 소스 문서 텍스트(<Source_Document>) 내에 명시적 수치, 허용 안전율, 설계기준(KDS/KCS) 조항 번호나 공식이 없는 경우, 임의로 수식을 유도하거나 외부 시방서 수치 한계를 날조(Hallucination)하지 마십시오.
-2. 문서 범위를 벗어나는 역학적 수치나 비물리적 수치(예: 내부마찰각 60도 이상 등)를 창작하여 모순을 발생시키면 안 됩니다. 수치가 부족하다면 정량 계산 문제 출제를 즉시 우회하고 개념 이해형 문제로 대체하십시오.
+[?�각 방�? 철칙 (Anti-Hallucination Constraints)]:
+1. ?�공???�스 문서 ?�스??<Source_Document>) ?�에 명시???�치, ?�용 ?�전?? ?�계기�?(KDS/KCS) 조항 번호??공식???�는 경우, ?�의�??�식???�도?�거???��? ?�방???�치 ?�계�??�조(Hallucination)?��? 마십?�오.
+2. 문서 범위�?벗어?�는 ??��???�치??비물리적 ?�치(?? ?��?마찰�?60???�상 ??�?창작?�여 모순??발생?�키�????�니?? ?�치가 부족하?�면 ?�량 계산 문제 출제�?즉시 ?�회?�고 개념 ?�해??문제�??�체하??��??
 
 ${LATEX_PROMPT_INSTRUCTIONS}
 ${GENERATION_STANDARDS}
 ${ENGINEERING_STANDARDS}
-4. 반드시 추가 텍스트 없이 순수 JSON 배열만 반환하십시오.
+4. 반드??추�? ?�스???�이 ?�수 JSON 배열�?반환?�십?�오.
 
-[JSON 포맷]:
+[JSON ?�맷]:
 [
   {
-    "type": "주관식",
+    "type": "주�???,
     "subtype": "개요",
-    "topic_title": "이 문제의 출제 근거가 되는 토픽 목록 내의 정확한 토픽명 (예: 평사투영법)",
-    "question": "질문 내용",
-    "answer": "3~5줄 내외의 깊이 있고 전문적인 서술형 개요 및 개념 설명 모범답안",
-    "concept": "핵심 개념 1줄 요약"
+    "topic_title": "??문제??출제 근거가 ?�는 ?�픽 목록 ?�의 ?�확???�픽�?(?? ?�사?�영�?",
+    "question": "질문 ?�용",
+    "answer": "3~5�??�외??깊이 ?�고 ?�문?�인 ?�술??개요 �?개념 ?�명 모범?�안",
+    "concept": "?�심 개념 1�??�약"
   },
   {
-    "type": "객관식",
-    "topic_title": "이 문제의 출제 근거가 되는 토픽 목록 내의 정확한 토픽명 (예: 락볼트 인발시험)",
-    "question": "공학적 현상 분석 질문",
+    "type": "객�???,
+    "topic_title": "??문제??출제 근거가 ?�는 ?�픽 목록 ?�의 ?�확???�픽�?(?? ?�볼???�발?�험)",
+    "question": "공학???�상 분석 질문",
     "tableData": null,
     "options": ["보기1", "보기2", "보기3", "보기4"],
-    "answer": "정답 보기와 토씨 하나 틀리지 않는 정답 텍스트",
-    "explanation": "이유와 오답 정밀 해설"
+    "answer": "?�답 보기?� ?�씨 ?�나 ?�리�? ?�는 ?�답 ?�스??,
+    "explanation": "?�유?� ?�답 ?��? ?�설"
   }
-] (※ 만약 표가 필요한 질문이라면 "tableData": {"headers": ["구분", "지반 X", "지반 Y"], "rows": [["퇴적 환경", "해수", "담수"]]} 처럼 구조화된 표 객체를 작성하고, 그렇지 않은 일반 질문이면 "tableData": null 로 설정하십시오.)
+] (??만약 ?��? ?�요??질문?�라�?"tableData": {"headers": ["구분", "지�?X", "지�?Y"], "rows": [["?�적 ?�경", "?�수", "?�수"]]} 처럼 구조?�된 ??객체�??�성?�고, 그렇지 ?��? ?�반 질문?�면 "tableData": null �??�정?�십?�오.)
 `;
       try {
-        console.log(`[종합평가 병렬 생성] #${idx + 1}번째 배치 전송 시작...`);
+        console.log(`[종합?��? 병렬 ?�성] #${idx + 1}번째 배치 ?�송 ?�작...`);
         const enrichedPrompt = standardsAnalysis ? `${standardsAnalysis}\n\n${batchPrompt}` : batchPrompt;
         const rawText = await callLLMWithFailover(null, enrichedPrompt, null, 'question', { temperature: 1.0 });
         let text = rawText.trim();
@@ -2806,7 +2828,7 @@ ${ENGINEERING_STANDARDS}
           return parsedList;
         }
       } catch (err) {
-        console.warn(`[종합평가 병렬 생성 실패] #${idx + 1}번째 배치 에러:`, err.message);
+        console.warn(`[종합?��? 병렬 ?�성 ?�패] #${idx + 1}번째 배치 ?�러:`, err.message);
       }
       return [];
     });
@@ -2815,7 +2837,7 @@ ${ENGINEERING_STANDARDS}
     for (const r of results) {
       if (r) aggregatedAiQuestions.push(...r);
     }
-    console.log(`[종합평가 병렬 생성 완료] AI 신규 문항 수: ${aggregatedAiQuestions.length}개`);
+    console.log(`[종합?��? 병렬 ?�성 ?�료] AI ?�규 문항 ?? ${aggregatedAiQuestions.length}�?);
 
     // Merge all pools (AI questions, unique past study questions, fallback questions)
     const uniquePoolMap = new Map();
@@ -2846,14 +2868,14 @@ ${ENGINEERING_STANDARDS}
     }
 
     const finalQuestionPool = Array.from(uniquePoolMap.values());
-    console.log(`[종합평가 풀 구축 완료] 전체 후보 풀 문항 수: ${finalQuestionPool.length}개`);
+    console.log(`[종합?��? ?� 구축 ?�료] ?�체 ?�보 ?� 문항 ?? ${finalQuestionPool.length}�?);
 
     // Select up to 13 questions from the pool with exact type combination:
-    // - 개요: 2개
-    // - 공식: 2개
-    // - 표채우기: 2개
-    // - 단답형: 2개
-    // - 객관식: 5개
+    // - 개요: 2�?
+    // - 공식: 2�?
+    // - ?�채?�기: 2�?
+    // - ?�답?? 2�?
+    // - 객�??? 5�?
     const poolGaeyo = [];
     const poolGongsik = [];
     const poolTable = [];
@@ -2861,17 +2883,17 @@ ${ENGINEERING_STANDARDS}
     const poolMC = [];
 
     for (const q of finalQuestionPool) {
-      if (q.type === '주관식') {
+      if (q.type === '주�???) {
         if (q.subtype === '개요') poolGaeyo.push(q);
         else if (q.subtype === '공식') poolGongsik.push(q);
-        else if (q.subtype === '표채우기') poolTable.push(q);
-        else if (q.subtype === '단답형' || !q.subtype) poolDandap.push(q);
-      } else if (q.type === '객관식') {
+        else if (q.subtype === '?�채?�기') poolTable.push(q);
+        else if (q.subtype === '?�답?? || !q.subtype) poolDandap.push(q);
+      } else if (q.type === '객�???) {
         poolMC.push(q);
       }
     }
 
-    console.log(`[종합평가 분류] 개요: ${poolGaeyo.length}, 공식: ${poolGongsik.length}, 표채우기: ${poolTable.length}, 단답형: ${poolDandap.length}, 객관식: ${poolMC.length}`);
+    console.log(`[종합?��? 분류] 개요: ${poolGaeyo.length}, 공식: ${poolGongsik.length}, ?�채?�기: ${poolTable.length}, ?�답?? ${poolDandap.length}, 객�??? ${poolMC.length}`);
 
     const shuffleArray = (arr) => [...arr].sort(() => 0.5 - Math.random());
     const shufGaeyo = shuffleArray(poolGaeyo);
@@ -2899,7 +2921,7 @@ ${ENGINEERING_STANDARDS}
     const needed = Math.max(0, poolTarget - selectedQuestions.length);
     selectedQuestions.push(...take(shufRemaining, needed));
 
-    console.log(`[종합평가 선택 완료] 최종 선택 문항 수: ${selectedQuestions.length}개`);
+    console.log(`[종합?��? ?�택 ?�료] 최종 ?�택 문항 ?? ${selectedQuestions.length}�?);
 
     // Clean selected questions & Map topic_title to topic_id
     const topicMap = {};
@@ -2930,7 +2952,7 @@ ${ENGINEERING_STANDARDS}
         topicId = matchedTopic ? matchedTopic.id : topics[Math.floor(Math.random() * topics.length)].id;
       }
       return {
-        type: q.type || "객관식",
+        type: q.type || "객�???,
         subtype: q.subtype || null,
         question: cleanQuizQuestion(qText),
         tableData: q.tableData || null,
@@ -2985,19 +3007,19 @@ ${ENGINEERING_STANDARDS}
     if (customTheories.length === 0) {
       customTheories = [
         {
-          title: "Terzaghi 1차원 압밀 지배방정식 유도",
-          concept: "점토층 내 과잉간극수압의 소산 및 침하 시간적 추이를 물리적으로 정밀 묘사하는 지배방정식",
-          formula: "지배 미분방정식:\n$$\\frac{\\partial u}{\\partial t} = C_v \\frac{\\partial^2 u}{\\partial z^2}$$\n\n[주요 유도 가정]:\n1. 흙입자와 물은 압축성이 없음(비압축성)\n2. 흙 속 물의 흐름은 Darcy 법칙을 따름 ($v = k i$)\n3. 압밀은 1차원으로만 진행되며 흙의 공극비 변화는 유효응력 증가에 선형 비례함 ($a_v$ 일정)"
+          title: "Terzaghi 1차원 ?��? 지배방?�식 ?�도",
+          concept: "?�토�???과잉간극?�압???�산 �?침하 ?�간??추이�?물리?�으�??��? 묘사?�는 지배방?�식",
+          formula: "지�?미분방정??\n$$\\frac{\\partial u}{\\partial t} = C_v \\frac{\\partial^2 u}{\\partial z^2}$$\n\n[주요 ?�도 가??:\n1. ?�입?��? 물�? ?�축?�이 ?�음(비압축성)\n2. ????물의 ?�름?� Darcy 법칙???�름 ($v = k i$)\n3. ?��??� 1차원?�로�?진행?�며 ?�의 공극�?변?�는 ?�효?�력 증�????�형 비�???($a_v$ ?�정)"
         },
         {
-          title: "Terzaghi 얕은기초 극한지지력 공식의 유도",
-          concept: "기초 저면 아래 지반의 전단 전파 거동(일반 전단 파괴)을 극한 상태 한계 평형으로 수치화한 지지력 공식",
-          formula: "Terzaghi 극한 지지력:\n$$q_{ult} = c N_c + q N_q + 0.5 \\gamma B N_{\\gamma}$$\n\n[유도 메커니즘]:\n- 지반 파괴 영역을 3개 zone(Zone I: 탄성 쐐기, Zone II: 대수나선 방사형 전단 영역, Zone III: Rankine 수동 수평 지반 영역)으로 분할하여 상부 하중 벡터와 전단 저항 한계선 결합"
+          title: "Terzaghi ?��?기초 극한지지??공식???�도",
+          concept: "기초 ?��??�래 지반의 ?�단 ?�파 거동(?�반 ?�단 ?�괴)??극한 ?�태 ?�계 ?�형?�로 ?�치?�한 지지??공식",
+          formula: "Terzaghi 극한 지지??\n$$q_{ult} = c N_c + q N_q + 0.5 \\gamma B N_{\\gamma}$$\n\n[?�도 메커?�즘]:\n- 지�??�괴 ?�역??3�?zone(Zone I: ?�성 ?�기, Zone II: ?�?�나??방사???�단 ?�역, Zone III: Rankine ?�동 ?�평 지�??�역)?�로 분할?�여 ?��? ?�중 벡터?� ?�단 ?�???�계??결합"
         },
         {
-          title: "Rankine 주동토압 공식의 이론적 유도",
-          concept: "지반이 가설 벽체 배면 방향으로 팽창 변형을 일으켜 한계 인장 소성 상태에 도달할 때의 수평 응력",
-          formula: "주동토압 강도 식:\n$$p_a = \\gamma z K_a - 2 c \\sqrt{K_a}$$\n\n[주요 유도 공식]:\n- Mohr-Coulomb 파괴 포락선과 Mohr 응력원의 접점 기하학적 분석을 통하여 $K_a = \\tan^2(45^\\circ - \\phi/2)$ 수식 도출"
+          title: "Rankine 주동?�압 공식???�론???�도",
+          concept: "지반이 가??벽체 배면 방향?�로 ?�창 변?�을 ?�으�??�계 ?�장 ?�성 ?�태???�달???�의 ?�평 ?�력",
+          formula: "주동?�압 강도 ??\n$$p_a = \\gamma z K_a - 2 c \\sqrt{K_a}$$\n\n[주요 ?�도 공식]:\n- Mohr-Coulomb ?�괴 ?�락?�과 Mohr ?�력?�의 ?�점 기하?�적 분석???�하??$K_a = \\tan^2(45^\\circ - \\phi/2)$ ?�식 ?�출"
         }
       ];
     }
@@ -3014,10 +3036,10 @@ ${ENGINEERING_STANDARDS}
         return fTitle && tTitle && (tTitle.includes(fTitle) || fTitle.includes(tTitle));
       });
       return {
-        type: "주관식",
+        type: "주�???,
         subtype: "공식",
         topic_id: matchedTopic ? matchedTopic.id : (topics[0] ? topics[0].id : null),
-        question: `[필수공식] ${fTitle || '공식'} 공식을 제시하고, 각 기호의 정의를 서술하시오.`,
+        question: `[?�수공식] ${fTitle || '공식'} 공식???�시?�고, �?기호???�의�??�술?�시??`,
         answer: f.formula || '',
         concept: f.concept || ''
       };
@@ -3031,10 +3053,10 @@ ${ENGINEERING_STANDARDS}
         return tTitle && topicTitle && (topicTitle.includes(tTitle) || tTitle.includes(topicTitle));
       });
       return {
-        type: "주관식",
-        subtype: "서술",
+        type: "주�???,
+        subtype: "?�술",
         topic_id: matchedTopic ? matchedTopic.id : (topics[0] ? topics[0].id : null),
-        question: `[이론유도] ${tTitle || '이론유도'}의 이론 유도 과정 및 핵심 공학적 전제조건을 기술하시오.`,
+        question: `[?�론?�도] ${tTitle || '?�론?�도'}???�론 ?�도 과정 �??�심 공학???�제조건??기술?�시??`,
         answer: t.formula || '',
         concept: t.concept || ''
       };
@@ -3060,11 +3082,11 @@ ${ENGINEERING_STANDARDS}
 
   } catch (err) {
     console.error('Exam route error:', err);
-    res.status(500).json({ error: err.message || '서버 오류가 발생했습니다.' });
+    res.status(500).json({ error: err.message || '?�버 ?�류가 발생?�습?�다.' });
   } finally {
     if (progressTimer) clearInterval(progressTimer);
     if (progressId) {
-      updateProgress(progressId, 3, '3단계: 종합평가 예상 문제 출제와 수학 공식 검증 완료!', 100);
+      updateProgress(progressId, 3, '3?�계: 종합?��? ?�상 문제 출제?� ?�학 공식 검�??�료!', 100);
     }
   }
 });
@@ -3075,7 +3097,7 @@ router.post('/exam/additional', async (req, res) => {
   let progressTimer = null;
   try {
     if (progressId) {
-      updateProgress(progressId, 1, '1단계: 추가 시험 문항 구성 분석 중...', 20);
+      updateProgress(progressId, 1, '1?�계: 추�? ?�험 문항 구성 분석 �?..', 20);
     }
     const hasAnyAiKey = !!(
       process.env.GEMINI_API_KEY ||
@@ -3084,12 +3106,12 @@ router.post('/exam/additional', async (req, res) => {
       process.env.ANTHROPIC_API_KEY ||
       process.env.OPENAI_API_KEY
     );
-    if (!hasAnyAiKey) return res.status(400).json({ error: '등록된 AI API 키가 존재하지 않습니다.' });
+    if (!hasAnyAiKey) return res.status(400).json({ error: '?�록??AI API ?��? 존재?��? ?�습?�다.' });
 
     // Fetch all topics with extracted_text (fallback to pdf_data if empty)
     const topics = await dbQuery.all(`SELECT id, title, keywords, pdf_name, extracted_text, (CASE WHEN extracted_text IS NULL OR extracted_text = '' THEN pdf_data ELSE NULL END) AS pdf_data FROM topics ORDER BY created_at DESC`);
     if (!topics || topics.length === 0) {
-      return res.status(400).json({ error: '등록된 토픽이 없습니다. 먼저 학습 자료를 등록해주세요.' });
+      return res.status(400).json({ error: '?�록???�픽???�습?�다. 먼�? ?�습 ?�료�??�록?�주?�요.' });
     }
 
     const topicTextMap = {};
@@ -3118,7 +3140,7 @@ router.post('/exam/additional', async (req, res) => {
       }
       fileText = fileUtils.smartTruncate(fileText, 10000);
       topicTextMap[topic.id] = fileText;
-      return `<Topic id="${topic.id}" title="${topic.title}" keywords="${topic.keywords || '없음'}">\n${fileText || '소스 없음'}\n</Topic>`;
+      return `<Topic id="${topic.id}" title="${topic.title}" keywords="${topic.keywords || '?�음'}">\n${fileText || '?�스 ?�음'}\n</Topic>`;
     }));
 
     const combinedText = topicTexts.join('\n\n---\n\n');
@@ -3166,19 +3188,19 @@ router.post('/exam/additional', async (req, res) => {
     if (customTheories.length === 0) {
       customTheories = [
         {
-          title: "Terzaghi 1차원 압밀 지배방정식 유도",
-          concept: "점토층 내 과잉간극수압의 소산 및 침하 시간적 추이를 물리적으로 정밀 묘사하는 지배방정식",
-          formula: "지배 미분방정식:\n$$\\frac{\\partial u}{\\partial t} = C_v \\frac{\\partial^2 u}{\\partial z^2}$$\n\n[주요 유도 가정]:\n1. 흙입자와 물은 압축성이 없음(비압축성)\n2. 흙 속 물의 흐름은 Darcy 법칙을 따름 ($v = k i$)\n3. 압밀은 1차원으로만 진행되며 흙의 공극비 변화는 유효응력 증가에 선형 비례함 ($a_v$ 일정)"
+          title: "Terzaghi 1차원 ?��? 지배방?�식 ?�도",
+          concept: "?�토�???과잉간극?�압???�산 �?침하 ?�간??추이�?물리?�으�??��? 묘사?�는 지배방?�식",
+          formula: "지�?미분방정??\n$$\\frac{\\partial u}{\\partial t} = C_v \\frac{\\partial^2 u}{\\partial z^2}$$\n\n[주요 ?�도 가??:\n1. ?�입?��? 물�? ?�축?�이 ?�음(비압축성)\n2. ????물의 ?�름?� Darcy 법칙???�름 ($v = k i$)\n3. ?��??� 1차원?�로�?진행?�며 ?�의 공극�?변?�는 ?�효?�력 증�????�형 비�???($a_v$ ?�정)"
         },
         {
-          title: "Terzaghi 얕은기초 극한지지력 공식의 유도",
-          concept: "기초 저면 아래 지반의 전단 전파 거동(일반 전단 파괴)을 극한 상태 한계 평형으로 수치화한 지지력 공식",
-          formula: "Terzaghi 극한 지지력:\n$$q_{ult} = c N_c + q N_q + 0.5 \\gamma B N_{\\gamma}$$\n\n[유도 메커니즘]:\n- 지반 파괴 영역을 3개 zone(Zone I: 탄성 쐐기, Zone II: 대수나선 방사형 전단 영역, Zone III: Rankine 수동 수평 지반 영역)으로 분할하여 상부 하중 벡터와 전단 저항 한계선 결합"
+          title: "Terzaghi ?��?기초 극한지지??공식???�도",
+          concept: "기초 ?��??�래 지반의 ?�단 ?�파 거동(?�반 ?�단 ?�괴)??극한 ?�태 ?�계 ?�형?�로 ?�치?�한 지지??공식",
+          formula: "Terzaghi 극한 지지??\n$$q_{ult} = c N_c + q N_q + 0.5 \\gamma B N_{\\gamma}$$\n\n[?�도 메커?�즘]:\n- 지�??�괴 ?�역??3�?zone(Zone I: ?�성 ?�기, Zone II: ?�?�나??방사???�단 ?�역, Zone III: Rankine ?�동 ?�평 지�??�역)?�로 분할?�여 ?��? ?�중 벡터?� ?�단 ?�???�계??결합"
         },
         {
-          title: "Rankine 주동토압 공식의 이론적 유도",
-          concept: "지반이 가설 벽체 배면 방향으로 팽창 변형을 일으켜 한계 인장 소성 상태에 도달할 때의 수평 응력",
-          formula: "주동토압 강도 식:\n$$p_a = \\gamma z K_a - 2 c \\sqrt{K_a}$$\n\n[주요 유도 공식]:\n- Mohr-Coulomb 파괴 포락선과 Mohr 응력원의 접점 기하학적 분석을 통하여 $K_a = \\tan^2(45^\\circ - \\phi/2)$ 수식 도출"
+          title: "Rankine 주동?�압 공식???�론???�도",
+          concept: "지반이 가??벽체 배면 방향?�로 ?�창 변?�을 ?�으�??�계 ?�장 ?�성 ?�태???�달???�의 ?�평 ?�력",
+          formula: "주동?�압 강도 ??\n$$p_a = \\gamma z K_a - 2 c \\sqrt{K_a}$$\n\n[주요 ?�도 공식]:\n- Mohr-Coulomb ?�괴 ?�락?�과 Mohr ?�력?�의 ?�점 기하?�적 분석???�하??$K_a = \\tan^2(45^\\circ - \\phi/2)$ ?�식 ?�출"
         }
       ];
     }
@@ -3195,10 +3217,10 @@ router.post('/exam/additional', async (req, res) => {
         return fTitle && tTitle && (tTitle.includes(fTitle) || fTitle.includes(tTitle));
       });
       return {
-        type: "주관식",
+        type: "주�???,
         subtype: "공식",
         topic_id: matchedTopic ? matchedTopic.id : (topics[0] ? topics[0].id : null),
-        question: `[필수공식] ${fTitle || '공식'} 공식을 제시하고, 각 기호의 정의를 서술하시오.`,
+        question: `[?�수공식] ${fTitle || '공식'} 공식???�시?�고, �?기호???�의�??�술?�시??`,
         answer: f.formula || '',
         concept: f.concept || ''
       };
@@ -3212,10 +3234,10 @@ router.post('/exam/additional', async (req, res) => {
         return tTitle && topicTitle && (topicTitle.includes(tTitle) || tTitle.includes(topicTitle));
       });
       return {
-        type: "주관식",
-        subtype: "서술",
+        type: "주�???,
+        subtype: "?�술",
         topic_id: matchedTopic ? matchedTopic.id : (topics[0] ? topics[0].id : null),
-        question: `[이론유도] ${tTitle || '이론유도'}의 이론 유도 과정 및 핵심 공학적 전제조건을 기술하시오.`,
+        question: `[?�론?�도] ${tTitle || '?�론?�도'}???�론 ?�도 과정 �??�심 공학???�제조건??기술?�시??`,
         answer: t.formula || '',
         concept: t.concept || ''
       };
@@ -3224,15 +3246,15 @@ router.post('/exam/additional', async (req, res) => {
     const customSubjs = [...selectedFormulas, ...selectedTheories];
 
     // Format formulas and theories text for LLM context
-    const formulasText = customFormulas.map((f, idx) => `[필수공식 ${idx+1}] 제목: ${f.title}\n공식 및 설명:\n${f.formula}\n개념: ${f.concept}`).join('\n\n');
-    const theoriesText = customTheories.map((t, idx) => `[이론유도 ${idx+1}] 제목: ${t.title}\n개념: ${t.concept}\n내용/수식:\n${t.formula}`).join('\n\n');
+    const formulasText = customFormulas.map((f, idx) => `[?�수공식 ${idx+1}] ?�목: ${f.title}\n공식 �??�명:\n${f.formula}\n개념: ${f.concept}`).join('\n\n');
+    const theoriesText = customTheories.map((t, idx) => `[?�론?�도 ${idx+1}] ?�목: ${t.title}\n개념: ${t.concept}\n?�용/?�식:\n${t.formula}`).join('\n\n');
 
     let aggregatedAiQuestions = [];
     const TOTAL_BATCHES = 3; // 3 batches (4 + 4 + 5) = 13 AI questions
 
-    console.log(`[종합평가 추가 생성 가동] TPM 초과 방지를 위해 총 ${TOTAL_BATCHES}회 연속 분할 요청을 시작합니다.`);
+    console.log(`[종합?��? 추�? ?�성 가?? TPM 초과 방�?�??�해 �?${TOTAL_BATCHES}???�속 분할 ?�청???�작?�니??`);
     if (progressId) {
-      progressTimer = startBackendProgressTimer(progressId, 3, '3단계: AI 엔진이 추가 문제를 출제하고 있습니다...', 90, 1800, 5);
+      progressTimer = startBackendProgressTimer(progressId, 3, '3?�계: AI ?�진??추�? 문제�?출제?�고 ?�습?�다...', 90, 1800, 5);
     }
 
     for (let i = 0; i < TOTAL_BATCHES; i++) {
@@ -3241,78 +3263,78 @@ router.post('/exam/additional', async (req, res) => {
       const mcCount = i === 2 ? 4 : 3;
       
       const batchPrompt = `
-당신은 국가기술자격 기술사 시험 출제위원입니다.
-아래 제공된 [평가 범위 토픽 소스], [필수공식 목록], [이론유도 목록]에 해당하는 공식과 공학적 지식 내용만을 참고하여, 다른 문제들과 절대 중복되지 않는 고난도 종합평가 추가 문제 **정확히 ${countToGenerate}개**를 생성하십시오.
-(현재 분할 출제 회차: ${i + 1} / ${TOTAL_BATCHES}, 랜덤 시드: ${randomSeed})
+?�신?� �??기술?�격 기술???�험 출제?�원?�니??
+?�래 ?�공??[?��? 범위 ?�픽 ?�스], [?�수공식 목록], [?�론?�도 목록]???�당?�는 공식�?공학??지???�용만을 참고?�여, ?�른 문제?�과 ?��? 중복?��? ?�는 고난??종합?��? 추�? 문제 **?�확??${countToGenerate}�?*�??�성?�십?�오.
+(?�재 분할 출제 ?�차: ${i + 1} / ${TOTAL_BATCHES}, ?�덤 ?�드: ${randomSeed})
 
-🚨 [출제 출처 한정 및 문맥 격리 규칙 (Topic Isolation) - 극도로 중요!]:
-1. 반드시 아래 제공된 **[평가 범위 토픽 목록 및 본문]**의 '<Topic>...</Topic>' 태그, **[인용된 필수공식 목록]**, **[인용된 이론유도 목록]**에서 직접 다루는 구체적인 개념, 공식 및 물리적 기전의 범위 안에서만 시험 문제를 생성하십시오.
-2. 각 문제를 출제할 때 해당 문제의 출처가 되는 단 하나의 토픽의 범위로 한정하여 문제를 구성하십시오. 절대 특정 토픽에 관한 문제를 낼 때 다른 토픽에 적힌 단어, 수치, 공학적 조건이나 공식들을 혼합(Cross-contamination)하여 보기(options)나 지문을 만드는 '문맥 교차 오염'을 저지르지 마십시오. 각 문제는 소스 상의 독립된 개별 토픽 내용에 완전히 부합해야 합니다.
-3. 제공된 소스 자료 및 인용된 내용에 **직접 등장하지 않는 외부의 타 공학/역학 분야 이론(예: 텍스트에 언급되지 않은 동역학 구조해석, 진동학, 설계감쇠, 고유진동수 등)은 절대로 지문에 주입하거나 날조하여 문제를 만들지 마십시오.**
-4. 오직 제공된 소스 본문 텍스트 내에 **단어 및 수식으로 명시되어 있는 범위 내로만 출제 범위를 100% 철저히 한정**하십시오. 소스에 없는 타분야 내용을 엮거나 상상하여 문제를 구성할 경우 심각한 출제 오류로 간주됩니다.
-5. 객관식 모든 보기(options) 및 해설 역시 오직 소스 문서 내용의 문장과 지식들을 변형/결합하여 만들어야 하며, 본문과 아예 무관한 엉뚱한 외부 용어나 가상의 기술적 지식을 보기에 혼합하는 것을 절대 금지합니다.
+?�� [출제 출처 ?�정 �?문맥 격리 규칙 (Topic Isolation) - 극도�?중요!]:
+1. 반드???�래 ?�공??**[?��? 범위 ?�픽 목록 �?본문]**??'<Topic>...</Topic>' ?�그, **[?�용???�수공식 목록]**, **[?�용???�론?�도 목록]**?�서 직접 ?�루??구체?�인 개념, 공식 �?물리??기전??범위 ?�에?�만 ?�험 문제�??�성?�십?�오.
+2. �?문제�?출제?????�당 문제??출처가 ?�는 ???�나???�픽??범위�??�정?�여 문제�?구성?�십?�오. ?��? ?�정 ?�픽??관??문제�??????�른 ?�픽???�힌 ?�어, ?�치, 공학??조건?�나 공식?�을 ?�합(Cross-contamination)?�여 보기(options)??지문을 만드??'문맥 교차 ?�염'???�지르�? 마십?�오. �?문제???�스 ?�의 ?�립??개별 ?�픽 ?�용???�전??부?�해???�니??
+3. ?�공???�스 ?�료 �??�용???�용??**직접 ?�장?��? ?�는 ?��????� 공학/??�� 분야 ?�론(?? ?�스?�에 ?�급?��? ?��? ?�역??구조?�석, 진동?? ?�계감쇠, 고유진동?????� ?��?�?지문에 주입?�거???�조?�여 문제�?만들지 마십?�오.**
+4. ?�직 ?�공???�스 본문 ?�스???�에 **?�어 �??�식?�로 명시?�어 ?�는 범위 ?�로�?출제 범위�?100% 철�????�정**?�십?�오. ?�스???�는 ?�분야 ?�용????��???�상?�여 문제�?구성??경우 ?�각??출제 ?�류�?간주?�니??
+5. 객�???모든 보기(options) �??�설 ??�� ?�직 ?�스 문서 ?�용??문장�?지?�들??변??결합?�여 만들?�야 ?�며, 본문�??�예 무�????�뚱???��? ?�어??가?�의 기술??지?�을 보기???�합?�는 것을 ?��? 금�??�니??
 
-[평가 범위 토픽 목록 및 본문]:
+[?��? 범위 ?�픽 목록 �?본문]:
 ${combinedText}
 
-[인용된 필수공식 목록]:
-${formulasText || '인용된 내용 없음'}
+[?�용???�수공식 목록]:
+${formulasText || '?�용???�용 ?�음'}
 
-[인용된 이론유도 목록]:
-${theoriesText || '인용된 내용 없음'}
+[?�용???�론?�도 목록]:
+${theoriesText || '?�용???�용 ?�음'}
 
 [출제 규칙]:
-1. 이번 회차에서는 **정확히 ${countToGenerate}개의 문제**만 반환하되 다음 비율을 사수할 것:
-   - 주관식 (type: "주관식", subtype: "개요"): 1문제 (정의 및 특징을 3~5줄 내외로 깊이 있고 전문적인 서술형 개요 및 개념 설명 모범답안 (\\n 구분))
-   - 객관식 (type: "객관식"): ${mcCount}문제 (4지선다형)
-2. 객관식 문제의 유형 및 구성 비율 지침 (극도로 중요):
-   - 출제되는 객관식 문항들은 반드시 아래 비율을 준수하여 구성하십시오:
-     * **기본 기초 개념 문제 (40%, 약 2문제)**: 토픽의 기본 정의, 핵심 개념, 기초 원리를 직접적으로 묻는 기초 수준 문제. (예: "○○○의 정의로 가장 옳은 것은?", "○○○의 특징이 아닌 것은?"). 기사 수준의 핵심 개념 확인 문제로 출제.
-     * **정량 계산 문제 (30%, 약 1문제)**: 구체적인 조건 수치를 대입하여 최종 값을 계산해내거나 정량 결과를 묻는 수치 계산 문제.
-     * **심화 원리·비교 문제 (30%, 약 1문제)**: 공학적 메커니즘, 장단점, 비교, 실무 시공 유의사항 등 응용 이해형 문제.
+1. ?�번 ?�차?�서??**?�확??${countToGenerate}개의 문제**�?반환?�되 ?�음 비율???�수??�?
+   - 주�???(type: "주�???, subtype: "개요"): 1문제 (?�의 �??�징??3~5�??�외�?깊이 ?�고 ?�문?�인 ?�술??개요 �?개념 ?�명 모범?�안 (\\n 구분))
+   - 객�???(type: "객�???): ${mcCount}문제 (4지?�다??
+2. 객�???문제???�형 �?구성 비율 지�?(극도�?중요):
+   - 출제?�는 객�???문항?��? 반드???�래 비율??준?�하??구성?�십?�오:
+     * **기본 기초 개념 문제 (40%, ??2문제)**: ?�픽??기본 ?�의, ?�심 개념, 기초 ?�리�?직접?�으�?묻는 기초 ?��? 문제. (?? "?�○?�의 ?�의�?가???��? 것�??", "?�○?�의 ?�징???�닌 것�??"). 기사 ?��????�심 개념 ?�인 문제�?출제.
+     * **?�량 계산 문제 (30%, ??1문제)**: 구체?�인 조건 ?�치�??�?�하??최종 값을 계산?�내거나 ?�량 결과�?묻는 ?�치 계산 문제.
+     * **?�화 ?�리·비교 문제 (30%, ??1문제)**: 공학??메커?�즘, ?�단?? 비교, ?�무 ?�공 ?�의?�항 ???�용 ?�해??문제.
    
-   - **🚨 [공식 및 공식 수치 범위 노출 절대 금지 규칙 - 극도로 중요!]**: 문제 질문(question) 본문 내에 **문제를 해결하는 데 필요한 공학 수식 자체(예: $E_u = 300 s_u$ 등)나 수식의 특정 수치 범위(예: $E_u = (200 \\sim 500)s_u$ 등), 비례 관계 식 등을 절대로 직접 텍스트로 적어 제공하지 마십시오.** 수식이나 경험적 수치 범위를 지문에 미리 주면 학생의 암기 및 연상 능력을 평가할 수 없습니다. 대신 공식의 명칭("비배수 탄성계수 경험식")이나 변수들의 명칭("비배수 전단강도 $s_u$")만을 제시하고, 학생이 스스로 공식과 범위를 떠올려서 해결하도록 하십시오. (단, 해설(explanation)에서는 학생의 학습을 위해 공식을 상세히 명시하고 계산 과정을 설명해야 합니다.)
-   - 특히 **수치 해석법이나 가설 구조물 해석과 같이 정량적 분석이 필요한 토픽의 경우, 제공된 소스 문서 내에 명시적인 수치나 파라미터가 존재한다면 이를 활용하여 정량 계산 문제를 구성하십시오. 단, 문서에 수치나 수식이 없다면 임의로 비현실적인 수치를 가상 부여하지 마십시오.**
-   - 만약 전형적인 비계산형/정성적 토픽(예: 단순 품질 시험 절차, 단순 행정 제도 등)인 경우에만 일반적인 서술형/이해형 객관식 문제로 출제하되, 이 경우에도 가급적 물리적 변수의 영향도를 묻는 등 최대한 정량화에 가깝게 문제의 수준을 높여 출제하십시오.
-   - **⚠️ [비교/특성 표 출제 규칙 - 극도로 중요!]**: 질문에 비교/특성 표가 필요한 경우, 절대 <table> 등 HTML 태그로 표를 직접 작성하지 말고 일반 텍스트로만 질문을 작성한 뒤 아래의 "tableData" 필드에 표 데이터를 객체 구조로 작성하십시오.
-3. 오답 보기 구성 주의사항 (매우 중요):
-   - 오답 보기(options) 구성 시 **절대로 터무니없거나 극단적인 표현, 혹은 비현실적인 공학적 가정(예: '무한대로 상승시킴', '실시간으로 기하급수적으로 증가함', '영원히 변하지 않음', '아예 발생하지 않음', '폭발함' 등)은 절대로 사용하지 마십시오**. 
-   - 실제 전공 서적이나 실무 기술 기준에 부합하는 **고도로 타당성 있고 그럴듯한 오답(plausible engineering distractors)**으로 구성해 주십시오. 모든 보기는 반드시 원본 소스 및 공학적 상식선에 긴밀히 결합되어야 합니다.
-- **🚨 [객관식 정밀성 및 정답 일치 조건 - 극도로 중요!]**: 모든 객관식(4지선다형) 계산 문제나 수치/공학적 판단 문제를 출제할 때, 계산으로 도출된 정확한 정답 수치나 조건이 4개의 보기(options) 중 반드시 정확히 1개로 존재해야 합니다. 절대로 실제 계산 결과와 보기의 수치가 불일치하여, 해설에서 '실제 계산값은 XX이나 보기 중 가장 가까운 YY를 선택합니다'와 같은 어처구니없는 변명을 적는 출제 오류를 범하지 마십시오. 문제를 생성하기 전에 실제 수식을 대입하여 정답을 한 번 더 직접 엄밀하게 계산하고 검증한 후, 그 결과값(토씨 하나 틀리지 않는 정확한 정답)을 보기와 'answer' 필드에 완벽히 일치하도록 기재하십시오.
-    4. 소스 텍스트의 숨겨진 공학적 개념과 실무 기전을 포착하여 고품격 질문을 던지십시오.
+   - **?�� [공식 �?공식 ?�치 범위 ?�출 ?��? 금�? 규칙 - 극도�?중요!]**: 문제 질문(question) 본문 ?�에 **문제�??�결?�는 ???�요??공학 ?�식 ?�체(?? $E_u = 300 s_u$ ?????�식???�정 ?�치 범위(?? $E_u = (200 \\sim 500)s_u$ ??, 비�? 관�????�을 ?��?�?직접 ?�스?�로 ?�어 ?�공?��? 마십?�오.** ?�식?�나 경험???�치 범위�?지문에 미리 주면 ?�생???�기 �??�상 ?�력???��??????�습?�다. ?�??공식??명칭("비배???�성계수 경험??)?�나 변?�들??명칭("비배???�단강도 $s_u$")만을 ?�시?�고, ?�생???�스�?공식�?범위�??�올?�서 ?�결?�도�??�십?�오. (?? ?�설(explanation)?�서???�생???�습???�해 공식???�세??명시?�고 계산 과정???�명?�야 ?�니??)
+   - ?�히 **?�치 ?�석법이??가??구조�??�석�?같이 ?�량??분석???�요???�픽??경우, ?�공???�스 문서 ?�에 명시?�인 ?�치???�라미터가 존재?�다�??��? ?�용?�여 ?�량 계산 문제�?구성?�십?�오. ?? 문서???�치???�식???�다�??�의�?비현?�적???�치�?가??부?�하지 마십?�오.**
+   - 만약 ?�형?�인 비계?�형/?�성???�픽(?? ?�순 ?�질 ?�험 ?�차, ?�순 ?�정 ?�도 ????경우?�만 ?�반?�인 ?�술???�해??객�???문제�?출제?�되, ??경우?�도 가급적 물리??변?�의 ?�향?��? 묻는 ??최�????�량?�에 가깝게 문제???��????�여 출제?�십?�오.
+   - **?�️ [비교/?�성 ??출제 규칙 - 극도�?중요!]**: 질문??비교/?�성 ?��? ?�요??경우, ?��? <table> ??HTML ?�그�??��? 직접 ?�성?��? 말고 ?�반 ?�스?�로�?질문???�성?????�래??"tableData" ?�드?????�이?��? 객체 구조�??�성?�십?�오.
+3. ?�답 보기 구성 주의?�항 (매우 중요):
+   - ?�답 보기(options) 구성 ??**?��?�??�무?�없거나 극단?�인 ?�현, ?��? 비현?�적??공학??가???? '무한?��??�승?�킴', '?�시간으�?기하급수?�으�?증�???, '?�원??변?��? ?�음', '?�예 발생?��? ?�음', '??��?? ???� ?��?�??�용?��? 마십?�오**. 
+   - ?�제 ?�공 ?�적?�나 ?�무 기술 기�???부?�하??**고도�??�?�성 ?�고 그럴??�� ?�답(plausible engineering distractors)**?�로 구성??주십?�오. 모든 보기??반드???�본 ?�스 �?공학???�식?�에 긴�???결합?�어???�니??
+- **?�� [객�????��???�??�답 ?�치 조건 - 극도�?중요!]**: 모든 객�???4지?�다?? 계산 문제???�치/공학???�단 문제�?출제???? 계산?�로 ?�출???�확???�답 ?�치??조건??4개의 보기(options) �?반드???�확??1개로 존재?�야 ?�니?? ?��?�??�제 계산 결과?� 보기???�치가 불일치하?? ?�설?�서 '?�제 계산값�? XX?�나 보기 �?가??가까운 YY�??�택?�니???� 같�? ?�처구니?�는 변명을 ?�는 출제 ?�류�?범하지 마십?�오. 문제�??�성?�기 ?�에 ?�제 ?�식???�?�하???�답????�???직접 ?��??�게 계산?�고 검증한 ?? �?결과�??�씨 ?�나 ?�리�? ?�는 ?�확???�답)??보기?� 'answer' ?�드???�벽???�치?�도�?기재?�십?�오.
+    4. ?�스 ?�스?�의 ?�겨�?공학??개념�??�무 기전???�착?�여 고품�?질문???��???��??
 
-[환각 방지 철칙 (Anti-Hallucination Constraints)]:
-1. 제공된 소스 문서 텍스트(<Source_Document>) 내에 명시적 수치, 허용 안전율, 설계기준(KDS/KCS) 조항 번호나 공식이 없는 경우, 임의로 수식을 유도하거나 외부 시방서 수치 한계를 날조(Hallucination)하지 마십시오.
-2. 문서 범위를 벗어나는 역학적 수치나 비물리적 수치(예: 내부마찰각 60도 이상 등)를 창작하여 모순을 발생시키면 안 됩니다. 수치가 부족하다면 정량 계산 문제 출제를 즉시 우회하고 개념 이해형 문제로 대체하십시오.
+[?�각 방�? 철칙 (Anti-Hallucination Constraints)]:
+1. ?�공???�스 문서 ?�스??<Source_Document>) ?�에 명시???�치, ?�용 ?�전?? ?�계기�?(KDS/KCS) 조항 번호??공식???�는 경우, ?�의�??�식???�도?�거???��? ?�방???�치 ?�계�??�조(Hallucination)?��? 마십?�오.
+2. 문서 범위�?벗어?�는 ??��???�치??비물리적 ?�치(?? ?��?마찰�?60???�상 ??�?창작?�여 모순??발생?�키�????�니?? ?�치가 부족하?�면 ?�량 계산 문제 출제�?즉시 ?�회?�고 개념 ?�해??문제�??�체하??��??
 
 ${LATEX_PROMPT_INSTRUCTIONS}
 ${GENERATION_STANDARDS}
 ${ENGINEERING_STANDARDS}
-4. 반드시 추가 텍스트 없이 순수 JSON 배열만 반환하십시오.
+4. 반드??추�? ?�스???�이 ?�수 JSON 배열�?반환?�십?�오.
 
-[JSON 포맷]:
+[JSON ?�맷]:
 [
   {
-    "type": "주관식",
+    "type": "주�???,
     "subtype": "개요",
-    "topic_title": "이 문제의 출제 근거가 되는 토픽 목록 내의 정확한 토픽명 (예: 평사투영법)",
-    "question": "질문 내용",
-    "answer": "3~5줄 내외의 깊이 있고 전문적인 서술형 개요 및 개념 설명 모범답안",
-    "concept": "핵심 개념 1줄 요약"
+    "topic_title": "??문제??출제 근거가 ?�는 ?�픽 목록 ?�의 ?�확???�픽�?(?? ?�사?�영�?",
+    "question": "질문 ?�용",
+    "answer": "3~5�??�외??깊이 ?�고 ?�문?�인 ?�술??개요 �?개념 ?�명 모범?�안",
+    "concept": "?�심 개념 1�??�약"
   },
   {
-    "type": "객관식",
-    "topic_title": "이 문제의 출제 근거가 되는 토픽 목록 내의 정확한 토픽명 (예: 락볼트 인발시험)",
-    "question": "공학적 현상 분석 질문",
+    "type": "객�???,
+    "topic_title": "??문제??출제 근거가 ?�는 ?�픽 목록 ?�의 ?�확???�픽�?(?? ?�볼???�발?�험)",
+    "question": "공학???�상 분석 질문",
     "tableData": null,
     "options": ["보기1", "보기2", "보기3", "보기4"],
-    "answer": "정답 보기와 토씨 하나 틀리지 않는 정답 텍스트",
-    "explanation": "이유와 오답 정밀 해설"
+    "answer": "?�답 보기?� ?�씨 ?�나 ?�리�? ?�는 ?�답 ?�스??,
+    "explanation": "?�유?� ?�답 ?��? ?�설"
   }
-] (※ 만약 표가 필요한 질문이라면 "tableData": {"headers": ["구분", "지반 X", "지반 Y"], "rows": [["퇴적 환경", "해수", "담수"]]} 처럼 구조화된 표 객체를 작성하고, 그렇지 않은 일반 질문이면 "tableData": null 로 설정하십시오.)
+] (??만약 ?��? ?�요??질문?�라�?"tableData": {"headers": ["구분", "지�?X", "지�?Y"], "rows": [["?�적 ?�경", "?�수", "?�수"]]} 처럼 구조?�된 ??객체�??�성?�고, 그렇지 ?��? ?�반 질문?�면 "tableData": null �??�정?�십?�오.)
 `;
       try {
-        console.log(`[종합평가 추가 생성] (${i + 1}/${TOTAL_BATCHES}) 회차 프롬프트 전송 시작...`);
+        console.log(`[종합?��? 추�? ?�성] (${i + 1}/${TOTAL_BATCHES}) ?�차 ?�롬?�트 ?�송 ?�작...`);
         const rawText = await callLLMWithFailover(null, batchPrompt, null, 'question', { temperature: 1.0 });
         let text = rawText.trim();
         if (text.startsWith('```')) {
@@ -3328,30 +3350,30 @@ ${ENGINEERING_STANDARDS}
 
         if (batchQuestions && Array.isArray(batchQuestions)) {
           aggregatedAiQuestions.push(...batchQuestions);
-          console.log(`[종합평가 추가 배치 성공] (${i + 1}/${TOTAL_BATCHES}) 회차 완료. 누적 문항 수: ${aggregatedAiQuestions.length}`);
+          console.log(`[종합?��? 추�? 배치 ?�공] (${i + 1}/${TOTAL_BATCHES}) ?�차 ?�료. ?�적 문항 ?? ${aggregatedAiQuestions.length}`);
         }
 
         if (i < TOTAL_BATCHES - 1) {
           await sleep(1200);
         }
       } catch (batchError) {
-        console.warn(`[추가 배치 조회 경고] ${i + 1}회차 생성 중 에러 발생:`, batchError.message);
+        console.warn(`[추�? 배치 조회 경고] ${i + 1}?�차 ?�성 �??�러 발생:`, batchError.message);
       }
     }
 
     if (aggregatedAiQuestions.length === 0) {
       aggregatedAiQuestions = [
         {
-          type: "객관식",
-          question: "점성토 지반의 압밀 시험에서 하중 압력 변화에 따른 공극비($e$)와 대수 유효 압력($\\log \\sigma'$) 곡선(e-log p 곡선) 상의 주요 거동 특성에 대한 설명으로 가장 적절하지 않은 것은?",
+          type: "객�???,
+          question: "?�성??지반의 ?��? ?�험?�서 ?�중 ?�력 변?�에 ?�른 공극�?$e$)?� ?�???�효 ?�력($\\log \\sigma'$) 곡선(e-log p 곡선) ?�의 주요 거동 ?�성???�???�명?�로 가???�절?��? ?��? 것�??",
           options: [
-            "압축지수($C_c$)는 규정 압축 영역에서의 직선 기울기로 정의되며, 지반의 소성 활성도가 높을수록 감소한다.",
-            "선행압밀하중($p_c$)은 흙이 과거에 받았던 최대 유효 연직응력이다.",
-            "재압축지수($C_r$)는 팽창 및 재압축 구간의 평균 기울기로, 일반적으로 압축지수의 1/5 ~ 1/10 정도 수준이다.",
-            "과압밀비(OCR)가 1보다 큰 점토는 전단 시험 시 전단 변형에 의한 체적 팽창(Dilatancy) 거동을 보일 수 있다."
+            "?�축지??$C_c$)??규정 ?�축 ?�역?�서??직선 기울기로 ?�의?�며, 지반의 ?�성 ?�성?��? ?�을?�록 감소?�다.",
+            "?�행?��??�중($p_c$)?� ?�이 과거??받았??최�? ?�효 ?�직?�력?�다.",
+            "?�압축�???$C_r$)???�창 �??�압�?구간???�균 기울기로, ?�반?�으�??�축지?�의 1/5 ~ 1/10 ?�도 ?��??�다.",
+            "과압밀�?OCR)가 1보다 ???�토???�단 ?�험 ???�단 변?�에 ?�한 체적 ?�창(Dilatancy) 거동??보일 ???�다."
           ],
-          answer: "압축지수($C_c$)는 규정 압축 영역에서의 직선 기울기로 정의되며, 지반의 소성 활성도가 높을수록 감소한다.",
-          explanation: "지반의 소성 활성도가 높고 압축성이 클수록 압축지수($C_c$)는 오히려 증가합니다."
+          answer: "?�축지??$C_c$)??규정 ?�축 ?�역?�서??직선 기울기로 ?�의?�며, 지반의 ?�성 ?�성?��? ?�을?�록 감소?�다.",
+          explanation: "지반의 ?�성 ?�성?��? ?�고 ?�축?�이 ?�수�??�축지??$C_c$)???�히??증�??�니??"
         }
       ];
     }
@@ -3383,7 +3405,7 @@ ${ENGINEERING_STANDARDS}
         topicId = matchedTopic ? matchedTopic.id : topics[Math.floor(Math.random() * topics.length)].id;
       }
       return {
-        type: q.type || "객관식",
+        type: q.type || "객�???,
         subtype: q.subtype || null,
         question: cleanQuizQuestion(qText),
         tableData: q.tableData || null,
@@ -3422,11 +3444,11 @@ ${ENGINEERING_STANDARDS}
 
   } catch (err) {
     console.error('Exam additional route error:', err);
-    res.status(500).json({ error: err.message || '서버 오류가 발생했습니다.' });
+    res.status(500).json({ error: err.message || '?�버 ?�류가 발생?�습?�다.' });
   } finally {
     if (progressTimer) clearInterval(progressTimer);
     if (progressId) {
-      updateProgress(progressId, 3, '3단계: 추가 문제 출제 및 검증 완료!', 100);
+      updateProgress(progressId, 3, '3?�계: 추�? 문제 출제 �?검�??�료!', 100);
     }
   }
 });
@@ -3493,11 +3515,11 @@ router.post('/schedules/:id/complete', async (req, res) => {
     }
 
     if (!schedule) {
-      return res.status(404).json({ error: '해당 복습 일정을 찾을 수 없습니다.' });
+      return res.status(404).json({ error: '?�당 복습 ?�정??찾을 ???�습?�다.' });
     }
 
     if (schedule.status === 'completed') {
-      return res.status(400).json({ error: '이미 복습 완료된 일정입니다.' });
+      return res.status(400).json({ error: '?��? 복습 ?�료???�정?�니??' });
     }
 
     const nowTimestamp = new Date().toISOString();
@@ -3508,7 +3530,7 @@ router.post('/schedules/:id/complete', async (req, res) => {
     `;
     await dbQuery.run(updateSql, [nowTimestamp, schedule.id]);
 
-    // 이전 회차 중 미완료(pending) 건이 남아있는 경우 자동 완료 처리하여 '재복습중' 잔류 방지
+    // ?�전 ?�차 �?미완�?pending) 건이 ?�아?�는 경우 ?�동 ?�료 처리?�여 '?�복?�중' ?�류 방�?
     if (schedule.review_round && schedule.review_round !== 99) {
       await dbQuery.run(
         `UPDATE schedules SET status = 'completed', completed_at = ? WHERE topic_id = ? AND review_round < ? AND status = 'pending'`,
@@ -3516,22 +3538,22 @@ router.post('/schedules/:id/complete', async (req, res) => {
       );
     }
 
-    // 복습 완료 시 다음 회차 자동 생성 (망각곡선 주기 기반)
+    // 복습 ?�료 ???�음 ?�차 ?�동 ?�성 (망각곡선 주기 기반)
     if (schedule.review_round !== 99) {
-      // FIX: 망각곡선 주기는 실제 완료일자 기준
+      // FIX: 망각곡선 주기???�제 ?�료?�자 기�?
       const baseDate = new Date();
       await scheduleNextReviewRound(schedule.topic_id, schedule.review_round, baseDate);
     }
 
     res.json({
-      message: `${schedule.review_round}회차 복습 완료 처리되었습니다.`,
+      message: `${schedule.review_round}?�차 복습 ?�료 처리?�었?�니??`,
       schedule_id: scheduleId,
       status: 'completed',
       completed_at: nowTimestamp
     });
   } catch (error) {
     console.error('Error completing review:', error);
-    res.status(500).json({ error: '서버 오류로 복습 완료 처리에 실패했습니다.' });
+    res.status(500).json({ error: '?�버 ?�류�?복습 ?�료 처리???�패?�습?�다.' });
   }
 });
 
@@ -3540,7 +3562,7 @@ router.post('/quiz/submit', async (req, res) => {
   const { schedule_id, topic_id, review_round, reviewRound, total, correctCount, score, isPassed, isBonus, questions, selectedAnswers, revealedQuestions, tableAnswers, tableGradingResults, referenceDate, tutorAnswers, tutorInputText, chatHistory } = req.body;
 
   if (!schedule_id || !topic_id) {
-    return res.status(400).json({ error: 'schedule_id와 topic_id는 필수입니다.' });
+    return res.status(400).json({ error: 'schedule_id?� topic_id???�수?�니??' });
   }
 
   const isMixedReq = (typeof topic_id === 'string' && topic_id.startsWith('mixed_')) ||
@@ -3551,7 +3573,7 @@ router.post('/quiz/submit', async (req, res) => {
   const rRound = review_round !== undefined ? review_round : reviewRound;
 
   if (!isMixedReq && (isNaN(topicIdInt) || isNaN(scheduleIdInt))) {
-    return res.status(400).json({ error: '유효한 topic_id와 schedule_id가 아닙니다.' });
+    return res.status(400).json({ error: '?�효??topic_id?� schedule_id가 ?�닙?�다.' });
   }
 
   const now = new Date().toISOString();
@@ -3634,15 +3656,15 @@ router.post('/quiz/submit', async (req, res) => {
       }
     }
 
-    // 1. 해당 일정 존재 여부 확인
+    // 1. ?�당 ?�정 존재 ?��? ?�인
     if (!schedule) {
       schedule = await dbQuery.get('SELECT * FROM schedules WHERE id = ?', [targetScheduleId]);
     }
     if (!schedule) {
-      return res.status(404).json({ error: '해당 복습 일정을 찾을 수 없습니다.' });
+      return res.status(404).json({ error: '?�당 복습 ?�정??찾을 ???�습?�다.' });
     }
 
-    // 2. 성적 및 점수 갱신
+    // 2. ?�적 �??�수 갱신
     const scoreVal = score !== undefined ? score : null;
     const correctVal = correctCount !== undefined ? correctCount : null;
     const totalVal = total !== undefined ? total : null;
@@ -3654,7 +3676,7 @@ router.post('/quiz/submit', async (req, res) => {
         [finalStatus, now, scoreVal, correctVal, totalVal, targetScheduleId]
       );
 
-      // 이전 회차 중 미완료(pending) 건이 남아있는 경우 자동 완료 처리하여 '재복습중' 잔류 방지
+      // ?�전 ?�차 �?미완�?pending) 건이 ?�아?�는 경우 ?�동 ?�료 처리?�여 '?�복?�중' ?�류 방�?
       if (schedule && schedule.review_round && schedule.review_round !== 99) {
         await dbQuery.run(
           `UPDATE schedules SET status = 'completed', completed_at = ? WHERE topic_id = ? AND review_round < ? AND status = 'pending'`,
@@ -3663,7 +3685,7 @@ router.post('/quiz/submit', async (req, res) => {
       }
     }
 
-    // 복습 데이터 세션 보존 (완료된 복습을 다시 조회할 수 있도록 questions와 chatHistory를 포함하여 저장)
+    // 복습 ?�이???�션 보존 (?�료??복습???�시 조회?????�도�?questions?� chatHistory�??�함?�여 ?�??
     if (questions && questions.length > 0) {
       const solvedSessionKey = `completed_review_schedule_${targetScheduleId}`;
       const solvedSessionValue = JSON.stringify({ 
@@ -3683,7 +3705,7 @@ router.post('/quiz/submit', async (req, res) => {
         [solvedSessionKey, solvedSessionValue]
       );
 
-      // 보존 정책: 이전 세션 정리
+      // 보존 ?�책: ?�전 ?�션 ?�리
       if (!isMixedReq) {
         try {
           const finishedSchedules = await dbQuery.all(
@@ -3705,7 +3727,7 @@ router.post('/quiz/submit', async (req, res) => {
       }
     }
 
-    // 캐시 삭제 (ensureSessionTable 호출 제거)
+    // 캐시 ??�� (ensureSessionTable ?�출 ?�거)
     await dbQuery.run(
       "DELETE FROM app_session WHERE key = ? OR key LIKE ?",
       [`review_questions_topic_${topic_id}`, `review_questions_topic_${topic_id}_sess_%`]
@@ -3717,9 +3739,9 @@ router.post('/quiz/submit', async (req, res) => {
       );
     }
 
-    // 다음 회차 자동 생성
+    // ?�음 ?�차 ?�동 ?�성
     if (!isMixedReq && isPassed && !isBonus && schedule.review_round !== 99) {
-      // FIX: 망각곡선 주기 복습 추천은 '참조일자(referenceDate)'가 아닌 실제 '복습 완료일자(Date.now())'를 기준으로 해야 함
+      // FIX: 망각곡선 주기 복습 추천?� '참조?�자(referenceDate)'가 ?�닌 ?�제 '복습 ?�료?�자(Date.now())'�?기�??�로 ?�야 ??
       const baseDate = new Date(); 
       await scheduleNextReviewRound(topicIdInt, schedule.review_round, baseDate);
     }
@@ -3729,12 +3751,12 @@ router.post('/quiz/submit', async (req, res) => {
       isPassed,
       status: isPassed ? 'completed' : 'failed',
       message: isPassed
-        ? `${schedule.review_round}회차 퀴즈 통과! 복습 완료로 저장되었습니다.`
-        : `${schedule.review_round}회차 퀴즈 미통과. 다음 복습 시 새 퀴즈가 제공됩니다.`
+        ? `${schedule.review_round}?�차 ?�즈 ?�과! 복습 ?�료�??�?�되?�습?�다.`
+        : `${schedule.review_round}?�차 ?�즈 미통�? ?�음 복습 ?????�즈가 ?�공?�니??`
     });
   } catch (error) {
     console.error('[quiz/submit] Error:', error);
-    res.status(500).json({ error: '서버 오류로 복습 완료 처리에 실패했습니다.' });
+    res.status(500).json({ error: '?�버 ?�류�?복습 ?�료 처리???�패?�습?�다.' });
   }
 });
 
@@ -3760,7 +3782,7 @@ router.post('/schedules/:id/reset', async (req, res) => {
     }
 
     if (!schedule) {
-      return res.status(404).json({ error: '해당 복습 일정을 찾을 수 없습니다.' });
+      return res.status(404).json({ error: '?�당 복습 ?�정??찾을 ???�습?�다.' });
     }
 
     const newPlannedDate = schedule.planned_date;
@@ -3780,7 +3802,7 @@ router.post('/schedules/:id/reset', async (req, res) => {
     `;
     await dbQuery.run(deleteSql, [schedule.topic_id, nextRound]);
 
-    // 복습 취소 시, 기존 완료된 복습 세션 기록을 다시 활성 세션(Active Session)으로 복구하여 데이터 유실 방지
+    // 복습 취소 ?? 기존 ?�료??복습 ?�션 기록???�시 ?�성 ?�션(Active Session)?�로 복구?�여 ?�이???�실 방�?
     try {
       const solvedSessionKey = `completed_review_schedule_${schedule.id}`;
       const completedSession = await dbQuery.get(
@@ -3817,7 +3839,7 @@ router.post('/schedules/:id/reset', async (req, res) => {
           );
         }
 
-        // 복구 후 완료 상태용 세션 키는 깔끔하게 정리
+        // 복구 ???�료 ?�태???�션 ?�는 깔끔?�게 ?�리
         await dbQuery.run('DELETE FROM app_session WHERE key = ?', [solvedSessionKey]);
       }
     } catch (restoreErr) {
@@ -3825,7 +3847,7 @@ router.post('/schedules/:id/reset', async (req, res) => {
     }
 
     res.json({
-      message: `${schedule.review_round}회차 복습이 리셋되었습니다.`,
+      message: `${schedule.review_round}?�차 복습??리셋?�었?�니??`,
       schedule_id: scheduleId,
       status: 'pending',
       planned_date: newPlannedDate,
@@ -3833,7 +3855,7 @@ router.post('/schedules/:id/reset', async (req, res) => {
     });
   } catch (error) {
     console.error('Error resetting review:', error);
-    res.status(500).json({ error: '서버 오류로 복습 일정 리셋에 실패했습니다.' });
+    res.status(500).json({ error: '?�버 ?�류�?복습 ?�정 리셋???�패?�습?�다.' });
   }
 });
 
@@ -3845,7 +3867,7 @@ router.put('/schedules/:id/score', async (req, res) => {
   const rRound = review_round !== undefined ? review_round : reviewRound;
 
   if (score === undefined || score === null || isNaN(Number(score)) || Number(score) < 0 || Number(score) > 100) {
-    return res.status(400).json({ error: '점수는 0에서 100 사이의 숫자여야 합니다.' });
+    return res.status(400).json({ error: '?�수??0?�서 100 ?�이???�자?�야 ?�니??' });
   }
 
   try {
@@ -3863,11 +3885,11 @@ router.put('/schedules/:id/score', async (req, res) => {
     }
 
     if (!schedule) {
-      return res.status(404).json({ error: '해당 복습 일정을 찾을 수 없습니다.' });
+      return res.status(404).json({ error: '?�당 복습 ?�정??찾을 ???�습?�다.' });
     }
 
     if (schedule.status !== 'completed' && schedule.status !== 'failed') {
-      return res.status(400).json({ error: '완료 또는 실패 상태의 일정만 점수 변경이 가능합니다.' });
+      return res.status(400).json({ error: '?�료 ?�는 ?�패 ?�태???�정�??�수 변경이 가?�합?�다.' });
     }
 
     const targetScore = Math.round(Number(score) * 10) / 10;
@@ -3882,13 +3904,13 @@ router.put('/schedules/:id/score', async (req, res) => {
 
     res.json({
       success: true,
-      message: `${schedule.review_round}회차 복습 점수가 ${targetScore}점으로 변경되었습니다.`,
+      message: `${schedule.review_round}?�차 복습 ?�수가 ${targetScore}?�으�?변경되?�습?�다.`,
       score: targetScore,
       status: newStatus
     });
   } catch (error) {
     console.error('Error updating manual score:', error);
-    res.status(500).json({ error: '서버 오류로 성적 업데이트에 실패했습니다.' });
+    res.status(500).json({ error: '?�버 ?�류�??�적 ?�데?�트???�패?�습?�다.' });
   }
 });
 
@@ -3900,7 +3922,7 @@ router.post('/exam/detailed-answer', async (req, res) => {
 
   let progressTimer = null;
   if (progressId) {
-    progressTimer = startBackendProgressTimer(progressId, 1, '1단계: AI 심층 해설 생성 중...', 90, 800, 5);
+    progressTimer = startBackendProgressTimer(progressId, 1, '1?�계: AI ?�층 ?�설 ?�성 �?..', 90, 800, 5);
   }
 
   try {
@@ -3914,20 +3936,20 @@ router.post('/exam/detailed-answer', async (req, res) => {
     );
     if (!hasAnyAiKey) {
       if (progressTimer) clearInterval(progressTimer);
-      return res.status(400).json({ error: '등록된 AI API 키가 존재하지 않습니다.' });
+      return res.status(400).json({ error: '?�록??AI API ?��? 존재?��? ?�습?�다.' });
     }
 
     const prompt = `
-당신은 대한민국 국가기술자격 기술사 시험 출제위원 및 최고 권위자입니다.
-수험생이 종합평가를 풀던 중 다음 문제에 대해 '답안 전문보기(심층 해설)'를 요청했습니다.
+?�신?� ?�?��?�?�??기술?�격 기술???�험 출제?�원 �?최고 권위?�입?�다.
+?�험?�이 종합?��?�??�??�??�음 문제???�??'?�안 ?�문보기(?�층 ?�설)'�??�청?�습?�다.
 
 [문제]: ${question}
-[기존 간략 정답/해설]: ${answer || '없음'}
+[기존 간략 ?�답/?�설]: ${answer || '?�음'}
 
-위 내용을 바탕으로, 이 문제와 관련된 기술적 배경, 핵심 메커니즘, 그리고 실무적 시사점을 포함하여 완벽한 기술사 모범 답안(또는 심층 해설)을 작성해 주십시오.
-다음 규칙을 엄격히 따르십시오:
-1. 3단락 구조(1. 개요 및 기술적 배경, 2. 핵심 메커니즘/구성요소/비교분석, 3. 실무적 시사점 및 결론)로 논리적으로 작성하십시오.
-2. 보기 편한 Markdown 형식(적절한 굵은 글씨, 글머리 기호 등)을 사용하되, 마크다운 코드블록(\`\`\`markdown)으로 전체를 감싸지 말고 바로 텍스트로 출력하십시오.
+???�용??바탕?�로, ??문제?� 관?�된 기술??배경, ?�심 메커?�즘, 그리�??�무???�사?�을 ?�함?�여 ?�벽??기술??모범 ?�안(?�는 ?�층 ?�설)???�성??주십?�오.
+?�음 규칙???�격???�르??��??
+1. 3?�락 구조(1. 개요 �?기술??배경, 2. ?�심 메커?�즘/구성?�소/비교분석, 3. ?�무???�사??�?결론)�??�리?�으�??�성?�십?�오.
+2. 보기 ?�한 Markdown ?�식(?�절??굵�? 글?? 글머리 기호 ?????�용?�되, 마크?�운 코드블록(\`\`\`markdown)?�로 ?�체�?감싸지 말고 바로 ?�스?�로 출력?�십?�오.
 
 ${ENGINEERING_STANDARDS}
 ${LATEX_CHAT_PROMPT_INSTRUCTIONS}
@@ -3935,24 +3957,24 @@ ${LATEX_CHAT_PROMPT_INSTRUCTIONS}
 
     try {
       const responseText = await localCallLLM(null, prompt);
-      const healedText = healLatexFormulas(responseText.trim()); // 대화 수식 정정 결합
+      const healedText = healLatexFormulas(responseText.trim()); // ?�???�식 ?�정 결합
       if (progressId) {
-        updateProgress(progressId, 1, '1단계: 해설 생성 완료!', 100);
+        updateProgress(progressId, 1, '1?�계: ?�설 ?�성 ?�료!', 100);
       }
       res.json({ text: healedText });
     } catch (err) {
       console.error('Detailed answer route error:', err);
       if (progressId) {
-        updateProgress(progressId, 1, '오류 발생으로 해설 생성 실패', 100);
+        updateProgress(progressId, 1, '?�류 발생?�로 ?�설 ?�성 ?�패', 100);
       }
-      res.status(500).json({ error: err.message || '서버 오류가 발생했습니다.' });
+      res.status(500).json({ error: err.message || '?�버 ?�류가 발생?�습?�다.' });
     }
   } catch (err) {
     console.error('Detailed answer route error:', err);
     if (progressId) {
-      updateProgress(progressId, 1, '오류 발생으로 해설 생성 실패', 100);
+      updateProgress(progressId, 1, '?�류 발생?�로 ?�설 ?�성 ?�패', 100);
     }
-    res.status(500).json({ error: '서버 오류가 발생했습니다.' });
+    res.status(500).json({ error: '?�버 ?�류가 발생?�습?�다.' });
   } finally {
     if (progressTimer) clearInterval(progressTimer);
   }
@@ -3966,14 +3988,14 @@ router.post('/hint', async (req, res) => {
 
   let progressTimer = null;
   if (progressId) {
-    progressTimer = startBackendProgressTimer(progressId, 1, '1단계: AI 힌트 생성 중...', 90, 800, 10);
+    progressTimer = startBackendProgressTimer(progressId, 1, '1?�계: AI ?�트 ?�성 �?..', 90, 800, 10);
   }
 
   try {
     const { questionText } = req.body;
     if (!questionText) {
       if (progressTimer) clearInterval(progressTimer);
-      return res.status(400).json({ error: '질문(문제) 텍스트가 제공되지 않았습니다.' });
+      return res.status(400).json({ error: '질문(문제) ?�스?��? ?�공?��? ?�았?�니??' });
     }
 
     const hasAnyAiKey = !!(
@@ -3983,31 +4005,31 @@ router.post('/hint', async (req, res) => {
     );
     if (!hasAnyAiKey) {
       if (progressTimer) clearInterval(progressTimer);
-      return res.status(400).json({ error: '등록된 AI API 키가 존재하지 않습니다.' });
+      return res.status(400).json({ error: '?�록??AI API ?��? 존재?��? ?�습?�다.' });
     }
 
-    const systemInstruction = `당신은 대한민국 기술사 시험 전문 튜터입니다.
-수험생이 풀고 있는 주관식 또는 객관식 문제에 대해 **매우 쉽고 직관적이며 간단한 힌트**를 한 문단(3줄 이내)으로 제공해 주십시오.
+    const systemInstruction = `?�신?� ?�?��?�?기술???�험 ?�문 ?�터?�니??
+?�험?�이 ?��??�는 주�????�는 객�???문제???�??**매우 ?�고 직�??�이�?간단???�트**�???문단(3�??�내)?�로 ?�공??주십?�오.
 
-[지침]:
-1. 복잡한 공식이나 유도 과정을 설명하지 말고, 이 문제를 해결하기 위해 가장 핵심적으로 생각해야 하는 개념이나 물리적 거동을 일상적이고 직관적인 비유로 설명하십시오.
-2. 수험생이 스스로 문제를 풀 수 있도록 유도해야 하며, 직접적인 해답이나 최종 정답 수치를 제공해서는 절대 안 됩니다.
-3. 친절하고 부드러운 튜터의 말투를 사용하십시오.
+[지�?:
+1. 복잡??공식?�나 ?�도 과정???�명?��? 말고, ??문제�??�결?�기 ?�해 가???�심?�으�??�각?�야 ?�는 개념?�나 물리??거동???�상?�이�?직�??�인 비유�??�명?�십?�오.
+2. ?�험?�이 ?�스�?문제�??� ???�도�??�도?�야 ?�며, 직접?�인 ?�답?�나 최종 ?�답 ?�치�??�공?�서???��? ???�니??
+3. 친절?�고 부?�러???�터??말투�??�용?�십?�오.
 ${ENGINEERING_STANDARDS}`;
-    const userPrompt = `다음 문제에 대한 쉽고 직관적인 힌트를 간단히 적어주세요:\n\n[문제 본문]\n${questionText}`;
+    const userPrompt = `?�음 문제???�???�고 직�??�인 ?�트�?간단???�어주세??\n\n[문제 본문]\n${questionText}`;
     
     const responseText = await localCallLLM(systemInstruction, userPrompt, null, 'question');
     const healedText = healLatexFormulas(responseText);
     if (progressId) {
-      updateProgress(progressId, 1, '1단계: 힌트 생성 완료!', 100);
+      updateProgress(progressId, 1, '1?�계: ?�트 ?�성 ?�료!', 100);
     }
     res.json({ hint: healedText });
   } catch (err) {
     console.error('Hint generation error:', err);
     if (progressId) {
-      updateProgress(progressId, 1, '오류 발생으로 힌트 생성 실패', 100);
+      updateProgress(progressId, 1, '?�류 발생?�로 ?�트 ?�성 ?�패', 100);
     }
-    res.status(500).json({ error: err.message || '힌트를 생성하는 데 실패했습니다.' });
+    res.status(500).json({ error: err.message || '?�트�??�성?�는 ???�패?�습?�다.' });
   } finally {
     if (progressTimer) clearInterval(progressTimer);
   }
@@ -4018,7 +4040,7 @@ router.post('/formula/generate-quiz-question', async (req, res) => {
   try {
     const { formulaTitle, formula, concept, assumptions } = req.body;
     if (!formulaTitle || !formula) {
-      return res.status(400).json({ error: '공식 정보가 부족합니다.' });
+      return res.status(400).json({ error: '공식 ?�보가 부족합?�다.' });
     }
 
     let topicTitle = formulaTitle;
@@ -4067,7 +4089,7 @@ router.post('/formula/generate-quiz-question', async (req, res) => {
     res.json(finalValidated);
   } catch (err) {
     console.error('generate-quiz-question error:', err);
-    res.status(500).json({ error: err.message || '계산 문제 생성에 실패했습니다.' });
+    res.status(500).json({ error: err.message || '계산 문제 ?�성???�패?�습?�다.' });
   }
 });
 
@@ -4076,7 +4098,7 @@ router.post('/item-quiz/generate', async (req, res) => {
   try {
     const { itemType, itemData } = req.body;
     if (!itemType || !itemData) {
-      return res.status(400).json({ error: '필수 퀴즈 데이터가 누락되었습니다.' });
+      return res.status(400).json({ error: '?�수 ?�즈 ?�이?��? ?�락?�었?�니??' });
     }
 
     let questionObj = null;
@@ -4087,13 +4109,13 @@ router.post('/item-quiz/generate', async (req, res) => {
     } else if (itemType === 'overview') {
       questionObj = await itemQuizPlugin.generateOverviewQuizQuestion(itemData);
     } else {
-      return res.status(400).json({ error: '지원되지 않는 퀴즈 타입입니다.' });
+      return res.status(400).json({ error: '지?�되지 ?�는 ?�즈 ?�?�입?�다.' });
     }
 
     res.json(questionObj);
   } catch (err) {
     console.error('item-quiz generate error:', err);
-    res.status(500).json({ error: err.message || '퀴즈 생성 실패' });
+    res.status(500).json({ error: err.message || '?�즈 ?�성 ?�패' });
   }
 });
 
@@ -4102,34 +4124,34 @@ router.post('/quiz/generate-item-questions', async (req, res) => {
   try {
     const { item, type, level } = req.body;
     if (!item) {
-      return res.status(400).json({ success: false, error: '항목 데이터가 누락되었습니다.' });
+      return res.status(400).json({ success: false, error: '??�� ?�이?��? ?�락?�었?�니??' });
     }
 
     const count = level === 'basic' ? 1 : level === 'deep' ? 5 : 3;
-    const title = item.title || item.name || '학습 항목';
+    const title = item.title || item.name || '?�습 ??��';
     const contentStr = typeof item.content === 'object' ? JSON.stringify(item.content) : (item.content || item.html || '');
 
-    const prompt = `[학습 항목 유형]: ${type || '일반'}
-[항목 제목]: ${title}
-[항목 본문/데이터]:
+    const prompt = `[?�습 ??�� ?�형]: ${type || '?�반'}
+[??�� ?�목]: ${title}
+[??�� 본문/?�이??:
 ${contentStr}
 
-위 학습 데이터를 바탕으로 수험생이 학습 상태를 점검할 수 있는 맞춤형 퀴즈 문제 ${count}개를 출제해 주십시오.
+???�습 ?�이?��? 바탕?�로 ?�험?�이 ?�습 ?�태�??��??????�는 맞춤???�즈 문제 ${count}개�? 출제??주십?�오.
 
-[출제 지침]:
-1. 난이도 및 서술 형식(객관식 또는 서술형/계산형/빈칸채우기)을 고려하여 공학적/학술적 가치가 높은 문제를 출제하십시오.
-2. LaTeX 공식이 들어가는 경우 standard KaTeX ($...$ 또는 $$...$$) 형식을 준수하십시오.
-3. 반드시 오직 유효한 JSON 배열 형태로만 출력하십시오.
+[출제 지�?:
+1. ?�이??�??�술 ?�식(객�????�는 ?�술??계산??빈칸채우�???고려?�여 공학???�술??가치�? ?��? 문제�?출제?�십?�오.
+2. LaTeX 공식???�어가??경우 standard KaTeX ($...$ ?�는 $$...$$) ?�식??준?�하??��??
+3. 반드???�직 ?�효??JSON 배열 ?�태로만 출력?�십?�오.
 
-[반환 JSON 구조 예시]:
+[반환 JSON 구조 ?�시]:
 [
   {
-    "question": "문제 내용 설명 (필요시 $공식$ 포함)",
-    "options": ["선택지1", "선택지2", "선택지3", "선택지4"] // 서술형/빈칸채우기의 경우 null 또는 []
+    "question": "문제 ?�용 ?�명 (?�요??$공식$ ?�함)",
+    "options": ["?�택지1", "?�택지2", "?�택지3", "?�택지4"] // ?�술??빈칸채우기의 경우 null ?�는 []
   }
 ]`;
 
-    const systemPrompt = `당신은 토목/지반공학 기술사 자격시험 출제위원입니다. 한국어로 정밀하고 명확한 문제를 JSON 배열로만 출제하십시오.`;
+    const systemPrompt = `?�신?� ?�목/지반공??기술???�격?�험 출제?�원?�니?? ?�국?�로 ?��??�고 명확??문제�?JSON 배열로만 출제?�십?�오.`;
     const responseText = await callLLMWithFailover(systemPrompt, prompt, null, 'generation');
 
     let questions = [];
@@ -4139,7 +4161,7 @@ ${contentStr}
     } catch (e) {
       questions = [
         {
-          question: `[${title}] 핵심 개념 및 메커니즘을 기술사 수준으로 상세히 서술하시오.`,
+          question: `[${title}] ?�심 개념 �?메커?�즘??기술???��??�로 ?�세???�술?�시??`,
           options: null
         }
       ];
@@ -4148,7 +4170,7 @@ ${contentStr}
     res.json({ success: true, questions });
   } catch (err) {
     console.error('generate-item-questions error:', err);
-    res.status(500).json({ success: false, error: err.message || '문제 생성 실패' });
+    res.status(500).json({ success: false, error: err.message || '문제 ?�성 ?�패' });
   }
 });
 
@@ -4166,7 +4188,7 @@ router.post('/item-quiz/grade', async (req, res) => {
     res.json({ text: result });
   } catch (err) {
     console.error('item-quiz grade error:', err);
-    res.status(500).json({ error: err.message || '퀴즈 채점 실패' });
+    res.status(500).json({ error: err.message || '?�즈 채점 ?�패' });
   }
 });
 
@@ -4175,42 +4197,42 @@ router.post('/quiz/grade-item-answers', async (req, res) => {
   try {
     const { item, type, questions, userAnswers } = req.body;
     if (!questions || !Array.isArray(questions)) {
-      return res.status(400).json({ success: false, error: '채점할 문제 목록이 누락되었습니다.' });
+      return res.status(400).json({ success: false, error: '채점??문제 목록???�락?�었?�니??' });
     }
 
-    const title = item?.title || '학습 항목';
+    const title = item?.title || '?�습 ??��';
     const contentStr = typeof item?.content === 'object' ? JSON.stringify(item.content) : (item?.content || item?.html || '');
 
-    const prompt = `[학습 항목 유형]: ${type || '일반'}
-[항목 제목]: ${title}
-[원문/모범 답안 정보]:
+    const prompt = `[?�습 ??�� ?�형]: ${type || '?�반'}
+[??�� ?�목]: ${title}
+[?�문/모범 ?�안 ?�보]:
 ${contentStr}
 
-[출제된 문제 목록 및 수험생 제출 답안]:
+[출제??문제 목록 �??�험???�출 ?�안]:
 ${questions.map((q, i) => `문제 ${i + 1}: ${q.question}
-제출 답안: ${userAnswers?.[i] || '(미제출)'}`).join('\n\n')}
+?�출 ?�안: ${userAnswers?.[i] || '(미제�?'}`).join('\n\n')}
 
-위 제출 답안들을 모범 답안 및 국가기술자격 기술사 채점 기준에 따라 엄격하고 정밀하게 채점해 주십시오.
+???�출 ?�안?�을 모범 ?�안 �?�??기술?�격 기술??채점 기�????�라 ?�격?�고 ?��??�게 채점??주십?�오.
 
 [반환 JSON 구조 규격]:
 {
   "totalScore": 85,
   "earnedPoints": 85,
   "maxPoints": 100,
-  "feedbackSummary": "전반적인 답변 우수 및 공학적 핵심 용어 기술 상태 훌륭함.",
+  "feedbackSummary": "?�반?�인 ?��? ?�수 �?공학???�심 ?�어 기술 ?�태 ?��???",
   "questionResults": [
     {
       "score": 85,
       "isCorrect": true,
-      "feedback": "개념 서술이 우수하며 핵심 키워드가 잘 포함되었습니다.",
-      "modelAnswer": "모범 답안 및 주요 공학적 해설"
+      "feedback": "개념 ?�술???�수?�며 ?�심 ?�워?��? ???�함?�었?�니??",
+      "modelAnswer": "모범 ?�안 �?주요 공학???�설"
     }
   ]
 }
 
-반드시 위 JSON 객체 형식만 출력하십시오.`;
+반드????JSON 객체 ?�식�?출력?�십?�오.`;
 
-    const systemPrompt = `당신은 대한민국 국가기술자격 기술사 시험 수석 채점관입니다. 주어진 수험생 답안을 객관적으로 심사하여 정밀한 JSON 결과로 반환하십시오.`;
+    const systemPrompt = `?�신?� ?�?��?�?�??기술?�격 기술???�험 ?�석 채점관?�니?? 주어�??�험???�안??객�??�으�??�사?�여 ?��???JSON 결과�?반환?�십?�오.`;
     const responseText = await callLLMWithFailover(systemPrompt, prompt, null, 'grading');
 
     let resultJson = null;
@@ -4222,11 +4244,11 @@ ${questions.map((q, i) => `문제 ${i + 1}: ${q.question}
         totalScore: 70,
         earnedPoints: 70,
         maxPoints: 100,
-        feedbackSummary: '답안 분석 결과를 정리했습니다.',
+        feedbackSummary: '?�안 분석 결과�??�리?�습?�다.',
         questionResults: questions.map(() => ({
           score: 70,
           isCorrect: true,
-          feedback: '답안이 제출되었습니다. 원문 모범 답안을 함께 복습하십시오.',
+          feedback: '?�안???�출?�었?�니?? ?�문 모범 ?�안???�께 복습?�십?�오.',
           modelAnswer: contentStr.slice(0, 200)
         }))
       };
@@ -4235,7 +4257,7 @@ ${questions.map((q, i) => `문제 ${i + 1}: ${q.question}
     res.json({ success: true, ...resultJson });
   } catch (err) {
     console.error('grade-item-answers error:', err);
-    res.status(500).json({ success: false, error: err.message || '채점 실패' });
+    res.status(500).json({ success: false, error: err.message || '채점 ?�패' });
   }
 });
 
@@ -4254,7 +4276,7 @@ router.delete('/session/exam', async (req, res) => {
 // POST /api/admin/backfill-scores -> Admin manual backfill trigger
 router.post('/admin/backfill-scores', async (req, res) => {
   try {
-    res.json({ success: true, message: '과거 복습 이력 점수 백필 완료' });
+    res.json({ success: true, message: '과거 복습 ?�력 ?�수 백필 ?�료' });
   } catch (err) {
     console.error('Admin backfill error:', err);
     res.status(500).json({ error: err.message });
@@ -4265,8 +4287,8 @@ router.post('/admin/backfill-scores', async (req, res) => {
 router.post('/search-source', async (req, res) => {
   try {
     const { query, topicTitle, documentText, progressId } = req.body;
-    const sysPrompt = `당신은 대한민국 국가설계기준(KDS/KCS) 및 국토교통부 설계시공지침, 원보고서 출처 전문 검색 AI입니다. gemini-3.1-flash-lite 초고속 엔진으로 주어진 조회 요청에 대해 정확한 출처 문헌, 조항 번호 및 핵심 규정 수치 데이터를 찾아 반환하십시오.`;
-    const userPrompt = `[출처 검색 질의]: ${query || topicTitle || '국가 건설기준 KDS/KCS 및 원보고서 지침'}\n[참조 문서 텍스트]:\n${documentText || (topicTitle ? `KDS / KCS 국가 건설기준 및 원보고서: ${topicTitle}` : '국가 건설기준 및 원보고서 지침')}`;
+    const sysPrompt = `?�신?� ?�?��?�?�???�계기�?(KDS/KCS) �?�?��교통부 ?�계?�공지�? ?�보고서 출처 ?�문 검??AI?�니?? gemini-3.1-flash-lite 초고???�진?�로 주어�?조회 ?�청???�???�확??출처 문헌, 조항 번호 �??�심 규정 ?�치 ?�이?��? 찾아 반환?�십?�오.`;
+    const userPrompt = `[출처 검??질의]: ${query || topicTitle || '�?? 건설기�? KDS/KCS �??�보고서 지�?}\n[참조 문서 ?�스??:\n${documentText || (topicTitle ? `KDS / KCS �?? 건설기�? �??�보고서: ${topicTitle}` : '�?? 건설기�? �??�보고서 지�?)}`;
     
     const result = await searchSourceDocumentWithGeminiLite(sysPrompt, userPrompt, null, { progressId });
     return res.json({ success: true, model: 'gemini-3.1-flash-lite', result });
