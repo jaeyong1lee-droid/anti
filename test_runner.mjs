@@ -820,6 +820,27 @@ async function runTests() {
     console.log(`  ➜ [CRITICAL FAIL] Dynamic Item Extractor failed! SiExtracted: ${isDynamicSiExtracted}, PhiExtracted: ${isDynamicPhiExtracted}`);
   }
 
+  // [TEST 29] Rock Core Mohr Failure Criteria Q2 E2E Verification
+  console.log('\n[TEST 29] Rock Core Mohr Failure Criteria Q2 E2E Verification...');
+  const rockCoreQ2 = {
+    type: '주관식 (표채우기)',
+    question: "석회암 코어 실내시험 분석 및 Mohr 파괴포락선 산정 관련 메커니즘 및 특성 비교표를 완성하시오.",
+    tableData: {
+      headers: ["구분 항목", "석회암 코어 실내시험 분석 및 Mohr 파괴포락선 산정 특성 1", "석회암 코어 실내시험 분석 및 Mohr 파괴포락선 산정 특성 2"],
+      rows: [["핵심 메커니즘", "A 입력", "B 입력"]]
+    }
+  };
+  const healedRockQ2 = healQuizQuestionObject(rockCoreQ2);
+  const isRockQ2HeaderValid = healedRockQ2.tableData?.headers?.some(h => /Mohr|Hoek-Brown/i.test(String(h)));
+  const isRockQ2CellsValid = healedRockQ2.tableData?.rows?.some(r => Array.isArray(r) && r.some(c => String(c).includes('[INPUT_')));
+
+  if (isRockQ2HeaderValid && isRockQ2CellsValid) {
+    console.log(`  ➜ [PASS] Rock Core Mohr Failure Criteria Q2 comparison table healed with professional headers and clean inputs!`);
+  } else {
+    failedCount++;
+    console.log(`  ➜ [CRITICAL FAIL] Rock Core Mohr Failure Criteria Q2 healing failed! HeaderValid: ${isRockQ2HeaderValid}, CellsValid: ${isRockQ2CellsValid}`);
+  }
+
   console.log('\n====================================================');
   if (failedCount > 0) {
     console.log(`  ❌ TEST FAILED - ${failedCount} CRITICAL ERRORS DETECTED!`);

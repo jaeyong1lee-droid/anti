@@ -1456,6 +1456,7 @@ export function healQuizQuestionObject(q) {
 
     if (q.type === '주관식 (표채우기)' || q.subtype === '표채우기') {
       const isTopic53Comp = String(q.topicId || '').includes('53') || /댐|덤|유선망|53-02|53_02/i.test(q.question || '');
+      const isRockMohrComp = /석회암|암석|Mohr|파괴포락선|삼축시험|일축압축/i.test(q.question || '');
       const isFlowchart = /플로우차트|흐름도|단계명|아래\s*표의\s*빈칸에\s*입력/i.test(q.question || '') || (q.tableData && Array.isArray(q.tableData.rows) && q.tableData.rows.some(r => Array.isArray(r) && typeof r[0] === 'string' && /^\([A-F]\)$/.test(r[0])));
 
       if (isTopic53Comp && (isFlowchart || !q.tableData || !Array.isArray(q.tableData.headers) || q.tableData.headers.length < 3 || q.tableData.headers.some(h => /공법\/이론\s*A|특성\s*1|보고서/i.test(String(h))))) {
@@ -1471,6 +1472,20 @@ export function healQuizQuestionObject(q) {
         q.answers = {
           INPUT_1: "유한요소 영역 분할 미분방정식 수치 해석",
           INPUT_2: "3차원 이방성 다층 지반 및 침윤선 위치 추적 가능"
+        };
+      } else if (isRockMohrComp && (isFlowchart || !q.tableData || !Array.isArray(q.tableData.headers) || q.tableData.headers.length < 3 || q.tableData.headers.some(h => /특성\s*[12]|보고서/i.test(String(h))))) {
+        q.question = "석회암 코어 실내시험(일축인장, 쪼개짐, 일축압축, 삼축압축) 분석 및 Mohr 파괴포락선 산정 기법과 Hoek-Brown 암반 파괴기준의 역학적 특성 비교표를 완성하시오.";
+        q.tableData = {
+          headers: ["구분 항목", "Mohr-Coulomb 파괴포락선", "Hoek-Brown 암반 파괴기준", "Griffith 인장파괴 이론"],
+          rows: [
+            ["응력 조건 및 상태", "직선형 전단파괴선 ($τ = c + σ \\tan\\phi$)", "[INPUT_1]", "미세균열 전파 기반 비선형 인장파괴 기준"],
+            ["시료 및 암반 적용성", "무암등방성 및 완전 파쇄 지반", "[INPUT_2]", "무결암(Intact Rock) 미세균열 전파 상태"],
+            ["산출 핵심 파괴정수", "점착력($c, S_i$), 내부마찰각($\\phi$)", "일축압축강도($σ_{ci}$), 암반상수($m_i, s$)", "일축인장강도($σ_t$), 일축압축강도($σ_c$)"]
+          ]
+        };
+        q.answers = {
+          INPUT_1: "비선형 포락선 ($σ_1 = σ_3 + σ_{ci}(m_i σ_3/σ_{ci} + s)^a$)",
+          INPUT_2: "절리 암반(Jointed Rock Mass) 및 무결암 통합 적용"
         };
       } else if (!q.tableData || !Array.isArray(q.tableData.rows) || q.tableData.rows.length === 0) {
         const isComp = (q.question || '').includes('비교') || (q.question || '').includes('차이점');
@@ -1504,11 +1519,24 @@ export function healQuizQuestionObject(q) {
           if (parenMatch) {
             cleanH = parenMatch[1].trim();
           }
-          cleanH = cleanH.replace(/보고서\s*특성\s*1/g, '주 공법/이론 (해당 토픽)')
-                        .replace(/보고서\s*특성\s*2/g, '대조 관련 공법/이론')
-                        .replace(/특성\s*1/g, '(주 공법)')
-                        .replace(/특성\s*2/g, '(대조 공법)');
+          if (/특성\s*1/i.test(cleanH)) {
+            cleanH = '주 공법/이론 (해당 토픽)';
+          } else if (/특성\s*2/i.test(cleanH)) {
+            cleanH = '대조 관련 공법/이론';
+          }
           return cleanH;
+        });
+      }
+      if (q.tableData && Array.isArray(q.tableData.rows)) {
+        q.tableData.rows = q.tableData.rows.map((row) => {
+          if (!Array.isArray(row)) return row;
+          return row.map((cell, cIdx) => {
+            if (cIdx === 0 || typeof cell !== 'string') return cell;
+            if (/^[A-Z]\s*입력$/i.test(cell.trim()) || cell.trim() === 'A 입력' || cell.trim() === 'B 입력') {
+              return `[INPUT_${cIdx}]`;
+            }
+            return cell;
+          });
         });
       }
     }

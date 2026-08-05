@@ -297,6 +297,27 @@ if (!isSiPresent || !isPhiPresent || dummyLabelFound) {
   console.log(`  ➜ [PASS] 석회암 문제 (점착력 S_i, 내부마찰각 φ) 100% 동적 파싱 및 더미 문구 하드코딩 0개 완전 박멸 검증 통과!`);
 }
 
+// [TEST 9] Rock Core Mohr Failure Criteria Q2 Comparison Table & Cell Cleaning Check
+console.log('\n[TEST 9] 석회암 코어 삼축시험 Q2 비교표 및 A/B 입력 셀 세니타이저 검증...');
+const mockLimestoneQ2 = {
+  type: '주관식 (표채우기)',
+  question: "석회암 코어 실내시험 분석 및 Mohr 파괴포락선 산정 관련 메커니즘 및 특성 비교표를 완성하시오.",
+  tableData: {
+    headers: ["구분 항목", "석회암 코어 실내시험 분석 및 Mohr 파괴포락선 산정 특성 1", "석회암 코어 실내시험 분석 및 Mohr 파괴포락선 산정 특성 2"],
+    rows: [["핵심 메커니즘", "A 입력", "B 입력"]]
+  }
+};
+const healedLimestoneQ2 = healQuizQuestionObject(mockLimestoneQ2);
+const isRockHeaderClean = healedLimestoneQ2.tableData?.headers?.some(h => /Mohr|Hoek-Brown/i.test(String(h)));
+const isCellInputClean = healedLimestoneQ2.tableData?.rows?.some(r => Array.isArray(r) && r.some(c => String(c).includes('[INPUT_')));
+
+if (!isRockHeaderClean || !isCellInputClean) {
+  failedCount++;
+  console.error(`  ❌ [석회암 Q2 보정 실패]: HeaderClean: ${isRockHeaderClean}, CellInputClean: ${isCellInputClean}`);
+} else {
+  console.log(`  ➜ [PASS] 석회암 Q2 전문 이론 비교표(Mohr-Coulomb vs Hoek-Brown) 100% 자동 매핑 및 'A 입력' 셀 입력창 정제 완수!`);
+}
+
 console.log('\n==========================================================');
 if (failedCount > 0) {
   console.error(`  ❌ 자가 개선 테스터 검증 실패 - ${failedCount}개의 런타임 위험 감지됨!`);
