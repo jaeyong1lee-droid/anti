@@ -305,9 +305,10 @@ JSON 배열 형식으로만 문제를 출력하십시오.`;
    rows: [["(1) 항목명 (단위)", "[INPUT_1]"], ["(2) 항목명 (단위)", "[INPUT_2]"], ...]
    answers 객체에는 각 INPUT_N마다 대응되는 계산 정답 풀이 과정과 수치를 기재하십시오.
 
-2. 2번 문항 (개념 비교 표 칸채우기 문제) - type: "주관식 (표채우기)"
-   headers: ["구분 항목", "공법/이론 A", "공법/이론 B"]
-   절반 정도의 셀은 채워진 답안으로, 나머지는 INPUT으로 설계하십시오.
+2. 2번 문항 (이론/공법/기법 비교 표채우기 문제 - AI 동적 출제 철칙) - type: "주관식 (표채우기)"
+   - [AI 동적 문제 생성 철칙]: 고정된 템플릿 텍스트를 금지하며, AI가 해당 토픽의 주 핵심 공법/이론(예: 유선망 수리해석 토픽인 경우 '유선망 도해법(Flow Net)')과 관련된 타 공법/이론(예: '수치해석법 (FEM/FDM)', 'Darcy 1차원 해석법' 등)을 원보고서/공학기준에 기초하여 직접 동적으로 대조 분석하는 질문과 표를 설계하십시오.
+   - headers 예시: ["구분 항목", "주 핵심 공법/이론 (예: 유선망 도해법)", "비교 공법/이론 1 (예: 수치해석법 FEM/FDM)", "비교 공법/이론 2 (예: Darcy 1차원 해석법)"]
+   - rows: 핵심 메커니즘, 적용성/한계성, 산출 물리량 등의 행(Row)을 설계하고, 절반 이상은 풍부한 전문 지식으로 미리 채운 후 총 2~3개의 핵심 빈칸만 [INPUT_1], [INPUT_2]로 설정하십시오.
 
 3. 3번 문항 (공학적 의미/교훈 주관식 문제) - type: "주관식 (단답형)"
 4. 4번 문항 (관련 공학적 문제 발생 시 대책 주관식 문제) - type: "주관식 (다답형)"
@@ -432,33 +433,7 @@ export function healCalcQuestion(q) {
       { id: 'INPUT_2', label: '(2) A지점 간극수압 $u_A$ (kPa)' },
       { id: 'INPUT_3', label: '(3) B지점 간극수압 $u_B$ (kPa)' },
       { id: 'INPUT_4', label: '(4) C지점 간극수압 $u_C$ (kPa)' },
-      { id: 'INPUT_5', label: '(5) 출구 유출 동수경사 $i_{exit}
-  return q;
-}
-
-function calcFallbackQuestions(title, keywords) {
-  const cleanTitle = title || '공학 토픽';
-  return [
-    {
-      type: '주관식 (계산)',
-      question: `${cleanTitle} 계산 문제의 요구 항목에 대한 답안을 작성하시오.`,
-      calcItems: [
-        { id: 'INPUT_1', label: '(1) 수치 계산 항목 1' },
-        { id: 'INPUT_2', label: '(2) 수치 계산 항목 2' }
-      ],
-      answers: { INPUT_1: "항목 1 수치 풀이 및 정답", INPUT_2: "항목 2 수치 풀이 및 정답" }
-    },
-    {
-      type: '주관식 (표채우기)',
-      question: `${cleanTitle} 관련 메커니즘 및 특성 비교표를 완성하시오.`,
-      tableData: { headers: ["구분 항목", `${cleanTitle} 특성 1`, `${cleanTitle} 특성 2`], rows: [["핵심 메커니즘", "[INPUT_1]", "상세 설명"]] },
-      answers: { INPUT_1: "특성 1 정답 서술" }
-    },
-    { type: '주관식 (다답형)', question: `${cleanTitle}의 공학적 의미는?`, answer: '공학적 의미 서술' },
-    { type: '주관식 (다답형)', question: `${cleanTitle} 시공 시 주의사항은?`, answer: '주의사항 서술' },
-  ];
-}
- }
+      { id: 'INPUT_5', label: '(5) 출구 유출 동수경사 $i_{exit}$' }
     ];
     q.tableData = {
       headers: ["구하는 항목", "계산 결과 및 답안"],
@@ -502,7 +477,7 @@ function calcFallbackQuestions(title, keywords) {
   return [
     {
       type: '주관식 (계산)',
-      question: `${cleanTitle} 계산 문제의 요구 항목에 대한 답안을 작성하시오.`,
+      question: cleanTitle + ' 계산 문제의 요구 항목에 대한 답안을 작성하시오.',
       calcItems: [
         { id: 'INPUT_1', label: '(1) 수치 계산 항목 1' },
         { id: 'INPUT_2', label: '(2) 수치 계산 항목 2' }
@@ -511,11 +486,11 @@ function calcFallbackQuestions(title, keywords) {
     },
     {
       type: '주관식 (표채우기)',
-      question: `${cleanTitle} 관련 메커니즘 및 특성 비교표를 완성하시오.`,
-      tableData: { headers: ["구분 항목", `${cleanTitle} 특성 1`, `${cleanTitle} 특성 2`], rows: [["핵심 메커니즘", "[INPUT_1]", "상세 설명"]] },
+      question: cleanTitle + ' 관련 메커니즘 및 특성 비교표를 완성하시오.',
+      tableData: { headers: ["구분 항목", cleanTitle + ' 특성 1', cleanTitle + ' 특성 2'], rows: [["핵심 메커니즘", "[INPUT_1]", "상세 설명"]] },
       answers: { INPUT_1: "특성 1 정답 서술" }
     },
-    { type: '주관식 (다답형)', question: `${cleanTitle}의 공학적 의미는?`, answer: '공학적 의미 서술' },
-    { type: '주관식 (다답형)', question: `${cleanTitle} 시공 시 주의사항은?`, answer: '주의사항 서술' },
+    { type: '주관식 (다답형)', question: cleanTitle + '의 공학적 의미는?', answer: '공학적 의미 서술' },
+    { type: '주관식 (다답형)', question: cleanTitle + ' 시공 시 주의사항은?', answer: '주의사항 서술' },
   ];
 }

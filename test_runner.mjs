@@ -746,6 +746,18 @@ async function runTests() {
     console.log(`  ➜ [PASS] Q1 convert button restoration verified in App.jsx!`);
   }
 
+  // [TEST 25] AI Dynamic Question Generation Prompting & Standards Check
+  console.log('\n[TEST 25] AI Dynamic Question Generation Prompting & Standards Check...');
+  const genStandardsContent = fs.readFileSync(path.resolve('server/plugins/generationStandards.js'), 'utf8');
+  const calcPluginContent = fs.readFileSync(path.resolve('server/plugins/calculationPlugin.js'), 'utf8');
+
+  if (genStandardsContent.includes('AI 동적 출제 및 고정 템플릿 금지') && calcPluginContent.includes('AI 동적 문제 생성 철칙')) {
+    console.log(`  ➜ [PASS] AI Dynamic Generation standards & LLM prompt instructions 100% verified in backend plugins!`);
+  } else {
+    failedCount++;
+    console.log(`  ➜ [CRITICAL FAIL] AI Dynamic Generation prompt standards missing in backend plugins!`);
+  }
+
   console.log('\n====================================================');
   if (failedCount > 0) {
     console.log(`  ❌ TEST FAILED - ${failedCount} CRITICAL ERRORS DETECTED!`);
