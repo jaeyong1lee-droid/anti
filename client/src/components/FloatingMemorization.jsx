@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  X, Search, RefreshCw, RotateCcw, Trash2, BookOpen, Type, FileText, Image, ChevronDown, ChevronUp, Layers, HelpCircle
+  X, Search, RefreshCw, RotateCcw, Trash2, BookOpen, Type, FileText, Image, ChevronDown, ChevronUp, Layers, HelpCircle, Lock, Unlock
 } from 'lucide-react';
 import { ImageTabList } from './ImageStandardsPlugin';
 import { PopoutWindow } from './PopoutWindow';
@@ -256,6 +256,7 @@ const parseOverviewContent = (content) => {
 
 function FloatingTableItem({
   t,
+  isTableLocked,
   localActiveEditCell,
   setLocalActiveEditCell,
   localEditingCellValue,
@@ -309,7 +310,8 @@ function FloatingTableItem({
                   className="relative p-1.5 border-r border-slate-800/80 last:border-r-0 align-middle whitespace-normal break-words select-text group/th overflow-visible z-10"
                 >
                   {hIdx === 0 ? (
-                    <div className="flex items-center justify-center gap-1 select-none py-0.5" onClick={(e) => e.stopPropagation()}>
+                    !isTableLocked ? (
+                      <div className="flex items-center justify-center gap-1 select-none py-0.5" onClick={(e) => e.stopPropagation()}>
                       <button
                         type="button"
                         onClick={(e) => {
@@ -354,47 +356,51 @@ function FloatingTableItem({
                         + 열 추가
                       </button>
                     </div>
-                  ) : isEditing ? (
-                    <input
-                      type="text"
-                      value={localEditingCellValue}
-                      onChange={(e) => setLocalEditingCellValue(e.target.value)}
-                      onBlur={() => {
+                  ) : (
+                    <div className="text-[12px] font-extrabold text-slate-400 select-none py-1 text-center">구분</div>
+                  )
+                ) : isEditing ? (
+                  <input
+                    type="text"
+                    value={localEditingCellValue}
+                    onChange={(e) => setLocalEditingCellValue(e.target.value)}
+                    onBlur={() => {
+                      const updatedHeaders = parsed.headers.map((hdr, idx) => idx === hIdx ? localEditingCellValue : hdr);
+                      const newHtml = rebuildTableHtml(updatedHeaders, parsed.rows);
+                      const updatedTables = formulaTables.map(item => item.id === t.id ? { ...item, html: newHtml } : item);
+                      setFormulaTables(updatedTables);
+                      handleSaveFormulaTables(updatedTables, false);
+                      setLocalActiveEditCell(null);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
                         const updatedHeaders = parsed.headers.map((hdr, idx) => idx === hIdx ? localEditingCellValue : hdr);
                         const newHtml = rebuildTableHtml(updatedHeaders, parsed.rows);
                         const updatedTables = formulaTables.map(item => item.id === t.id ? { ...item, html: newHtml } : item);
                         setFormulaTables(updatedTables);
                         handleSaveFormulaTables(updatedTables, false);
                         setLocalActiveEditCell(null);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          const updatedHeaders = parsed.headers.map((hdr, idx) => idx === hIdx ? localEditingCellValue : hdr);
-                          const newHtml = rebuildTableHtml(updatedHeaders, parsed.rows);
-                          const updatedTables = formulaTables.map(item => item.id === t.id ? { ...item, html: newHtml } : item);
-                          setFormulaTables(updatedTables);
-                          handleSaveFormulaTables(updatedTables, false);
-                          setLocalActiveEditCell(null);
-                        }
-                      }}
-                      className="w-full text-center bg-slateCustom-950 border border-slate-700 text-slate-200 font-black focus:outline-none p-0.5 text-[14px] md:text-[16px] rounded"
-                      autoFocus
-                    />
-                  ) : (
-                    <div 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (!isEditing) {
-                          setLocalActiveEditCell({ tableId: t.id, type: 'header', colIdx: hIdx });
-                          setLocalEditingCellValue(h);
-                        }
-                      }}
-                      className="w-full text-center p-0.5 text-[14px] md:text-[16px] text-slate-200 font-black cursor-pointer hover:text-violet-300 transition-colors"
-                      title="클릭하여 헤더 수정"
-                    >
-                      <LatexRenderer text={h} katexLoaded={katexLoaded} className="inline" />
-                    </div>
-                  )}
+                      }
+                    }}
+                    className="w-full text-center bg-slateCustom-950 border border-slate-700 text-slate-200 font-black focus:outline-none p-0.5 text-[14px] md:text-[16px] rounded"
+                    autoFocus
+                  />
+                ) : (
+                  <div 
+                    onClick={(e) => {
+                      if (isTableLocked) return;
+                      e.stopPropagation();
+                      if (!isEditing) {
+                        setLocalActiveEditCell({ tableId: t.id, type: 'header', colIdx: hIdx });
+                        setLocalEditingCellValue(h);
+                      }
+                    }}
+                    className={`w-full text-center p-0.5 text-[14px] md:text-[16px] text-slate-200 font-black ${isTableLocked ? 'cursor-default' : 'cursor-pointer hover:text-violet-300'} transition-colors`}
+                    title={isTableLocked ? '' : '클릭하여 헤더 수정'}
+                  >
+                    <LatexRenderer text={h} katexLoaded={katexLoaded} className="inline" />
+                  </div>
+                )}
 
                   {/* Resizer Handle */}
                   {hIdx < colCount && (
@@ -468,14 +474,15 @@ function FloatingTableItem({
                     ) : (
                       <div 
                         onClick={(e) => {
+                          if (isTableLocked) return;
                           e.stopPropagation();
                           if (!isEditing) {
                             setLocalActiveEditCell({ tableId: t.id, type: 'cell', rIdx, colIdx: cIdx });
                             setLocalEditingCellValue(cell || '');
                           }
                         }}
-                        className="w-full min-h-[32px] flex items-center justify-center text-center p-1 text-[14px] md:text-[16px] text-slate-200 cursor-pointer hover:bg-slate-800/50 hover:text-violet-300 transition-all rounded"
-                        title="클릭하여 셀 수정"
+                        className={`w-full min-h-[32px] flex items-center justify-center text-center p-1 text-[14px] md:text-[16px] text-slate-200 ${isTableLocked ? 'cursor-text' : 'cursor-pointer hover:bg-slate-800/50 hover:text-violet-300'} transition-all rounded`}
+                        title={isTableLocked ? '' : '클릭하여 셀 수정'}
                       >
                         {cell && String(cell).trim() !== '' ? (
                           <LatexRenderer text={cell} katexLoaded={katexLoaded} className="inline" />
@@ -487,24 +494,26 @@ function FloatingTableItem({
                   </td>
                 );
               })}
-              <td className="p-1 text-center align-middle">
-                <button
-                  onClick={(e) => {
-                    const currentWindow = e.target.ownerDocument.defaultView || window;
-                    if (currentWindow.confirm('이 행을 삭제하시겠습니까?')) {
-                      const updatedRows = parsed.rows.filter((_, idx) => idx !== rIdx);
-                      const newHtml = rebuildTableHtml(parsed.headers, updatedRows);
-                      const updatedTables = formulaTables.map(item => item.id === t.id ? { ...item, html: newHtml } : item);
-                      setFormulaTables(updatedTables);
-                      handleSaveFormulaTables(updatedTables, false);
-                    }
-                  }}
-                  className="p-0.5 rounded bg-red-955/40 border border-red-500/10 text-red-400 hover:bg-red-900 transition-all cursor-pointer text-xs"
-                  title="행 삭제"
-                >
-                  삭제
-                </button>
-              </td>
+              {!isTableLocked && (
+                <td className="p-1 text-center align-middle">
+                  <button
+                    onClick={(e) => {
+                      const currentWindow = e.target.ownerDocument.defaultView || window;
+                      if (currentWindow.confirm('이 행을 삭제하시겠습니까?')) {
+                        const updatedRows = parsed.rows.filter((_, idx) => idx !== rIdx);
+                        const newHtml = rebuildTableHtml(parsed.headers, updatedRows);
+                        const updatedTables = formulaTables.map(item => item.id === t.id ? { ...item, html: newHtml } : item);
+                        setFormulaTables(updatedTables);
+                        handleSaveFormulaTables(updatedTables, false);
+                      }
+                    }}
+                    className="p-0.5 rounded bg-red-955/40 border border-red-500/10 text-red-400 hover:bg-red-900 transition-all cursor-pointer text-xs"
+                    title="행 삭제"
+                  >
+                    삭제
+                  </button>
+                </td>
+              )}
             </tr>
           ))}
         </tbody>
