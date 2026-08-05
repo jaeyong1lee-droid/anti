@@ -142,7 +142,7 @@ async function runMigration() {
         pgTopicId = ins.rows[0].id;
         topicInsertedCount++;
       }
-      topicIdMap.set(t.id, pgTopicId);
+      topicIdMap.set(String(t.id), Number(pgTopicId));
     }
     console.log(`✅ Topics migrated: ${topicInsertedCount} inserted (${sqliteTopics.length} total mapped)`);
 
@@ -152,11 +152,22 @@ async function runMigration() {
     });
     console.log(`[Migration] SQLite schedules found: ${sqliteSchedules.length} rows`);
 
+    // Fetch all existing topic IDs in PostgreSQL AFTER topics migration
+    const existingPgTopicsRes = await pgPool.query("SELECT id FROM topics");
+    const validPgTopicIds = new Set(existingPgTopicsRes.rows.map(r => Number(r.id)));
+
     let schedInsertedCount = 0;
+    let orphanCount = 0;
     for (const s of sqliteSchedules) {
-      let targetTopicId = topicIdMap.get(s.topic_id);
+      let targetTopicId = topicIdMap.get(String(s.topic_id));
       if (!targetTopicId) {
-        targetTopicId = s.topic_id;
+        targetTopicId = Number(s.topic_id);
+      }
+
+      if (!validPgTopicIds.has(Number(targetTopicId))) {
+        orphanCount++;
+        console.log(`[Orphan Schedule] Skipping s.id=${s.id}, topic_id=${s.topic_id}`);
+        continue; // Skip orphaned schedules for non-existent topics
       }
 
       const dup = await pgPool.query(
@@ -181,7 +192,7 @@ async function runMigration() {
         schedInsertedCount++;
       }
     }
-    console.log(`✅ Schedules migrated: ${schedInsertedCount} inserted`);
+    console.log(`✅ Schedules migrated: ${schedInsertedCount} inserted (skipped ${orphanCount} orphaned schedules)`);
 
     // 3. Migrate app_session
     const sqliteSessions = await new Promise((resolve) => {
