@@ -49,11 +49,3 @@ export function updateLiveEngineeringStandards(newList) {
     ENGINEERING_STANDARDS = newList.map(s => s.content).join('\n\n');
   }
 }
-
-// Backwards compatibility exports
-export const STRESS_CONVENTION = "";
-export const SUBGRADE_REACTION_CONVENTION = "";
-export const GRAPH_AND_TABLE_CONVENTION = "";
-export const SITUATIONAL_FEASIBILITY_CONVENTION = "";
-export const SEEPAGE_PRESSURE_CONVENTION = "";
-export const USER_CONVENTIONS = "";

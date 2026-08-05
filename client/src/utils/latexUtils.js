@@ -547,6 +547,9 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   processed = processed.replace(deltaGreekRegex, '\\Delta \\$1');
   processed = processed.replace(/\\\s*Delta\s*([a-zA-Z])\b/gi, '\\Delta $1');
 
+  // [Self-Healing] Strip KaTeX-unsupported MathJax \pu{...} commands (renders red in KaTeX)
+  processed = processed.replace(/\\pu\s*\{([^}]+)\}/gi, '$1');
+
   // [Self-Healing] Fix raw bearing capacity formula gamma terms
   processed = processed.replace(/\\?\s*gamma\s*BN\\?\s*gamma/gi, '\\gamma B N_\\gamma')
                        .replace(/\\?\s*gamma\s*B\s*N\s*\\?\s*gamma/gi, '\\gamma B N_\\gamma');
