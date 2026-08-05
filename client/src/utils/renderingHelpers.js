@@ -850,7 +850,7 @@ export const renderKatexString = (math, options = {}) => {
           .replace(/"/g, '&quot;')
           .replace(/'/g, '&#39;')
           .replace(/\$/g, '&#36;');
-        return `<span class="katex-error" style="color:inherit; font-family:inherit;" title="KaTeX error: ${escapedMath}">${escapedMath}</span>`;
+        return `<span class="katex-error" style="color:#cc0000; font-family: monospace;" title="KaTeX error: ${escapedMath}">${escapedMath}</span>`;
       }
     }
   }
