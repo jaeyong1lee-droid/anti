@@ -605,6 +605,40 @@ async function runTests() {
     console.log(`  ➜ [FAIL] POST /api/grade-subjective failed (Status: ${conceptualRes.error || conceptualRes.statusCode})`);
   }
 
+  // [TEST 20] Universal Calculation Guard Test for Topic 53-02 (Dam Seepage Flownet q, Q, ic Calculation)
+  console.log('\n[TEST 20] Universal Calculation Guard Test for Topic 53-02 (Dam Seepage Flownet Calculation)...');
+  const seepagePayload = {
+    question: "그림에 나타낸 덤에 대하여 (1) 침투수량 (2) A, B 및 C점에서의 간극수압, (3) C점에서 출구까지 동수경사를 구하시오. 단, 흙의 투수계수는 2.0 * 10^-3 m/s 이다.",
+    correctAnswer: "0.00002 m³/s/m (또는 2.0 * 10^-5 m³/s/m)",
+    userAnswer: "2.0 * 10^-5",
+    rowHeader: "(1) 유선망 한 개의 요소가 부담하는 단위 폭당 침투유량 (q, m³/s/m)",
+    colHeader: "계산 결과 및 답안",
+    explanation: "유선망 1개 요소 침투유량 q = k * H * (1/Nd) = 2.0*10^-3 * 30 * (1/30) = 0.00002 m³/s/m",
+    topicId: 53,
+    category: "수리해석",
+    temperature: 0.7,
+    preferredModel: "gemini-3.5-flash-lite"
+  };
+
+  const seepageRes = await postUrl('http://localhost:3000/api/grade-subjective', seepagePayload);
+  if (seepageRes.statusCode === 200) {
+    try {
+      const data = JSON.parse(seepageRes.body);
+      if (data.isCorrect && data.score >= 8) {
+        console.log(`  ➜ [PASS] Topic 53-02 Seepage Calculation correctly recognized scientific notation answer "2.0 * 10^-5" as 10점 (score: ${data.score}점, reason: ${data.reason}).`);
+      } else {
+        failedCount++;
+        console.log(`  ➜ [CRITICAL FAIL] Server falsely rejected Topic 53-02 seepage answer "2.0 * 10^-5"! Score: ${data.score}점, Reason: ${data.reason}`);
+      }
+    } catch (e) {
+      failedCount++;
+      console.log(`  ➜ [FAIL] Invalid JSON from grade-subjective: ${e.message}`);
+    }
+  } else {
+    failedCount++;
+    console.log(`  ➜ [FAIL] POST /api/grade-subjective failed (Status: ${seepageRes.error || seepageRes.statusCode})`);
+  }
+
   console.log('\n====================================================');
   if (failedCount > 0) {
     console.log(`  ❌ TEST FAILED - ${failedCount} CRITICAL ERRORS DETECTED!`);

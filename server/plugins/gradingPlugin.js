@@ -215,16 +215,32 @@ ${explanation ? `- 전체 해설 (Explanation): ${explanation}` : ''}
     let finalScore = score;
     let finalReason = reason;
 
-    // 🚨 Server-Side Numeric Tolerance Guard (오직 1번 수치 계산 문항의 "813", "634" 등 순수 수치 답안에만 적용하며, 개념 서술형/비교표 답안에는 절대로 가드를 적용하지 않음)
+    // 🚨 Server-Side Numeric Tolerance Guard (모든 수치 계산 문항의 "813", "634", "2.0*10^-3" 등 순수 수치 답안에 보편 적용)
     const rawUserStr = String(userAnswer || '').trim();
-    const hasDescriptiveText = /[가-힣a-zA-Z]{3,}/.test(rawUserStr.replace(/q_all|P_all|q_u|kN|m2|m3|kPa|FS|F\.S\./gi, ''));
-    const userNum = parseFloat(rawUserStr.replace(/[^0-9.-]/g, ''));
+    const hasDescriptiveText = /[가-힣a-zA-Z]{4,}/.test(rawUserStr.replace(/q_all|P_all|q_u|P_u|q_a|P_a|kN|kPa|m2|m3|FS|F\.S\.|m\/s|m³\/s|cm\/s|x10|10\^/gi, ''));
 
-    if (!hasDescriptiveText && !isNaN(userNum) && userNum > 0 && (category === '계산' || /q_all|P_all|수치\s*계산/.test(rowHeader || ''))) {
+    const parseNumericValue = (str) => {
+      if (!str) return NaN;
+      const clean = String(str).replace(/,/g, '').trim();
+      const sciMatch = clean.match(/([-+]?\d*\.?\d+)\s*(?:\*|x|×)?\s*10\^?([-+]?\d+)/i);
+      if (sciMatch) {
+        return parseFloat(sciMatch[1]) * Math.pow(10, parseInt(sciMatch[2], 10));
+      }
+      const match = clean.match(/[-+]?\d*\.?\d+(?:e[-+]?\d+)?/i);
+      return match ? parseFloat(match[0]) : NaN;
+    };
+
+    const userNum = parseNumericValue(rawUserStr);
+    const isCalcContext = category === '계산' || 
+                          /계산|답안|수치|결과/.test(colHeader || '') || 
+                          /q_all|P_all|q_u|P_u|q_a|P_a|q|Q|i_c|kN|kPa|m\/s|m³\/s|m²|m³|수치|계산/.test(rowHeader || '') || 
+                          /계산하시오|구하시오|산정하시오/.test(question || '');
+
+    if (!hasDescriptiveText && !isNaN(userNum) && userNum > 0 && isCalcContext) {
       const explText = `${explanation || ''} ${question || ''}`;
-      const explNums = [...explText.matchAll(/[-+]?\d*\.?\d+/g)]
+      const explNums = [...explText.matchAll(/[-+]?\d*\.?\d+(?:e[-+]?\d+)?/gi)]
         .map(m => parseFloat(m[0]))
-        .filter(n => !isNaN(n) && n > 50 && n !== 100 && n !== 1000);
+        .filter(n => !isNaN(n) && n > 0 && n !== 100 && n !== 1000);
 
       const correctText = `${correctAnswer || ''}`;
       const correctNums = [...correctText.matchAll(/[-+]?\d*\.?\d+/g)]
