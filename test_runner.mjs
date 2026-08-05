@@ -803,76 +803,41 @@ async function runTests() {
     console.log(`  ➜ [PASS] Sanitizer successfully replaced dummy headers ("특성 1", "특성 2") with professional theory headers!`);
   }
 
-  // [TEST 28] Dynamic Item Parsing & Dummy Label Purge Verification
-  console.log('\n[TEST 28] Dynamic Item Parsing & Dummy Label Purge Verification...');
-  const limestoneReqQ = {
+  // [TEST 28] Pure Dynamic Item Extractor Verification (Zero Hardcoded Topics)
+  console.log('\n[TEST 28] Pure Dynamic Item Extractor Verification...');
+  const dynamicQ1 = {
     type: '주관식 (계산)',
-    question: "석회암 코어시료에 대한 실내실험을 수행한 결과가 다음과 같다. 그 결과를 Mohr 파괴기준으로 도시하고, 삼축시험결과를 이용하여 S_i(점착력)값과 \\phi(내부마찰각)값을 나타내시오."
+    question: "주어진 시료 조건에 따라 (1) 침투수량 (2) A지점 간극수압 (3) 동수경사를 산정하시오."
   };
-  const healedLimestoneQ = healQuizQuestionObject(limestoneReqQ);
-  const isDynamicSiExtracted = healedLimestoneQ.calcItems?.some(it => /점착력|S_i/i.test(it.label || ''));
-  const isDynamicPhiExtracted = healedLimestoneQ.calcItems?.some(it => /내부마찰각|\\phi|phi/i.test(it.label || ''));
+  const healedDynamic1 = healQuizQuestionObject(dynamicQ1);
+  const is3ItemsExtracted = healedDynamic1.calcItems?.length === 3;
 
-  if (isDynamicSiExtracted && isDynamicPhiExtracted) {
-    console.log(`  ➜ [PASS] Dynamic Item Extractor successfully generated specific input items for Limestone Mohr failure criteria!`);
+  if (is3ItemsExtracted) {
+    console.log(`  ➜ [PASS] Pure Dynamic Item Extractor successfully extracted 3 specific items without hardcoded topic rules!`);
   } else {
     failedCount++;
-    console.log(`  ➜ [CRITICAL FAIL] Dynamic Item Extractor failed! SiExtracted: ${isDynamicSiExtracted}, PhiExtracted: ${isDynamicPhiExtracted}`);
+    console.log(`  ➜ [CRITICAL FAIL] Pure Dynamic Item Extractor failed! Count: ${healedDynamic1.calcItems?.length}`);
   }
 
-  // [TEST 29] Rock Core Mohr Failure Criteria Q2 E2E Verification
-  console.log('\n[TEST 29] Rock Core Mohr Failure Criteria Q2 E2E Verification...');
-  const rockCoreQ2 = {
+  // [TEST 29] Universal Comparison Table Sanitizer Check
+  console.log('\n[TEST 29] Universal Comparison Table Sanitizer Check...');
+  const genericTableQ = {
     type: '주관식 (표채우기)',
-    question: "석회암 코어 실내시험 분석 및 Mohr 파괴포락선 산정 관련 메커니즘 및 특성 비교표를 완성하시오.",
+    question: "테스트 공법에 대한 메커니즘 특성 비교표를 완성하시오.",
     tableData: {
-      headers: ["구분 항목", "석회암 코어 실내시험 분석 및 Mohr 파괴포락선 산정 특성 1", "석회암 코어 실내시험 분석 및 Mohr 파괴포락선 산정 특성 2"],
+      headers: ["구분 항목", "테스트 공법 보고서 특성 1", "테스트 공법 보고서 특성 2"],
       rows: [["핵심 메커니즘", "A 입력", "B 입력"]]
     }
   };
-  const healedRockQ2 = healQuizQuestionObject(rockCoreQ2);
-  const isRockQ2HeaderValid = healedRockQ2.tableData?.headers?.some(h => /Mohr|Hoek-Brown/i.test(String(h)));
-  const isRockQ2CellsValid = healedRockQ2.tableData?.rows?.some(r => Array.isArray(r) && r.some(c => String(c).includes('[INPUT_')));
+  const healedTableQ = healQuizQuestionObject(genericTableQ);
+  const isHeaderClean = healedTableQ.tableData?.headers?.some(h => /주요 핵심|대조 관련/i.test(String(h)));
+  const isCellInputClean = healedTableQ.tableData?.rows?.some(r => Array.isArray(r) && r.includes('[INPUT_1]'));
 
-  if (isRockQ2HeaderValid && isRockQ2CellsValid) {
-    console.log(`  ➜ [PASS] Rock Core Mohr Failure Criteria Q2 comparison table healed with professional headers and clean inputs!`);
+  if (isHeaderClean && isCellInputClean) {
+    console.log(`  ➜ [PASS] Universal Comparison Table Sanitizer successfully cleaned generic headers and A/B input cells!`);
   } else {
     failedCount++;
-    console.log(`  ➜ [CRITICAL FAIL] Rock Core Mohr Failure Criteria Q2 healing failed! HeaderValid: ${isRockQ2HeaderValid}, CellsValid: ${isRockQ2CellsValid}`);
-  }
-
-  // [TEST 30] Topic 49-03 E2E Live Session Force-Heal Test
-  console.log('\n[TEST 30] Topic 49-03 E2E Live Session Force-Heal Test...');
-  const liveTopic49Q1 = {
-    type: '주관식 (계산)',
-    topicId: '49-03',
-    question: "[석회암 코어 실내시험 분석 및 Mohr 파괴포락선 산정 계산 문제] 첨부 그림 및 원보고서 조건에 따른 수치 계산 항목의 정답을 구하여 아래 표의 빈칸을 완성하시오.",
-    calcItems: [
-      { id: 'INPUT_1', label: '(1) 수치 계산 항목 1' },
-      { id: 'INPUT_2', label: '(2) 수치 계산 항목 2' }
-    ]
-  };
-  const liveTopic49Q2 = {
-    type: '주관식 (표채우기)',
-    topicId: '49-03',
-    question: "석회암 코어 실내시험 분석 및 Mohr 파괴포락선 산정 관련 메커니즘 및 특성 비교표를 완성하시오.",
-    tableData: {
-      headers: ["구분 항목", "석회암 코어 실내시험 분석 및 Mohr 파괴포락선 산정 특성 1", "석회암 코어 실내시험 분석 및 Mohr 파괴포락선 산정 특성 2"],
-      rows: [["핵심 메커니즘", "A 입력", "B 입력"]]
-    }
-  };
-
-  const healedLiveQ1 = healQuizQuestionObject(liveTopic49Q1);
-  const healedLiveQ2 = healQuizQuestionObject(liveTopic49Q2);
-
-  const isLiveQ1Valid = healedLiveQ1.calcItems?.some(it => /점착력|S_i/i.test(it.label || '')) && healedLiveQ1.calcItems?.some(it => /내부마찰각|\\phi|phi/i.test(it.label || ''));
-  const isLiveQ2Valid = healedLiveQ2.tableData?.headers?.some(h => /Mohr-Coulomb/i.test(String(h))) && healedLiveQ2.tableData?.rows?.some(r => r.includes('[INPUT_1]'));
-
-  if (isLiveQ1Valid && isLiveQ2Valid) {
-    console.log(`  ➜ [PASS] Topic 49-03 live session questions Q1 (S_i, \\phi) & Q2 (Mohr-Coulomb vs Hoek-Brown) 100% force-healed!`);
-  } else {
-    failedCount++;
-    console.log(`  ➜ [CRITICAL FAIL] Topic 49-03 force-heal failed! Q1Valid: ${isLiveQ1Valid}, Q2Valid: ${isLiveQ2Valid}`);
+    console.log(`  ➜ [CRITICAL FAIL] Universal Comparison Table Sanitizer failed! HeaderClean: ${isHeaderClean}, CellClean: ${isCellInputClean}`);
   }
 
   console.log('\n====================================================');

@@ -1350,101 +1350,65 @@ export function healQuizQuestionObject(q) {
       q.type = '주관식 (계산)';
       q.subtype = '계산';
 
-      const isTopic53 = String(q.topicId || '').includes('53') || /댐|덤|유선망|53-02|53_02/i.test(qText) || (/침투/i.test(qText) && /간극수압|동수경사/i.test(qText));
-      const isTopic49 = String(q.topicId || '').includes('49') || /석회암|암석|Mohr|파괴포락선|삼축|일축/i.test(qText || q.topicTitle || '');
-
       const isGeneric = !q.calcItems || q.calcItems.length === 0 || (
         Array.isArray(q.calcItems) && q.calcItems.some(it => /(?:핵심|수치)\s*(?:계산|산출)\s*(?:요구\s*)?항목/i.test(it.label || ''))
       ) || (
         Array.isArray(q.calcItems) && q.calcItems.some(it => /^[\(\[]?\d+[\)\]]?\s*수치\s*(?:계산|산출)/i.test(it.label || ''))
-      ) || (
-        q.tableData && Array.isArray(q.tableData.rows) && q.tableData.rows.some(r => Array.isArray(r) && typeof r[0] === 'string' && /(?:핵심|수치)\s*(?:계산|산출)\s*(?:요구\s*)?항목/i.test(r[0]))
-      ) || (
-        isTopic53 && Array.isArray(q.calcItems) && (q.calcItems.length !== 5 || q.calcItems.some(it => /q_\{all\}|P_\{all\}|허용지지력/i.test(it.label || '')))
-      ) || (
-        isTopic49 && Array.isArray(q.calcItems) && (q.calcItems.length !== 2 || q.calcItems.some(it => /(?:수치|계산|항목)/i.test(it.label || '') && !/점착력|내부마찰각|S_i|\\phi/i.test(it.label || '')))
       );
 
       if (isGeneric) {
-        if (isTopic53) {
-          q.calcItems = [
-            { id: 'INPUT_1', label: '(1) 단위폭당 침투수량 $q$ (m³/s/m)' },
-            { id: 'INPUT_2', label: '(2) A지점 간극수압 $u_A$ (kPa)' },
-            { id: 'INPUT_3', label: '(3) B지점 간극수압 $u_B$ (kPa)' },
-            { id: 'INPUT_4', label: '(4) C지점 간극수압 $u_C$ (kPa)' },
-            { id: 'INPUT_5', label: '(5) 출구 유출 동수경사 $i_{exit}$' }
-          ];
-          q.answers = (q.answers && q.answers.INPUT_1 && q.answers.INPUT_5) ? q.answers : {
-            INPUT_1: "2.0 * 10^-5 m³/s/m (또는 0.02 m³/s/m)",
-            INPUT_2: "220.7 kPa (상류 A지점)",
-            INPUT_3: "196.2 kPa (중앙 B지점)",
-            INPUT_4: "171.7 kPa (하류 C지점)",
-            INPUT_5: "0.25 ~ 0.50 (출구 동수경사)"
-          };
-        } else if (isTopic49) {
-          q.calcItems = [
-            { id: 'INPUT_1', label: '(1) 점착력 $S_i$ (kN/m²)' },
-            { id: 'INPUT_2', label: '(2) 내부마찰각 $\\phi$ (°)' }
-          ];
-          q.answers = q.answers || {
-            INPUT_1: "Mohr 파괴락원 접선 기반 점착력 S_i 수치값",
-            INPUT_2: "Mohr 파괴락원 접선 경사각 phi 수치값"
-          };
-        } else if (/Terzaghi|기초폭\s*B|정방형\s*기초/i.test(qText) || (/지지력/i.test(qText) && /허용하중/i.test(qText))) {
-          q.calcItems = [
-            { id: 'INPUT_1', label: '(1) 조건 (a)의 허용지지력 $q_{all}$(a) (kN/m²)' },
-            { id: 'INPUT_2', label: '(2) 조건 (a)의 허용하중 $P_{all}$(a) (kN)' },
-            { id: 'INPUT_3', label: '(3) 조건 (b)의 허용지지력 $q_{all}$(b) (kN/m²)' },
-            { id: 'INPUT_4', label: '(4) 조건 (b)의 허용하중 $P_{all}$(b) (kN)' }
-          ];
-          q.answers = {
-            INPUT_1: "조건 (a) 허용지지력 공식 대입 및 계산 수치값",
-            INPUT_2: "조건 (a) 허용하중 공식 대입 및 계산 수치값",
-            INPUT_3: "조건 (b) 허용지지력 공식 대입 및 계산 수치값",
-            INPUT_4: "조건 (b) 허용하중 공식 대입 및 계산 수치값"
-          };
+        // 1. Extract numbered items from question text (e.g. (1) ..., (2) ... or ①, ②...)
+        const itemMatches = [...qText.matchAll(/(?:\((\d+)\)|(\d+)\)|①|②|③|④|⑤|⑥)\s*([\s\S]+?(?=(?:\(\d+\)|[2-9]\)|①|②|③|④|⑤|⑥|\n|$)))/g)];
+        if (itemMatches.length >= 2) {
+          q.calcItems = itemMatches.map((m, i) => ({
+            id: `INPUT_${i + 1}`,
+            label: `(${i + 1}) ${(m[3] || m[0]).replace(/^[\(\[\d\s\)\]①-⑥]+/, '').replace(/[,.\s]+$/, '').trim()}`
+          }));
         } else {
-          const itemMatches = [...qText.matchAll(/\((\d+)\)\s*([^(),\n]+(?:\(kN[^\)]*\)|\(m[^\)]*\))?)/g)];
-          if (itemMatches.length >= 2) {
-            q.calcItems = itemMatches.map((m, i) => ({
-              id: `INPUT_${i + 1}`,
-              label: `(${m[1]}) ${m[2].trim()}`
-            }));
-          } else {
-            const targetMatch = qText.match(/(?:을|를|값과|값을|항목을)\s*([^,.\n]+?)(?:를|을|값)?\s*(?:구하시오|나타내시오|산정하시오|계산하시오|평가하시오)/i);
-            if (targetMatch && targetMatch[1]) {
-              const rawTerms = targetMatch[1].split(/(?:및|와|과|,|\/)/).map(t => t.trim()).filter(Boolean);
-              if (rawTerms.length >= 1) {
-                q.calcItems = rawTerms.map((term, idx) => ({
-                  id: `INPUT_${idx + 1}`,
-                  label: `(${idx + 1}) ${term}`
-                }));
-              }
+          // 2. Extract target items before action verbs (구하시오, 나타내시오, 산정하시오, 계산하시오)
+          const targetMatch = qText.match(/(?:을|를|값과|값을|항목을|결과를)\s*([^,.\n]+?)(?:를|을|값)?\s*(?:구하시오|나타내시오|산정하시오|계산하시오|평가하시오|작성하시오)/i);
+          if (targetMatch && targetMatch[1]) {
+            const rawTerms = targetMatch[1].split(/(?:및|와|과|,|\/)/).map(t => t.trim()).filter(Boolean);
+            if (rawTerms.length >= 1) {
+              q.calcItems = rawTerms.map((term, idx) => ({
+                id: `INPUT_${idx + 1}`,
+                label: `(${idx + 1}) ${term}`
+              }));
             }
-            if (!q.calcItems || q.calcItems.length === 0) {
-              const latexSymbols = [...qText.matchAll(/\$([A-Za-z0-9_\\\{\}]+)\$/g)].map(m => m[1]);
-              if (latexSymbols.length >= 1) {
-                const uniqueSyms = [...new Set(latexSymbols)];
-                q.calcItems = uniqueSyms.map((sym, idx) => ({
-                  id: `INPUT_${idx + 1}`,
-                  label: `(${idx + 1}) 변수 $${sym}$ 정량 산출값`
-                }));
-              } else {
-                q.calcItems = [
-                  { id: 'INPUT_1', label: '(1) 수치 산출 항목 1' },
-                  { id: 'INPUT_2', label: '(2) 수치 산출 항목 2' }
-                ];
-              }
+          }
+          // 3. Extract math symbols ($S_i$, $\phi$, etc.) from question text
+          if (!q.calcItems || q.calcItems.length === 0) {
+            const latexSymbols = [...qText.matchAll(/\$([A-Za-z0-9_\\\{\}]+)\$/g)].map(m => m[1]);
+            if (latexSymbols.length >= 1) {
+              const uniqueSyms = [...new Set(latexSymbols)];
+              q.calcItems = uniqueSyms.map((sym, idx) => ({
+                id: `INPUT_${idx + 1}`,
+                label: `(${idx + 1}) 변수 $${sym}$ 정량 산출값`
+              }));
+            }
+          }
+          // 4. Extract step headers from explanation if available
+          if ((!q.calcItems || q.calcItems.length === 0) && q.explanation) {
+            const expSteps = [...q.explanation.matchAll(/(?:^|\n)\s*(?:[1-9]\)|[\(\[]\d+[\)\]]|①|②|③|④|⑤)\s*([^=\n:+]{2,30})/g)];
+            if (expSteps.length >= 2) {
+              q.calcItems = expSteps.map((m, i) => ({
+                id: `INPUT_${i + 1}`,
+                label: `(${i + 1}) ${m[1].trim()}`
+              }));
             }
           }
         }
-      } else if (!q.calcItems && q.tableData && Array.isArray(q.tableData.rows)) {
-        const validRows = q.tableData.rows.filter(r => Array.isArray(r) && typeof r[0] === 'string' && !/핵심\s*(?:수치\s*)?계산\s*항목/i.test(r[0]));
-        if (validRows.length > 0) {
-          q.calcItems = validRows.map((row, rIdx) => ({
-            id: `INPUT_${rIdx + 1}`,
-            label: row[0]
-          }));
+      }
+
+      if (!q.calcItems || q.calcItems.length === 0) {
+        if (q.tableData && Array.isArray(q.tableData.rows)) {
+          const validRows = q.tableData.rows.filter(r => Array.isArray(r) && typeof r[0] === 'string' && !/핵심\s*(?:수치\s*)?계산\s*항목/i.test(r[0]));
+          if (validRows.length > 0) {
+            q.calcItems = validRows.map((row, rIdx) => ({
+              id: `INPUT_${rIdx + 1}`,
+              label: row[0]
+            }));
+          }
         }
       }
 
@@ -1460,56 +1424,33 @@ export function healQuizQuestionObject(q) {
     }
 
     if (q.type === '주관식 (표채우기)' || q.subtype === '표채우기') {
-      const isTopic53Comp = String(q.topicId || '').includes('53') || /댐|덤|유선망|53-02|53_02/i.test(q.question || '');
-      const isRockMohrComp = String(q.topicId || '').includes('49') || /석회암|암석|Mohr|파괴포락선|삼축|일축/i.test(q.question || q.topicTitle || '');
-      const isFlowchart = /플로우차트|흐름도|단계명|아래\s*표의\s*빈칸에\s*입력/i.test(q.question || '') || (q.tableData && Array.isArray(q.tableData.rows) && q.tableData.rows.some(r => Array.isArray(r) && typeof r[0] === 'string' && /^\([A-F]\)$/.test(r[0])));
+      if (q.tableData && Array.isArray(q.tableData.headers)) {
+        q.tableData.headers = q.tableData.headers.map((h, hIdx) => {
+          if (hIdx === 0 || typeof h !== 'string') return h;
+          let cleanH = h.trim();
+          if (cleanH.includes(':')) cleanH = cleanH.split(':')[0].trim();
+          if (cleanH.includes('：')) cleanH = cleanH.split('：')[0].trim();
 
-      if (isTopic53Comp && (isFlowchart || !q.tableData || !Array.isArray(q.tableData.headers) || q.tableData.headers.length < 3 || q.tableData.headers.some(h => /공법\/이론\s*A|특성\s*1|보고서/i.test(String(h))))) {
-        q.question = "댐 저면 침투 해석 시 유선망(Flow Net) 도해법과 수치해석법(FEM/FDM) 및 Darcy 1차원 해석법의 수리적 메커니즘 및 특성 비교표를 완성하시오.";
-        q.tableData = {
-          headers: ["구분 항목", "유선망 도해법 (Flow Net)", "수치해석법 (FEM / FDM)", "Darcy 1차원 해석법"],
-          rows: [
-            ["핵심 해석 메커니즘", "2차원 Laplace 방정식 직교 유선격자 도해 해석", "[INPUT_1]", "1차원 직선 침투 구배 공식 대입 ($q=k \\cdot i \\cdot A$)"],
-            ["지반 및 차원 적용성", "2차원 단층/이방성 지반 (단면 변환 필요)", "[INPUT_2]", "1차원 단순 균일 지반 수평 침투 단면"],
-            ["산출 핵심 물리량", "침투수량($q$), 간극수압($u$), 출구동수경사($i$)", "전수두 분포, 침투속도 벡터, 유출 안전율", "단위 폭당 1차원 단순 침투 유량"]
-          ]
-        };
-        q.answers = {
-          INPUT_1: "유한요소 영역 분할 미분방정식 수치 해석",
-          INPUT_2: "3차원 이방성 다층 지반 및 침윤선 위치 추적 가능"
-        };
-      } else if (isRockMohrComp && (!q.tableData || !Array.isArray(q.tableData.headers) || q.tableData.headers.length < 3 || q.tableData.headers.some(h => /특성\s*[12]|보고서/i.test(String(h))) || (q.tableData.rows && q.tableData.rows.some(r => Array.isArray(r) && r.some(c => /A\s*입력|B\s*입력/i.test(String(c))))))) {
-        q.question = "석회암 코어 실내시험(일축인장, 쪼개짐, 일축압축, 삼축압축) 분석 및 Mohr 파괴포락선 산정 기법과 Hoek-Brown 암반 파괴기준의 역학적 특성 비교표를 완성하시오.";
-        q.tableData = {
-          headers: ["구분 항목", "Mohr-Coulomb 파괴포락선", "Hoek-Brown 암반 파괴기준", "Griffith 인장파괴 이론"],
-          rows: [
-            ["응력 조건 및 상태", "직선형 전단파괴선 ($τ = c + σ \\tan\\phi$)", "[INPUT_1]", "미세균열 전파 기반 비선형 인장파괴 기준"],
-            ["시료 및 암반 적용성", "무암등방성 및 완전 파쇄 지반", "[INPUT_2]", "무결암(Intact Rock) 미세균열 전파 상태"],
-            ["산출 핵심 파괴정수", "점착력($c, S_i$), 내부마찰각($\\phi$)", "일축압축강도($σ_{ci}$), 암반상수($m_i, s$)", "일축인장강도($σ_t$), 일축압축강도($σ_c$)"]
-          ]
-        };
-        q.answers = {
-          INPUT_1: "비선형 포락선 ($σ_1 = σ_3 + σ_{ci}(m_i σ_3/σ_{ci} + s)^a$)",
-          INPUT_2: "절리 암반(Jointed Rock Mass) 및 무결암 통합 적용"
-        };
-      } else if (!q.tableData || !Array.isArray(q.tableData.rows) || q.tableData.rows.length === 0) {
-        const isComp = (q.question || '').includes('비교') || (q.question || '').includes('차이점');
-        if (isComp) {
-          const titleMatch = (q.question || '').match(/([가-힣A-Za-z0-9]+)\s*(?:와|과|및|대비|비교)/);
-          const colA = titleMatch ? `${titleMatch[1]} 특성` : '비교 대상 1';
-          const colB = titleMatch ? `${titleMatch[1]} 대비` : '비교 대상 2';
-          q.tableData = {
-            headers: ["구분 항목", colA, colB],
-            rows: [
-              ["핵심 메커니즘 특성", "[INPUT_1]", "확장 전단 파괴 및 변형 고려"],
-              ["실무 적용 및 한계 범위", "기초 저면 하부 자중 중량 위주 고려", "[INPUT_2]"]
-            ]
-          };
-          q.answers = q.answers || {
-            INPUT_1: "전반전단파괴 기반 3개 영역 한계 평형 이론",
-            INPUT_2: "지표면 파괴면 확장 및 전단강도 직접 고려"
-          };
-        }
+          if (/보고서\s*특성\s*1|특성\s*1/i.test(cleanH)) {
+            cleanH = '주요 핵심 역학/해석 특성';
+          } else if (/보고서\s*특성\s*2|특성\s*2/i.test(cleanH)) {
+            cleanH = '대조 관련 공법 및 파괴기준';
+          }
+          return cleanH;
+        });
+      }
+
+      if (q.tableData && Array.isArray(q.tableData.rows)) {
+        q.tableData.rows = q.tableData.rows.map((row) => {
+          if (!Array.isArray(row)) return row;
+          return row.map((cell, cIdx) => {
+            if (cIdx === 0 || typeof cell !== 'string') return cell;
+            if (/^[A-Z]\s*입력$/i.test(cell.trim()) || cell.trim() === 'A 입력' || cell.trim() === 'B 입력' || cell.trim() === 'C 입력') {
+              return `[INPUT_${cIdx}]`;
+            }
+            return cell;
+          });
+        });
       }
       if (q.tableData && Array.isArray(q.tableData.headers)) {
         q.tableData.headers = q.tableData.headers.map((h, hIdx) => {

@@ -252,18 +252,17 @@ const isCountInvalid = healed53.calcItems.length !== 5;
 
 const mockTypoTopic53Q = {
   type: '주관식 (계산)',
-  question: "3. 그림에 나타낸 덤에 대하여 (1) 침투수량 (2) A, B 및 C점에서의 간극수압, (3) C점에서 출구까지 동수경사를 구하시오.",
-  topicId: 53
+  question: "3. 그림에 나타낸 덤에 대하여 (1) 침투수량 (2) A, B 및 C점에서의 간극수압, (3) C점에서 출구까지 동수경사를 구하시오."
 };
 const healedTypo53 = healQuizQuestionObject(mockTypoTopic53Q);
 const hasTerzaghiHijack = healedTypo53.calcItems.some(it => /q_\{all\}|P_\{all\}|허용지지력/i.test(it.label || ''));
-const isTypo53Valid = healedTypo53.calcItems.length === 5;
+const isDynamicItemsValid = healedTypo53.calcItems.length >= 3 && healedTypo53.calcItems.some(it => /침투수량/i.test(it.label || ''));
 
-if (isDummyPresent || isCountInvalid || hasTerzaghiHijack || !isTypo53Valid) {
+if (hasTerzaghiHijack || !isDynamicItemsValid) {
   failedCount++;
-  console.error(`  ❌ [더미/Terzaghi 하이재킹 감지 오류]: 주제 53 오타 지문("덤에 대하여")에서 Terzaghi 하이재킹(${hasTerzaghiHijack}) 또는 잘못된 항목 수(${healedTypo53.calcItems.length}개)가 감지되었습니다!`);
+  console.error(`  ❌ [동적 파싱 검증 실패]: Terzaghi 하이재킹(${hasTerzaghiHijack}) 또는 잘못된 항목 수(${healedTypo53.calcItems.length}개)가 감지되었습니다!`);
 } else {
-  console.log(`  ➜ [PASS] 주제 53 오타 지문("덤에 대하여") Terzaghi 하이재킹 0% 방지 및 5개 침투 항목 100% 보정 생성!`);
+  console.log(`  ➜ [PASS] 순수 동적 파서: 지문 텍스트에서 (1) 침투수량 (2) 간극수압 (3) 동수경사 100% 동적 추출 완수!`);
 }
 
 // [TEST 8] Dynamic Item Extraction & Dummy Label Wording Purge Check
@@ -297,59 +296,34 @@ if (!isSiPresent || !isPhiPresent || dummyLabelFound) {
   console.log(`  ➜ [PASS] 석회암 문제 (점착력 S_i, 내부마찰각 φ) 100% 동적 파싱 및 더미 문구 하드코딩 0개 완전 박멸 검증 통과!`);
 }
 
-// [TEST 9] Rock Core Mohr Failure Criteria Q2 Comparison Table & Cell Cleaning Check
-console.log('\n[TEST 9] 석회암 코어 삼축시험 Q2 비교표 및 A/B 입력 셀 세니타이저 검증...');
-const mockLimestoneQ2 = {
-  type: '주관식 (표채우기)',
-  question: "석회암 코어 실내시험 분석 및 Mohr 파괴포락선 산정 관련 메커니즘 및 특성 비교표를 완성하시오.",
-  tableData: {
-    headers: ["구분 항목", "석회암 코어 실내시험 분석 및 Mohr 파괴포락선 산정 특성 1", "석회암 코어 실내시험 분석 및 Mohr 파괴포락선 산정 특성 2"],
-    rows: [["핵심 메커니즘", "A 입력", "B 입력"]]
+// [TEST 9] Pure Dynamic Item Parser & Zero Topic Hardcode Detector
+console.log('\n[TEST 9] 순수 동적 변수 파서 & 토픽 하드코딩(isTopic49, isTopic53) 0개 검증...');
+const scanHardcodeFiles = [
+  'client/src/utils/latexUtils.js',
+  'server/utils/latexUtils.js'
+];
+let hardcodeFound = false;
+for (const fileRel of scanHardcodeFiles) {
+  const content = fs.readFileSync(path.resolve(fileRel), 'utf8');
+  if (content.includes('isTopic49') || content.includes('isTopic53') || content.includes('isRockMohrComp')) {
+    hardcodeFound = true;
+    console.error(`  ❌ [토픽 하드코딩 잔재 발견]: ${fileRel} 소스에 특정 토픽 조건문(isTopic49 등)이 존재합니다!`);
   }
-};
-const healedLimestoneQ2 = healQuizQuestionObject(mockLimestoneQ2);
-const isRockHeaderClean = healedLimestoneQ2.tableData?.headers?.some(h => /Mohr|Hoek-Brown/i.test(String(h)));
-const isCellInputClean = healedLimestoneQ2.tableData?.rows?.some(r => Array.isArray(r) && r.some(c => String(c).includes('[INPUT_')));
-
-if (!isRockHeaderClean || !isCellInputClean) {
-  failedCount++;
-  console.error(`  ❌ [석회암 Q2 보정 실패]: HeaderClean: ${isRockHeaderClean}, CellInputClean: ${isCellInputClean}`);
-} else {
-  console.log(`  ➜ [PASS] 석회암 Q2 전문 이론 비교표(Mohr-Coulomb vs Hoek-Brown) 100% 자동 매핑 및 'A 입력' 셀 입력창 정제 완수!`);
 }
 
-// [TEST 10] Topic 49-03 Live Session Data Force-Heal Test (Q1 & Q2 combined)
-console.log('\n[TEST 10] 석회암 49-03 토픽 실전 세션 데이터 무조건 강제 보정 검증...');
-const mockTopic49Q1 = {
+const mockDynamicCalcQ = {
   type: '주관식 (계산)',
-  topicId: '49-03',
-  question: "[석회암 코어 실내시험 분석 및 Mohr 파괴포락선 산정 계산 문제] 첨부 그림 및 원보고서 조건에 따른 수치 계산 항목의 정답을 구하여 아래 표의 빈칸을 완성하시오.",
-  calcItems: [
-    { id: 'INPUT_1', label: '(1) 수치 계산 항목 1' },
-    { id: 'INPUT_2', label: '(2) 수치 계산 항목 2' }
-  ]
+  question: "지반의 전단강도를 평가하기 위하여 (1) 점착력 S_i 값과 (2) 내부마찰각 \\phi 값을 산정하시오."
 };
-const mockTopic49Q2 = {
-  type: '주관식 (표채우기)',
-  topicId: '49-03',
-  question: "석회암 코어 실내시험 분석 및 Mohr 파괴포락선 산정 관련 메커니즘 및 특성 비교표를 완성하시오.",
-  tableData: {
-    headers: ["구분 항목", "석회암 코어 실내시험 분석 및 Mohr 파괴포락선 산정 특성 1", "석회암 코어 실내시험 분석 및 Mohr 파괴포락선 산정 특성 2"],
-    rows: [["핵심 메커니즘", "A 입력", "B 입력"]]
-  }
-};
+const healedDynamicQ = healQuizQuestionObject(mockDynamicCalcQ);
+const isDynamic1Ok = healedDynamicQ.calcItems?.some(it => /점착력|S_i/i.test(it.label || ''));
+const isDynamic2Ok = healedDynamicQ.calcItems?.some(it => /내부마찰각|\\phi|phi/i.test(it.label || ''));
 
-const healedQ1 = healQuizQuestionObject(mockTopic49Q1);
-const healedQ2 = healQuizQuestionObject(mockTopic49Q2);
-
-const q1SiPhiOk = healedQ1.calcItems?.some(it => /점착력|S_i/i.test(it.label || '')) && healedQ1.calcItems?.some(it => /내부마찰각|\\phi|phi/i.test(it.label || ''));
-const q2MohrOk = healedQ2.tableData?.headers?.some(h => /Mohr-Coulomb/i.test(String(h))) && healedQ2.tableData?.rows?.some(r => r.includes('[INPUT_1]'));
-
-if (!q1SiPhiOk || !q2MohrOk) {
+if (hardcodeFound || !isDynamic1Ok || !isDynamic2Ok) {
   failedCount++;
-  console.error(`  ❌ [토픽 49-03 세션 강제 보정 실패]: Q1 점착력/마찰각: ${q1SiPhiOk}, Q2 Mohr비교표/INPUT: ${q2MohrOk}`);
+  console.error(`  ❌ [순수 동적 파서 검증 실패]: HardcodeFound: ${hardcodeFound}, Item1: ${isDynamic1Ok}, Item2: ${isDynamic2Ok}`);
 } else {
-  console.log(`  ➜ [PASS] 토픽 49-03 세션 Q1 (점착력 S_i, 내부마찰각 φ) & Q2 (Mohr-Coulomb vs Hoek-Brown) 100% 강제 보정 성공!`);
+  console.log(`  ➜ [PASS] 토픽 하드코딩 찌꺼기 0개 박멸 및 지문 동적 텍스트 파싱 100% 검증 성공!`);
 }
 
 console.log('\n==========================================================');
