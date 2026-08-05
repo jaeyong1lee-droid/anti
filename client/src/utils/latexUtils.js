@@ -1474,6 +1474,10 @@ export function healQuizQuestionObject(q) {
           if (parenMatch) {
             cleanH = parenMatch[1].trim();
           }
+          cleanH = cleanH.replace(/보고서\s*특성\s*1/g, '주 공법/이론 (해당 토픽)')
+                        .replace(/보고서\s*특성\s*2/g, '대조 관련 공법/이론')
+                        .replace(/특성\s*1/g, '(주 공법)')
+                        .replace(/특성\s*2/g, '(대조 공법)');
           return cleanH;
         });
       }

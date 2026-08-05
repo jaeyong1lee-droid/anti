@@ -783,6 +783,26 @@ async function runTests() {
     console.log(`  ➜ [CRITICAL FAIL] E2E Verification failed! Q1SeepageCorrect: ${isQ1SeepageCorrect}, Q2TheoryTable: ${isQ2TheoryTable}`);
   }
 
+  // [TEST 27] Dummy Header ("특성 1", "특성 2") Fault Detector & Sanitizer Verification
+  console.log('\n[TEST 27] Dummy Header ("특성 1", "특성 2") Fault Detector & Sanitizer Verification...');
+  const dummyHeaderQ = {
+    type: '주관식 (표채우기)',
+    question: "테스트 토픽 관련 메커니즘 및 특성 비교표를 완성하시오.",
+    tableData: {
+      headers: ["구분 항목", "테스트 토픽 보고서 특성 1", "테스트 토픽 보고서 특성 2"],
+      rows: [["핵심 메커니즘", "[INPUT_1]", "상세 설명"]]
+    }
+  };
+  const healedDummyHeaderQ = healQuizQuestionObject(dummyHeaderQ);
+  const containsDummyHeader = healedDummyHeaderQ.tableData?.headers?.some(h => /특성\s*[12]/i.test(String(h)));
+
+  if (containsDummyHeader) {
+    failedCount++;
+    console.log(`  ➜ [CRITICAL FAIL] Sanitizer failed to clean dummy headers ("특성 1", "특성 2")!`);
+  } else {
+    console.log(`  ➜ [PASS] Sanitizer successfully replaced dummy headers ("특성 1", "특성 2") with professional theory headers!`);
+  }
+
   console.log('\n====================================================');
   if (failedCount > 0) {
     console.log(`  ❌ TEST FAILED - ${failedCount} CRITICAL ERRORS DETECTED!`);

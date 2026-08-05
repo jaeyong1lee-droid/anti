@@ -266,6 +266,26 @@ if (isDummyPresent || isCountInvalid || hasTerzaghiHijack || !isTypo53Valid) {
   console.log(`  ➜ [PASS] 주제 53 오타 지문("덤에 대하여") Terzaghi 하이재킹 0% 방지 및 5개 침투 항목 100% 보정 생성!`);
 }
 
+// [TEST 7] Dummy Header ("특성 1", "특성 2") Fault Detector
+console.log('\n[TEST 7] 더미 표 헤더("특성 1", "특성 2") 소스코드 정밀 스캔...');
+const filesToScan = [
+  'server/plugins/calculationPlugin.js',
+  'server/routes/quizRoutes.js'
+];
+let dummyHeaderFound = false;
+for (const fileRel of filesToScan) {
+  const fileContent = fs.readFileSync(path.resolve(fileRel), 'utf8');
+  if (fileContent.includes('특성 1') || fileContent.includes('특성 2')) {
+    dummyHeaderFound = true;
+    console.error(`  ❌ [더미 표 헤더 발견]: ${fileRel} 소스에 더미 표 헤더("특성 1", "특성 2")가 존재합니다!`);
+  }
+}
+if (dummyHeaderFound) {
+  failedCount++;
+} else {
+  console.log(`  ➜ [PASS] 소스코드 정밀 스캔 완료! 더미 표 헤더("특성 1", "특성 2") 0개 검증 통과!`);
+}
+
 console.log('\n==========================================================');
 if (failedCount > 0) {
   console.error(`  ❌ 자가 개선 테스터 검증 실패 - ${failedCount}개의 런타임 위험 감지됨!`);

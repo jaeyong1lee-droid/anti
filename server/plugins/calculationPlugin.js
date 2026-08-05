@@ -474,6 +474,51 @@ export function healCalcQuestion(q) {
 
 function calcFallbackQuestions(title, keywords) {
   const cleanTitle = title || '공학 토픽';
+  const isSeepage = /댐|덤|유선망|침투|53/i.test(cleanTitle);
+
+  if (isSeepage) {
+    return [
+      {
+        type: '주관식 (계산)',
+        subtype: '계산',
+        question: `${cleanTitle} 계산 문제의 요구 항목에 대한 답안을 작성하시오.`,
+        calcItems: [
+          { id: 'INPUT_1', label: '(1) 단위폭당 침투수량 $q$ (m³/s/m)' },
+          { id: 'INPUT_2', label: '(2) A지점 간극수압 $u_A$ (kPa)' },
+          { id: 'INPUT_3', label: '(3) B지점 간극수압 $u_B$ (kPa)' },
+          { id: 'INPUT_4', label: '(4) C지점 간극수압 $u_C$ (kPa)' },
+          { id: 'INPUT_5', label: '(5) 출구 유출 동수경사 $i_{exit}$' }
+        ],
+        answers: {
+          INPUT_1: "2.0 * 10^-5 m³/s/m (또는 0.02 m³/s/m)",
+          INPUT_2: "220.7 kPa (상류 A지점)",
+          INPUT_3: "196.2 kPa (중앙 B지점)",
+          INPUT_4: "171.7 kPa (하류 C지점)",
+          INPUT_5: "0.25 ~ 0.50 (출구 동수경사)"
+        }
+      },
+      {
+        type: '주관식 (표채우기)',
+        subtype: '표채우기',
+        question: `댐 저면 침투 해석 시 유선망(Flow Net) 도해법과 수치해석법(FEM/FDM) 및 Darcy 1차원 해석법의 수리적 메커니즘 및 특성 비교표를 완성하시오.`,
+        tableData: {
+          headers: ["구분 항목", "유선망 도해법 (Flow Net)", "수치해석법 (FEM / FDM)", "Darcy 1차원 해석법"],
+          rows: [
+            ["핵심 해석 메커니즘", "2차원 Laplace 방정식 직교 유선격자 도해 해석", "[INPUT_1]", "1차원 직선 침투 구배 공식 대입 ($q=k \\cdot i \\cdot A$)"],
+            ["지반 및 차원 적용성", "2차원 단층/이방성 지반 (단면 변환 필요)", "[INPUT_2]", "1차원 단순 균일 지반 수평 침투 단면"],
+            ["산출 핵심 물리량", "침투수량($q$), 간극수압($u$), 출구동수경사($i$)", "전수두 분포, 침투속도 벡터, 유출 안전율", "단위 폭당 1차원 단순 침투 유량"]
+          ]
+        },
+        answers: {
+          INPUT_1: "유한요소 영역 분할 미분방정식 수치 해석",
+          INPUT_2: "3차원 이방성 다층 지반 및 침윤선 위치 추적 가능"
+        }
+      },
+      { type: '주관식 (단답형)', question: cleanTitle + '의 공학적 의미는?', answer: '공학적 의미 서술' },
+      { type: '주관식 (다답형)', question: cleanTitle + ' 시공 시 주의사항은?', answer: '주의사항 서술' }
+    ];
+  }
+
   return [
     {
       type: '주관식 (계산)',
@@ -486,11 +531,17 @@ function calcFallbackQuestions(title, keywords) {
     },
     {
       type: '주관식 (표채우기)',
-      question: cleanTitle + ' 관련 메커니즘 및 특성 비교표를 완성하시오.',
-      tableData: { headers: ["구분 항목", cleanTitle + ' 특성 1', cleanTitle + ' 특성 2'], rows: [["핵심 메커니즘", "[INPUT_1]", "상세 설명"]] },
-      answers: { INPUT_1: "특성 1 정답 서술" }
+      question: cleanTitle + ' 관련 공법/이론 메커니즘 및 특성 비교표를 완성하시오.',
+      tableData: {
+        headers: ["구분 항목", cleanTitle + ' (주 공법)', "대조 공법/이론 A", "대조 공법/이론 B"],
+        rows: [
+          ["핵심 메커니즘", "[INPUT_1]", "대조 공법 A 특성 서술", "대조 공법 B 특성 서술"],
+          ["적용 지반/한계", "기초 지반 적합성 평가", "[INPUT_2]", "대조 한계 조건 서술"]
+        ]
+      },
+      answers: { INPUT_1: "주 공법 메커니즘 서술", INPUT_2: "대조 공법 A 적합 지반 서술" }
     },
-    { type: '주관식 (다답형)', question: cleanTitle + '의 공학적 의미는?', answer: '공학적 의미 서술' },
-    { type: '주관식 (다답형)', question: cleanTitle + ' 시공 시 주의사항은?', answer: '주의사항 서술' },
+    { type: '주관식 (단답형)', question: cleanTitle + '의 공학적 의미는?', answer: '공학적 의미 서술' },
+    { type: '주관식 (다답형)', question: cleanTitle + ' 시공 시 주의사항은?', answer: '주의사항 서술' }
   ];
 }
