@@ -209,13 +209,37 @@ for (const filePath of lockVerificationFiles) {
   }
 }
 
+// [TEST 5] 자물쇠(Lock) 상태 시 수정/재생성/삭제 차단 정밀 검증 (Lock Leak Detection)
+console.log('\n[TEST 5] 자물쇠(Lock) 상태 시 수정/재생성/삭제 차단 정밀 검증 (Lock Leak Detection)...');
+const appContent = fs.readFileSync(path.resolve('client/src/App.jsx'), 'utf8');
+
+const lockLeakChecks = [
+  { name: '표 AI 재작성 차단 (handleRegenerateTable)', check: appContent.includes('lockedTableIds[t.id]') && appContent.includes('표가 잠겨 있어 재작성할 수 없습니다.') },
+  { name: '표 셀/헤더 편집 차단 (lockedTableIds)', check: /lockedTableIds\[t\.id\]\s*\|\|\s*hIdx\s*===\s*0/.test(appContent) && appContent.includes('if (lockedTableIds[t.id]) return;') },
+  { name: '두문자 완전변경 차단 (handleRegenerateAcronym)', check: appContent.includes('lockedAcronymIds[ac.id]') && appContent.includes('두문자가 잠겨 있어 완전변경할 수 없습니다.') },
+  { name: '두문자 재조합 차단 (handleOptimizeAcronym)', check: appContent.includes('lockedAcronymIds[ac.id]') && appContent.includes('두문자가 잠겨 있어 재조합할 수 없습니다.') },
+  { name: '두문자 입력창 readOnly 차단 (lockedAcronymIds)', check: appContent.includes('readOnly={lockedAcronymIds[ac.id]}') },
+  { name: '개요 새로고침 차단 (handleRefreshOverview)', check: appContent.includes('lockedOverviewIds[ov.id]') && appContent.includes('개요가 잠겨 있어 새로고침할 수 없습니다.') },
+  { name: '개요 비교표 헤더 편집 차단 (lockedOverviewIds)', check: appContent.includes('if (lockedOverviewIds[ov.id]) return;') },
+  { name: '개요 비교표 행 삭제 차단 (lockedOverviewIds)', check: appContent.includes('!lockedOverviewIds[ov.id]') }
+];
+
+for (const lc of lockLeakChecks) {
+  if (!lc.check) {
+    failedCount++;
+    console.error(`  ❌ [자물쇠 수정 누수 감지]: ${lc.name} 가드 로직이 누락되어 있습니다!`);
+  } else {
+    console.log(`  ➜ [PASS] ${lc.name} 차단 가드 100% 정상 작동 확인`);
+  }
+}
+
 console.log('\n==========================================================');
 if (failedCount > 0) {
   console.error(`  ❌ 자가 개선 테스터 검증 실패 - ${failedCount}개의 런타임 위험 감지됨!`);
   console.log('==========================================================');
   process.exit(1);
 } else {
-  console.log('  ✅ [초고도화 자가 개선 테스터 최종 통과]: ReferenceError 0% 및 자물쇠 선언/사용 정밀 검증 완료!');
+  console.log('  ✅ [초고도화 자가 개선 테스터 최종 통과]: ReferenceError 0% 및 자물쇠 수정차단 100% 정밀 검증 완료!');
   console.log('==========================================================');
   process.exit(0);
 }

@@ -26005,8 +26005,14 @@ ${itemsStr}
                                     {/* 새로고침 버튼 */}
                                     {isExpanded && (
                                       <button
-                                        onClick={() => handleRegenerateTable(t.id)}
-                                        disabled={tableRegeneratingIds[t.id]}
+                                        onClick={() => {
+                                          if (lockedTableIds[t.id]) {
+                                            showNotification('표가 잠겨 있어 재작성할 수 없습니다.', 'warning');
+                                            return;
+                                          }
+                                          handleRegenerateTable(t.id);
+                                        }}
+                                        disabled={tableRegeneratingIds[t.id] || lockedTableIds[t.id]}
                                         className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-500/20 border border-slate-700/50 bg-slate-800/40 transition-all cursor-pointer text-[11px] font-bold flex items-center gap-1 disabled:opacity-50 disabled:pointer-events-none"
                                         title="AI 표 내용 재작성"
                                       >
@@ -26213,8 +26219,9 @@ ${itemsStr}
                                                       key={cIdx} 
                                                       className={`p-1 border-r border-white/20 last:border-r-0 align-middle cursor-pointer min-w-[100px] ${(!cell || !cell.trim()) ? 'bg-white/[0.05]' : ''}`}
                                                       onClick={() => {
-                                                        if (!isEditing) {
-                                                          setActiveEditCell({ tableId: t.id, type: 'cell', rIdx, colIdx: cIdx });
+                                                         if (lockedTableIds[t.id]) return;
+                                                         if (!isEditing) {
+                                                           setActiveEditCell({ tableId: t.id, type: 'cell', rIdx, colIdx: cIdx });
                                                           setEditingCellValue(cell);
                                                         }
                                                       }}
@@ -26479,8 +26486,14 @@ ${itemsStr}
 
                                     {/* 완전변경 버튼 */}
                                     <button
-                                      onClick={() => handleRegenerateAcronym(ac.id)}
-                                      disabled={ac.isLoading || ac.isOptimizing}
+                                      onClick={() => {
+                                        if (lockedAcronymIds[ac.id]) {
+                                          showNotification('두문자가 잠겨 있어 완전변경할 수 없습니다.', 'warning');
+                                          return;
+                                        }
+                                        handleRegenerateAcronym(ac.id);
+                                      }}
+                                      disabled={ac.isLoading || ac.isOptimizing || lockedAcronymIds[ac.id]}
                                       className="p-1.5 rounded-lg text-slate-400 hover:text-amber-400 hover:bg-amber-500/10 hover:border-amber-500/20 border border-slate-700/50 bg-slate-800/40 transition-all cursor-pointer text-[11px] font-bold flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
                                       title="현재 생성된 데이터를 소거하고 AI가 완전 새로 생성합니다"
                                     >
@@ -26490,8 +26503,14 @@ ${itemsStr}
 
                                     {/* 새로고침(재조합) 버튼 */}
                                     <button
-                                      onClick={() => handleOptimizeAcronym(ac.id)}
-                                      disabled={ac.isOptimizing}
+                                      onClick={() => {
+                                        if (lockedAcronymIds[ac.id]) {
+                                          showNotification('두문자가 잠겨 있어 재조합할 수 없습니다.', 'warning');
+                                          return;
+                                        }
+                                        handleOptimizeAcronym(ac.id);
+                                      }}
+                                      disabled={ac.isOptimizing || lockedAcronymIds[ac.id]}
                                       className="p-1.5 rounded-lg text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/10 hover:border-cyan-500/20 border border-slate-700/50 bg-slate-800/40 transition-all cursor-pointer text-[11px] font-bold flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
                                       title="외우기 쉬운 최적의 조합으로 재구성"
                                     >
@@ -26574,7 +26593,10 @@ ${itemsStr}
                                         {/* 추가 키워드 입력창 */}
                                         <div className="flex items-center gap-1.5 shrink-0 bg-slate-950/45 border border-slate-800/80 rounded-xl px-3 py-1.5 focus-within:border-emerald-500/40 transition-all w-full md:w-56">
                                           <span 
-                                            onClick={() => handleRecommendKeywordClick(ac)}
+                                            onClick={() => {
+                                            if (lockedAcronymIds[ac.id]) return;
+                                            handleRecommendKeywordClick(ac);
+                                          }}
                                             className="text-[11px] font-black text-emerald-400 shrink-0 select-none cursor-pointer hover:text-emerald-300 active:scale-95 transition-all"
                                             title="클릭하여 추천 키워드 입력 (다시 누르면 다음 단어)"
                                           >
@@ -26940,8 +26962,14 @@ ${itemsStr}
 
                                     {/* 새로고침 버튼 */}
                                     <button
-                                      onClick={() => handleRefreshOverview(ov)}
-                                      disabled={ov.isLoading}
+                                      onClick={() => {
+                                        if (lockedOverviewIds[ov.id]) {
+                                          showNotification('개요가 잠겨 있어 새로고침할 수 없습니다.', 'warning');
+                                          return;
+                                        }
+                                        handleRefreshOverview(ov);
+                                      }}
+                                      disabled={ov.isLoading || lockedOverviewIds[ov.id]}
                                       className="p-1.5 rounded-lg text-slate-400 hover:text-rose-455 hover:bg-rose-500/10 hover:border-rose-500/20 border border-slate-700/50 bg-slate-800/40 transition-all cursor-pointer text-[11px] font-bold flex items-center gap-1 disabled:opacity-50 disabled:pointer-events-none"
                                       title="AI 개요 재생성"
                                     >
@@ -27172,7 +27200,7 @@ ${itemsStr}
                                                             </th>
                                                           );
                                                         })}
-                                                        {!((selectedTopic?.id && typeof selectedTopic.id === 'string' && selectedTopic.id.startsWith('mixed_')) && !showFormulaExam) && (
+                                                        {!((selectedTopic?.id && typeof selectedTopic.id === 'string' && selectedTopic.id.startsWith('mixed_')) && !showFormulaExam) && !lockedOverviewIds[ov.id] && (
                                                           <th className="p-2 sm:p-2.5 font-extrabold text-rose-400 select-none whitespace-nowrap w-16">
                                                             비고
                                                           </th>
@@ -27198,11 +27226,12 @@ ${itemsStr}
                                                               </td>
                                                             );
                                                           })}
-                                                          {!((selectedTopic?.id && typeof selectedTopic.id === 'string' && selectedTopic.id.startsWith('mixed_')) && !showFormulaExam) && (
-                                                            <td className="p-2 sm:p-2.5 text-center align-middle whitespace-nowrap bg-slate-950/10">
-                                                              <button
-                                                                onClick={() => {
-                                                                  if (window.confirm(`'${row[0] || '이 행'}' 행을 삭제하시겠습니까?`)) {
+                                                          {!((selectedTopic?.id && typeof selectedTopic.id === 'string' && selectedTopic.id.startsWith('mixed_')) && !showFormulaExam) && !lockedOverviewIds[ov.id] && (
+                                                              <td className="p-2 sm:p-2.5 text-center align-middle whitespace-nowrap bg-slate-950/10">
+                                                                <button
+                                                                  onClick={() => {
+                                                                    if (lockedOverviewIds[ov.id]) return;
+                                                                    if (window.confirm(`'${row[0] || '이 행'}' 행을 삭제하시겠습니까?`)) {
                                                                     const updatedRows = rows.filter((_, idx) => idx !== rIdx);
                                                                     const newCompTableMd = rebuildMarkdownTable(headers, updatedRows, '<br>');
                                                                     let newContent = ov.content;

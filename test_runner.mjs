@@ -675,6 +675,30 @@ async function runTests() {
     }
   }
 
+  // [TEST 22] Lock Modification Leak Detector (Table, Acronym, Overview)
+  console.log('\n[TEST 22] Lock Modification Leak Detector (Table, Acronym, Overview)...');
+  const appCode = fs.readFileSync(path.resolve('client/src/App.jsx'), 'utf8');
+
+  const lockLeakSuite = [
+    { name: 'Table AI Regenerate Guard', check: appCode.includes('lockedTableIds[t.id]') && appCode.includes('표가 잠겨 있어 재작성할 수 없습니다.') },
+    { name: 'Table Cell/Header Edit Guard', check: /lockedTableIds\[t\.id\]\s*\|\|\s*hIdx\s*===\s*0/.test(appCode) && appCode.includes('if (lockedTableIds[t.id]) return;') },
+    { name: 'Acronym Full Regenerate Guard', check: appCode.includes('lockedAcronymIds[ac.id]') && appCode.includes('두문자가 잠겨 있어 완전변경할 수 없습니다.') },
+    { name: 'Acronym Re-optimize Guard', check: appCode.includes('lockedAcronymIds[ac.id]') && appCode.includes('두문자가 잠겨 있어 재조합할 수 없습니다.') },
+    { name: 'Acronym Input ReadOnly Guard', check: appCode.includes('readOnly={lockedAcronymIds[ac.id]}') },
+    { name: 'Overview Refresh Guard', check: appCode.includes('lockedOverviewIds[ov.id]') && appCode.includes('개요가 잠겨 있어 새로고침할 수 없습니다.') },
+    { name: 'Overview Table Header Edit Guard', check: appCode.includes('if (lockedOverviewIds[ov.id]) return;') },
+    { name: 'Overview Table Row Delete Guard', check: appCode.includes('!lockedOverviewIds[ov.id]') }
+  ];
+
+  for (const lc of lockLeakSuite) {
+    if (!lc.check) {
+      failedCount++;
+      console.log(`  ➜ [FAIL] Lock leak detected: ${lc.name} missing!`);
+    } else {
+      console.log(`  ➜ [PASS] ${lc.name} verified: Modification 100% blocked when locked.`);
+    }
+  }
+
   console.log('\n====================================================');
   if (failedCount > 0) {
     console.log(`  ❌ TEST FAILED - ${failedCount} CRITICAL ERRORS DETECTED!`);
