@@ -3513,7 +3513,8 @@ router.post('/schedules/:id/complete', async (req, res) => {
 
     // 복습 완료 시 다음 회차 자동 생성 (망각곡선 주기 기반)
     if (schedule.review_round !== 99) {
-      const baseDate = referenceDate ? new Date(referenceDate) : new Date();
+      // FIX: 망각곡선 주기는 실제 완료일자 기준
+      const baseDate = new Date();
       await scheduleNextReviewRound(schedule.topic_id, schedule.review_round, baseDate);
     }
 
@@ -3713,7 +3714,8 @@ router.post('/quiz/submit', async (req, res) => {
 
     // 다음 회차 자동 생성
     if (!isMixedReq && isPassed && !isBonus && schedule.review_round !== 99) {
-      const baseDate = referenceDate ? new Date(referenceDate) : new Date();
+      // FIX: 망각곡선 주기 복습 추천은 '참조일자(referenceDate)'가 아닌 실제 '복습 완료일자(Date.now())'를 기준으로 해야 함
+      const baseDate = new Date(); 
       await scheduleNextReviewRound(topicIdInt, schedule.review_round, baseDate);
     }
 

@@ -848,6 +848,38 @@ router.post('/topics/:id/instructions', async (req, res) => {
   }
 });
 
+// GET /api/admin/heal-schedules -> 일괄 일정 정정 (망각곡선 버그 수정용)
+router.get('/admin/heal-schedules', async (req, res) => {
+  try {
+    const pending = await dbQuery.all(`SELECT * FROM schedules WHERE status = 'pending' AND review_round > 1 AND review_round < 99`);
+    let healedCount = 0;
+    const healedDetails = [];
+    
+    for (const p of pending) {
+      const prev = await dbQuery.get(`SELECT * FROM schedules WHERE topic_id = ? AND review_round = ? AND status = 'completed'`, [p.topic_id, p.review_round - 1]);
+      if (prev && prev.completed_at) {
+        let days = 0;
+        if (prev.review_round === 1) days = 4;
+        else if (prev.review_round === 2) days = 7;
+        else if (prev.review_round === 3) days = 14;
+        else if (prev.review_round === 4) days = 35;
+        else if (prev.review_round === 5) days = 60;
+        else days = 30;
+        
+        const expectedDate = fileUtils.getLocalDateString(new Date(prev.completed_at), days);
+        if (p.planned_date !== expectedDate) {
+          await dbQuery.run(`UPDATE schedules SET planned_date = ? WHERE id = ?`, [expectedDate, p.id]);
+          healedDetails.push(`Topic ${p.topic_id} Round ${p.review_round}: ${p.planned_date} -> ${expectedDate}`);
+          healedCount++;
+        }
+      }
+    }
+    res.json({ message: `성공적으로 ${healedCount}개의 일정을 정정했습니다.`, details: healedDetails });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/dashboard -> Fetch dashboard statistics
 router.get('/dashboard', async (req, res) => {
   const queryDate = req.query.date || fileUtils.getLocalDateString();
