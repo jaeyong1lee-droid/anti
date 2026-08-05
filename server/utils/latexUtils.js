@@ -292,48 +292,14 @@ function replaceRoots(str) {
 export function healInvertedDelimiters(text) {
   if (!text || typeof text !== 'string') return text;
 
-  const hasFormulaCommands = (str) => {
-    // Check if it has backslash/won commands or common math notations
-    const rx = /(?:₩|\\)(?:Delta|sigma|gamma|cdot|tau|pi|theta|alpha|beta|phi|omega|mu|lambda|rho|nu|times|frac|dfrac|le|ge|ne|neq|sqrt|sum|int|partial|sin|cos|tan)\b|[+\-*/=<>_^]|\b[a-zA-Z]_[a-zA-Z0-9]\b/i;
-    return rx.test(str);
-  };
+  // 1. Remove misplaced dollar signs right before/after periods and colons
+  let cleaned = text.replace(/\$\s*([\.,:;])/g, '$1')
+                    .replace(/([\.,:;])\s*\$/g, '$1');
 
-  const parts = text.split('$');
-  if (parts.length > 2) {
-    let oddPlainCount = 0;
-    let evenFormulaCount = 0;
+  // 2. Remove $ ... $ wrapper if the content inside $ is 100% pure Korean text with no math operators or backslashes
+  cleaned = cleaned.replace(/\$([가-힣\s,.!?:;]+)\$/g, '$1');
 
-    for (let i = 0; i < parts.length; i++) {
-      const isOdd = i % 2 !== 0;
-      const content = parts[i].trim();
-      if (!content) continue;
-
-      const isFormula = hasFormulaCommands(content);
-      if (isOdd && !isFormula && /[가-힣]/.test(content)) {
-        oddPlainCount++;
-      }
-      if (!isOdd && isFormula) {
-        evenFormulaCount++;
-      }
-    }
-
-    if (oddPlainCount > 0 && evenFormulaCount > 0) {
-      // Rebuild by swapping delimiters
-      let rebuilt = '';
-      for (let i = 0; i < parts.length; i++) {
-        const content = parts[i];
-        if (hasFormulaCommands(content)) {
-          // If it's a formula, make sure it is wrapped in $
-          rebuilt += `$${content.trim()}$`;
-        } else {
-          // Otherwise, it's plain text, keep it as-is (without $)
-          rebuilt += content;
-        }
-      }
-      return rebuilt;
-    }
-  }
-  return text;
+  return cleaned;
 }
 
 export function balanceMathBraces(str) {
