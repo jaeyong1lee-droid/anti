@@ -20825,9 +20825,12 @@ ${itemsStr}
                                               tableAnswersRef.current[inputKey] = val;
                                             }}
                                             onKeyDown={async (e) => {
-                                              if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                                              if (e.key === 'Enter' && !e.shiftKey) {
                                                 e.preventDefault();
-                                                if (!gradingLoading[idx]) {
+                                                if (gradingLoading[inputKey] || gradingLoading[idx]) return;
+                                                if (isRevd) {
+                                                  await gradeTableQuestion(idx, q, [inputId], true);
+                                                } else {
                                                   await gradeTableQuestion(idx, q);
                                                   setRevealedQuestions(prev => ({ ...prev, [idx]: true }));
                                                 }
@@ -24484,9 +24487,12 @@ ${itemsStr}
                                               examTableAnswersRef.current[inputKey] = val;
                                             }}
                                             onKeyDown={async (e) => {
-                                              if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                                              if (e.key === 'Enter' && !e.shiftKey) {
                                                 e.preventDefault();
-                                                if (!gradingLoading[idx]) {
+                                                if (gradingLoading[inputKey] || gradingLoading[idx]) return;
+                                                if (examRevealed[idx]) {
+                                                  await gradeTableQuestion(idx, q, [inputId], true);
+                                                } else {
                                                   await gradeTableQuestion(idx, q);
                                                   setExamRevealed(prev => ({ ...prev, [idx]: true }));
                                                 }
