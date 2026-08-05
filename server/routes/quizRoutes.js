@@ -39,8 +39,11 @@ const router = express.Router();
     }
 
     // Auto-heal active review session keys in app_session DB table to scrub all remaining dummy wording
+    // Filtered query to minimize Neon DB network transfer usage
     const activeSessions = await dbQuery.all(
-      `SELECT key, value FROM app_session WHERE key LIKE 'review_questions_%'`
+      `SELECT key, value FROM app_session 
+       WHERE key LIKE 'review_questions_%' 
+       AND (value LIKE '%특성 1%' OR value LIKE '%특성 2%' OR value LIKE '%A 입력%' OR value LIKE '%수치 계산%')`
     );
     let scrubbedCount = 0;
     for (const s of activeSessions) {
