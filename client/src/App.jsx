@@ -1210,8 +1210,28 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
   });
 
   let expectedBoxNum = 1;
+  let nextExpectedLetterIdx = 0; // 0 for A, 1 for B...
   const fixTitleSequence = (boxObj) => {
     if (!boxObj || !boxObj.content || boxObj.content.length === 0) return;
+    
+    // Fix letter sequences dynamically to handle old hallucinated DB entries
+    boxObj.content = boxObj.content.map((line) => {
+      let lContent = line;
+      const firstLetter = lContent.search(/\([A-F]\)/);
+      if (firstLetter !== -1) {
+        // Remove trailing hallucinatory letters like ", (B), (C)"
+        lContent = lContent.replace(/\([A-F]\)/g, (m, o) => o === firstLetter ? m : '');
+        // Remove "입력" garbage and trailing commas
+        lContent = lContent.replace(/입력\s*_*/g, '').replace(/[,\s]+\]$/, ' ]').replace(/^\[\s*[,\s]+/, '[ ').replace(/[,\s]+$/, '');
+        
+        // Dynamically reassign letter to ensure sequential order (A, B, C...)
+        const newLetter = String.fromCharCode(65 + nextExpectedLetterIdx);
+        lContent = lContent.replace(/\([A-F]\)/, `(${newLetter})`);
+        nextExpectedLetterIdx++;
+      }
+      return lContent;
+    });
+
     const title = boxObj.content[0];
     const match = title.match(/\[(\d+|\*)\]/);
     if (match) {
@@ -1239,7 +1259,13 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
     }
   });
 
-  const renderLineContent = (content) => {
+  const renderLineContent = (rawContent) => {
+    let content = rawContent;
+    const firstLetter = content.search(/\([A-F]\)/);
+    if (firstLetter !== -1) {
+      content = content.replace(/\([A-F]\)/g, (m, o) => o === firstLetter ? m : '');
+      content = content.replace(/입력\s*_*/g, '').replace(/[,\s]+\]$/, ' ]').replace(/^\[\s*[,\s]+/, '[ ').replace(/[,\s]+$/, '');
+    }
     const letterMatch = content.match(/\(([A-F])\)/);
     if (letterMatch && tableAnswers && setTableAnswers) {
       const letter = letterMatch[1];
@@ -1668,7 +1694,13 @@ const renderCompleteFlowchart = (flowchartText, katexLoaded, q) => {
     }
   });
 
-  const renderLineContent = (content) => {
+  const renderLineContent = (rawContent) => {
+    let content = rawContent;
+    const firstLetter = content.search(/\([A-F]\)/);
+    if (firstLetter !== -1) {
+      content = content.replace(/\([A-F]\)/g, (m, o) => o === firstLetter ? m : '');
+      content = content.replace(/입력\s*_*/g, '').replace(/[,\s]+\]$/, ' ]').replace(/^\[\s*[,\s]+/, '[ ').replace(/[,\s]+$/, '');
+    }
     const targetRegex = /\(([A-F])\)/g;
     if (!targetRegex.test(content)) {
       return <LatexRenderer text={content} katexLoaded={katexLoaded} enableAddFormula={true} forceInline={true} />;
