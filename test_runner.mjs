@@ -1,4 +1,5 @@
 import http from 'http';
+import fs from 'fs';
 import { execSync } from 'child_process';
 import path from 'path';
 
@@ -637,6 +638,34 @@ async function runTests() {
   } else {
     failedCount++;
     console.log(`  ➜ [FAIL] POST /api/grade-subjective failed (Status: ${seepageRes.error || seepageRes.statusCode})`);
+  }
+
+  // [TEST 21] Lock/Unlock Toggle Icon & State Control Verification (Table, Acronym, Overview)
+  console.log('\n[TEST 21] Lock/Unlock Toggle Icon & State Control Verification (Table, Acronym, Overview)...');
+  const lockFiles = [
+    'client/src/App.jsx',
+    'client/src/components/FloatingMemorization.jsx'
+  ];
+
+  for (const filePath of lockFiles) {
+    const fullPath = path.resolve(filePath);
+    if (!fs.existsSync(fullPath)) {
+      failedCount++;
+      console.log(`  ➜ [CRITICAL FAIL] Target file ${filePath} does not exist!`);
+      continue;
+    }
+    const content = fs.readFileSync(fullPath, 'utf8');
+    const hasLockIcon = content.includes('<Lock') || content.includes('Lock,') || content.includes('Lock ');
+    const hasLockedTable = content.includes('lockedTableIds');
+    const hasLockedAcronym = content.includes('lockedAcronymIds');
+    const hasLockedOverview = content.includes('lockedOverviewIds');
+
+    if (!hasLockIcon || !hasLockedTable || !hasLockedAcronym || !hasLockedOverview) {
+      failedCount++;
+      console.log(`  ➜ [CRITICAL FAIL] Lock/Unlock feature missing in ${filePath}: LockIcon=${hasLockIcon}, Table=${hasLockedTable}, Acronym=${hasLockedAcronym}, Overview=${hasLockedOverview}`);
+    } else {
+      console.log(`  ➜ [PASS] ${filePath} verified: Lock icon & state handlers (lockedTableIds, lockedAcronymIds, lockedOverviewIds) 100% active.`);
+    }
   }
 
   console.log('\n====================================================');

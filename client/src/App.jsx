@@ -25945,6 +25945,27 @@ ${itemsStr}
 
                                   {/* Action Buttons Group */}
                                   <div className="flex items-center gap-2 self-end md:self-auto shrink-0 select-none">
+                                    {/* 🔒 자물쇠 잠금/잠금해제 버튼 (AI 재작성 바로 왼쪽) */}
+                                    {isExpanded && (
+                                      <button
+                                        onClick={() => {
+                                          setLockedTableIds(prev => ({
+                                            ...prev,
+                                            [t.id]: !prev[t.id]
+                                          }));
+                                        }}
+                                        className={`p-1.5 rounded-lg border transition-all cursor-pointer text-[11px] font-bold flex items-center gap-1 shrink-0 ${
+                                          lockedTableIds[t.id]
+                                            ? "text-amber-400 border-amber-500/40 bg-amber-950/50 hover:bg-amber-900/60 shadow-xs"
+                                            : "text-slate-400 border-slate-700/50 bg-slate-800/40 hover:text-slate-200 hover:bg-slate-700/50"
+                                        }`}
+                                        title={lockedTableIds[t.id] ? "표 편집 잠금 상태 (클릭 시 잠금 해제)" : "표 편집 가능 상태 (클릭 시 수정 잠금)"}
+                                      >
+                                        {lockedTableIds[t.id] ? <Lock size={12} className="text-amber-400" /> : <Unlock size={12} className="text-slate-400" />}
+                                        <span>{lockedTableIds[t.id] ? "잠김" : "잠금"}</span>
+                                      </button>
+                                    )}
+
                                     {/* 새로고침 버튼 */}
                                     {isExpanded && (
                                       <button
@@ -26086,11 +26107,14 @@ ${itemsStr}
                                                         rows={1}
                                                         ref={(el) => {
                                                           if (el) {
-                                                            el.focus();
+                                                            if (!el.dataset.focused) {
+                                                              el.dataset.focused = 'true';
+                                                              el.focus();
+                                                              const len = el.value.length;
+                                                              el.setSelectionRange(len, len);
+                                                            }
                                                             el.style.height = 'auto';
                                                             el.style.height = `${el.scrollHeight}px`;
-                                                            const len = el.value.length;
-                                                            el.setSelectionRange(len, len);
                                                           }
                                                         }}
                                                       />
@@ -26198,11 +26222,14 @@ ${itemsStr}
                                                           rows={1}
                                                           ref={(el) => {
                                                             if (el) {
-                                                              el.focus();
+                                                              if (!el.dataset.focused) {
+                                                                el.dataset.focused = 'true';
+                                                                el.focus();
+                                                                const len = el.value.length;
+                                                                el.setSelectionRange(len, len);
+                                                              }
                                                               el.style.height = 'auto';
                                                               el.style.height = `${el.scrollHeight}px`;
-                                                              const len = el.value.length;
-                                                              el.setSelectionRange(len, len);
                                                             }
                                                           }}
                                                         />
@@ -26395,6 +26422,25 @@ ${itemsStr}
 
                                   {/* Action Buttons Group */}
                                   <div className="flex items-center gap-2 self-end md:self-auto shrink-0 select-none">
+                                    {/* 🔒 자물쇠 잠금/잠금해제 버튼 (완전변경 바로 왼쪽) */}
+                                    <button
+                                      onClick={() => {
+                                        setLockedAcronymIds(prev => ({
+                                          ...prev,
+                                          [ac.id]: !prev[ac.id]
+                                        }));
+                                      }}
+                                      className={`p-1.5 rounded-lg border transition-all cursor-pointer text-[11px] font-bold flex items-center gap-1 shrink-0 ${
+                                        lockedAcronymIds[ac.id]
+                                          ? "text-amber-400 border-amber-500/40 bg-amber-950/50 hover:bg-amber-900/60 shadow-xs"
+                                          : "text-slate-400 border-slate-700/50 bg-slate-800/40 hover:text-slate-200 hover:bg-slate-700/50"
+                                      }`}
+                                      title={lockedAcronymIds[ac.id] ? "두문자 편집 잠금 상태 (클릭 시 잠금 해제)" : "두문자 편집 가능 상태 (클릭 시 수정 잠금)"}
+                                    >
+                                      {lockedAcronymIds[ac.id] ? <Lock size={12} className="text-amber-400" /> : <Unlock size={12} className="text-slate-400" />}
+                                      <span>{lockedAcronymIds[ac.id] ? "잠김" : "잠금"}</span>
+                                    </button>
+
                                     {/* 완전변경 버튼 */}
                                     <button
                                       onClick={() => handleRegenerateAcronym(ac.id)}
@@ -26834,6 +26880,25 @@ ${itemsStr}
 
                                   {/* Action Buttons Group */}
                                   <div className="flex items-center gap-2 self-end md:self-auto shrink-0 select-none">
+                                    {/* 🔒 자물쇠 잠금/잠금해제 버튼 (새로고침 바로 왼쪽) */}
+                                    <button
+                                      onClick={() => {
+                                        setLockedOverviewIds(prev => ({
+                                          ...prev,
+                                          [ov.id]: !prev[ov.id]
+                                        }));
+                                      }}
+                                      className={`p-1.5 rounded-lg border transition-all cursor-pointer text-[11px] font-bold flex items-center gap-1 shrink-0 ${
+                                        lockedOverviewIds[ov.id]
+                                          ? "text-amber-400 border-amber-500/40 bg-amber-950/50 hover:bg-amber-900/60 shadow-xs"
+                                          : "text-slate-400 border-slate-700/50 bg-slate-800/40 hover:text-slate-200 hover:bg-slate-700/50"
+                                      }`}
+                                      title={lockedOverviewIds[ov.id] ? "개요 편집 잠금 상태 (클릭 시 잠금 해제)" : "개요 편집 가능 상태 (클릭 시 수정 잠금)"}
+                                    >
+                                      {lockedOverviewIds[ov.id] ? <Lock size={12} className="text-amber-400" /> : <Unlock size={12} className="text-slate-400" />}
+                                      <span>{lockedOverviewIds[ov.id] ? "잠김" : "잠금"}</span>
+                                    </button>
+
                                     {/* 새로고침 버튼 */}
                                     <button
                                       onClick={() => handleRefreshOverview(ov)}

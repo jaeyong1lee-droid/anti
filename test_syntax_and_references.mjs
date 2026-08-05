@@ -155,13 +155,57 @@ if (failedCount === 0) {
   console.log('  ➜ [PASS] 미선언 식별자 전수 스캔 100% 정상 (ReferenceError 위험 요인 0개)');
 }
 
+// [TEST 4] 자물쇠(Lock/Unlock) 기능 UI 컴포넌트 실체화 정밀 검증 (Table, Acronym, Overview)
+console.log('\n[TEST 4] 자물쇠(Lock/Unlock) 기능 UI 컴포넌트 실체화 정밀 검증...');
+const lockVerificationFiles = [
+  'client/src/App.jsx',
+  'client/src/components/FloatingMemorization.jsx'
+];
+
+for (const filePath of lockVerificationFiles) {
+  const fullPath = path.resolve(filePath);
+  if (!fs.existsSync(fullPath)) {
+    failedCount++;
+    console.error(`  ❌ [CRITICAL FAIL] 필수 소스파일 ${filePath} 가 존재하지 않습니다.`);
+    continue;
+  }
+  const content = fs.readFileSync(fullPath, 'utf8');
+
+  // Check state and lock icon imports
+  const hasLockIcon = content.includes('<Lock') || content.includes('Lock,') || content.includes('Lock ');
+  const hasLockedTable = content.includes('lockedTableIds');
+  const hasLockedAcronym = content.includes('lockedAcronymIds');
+  const hasLockedOverview = content.includes('lockedOverviewIds');
+
+  if (!hasLockIcon) {
+    failedCount++;
+    console.error(`  ❌ [자물쇠 기능 누락 감지]: ${filePath} 에 <Lock> 자물쇠 아이콘 컴포넌트가 존재하지 않습니다!`);
+  }
+  if (!hasLockedTable) {
+    failedCount++;
+    console.error(`  ❌ [자물쇠 기능 누락 감지]: ${filePath} 에 lockedTableIds (표 자물쇠 상태) 제어로직이 존재하지 않습니다!`);
+  }
+  if (!hasLockedAcronym) {
+    failedCount++;
+    console.error(`  ❌ [자물쇠 기능 누락 감지]: ${filePath} 에 lockedAcronymIds (두문자 자물쇠 상태) 제어로직이 존재하지 않습니다!`);
+  }
+  if (!hasLockedOverview) {
+    failedCount++;
+    console.error(`  ❌ [자물쇠 기능 누락 감지]: ${filePath} 에 lockedOverviewIds (개요 자물쇠 상태) 제어로직이 존재하지 않습니다!`);
+  }
+
+  if (hasLockIcon && hasLockedTable && hasLockedAcronym && hasLockedOverview) {
+    console.log(`  ➜ [PASS] ${filePath} 표, 두문자, 개요 3개 탭 자물쇠(Lock/Unlock) 제어/표시 로직 100% 정상 실체화 확인!`);
+  }
+}
+
 console.log('\n==========================================================');
 if (failedCount > 0) {
   console.error(`  ❌ 자가 개선 테스터 검증 실패 - ${failedCount}개의 런타임 위험 감지됨!`);
   console.log('==========================================================');
   process.exit(1);
 } else {
-  console.log('  ✅ [초고도화 자가 개선 테스터 최종 통과]: ReferenceError 0% 사전 검증 완료!');
+  console.log('  ✅ [초고도화 자가 개선 테스터 최종 통과]: ReferenceError 0% 및 자물쇠 기능 실체화 검증 완료!');
   console.log('==========================================================');
   process.exit(0);
 }

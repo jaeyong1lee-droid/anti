@@ -765,6 +765,13 @@ export function FloatingMemorization({
   isVisible,
   onClose,
   focusedQuestion,
+  // Lock state props
+  lockedTableIds = {},
+  setLockedTableIds,
+  lockedAcronymIds = {},
+  setLockedAcronymIds,
+  lockedOverviewIds = {},
+  setLockedOverviewIds,
   // Tables
   formulaTables,
   setFormulaTables,
