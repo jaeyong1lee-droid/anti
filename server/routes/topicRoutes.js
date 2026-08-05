@@ -139,32 +139,6 @@ router.get('/topics', async (req, res) => {
 
     const topicIds = topics.map(t => t.id);
 
-    // --- AUTO-HEAL: 자동 일정 정정 로직 (망각곡선 버그로 인한 과거 날짜 픽스) ---
-    try {
-      const pending = await dbQuery.all(`SELECT * FROM schedules WHERE status = 'pending' AND review_round > 1 AND review_round < 99`);
-      for (const p of pending) {
-        const prev = await dbQuery.get(`SELECT * FROM schedules WHERE topic_id = ? AND review_round = ? AND status = 'completed'`, [p.topic_id, p.review_round - 1]);
-        if (prev && prev.completed_at) {
-          let days = 0;
-          if (prev.review_round === 1) days = 4;
-          else if (prev.review_round === 2) days = 7;
-          else if (prev.review_round === 3) days = 14;
-          else if (prev.review_round === 4) days = 35;
-          else if (prev.review_round === 5) days = 60;
-          else days = 30;
-          
-          const expectedDate = fileUtils.getLocalDateString(new Date(prev.completed_at), days);
-          if (p.planned_date !== expectedDate) {
-            await dbQuery.run(`UPDATE schedules SET planned_date = ? WHERE id = ?`, [expectedDate, p.id]);
-            console.log(`[Auto-Heal] Topic ${p.topic_id} Round ${p.review_round}: ${p.planned_date} -> ${expectedDate}`);
-          }
-        }
-      }
-    } catch (healErr) {
-      console.error('[Auto-Heal] Failed to auto-heal schedules:', healErr.message);
-    }
-    // --- END AUTO-HEAL ---
-
     // Batch query all schedules for all topics in one shot (replaces N+1 query)
     const placeholders = topicIds.map(() => '?').join(',');
     const allSchedules = await dbQuery.all(
@@ -875,12 +849,37 @@ router.post('/topics/:id/instructions', async (req, res) => {
   }
 });
 
-// GET /api/admin/heal-schedules -> 일괄 일정 정정 (망각곡선 버그 수정용)
+// GET /api/admin/heal-schedules -> 일괄 일정 정정 (망각곡선 버그 수정용 및 순서 꼬임 복구)
 router.get('/admin/heal-schedules', async (req, res) => {
   try {
-    const pending = await dbQuery.all(`SELECT * FROM schedules WHERE status = 'pending' AND review_round > 1 AND review_round < 99`);
-    let healedCount = 0;
     const healedDetails = [];
+    let healedCount = 0;
+
+    // 1. 순서 꼬임(Chronological out-of-order) 복구
+    // 모든 토픽의 completed 일정들을 가져옴
+    const allCompleted = await dbQuery.all(`SELECT * FROM schedules WHERE status = 'completed' AND review_round < 99 ORDER BY topic_id ASC, completed_at ASC`);
+    
+    // topic_id 기준으로 그룹화
+    const byTopic = {};
+    for (const s of allCompleted) {
+      if (!byTopic[s.topic_id]) byTopic[s.topic_id] = [];
+      byTopic[s.topic_id].push(s);
+    }
+
+    // 각 토픽별로 실제 시간순(completed_at)에 맞게 review_round 재부여
+    for (const [topicId, schedules] of Object.entries(byTopic)) {
+      for (let i = 0; i < schedules.length; i++) {
+        const correctRound = i + 1;
+        if (schedules[i].review_round !== correctRound) {
+          await dbQuery.run(`UPDATE schedules SET review_round = ? WHERE id = ?`, [correctRound, schedules[i].id]);
+          healedDetails.push(`Topic ${topicId} Order Fix: id ${schedules[i].id} round ${schedules[i].review_round} -> ${correctRound}`);
+          healedCount++;
+        }
+      }
+    }
+
+    // 2. 대기중(pending) 일정의 planned_date 재계산
+    const pending = await dbQuery.all(`SELECT * FROM schedules WHERE status = 'pending' AND review_round > 1 AND review_round < 99`);
     
     for (const p of pending) {
       const prev = await dbQuery.get(`SELECT * FROM schedules WHERE topic_id = ? AND review_round = ? AND status = 'completed'`, [p.topic_id, p.review_round - 1]);
@@ -896,14 +895,14 @@ router.get('/admin/heal-schedules', async (req, res) => {
         const expectedDate = fileUtils.getLocalDateString(new Date(prev.completed_at), days);
         if (p.planned_date !== expectedDate) {
           await dbQuery.run(`UPDATE schedules SET planned_date = ? WHERE id = ?`, [expectedDate, p.id]);
-          healedDetails.push(`Topic ${p.topic_id} Round ${p.review_round}: ${p.planned_date} -> ${expectedDate}`);
+          healedDetails.push(`Topic ${p.topic_id} Date Fix: Round ${p.review_round} ${p.planned_date} -> ${expectedDate}`);
           healedCount++;
         }
       }
     }
-    res.json({ message: `성공적으로 ${healedCount}개의 일정을 정정했습니다.`, details: healedDetails });
+    res.json({ message: `성공적으로 ${healedCount}건의 일정을 정정했습니다.`, details: healedDetails });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message, stack: err.stack });
   }
 });
 
