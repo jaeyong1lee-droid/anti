@@ -123,7 +123,11 @@ const targetFiles = [
   'server/plugins/calculationPlugin.js'
 ];
 
-const checkSymbols = ['isComparisonTable', 'isExcessPlaceholders', 'targetCIdx', 'boxNum', 'boxNumMatch', 'validateAndHealQuestion'];
+const checkSymbols = [
+  'isComparisonTable', 'isExcessPlaceholders', 'targetCIdx', 'boxNum', 'boxNumMatch', 'validateAndHealQuestion',
+  'lockedTableIds', 'lockedAcronymIds', 'lockedOverviewIds',
+  'setLockedTableIds', 'setLockedAcronymIds', 'setLockedOverviewIds'
+];
 
 for (const filePath of targetFiles) {
   const fullPath = path.resolve(filePath);
@@ -136,14 +140,14 @@ for (const filePath of targetFiles) {
       const symRegex = new RegExp(`\\b${sym}\\b`);
       if (symRegex.test(lineStr)) {
         // 해당 구문 이전에서 식별자가 선언되었는지 확인
-        const beforeContent = lines.slice(Math.max(0, lineIdx - 15), lineIdx + 1).join('\n');
+        const beforeContent = lines.slice(Math.max(0, lineIdx - 20), lineIdx + 1).join('\n');
         const isDecl = new RegExp(`(const|let|var|function|import|export|class|\\(|,)\\s*${sym}\\b`).test(beforeContent);
         if (!isDecl && !lineStr.includes(`//`) && !lineStr.includes(`*`)) {
-          // 추가 확인: 상위 스코프에 선언이 존재하는지 전수 체크
+          // 추가 확인: 파일 전체 스코프에 선언이 존재하는지 전수 체크
           const fullDecl = new RegExp(`(const|let|var|function|import|export|class|{|,)\\s*[^;\\n]*\\b${sym}\\b`).test(fileContent);
           if (!fullDecl) {
             failedCount++;
-            console.error(`  ❌ [오류 감지]: ${filePath}:${lineIdx + 1} 라인에서 식별자 '${sym}'가 선언 없이 사용되고 있습니다!`);
+            console.error(`  ❌ [CRITICAL ReferenceError 감지]: ${filePath}:${lineIdx + 1} 라인에서 식별자 '${sym}'가 선언(useState/const/let/props) 없이 참조되고 있습니다!`);
           }
         }
       }
@@ -152,11 +156,11 @@ for (const filePath of targetFiles) {
 }
 
 if (failedCount === 0) {
-  console.log('  ➜ [PASS] 미선언 식별자 전수 스캔 100% 정상 (ReferenceError 위험 요인 0개)');
+  console.log('  ➜ [PASS] 미선언 식별자 스코프 전수 스캔 100% 정상 (ReferenceError 위험 요인 0개)');
 }
 
 // [TEST 4] 자물쇠(Lock/Unlock) 기능 UI 컴포넌트 실체화 정밀 검증 (Table, Acronym, Overview)
-console.log('\n[TEST 4] 자물쇠(Lock/Unlock) 기능 UI 컴포넌트 실체화 정밀 검증...');
+console.log('\n[TEST 4] 자물쇠(Lock/Unlock) 기능 UI 컴포넌트 실체화 정밀 검증 (선언 + 사용 이중 검증)...');
 const lockVerificationFiles = [
   'client/src/App.jsx',
   'client/src/components/FloatingMemorization.jsx'
@@ -171,31 +175,37 @@ for (const filePath of lockVerificationFiles) {
   }
   const content = fs.readFileSync(fullPath, 'utf8');
 
-  // Check state and lock icon imports
+  // Check state declarations and lock icon imports
   const hasLockIcon = content.includes('<Lock') || content.includes('Lock,') || content.includes('Lock ');
-  const hasLockedTable = content.includes('lockedTableIds');
-  const hasLockedAcronym = content.includes('lockedAcronymIds');
-  const hasLockedOverview = content.includes('lockedOverviewIds');
+  
+  // Verify both declaration AND usage for each lock state
+  const hasLockedTableDecl = /const\s*\[\s*lockedTableIds|lockedTableIds\s*=\s*\{\}/.test(content);
+  const hasLockedAcronymDecl = /const\s*\[\s*lockedAcronymIds|lockedAcronymIds\s*=\s*\{\}/.test(content);
+  const hasLockedOverviewDecl = /const\s*\[\s*lockedOverviewIds|lockedOverviewIds\s*=\s*\{\}/.test(content);
+
+  const hasLockedTableUse = content.includes('lockedTableIds');
+  const hasLockedAcronymUse = content.includes('lockedAcronymIds');
+  const hasLockedOverviewUse = content.includes('lockedOverviewIds');
 
   if (!hasLockIcon) {
     failedCount++;
     console.error(`  ❌ [자물쇠 기능 누락 감지]: ${filePath} 에 <Lock> 자물쇠 아이콘 컴포넌트가 존재하지 않습니다!`);
   }
-  if (!hasLockedTable) {
+  if (!hasLockedTableDecl || !hasLockedTableUse) {
     failedCount++;
-    console.error(`  ❌ [자물쇠 기능 누락 감지]: ${filePath} 에 lockedTableIds (표 자물쇠 상태) 제어로직이 존재하지 않습니다!`);
+    console.error(`  ❌ [자물쇠 선언/사용 누락 감지]: ${filePath} 에 lockedTableIds (표 자물쇠 상태) 선언(${hasLockedTableDecl}) 및 사용(${hasLockedTableUse}) 검증 실패!`);
   }
-  if (!hasLockedAcronym) {
+  if (!hasLockedAcronymDecl || !hasLockedAcronymUse) {
     failedCount++;
-    console.error(`  ❌ [자물쇠 기능 누락 감지]: ${filePath} 에 lockedAcronymIds (두문자 자물쇠 상태) 제어로직이 존재하지 않습니다!`);
+    console.error(`  ❌ [자물쇠 선언/사용 누락 감지]: ${filePath} 에 lockedAcronymIds (두문자 자물쇠 상태) 선언(${hasLockedAcronymDecl}) 및 사용(${hasLockedAcronymUse}) 검증 실패!`);
   }
-  if (!hasLockedOverview) {
+  if (!hasLockedOverviewDecl || !hasLockedOverviewUse) {
     failedCount++;
-    console.error(`  ❌ [자물쇠 기능 누락 감지]: ${filePath} 에 lockedOverviewIds (개요 자물쇠 상태) 제어로직이 존재하지 않습니다!`);
+    console.error(`  ❌ [자물쇠 선언/사용 누락 감지]: ${filePath} 에 lockedOverviewIds (개요 자물쇠 상태) 선언(${hasLockedOverviewDecl}) 및 사용(${hasLockedOverviewUse}) 검증 실패!`);
   }
 
-  if (hasLockIcon && hasLockedTable && hasLockedAcronym && hasLockedOverview) {
-    console.log(`  ➜ [PASS] ${filePath} 표, 두문자, 개요 3개 탭 자물쇠(Lock/Unlock) 제어/표시 로직 100% 정상 실체화 확인!`);
+  if (hasLockIcon && hasLockedTableDecl && hasLockedAcronymDecl && hasLockedOverviewDecl && hasLockedTableUse && hasLockedAcronymUse && hasLockedOverviewUse) {
+    console.log(`  ➜ [PASS] ${filePath} 표, 두문자, 개요 3개 탭 자물쇠(Lock/Unlock) 선언+사용 100% 정상 실체화 확인!`);
   }
 }
 
@@ -205,7 +215,7 @@ if (failedCount > 0) {
   console.log('==========================================================');
   process.exit(1);
 } else {
-  console.log('  ✅ [초고도화 자가 개선 테스터 최종 통과]: ReferenceError 0% 및 자물쇠 기능 실체화 검증 완료!');
+  console.log('  ✅ [초고도화 자가 개선 테스터 최종 통과]: ReferenceError 0% 및 자물쇠 선언/사용 정밀 검증 완료!');
   console.log('==========================================================');
   process.exit(0);
 }

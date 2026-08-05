@@ -170,7 +170,8 @@ async function runTests() {
   console.log('\n[TEST 7] REAL Vite Bundle & React Component Compilation Check...');
   try {
     const clientPath = path.join(process.cwd(), 'client');
-    execSync(`cmd /c npm run build`, { cwd: clientPath, encoding: 'utf-8', stdio: 'pipe' });
+    const viteBin = path.join(clientPath, 'node_modules', 'vite', 'bin', 'vite.js');
+    execSync(`node "${viteBin}" build`, { cwd: clientPath, encoding: 'utf-8', stdio: 'pipe' });
     console.log('  ➜ [SUCCESS] Vite Build PASSED (All React components compiled cleanly).');
   } catch (err) {
     failedCount++;
@@ -656,15 +657,20 @@ async function runTests() {
     }
     const content = fs.readFileSync(fullPath, 'utf8');
     const hasLockIcon = content.includes('<Lock') || content.includes('Lock,') || content.includes('Lock ');
-    const hasLockedTable = content.includes('lockedTableIds');
-    const hasLockedAcronym = content.includes('lockedAcronymIds');
-    const hasLockedOverview = content.includes('lockedOverviewIds');
+    
+    const hasLockedTableDecl = /const\s*\[\s*lockedTableIds|lockedTableIds\s*=\s*\{\}/.test(content);
+    const hasLockedAcronymDecl = /const\s*\[\s*lockedAcronymIds|lockedAcronymIds\s*=\s*\{\}/.test(content);
+    const hasLockedOverviewDecl = /const\s*\[\s*lockedOverviewIds|lockedOverviewIds\s*=\s*\{\}/.test(content);
 
-    if (!hasLockIcon || !hasLockedTable || !hasLockedAcronym || !hasLockedOverview) {
+    const hasLockedTableUse = content.includes('lockedTableIds');
+    const hasLockedAcronymUse = content.includes('lockedAcronymIds');
+    const hasLockedOverviewUse = content.includes('lockedOverviewIds');
+
+    if (!hasLockIcon || !hasLockedTableDecl || !hasLockedAcronymDecl || !hasLockedOverviewDecl || !hasLockedTableUse || !hasLockedAcronymUse || !hasLockedOverviewUse) {
       failedCount++;
-      console.log(`  ➜ [CRITICAL FAIL] Lock/Unlock feature missing in ${filePath}: LockIcon=${hasLockIcon}, Table=${hasLockedTable}, Acronym=${hasLockedAcronym}, Overview=${hasLockedOverview}`);
+      console.log(`  ➜ [CRITICAL FAIL] Lock/Unlock state declaration/usage missing in ${filePath}: LockIcon=${hasLockIcon}, TableDecl=${hasLockedTableDecl}, AcronymDecl=${hasLockedAcronymDecl}, OverviewDecl=${hasLockedOverviewDecl}`);
     } else {
-      console.log(`  ➜ [PASS] ${filePath} verified: Lock icon & state handlers (lockedTableIds, lockedAcronymIds, lockedOverviewIds) 100% active.`);
+      console.log(`  ➜ [PASS] ${filePath} verified: Lock icon & state declarations+usage (lockedTableIds, lockedAcronymIds, lockedOverviewIds) 100% active.`);
     }
   }
 

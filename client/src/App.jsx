@@ -5446,6 +5446,30 @@ export default function App() {
       return {};
     }
   });
+  const [lockedTableIds, setLockedTableIds] = useState(() => {
+    try {
+      const saved = localStorage.getItem('anti_locked_table_ids');
+      return saved ? JSON.parse(saved) : {};
+    } catch (e) {
+      return {};
+    }
+  });
+  const [lockedAcronymIds, setLockedAcronymIds] = useState(() => {
+    try {
+      const saved = localStorage.getItem('anti_locked_acronym_ids');
+      return saved ? JSON.parse(saved) : {};
+    } catch (e) {
+      return {};
+    }
+  });
+  const [lockedOverviewIds, setLockedOverviewIds] = useState(() => {
+    try {
+      const saved = localStorage.getItem('anti_locked_overview_ids');
+      return saved ? JSON.parse(saved) : {};
+    } catch (e) {
+      return {};
+    }
+  });
   const [activeEditCell, setActiveEditCell] = useState(null); // { tableId, type: 'header'|'cell', colIdx, rIdx }
   const [activeAddDropdownTableId, setActiveAddDropdownTableId] = useState(null);
   const [tableRegeneratingIds, setTableRegeneratingIds] = useState({}); // { [tableId]: boolean }
@@ -16331,6 +16355,18 @@ ${itemsStr}
   useEffect(() => {
     localStorage.setItem('anti_expanded_table_ids', JSON.stringify(expandedTableIds));
   }, [expandedTableIds]);
+
+  useEffect(() => {
+    localStorage.setItem('anti_locked_table_ids', JSON.stringify(lockedTableIds));
+  }, [lockedTableIds]);
+
+  useEffect(() => {
+    localStorage.setItem('anti_locked_acronym_ids', JSON.stringify(lockedAcronymIds));
+  }, [lockedAcronymIds]);
+
+  useEffect(() => {
+    localStorage.setItem('anti_locked_overview_ids', JSON.stringify(lockedOverviewIds));
+  }, [lockedOverviewIds]);
 
   const handleOpenTheoryExam = async () => {};
 
