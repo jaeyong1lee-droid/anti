@@ -841,6 +841,18 @@ const localParseHtmlTable = (htmlStr) => {
 
 export function healQuizQuestionObject(q) {
   if (q && typeof q === 'object') {
+    // Rescue flowchart that was hallucinated inside explanation instead of question
+    if (q.type && q.type.includes('표채우기') && typeof q.explanation === 'string' && typeof q.question === 'string') {
+      if (q.explanation.includes('```') && !q.question.includes('```')) {
+        const flowchartRegex = /```(?:flowchart|step|sequence|[a-zA-Z0-9_-]*)?\n([\s\S]*?(?:┌|└|│|▼)[\s\S]*?\[[\d\*\s가-힣a-zA-Z\-\(\)]+\][\s\S]*?)```/i;
+        const match = flowchartRegex.exec(q.explanation);
+        if (match) {
+           q.question = q.question.trim() + '\n\n```\n' + match[1].trim() + '\n```';
+           q.explanation = q.explanation.replace(match[0], '').trim();
+        }
+      }
+    }
+
     if (q.question && typeof q.question === 'string') {
       q.question = cleanQuizQuestion(q.question);
     }
