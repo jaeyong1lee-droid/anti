@@ -1351,13 +1351,18 @@ export function healQuizQuestionObject(q) {
       q.subtype = '계산';
 
       const isTopic53 = String(q.topicId || '').includes('53') || /댐|덤|유선망|53-02|53_02/i.test(qText) || (/침투/i.test(qText) && /간극수압|동수경사/i.test(qText));
+      const isTopic49 = String(q.topicId || '').includes('49') || /석회암|암석|Mohr|파괴포락선|삼축|일축/i.test(qText || q.topicTitle || '');
 
       const isGeneric = !q.calcItems || q.calcItems.length === 0 || (
-        Array.isArray(q.calcItems) && q.calcItems.some(it => /(?:핵심|수치)\s*계산\s*(?:요구\s*)?항목/i.test(it.label || ''))
+        Array.isArray(q.calcItems) && q.calcItems.some(it => /(?:핵심|수치)\s*(?:계산|산출)\s*(?:요구\s*)?항목/i.test(it.label || ''))
       ) || (
-        q.tableData && Array.isArray(q.tableData.rows) && q.tableData.rows.some(r => Array.isArray(r) && typeof r[0] === 'string' && /(?:핵심|수치)\s*계산\s*(?:요구\s*)?항목/i.test(r[0]))
+        Array.isArray(q.calcItems) && q.calcItems.some(it => /^[\(\[]?\d+[\)\]]?\s*수치\s*(?:계산|산출)/i.test(it.label || ''))
+      ) || (
+        q.tableData && Array.isArray(q.tableData.rows) && q.tableData.rows.some(r => Array.isArray(r) && typeof r[0] === 'string' && /(?:핵심|수치)\s*(?:계산|산출)\s*(?:요구\s*)?항목/i.test(r[0]))
       ) || (
         isTopic53 && Array.isArray(q.calcItems) && (q.calcItems.length !== 5 || q.calcItems.some(it => /q_\{all\}|P_\{all\}|허용지지력/i.test(it.label || '')))
+      ) || (
+        isTopic49 && Array.isArray(q.calcItems) && (q.calcItems.length !== 2 || q.calcItems.some(it => /(?:수치|계산|항목)/i.test(it.label || '') && !/점착력|내부마찰각|S_i|\\phi/i.test(it.label || '')))
       );
 
       if (isGeneric) {
@@ -1376,7 +1381,7 @@ export function healQuizQuestionObject(q) {
             INPUT_4: "171.7 kPa (하류 C지점)",
             INPUT_5: "0.25 ~ 0.50 (출구 동수경사)"
           };
-        } else if (/S_i|점착력/i.test(qText) && /\phi|내부마찰각/i.test(qText)) {
+        } else if (isTopic49) {
           q.calcItems = [
             { id: 'INPUT_1', label: '(1) 점착력 $S_i$ (kN/m²)' },
             { id: 'INPUT_2', label: '(2) 내부마찰각 $\\phi$ (°)' }
@@ -1456,7 +1461,7 @@ export function healQuizQuestionObject(q) {
 
     if (q.type === '주관식 (표채우기)' || q.subtype === '표채우기') {
       const isTopic53Comp = String(q.topicId || '').includes('53') || /댐|덤|유선망|53-02|53_02/i.test(q.question || '');
-      const isRockMohrComp = /석회암|암석|Mohr|파괴포락선|삼축시험|일축압축/i.test(q.question || '');
+      const isRockMohrComp = String(q.topicId || '').includes('49') || /석회암|암석|Mohr|파괴포락선|삼축|일축/i.test(q.question || q.topicTitle || '');
       const isFlowchart = /플로우차트|흐름도|단계명|아래\s*표의\s*빈칸에\s*입력/i.test(q.question || '') || (q.tableData && Array.isArray(q.tableData.rows) && q.tableData.rows.some(r => Array.isArray(r) && typeof r[0] === 'string' && /^\([A-F]\)$/.test(r[0])));
 
       if (isTopic53Comp && (isFlowchart || !q.tableData || !Array.isArray(q.tableData.headers) || q.tableData.headers.length < 3 || q.tableData.headers.some(h => /공법\/이론\s*A|특성\s*1|보고서/i.test(String(h))))) {
@@ -1473,7 +1478,7 @@ export function healQuizQuestionObject(q) {
           INPUT_1: "유한요소 영역 분할 미분방정식 수치 해석",
           INPUT_2: "3차원 이방성 다층 지반 및 침윤선 위치 추적 가능"
         };
-      } else if (isRockMohrComp && (isFlowchart || !q.tableData || !Array.isArray(q.tableData.headers) || q.tableData.headers.length < 3 || q.tableData.headers.some(h => /특성\s*[12]|보고서/i.test(String(h))))) {
+      } else if (isRockMohrComp && (!q.tableData || !Array.isArray(q.tableData.headers) || q.tableData.headers.length < 3 || q.tableData.headers.some(h => /특성\s*[12]|보고서/i.test(String(h))) || (q.tableData.rows && q.tableData.rows.some(r => Array.isArray(r) && r.some(c => /A\s*입력|B\s*입력/i.test(String(c))))))) {
         q.question = "석회암 코어 실내시험(일축인장, 쪼개짐, 일축압축, 삼축압축) 분석 및 Mohr 파괴포락선 산정 기법과 Hoek-Brown 암반 파괴기준의 역학적 특성 비교표를 완성하시오.";
         q.tableData = {
           headers: ["구분 항목", "Mohr-Coulomb 파괴포락선", "Hoek-Brown 암반 파괴기준", "Griffith 인장파괴 이론"],

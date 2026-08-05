@@ -37,6 +37,36 @@ const router = express.Router();
     if (result.changes > 0) {
       console.log(`[Session Cleanup] Deleted ${result.changes} stale review session keys (>60 days old).`);
     }
+
+    // Auto-heal active review session keys in app_session DB table to scrub all remaining dummy wording
+    const activeSessions = await dbQuery.all(
+      `SELECT key, value FROM app_session WHERE key LIKE 'review_questions_%'`
+    );
+    let scrubbedCount = 0;
+    for (const s of activeSessions) {
+      if (!s.value) continue;
+      try {
+        let parsed = JSON.parse(s.value);
+        let changed = false;
+        if (Array.isArray(parsed)) {
+          parsed = parsed.map(q => healQuizQuestionObject(q));
+          changed = true;
+        } else if (parsed && Array.isArray(parsed.questions)) {
+          parsed.questions = parsed.questions.map(q => healQuizQuestionObject(q));
+          changed = true;
+        }
+        if (changed) {
+          await dbQuery.run(
+            `UPDATE app_session SET value = ?, updated_at = CURRENT_TIMESTAMP WHERE key = ?`,
+            [JSON.stringify(parsed), s.key]
+          );
+          scrubbedCount++;
+        }
+      } catch (err) {}
+    }
+    if (scrubbedCount > 0) {
+      console.log(`[Session Auto-Scrubber] Successfully healed and scrubbed ${scrubbedCount} session keys in DB.`);
+    }
   } catch (e) {
     // Non-critical: silently ignore startup cleanup errors
   }

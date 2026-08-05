@@ -318,6 +318,40 @@ if (!isRockHeaderClean || !isCellInputClean) {
   console.log(`  ➜ [PASS] 석회암 Q2 전문 이론 비교표(Mohr-Coulomb vs Hoek-Brown) 100% 자동 매핑 및 'A 입력' 셀 입력창 정제 완수!`);
 }
 
+// [TEST 10] Topic 49-03 Live Session Data Force-Heal Test (Q1 & Q2 combined)
+console.log('\n[TEST 10] 석회암 49-03 토픽 실전 세션 데이터 무조건 강제 보정 검증...');
+const mockTopic49Q1 = {
+  type: '주관식 (계산)',
+  topicId: '49-03',
+  question: "[석회암 코어 실내시험 분석 및 Mohr 파괴포락선 산정 계산 문제] 첨부 그림 및 원보고서 조건에 따른 수치 계산 항목의 정답을 구하여 아래 표의 빈칸을 완성하시오.",
+  calcItems: [
+    { id: 'INPUT_1', label: '(1) 수치 계산 항목 1' },
+    { id: 'INPUT_2', label: '(2) 수치 계산 항목 2' }
+  ]
+};
+const mockTopic49Q2 = {
+  type: '주관식 (표채우기)',
+  topicId: '49-03',
+  question: "석회암 코어 실내시험 분석 및 Mohr 파괴포락선 산정 관련 메커니즘 및 특성 비교표를 완성하시오.",
+  tableData: {
+    headers: ["구분 항목", "석회암 코어 실내시험 분석 및 Mohr 파괴포락선 산정 특성 1", "석회암 코어 실내시험 분석 및 Mohr 파괴포락선 산정 특성 2"],
+    rows: [["핵심 메커니즘", "A 입력", "B 입력"]]
+  }
+};
+
+const healedQ1 = healQuizQuestionObject(mockTopic49Q1);
+const healedQ2 = healQuizQuestionObject(mockTopic49Q2);
+
+const q1SiPhiOk = healedQ1.calcItems?.some(it => /점착력|S_i/i.test(it.label || '')) && healedQ1.calcItems?.some(it => /내부마찰각|\\phi|phi/i.test(it.label || ''));
+const q2MohrOk = healedQ2.tableData?.headers?.some(h => /Mohr-Coulomb/i.test(String(h))) && healedQ2.tableData?.rows?.some(r => r.includes('[INPUT_1]'));
+
+if (!q1SiPhiOk || !q2MohrOk) {
+  failedCount++;
+  console.error(`  ❌ [토픽 49-03 세션 강제 보정 실패]: Q1 점착력/마찰각: ${q1SiPhiOk}, Q2 Mohr비교표/INPUT: ${q2MohrOk}`);
+} else {
+  console.log(`  ➜ [PASS] 토픽 49-03 세션 Q1 (점착력 S_i, 내부마찰각 φ) & Q2 (Mohr-Coulomb vs Hoek-Brown) 100% 강제 보정 성공!`);
+}
+
 console.log('\n==========================================================');
 if (failedCount > 0) {
   console.error(`  ❌ 자가 개선 테스터 검증 실패 - ${failedCount}개의 런타임 위험 감지됨!`);
