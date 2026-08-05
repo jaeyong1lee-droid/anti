@@ -1169,6 +1169,42 @@ export const TableQuiz = React.memo(function TableQuiz({
   const compTableUniqueId = `${isExam ? 'exam' : 'review'}_${questionIdx}_comp`;
   const isCompFloated = floatedTableId === compTableUniqueId;
 
+  const handleToggleFloatMain = useCallback((e) => {
+    if (e) e.stopPropagation();
+    if (isMainFloated) {
+      setFloatedTableId(null);
+    } else {
+      const w = floatedSizeRef.current?.width || 760;
+      const h = floatedSizeRef.current?.height || 500;
+      const maxX = Math.max(20, window.innerWidth - w - 24);
+      const maxY = Math.max(20, window.innerHeight - h - 24);
+      const curX = floatedPosRef.current ? floatedPosRef.current.x : maxX;
+      const curY = floatedPosRef.current ? floatedPosRef.current.y : 80;
+      const safeX = Math.max(20, Math.min(curX, maxX));
+      const safeY = Math.max(20, Math.min(curY, maxY));
+      setFloatedPos({ x: safeX, y: safeY });
+      setFloatedTableId(mainTableUniqueId);
+    }
+  }, [isMainFloated, mainTableUniqueId, setFloatedTableId]);
+
+  const handleToggleFloatComp = useCallback((e) => {
+    if (e) e.stopPropagation();
+    if (isCompFloated) {
+      setFloatedTableId(null);
+    } else {
+      const w = floatedSizeRef.current?.width || 760;
+      const h = floatedSizeRef.current?.height || 500;
+      const maxX = Math.max(20, window.innerWidth - w - 24);
+      const maxY = Math.max(20, window.innerHeight - h - 24);
+      const curX = floatedPosRef.current ? floatedPosRef.current.x : maxX;
+      const curY = floatedPosRef.current ? floatedPosRef.current.y : 80;
+      const safeX = Math.max(20, Math.min(curX, maxX));
+      const safeY = Math.max(20, Math.min(curY, maxY));
+      setFloatedPos({ x: safeX, y: safeY });
+      setFloatedTableId(compTableUniqueId);
+    }
+  }, [isCompFloated, compTableUniqueId, setFloatedTableId]);
+
   const isAnyFloated = isMainFloated || isCompFloated;
   const textSizeClass = isAnyFloated ? "text-[14px]" : "text-[14px] sm:text-[16px]";
 
@@ -1185,14 +1221,14 @@ export const TableQuiz = React.memo(function TableQuiz({
   ) : null;
 
   const mainTablePlaceholder = isMainFloated ? (
-    <div className="w-full my-3 p-4 rounded-xl border border-dashed border-sky-500/20 bg-sky-500/5 text-center flex flex-col items-center justify-center gap-1.5 min-h-[100px] select-none">
-      <span className="text-lg">📌</span>
-      <p className="text-xs font-semibold text-sky-400">표가 우측 상단에 고정되어 있습니다.</p>
+    <div className="w-full my-3 p-4 rounded-xl border border-dashed border-sky-500/20 bg-sky-500/5 text-center flex flex-col items-center justify-center gap-1.5 min-h-[160px] select-none">
+      <span className="text-xl">📌</span>
+      <p className="text-xs font-bold text-sky-300">표가 우측 상단 화면에 고정되었습니다.</p>
       <button 
         onClick={() => setFloatedTableId(null)}
-        className="px-2.5 py-1 bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 text-xs font-bold rounded-lg transition-all border border-sky-500/30 active:scale-95"
+        className="px-3 py-1.5 bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 text-xs font-bold rounded-lg transition-all border border-sky-500/30 active:scale-95 cursor-pointer"
       >
-        화면 고정 해제
+        화면 고정 해제 (복원)
       </button>
     </div>
   ) : null;
@@ -1204,11 +1240,14 @@ export const TableQuiz = React.memo(function TableQuiz({
       </div>
       {!isMobileView && (
         <button
-          onClick={() => setFloatedTableId(mainTableUniqueId)}
-          className="p-1 text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 rounded-lg text-sm transition-all active:scale-95 select-none font-bold"
-          title="표를 화면에 고정하여 편리하게 문제를 풉니다"
+          onClick={handleToggleFloatMain}
+          className="p-1 px-1.5 text-slate-400 hover:text-sky-300 hover:bg-slate-800/80 rounded-lg text-xs transition-all active:scale-95 select-none font-bold flex items-center gap-1 cursor-pointer border border-slate-800 hover:border-slate-700"
+          title="표를 화면 우측 상단 고정 팝업으로 분리합니다"
         >
-          &gt;
+          <span className="text-[11px] text-slate-400 hover:text-sky-300">화면 고정</span>
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" />
+          </svg>
         </button>
       )}
     </div>
@@ -1545,11 +1584,14 @@ export const TableQuiz = React.memo(function TableQuiz({
       </div>
       {!isMobileView && (
         <button
-          onClick={() => setFloatedTableId(compTableUniqueId)}
-          className="p-1 text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 rounded-lg text-sm transition-all active:scale-95 select-none font-bold"
-          title="비교표를 화면에 고정하여 편리하게 문제를 풉니다"
+          onClick={handleToggleFloatComp}
+          className="p-1 px-1.5 text-slate-400 hover:text-sky-300 hover:bg-slate-800/80 rounded-lg text-xs transition-all active:scale-95 select-none font-bold flex items-center gap-1 cursor-pointer border border-slate-800 hover:border-slate-700"
+          title="비교표를 화면 우측 상단 고정 팝업으로 분리합니다"
         >
-          &gt;
+          <span className="text-[11px] text-slate-400 hover:text-sky-300">화면 고정</span>
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" />
+          </svg>
         </button>
       )}
     </div>

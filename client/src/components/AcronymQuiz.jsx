@@ -55,6 +55,24 @@ export const AcronymQuiz = React.memo(function AcronymQuiz({
   const isFloated = floatedTableId === acronymTableUniqueId;
   const usePopout = !isMobileView;
 
+  const handleToggleFloatAcronym = (e) => {
+    if (e) e.stopPropagation();
+    if (isFloated) {
+      setFloatedTableId(null);
+    } else {
+      const w = floatedSize.width || 500;
+      const h = floatedSize.height || 450;
+      const maxX = Math.max(20, window.innerWidth - w - 24);
+      const maxY = Math.max(20, window.innerHeight - h - 24);
+      const curX = floatedPos.x || maxX;
+      const curY = floatedPos.y || 80;
+      const safeX = Math.max(20, Math.min(curX, maxX));
+      const safeY = Math.max(20, Math.min(curY, maxY));
+      setFloatedPos({ x: safeX, y: safeY });
+      setFloatedTableId(acronymTableUniqueId);
+    }
+  };
+
   const handleInputChange = (key, val) => {
     if (tableAnswersRef) {
       tableAnswersRef.current[`${questionIdx}_${key}`] = val;
@@ -90,11 +108,14 @@ export const AcronymQuiz = React.memo(function AcronymQuiz({
       </div>
       {!isMobileView && (
         <button
-          onClick={() => setFloatedTableId(acronymTableUniqueId)}
-          className="p-1 text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 rounded-lg text-sm transition-all active:scale-95 select-none font-bold"
-          title="표를 화면에 고정하여 편리하게 문제를 풉니다"
+          onClick={handleToggleFloatAcronym}
+          className="p-1 px-1.5 text-slate-400 hover:text-sky-300 hover:bg-slate-800/80 rounded-lg text-xs transition-all active:scale-95 select-none font-bold flex items-center gap-1 cursor-pointer border border-slate-800 hover:border-slate-700"
+          title="표를 화면 우측 상단 고정 팝업으로 분리합니다"
         >
-          &gt;
+          <span className="text-[11px] text-slate-400 hover:text-sky-300">화면 고정</span>
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" />
+          </svg>
         </button>
       )}
     </div>
