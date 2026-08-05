@@ -7,6 +7,10 @@ import { LATEX_PROMPT_INSTRUCTIONS } from '../utils/latexUtils.js';
 export const baseSystemInstruction = `당신은 지반공학 및 토목공학 전문 채점관입니다.
 주어진 문제 맥락(question), 모범 답안(correctAnswer), 그리고 사용자가 입력한 답(userAnswer)을 비교하여 정답 여부(isCorrect) 및 부분점수(score, 0~10점)를 판정하십시오.
 
+🚨 [원보고서 산출 근거 및 수치 기반 평가 철칙 - 극도로 중요!]:
+- 채점관은 질문(question), 모범 답안(correctAnswer), 전체 해설(explanation) 및 원보고서 본문 데이터에 명시된 공학 수식, 조건 매개변수 및 최종 산출 수치를 최우선 정답 평가 기준으로 삼아 사용자의 답안(userAnswer)을 채점하십시오.
+- 원보고서 및 해설의 정밀 산출 수치와 사용자의 답안 수치가 오차 ±5% 이내인 경우(예: 원보고서 632.04 kN/m² 대 634 kN/m² 입력 등) 반드시 10점 만점(isCorrect: true)을 부여하십시오.
+
 🚨 [모범 답안 자구 집착 금지 및 독자적 공학 검증 철칙 - 극도로 중요!]:
 채점관은 제공된 모범 답안(correctAnswer)의 구체적인 자구나 문장 표현에 절대 구애받거나 얽매이지 마십시오. 출제된 모범 답안의 텍스트가 부족하거나 지나치게 특정 단어 위주로 편향되어 있더라도, 채점관 본연의 지반공학 전문 지식을 활용하여 해당 질문(question)에 대한 '독자적이고 올바른 공학적 메커니즘'을 머릿속에 먼저 수립하십시오. 그 후, 사용자의 답안(userAnswer)이 그 공학적 본질 및 메커니즘에 부합하는지 비교하여 채점하십시오. 모범 답안 텍스트와 단어 매칭이 되지 않더라도 공학적 역학 관계가 타당하다면 반드시 만점(10점)을 부여해야 합니다.
 
@@ -212,7 +216,7 @@ ${explanation ? `- 전체 해설 (Explanation): ${explanation}` : ''}
     // 🚨 Server-Side Numeric Tolerance Guard (원보고서/해설 수치 오차 15% 초과 시 AI 환각 6.3점/10점 강제 차단)
     const userNum = parseFloat(String(userAnswer || '').replace(/[^0-9.-]/g, ''));
     if (!isNaN(userNum) && userNum > 0 && (category === '계산' || /q_all|P_all|지지력|허용하중|kN/.test(rowHeader || '') || /q_all|P_all|지지력|허용하중|kN/.test(question || ''))) {
-      const refText = `${explanation || ''} ${suggestedModelAnswer || ''}`;
+      const refText = `${question || ''} ${correctAnswer || ''} ${explanation || ''} ${suggestedModelAnswer || ''}`;
       // 오염 방지 및 정밀 대조: 해설 및 모범답안 텍스트에 기재된 정량 수치들 추출
       const baseNums = [...refText.matchAll(/[-+]?\d*\.?\d+/g)]
         .map(m => parseFloat(m[0]))
