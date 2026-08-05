@@ -1350,14 +1350,18 @@ export function healQuizQuestionObject(q) {
       q.type = '주관식 (계산)';
       q.subtype = '계산';
 
+      const isTopic53 = String(q.topicId || '').includes('53') || /댐|덤|유선망|53-02|53_02/i.test(qText) || (/침투/i.test(qText) && /간극수압|동수경사/i.test(qText));
+
       const isGeneric = !q.calcItems || q.calcItems.length === 0 || (
         Array.isArray(q.calcItems) && q.calcItems.some(it => /(?:핵심|수치)\s*계산\s*(?:요구\s*)?항목/i.test(it.label || ''))
       ) || (
         q.tableData && Array.isArray(q.tableData.rows) && q.tableData.rows.some(r => Array.isArray(r) && typeof r[0] === 'string' && /(?:핵심|수치)\s*계산\s*(?:요구\s*)?항목/i.test(r[0]))
+      ) || (
+        isTopic53 && Array.isArray(q.calcItems) && (q.calcItems.length !== 5 || q.calcItems.some(it => /q_\{all\}|P_\{all\}|허용지지력/i.test(it.label || '')))
       );
 
       if (isGeneric) {
-        if (q.topicId === 53 || /댐\s*저면|유선망|53-02|53_02/i.test(qText) || (/침투/i.test(qText) && /간극수압/i.test(qText))) {
+        if (isTopic53) {
           q.calcItems = [
             { id: 'INPUT_1', label: '(1) 단위폭당 침투수량 $q$ (m³/s/m)' },
             { id: 'INPUT_2', label: '(2) A지점 간극수압 $u_A$ (kPa)' },
@@ -1372,7 +1376,7 @@ export function healQuizQuestionObject(q) {
             INPUT_4: "171.7 kPa (하류 C지점)",
             INPUT_5: "0.25 ~ 0.50 (출구 동수경사)"
           };
-        } else if (/Terzaghi|지지력|허용하중/i.test(qText)) {
+        } else if (/Terzaghi|기초폭\s*B|정방형\s*기초/i.test(qText) || (/지지력/i.test(qText) && /허용하중/i.test(qText))) {
           q.calcItems = [
             { id: 'INPUT_1', label: '(1) 조건 (a)의 허용지지력 $q_{all}$(a) (kN/m²)' },
             { id: 'INPUT_2', label: '(2) 조건 (a)의 허용하중 $P_{all}$(a) (kN)' },
@@ -1421,7 +1425,24 @@ export function healQuizQuestionObject(q) {
     }
 
     if (q.type === '주관식 (표채우기)' || q.subtype === '표채우기') {
-      if (!q.tableData || !Array.isArray(q.tableData.rows) || q.tableData.rows.length === 0) {
+      const isTopic53Comp = String(q.topicId || '').includes('53') || /댐|덤|유선망|53-02|53_02/i.test(q.question || '');
+      const isFlowchart = /플로우차트|흐름도|단계명|아래\s*표의\s*빈칸에\s*입력/i.test(q.question || '') || (q.tableData && Array.isArray(q.tableData.rows) && q.tableData.rows.some(r => Array.isArray(r) && typeof r[0] === 'string' && /^\([A-F]\)$/.test(r[0])));
+
+      if (isTopic53Comp && (isFlowchart || !q.tableData || !Array.isArray(q.tableData.headers) || q.tableData.headers.length < 3 || q.tableData.headers.some(h => /공법\/이론\s*A|특성\s*1|보고서/i.test(String(h))))) {
+        q.question = "댐 저면 침투 해석 시 유선망(Flow Net) 도해법과 수치해석법(FEM/FDM) 및 Darcy 1차원 해석법의 수리적 메커니즘 및 특성 비교표를 완성하시오.";
+        q.tableData = {
+          headers: ["구분 항목", "유선망 도해법 (Flow Net)", "수치해석법 (FEM / FDM)", "Darcy 1차원 해석법"],
+          rows: [
+            ["핵심 해석 메커니즘", "2차원 Laplace 방정식 직교 유선격자 도해 해석", "[INPUT_1]", "1차원 직선 침투 구배 공식 대입 ($q=k \\cdot i \\cdot A$)"],
+            ["지반 및 차원 적용성", "2차원 단층/이방성 지반 (단면 변환 필요)", "[INPUT_2]", "1차원 단순 균일 지반 수평 침투 단면"],
+            ["산출 핵심 물리량", "침투수량($q$), 간극수압($u$), 출구동수경사($i$)", "전수두 분포, 침투속도 벡터, 유출 안전율", "단위 폭당 1차원 단순 침투 유량"]
+          ]
+        };
+        q.answers = {
+          INPUT_1: "유한요소 영역 분할 미분방정식 수치 해석",
+          INPUT_2: "3차원 이방성 다층 지반 및 침윤선 위치 추적 가능"
+        };
+      } else if (!q.tableData || !Array.isArray(q.tableData.rows) || q.tableData.rows.length === 0) {
         const isComp = (q.question || '').includes('비교') || (q.question || '').includes('차이점');
         if (isComp) {
           const titleMatch = (q.question || '').match(/([가-힣A-Za-z0-9]+)\s*(?:와|과|및|대비|비교)/);

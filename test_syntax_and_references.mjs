@@ -250,11 +250,20 @@ const healed53 = healQuizQuestionObject(mockTopic53Q);
 const isDummyPresent = healed53.calcItems.some(it => /수치\s*계산\s*항목/i.test(it.label || ''));
 const isCountInvalid = healed53.calcItems.length !== 5;
 
-if (isDummyPresent || isCountInvalid) {
+const mockTypoTopic53Q = {
+  type: '주관식 (계산)',
+  question: "3. 그림에 나타낸 덤에 대하여 (1) 침투수량 (2) A, B 및 C점에서의 간극수압, (3) C점에서 출구까지 동수경사를 구하시오.",
+  topicId: 53
+};
+const healedTypo53 = healQuizQuestionObject(mockTypoTopic53Q);
+const hasTerzaghiHijack = healedTypo53.calcItems.some(it => /q_\{all\}|P_\{all\}|허용지지력/i.test(it.label || ''));
+const isTypo53Valid = healedTypo53.calcItems.length === 5;
+
+if (isDummyPresent || isCountInvalid || hasTerzaghiHijack || !isTypo53Valid) {
   failedCount++;
-  console.error(`  ❌ [더미 수치 계산 항목 감지 오류]: 주제 53에 더미 항목("${healed53.calcItems[0]?.label}") 또는 잘못된 항목 수(${healed53.calcItems.length}개)가 감지되었습니다!`);
+  console.error(`  ❌ [더미/Terzaghi 하이재킹 감지 오류]: 주제 53 오타 지문("덤에 대하여")에서 Terzaghi 하이재킹(${hasTerzaghiHijack}) 또는 잘못된 항목 수(${healedTypo53.calcItems.length}개)가 감지되었습니다!`);
 } else {
-  console.log(`  ➜ [PASS] 주제 53 더미 수치 계산 항목 감지기 정상 통과! (더미 항목 0개, 5개 입력창 100% 보정 생성)`);
+  console.log(`  ➜ [PASS] 주제 53 오타 지문("덤에 대하여") Terzaghi 하이재킹 0% 방지 및 5개 침투 항목 100% 보정 생성!`);
 }
 
 console.log('\n==========================================================');
