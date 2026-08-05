@@ -472,6 +472,39 @@ async function runTests() {
     console.log(`  ➜ [FAIL] POST /api/chat failed (Status: ${chatRes.error || chatRes.statusCode})`);
   }
 
+  // [TEST 16] Item (A) Answer "634" Exact Matching & False 0-Point Protection Test
+  console.log('\n[TEST 16] Item (A) Answer "634" Exact Matching Test (User typed 634 vs Ref 634 in Explanation)...');
+  const itemAPayload = {
+    question: "Terzaghi 지지력 공식을 활용하여 다음 항목을 계산하시오.",
+    correctAnswer: "약 634 kN/m²",
+    userAnswer: "634",
+    rowHeader: "(1) 조건 (a)의 허용지지력 q_all (a) (kN/m²)",
+    colHeader: "수치 계산 답안",
+    explanation: "Terzaghi의 극한지지력 공식(q_u = 1.3cN_c + gamma*D_f*N_q + 0.4*gamma*B*N_gamma)을 활용합니다. 지표면 설치 조건이므로 D_f = 0 이며, phi = 30도에 대한 지지력 계수는 N_c = 37.2, N_gamma = 19.7 등을 적용합니다. 허용안전율 F.S. = 3 을 적용할 때 허용지지력 q_all 은 약 634 kN/m² (또는 산정 기준에 따른 정밀 계산값)으로 도출됩니다.",
+    category: "계산",
+    temperature: 0.7,
+    preferredModel: "gemini-3.5-flash-lite"
+  };
+
+  const itemAGradeRes = await postUrl('http://localhost:3000/api/grade-subjective', itemAPayload);
+  if (itemAGradeRes.statusCode === 200) {
+    try {
+      const data = JSON.parse(itemAGradeRes.body);
+      if (data.isCorrect && data.score >= 8) {
+        console.log(`  ➜ [PASS] Server-Side Numeric Guard correctly recognized valid answer "634" as 10점 (score: ${data.score}점, reason: ${data.reason}).`);
+      } else {
+        failedCount++;
+        console.log(`  ➜ [CRITICAL FAIL] Server-Side Guard falsely rejected valid answer "634"! Score: ${data.score}점, Reason: ${data.reason}`);
+      }
+    } catch (e) {
+      failedCount++;
+      console.log(`  ➜ [FAIL] Invalid JSON from grade-subjective: ${e.message}`);
+    }
+  } else {
+    failedCount++;
+    console.log(`  ➜ [FAIL] POST /api/grade-subjective failed (Status: ${itemAGradeRes.error || itemAGradeRes.statusCode})`);
+  }
+
   console.log('\n====================================================');
   if (failedCount > 0) {
     console.log(`  ❌ TEST FAILED - ${failedCount} CRITICAL ERRORS DETECTED!`);

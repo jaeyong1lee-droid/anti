@@ -212,11 +212,11 @@ ${explanation ? `- 전체 해설 (Explanation): ${explanation}` : ''}
     // 🚨 Server-Side Numeric Tolerance Guard (원보고서/해설 수치 오차 15% 초과 시 AI 환각 6.3점/10점 강제 차단)
     const userNum = parseFloat(String(userAnswer || '').replace(/[^0-9.-]/g, ''));
     if (!isNaN(userNum) && userNum > 0 && (category === '계산' || /q_all|P_all|지지력|허용하중|kN/.test(rowHeader || '') || /q_all|P_all|지지력|허용하중|kN/.test(question || ''))) {
-      const refText = `${explanation || ''}`;
-      // 오염 방지: 사용자 답안 수치(userNum) 자체는 비교 대상 원보고서 숫자가 아니므로 필터링 제외
+      const refText = `${explanation || ''} ${suggestedModelAnswer || ''}`;
+      // 오염 방지 및 정밀 대조: 해설 및 모범답안 텍스트에 기재된 정량 수치들 추출
       const baseNums = [...refText.matchAll(/[-+]?\d*\.?\d+/g)]
         .map(m => parseFloat(m[0]))
-        .filter(n => !isNaN(n) && n > 5 && n !== 1.3 && n !== 0.4 && n !== 0.5 && n !== 3.0 && n !== 18 && n !== 20 && n !== 30 && Math.abs(n - userNum) / userNum > 0.001);
+        .filter(n => !isNaN(n) && n > 5 && n !== 1.3 && n !== 0.4 && n !== 0.5 && n !== 3.0 && n !== 18 && n !== 20 && n !== 30);
 
       // 공학적 형상계수(1.3, 1.2 등) 적용 수치 후보군 확장 (예: 10112 -> 13145 ≈ 13008)
       const refNums = [];
