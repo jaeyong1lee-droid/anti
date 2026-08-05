@@ -1431,11 +1431,11 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
     if (!hasBoxNumber) {
       return (
         <div key={boxKeyIdx} className="w-full h-auto font-mono whitespace-pre bg-slate-950/70 border border-slate-800/80 p-3 rounded-xl overflow-x-auto text-left leading-relaxed my-2 select-text font-mono text-[12.5px] sm:text-[13.5px] shadow-sm">
-          <div className="font-bold text-slate-200 mb-0.5 w-full h-auto whitespace-pre font-mono">
+          <div className="font-bold flowchart-text-force text-slate-200 mb-0.5 w-full h-auto whitespace-pre font-mono">
             {renderLineContent(title)}
           </div>
           {bodyLines.map((bl, bIdx) => (
-            <div key={bIdx} className="text-slate-300 my-0.5 w-full h-auto whitespace-pre font-mono">
+            <div key={bIdx} className="flowchart-text-force text-slate-300 my-0.5 w-full h-auto whitespace-pre font-mono">
               {renderLineContent(bl)}
             </div>
           ))}
@@ -1757,7 +1757,7 @@ const renderCompleteFlowchart = (flowchartText, katexLoaded, q) => {
           if (!hasBoxNumber) {
             return (
               <div key={idx} className="w-full h-auto font-mono whitespace-pre bg-slate-950/70 border border-slate-800/80 p-3 rounded-xl overflow-x-auto text-left leading-relaxed my-2 select-text font-mono text-[12.5px] sm:text-[13.5px] shadow-sm">
-                <div className="font-bold text-slate-200 mb-0.5 w-full h-auto whitespace-pre font-mono">
+                <div className="font-bold flowchart-text-force text-slate-200 mb-0.5 w-full h-auto whitespace-pre font-mono">
                   {renderLineContent(title)}
                 </div>
                 {bodyLines.map((bl, bIdx) => (
@@ -1789,12 +1789,12 @@ const renderCompleteFlowchart = (flowchartText, katexLoaded, q) => {
                 const hasBoxNumber = /\[[\d\*\s가-힣a-zA-Z\-]+\]/.test(title) || /\(([A-F])\)/.test(box.content.join('\n'));
                 if (!hasBoxNumber) {
                   return (
-                    <div key={bIdx} className="flex-1 w-full h-auto font-mono whitespace-pre bg-slate-950/70 border border-slate-800/80 p-3 rounded-xl overflow-x-auto text-left leading-relaxed my-2 select-text font-mono text-[12.5px] sm:text-[13.5px] shadow-sm">
+                    <div key={bIdx} className="flex-1 w-full h-auto font-mono whitespace-pre bg-slate-950/70 border border-slate-800/80 p-3 rounded-xl overflow-x-auto text-left leading-relaxed my-2 select-text font-mono flowchart-text-force shadow-sm">
                       <div className="font-bold text-slate-200 mb-0.5 w-full h-auto whitespace-pre font-mono">
                         {renderLineContent(title)}
                       </div>
                       {bodyLines.map((bl, blIdx) => (
-                        <div key={blIdx} className="text-slate-300 my-0.5 w-full h-auto whitespace-pre font-mono">
+                        <div key={blIdx} className="flowchart-text-force text-slate-300 my-0.5 w-full h-auto whitespace-pre font-mono">
                           {renderLineContent(bl)}
                         </div>
                       ))}
