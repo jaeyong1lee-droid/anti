@@ -218,10 +218,10 @@ ${explanation ? `- 전체 해설 (Explanation): ${explanation}` : ''}
     // 🚨 Server-Side Numeric Tolerance Guard (원보고서/해설 수치 오차 15% 초과 시 AI 환각 6.3점/10점 강제 차단)
     const userNum = parseFloat(String(userAnswer || '').replace(/[^0-9.-]/g, ''));
     if (!isNaN(userNum) && userNum > 0 && (category === '계산' || /q_all|P_all|지지력|허용하중|kN/.test(rowHeader || '') || /q_all|P_all|지지력|허용하중|kN/.test(question || ''))) {
-      const explText = `${explanation || ''} ${suggestedModelAnswer || ''} ${question || ''}`;
+      const explText = `${explanation || ''} ${question || ''}`;
       const explNums = [...explText.matchAll(/[-+]?\d*\.?\d+/g)]
         .map(m => parseFloat(m[0]))
-        .filter(n => !isNaN(n) && n > 5 && n !== 1.3 && n !== 0.4 && n !== 0.5 && n !== 3.0 && n !== 18 && n !== 20 && n !== 30);
+        .filter(n => !isNaN(n) && n > 50 && n !== 100 && n !== 1000);
 
       const correctText = `${correctAnswer || ''}`;
       const correctNums = [...correctText.matchAll(/[-+]?\d*\.?\d+/g)]
@@ -242,8 +242,10 @@ ${explanation ? `- 전체 해설 (Explanation): ${explanation}` : ''}
       }
 
       // 공학적 형상계수(1.3, 1.2 등) 적용 수치 후보군 확장 (예: 10112 -> 13145 ≈ 13008)
+      // 오염된 correctAnswer 숫자보다 정밀 해설 수치(explNums)를 최우선 정답 기준으로 설정
+      const matchTargetNums = explNums.length > 0 ? explNums : baseNums;
       const refNums = [];
-      baseNums.forEach(n => {
+      matchTargetNums.forEach(n => {
         refNums.push(n);
         refNums.push(n * 1.3);
         refNums.push(n / 1.3);
