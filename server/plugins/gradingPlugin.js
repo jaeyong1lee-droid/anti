@@ -237,15 +237,15 @@ ${explanation ? `- 전체 해설 (Explanation): ${explanation}` : ''}
                           /계산하시오|구하시오|산정하시오/.test(question || '');
 
     if (!hasDescriptiveText && !isNaN(userNum) && userNum > 0 && isCalcContext) {
-      const explText = `${explanation || ''} ${correctAnswer || ''}`;
+      const explText = explanation || '';
       const explNums = [...explText.matchAll(/[-+]?\d*\.?\d+(?:e[-+]?\d+)?/gi)]
         .map(m => parseFloat(m[0]))
         .filter(n => !isNaN(n) && n > 0 && n !== 100 && n !== 1000);
 
       const correctText = `${correctAnswer || ''}`;
-      const correctNums = [...correctText.matchAll(/[-+]?\d*\.?\d+/g)]
+      const correctNums = [...correctText.matchAll(/[-+]?\d*\.?\d+(?:e[-+]?\d+)?/gi)]
         .map(m => parseFloat(m[0]))
-        .filter(n => !isNaN(n) && n > 5 && n !== 1.3 && n !== 0.4 && n !== 0.5 && n !== 3.0 && n !== 18 && n !== 20 && n !== 30);
+        .filter(n => !isNaN(n) && n > 0 && n !== 100 && n !== 1000);
 
       let baseNums = [];
       if (explNums.length > 0) {
