@@ -215,9 +215,12 @@ ${explanation ? `- 전체 해설 (Explanation): ${explanation}` : ''}
     let finalScore = score;
     let finalReason = reason;
 
-    // 🚨 Server-Side Numeric Tolerance Guard (원보고서/해설 수치 오차 15% 초과 시 AI 환각 6.3점/10점 강제 차단)
-    const userNum = parseFloat(String(userAnswer || '').replace(/[^0-9.-]/g, ''));
-    if (!isNaN(userNum) && userNum > 0 && (category === '계산' || /q_all|P_all|지지력|허용하중|kN/.test(rowHeader || '') || /q_all|P_all|지지력|허용하중|kN/.test(question || ''))) {
+    // 🚨 Server-Side Numeric Tolerance Guard (오직 1번 수치 계산 문항의 "813", "634" 등 순수 수치 답안에만 적용하며, 개념 서술형/비교표 답안에는 절대로 가드를 적용하지 않음)
+    const rawUserStr = String(userAnswer || '').trim();
+    const hasDescriptiveText = /[가-힣a-zA-Z]{3,}/.test(rawUserStr.replace(/q_all|P_all|q_u|kN|m2|m3|kPa|FS|F\.S\./gi, ''));
+    const userNum = parseFloat(rawUserStr.replace(/[^0-9.-]/g, ''));
+
+    if (!hasDescriptiveText && !isNaN(userNum) && userNum > 0 && (category === '계산' || /q_all|P_all|수치\s*계산/.test(rowHeader || ''))) {
       const explText = `${explanation || ''} ${question || ''}`;
       const explNums = [...explText.matchAll(/[-+]?\d*\.?\d+/g)]
         .map(m => parseFloat(m[0]))

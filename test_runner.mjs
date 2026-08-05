@@ -572,6 +572,39 @@ async function runTests() {
     console.log(`  ➜ [FAIL] POST /api/grade-subjective failed (Status: ${itemCBrowserRes.error || itemCBrowserRes.statusCode})`);
   }
 
+  // [TEST 19] Comparison Table / Conceptual Description Answer Excluded from Numeric Guard Test
+  console.log('\n[TEST 19] Comparison Table / Conceptual Description Answer Excluded from Numeric Guard Test...');
+  const conceptualPayload = {
+    question: "Terzaghi 지지력 공식에서 기초의 형상 요인 및 극한지지력 산정 시 고려되는 지반의 전단파괴 메커니즘 특성을 비교 분석하는 다음 표의 빈칸에 알맞은 내용을 명사형 종결어미로 서술하시오.",
+    correctAnswer: "2차원 평면변형률 상태를 가정하므로 3차원 코너 효과 및 측면 전단저항이 발생하지 않아 별도의 형상 계수 적용이 없음",
+    userAnswer: "2차원 평면변형률상태의 연속기초기반 모델로 별도 계수 적용 없음",
+    rowHeader: "기초 형상 계수 적용성",
+    colHeader: "스트립(연속) 기초",
+    explanation: "연속기초는 2차원 평면변형률 상태를 가정하여 별도 계수가 적용되지 않음.",
+    category: "비교표",
+    temperature: 0.7,
+    preferredModel: "gemini-3.5-flash-lite"
+  };
+
+  const conceptualRes = await postUrl('http://localhost:3000/api/grade-subjective', conceptualPayload);
+  if (conceptualRes.statusCode === 200) {
+    try {
+      const data = JSON.parse(conceptualRes.body);
+      if (!data.reason.includes('일치하지 않는 것으로 판정되었습니다')) {
+        console.log(`  ➜ [PASS] Conceptual comparison table answer correctly bypassed Numeric Guard and evaluated via Standard Review Grading (score: ${data.score}점, reason: ${data.reason}).`);
+      } else {
+        failedCount++;
+        console.log(`  ➜ [CRITICAL FAIL] Numeric Guard erroneously over-reached onto conceptual description answer! Reason: ${data.reason}`);
+      }
+    } catch (e) {
+      failedCount++;
+      console.log(`  ➜ [FAIL] Invalid JSON from grade-subjective: ${e.message}`);
+    }
+  } else {
+    failedCount++;
+    console.log(`  ➜ [FAIL] POST /api/grade-subjective failed (Status: ${conceptualRes.error || conceptualRes.statusCode})`);
+  }
+
   console.log('\n====================================================');
   if (failedCount > 0) {
     console.log(`  ❌ TEST FAILED - ${failedCount} CRITICAL ERRORS DETECTED!`);
