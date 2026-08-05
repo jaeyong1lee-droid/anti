@@ -505,6 +505,40 @@ async function runTests() {
     console.log(`  ➜ [FAIL] POST /api/grade-subjective failed (Status: ${itemAGradeRes.error || itemAGradeRes.statusCode})`);
   }
 
+  // [TEST 17] Item (C) (#3) Re-grading Test (User typed 813 vs Ref 813.42 in Explanation)
+  console.log('\n[TEST 17] Item (C) (#3) Re-grading Test (User typed 813 vs Ref 813.42 in Explanation)...');
+  const itemCPayload = {
+    question: "Terzaghi 지지력 공식을 활용한 정방형 기초 지지력 산정 수치 계산 답안",
+    correctAnswer: "813.42 kN/m²",
+    userAnswer: "813",
+    rowHeader: "(3) 조건 (b)의 허용지지력 q_all (b) (kN/m²)",
+    colHeader: "수치 계산 답안",
+    explanation: "STEP 3. 극한지지력 q_u = 2033.54 kN/m² ... 조건 (b) 허용지지력 q_a = 813.42 kN/m²",
+    topicId: 50,
+    category: "계산",
+    temperature: 0.7,
+    preferredModel: "gemini-3.5-flash-lite"
+  };
+
+  const itemCGradeRes = await postUrl('http://localhost:3000/api/grade-subjective', itemCPayload);
+  if (itemCGradeRes.statusCode === 200) {
+    try {
+      const data = JSON.parse(itemCGradeRes.body);
+      if (data.isCorrect && data.score >= 8) {
+        console.log(`  ➜ [PASS] Server-Side Numeric Guard correctly recognized item (C) (#3) valid answer "813" as 10점 (score: ${data.score}점, reason: ${data.reason}).`);
+      } else {
+        failedCount++;
+        console.log(`  ➜ [CRITICAL FAIL] Server falsely rejected item (C) (#3) valid answer "813"! Score: ${data.score}점, Reason: ${data.reason}`);
+      }
+    } catch (e) {
+      failedCount++;
+      console.log(`  ➜ [FAIL] Invalid JSON from grade-subjective: ${e.message}`);
+    }
+  } else {
+    failedCount++;
+    console.log(`  ➜ [FAIL] POST /api/grade-subjective failed (Status: ${itemCGradeRes.error || itemCGradeRes.statusCode})`);
+  }
+
   console.log('\n====================================================');
   if (failedCount > 0) {
     console.log(`  ❌ TEST FAILED - ${failedCount} CRITICAL ERRORS DETECTED!`);

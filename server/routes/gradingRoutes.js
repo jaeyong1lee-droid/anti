@@ -95,6 +95,28 @@ router.post('/grade-subjective', async (req, res) => {
   let delay = 300;       // 500ms→300ms: 재시도 반응 속도 단축
   let lastError = null;
 
+  let activeExplanation = explanation || '';
+  const topicId = req.body.topicId || req.body.topic_id;
+  if ((!activeExplanation || activeExplanation.length < 30) && (topicId || question)) {
+    try {
+      let topicRow = null;
+      if (topicId) {
+        topicRow = await dbQuery.get('SELECT extracted_text FROM topics WHERE id = ?', [topicId]);
+      }
+      if (!topicRow && question) {
+        const qClean = String(question).replace(/수치\s*계산.*/, '').trim();
+        if (qClean.length > 5) {
+          topicRow = await dbQuery.get('SELECT extracted_text FROM topics WHERE title LIKE ? OR extracted_text LIKE ? LIMIT 1', [`%${qClean.substring(0, 15)}%`, `%${qClean.substring(0, 15)}%`]);
+        }
+      }
+      if (topicRow && topicRow.extracted_text) {
+        activeExplanation = topicRow.extracted_text;
+      }
+    } catch (e) {
+      console.warn('[gradingRoutes] Auto-enrich explanation error:', e.message);
+    }
+  }
+
   try {
     while (attempt < maxAttempts) {
       try {
@@ -104,7 +126,7 @@ router.post('/grade-subjective', async (req, res) => {
           userAnswer,
           rowHeader,
           colHeader,
-          explanation,
+          explanation: activeExplanation,
           category,
           callLLMWithFailover: localCallLLM,
           gradingStandards: dynamicGradingStandards,
