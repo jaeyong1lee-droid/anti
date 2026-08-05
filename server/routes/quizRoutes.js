@@ -232,9 +232,9 @@ function generateCalculationFallbackQuestions(title, keywords) {
     ["(3) 조건 (b)의 허용지지력 q_all(b) (kN/m²)", "[INPUT_3]"],
     ["(4) 조건 (b)의 허용하중 P_all(b) (kN)", "[INPUT_4]"]
   ] : [
-    ["(1) 단위폭당 침투유량 q (m³/s/m)", "[INPUT_1]"],
-    ["(2) 지정 위치 간극수압 u (kN/m²)", "[INPUT_2]"],
-    ["(3) 출구 유출 동수경사 i_exit", "[INPUT_3]"]
+    ["(1) 침투수량", "[INPUT_1]"],
+    ["(2) A, B 및 C점에서의 간극수압", "[INPUT_2]"],
+    ["(3) C점에서 출구까지 동수경사", "[INPUT_3]"]
   ];
   const answers = isTerzaghi ? {
     INPUT_1: "조건(a) 허용지지력 산정 공식 및 수치 풀이",
@@ -304,10 +304,15 @@ function generateCalculationFallbackQuestions(title, keywords) {
 }
 
 function assembleFinalCalculationQuestions(questions, topic) {
+  // LLM이 멋대로 만든 표채우기(수치계산 폼)를 버리고, 오직 '단답형'이나 '개요' 등만 살린다.
   let finalQuestions = (questions || []).filter(q =>
-    q.type === '주관식 (단답형)' || q.type === '주관식 (표채우기)'
+    q.type !== '주관식 (표채우기)'
   );
+  
+  // 로직에 하드코딩된 완벽한 계산 문제 폼(fb[0])을 무조건 첫 번째 문제로 강제 주입한다.
   const fb = generateCalculationFallbackQuestions(topic.title, topic.keywords);
+  finalQuestions.unshift(fb[0]);
+  
   while (finalQuestions.length < 4) {
     finalQuestions.push(fb[finalQuestions.length]);
   }
