@@ -224,24 +224,65 @@ function shuffleArray(arr) {
   return result;
 }
 
-function generateCalculationFallbackQuestions(title, keywords) {
-  const isTerzaghi = /Terzaghi|기초|지지력/i.test(title || '');
-  const rows = isTerzaghi ? [
-    ["(1) 조건 (a)의 허용지지력 q_all(a) (kN/m²)", "[INPUT_1]"],
-    ["(2) 조건 (a)의 허용하중 P_all(a) (kN)", "[INPUT_2]"],
-    ["(3) 조건 (b)의 허용지지력 q_all(b) (kN/m²)", "[INPUT_3]"],
-    ["(4) 조건 (b)의 허용하중 P_all(b) (kN)", "[INPUT_4]"]
-  ] : [
+/**
+ * 소스 텍스트(OCR)에서 (1), (2), (3)... 형식으로 명시된 하위 질문을 추출하여
+ * 어떤 토픽이든 동적으로 수치 계산 표채우기 폼을 생성한다.
+ * 추출 실패 시 범용 fallback rows를 사용한다.
+ */
+function extractCalculationRowsFromText(fileText) {
+  if (!fileText) return null;
+
+  const subQuestionPattern = /[（(](\d+)[)）]\s*([^\n(（]+?)(?=\s*[（(]\d+[)）]|\n\n|$)/g;
+  const matches = [];
+  let match;
+  while ((match = subQuestionPattern.exec(fileText)) !== null) {
+    const num = parseInt(match[1]);
+    const text = match[2].trim().replace(/[,，]\s*$/, '').replace(/\s+/g, ' ');
+    if (text.length >= 3 && text.length <= 80 && num >= 1 && num <= 10) {
+      matches.push({ num, text });
+    }
+  }
+
+  if (matches.length < 2) return null;
+
+  let bestGroup = [];
+  for (let i = 0; i < matches.length; i++) {
+    if (matches[i].num === 1) {
+      const group = [matches[i]];
+      for (let j = i + 1; j < matches.length; j++) {
+        if (matches[j].num === group[group.length - 1].num + 1) {
+          group.push(matches[j]);
+        } else if (matches[j].num > group[group.length - 1].num + 1) {
+          break;
+        }
+      }
+      if (group.length > bestGroup.length) bestGroup = group;
+    }
+  }
+
+  if (bestGroup.length < 2) return null;
+
+  const rows = bestGroup.map(({ num, text }) => [
+    `(${num}) ${text}`,
+    `[INPUT_${num}]`
+  ]);
+  const answers = {};
+  bestGroup.forEach(({ num, text }) => {
+    answers[`INPUT_${num}`] = `(${num}) ${text} 공식 및 수치 풀이`;
+  });
+
+  return { rows, answers };
+}
+
+function generateCalculationFallbackQuestions(title, keywords, fileText) {
+  const extracted = extractCalculationRowsFromText(fileText);
+
+  const rows = extracted ? extracted.rows : [
     ["(1) 단위폭당 침투유량 q (m³/s/m)", "[INPUT_1]"],
     ["(2) 지정 위치 간극수압 u (kN/m²)", "[INPUT_2]"],
     ["(3) 출구 유출 동수경사 i_exit", "[INPUT_3]"]
   ];
-  const answers = isTerzaghi ? {
-    INPUT_1: "조건(a) 허용지지력 산정 공식 및 수치 풀이",
-    INPUT_2: "조건(a) 허용하중 산정 공식 및 수치 풀이",
-    INPUT_3: "조건(b) 허용지지력 산정 공식 및 수치 풀이",
-    INPUT_4: "조건(b) 허용하중 산정 공식 및 수치 풀이"
-  } : {
+  const answers = extracted ? extracted.answers : {
     INPUT_1: "침투유량 q 공식 및 수치 풀이",
     INPUT_2: "간극수압 u 공식 및 수치 풀이",
     INPUT_3: "동수경사 i 공식 및 수치 풀이"
@@ -257,36 +298,7 @@ function generateCalculationFallbackQuestions(title, keywords) {
         rows: rows
       },
       answers: answers,
-      explanation: "원보고서 및 제공된 스크린샷 이미지의 공학적 설계 조건(지반 종류, 지하수위, 기초폭 등)을 대입하여 계산하는 전개 과정입니다."
-    },
-    {
-      type: "주관식 (표채우기)",
-      subtype: "표채우기",
-      question: /댐|덤|유선망|침투|53/i.test(title)
-        ? `댐 저면 침투 해석 시 유선망(Flow Net) 도해법과 수치해석법(FEM/FDM) 및 Darcy 1차원 해석법의 수리적 메커니즘 및 특성 비교표를 완성하시오.`
-        : `[${title} 이론 비교] ${title} 관련 핵심 메커니즘 및 고려사항 차이점을 비교하는 표의 빈칸을 서술하시오.`,
-      tableData: /댐|덤|유선망|침투|53/i.test(title) ? {
-        headers: ["구분 항목", "유선망 도해법 (Flow Net)", "수치해석법 (FEM / FDM)", "Darcy 1차원 해석법"],
-        rows: [
-          ["핵심 해석 메커니즘", "2차원 Laplace 방정식 직교 유선격자 도해 해석", "[INPUT_1]", "1차원 직선 침투 구배 공식 대입 ($q=k \\cdot i \\cdot A$)"],
-          ["지반 및 차원 적용성", "2차원 단층/이방성 지반 (단면 변환 필요)", "[INPUT_2]", "1차원 단순 균일 지반 수평 침투 단면"],
-          ["산출 핵심 물리량", "침투수량($q$), 간극수압($u$), 출구동수경사($i$)", "전수두 분포, 침투속도 벡터, 유출 안전율", "단위 폭당 1차원 단순 침투 유량"]
-        ]
-      } : {
-        headers: ["구분 항목", `${title} (주 공법)`, "대조 공법/이론 A", "대조 공법/이론 B"],
-        rows: [
-          ["파괴 메커니즘 특성", "[INPUT_1]", "경사/偏心 하중 고려 전단 파괴 확장", "표준 규격 한계 수치 적용"],
-          ["지상/지중 지보 고려 범위", "기초 저면 상부 지반 자중 중량만 고려", "[INPUT_2]", "지중 보강 구조체 연동 고려"]
-        ]
-      },
-      answers: /댐|덤|유선망|침투|53/i.test(title) ? {
-        INPUT_1: "유한요소 영역 분할 미분방정식 수치 해석",
-        INPUT_2: "3차원 이방성 다층 지반 및 침윤선 위치 추적 가능"
-      } : {
-        INPUT_1: "전반전단파괴 기반 3개 영역 평형 이론",
-        INPUT_2: "지표면까지 파괴면 확장 및 흙의 전단강도 직접 고려"
-      },
-      explanation: "공학적 이론 간의 가정 사항 및 실무적 적용 범위 차이점을 비교 설명하는 문항입니다."
+      explanation: "원보고서 및 제공된 스크린샷 이미지의 공학적 설계 조건을 대입하여 계산하는 전개 과정입니다."
     },
     {
       type: "주관식 (단답형)",
@@ -296,18 +308,26 @@ function generateCalculationFallbackQuestions(title, keywords) {
     },
     {
       type: "주관식 (단답형)",
-      question: `[${title} 공학적 대책] 이 문제의 계산 결과(지지력 부족, 침하량 과다, 불안정 등)와 관련하여 현장에서 공학적 문제가 발생했을 때의 실무적 해결책 및 대책을 서술하십시오.`,
+      question: `[${title} 공학적 대책] 이 문제의 계산 결과와 관련하여 현장에서 공학적 문제가 발생했을 때의 실무적 해결책 및 대책을 서술하십시오.`,
       answer: "지반 개량 공법 적용, 하중 분산 대책 수립, 계측 관리 강화 및 차수/배수 공법 설계",
-      explanation: "계산치 초과 또는 지반 붕괴 위험 등 불안정성 발생 시 현장에서 취할 수 있는 구체적인 지반 개량(그라우팅, 다짐 등) 및 공법 변경 대책을 제시하는 문항입니다."
+      explanation: "계산치 초과 또는 지반 붕괴 위험 등 불안정성 발생 시 현장에서 취할 수 있는 구체적인 지반 개량 및 공법 변경 대책을 제시하는 문항입니다."
     }
   ];
 }
 
 function assembleFinalCalculationQuestions(questions, topic, fileText) {
+  // 1. LLM이 생성한 표채우기는 계산문제 맥락을 모르고 임의 생성하므로 전량 폐기
   let finalQuestions = (questions || []).filter(q =>
-    q.type === '주관식 (단답형)' || q.type === '주관식 (표채우기)'
+    q.type !== '주관식 (표채우기)'
   );
-  const fb = generateCalculationFallbackQuestions(topic.title, topic.keywords);
+
+  // 2. 소스 텍스트에서 원문 하위 질문을 자동 추출하여 계산 폼 생성 (실패시 범용 fallback)
+  const fb = generateCalculationFallbackQuestions(topic.title, topic.keywords, fileText);
+  
+  // 3. 무조건 첫 번째 문제(Q1)는 우리가 동적 추출한 계산 표채우기 문제를 강제 삽입
+  finalQuestions.unshift(fb[0]);
+
+  // 4. 모자란 문제는 단답형 fallback으로 채움
   while (finalQuestions.length < 4) {
     finalQuestions.push(fb[finalQuestions.length]);
   }
