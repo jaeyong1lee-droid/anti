@@ -26076,9 +26076,9 @@ ${itemsStr}
                                                 return (
                                                   <th 
                                                     key={hIdx} 
-                                                    className={`p-1.5 border-r border-white/20 last:border-r-0 align-middle cursor-pointer min-w-[90px] ${(hIdx > 0 && (!h || !h.trim())) ? 'bg-white/[0.05]' : ''}`}
+                                                    className={`p-1.5 border-r border-white/20 last:border-r-0 align-middle ${lockedTableIds[t.id] ? 'cursor-text' : 'cursor-pointer'} min-w-[90px] ${(hIdx > 0 && (!h || !h.trim())) ? 'bg-white/[0.05]' : ''}`}
                                                     onClick={() => {
-                                                      if (hIdx === 0) return;
+                                                      if (lockedTableIds[t.id] || hIdx === 0) return;
                                                       if (!isEditing) {
                                                         setActiveEditCell({ tableId: t.id, type: 'header', colIdx: hIdx });
                                                         setEditingCellValue(h);
@@ -26566,6 +26566,8 @@ ${itemsStr}
                                             value={sentenceText}
                                             onChange={(e) => handleUpdateAcronymSentence(ac.id, e.target.value)}
                                             placeholder="예: 동해를 '차단'하기 위해 '배치'했다"
+                                            readOnly={lockedAcronymIds[ac.id]}
+                                            disabled={lockedAcronymIds[ac.id]}
                                             className="w-full bg-transparent border-0 text-[11px] text-slate-200 focus:outline-none p-0"
                                           />
                                         </div>
@@ -26636,6 +26638,7 @@ ${itemsStr}
                                                   <td 
                                                     className="p-1 md:p-1.5 border-r border-slate-800/60 align-middle cursor-pointer min-h-[38px]"
                                                     onClick={() => {
+                                                      if (lockedAcronymIds[ac.id]) return;
                                                       const isEditingCombined = activeEditAcronymCell && activeEditAcronymCell.acronymId === ac.id && activeEditAcronymCell.rIdx === rIdx && activeEditAcronymCell.type === 'combined';
                                                       if (!isEditingCombined) {
                                                         setActiveEditAcronymCell({ acronymId: ac.id, rIdx, type: 'combined' });
@@ -27066,7 +27069,7 @@ ${itemsStr}
                                                           return (
                                                             <th 
                                                               key={hIdx} 
-                                                              className={`p-2 sm:p-2.5 font-extrabold border-r border-slate-800 ${(selectedTopic?.id && typeof selectedTopic.id === 'string' && selectedTopic.id.startsWith('mixed_') && !showFormulaExam) && hIdx === headers.length - 1 ? 'last:border-r-0' : ''} cursor-pointer whitespace-normal break-words min-w-[90px]`}
+                                                              className={`p-2 sm:p-2.5 font-extrabold border-r border-slate-800 ${(selectedTopic?.id && typeof selectedTopic.id === 'string' && selectedTopic.id.startsWith('mixed_') && !showFormulaExam) && hIdx === headers.length - 1 ? 'last:border-r-0' : ''} ${lockedOverviewIds[ov.id] ? 'cursor-text' : 'cursor-pointer'} whitespace-normal break-words min-w-[90px]`}
                                                               onClick={() => {
                                                                 if (!isEditing) {
                                                                   setActiveEditCell({ tableId: ov.id, type: 'overview-header', colIdx: hIdx });
