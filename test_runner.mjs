@@ -803,6 +803,23 @@ async function runTests() {
     console.log(`  ➜ [PASS] Sanitizer successfully replaced dummy headers ("특성 1", "특성 2") with professional theory headers!`);
   }
 
+  // [TEST 28] Dynamic Item Parsing & Dummy Label Purge Verification
+  console.log('\n[TEST 28] Dynamic Item Parsing & Dummy Label Purge Verification...');
+  const limestoneReqQ = {
+    type: '주관식 (계산)',
+    question: "석회암 코어시료에 대한 실내실험을 수행한 결과가 다음과 같다. 그 결과를 Mohr 파괴기준으로 도시하고, 삼축시험결과를 이용하여 S_i(점착력)값과 \\phi(내부마찰각)값을 나타내시오."
+  };
+  const healedLimestoneQ = healQuizQuestionObject(limestoneReqQ);
+  const isDynamicSiExtracted = healedLimestoneQ.calcItems?.some(it => /점착력|S_i/i.test(it.label || ''));
+  const isDynamicPhiExtracted = healedLimestoneQ.calcItems?.some(it => /내부마찰각|\\phi|phi/i.test(it.label || ''));
+
+  if (isDynamicSiExtracted && isDynamicPhiExtracted) {
+    console.log(`  ➜ [PASS] Dynamic Item Extractor successfully generated specific input items for Limestone Mohr failure criteria!`);
+  } else {
+    failedCount++;
+    console.log(`  ➜ [CRITICAL FAIL] Dynamic Item Extractor failed! SiExtracted: ${isDynamicSiExtracted}, PhiExtracted: ${isDynamicPhiExtracted}`);
+  }
+
   console.log('\n====================================================');
   if (failedCount > 0) {
     console.log(`  ❌ TEST FAILED - ${failedCount} CRITICAL ERRORS DETECTED!`);

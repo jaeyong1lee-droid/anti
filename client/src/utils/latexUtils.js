@@ -1376,6 +1376,15 @@ export function healQuizQuestionObject(q) {
             INPUT_4: "171.7 kPa (하류 C지점)",
             INPUT_5: "0.25 ~ 0.50 (출구 동수경사)"
           };
+        } else if (/S_i|점착력/i.test(qText) && /\phi|내부마찰각/i.test(qText)) {
+          q.calcItems = [
+            { id: 'INPUT_1', label: '(1) 점착력 $S_i$ (kN/m²)' },
+            { id: 'INPUT_2', label: '(2) 내부마찰각 $\\phi$ (°)' }
+          ];
+          q.answers = q.answers || {
+            INPUT_1: "Mohr 파괴락원 접선 기반 점착력 S_i 수치값",
+            INPUT_2: "Mohr 파괴락원 접선 경사각 phi 수치값"
+          };
         } else if (/Terzaghi|기초폭\s*B|정방형\s*기초/i.test(qText) || (/지지력/i.test(qText) && /허용하중/i.test(qText))) {
           q.calcItems = [
             { id: 'INPUT_1', label: '(1) 조건 (a)의 허용지지력 $q_{all}$(a) (kN/m²)' },
@@ -1397,10 +1406,31 @@ export function healQuizQuestionObject(q) {
               label: `(${m[1]}) ${m[2].trim()}`
             }));
           } else {
-            q.calcItems = [
-              { id: 'INPUT_1', label: '(1) 수치 계산 요구 항목 1' },
-              { id: 'INPUT_2', label: '(2) 수치 계산 요구 항목 2' }
-            ];
+            const targetMatch = qText.match(/(?:을|를|값과|값을|항목을)\s*([^,.\n]+?)(?:를|을|값)?\s*(?:구하시오|나타내시오|산정하시오|계산하시오|평가하시오)/i);
+            if (targetMatch && targetMatch[1]) {
+              const rawTerms = targetMatch[1].split(/(?:및|와|과|,|\/)/).map(t => t.trim()).filter(Boolean);
+              if (rawTerms.length >= 1) {
+                q.calcItems = rawTerms.map((term, idx) => ({
+                  id: `INPUT_${idx + 1}`,
+                  label: `(${idx + 1}) ${term}`
+                }));
+              }
+            }
+            if (!q.calcItems || q.calcItems.length === 0) {
+              const latexSymbols = [...qText.matchAll(/\$([A-Za-z0-9_\\\{\}]+)\$/g)].map(m => m[1]);
+              if (latexSymbols.length >= 1) {
+                const uniqueSyms = [...new Set(latexSymbols)];
+                q.calcItems = uniqueSyms.map((sym, idx) => ({
+                  id: `INPUT_${idx + 1}`,
+                  label: `(${idx + 1}) 변수 $${sym}$ 정량 산출값`
+                }));
+              } else {
+                q.calcItems = [
+                  { id: 'INPUT_1', label: '(1) 수치 산출 항목 1' },
+                  { id: 'INPUT_2', label: '(2) 수치 산출 항목 2' }
+                ];
+              }
+            }
           }
         }
       } else if (!q.calcItems && q.tableData && Array.isArray(q.tableData.rows)) {

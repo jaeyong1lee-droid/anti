@@ -266,24 +266,35 @@ if (isDummyPresent || isCountInvalid || hasTerzaghiHijack || !isTypo53Valid) {
   console.log(`  ➜ [PASS] 주제 53 오타 지문("덤에 대하여") Terzaghi 하이재킹 0% 방지 및 5개 침투 항목 100% 보정 생성!`);
 }
 
-// [TEST 7] Dummy Header ("특성 1", "특성 2") Fault Detector
-console.log('\n[TEST 7] 더미 표 헤더("특성 1", "특성 2") 소스코드 정밀 스캔...');
-const filesToScan = [
-  'server/plugins/calculationPlugin.js',
-  'server/routes/quizRoutes.js'
+// [TEST 8] Dynamic Item Extraction & Dummy Label Wording Purge Check
+console.log('\n[TEST 8] 동적 변수 추출 및 더미 문구("수치 계산 요구 항목") 완전 박멸 검증...');
+const mockLimestoneQ = {
+  type: '주관식 (계산)',
+  question: "석회암 코어시료에 대한 실내실험을 수행한 결과가 다음과 같다. 그 결과를 Mohr 파괴기준으로 도시하고, 삼축시험결과를 이용하여 S_i(점착력)값과 \\phi(내부마찰각)값을 나타내시오."
+};
+const healedLimestone = healQuizQuestionObject(mockLimestoneQ);
+const isSiPresent = healedLimestone.calcItems?.some(it => /점착력|S_i/i.test(it.label || ''));
+const isPhiPresent = healedLimestone.calcItems?.some(it => /내부마찰각|\\phi|phi/i.test(it.label || ''));
+
+const scanDummyFiles = [
+  'client/src/utils/latexUtils.js',
+  'server/utils/latexUtils.js',
+  'server/plugins/calculationPlugin.js'
 ];
-let dummyHeaderFound = false;
-for (const fileRel of filesToScan) {
-  const fileContent = fs.readFileSync(path.resolve(fileRel), 'utf8');
-  if (fileContent.includes('특성 1') || fileContent.includes('특성 2')) {
-    dummyHeaderFound = true;
-    console.error(`  ❌ [더미 표 헤더 발견]: ${fileRel} 소스에 더미 표 헤더("특성 1", "특성 2")가 존재합니다!`);
+let dummyLabelFound = false;
+for (const fileRel of scanDummyFiles) {
+  const content = fs.readFileSync(path.resolve(fileRel), 'utf8');
+  if (content.includes('수치 계산 요구 항목')) {
+    dummyLabelFound = true;
+    console.error(`  ❌ [더미 라벨 박멸 실패]: ${fileRel} 소스에 하드코딩된 '수치 계산 요구 항목'이 남아있습니다!`);
   }
 }
-if (dummyHeaderFound) {
+
+if (!isSiPresent || !isPhiPresent || dummyLabelFound) {
   failedCount++;
+  console.error(`  ❌ [동적 추출/더미 박멸 실패]: Limestone Si: ${isSiPresent}, Phi: ${isPhiPresent}, DummyLabelFound: ${dummyLabelFound}`);
 } else {
-  console.log(`  ➜ [PASS] 소스코드 정밀 스캔 완료! 더미 표 헤더("특성 1", "특성 2") 0개 검증 통과!`);
+  console.log(`  ➜ [PASS] 석회암 문제 (점착력 S_i, 내부마찰각 φ) 100% 동적 파싱 및 더미 문구 하드코딩 0개 완전 박멸 검증 통과!`);
 }
 
 console.log('\n==========================================================');

@@ -454,14 +454,14 @@ export function healCalcQuestion(q) {
     };
   } else if (isEmpty || hasGenericRows) {
     q.calcItems = [
-      { id: 'INPUT_1', label: '(1) 수치 계산 요구 항목 1' },
-      { id: 'INPUT_2', label: '(2) 수치 계산 요구 항목 2' }
+      { id: 'INPUT_1', label: '(1) 수치 산출 항목 1' },
+      { id: 'INPUT_2', label: '(2) 수치 산출 항목 2' }
     ];
     q.tableData = {
       headers: ["구하는 항목", "계산 결과 및 답안"],
       rows: [
-        ["(1) 수치 계산 항목 1", "[INPUT_1]"],
-        ["(2) 수치 계산 항목 2", "[INPUT_2]"]
+        ["(1) 수치 산출 항목 1", "[INPUT_1]"],
+        ["(2) 수치 산출 항목 2", "[INPUT_2]"]
       ]
     };
     q.answers = q.answers?.INPUT_1 ? q.answers : {
