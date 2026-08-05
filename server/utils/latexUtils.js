@@ -891,6 +891,7 @@ export function healQuizQuestionObject(q) {
       }
 
 
+      const hasExactMatch = q.options.includes(q.answer);
       if (!hasExactMatch) {
         let bestOpt = null;
         let maxScore = -1;
