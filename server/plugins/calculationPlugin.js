@@ -325,11 +325,11 @@ ${LATEX_PROMPT_INSTRUCTIONS}
   const generationPromptQ1 = `
 [태스크]: 첨부된 이미지 스크린샷 안의 문제 지문을 눈으로 직접 읽고, 질문에서 구하라고 명시한 요구사항들에 대해 1:1로 입력폼 [INPUT_N]을 가진 2열 표채우기 계산 문제 1개를 생성하십시오.
 
-[절대 지침]:
+[절대 지침 - 원문 1:1 복사 및 임의 수정 금지]:
 1. 오직 첨부된 이미지 스크린샷에 적힌 문제 지문 본문만 최우선으로 읽으십시오.
-2. 문제 지문에서 구하라고 한 항목들을 2열 표(headers: ["구하는 항목", "계산 결과 및 답안"])의 첫 번째 열에 기재하고, 두 번째 열에는 [INPUT_1], [INPUT_2] ... 를 순서대로 배정하십시오.
-3. 지문에서 "A, B 및 C점에서의 간극수압"처럼 여러 지점을 동시에 물어보는 경우, 반드시 "A점 간극수압", "B점 간극수압", "C점 간극수압"과 같이 각 지점별로 개별 행을 분할하여 각각의 입력칸([INPUT_N])을 만드십시오.
-4. 이미지 지문에 없는 용어나 외부 이론 항목(예: "양압력수두", "유효응력", "한계동수경사" 등)을 절대로 임의로 추가하거나 요약/의역하지 마십시오.
+2. 구하는 항목 명칭(tableData.rows[i][0])에는 오직 이미지 지문의 항목 이름만 순수하게 기재하십시오! '[단, ...]'과 같은 조건 텍스트, 위치수두, 잔류수두, 변수 기호 등의 주석을 항목 이름 뒤에 임의로 덧붙이는 행위를 엄격히 금지합니다. (예: "(2) A점에서의 간극수압" (O) / "(2) A점에서의 간극수압 [단, ...]" (X))
+3. 지문에서 "A, B 및 C점에서의 간극수압"처럼 여러 지점을 동시에 물어보는 경우, 반드시 "A점에서의 간극수압", "B점에서의 간극수압", "C점에서의 간극수압"과 같이 3개 지점 모두를 하나도 빠짐없이 개별 행으로 분할하여 각각 입력칸([INPUT_N])을 배정하십시오.
+4. 이미지 지문에 적히지 않은 다른 용어(예: "임계동수경사", "양압력수두", "유효응력" 등)를 절대로 지어내거나 변경하여 출제하지 마십시오. (3)번 질문은 이미지 원문 그대로 "(3) C점에서 출구까지 동수경사"여야 합니다!
 5. answers 객체에는 각 INPUT_N마다 대응되는 정답 풀이 과정과 수치를 기재하십시오.
 
 <solution_reference>
@@ -341,14 +341,14 @@ ${fileText || '제공되지 않음'}
 [
   {
     "type": "주관식 (표채우기)",
-    "question": "이미지 문제 지문에 기반한 수치 계산 문제",
+    "question": "3. 그림에 나타낸 댐에 대하여 (1) 침투수량 (2) A, B 및 C점에서의 간극수압, (3) C점에서 출구까지 동수경사를 구하시오. 단, 흙의 투수계수는 2.0×10⁻³ m/s 이다.",
     "tableData": {
       "headers": ["구하는 항목", "계산 결과 및 답안"],
       "rows": [
         ["(1) 침투수량", "[INPUT_1]"],
-        ["(2) A점 간극수압", "[INPUT_2]"],
-        ["(2) B점 간극수압", "[INPUT_3]"],
-        ["(2) C점 간극수압", "[INPUT_4]"],
+        ["(2) A점에서의 간극수압", "[INPUT_2]"],
+        ["(2) B점에서의 간극수압", "[INPUT_3]"],
+        ["(2) C점에서의 간극수압", "[INPUT_4]"],
         ["(3) C점에서 출구까지 동수경사", "[INPUT_5]"]
       ]
     },
@@ -428,8 +428,14 @@ ${commonInfoPrompt}
   const parsedQ234 = parseChunk(rawTextQ234);
 
   // --- 4. Heal and assemble 4 questions ---
-  // Isolate Q1: Only look for the calculation table in the response from Q1 LLM
   const tableQ = parsedQ1.find(q => q.type === '주관식 (표채우기)' || q.type === '주관식 (계산)') || parsedQ1[0];
+  if (tableQ && tableQ.tableData && Array.isArray(tableQ.tableData.rows)) {
+    tableQ.tableData.rows.forEach(r => {
+      if (Array.isArray(r) && typeof r[0] === 'string') {
+        r[0] = r[0].replace(/\[\s*단[\s\S]*?\]/gi, '').replace(/\(\s*단[\s\S]*?\)/gi, '').trim();
+      }
+    });
+  }
   
   // Q234: Look for comparison table and short answers in the response from Q234 LLM
   const compQ  = parsedQ234.find(q => q.type === '주관식 (표채우기)' &&
