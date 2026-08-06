@@ -146,6 +146,41 @@ function normalizeMcText(text) {
     .toLowerCase();
 }
 
+function isQuestionMismatched(q, topicTitle, topicKeywords, topicCategory = '일반') {
+  if (!q) return true;
+  const qStr = typeof q === 'string' ? q : JSON.stringify(q);
+  const title = (topicTitle || '').toLowerCase();
+  const keywords = (topicKeywords || '').toLowerCase();
+  const category = topicCategory || '일반';
+
+  const isCalcQuestion = 
+    q.type === '주관식 (계산)' ||
+    qStr.includes('수치 계산 답안 작성') ||
+    qStr.includes('Terzaghi') ||
+    qStr.includes('허용지지력 q_all') ||
+    qStr.includes('허용하중 P_all') ||
+    (q.tableData && Array.isArray(q.tableData.headers) && q.tableData.headers[1] === '계산 결과 및 답안');
+
+  // Category mismatch check
+  if (category === '일반' && isCalcQuestion) {
+    console.log(`[Quiz Mismatch Check] Invalid calculation question found in '일반' category topic "${topicTitle}"!`);
+    return true;
+  }
+  if (category === '계산' && !isCalcQuestion) {
+    console.log(`[Quiz Mismatch Check] Non-calculation question found in '계산' category topic "${topicTitle}"!`);
+    return true;
+  }
+
+  // Cross-topic title check for known anomalies (e.g. Terzaghi bearing capacity vs Tunnel topic)
+  if (!title.includes('지지력') && !keywords.includes('지지력') && qStr.includes('Terzaghi')) {
+    console.log(`[Quiz Mismatch Check] Anomaly: Terzaghi question found in non-bearing capacity topic "${topicTitle}"!`);
+    return true;
+  }
+
+  return false;
+}
+
+
 function sanitizeMultipleChoiceAnswer(q) {
   if (!q || !q.options || q.options.length === 0 || !q.explanation) return q;
 
@@ -653,7 +688,7 @@ router.post('/topics/:id/ai-questions', async (req, res) => {
 
       if (cachedQuestions && cachedQuestions.length > 0) {
         if (!(topic.category === '계산' && cachedQuestions.length !== 4)) {
-          const mismatchedCount = cachedQuestions.filter(q => isQuestionMismatched(q, topic.title, topic.keywords)).length;
+          const mismatchedCount = cachedQuestions.filter(q => isQuestionMismatched(q, topic.title, topic.keywords, topic.category)).length;
           if (mismatchedCount === 0) {
             const healed = cachedQuestions.map(q => healQuizQuestionObject({ ...q, category: topic.category }));
             isCacheHit = true;
@@ -1685,6 +1720,21 @@ router.get('/session/review', async (req, res) => {
             savedQuizScroll: 0
           };
         }
+
+        // Cross-verify with topic category & subject to prevent serving corrupted calculation session
+        const numericTopicId = Number(targetTopicId);
+        if (numericTopicId) {
+          const tInfo = await dbQuery.get('SELECT id, title, keywords, category FROM topics WHERE id = ?', [numericTopicId]);
+          if (tInfo && Array.isArray(data.questions) && data.questions.length > 0) {
+            const hasMismatch = data.questions.some(q => isQuestionMismatched(q, tInfo.title, tInfo.keywords, tInfo.category));
+            if (hasMismatch) {
+              console.warn(`[Session Auto-Purge] Purging corrupted session key '${actualKey}' for topic #${numericTopicId} (${tInfo.category}) due to category/topic mismatch!`);
+              await dbQuery.run('DELETE FROM app_session WHERE key = ? OR key = ?', [actualKey, `${actualKey}_q`]);
+              return res.json({ success: false, data: null, error: '카테고리/주제 불일치 세션 자동 정제' });
+            }
+          }
+        }
+
         if (Array.isArray(data.questions)) {
           data.questions = data.questions.map(q => sanitizeMultipleChoiceAnswer(healQuizQuestionObject(q)));
         }
