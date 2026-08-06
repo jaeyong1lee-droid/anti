@@ -166,10 +166,9 @@ function isQuestionMismatched(q, topicTitle, topicKeywords, topicCategory = '일
     console.log(`[Quiz Mismatch Check] Invalid calculation question found in '일반' category topic "${topicTitle}"!`);
     return true;
   }
-  if (category === '계산' && !isCalcQuestion) {
-    console.log(`[Quiz Mismatch Check] Non-calculation question found in '계산' category topic "${topicTitle}"!`);
-    return true;
-  }
+  // 계산 카테고리는 4문항 중 1~2개만 계산 관련이고 나머지는 이론 단답형이므로, 
+  // 단일 문항 단위로 !isCalcQuestion이라고 무조건 삭제하면 세션 유지 불가 버그(문제 재생성) 발생. 
+  // 따라서 단일 문항 단위의 엄격한 계산 검증은 제거.
 
   // Cross-topic title check for known anomalies (e.g. Terzaghi bearing capacity vs Tunnel topic)
   if (!title.includes('지지력') && !keywords.includes('지지력') && qStr.includes('Terzaghi')) {
@@ -1726,11 +1725,12 @@ router.get('/session/review', async (req, res) => {
         if (numericTopicId) {
           const tInfo = await dbQuery.get('SELECT id, title, keywords, category FROM topics WHERE id = ?', [numericTopicId]);
           if (tInfo && Array.isArray(data.questions) && data.questions.length > 0) {
+            const isLengthCorrupted = tInfo.category === '계산' && data.questions.length !== 4;
             const hasMismatch = data.questions.some(q => isQuestionMismatched(q, tInfo.title, tInfo.keywords, tInfo.category));
-            if (hasMismatch) {
-              console.warn(`[Session Auto-Purge] Purging corrupted session key '${actualKey}' for topic #${numericTopicId} (${tInfo.category}) due to category/topic mismatch!`);
+            if (hasMismatch || isLengthCorrupted) {
+              console.warn(`[Session Auto-Purge] Purging corrupted session key '${actualKey}' for topic #${numericTopicId} (${tInfo.category}) due to category/topic/length mismatch!`);
               await dbQuery.run('DELETE FROM app_session WHERE key = ? OR key = ?', [actualKey, `${actualKey}_q`]);
-              return res.json({ success: false, data: null, error: '카테고리/주제 불일치 세션 자동 정제' });
+              return res.json({ success: false, data: null, error: '카테고리/주제/길이 불일치 세션 자동 정제' });
             }
           }
         }

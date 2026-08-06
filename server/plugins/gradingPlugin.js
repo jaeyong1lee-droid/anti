@@ -180,8 +180,9 @@ ${explanation ? `- 전체 해설 (Explanation): ${explanation}` : ''}
     const isCorrect = isCorrectVal !== null ? !!isCorrectVal : !!result.isCorrect;
 
     const scoreVal = findKey(result, 'score');
-    const score = typeof scoreVal === 'number' 
-      ? scoreVal 
+    const scoreNum = Number(scoreVal);
+    const score = (!isNaN(scoreNum) && scoreVal !== null && scoreVal !== '') 
+      ? scoreNum 
       : (typeof result.score === 'number' ? result.score : (isCorrect ? 10 : 0));
 
     const reason = findKey(result, 'reason') || result.reason || 'AI 채점 완료';
