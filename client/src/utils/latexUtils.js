@@ -1425,8 +1425,7 @@ export function healQuizQuestionObject(q) {
           if (stripped.length < 2 && q.answers[key]) {
              const ansText = String(q.answers[key]).replace(/<[^>]+>/g, '').trim();
              if (ansText.length > 0) {
-                 const snippet = ansText.length > 25 ? ansText.substring(0, 25) + '...' : ansText;
-                 it.label = `${rawLabel} 💡힌트: ${snippet}`;
+                 it.label = `${rawLabel} 💡힌트: ${ansText}`;
              }
           }
         });
