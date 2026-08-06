@@ -1271,7 +1271,7 @@ let parsedArray = null;
         category: topic.category,
       }));
       // Save to session and return
-      await saveSessionValue(`review_questions_topic_${topicId}`, { questions: finalCalcQuestions });
+      await saveSessionValue(`review_questions_topic_${topicId}`, JSON.stringify({ questions: finalCalcQuestions }));
       return res.json({ success: true, questions: finalCalcQuestions });
     } else {
       const targetModel = (req.body && req.body.preferredModel) || globalPreferredModel || 'gemini-3.5-flash-lite';
