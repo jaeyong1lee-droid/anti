@@ -515,8 +515,8 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   let processed = healCorruptedKatexHtml(text);
   // [Self-Healing] Merge artificially fragmented inline math blocks separated only by spaces (e.g. $\sqrt{$ $\sqrt{\dots}$ $}$)
   processed = processed.replace(/(?<!\$)\$\s+\$(?!\$)/g, ' ');
-  // [Self-Healing] Fix AI's weird nested root hallucination (e.g. \sqrt{ \sqrt{\dots} } -> \sqrt{\dots})
-  processed = processed.replace(/\\sqrt\{\s*\\sqrt\{\\dots\}\s*\}/g, '\\sqrt{\\dots}');
+  // [Self-Healing] Fix AI's weird nested root hallucination (e.g. $\sqrt{ \sqrt{\dots} }$ -> delete entirely to make sentences natural)
+  processed = processed.replace(/\$\s*\\sqrt\{\s*\\sqrt\{\\dots\}\s*\}\s*\$\s*/g, '');
   // [Self-Healing] Convert misplaced double dollar ($$) math inside parentheses or sentence flow to single dollar ($) inline math
   processed = processed.replace(/\(([^()\n]*?)\$\$\s*([\s\S]*?)\s*\$\$\s*([^()\n]*?)\)/g, '($1 $$$2$$ $3)');
   processed = processed.replace(/([([\uAC00-\uD7A3a-zA-Z0-9,])\s*\$\$\s*([^\$\n]+?)\s*\$\$\s*([)\],\.\uAC00-\uD7A3a-zA-Z0-9,])/g, '$1 $$$2$$ $3');
