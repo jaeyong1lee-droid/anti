@@ -842,30 +842,89 @@ const localParseHtmlTable = (htmlStr) => {
 
 export function healQuizQuestionObject(q) {
   if (q && typeof q === 'object') {
-    // Rescue flowchart that was hallucinated inside explanation instead of question
-    if (q.type && q.type.includes('표채우기') && typeof q.explanation === 'string' && typeof q.question === 'string') {
-      if (q.explanation.includes('```') && !q.question.includes('```')) {
-        const flowchartRegex = /```(?:flowchart|step|sequence|[a-zA-Z0-9_-]*)?\n([\s\S]*?(?:┌|└|│|▼)[\s\S]*?\[[\d\*\s가-힣a-zA-Z\-\(\)]+\][\s\S]*?)```/i;
-        const match = flowchartRegex.exec(q.explanation);
-        if (match) {
-           q.question = q.question.trim() + '\n\n```\n' + match[1].trim() + '\n```';
-           q.explanation = q.explanation.replace(match[0], '').trim();
-        }
-      }
-    }
-
     if (q.question && typeof q.question === 'string') {
       q.question = cleanQuizQuestion(q.question);
-    }
-    if (q.question && (!q.tableData || !q.tableData.headers || !q.tableData.rows)) {
-      const parsed = parseQuestionTableText(q.question);
-      if (parsed.tableData) {
-        q.tableData = parsed.tableData;
-        q.question = parsed.questionText;
+      // 1. MIT 방식 명칭 노출 방지 사후 보정
+      if (q.question.includes('MIT 방식의')) {
+        q.question = q.question.replace(/MIT\s*방식의\s*/g, '');
+      }
+      if (q.question.includes('MIT 방식')) {
+        q.question = q.question.replace(/MIT\s*방식\s*/g, '');
+      }
+
+
+      
+      // 2. p' q 공식 누락 문제 실시간 복원
+      if (q.question.includes("평균 응력 $p'$ 와 축차응력 $q$ 가 각각 다음과 같을 때") && !q.question.includes('=')) {
+        q.question = q.question.replace(
+          "평균 응력 $p'$ 와 축차응력 $q$ 가 각각 다음과 같을 때",
+          "평균 유효응력 $p' = \\frac{\\sigma'_1 + \\sigma'_3}{2}$ 와 축차응력 $q = \\frac{\\sigma_1 - \\sigma_3}{2}$ 가 각각 정의될 때"
+        );
       }
     }
 
+    // Real-time healing for overview questions to ensure both 학술적 정의 & 공학적 작동 메커니즘 are present
+    if ((q.mixedType === 'overview' || String(q.question || '').includes('[개요 복습]')) && q.tableData) {
+      const mainHeaders = (q.tableData.headers || []).join(',');
+      const compHeaders = (q.comparisonTableData?.headers || []).join(',');
+      const isDuplicated = q.comparisonTableData && mainHeaders === compHeaders && mainHeaders !== '구분,내용';
 
+      if (isDuplicated) {
+        const parsed = parseOverviewContent(q.explanation || q.content || '');
+        const answers = { ...(q.answers || {}) };
+        const rows = [];
+        if (parsed.definition || q.tableData.rows?.[0]?.[1]) {
+          const defVal = parsed.definition || q.answers?.['INPUT_0_1'] || q.answer || '';
+          answers['INPUT_0_1'] = defVal;
+          rows.push(['학술적 정의', '[INPUT_0_1]']);
+        }
+        
+        const mechVal = parsed.mechanism || parsed.intuitive || parsed.significance || (q.explanation ? q.explanation.replace(/<[^>]*>/g, '').trim() : '');
+        if (mechVal) {
+          const rowIdx = rows.length;
+          answers[`INPUT_${rowIdx}_1`] = mechVal;
+          rows.push(['공학적 작동 메커니즘', `[INPUT_${rowIdx}_1]`]);
+        }
+
+        if (rows.length > 0) {
+          q.tableData = {
+            headers: ['구분', '내용'],
+            rows: rows
+          };
+          q.answers = answers;
+        }
+      }
+
+      if (q.comparisonTableData && q.comparisonTableData.rows && q.answers) {
+        const mainRowsCount = q.tableData?.rows?.length || 2;
+        q.comparisonTableData.rows = q.comparisonTableData.rows.map((row, rIdx) => {
+          if (!Array.isArray(row)) return row;
+          return row.map((cell, cIdx) => {
+            if (cIdx === 0) return cell;
+            let currentId = typeof cell === 'string' && cell.includes('[INPUT_')
+              ? cell.replace('[', '').replace(']', '').trim()
+              : `INPUT_${rIdx}_${cIdx}`;
+            
+            const match = currentId.match(/^INPUT_(\d+)_(\d+)$/i);
+            let finalId = currentId;
+            if (match) {
+              const r = parseInt(match[1], 10);
+              const c = parseInt(match[2], 10);
+              if (r < mainRowsCount) {
+                finalId = `INPUT_${mainRowsCount + r}_${c}`;
+                if (q.answers[currentId] && !q.answers[finalId]) {
+                  q.answers[finalId] = q.answers[currentId];
+                }
+              }
+            }
+            if (!q.answers[finalId] && q.answers[currentId]) {
+              q.answers[finalId] = q.answers[currentId];
+            }
+            return `[${finalId}]`;
+          });
+        });
+      }
+    }
 
     // For multiple choice questions, heal mismatched answer field
     if (q.options && Array.isArray(q.options) && q.answer) {
@@ -890,6 +949,23 @@ export function healQuizQuestionObject(q) {
         }
       }
 
+      // 1. 배율 왜곡(10배/100배 스케일링 오염) 복원 처리
+      const optNums = q.options.map(o => parseFloat(String(o || '').replace(/[^0-9.-]/g, ''))).filter(n => !isNaN(n));
+      const ansNum = parseFloat(String(q.answer || '').replace(/[^0-9.-]/g, ''));
+      if (optNums.length === q.options.length && !isNaN(ansNum) && ansNum > 0 && ansNum < 1) {
+        const hasScaledMatch = optNums.some(n => Math.abs(n - ansNum * 100) < 1e-5 || Math.abs(n - ansNum * 10) < 1e-5);
+        const allLargeOrZero = optNums.every(n => n === 0 || n >= 1);
+        if (hasScaledMatch && allLargeOrZero) {
+          console.log(`[HealMC] Detected scaled options. Restoring options from ${JSON.stringify(q.options)} using answer ${q.answer}`);
+          q.options = q.options.map(opt => {
+            const num = parseFloat(String(opt || '').replace(/[^0-9.-]/g, ''));
+            if (isNaN(num)) return opt;
+            const restoredVal = (num / 100).toFixed(2);
+            return restoredVal;
+          });
+          console.log(`[HealMC] Restored options: ${JSON.stringify(q.options)}`);
+        }
+      }
 
       const hasExactMatch = q.options.includes(q.answer);
       if (!hasExactMatch) {
@@ -955,20 +1031,41 @@ export function healQuizQuestionObject(q) {
       q.tableData.headers[0] === '구하는 항목' || q.tableData.headers[1] === '계산 결과 및 답안'
     );
 
+    const hasMultipleSubItems = /(?:\(1\)|①).*?(?:\(2\)|②)/.test(qText);
+    const hasCalcKeyword = /구하시오|산정하시오|계산하시오|결정하시오/i.test(qText);
+
     const isCalcQ = !isExplicitCompOrTheory && (
       q.type === '주관식 (계산)' || 
       q.subtype === '계산' || 
-      hasCalcHeaders
+      hasCalcHeaders ||
+      (/Terzaghi|기초|지지력|허용하중|침투유량|침투수량|간극수압|동수경사|안전율/i.test(qText) && /산정|계산|구하시오/i.test(qText)) ||
+      (hasMultipleSubItems && hasCalcKeyword)
     );
 
     if (isCalcQ) {
       q.type = '주관식 (계산)';
       q.subtype = '계산';
 
+      // 1. 최우선순위: LLM이 표(tableData)를 명시적으로 생성했다면 그것을 기반으로 calcItems 구성
+      if (!q.calcItems || q.calcItems.length === 0) {
+        if (q.tableData && Array.isArray(q.tableData.rows)) {
+          const validRows = q.tableData.rows.filter(r => Array.isArray(r) && typeof r[0] === 'string' && !/핵심\s*(?:수치\s*)?계산\s*항목/i.test(r[0]));
+          if (validRows.length > 0) {
+            q.calcItems = validRows.map((row, rIdx) => ({
+              id: `INPUT_${rIdx + 1}`,
+              label: row[0]
+            }));
+          }
+        }
+      }
+
+      // 2. 만약 여전히 calcItems가 없거나, 너무 포괄적/더미(Generic) 텍스트라면 정규식을 통해 본문에서 추출
       const isGeneric = !q.calcItems || q.calcItems.length === 0 || (
         Array.isArray(q.calcItems) && q.calcItems.some(it => /(?:핵심|수치)\s*(?:계산|산출)\s*(?:요구\s*)?항목/i.test(it.label || ''))
       ) || (
         Array.isArray(q.calcItems) && q.calcItems.some(it => /^[\(\[]?\d+[\)\]]?\s*수치\s*(?:계산|산출)/i.test(it.label || ''))
+      ) || (
+        Array.isArray(q.calcItems) && q.calcItems.some(it => /빈칸에\s*알맞/i.test(it.label || ''))
       );
 
       if (isGeneric) {
@@ -992,7 +1089,7 @@ export function healQuizQuestionObject(q) {
             }
           }
           // 3. Extract math symbols ($S_i$, $\phi$, etc.) from question text
-          if (!q.calcItems || q.calcItems.length === 0) {
+          if (!q.calcItems || q.calcItems.length === 0 || q.calcItems.some(it => /빈칸에\s*알맞/i.test(it.label || ''))) {
             const latexSymbols = [...qText.matchAll(/\$([A-Za-z0-9_\\\{\}]+)\$/g)].map(m => m[1]);
             if (latexSymbols.length >= 1) {
               const uniqueSyms = [...new Set(latexSymbols)];
@@ -1003,7 +1100,7 @@ export function healQuizQuestionObject(q) {
             }
           }
           // 4. Extract step headers from explanation if available
-          if ((!q.calcItems || q.calcItems.length === 0) && q.explanation) {
+          if ((!q.calcItems || q.calcItems.length === 0 || q.calcItems.some(it => /빈칸에\s*알맞/i.test(it.label || ''))) && q.explanation) {
             const expSteps = [...q.explanation.matchAll(/(?:^|\n)\s*(?:[1-9]\)|[\(\[]\d+[\)\]]|①|②|③|④|⑤)\s*([^=\n:+]{2,30})/g)];
             if (expSteps.length >= 2) {
               q.calcItems = expSteps.map((m, i) => ({
@@ -1015,24 +1112,22 @@ export function healQuizQuestionObject(q) {
         }
       }
 
-      if (!q.calcItems || q.calcItems.length === 0) {
-        if (q.tableData && Array.isArray(q.tableData.rows)) {
-          const validRows = q.tableData.rows.filter(r => Array.isArray(r) && typeof r[0] === 'string' && !/핵심\s*(?:수치\s*)?계산\s*항목/i.test(r[0]));
-          if (validRows.length > 0) {
-            q.calcItems = validRows.map((row, rIdx) => ({
-              id: `INPUT_${rIdx + 1}`,
-              label: row[0]
-            }));
-          }
-        }
-      }
-
       if (Array.isArray(q.calcItems) && q.calcItems.length > 0) {
         if (!q.answers) q.answers = {};
         q.calcItems.forEach((it, idx) => {
           const key = it.id || `INPUT_${idx + 1}`;
           if (!q.answers[key]) {
             q.answers[key] = it.modelAnswer || it.correctAnswer || it.label || `(${idx + 1}) 수치 계산 수치값`;
+          }
+          
+          // [HEAL] Append context to extremely generic labels like "(A)", "(B)", "(1)" generated by AI for image questions
+          const rawLabel = it.label || '';
+          const stripped = rawLabel.replace(/[\(\)\[\]A-Z0-9\s]/ig, '');
+          if (stripped.length < 2 && q.answers[key]) {
+             const ansText = String(q.answers[key]).replace(/<[^>]+>/g, '').trim();
+             if (ansText.length > 0) {
+                 it.label = `${rawLabel} 💡힌트: ${ansText}`;
+             }
           }
         });
       }
@@ -1046,7 +1141,11 @@ export function healQuizQuestionObject(q) {
           if (cleanH.includes(':')) cleanH = cleanH.split(':')[0].trim();
           if (cleanH.includes('：')) cleanH = cleanH.split('：')[0].trim();
 
-
+          if (/보고서\s*특성\s*1|특성\s*1/i.test(cleanH)) {
+            cleanH = '주요 핵심 역학/해석 특성';
+          } else if (/보고서\s*특성\s*2|특성\s*2/i.test(cleanH)) {
+            cleanH = '대조 관련 공법 및 파괴기준';
+          }
           return cleanH;
         });
       }
@@ -1063,8 +1162,6 @@ export function healQuizQuestionObject(q) {
           });
         });
       }
-    } else if (!q.tableData || !Array.isArray(q.tableData.rows) || q.tableData.rows.length === 0) {
-
       if (q.tableData && Array.isArray(q.tableData.headers)) {
         q.tableData.headers = q.tableData.headers.map((h, hIdx) => {
           if (hIdx === 0 || typeof h !== 'string') return h;
@@ -1078,7 +1175,11 @@ export function healQuizQuestionObject(q) {
           if (parenMatch) {
             cleanH = parenMatch[1].trim();
           }
-
+          if (/특성\s*1/i.test(cleanH)) {
+            cleanH = '주 공법/이론 (해당 토픽)';
+          } else if (/특성\s*2/i.test(cleanH)) {
+            cleanH = '대조 관련 공법/이론';
+          }
           return cleanH;
         });
       }
@@ -1185,11 +1286,12 @@ export function healQuizQuestionObject(q) {
             const letterKey = String.fromCharCode(64 + matchedNum); // A, B, C...
             foundVal = lookup(letterKey) ?? lookup(letterKey.toLowerCase()) ?? lookup(`INPUT_${matchedNum}`) ?? lookup(`input_${matchedNum}`) ?? lookup(matchedNum) ?? lookup(String(matchedNum));
             
-            // Suffix-based recovery (1D keys only)
+            // Suffix-based recovery (e.g., match INPUT_2_1 for matchedNum = 1)
             if (foundVal === undefined) {
               const matchedKey = Object.keys(oldAnswers).find(key => {
                 const parts = key.split('_');
-                return parts.length === 2 && parts[0].toLowerCase() === 'input' && parseInt(parts[1], 10) === matchedNum;
+                const lastPart = parts[parts.length - 1];
+                return parts[0].toLowerCase() === 'input' && parseInt(lastPart, 10) === matchedNum;
               });
               if (matchedKey) {
                 foundVal = oldAnswers[matchedKey];
@@ -1202,11 +1304,12 @@ export function healQuizQuestionObject(q) {
             const seqLetter = String.fromCharCode(64 + currentCount); // A, B, C...
             foundVal = lookup(`INPUT_${currentCount}`) ?? lookup(`input_${currentCount}`) ?? lookup(currentCount) ?? lookup(String(currentCount)) ?? lookup(seqLetter) ?? lookup(seqLetter.toLowerCase());
             
-            // Suffix-based recovery for sequential fallback (1D keys only)
+            // Suffix-based recovery for sequential fallback (e.g., match INPUT_2_1 for currentCount = 1)
             if (foundVal === undefined) {
               const matchedKey = Object.keys(oldAnswers).find(key => {
                 const parts = key.split('_');
-                return parts.length === 2 && parts[0].toLowerCase() === 'input' && parseInt(parts[1], 10) === currentCount;
+                const lastPart = parts[parts.length - 1];
+                return parts[0].toLowerCase() === 'input' && parseInt(lastPart, 10) === currentCount;
               });
               if (matchedKey) {
                 foundVal = oldAnswers[matchedKey];
@@ -1289,35 +1392,7 @@ export function healQuizQuestionObject(q) {
       q.tableData.rows = newRows;
       // 비교표(comparisonTableData)의 answers는 메인 tableData rows 순회에서 처리되지 않으므로
       // oldAnswers에서 comparisonTableData.rows에 실제로 존재하는 키만 살려서 병합한다.
-      if (q.comparisonTableData && q.comparisonTableData.rows && q.answers) {
-        const mainRowsCount = q.tableData?.rows?.length || 2;
-        q.comparisonTableData.rows = q.comparisonTableData.rows.map((row, rIdx) => {
-          if (!Array.isArray(row)) return row;
-          return row.map((cell, cIdx) => {
-            if (cIdx === 0) return cell;
-            let currentId = typeof cell === 'string' && cell.includes('[INPUT_')
-              ? cell.replace('[', '').replace(']', '').trim()
-              : `INPUT_${rIdx}_${cIdx}`;
-            
-            const match = currentId.match(/^INPUT_(\d+)_(\d+)$/i);
-            let finalId = currentId;
-            if (match) {
-              const r = parseInt(match[1], 10);
-              const c = parseInt(match[2], 10);
-              if (r < mainRowsCount) {
-                finalId = `INPUT_${mainRowsCount + r}_${c}`;
-                if (q.answers[currentId] && !q.answers[finalId]) {
-                  q.answers[finalId] = q.answers[currentId];
-                }
-              }
-            }
-            if (!q.answers[finalId] && q.answers[currentId]) {
-              q.answers[finalId] = q.answers[currentId];
-            }
-            return `[${finalId}]`;
-          });
-        });
-
+      if (q.comparisonTableData && q.comparisonTableData.rows) {
         const activeComparisonKeys = new Set();
         q.comparisonTableData.rows.forEach(row => {
           if (Array.isArray(row)) {
@@ -1339,28 +1414,7 @@ export function healQuizQuestionObject(q) {
       }
       q.answers = newAnswers;
 
-      // [🚨 주관식 표채우기 지문 빈칸 오표기 보정 로직 🚨]
-      // 실제 생성된 빈칸의 개수(INPUT 개수)와 지문(question) 내의 알파벳 빈칸 표시 (A), (B) 등의 개수를 일치시킵니다.
-      const numInputs = Object.keys(newAnswers).length;
-      if (q.question && numInputs > 0) {
-        const alphabet = [];
-        for (let i = 0; i < numInputs; i++) {
-          alphabet.push(`(${String.fromCharCode(65 + i)})`);
-        }
-        const replacement = alphabet.join(', ');
-
-        const multiPattern = /\([A-Z]\)(?:\s*(?:,|\s+및|\s+또는|와|과|~|-|부터|에서)\s*\([A-Z]\))+/g;
-        if (multiPattern.test(q.question)) {
-          multiPattern.lastIndex = 0;
-          q.question = q.question.replace(multiPattern, replacement);
-        } else if (numInputs > 1) {
-          const singlePattern = /\([A-Z]\)/g;
-          if (singlePattern.test(q.question)) {
-            singlePattern.lastIndex = 0;
-            q.question = q.question.replace(singlePattern, replacement);
-          }
-        }
-      }
+      // Forced replacement of question text with (A), (B), (C) list completely deleted
     }
     
     // [Self-Healing] comparisonTableData의 answers 누락 복구
