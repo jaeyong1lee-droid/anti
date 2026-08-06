@@ -1334,11 +1334,15 @@ export function healQuizQuestionObject(q) {
       q.tableData.headers[0] === '구하는 항목' || q.tableData.headers[1] === '계산 결과 및 답안'
     );
 
+    const hasMultipleSubItems = /(?:\(1\)|①).*?(?:\(2\)|②)/.test(qText);
+    const hasCalcKeyword = /구하시오|산정하시오|계산하시오|결정하시오/i.test(qText);
+
     const isCalcQ = !isExplicitCompOrTheory && (
       q.type === '주관식 (계산)' || 
       q.subtype === '계산' || 
       hasCalcHeaders ||
-      (/Terzaghi|기초|지지력|허용하중|침투유량/i.test(qText) && /산정|계산|구하시오/i.test(qText))
+      (/Terzaghi|기초|지지력|허용하중|침투유량|침투수량|간극수압|동수경사|안전율/i.test(qText) && /산정|계산|구하시오/i.test(qText)) ||
+      (hasMultipleSubItems && hasCalcKeyword)
     );
 
     if (isCalcQ) {
@@ -1841,7 +1845,13 @@ export function isCalculationQuestion(q) {
   if (q.calcItems && Array.isArray(q.calcItems) && q.calcItems.length > 0) return true;
 
   // Heuristic for Q1 calculation questions (e.g. Terzaghi 지지력 산정, 허용지지력 산정 등)
-  if (/Terzaghi|기초|지지력|허용하중|침투유량/i.test(qText) && /산정|계산|구하시오/i.test(qText)) {
+  const hasMultipleSubItems = /(?:\(1\)|①).*?(?:\(2\)|②)/.test(qText);
+  const hasCalcKeyword = /구하시오|산정하시오|계산하시오|결정하시오/i.test(qText);
+
+  if (/Terzaghi|기초|지지력|허용하중|침투유량|침투수량|간극수압|동수경사|안전율/i.test(qText) && /산정|계산|구하시오/i.test(qText)) {
+    return true;
+  }
+  if (hasMultipleSubItems && hasCalcKeyword) {
     return true;
   }
 
