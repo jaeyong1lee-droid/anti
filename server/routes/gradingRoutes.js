@@ -398,6 +398,7 @@ router.post('/question/regenerate', async (req, res) => {
 
     // finalTopicId가 정수형 숫자일 때만 안전하게 DB 조회 수행 (PostgreSQL 형변환 에러 방지)
     const isNumericId = finalTopicId && !isNaN(Number(finalTopicId));
+    let isCalcQ1 = false;
     if (isNumericId) {
       const topic = await dbQuery.get(
         `SELECT id, title, keywords, pdf_name, category, pdf_url, extracted_text FROM topics WHERE id = ?`, 
@@ -407,10 +408,14 @@ router.post('/question/regenerate', async (req, res) => {
         topicTitle = topic.title;
         fileText = await getTopicText(topic, fileUtils, ocrPlugin, pdfParse);
         fileText = fileUtils.smartTruncate(fileText, 25000);
+        
+        if (topic.category === '계산' && Number(questionIdx) === 0) {
+          isCalcQ1 = true;
+        }
       }
     }
 
-    if ((topicId && String(topicId).startsWith('mixed_')) || currentQuestion?.mixedType) {
+    if (!isCalcQ1 && ((topicId && String(topicId).startsWith('mixed_')) || currentQuestion?.mixedType)) {
       mixedType = currentQuestion?.mixedType;
       const qText = currentQuestion?.question || '';
       
@@ -816,7 +821,7 @@ ${otherQs.map((q, i) => `기존 문제 ${i + 1}: ${q.question || '없음'}`).joi
         typeRequirement = `[주관식 (공식) 유형으로 생성하십시오]`;
         formatRequirement = `{"type": "주관식 (공식)", "question": "질문", "concept": "요약", "formula": "$공식$", "structure": "- $기호$: 설명"}`;
       } else if (targetType === '주관식 (표채우기)') {
-        const isCalcTable = (topic.category === '계산' && questionIdx === 0) || 
+        const isCalcTable = (topic.category === '계산' && Number(questionIdx) === 0) || 
                             (currentQuestion?.tableData?.headers && currentQuestion.tableData.headers[0] === '구하는 항목');
                             
         if (isCalcTable) {
@@ -892,7 +897,7 @@ ${flowchartDuplicationPrompt}
 - 기존 정답: ${currentQuestion?.answer || ''}
 
 [출제 요구사항]:
-${(topic.category === '계산' && questionIdx === 0) ? '🚨 **[절대 규칙]**: 본 문제는 첨부된 이미지에 종속된 수치 계산 문제입니다. 절대로 질문(question)의 텍스트나 수치를 변형/응용하지 말고 기존 텍스트를 100% 동일하게 유지하십시오! 오직 표(tableData)의 구조만 지침에 맞게 재구성하십시오.' : '반드시 기초 문제를 변형/응용하여 새로운 문제를 출제하십시오.'}
+${(topic.category === '계산' && Number(questionIdx) === 0) ? '🚨 **[절대 규칙]**: 본 문제는 첨부된 이미지에 종속된 수치 계산 문제입니다. 절대로 질문(question)의 텍스트나 수치를 변형/응용하지 말고 기존 텍스트를 100% 동일하게 유지하십시오! 오직 표(tableData)의 구조만 지침에 맞게 재구성하십시오.' : '반드시 기초 문제를 변형/응용하여 새로운 문제를 출제하십시오.'}
 ${typeRequirement}
 ${getActiveGenerationStandards()}
 ${LATEX_PROMPT_INSTRUCTIONS}
