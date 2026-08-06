@@ -413,7 +413,8 @@ export function balanceMathBraces(str) {
         depth--;
         result += char;
       } else {
-        // Orphan closing brace with depth 0 -> drop it!
+        // Orphan closing brace with depth 0 -> keep it to prevent collapsing to empty $$
+        result += char;
       }
     } else {
       result += char;
