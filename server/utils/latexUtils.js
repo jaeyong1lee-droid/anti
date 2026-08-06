@@ -965,21 +965,21 @@ export function healQuizQuestionObject(q) {
       q.type = '주관식 (계산)';
       q.subtype = '계산';
 
+      const itemMatches = [...qText.matchAll(/(?:\((\d+)\)|(\d+)\)|①|②|③|④|⑤|⑥)\s*([\s\S]+?(?=(?:\(\d+\)|[2-9]\)|①|②|③|④|⑤|⑥|\n|$)))/g)];
+
       const isGeneric = !q.calcItems || q.calcItems.length === 0 || (
         Array.isArray(q.calcItems) && q.calcItems.some(it => /(?:핵심|수치)\s*(?:계산|산출)\s*(?:요구\s*)?항목/i.test(it.label || ''))
       ) || (
         Array.isArray(q.calcItems) && q.calcItems.some(it => /^[\(\[]?\d+[\)\]]?\s*수치\s*(?:계산|산출)/i.test(it.label || ''))
       );
 
-      if (isGeneric) {
-        // 1. Extract numbered items from question text (e.g. (1) ..., (2) ... or ①, ②...)
-        const itemMatches = [...qText.matchAll(/(?:\((\d+)\)|(\d+)\)|①|②|③|④|⑤|⑥)\s*([\s\S]+?(?=(?:\(\d+\)|[2-9]\)|①|②|③|④|⑤|⑥|\n|$)))/g)];
-        if (itemMatches.length >= 2) {
-          q.calcItems = itemMatches.map((m, i) => ({
-            id: `INPUT_${i + 1}`,
-            label: `(${i + 1}) ${(m[3] || m[0]).replace(/^[\(\[\d\s\)\]①-⑥]+/, '').replace(/[,.\s]+$/, '').trim()}`
-          }));
-        } else {
+      if (itemMatches.length >= 2) {
+        // [강제 오버라이드 로직]: 지문에 명시적인 번호가 2개 이상 존재하면 LLM의 환각을 무시하고 무조건 1:1 강제 추출
+        q.calcItems = itemMatches.map((m, i) => ({
+          id: `INPUT_${i + 1}`,
+          label: `(${i + 1}) ${(m[3] || m[0]).replace(/^[\(\[\d\s\)\]①-⑥]+/, '').replace(/[,.\s]+$/, '').trim()}`
+        }));
+      } else if (isGeneric) {
           // 2. Extract target items before action verbs (구하시오, 나타내시오, 산정하시오, 계산하시오)
           const targetMatch = qText.match(/(?:을|를|값과|값을|항목을|결과를)\s*([^,.\n]+?)(?:를|을|값)?\s*(?:구하시오|나타내시오|산정하시오|계산하시오|평가하시오|작성하시오)/i);
           if (targetMatch && targetMatch[1]) {
@@ -1013,7 +1013,6 @@ export function healQuizQuestionObject(q) {
             }
           }
         }
-      }
 
       if (!q.calcItems || q.calcItems.length === 0) {
         if (q.tableData && Array.isArray(q.tableData.rows)) {
