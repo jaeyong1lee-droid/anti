@@ -1270,7 +1270,8 @@ let parsedArray = null;
         topic_id: Number(topicId),
         category: topic.category,
       }));
-      // Save to session and return
+      // Save to session and return - clear old cached keys first to prevent orphaned _q keys
+      await dbQuery.run("DELETE FROM app_session WHERE key LIKE ?", [`review_questions_topic_${topicId}%`]);
       await saveSessionValue(`review_questions_topic_${topicId}`, JSON.stringify({ questions: finalCalcQuestions }));
       return res.json({ success: true, questions: finalCalcQuestions });
     } else {
