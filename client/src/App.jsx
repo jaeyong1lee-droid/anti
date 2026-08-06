@@ -109,8 +109,8 @@ const cleanMemorizationTipText = (tip) => {
   if (!tip) return '';
   let clean = tip;
   
-  // 1) 디스플레이 수식 블록($ ... $)과 그 안의 내용만 통째로 제거하여 큰 중복 이미지 출력을 방지합니다.
-  clean = clean.replace(/\$\$\s*[\s\S]*?\s*\$\$/g, '');
+  // 1) 디스플레이 수식 블록 제거 로직 (사용자 요청으로 제거됨 - 수식 보존)
+  // clean = clean.replace(/\$\$\s*[\s\S]*?\s*\$\$/g, '');
   
   // 2) "연상법:" 텍스트 및 그 뒤의 내용 전부 날림
   clean = clean.replace(/연상법\s*:\s*[\s\S]*?(\n|$)/gi, '');
@@ -129,8 +129,8 @@ const cleanMemorizationTipText = (tip) => {
   
   // 4) 인라인 수식 기호($) 및 그 안의 식들은 LatexRenderer가 이쁘게 수학 폰트로 그리도록 그대로 보존(유지)합니다.
   
-  // 5) 쓸데없는 개행 문자 및 트리밍 정리
-  clean = clean.replace(/\n\s*\n+/g, '\n').trim();
+  // 5) 쓸데없는 개행 문자 및 트리밍 정리 (수식 앞뒤 찌꺼기로 남는 독립된 # 기호도 제거)
+  clean = clean.replace(/^\s*#\s*$/gm, '').replace(/\n\s*\n+/g, '\n').trim();
   
   return clean;
 };
@@ -12567,7 +12567,9 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
       setRealTimeChatHistory(prev => [...prev, { role: 'model', text: `오류가 발생했습니다: ${err.message}` }]);
     } finally {
       setIsRealTimeChatLoading(false);
-      scrollToLastTutorResponse(realTimeChatBodyRef.current);
+      setTimeout(() => {
+        scrollToLastTutorResponse(realTimeChatBodyRef.current);
+      }, 100);
     }
   };
 
@@ -13633,7 +13635,9 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
       saveChatToNeon(historyWithError);
     } finally {
       setIsChatLoading(false);
-      scrollToLastTutorResponse(chatBodyRef.current);
+      setTimeout(() => {
+        scrollToLastTutorResponse(chatBodyRef.current);
+      }, 100);
     }
   };
 
@@ -17242,7 +17246,9 @@ ${itemsStr}
       saveFormulaChatHistory(prev => [...prev, { role: 'model', text: `오류가 발생했습니다: ${err.message}` }]);
     } finally {
       setIsFormulaChatLoading(false);
-      scrollToLastTutorResponse(formulaChatBodyRef.current);
+      setTimeout(() => {
+        scrollToLastTutorResponse(formulaChatBodyRef.current);
+      }, 100);
     }
   };
 
