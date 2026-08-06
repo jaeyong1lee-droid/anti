@@ -45,6 +45,9 @@ export function healBackslashes(str) {
   healed = healed.replace(/(?<!\\)\b(log|ln)\b/g, '\\$1')
                  .replace(/(?<!\\)\b(log|ln)(?=[pt_0-9])/g, '\\$1 ');
 
+  // [Self-Healing] Remove hallucinated backslashes right before Korean words (e.g., \증가 -> 증가)
+  healed = healed.replace(/\\([가-힣]+)/g, ' $1');
+
   BACKSLASH_REGEXES.forEach(({ kw, regex }) => {
     healed = healed.replace(regex, `\\${kw}`);
   });
@@ -436,6 +439,10 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
 
   // Replace Won symbol (₩) with backslash (\) to restore LaTeX commands
   processed = processed.replace(/₩/g, '\\');
+
+  // [Self-Healing] Remove hallucinated backslashes right before Korean words (e.g., \증가 -> 증가)
+  // This must be done here before math expression detection to prevent malformed regex matches.
+  processed = processed.replace(/\\([가-힣]+)/g, ' $1');
 
   // Replace hashtag (#) prefix before LaTeX commands/Greek letters with backslash (\)
   const hashKeywords = [
