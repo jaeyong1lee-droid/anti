@@ -290,29 +290,11 @@ export async function generateCalcTopicQuiz(
   const systemInstruction = `당신은 대한민국 국가건설기준설계코드(KDS) 및 지반공학 기술사 시험 출제위원입니다.
 JSON 배열 형식으로만 문제를 출력하십시오.`;
 
-  const generationPrompt = `
-[문제 생성 태스크 시작]:
-아래 제공되는 정보를 분석하여 정확히 4개의 계산 예상문제를 생성해 주십시오.
+  const commonInfoPrompt = `
 [토픽 핵심 주제]: ${coreSubject}
 [토픽 원본 제목]: ${topic.title}
 [핵심 키워드]: ${topic.keywords || '제공되지 않음'}
 [첨부파일 본문 텍스트](HTML 공부노트): ${fileText || '제공되지 않음'}
-
-[출제 요구사항]:
-1. 1번 문항 (첨부 이미지의 물음과 본문 HTML의 답변을 분석한 표채우기 질문) - type: "주관식 (표채우기)"
-   표 구조는 반드시 **headers: ["구하는 항목", "계산 결과 및 답안"]** 의 2열 헤더 규격으로 구성하십시오.
-   🚨 **[절대 지침 - 창작 금지 및 1:1 추출]**: AI 임의로 실무 설계 대책이나 이론적 검토 항목(예: 불안정성 검토, 대책 수립, 좌표계 변환 등)을 창작하여 묻지 마십시오.
-   오직 **원본 문제 지문(이미지 및 텍스트)에서 '구하시오'라고 명시적으로 지정한 항목 표현(예: 침투수량, 간극수압, 동수경사 등)을 글자 그대로(Verbatim) 추출 및 복사하여 그대로 질문(Row) 항목으로 사용**하십시오. 지문에서 묻지 않은 것을 유추하여 추가하는 행위를 엄격히 금지합니다.
-   rows: [["(1) 추출된 항목명 그대로 복사 (단위)", "[INPUT_1]"], ["(2) 추출된 항목명 그대로 복사 (단위)", "[INPUT_2]"], ...]
-   answers 객체에는 각 INPUT_N마다 대응되는 계산 정답 풀이 과정과 수치를 기재하십시오.
-
-2. 2번 문항 (이론/공법/기법 비교 표채우기 문제 - AI 동적 출제 철칙) - type: "주관식 (표채우기)"
-   - [AI 동적 문제 생성 철칙]: 고정된 템플릿 텍스트를 금지하며, AI가 해당 토픽의 주 핵심 공법/이론(예: 유선망 수리해석 토픽인 경우 '유선망 도해법(Flow Net)')과 관련된 타 공법/이론(예: '수치해석법 (FEM/FDM)', 'Darcy 1차원 해석법' 등)을 원보고서/공학기준에 기초하여 직접 동적으로 대조 분석하는 질문과 표를 설계하십시오.
-   - headers 예시: ["구분 항목", "주 핵심 공법/이론 (예: 유선망 도해법)", "비교 공법/이론 1 (예: 수치해석법 FEM/FDM)", "비교 공법/이론 2 (예: Darcy 1차원 해석법)"]
-   - rows: 핵심 메커니즘, 적용성/한계성, 산출 물리량 등의 행(Row)을 설계하고, 절반 이상은 풍부한 전문 지식으로 미리 채운 후 총 2~3개의 핵심 빈칸만 [INPUT_1], [INPUT_2]로 설정하십시오.
-
-3. 3번 문항 (공학적 의미/교훈 주관식 문제) - type: "주관식 (단답형)"
-4. 4번 문항 (관련 공학적 문제 발생 시 대책 주관식 문제) - type: "주관식 (다답형)"
 
 [출제 기준 절대 지침]:
 ${activeGenerationStandards}
@@ -323,6 +305,20 @@ ${activeEngineeringStandards}
 ${topicInstructionsPrompt}
 
 ${LATEX_PROMPT_INSTRUCTIONS}
+`;
+
+  const generationPromptQ1 = `
+[문제 생성 태스크 시작]:
+아래 제공되는 정보를 분석하여 정확히 1개의 계산 예상문제(1번 문항)만 생성해 주십시오.
+${commonInfoPrompt}
+
+[출제 요구사항]:
+1. 1번 문항 (첨부 이미지의 물음과 본문 HTML의 답변을 분석한 표채우기 질문) - type: "주관식 (표채우기)"
+   표 구조는 반드시 **headers: ["구하는 항목", "계산 결과 및 답안"]** 의 2열 헤더 규격으로 구성하십시오.
+   🚨 **[절대 지침 - 창작 금지 및 1:1 추출]**: AI 임의로 실무 설계 대책이나 이론적 검토 항목(예: 불안정성 검토, 대책 수립, 좌표계 변환 등)을 창작하여 묻지 마십시오.
+   오직 **원본 문제 지문(이미지 및 텍스트)에서 '구하시오'라고 명시적으로 지정한 항목 표현(예: 침투수량, 간극수압, 동수경사 등)을 글자 그대로(Verbatim) 추출 및 복사하여 그대로 질문(Row) 항목으로 사용**하십시오. 지문에서 묻지 않은 것을 유추하여 추가하는 행위를 엄격히 금지합니다.
+   rows: [["(1) 추출된 항목명 그대로 복사 (단위)", "[INPUT_1]"], ["(2) 추출된 항목명 그대로 복사 (단위)", "[INPUT_2]"], ...]
+   answers 객체에는 각 INPUT_N마다 대응되는 계산 정답 풀이 과정과 수치를 기재하십시오.
 
 [응답 JSON 포맷]:
 [
@@ -331,7 +327,26 @@ ${LATEX_PROMPT_INSTRUCTIONS}
     "question": "실제 문제 이미지를 분석하여 구체적인 계산 항목 안내를 포함한 질문",
     "tableData": { "headers": ["구하는 항목", "계산 결과 및 답안"], "rows": [["(1) 항목명 (단위)", "[INPUT_1]"]] },
     "answers": { "INPUT_1": "정답 풀이" }
-  },
+  }
+]
+`;
+
+  const generationPromptQ234 = `
+[문제 생성 태스크 시작]:
+아래 제공되는 정보를 분석하여 정확히 3개의 예상문제(2, 3, 4번 문항)를 생성해 주십시오.
+${commonInfoPrompt}
+
+[출제 요구사항]:
+2. 2번 문항 (이론/공법/기법 비교 표채우기 문제 - AI 동적 출제 철칙) - type: "주관식 (표채우기)"
+   - [AI 동적 문제 생성 철칙]: 고정된 템플릿 텍스트를 금지하며, AI가 해당 토픽의 주 핵심 공법/이론(예: 유선망 수리해석 토픽인 경우 '유선망 도해법(Flow Net)')과 관련된 타 공법/이론(예: '수치해석법 (FEM/FDM)', 'Darcy 1차원 해석법' 등)을 원보고서/공학기준에 기초하여 직접 동적으로 대조 분석하는 질문과 표를 설계하십시오.
+   - headers 예시: ["구분 항목", "주 핵심 공법/이론 (예: 유선망 도해법)", "비교 공법/이론 1 (예: 수치해석법 FEM/FDM)", "비교 공법/이론 2 (예: Darcy 1차원 해석법)"]
+   - rows: 핵심 메커니즘, 적용성/한계성, 산출 물리량 등의 행(Row)을 설계하고, 절반 이상은 풍부한 전문 지식으로 미리 채운 후 총 2~3개의 핵심 빈칸만 [INPUT_1], [INPUT_2]로 설정하십시오.
+
+3. 3번 문항 (공학적 의미/교훈 주관식 문제) - type: "주관식 (단답형)"
+4. 4번 문항 (관련 공학적 문제 발생 시 대책 주관식 문제) - type: "주관식 (다답형)"
+
+[응답 JSON 포맷]:
+[
   {
     "type": "주관식 (표채우기)",
     "question": "비교 문제 질문",
@@ -351,23 +366,30 @@ ${LATEX_PROMPT_INSTRUCTIONS}
 ]
 `;
 
-  // --- 3. Call LLM ---
-  const rawText = await callLLM(systemInstruction, generationPrompt, calcImageBase64 ? { data: calcImageBase64, mimeType: 'image/jpeg' } : null, 'calc_question', { temperature: 0.1 });
-  let text = (rawText || '').trim().replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
+  // --- 3. Call LLM Concurrently ---
+  const imagePayload = calcImageBase64 ? { data: calcImageBase64, mimeType: 'image/jpeg' } : null;
+  const p1 = callLLM(systemInstruction, generationPromptQ1, imagePayload, 'calc_question_q1', { temperature: 0.1 });
+  const p2 = callLLM(systemInstruction, generationPromptQ234, imagePayload, 'calc_question_q234', { temperature: 1.0 });
+  
+  const [rawTextQ1, rawTextQ234] = await Promise.all([p1, p2]);
 
-  let parsed = null;
-  try {
-    parsed = parseLlmJson(text);
-  } catch {
+  let parsed = [];
+  for (const rawText of [rawTextQ1, rawTextQ234]) {
+    let text = (rawText || '').trim().replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
     try {
-      parsed = JSON.parse(text);
+      const p = parseLlmJson(text);
+      if (Array.isArray(p)) parsed = parsed.concat(p);
     } catch {
-      console.error('[CalcPlugin] Failed to parse LLM response');
-      parsed = [];
+      try {
+        const p = JSON.parse(text);
+        if (Array.isArray(p)) parsed = parsed.concat(p);
+      } catch {
+        console.error('[CalcPlugin] Failed to parse LLM response chunk');
+      }
     }
   }
 
-  if (!Array.isArray(parsed)) parsed = [];
+  if (!Array.isArray(parsed) || parsed.length === 0) parsed = [];
 
   // --- 4. Heal and assemble 4 questions ---
   const tableQ = parsed.find(q => q.type === '주관식 (표채우기)' &&
