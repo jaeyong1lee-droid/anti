@@ -816,8 +816,18 @@ ${otherQs.map((q, i) => `기존 문제 ${i + 1}: ${q.question || '없음'}`).joi
         typeRequirement = `[주관식 (공식) 유형으로 생성하십시오]`;
         formatRequirement = `{"type": "주관식 (공식)", "question": "질문", "concept": "요약", "formula": "$공식$", "structure": "- $기호$: 설명"}`;
       } else if (targetType === '주관식 (표채우기)') {
-        typeRequirement = `[주관식 (표채우기) 유형으로 생성하십시오]`;
-        formatRequirement = `{"type": "주관식 (표채우기)", "question": "질문", "tableData": {"headers": ["구분", "비교1", "비교2"], "rows": [["항목", "[INPUT_1]", "[INPUT_2]"]]}, "answers": {"INPUT_1": "답1", "INPUT_2": "답2"}, "explanation": "해설"}`;
+        const isCalcTable = (topic.category === '계산' && questionIdx === 0) || 
+                            (currentQuestion?.tableData?.headers && currentQuestion.tableData.headers[0] === '구하는 항목');
+                            
+        if (isCalcTable) {
+          typeRequirement = `[수치 계산용 2열 표채우기 유형으로 생성하십시오]
+- 🚨 **[절대 지침]**: Q1은 오직 "수치 계산용 표"입니다! AI 임의로 이론적인 "특성 비교표"나 3열 이상의 표를 절대 만들지 마십시오.
+- [입력칸(INPUT) 동적 분할 철칙]: 지문이 묻는 "(1) 침투수량", "(2) X점, Y점" 등을 분석하여 구해야 하는 각 정답 수치마다 동적으로 별도의 행과 \`[INPUT_N]\`을 배정하십시오.`;
+          formatRequirement = `{"type": "주관식 (표채우기)", "question": "실제 문제 지문 그대로 유지", "tableData": {"headers": ["구하는 항목", "계산 결과 및 답안"], "rows": [["(1) 분할된 세부 항목명 1", "[INPUT_1]"], ["(2) 분할된 세부 항목명 2 - X점", "[INPUT_2]"], ["(2) 분할된 세부 항목명 2 - Y점", "[INPUT_3]"], ["(3) 분할된 세부 항목명 3", "[INPUT_4]"]]}, "answers": {"INPUT_1": "정답 풀이 1", "INPUT_2": "X점 정답", "INPUT_3": "Y점 정답", "INPUT_4": "정답 3"}, "explanation": "해설"}`;
+        } else {
+          typeRequirement = `[주관식 (표채우기) 비교용 다열 표 유형으로 생성하십시오]`;
+          formatRequirement = `{"type": "주관식 (표채우기)", "question": "질문", "tableData": {"headers": ["구분", "비교1", "비교2"], "rows": [["항목", "[INPUT_1]", "[INPUT_2]"]]}, "answers": {"INPUT_1": "답1", "INPUT_2": "답2"}, "explanation": "해설"}`;
+        }
       } else if (targetType === '주관식 (단답형)') {
         let subtypeInstruction = '';
         if (targetSubtype === '12번형태') {
@@ -882,7 +892,7 @@ ${flowchartDuplicationPrompt}
 - 기존 정답: ${currentQuestion?.answer || ''}
 
 [출제 요구사항]:
-반드시 기초 문제를 변형/응용하여 새로운 문제를 출제하십시오.
+${(topic.category === '계산' && questionIdx === 0) ? '🚨 **[절대 규칙]**: 본 문제는 첨부된 이미지에 종속된 수치 계산 문제입니다. 절대로 질문(question)의 텍스트나 수치를 변형/응용하지 말고 기존 텍스트를 100% 동일하게 유지하십시오! 오직 표(tableData)의 구조만 지침에 맞게 재구성하십시오.' : '반드시 기초 문제를 변형/응용하여 새로운 문제를 출제하십시오.'}
 ${typeRequirement}
 ${getActiveGenerationStandards()}
 ${LATEX_PROMPT_INSTRUCTIONS}
