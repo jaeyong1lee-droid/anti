@@ -2139,6 +2139,7 @@ const compressImageFile = (file, maxDimension = 1000, quality = 0.7) => {
   });
 };
 
+// Trigger fresh frontend rebuild timestamp
 export default function App() {
   const buildTimeMs = typeof __BUILD_TIME_MS__ !== 'undefined' ? __BUILD_TIME_MS__ : Date.now();
   const buildTimeStr = typeof __BUILD_TIME_STR__ !== 'undefined' ? __BUILD_TIME_STR__ : 'local_dev';
