@@ -1349,10 +1349,26 @@ export function healQuizQuestionObject(q) {
       q.type = '주관식 (계산)';
       q.subtype = '계산';
 
+      // 1. 최우선순위: LLM이 표(tableData)를 명시적으로 생성했다면 그것을 기반으로 calcItems 구성
+      if (!q.calcItems || q.calcItems.length === 0) {
+        if (q.tableData && Array.isArray(q.tableData.rows)) {
+          const validRows = q.tableData.rows.filter(r => Array.isArray(r) && typeof r[0] === 'string' && !/핵심\s*(?:수치\s*)?계산\s*항목/i.test(r[0]));
+          if (validRows.length > 0) {
+            q.calcItems = validRows.map((row, rIdx) => ({
+              id: `INPUT_${rIdx + 1}`,
+              label: row[0]
+            }));
+          }
+        }
+      }
+
+      // 2. 만약 여전히 calcItems가 없거나, 너무 포괄적/더미(Generic) 텍스트라면 정규식을 통해 본문에서 추출
       const isGeneric = !q.calcItems || q.calcItems.length === 0 || (
         Array.isArray(q.calcItems) && q.calcItems.some(it => /(?:핵심|수치)\s*(?:계산|산출)\s*(?:요구\s*)?항목/i.test(it.label || ''))
       ) || (
         Array.isArray(q.calcItems) && q.calcItems.some(it => /^[\(\[]?\d+[\)\]]?\s*수치\s*(?:계산|산출)/i.test(it.label || ''))
+      ) || (
+        Array.isArray(q.calcItems) && q.calcItems.some(it => /빈칸에\s*알맞/i.test(it.label || ''))
       );
 
       if (isGeneric) {
@@ -1376,7 +1392,7 @@ export function healQuizQuestionObject(q) {
             }
           }
           // 3. Extract math symbols ($S_i$, $\phi$, etc.) from question text
-          if (!q.calcItems || q.calcItems.length === 0) {
+          if (!q.calcItems || q.calcItems.length === 0 || q.calcItems.some(it => /빈칸에\s*알맞/i.test(it.label || ''))) {
             const latexSymbols = [...qText.matchAll(/\$([A-Za-z0-9_\\\{\}]+)\$/g)].map(m => m[1]);
             if (latexSymbols.length >= 1) {
               const uniqueSyms = [...new Set(latexSymbols)];
@@ -1387,7 +1403,7 @@ export function healQuizQuestionObject(q) {
             }
           }
           // 4. Extract step headers from explanation if available
-          if ((!q.calcItems || q.calcItems.length === 0) && q.explanation) {
+          if ((!q.calcItems || q.calcItems.length === 0 || q.calcItems.some(it => /빈칸에\s*알맞/i.test(it.label || ''))) && q.explanation) {
             const expSteps = [...q.explanation.matchAll(/(?:^|\n)\s*(?:[1-9]\)|[\(\[]\d+[\)\]]|①|②|③|④|⑤)\s*([^=\n:+]{2,30})/g)];
             if (expSteps.length >= 2) {
               q.calcItems = expSteps.map((m, i) => ({
@@ -1395,18 +1411,6 @@ export function healQuizQuestionObject(q) {
                 label: `(${i + 1}) ${m[1].trim()}`
               }));
             }
-          }
-        }
-      }
-
-      if (!q.calcItems || q.calcItems.length === 0) {
-        if (q.tableData && Array.isArray(q.tableData.rows)) {
-          const validRows = q.tableData.rows.filter(r => Array.isArray(r) && typeof r[0] === 'string' && !/핵심\s*(?:수치\s*)?계산\s*항목/i.test(r[0]));
-          if (validRows.length > 0) {
-            q.calcItems = validRows.map((row, rIdx) => ({
-              id: `INPUT_${rIdx + 1}`,
-              label: row[0]
-            }));
           }
         }
       }
