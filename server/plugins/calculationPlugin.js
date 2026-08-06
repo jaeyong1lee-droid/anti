@@ -273,23 +273,27 @@ export async function generateCalcTopicQuiz(
 ) {
   // --- 1. Load image if pdf_url exists ---
   let calcImageBase64 = null;
+  let calcImageMime = 'image/jpeg';
   if (topic.pdf_url) {
     try {
       const imgRes = await fetch(topic.pdf_url);
       if (imgRes.ok) {
+        const ct = imgRes.headers.get('content-type');
+        if (ct && ct.startsWith('image/')) calcImageMime = ct;
         const buf = Buffer.from(await imgRes.arrayBuffer());
         calcImageBase64 = buf.toString('base64');
-        console.log(`[CalcPlugin] Loaded ${buf.length} bytes image from ${topic.pdf_url}`);
+        console.log(`[CalcPlugin] Loaded ${buf.length} bytes image (${calcImageMime}) from ${topic.pdf_url}`);
       }
     } catch (e) {
       console.warn('[CalcPlugin] Could not fetch pdf_url image:', e.message);
     }
   } else if (topic.pdf_data) {
     let pdfDataStr = Buffer.isBuffer(topic.pdf_data) ? topic.pdf_data.toString('utf8') : topic.pdf_data;
-    const imgMatch = pdfDataStr.match(/<img[^>]+src="data:image\/[^;]+;base64,([^"]+)"/);
-    if (imgMatch && imgMatch[1]) {
-      calcImageBase64 = imgMatch[1];
-      console.log(`[CalcPlugin] Extracted image from pdf_data HTML (length: ${calcImageBase64.length})`);
+    const imgMatch = pdfDataStr.match(/<img[^>]+src="data:(image\/[^;]+);base64,([^"]+)"/);
+    if (imgMatch && imgMatch[2]) {
+      calcImageMime = imgMatch[1];
+      calcImageBase64 = imgMatch[2];
+      console.log(`[CalcPlugin] Extracted image (${calcImageMime}) from pdf_data HTML (length: ${calcImageBase64.length})`);
     }
   }
 
@@ -395,7 +399,7 @@ ${commonInfoPrompt}
 `;
 
   // --- 3. Call LLM Concurrently ---
-  const imagePayload = calcImageBase64 ? { data: calcImageBase64, mimeType: 'image/jpeg' } : null;
+  const imagePayload = calcImageBase64 ? { data: calcImageBase64, mimeType: calcImageMime } : null;
   const p1 = callLLM(systemInstruction, generationPromptQ1, imagePayload, 'calc_question_q1', { temperature: 0.1 });
   const p2 = callLLM(systemInstruction, generationPromptQ234, imagePayload, 'calc_question_q234', { temperature: 1.0 });
   
