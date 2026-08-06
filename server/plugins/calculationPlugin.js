@@ -388,31 +388,36 @@ ${commonInfoPrompt}
   
   const [rawTextQ1, rawTextQ234] = await Promise.all([p1, p2]);
 
-  let parsed = [];
-  for (const rawText of [rawTextQ1, rawTextQ234]) {
+  const parseChunk = (rawText) => {
     let text = (rawText || '').trim().replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
+    let parsed = [];
     try {
       const p = parseLlmJson(text);
       if (Array.isArray(p)) parsed = parsed.concat(p);
+      else if (p) parsed.push(p);
     } catch {
       try {
         const p = JSON.parse(text);
         if (Array.isArray(p)) parsed = parsed.concat(p);
+        else if (p) parsed.push(p);
       } catch {
         console.error('[CalcPlugin] Failed to parse LLM response chunk');
       }
     }
-  }
+    return parsed;
+  };
 
-  if (!Array.isArray(parsed) || parsed.length === 0) parsed = [];
+  const parsedQ1 = parseChunk(rawTextQ1);
+  const parsedQ234 = parseChunk(rawTextQ234);
 
   // --- 4. Heal and assemble 4 questions ---
-  const tableQ = parsed.find(q => q.type === '주관식 (표채우기)' &&
-    Array.isArray(q.tableData?.headers) && q.tableData.headers.length === 2 &&
-    (String(q.tableData.headers[0]).includes('항목') || String(q.tableData.headers[1]).includes('결과')));
-  const compQ  = parsed.find(q => q.type === '주관식 (표채우기)' &&
+  // Isolate Q1: Only look for the calculation table in the response from Q1 LLM
+  const tableQ = parsedQ1.find(q => q.type === '주관식 (표채우기)' || q.type === '주관식 (계산)') || parsedQ1[0];
+  
+  // Q234: Look for comparison table and short answers in the response from Q234 LLM
+  const compQ  = parsedQ234.find(q => q.type === '주관식 (표채우기)' &&
     Array.isArray(q.tableData?.headers) && q.tableData.headers.length >= 3);
-  const shorts = parsed.filter(q => q.type === '주관식 (다답형)' || q.type === '주관식 (단답형)');
+  const shorts = parsedQ234.filter(q => q.type === '주관식 (다답형)' || q.type === '주관식 (단답형)');
 
   const fb = calcFallbackQuestions(topic.title, topic.keywords);
 
