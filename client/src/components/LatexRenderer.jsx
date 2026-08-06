@@ -811,7 +811,7 @@ export const LatexRenderer = React.memo(function LatexRenderer({
             >
               {/* KaTeX 공식 */}
               <div 
-                className="formula-scroll-container w-full py-1.5 min-w-0 select-text" 
+                className="formula-scroll-container w-full py-1.5 min-w-0 select-text text-center" 
                 onTouchStart={(e) => { if (!enableAddFormula) e.stopPropagation(); }}
                 onTouchMove={(e) => { if (!enableAddFormula) e.stopPropagation(); }}
                 onTouchEnd={(e) => { if (!enableAddFormula) e.stopPropagation(); }}
