@@ -429,13 +429,6 @@ ${commonInfoPrompt}
 
   // --- 4. Heal and assemble 4 questions ---
   const tableQ = parsedQ1.find(q => q.type === '주관식 (표채우기)' || q.type === '주관식 (계산)') || parsedQ1[0];
-  if (tableQ && tableQ.tableData && Array.isArray(tableQ.tableData.rows)) {
-    tableQ.tableData.rows.forEach(r => {
-      if (Array.isArray(r) && typeof r[0] === 'string') {
-        r[0] = r[0].replace(/\[\s*단[\s\S]*?\]/gi, '').replace(/\(\s*단[\s\S]*?\)/gi, '').trim();
-      }
-    });
-  }
   
   // Q234: Look for comparison table and short answers in the response from Q234 LLM
   const compQ  = parsedQ234.find(q => q.type === '주관식 (표채우기)' &&
