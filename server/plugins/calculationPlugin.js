@@ -352,7 +352,7 @@ ${LATEX_PROMPT_INSTRUCTIONS}
 `;
 
   // --- 3. Call LLM ---
-  const rawText = await callLLM(systemInstruction, generationPrompt, calcImageBase64 ? { data: calcImageBase64, mimeType: 'image/jpeg' } : null, 'calc_question', { temperature: 1.0 });
+  const rawText = await callLLM(systemInstruction, generationPrompt, calcImageBase64 ? { data: calcImageBase64, mimeType: 'image/jpeg' } : null, 'calc_question', { temperature: 0.1 });
   let text = (rawText || '').trim().replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
 
   let parsed = null;
