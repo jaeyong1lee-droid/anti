@@ -672,12 +672,7 @@ export const LatexRenderer = React.memo(function LatexRenderer({
     );
   }
 
-  // (B-1) 소괄호 내 미세 어긋남만 안전 치유 (강제 공백 주입 정규식 제거)
-  cleanedText = cleanedText.replace(/\(([^$()\n]+?)\$\)/g, '($$$1$)');
 
-  // (B-2) 디스플레이 수식 문맥 정리
-  cleanedText = cleanedText.replace(/([\uAC00-\uD7A3a-zA-Z0-9])\$\$\s*([\s\S]*?)\s*\$\$/g, (m, p1, p2) => `${p1} $$${p2}$$`);
-  cleanedText = cleanedText.replace(/\$\$\s*([\s\S]*?)\s*\$\$\s*([\uAC00-\uD7A3a-zA-Z0-9])/g, (m, p1, p2) => `$$${p1}$$ ${p2}`);
 
   // Check if text contains HTML tags
   const hasHtml = /<\/?(div|table|tr|td|th|tbody|thead|tfoot|p|span|br|hr|strong|em|ul|ol|li|h[1-6]|b|i|a|img|code|pre|style|html|body)\b[^>]*>/i.test(cleanedText);
