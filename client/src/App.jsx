@@ -19920,6 +19920,9 @@ ${itemsStr}
                     const activeSid = reviewSessionId || 'legacy_default';
                     const sId = selectedTopic.schedule_id;
                     try {
+                      const deleteUrl = `${API_BASE}/api/session/review/topic/${selectedTopic.id}`;
+                      fetch(deleteUrl, { method: 'DELETE' }).catch(e => console.warn('복습 세션 서버 삭제 실패:', e));
+
                       const keysToRemove = [];
                       for (let i = 0; i < localStorage.length; i++) {
                         const k = localStorage.key(i);
