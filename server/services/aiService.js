@@ -292,7 +292,8 @@ export async function callLLMWithFailover(systemInstruction, userPrompt, image =
             model.generateContent(generateContentArg),
             timeoutPromise
           ]);
-          const text = result.response.text().trim();
+          let text = result.response.text().trim();
+          text = text.replace(/^[ \t]*#[ \t]*$/gm, '');
           if (text) {
             console.log(`[Gemini 성공] ${task.label} (${maskedKey}), 모델: ${modelName} (${actualModelName})`);
             return text;

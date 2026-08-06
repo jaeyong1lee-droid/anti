@@ -578,8 +578,9 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
   });
   tempText = tempText.replace(/:::[a-zA-Z0-9_-]*/g, '');
 
-  // Always remove inline source citation texts from body to prevent body pollution
+  // Always remove inline source citation texts and standalone # artifact lines
   tempText = removeSourceCitationsFromText(tempText);
+  tempText = tempText.replace(/^[ \t]*#[ \t]*$/gm, '');
 
   // Protect details/summary HTML blocks so markdown line splitters don't break them
   const detailsBlocks = [];
