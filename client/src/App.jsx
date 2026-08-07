@@ -10220,21 +10220,7 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
 
         if (questionsList.length > 0) {
           console.log('[handleOpenAIQuestions] Questions generated. Saving initial set to server immediately...');
-          fetch(`${API_BASE}/api/session/review`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              topicId: topicId,
-              scheduleId: finalScheduleId,
-              sessionId: activeSid || 'legacy_default',
-              questions: questionsList,
-              selectedAnswers: {},
-              revealedQuestions: {},
-              tableAnswers: {},
-              tableGradingResults: {},
-              savedQuizScroll: 0
-            })
-          }).catch(e => console.warn('Saving initial questions failed:', e));
+          await syncReviewSessionImmediately(questionsList, { selectedAnswers: {}, revealedQuestions: {}, tableAnswers: {}, tableGradingResults: {} });
         }
 
         if (data.scheduleId) {
@@ -11586,24 +11572,14 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
           });
 
           // 즉시 DB 저장
-          fetch(`${API_BASE}/api/session/review`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              topicId: selectedTopic?.id,
-              scheduleId: selectedTopic?.schedule_id,
-              sessionId: reviewSessionId,
-              questions: updated,
-              selectedAnswers: nextSelectedAnswers,
-              revealedQuestions: nextRevealedQuestions,
-              tableAnswers: nextTableAnswers,
-              tableGradingResults: nextTableGradingResults,
-              tutorAnswers: nextTutorAnswers,
-              tutorInputText: nextTutorInputText,
-              chatHistory: chatHistoryRef.current,
-              savedQuizScroll: quizBodyRef.current?.scrollTop || 0
-            })
-          }).catch(e => console.warn('복습 세션 동기화 실패:', e));
+          syncReviewSessionImmediately(updated, {
+            selectedAnswers: nextSelectedAnswers,
+            revealedQuestions: nextRevealedQuestions,
+            tableAnswers: nextTableAnswers,
+            tableGradingResults: nextTableGradingResults,
+            tutorAnswers: nextTutorAnswers,
+            tutorInputText: nextTutorInputText
+          });
         } else {
           const updated = examQuestions.map((q, i) => i === idx ? data.question : q);
           const nextExamAnswers = { ...examAnswers };
@@ -11713,11 +11689,7 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
           // 1. 해당 인덱스 문항 교체 및 서버 세션 동기화 저장
           setAiQuestions(prev => {
             const updated = prev.map((q, i) => i === idx ? data.question : q);
-            fetch(`${API_BASE}/api/session/review`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ topicId: selectedTopic?.id, scheduleId: selectedTopic?.schedule_id, questions: updated })
-            }).catch(e => console.warn('복습 세션 동기화 실패:', e));
+            syncReviewSessionImmediately(updated);
             return updated;
           });
           // 2. 해당 인덱스의 선택 답안, 정답 확인 여부 초기화
@@ -20587,24 +20559,7 @@ ${itemsStr}
                                     // 서버 세션 동기화 (디바운스 적용)
                                     if (selectedTopic && selectedTopic.id && !selectedTopic.isReadOnly) {
                                       lastSyncStateRef.current.selectedAnswers = nextAnswers;
-                                       fetch(`${API_BASE}/api/session/review`, {
-                                         method: 'POST',
-                                         headers: { 'Content-Type': 'application/json' },
-                                         body: JSON.stringify({
-                                           topicId: selectedTopic.id,
-                                           scheduleId: selectedTopic.schedule_id,
-                                           sessionId: reviewSessionId,
-                                           questions: aiQuestions,
-                                           selectedAnswers: nextAnswers,
-                                           revealedQuestions: revealedQuestionsRef.current,
-                                           tableAnswers: tableAnswersRef.current,
-                                           tableGradingResults: tableGradingResultsRef.current,
-                                           tutorAnswers: tutorAnswersRef.current,
-                                           tutorInputText: tutorInputTextRef.current,
-                                           chatHistory: chatHistoryRef.current,
-                                           savedQuizScroll: quizBodyRef.current?.scrollTop || 0
-                                         })
-                                       }).catch(e => console.warn('복습 세션 즉시 동기화 실패:', e));
+                                      syncReviewSessionImmediately(aiQuestions, { selectedAnswers: nextAnswers });
                                     }
 
                                     const normalizeAns = (s) => (s || '').replace(/^\d+\.\s*/, '').trim();

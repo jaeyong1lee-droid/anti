@@ -1753,7 +1753,7 @@ router.get('/session/review', async (req, res) => {
 router.post('/session/review', async (req, res) => {
   try {
     await ensureSessionTable();
-    const { topicId, sessionId, questions, selectedAnswers, revealedQuestions, tableAnswers, tableGradingResults, tutorAnswers, tutorInputText, chatHistory, savedQuizScroll } = req.body;
+    const { topicId, scheduleId, sessionId, questions, selectedAnswers, revealedQuestions, tableAnswers, tableGradingResults, tutorAnswers, tutorInputText, chatHistory, savedQuizScroll } = req.body;
     let targetTopicId = String(topicId || '');
     if (targetTopicId.startsWith('mixed_') && targetTopicId.includes('_sess_')) {
       targetTopicId = targetTopicId.split('_sess_')[0];
@@ -1822,7 +1822,14 @@ router.post('/session/review', async (req, res) => {
       return res.json({ success: true, message: 'Mixed session stored.' });
     }
 
-    const key = `review_questions_topic_${targetTopicId}`;
+    let rawSid = String(sessionId || 'legacy_default');
+    let cleanSid = rawSid;
+    if (cleanSid.startsWith('sess_')) cleanSid = cleanSid.substring(5);
+
+    let key = `review_questions_topic_${targetTopicId}_sess_${cleanSid}`;
+    if (scheduleId && scheduleId !== '9999' && scheduleId !== 'null' && scheduleId !== 'undefined' && scheduleId !== '') {
+      key = `review_questions_schedule_${scheduleId}_sess_${cleanSid}`;
+    }
     const questionsKey = `${key}_q`;
 
     // Merge with existing state for missing fields
