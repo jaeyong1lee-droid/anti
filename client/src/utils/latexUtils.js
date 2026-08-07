@@ -1,12 +1,12 @@
-// 1. 수식($), 일반 텍스트, 그리고 보호된 표 블록 분리 (인라인 줄바꿈 오염 방지)
+// 1. 수식($), 일반 텍스트, 그리고 보호된 블록 분리 (인라인 줄바꿈 오염 방지)
 export function tokenizeForHealing(text) {
   if (!text) return [];
   const tokens = [];
   let lastIndex = 0;
-  // Match table blocks, HTML tags, or inline/display math blocks
+  // Match code blocks, HTML tags, or inline/display math blocks
   const htmlTags = ['strong', 'em', 'sub', 'sup', 'div', 'span', 'br', 'table', 'tr', 'td', 'th', 'tbody', 'thead', 'p', 'b', 'i', 'u'];
   const tagsRegex = htmlTags.join('|');
-  const regex = new RegExp(`(\`\`\`[\\s\\S]*?\`\`\`)|(<!--START_TABLE-->[\\s\\S]*?<!--END_TABLE-->)|(<\\/?\\s*(?:${tagsRegex})\\b(?:\\s+[^>]*)?>)|(\\$\\$[\\s\\S]*?\\$\\$)|(\\$\\s?[^\\$\\n]{1,200}\\s?\\$)`, 'gi');
+  const regex = new RegExp(`(\`\`\`[\\s\\S]*?\`\`\`)|(<\\/?\\s*(?:${tagsRegex})\\b(?:\\s+[^>]*)?>)|(\\$\\$[\\s\\S]*?\\$\\$)|(\\$\\s?[^\\$\\n]{1,200}\\s?\\$)`, 'gi');
   let match;
 
   while ((match = regex.exec(text)) !== null) {
@@ -16,9 +16,7 @@ export function tokenizeForHealing(text) {
     const content = match[0];
     if (content.startsWith('```')) {
       tokens.push({ type: 'code', content });
-    } else if (content.startsWith('<!--START_TABLE-->')) {
-      tokens.push({ type: 'table', content });
-    } else if (content.startsWith('<') && !content.startsWith('<!--')) {
+    } else if (content.startsWith('<')) {
       tokens.push({ type: 'html', content });
     } else {
       tokens.push({
@@ -102,7 +100,7 @@ export function htmlTableToMarkdown(html, poissonSymbol = null) {
       rows.splice(1, 0, separator);
     }
 
-    return `\n\n<!--START_TABLE-->\n${rows.join('\n')}\n<!--END_TABLE-->\n\n`;
+    return `\n\n${rows.join('\n')}\n\n`;
   });
 }
 
@@ -203,72 +201,7 @@ export function parseMarkdownTable(questionText) {
   return null;
 }
 
-export function wrapMarkdownTables(text) {
-  if (!text) return text;
-  
-  const lines = text.split('\n');
-  const resultLines = [];
-  let i = 0;
-  
-  while (i < lines.length) {
-    const line = lines[i];
-    const trimmed = line.trim();
-    
-    if (trimmed.includes('|')) {
-      const potentialTableLines = [];
-      let j = i;
-      while (j < lines.length && lines[j].trim().includes('|')) {
-        potentialTableLines.push(lines[j]);
-        j++;
-      }
-      
-      if (potentialTableLines.length >= 2) {
-        const secondLine = potentialTableLines[1].trim();
-        const isSeparator = secondLine.includes('-') && secondLine.includes('|') && /^[\s|:\-]+$/.test(secondLine);
-        
-        if (isSeparator) {
-          resultLines.push('<!--START_TABLE-->');
-          resultLines.push(...potentialTableLines);
-          resultLines.push('<!--END_TABLE-->');
-          i = j;
-          continue;
-        }
-      }
-    }
-    
-    resultLines.push(line);
-    i++;
-  }
-  
-  return resultLines.join('\n');
-}
 
-function healMarkdownTable(tableText, poissonSymbol = null) {
-  const lines = tableText.split('\n');
-  const healedLines = lines.map(line => {
-    const trimmed = line.trim();
-    if (!trimmed.includes('|')) return line;
-    if (trimmed.includes('-') && /^[|:\s\-]+$/.test(trimmed)) return line;
-    
-    const startsWithPipe = trimmed.startsWith('|');
-    const endsWithPipe = trimmed.endsWith('|');
-    
-    let cells = trimmed.split('|');
-    if (startsWithPipe) cells.shift();
-    if (endsWithPipe) cells.pop();
-    
-    const healedCells = cells.map(cell => healLatexFormulas(cell.trim(), true, poissonSymbol));
-    
-    let resultLine = '';
-    if (startsWithPipe) resultLine += '| ';
-    resultLine += healedCells.join(' | ');
-    if (endsWithPipe) resultLine += ' |';
-    
-    const leadingSpace = line.match(/^\s*/)[0];
-    return leadingSpace + resultLine;
-  });
-  return healedLines.join('\n');
-}
 
 // Whitelisted LaTeX math commands for safe auto-wrapping
 const MATH_COMMANDS = [
@@ -736,7 +669,6 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
 
   if (!isNested) {
     processed = htmlTableToMarkdown(processed, null);
-    processed = wrapMarkdownTables(processed);
   }
 
   // (Poisson's ratio healing logic moved above JSON escape restoration to prevent table breaking)
@@ -797,23 +729,16 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
     return `$$ ${math.trim()} \\quad ${katexUnit} $$`;
   });
 
-  // 불필요한 HTML 태그 정제 (단, 마크다운 표 내부는 <br> 등을 보존하기 위해 제외)
-  const tableSections = processed.split(/(<!--START_TABLE-->[\s\S]*?<!--END_TABLE-->)/g);
-  processed = tableSections.map(section => {
-    if (section.startsWith('<!--START_TABLE-->')) return section;
-    return section.replace(/<br\s*\/?>/gi, '\n\n')
-                  .replace(/<div[^>]*>\s*[•*]?\s*([^<]+?)\s*<\/div>/gi, '\n\n* $1')
-                  .replace(/<\/?(?:div|p|span|li|ul|ol)\b[^>]*>/gi, '')
-                  .replace(/\n{3,}/g, '\n\n');
-  }).join('');
+  // 불필요한 HTML 태그 정제
+  processed = processed.replace(/<br\s*\/?>/gi, '\n\n')
+              .replace(/<div[^>]*>\s*[•*]?\s*([^<]+?)\s*<\/div>/gi, '\n\n* $1')
+              .replace(/<\/?(?:div|p|span|li|ul|ol)\b[^>]*>/gi, '')
+              .replace(/\n{3,}/g, '\n\n');
 
   const tokens = tokenizeForHealing(processed);
   processed = tokens.map(token => {
     if (token.type === 'code') {
       return token.content; // Skip healing on code blocks to protect format (e.g. flowcharts, ascii art)
-    }
-    if (token.type === 'table') {
-      return healMarkdownTable(token.content, passedPoissonSymbol); // Heal formulas inside each table cell individually!
     }
     if (token.type === 'html') {
       return token.content; // Skip healing on HTML tags
@@ -821,7 +746,7 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
     if (token.type === 'text') {
       let t = token.content;
       // [Self-Healing] Merge single newlines in text tokens to prevent AI hard-wrapping from causing unwanted line breaks
-      t = t.replace(/(?<!\n)\n(?!\n|\s*(?:#{1,6}\s|\*|-|•|\d+\.|\d+\)|[a-zA-Z가-힣]\.|\([a-zA-Z가-힣0-9]\)|[ivx]+\.|\$))/g, ' ');
+      t = t.replace(/(?<!\n)\n(?!\n|\s*(?:#{1,6}\s|\*|-|•|\d+\.|\d+\)|[a-zA-Z가-힣]\.|\([a-zA-Z가-힣0-9]\)|[ivx]+\.|\$|\||┌|└|│|▼|─|┃))/g, ' ');
       // Auto-wrap unwrapped LaTeX math formulas
       t = t.replace(formulaRegex, (match) => {
         const trailingSpaces = match.match(/\s*$/)[0];
@@ -838,7 +763,6 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
           return subToken.content.replace(simpleVariableRegex, (match) => {
             const trailingSpaces = match.match(/\s*$/)[0];
             const trimmed = match.trim();
-            if (trimmed === 'START_TABLE' || trimmed === 'END_TABLE') return match;
             const trailingPunctuation = trimmed.match(/[.,;:!]+$/);
             const punc = trailingPunctuation ? trailingPunctuation[0] : '';
             const formula = trimmed.slice(0, trimmed.length - punc.length).trim();

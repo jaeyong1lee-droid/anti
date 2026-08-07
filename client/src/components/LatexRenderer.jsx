@@ -896,14 +896,21 @@ function preprocessMarkdownTables(text) {
 
           // Count pipes in this line
           const linePipes = (curLine.match(/\|/g) || []).length;
+          const isNewRow = curTrimmed.startsWith('|');
+
+          if (accumulatedRowText !== '' && isNewRow) {
+            // Force push the previous row because we hit a new row, even if it lacked pipes
+            resultLines.push(accumulatedRowText);
+            accumulatedRowText = '';
+            currentPipesCount = 0;
+          }
           
           if (accumulatedRowText === '') {
             accumulatedRowText = curLine;
           } else {
-            // If the accumulated text doesn't end with '|' and this line doesn't start with '|',
-            // we should join them with a <br> tag.
+            // Join cell continuation with <br>
             const prevTrimmed = accumulatedRowText.trim();
-            if (prevTrimmed.endsWith('|') || curTrimmed.startsWith('|')) {
+            if (prevTrimmed.endsWith('|')) {
               accumulatedRowText += ' ' + curLine;
             } else {
               accumulatedRowText += '<br>' + curLine;
