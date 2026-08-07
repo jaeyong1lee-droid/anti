@@ -20869,7 +20869,7 @@ ${itemsStr}
                                 </div>
                               )}
                             </div>
-                          ) : isCalculationQuestion(q) ? (
+                          ) : isCalculationQuestion(q, selectedTopic?.category || examTopic?.category) ? (
                             <div className="space-y-3 w-full animate-fade-in">
                               <div className={`p-3.5 sm:p-5 rounded-xl border space-y-4 text-left transition-all ${getSubjectiveContainerClasses(idx, isRevd)}`}>
                                 <div className="flex items-center justify-between border-b border-slate-700/60 pb-2.5">
@@ -21005,7 +21005,7 @@ ${itemsStr}
                                 )}
                               </div>
                             </div>
-                          ) : (!isCalculationQuestion(q) && (q.type === '주관식 (표채우기)' || q.subtype === '표채우기' || !!(q.tableData || q.comparisonTableData))) ? (
+                          ) : (!isCalculationQuestion(q, selectedTopic?.category || examTopic?.category) && (!!(q.tableData || q.comparisonTableData) || ((q.type === '주관식 (표채우기)' || q.subtype === '표채우기') && !isFlowchartQuestion(idx, q, false)))) ? (
                             <div className="space-y-3 w-full">
                               {(() => {
                                 const scoredIndices = [];
@@ -21096,7 +21096,7 @@ ${itemsStr}
                                 );
                               })()}
                             </div>
-                          ) : (q.type !== '주관식 (표채우기)' && q.subtype !== '표채우기' && !q.tableData && !q.comparisonTableData && !isNATMFlowchart(idx, q, false)) ? (
+                          ) : (q.type !== '주관식 (표채우기)' && q.subtype !== '표채우기' && !q.tableData && !q.comparisonTableData && !isFlowchartQuestion(idx, q, false)) ? (
                             <div className="space-y-3 w-full animate-fade-in">
                               <div className={`p-0 sm:p-4 rounded-none sm:rounded-xl border-0 sm:border space-y-3 text-left transition-all ${getSubjectiveContainerClasses(idx, isRevd)}`}>
                                 <div className="space-y-1">
@@ -21212,7 +21212,7 @@ ${itemsStr}
                                         </div>
                                       </div>
                                     )}
-                                    {!isNATMFlowchart(idx, q) && (
+                                    {!isFlowchartQuestion(idx, q, false) && (
                                       <div className="mt-2.5 pt-2.5 border-0 sm:border-t sm:border-current/10 text-left">
                                         {renderCardTutorChat(rKey, q)}
                                       </div>
@@ -21220,7 +21220,7 @@ ${itemsStr}
                                   </div>
                                 )}
                               </div>
-                              {!isRevd && !isNATMFlowchart(idx, q) ? (
+                              {!isRevd && !isFlowchartQuestion(idx, q, false) ? (
                                 <button
                                   onClick={async () => {
                                     if (gradingLoading[idx]) return;
@@ -24527,7 +24527,7 @@ ${itemsStr}
 
                       {/* Subjective Reveal */}
                       {isSubj && (
-                          isCalculationQuestion(q) ? (
+                          isCalculationQuestion(q, selectedTopic?.category || examTopic?.category) ? (
                             <div className="space-y-3 w-full animate-fade-in">
                               <div className={`p-3.5 sm:p-5 rounded-xl border space-y-4 text-left transition-all ${getSubjectiveContainerClasses(idx, !!examRevealed[idx])}`}>
                                 <div className="flex items-center justify-between border-b border-slate-700/60 pb-2.5">
@@ -24663,7 +24663,7 @@ ${itemsStr}
                                 )}
                               </div>
                             </div>
-                          ) : (!isCalculationQuestion(q) && (q.type === '주관식 (표채우기)' || q.subtype === '표채우기' || !!(q.tableData || q.comparisonTableData))) ? (
+                          ) : (!isCalculationQuestion(q, selectedTopic?.category || examTopic?.category) && (q.type === '주관식 (표채우기)' || q.subtype === '표채우기' || !!(q.tableData || q.comparisonTableData))) ? (
                             <div className="space-y-3 w-full">
                               {(() => {
                                 const scoredIndices = [];

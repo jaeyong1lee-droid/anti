@@ -675,10 +675,18 @@ export const LatexRenderer = React.memo(function LatexRenderer({
 
 
   // Check if text contains HTML tags
-  const hasHtml = /<\/?(div|table|tr|td|th|tbody|thead|tfoot|p|span|br|hr|strong|em|ul|ol|li|h[1-6]|b|i|a|img|code|pre|style|html|body)\b[^>]*>/i.test(cleanedText);
+  // We use (?:\s+[^>]*)?\/?> instead of \b[^>]*> to prevent matching <p, q> (where p is followed by comma)
+  const hasHtml = /<\/?(div|table|tr|td|th|tbody|thead|tfoot|p|span|br|hr|strong|em|ul|ol|li|h[1-6]|b|i|a|img|code|pre|style|html|body)(?:\s+[^>]*)?\/?>/i.test(cleanedText);
 
   if (hasHtml) {
     let htmlContent = cleanedText;
+    
+    // Protect non-HTML tags like <p, q> or <모어원> from being swallowed
+    htmlContent = htmlContent.replace(/<([a-zA-Z가-힣][^>]*)>/g, (match, content) => {
+      const tagMatch = match.match(/^<\/?(div|table|tr|td|th|tbody|thead|tfoot|p|span|br|hr|strong|em|ul|ol|li|h[1-6]|b|i|a|img|code|pre|style|html|body)(?:\s|>|\/>)/i);
+      if (tagMatch) return match;
+      return `&lt;${content}>`;
+    });
     if (window.katex) {
       const isInline = className.includes('inline');
       htmlContent = htmlContent.replace(/\$\$\s*([\s\S]*?)\s*\$\$/g, (m, math) => {
@@ -767,6 +775,7 @@ export const LatexRenderer = React.memo(function LatexRenderer({
             );
           } else {
             let htmlContent = part.content;
+            htmlContent = htmlContent.replace(/<([a-zA-Z가-힣])/g, '&lt;$1');
             try {
               htmlContent = htmlContent.replace(/\$((?:[^\$\n<]|<(?![a-zA-Z/!]))+?)\$/g, (m, math) => {
                 if (/[\uAC00-\uD7A3]/.test(math)) {
@@ -817,6 +826,7 @@ export const LatexRenderer = React.memo(function LatexRenderer({
           );
         } else {
           let htmlContent = part.content;
+          htmlContent = htmlContent.replace(/<([a-zA-Z가-힣])/g, '&lt;$1');
           try {
             htmlContent = htmlContent.replace(/\$((?:[^\$\n<]|<(?![a-zA-Z/!]))+?)\$/g, (m, math) => {
               if (/[\uAC00-\uD7A3]/.test(math) && !/\\/.test(math) && !/_/.test(math) && !/\^/.test(math) && !/[=+\-\*\/]/.test(math) && !/\\cdot/.test(math)) {

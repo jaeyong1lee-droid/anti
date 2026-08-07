@@ -1841,33 +1841,28 @@ export const LATEX_CHAT_PROMPT_INSTRUCTIONS = `
 20. 🚨 [수식 변수 및 아래첨자 결합 유지 규칙]: 수학 기호나 공식 내에서 물리량 변수 기호와 그 아래첨자(예: Nc, Df, kh 등)는 절대로 중간에 달러 기호($ 또는 $$)를 끼워 넣어서 서로 다른 블록으로 쪼개서 출력하지 마십시오. 반드시 수식 전체를 감싸서 하나의 수식 블록 내에 모두 포함시켜야 합니다. (예: $N_c$ (O) / N$_c$ (X), $\\text{N}_c$ (O) / \\text{N}$$_c (X))
 21. 🚨 [출처 및 원보고서 실측 내용 상세 작성 철칙]: 답변 중 참고자료나 출처(KDS/KCS, 원보고서, Wikipedia 등)를 언급할 때는 겉핥기식 제목만 딸랑 출력하는 행위를 엄격히 금지합니다. 반드시 각 출처 항목 바로 아래에 들여쓰기(- 또는 *)로 해당 출처/보고서에서 실제 확인한 구체적인 공학적 수치($S_{ult}$, $\beta$, $U\%$), 핵심 제어 기준(예: $1\\text{mm/day}$ 등), 원보고서 실측 데이터 및 수리/구조 역학 공식 내용을 최소 2줄 이상 구체적으로 포함하여 작성하십시오.
 `;
-export function isCalculationQuestion(q) {
+export function isCalculationQuestion(q, topicCategory = null) {
   if (!q) return false;
-  const qText = q.question || '';
 
-  // Explicit comparison tables (Q2) and theory questions (Q3) are never calculation questions
-  const isExplicitCompOrTheory = /비교하시오|특성을\s*비교|차이점|서술하시오|설명하시오/i.test(qText);
-  if (isExplicitCompOrTheory) return false;
+  // 1. Explicit Category Flags (Top Priority)
+  const resolvedCategory = q.category || topicCategory;
+  if (resolvedCategory === '계산') return true;
+  if (resolvedCategory === '일반' || resolvedCategory === '이론' || resolvedCategory === '서술') return false;
 
-  // Has calculation headers (구하는 항목 / 계산 결과 및 답안) -> 100% Calculation Question 1!
+  if (q.type === '주관식 (계산)' || q.subtype === '계산') return true;
+  if (q.type === '주관식 (일반)' || q.type === '주관식 (서술)' || q.subtype === '일반' || q.subtype === '서술' || q.subtype === '이론') return false;
+
+  // 2. Structural checks (Fallback if no category provided)
   const hasCalcHeaders = q.tableData && Array.isArray(q.tableData.headers) && (
     q.tableData.headers[0] === '구하는 항목' || q.tableData.headers[1] === '계산 결과 및 답안'
   );
   if (hasCalcHeaders) return true;
 
-  if (q.type === '주관식 (계산)' || q.subtype === '계산') return true;
   if (q.calcItems && Array.isArray(q.calcItems) && q.calcItems.length > 0) return true;
 
-  // Heuristic for Q1 calculation questions (e.g. Terzaghi 지지력 산정, 허용지지력 산정 등)
-  const hasMultipleSubItems = /(?:\(1\)|①).*?(?:\(2\)|②)/.test(qText);
-  const hasCalcKeyword = /구하시오|산정하시오|계산하시오|결정하시오/i.test(qText);
-
-  if (/Terzaghi|기초|지지력|허용하중|침투유량|침투수량|간극수압|동수경사|안전율/i.test(qText) && /산정|계산|구하시오/i.test(qText)) {
-    return true;
-  }
-  if (hasMultipleSubItems && hasCalcKeyword) {
-    return true;
-  }
+  const qText = q.question || '';
+  const isFlowchart = qText.includes('┌') || qText.includes('▼') || qText.includes('흐름도') || qText.includes('플로우차트');
+  if (isFlowchart) return false;
 
   return false;
 }
