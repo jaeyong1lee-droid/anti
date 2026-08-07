@@ -1932,7 +1932,7 @@ const renderQuestionContent = (
           </span>
         </div>
         <div 
-          className="p-4 w-full flex justify-center items-center overflow-x-auto overflow-y-hidden custom-scrollbar [&>svg]:w-full [&>svg]:max-w-full [&>svg]:h-auto" 
+          className="p-4 w-full flex justify-center items-center overflow-x-auto overflow-y-hidden custom-scrollbar [&>svg]:max-w-full [&>svg]:h-auto" 
           dangerouslySetInnerHTML={{ __html: q.diagram_svg }} 
         />
       </div>
@@ -12116,7 +12116,7 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
             {tutorAnswers[key]?.text && !tutorAnswers[key]?.loading && (
               <div id={`tutor-answer-panel-${key}`} className="mt-2.5 pt-2.5 border-0 sm:border-t sm:border-violet-500/20 select-text scroll-mt-14">
                 <div className="text-[14px] sm:text-[16px] font-black text-violet-400 mb-1.5">💬 AI 튜터 답변</div>
-                <div className="tutor-response-content text-[14px] sm:text-[16px] text-slate-200 leading-relaxed whitespace-pre-wrap select-text text-left w-full mt-1">
+                <div className="tutor-response-content text-[14px] sm:text-[16px] text-slate-200 leading-relaxed whitespace-pre-wrap select-text text-left w-full mt-1 [&_svg]:w-full [&_svg]:max-w-full [&_svg]:h-auto">
                   <LatexRenderer text={tutorAnswers[key].text} katexLoaded={katexLoaded} enableAddFormula={true} formulaSource="tutor" isMarkdown={true} />
                 </div>
               </div>
@@ -21600,7 +21600,7 @@ ${itemsStr}
                     <div className={
                       msg.role === 'user'
                         ? 'tutor-msg-text px-3 py-2 rounded-2xl max-w-[90%] leading-relaxed bg-indigo-600 text-white rounded-br-sm'
-                        : 'tutor-msg-text leading-relaxed text-slate-200 md:bg-slate-800 md:border md:border-slate-700 md:rounded-bl-sm md:px-3 md:py-2 md:rounded-2xl md:max-w-[99%] bg-transparent border-0 p-0 max-w-full w-full'
+                        : 'tutor-msg-text leading-relaxed text-slate-200 md:bg-slate-800 md:border md:border-slate-700 md:rounded-bl-sm md:px-3 md:py-2 md:rounded-2xl md:max-w-[99%] bg-transparent border-0 p-0 max-w-full w-full [&_svg]:w-full [&_svg]:max-w-full [&_svg]:h-auto'
                     }>
                       {msg.role === 'user' ? (
                         <div className="flex flex-col gap-2">
