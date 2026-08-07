@@ -20640,6 +20640,22 @@ ${itemsStr}
                                     정답: <strong className="inline-block"><LatexRenderer text={q.answer} katexLoaded={katexLoaded} className="inline" enableAddFormula={true} /></strong>
                                   </span>
                                 )}
+                                {q.diagram_svg && (
+  <div className="relative group my-2 overflow-hidden border border-slate-700/50 rounded-xl bg-[#0f172a] shadow-lg w-full mt-3">
+    <div className="px-2 py-1.5 bg-slate-800/80 border-b border-slate-700 flex items-center justify-between">
+      <span className="text-[10px] font-semibold text-emerald-400 font-mono tracking-wider flex items-center gap-1.5">
+        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+        </svg>
+        DIAGRAM
+      </span>
+    </div>
+    <div 
+      className="p-4 w-full flex justify-center items-center overflow-x-auto overflow-y-hidden custom-scrollbar" 
+      dangerouslySetInnerHTML={{ __html: q.diagram_svg }} 
+    />
+  </div>
+)}
                                 {q.explanation && <div className="mt-1.5 text-[14px] sm:text-[16px] text-slate-300"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} isExplanation={true} formulaSource="tutor" /></div>}
 
                                  {/* AI 해설 및 보기분석 버튼 패널 */}
@@ -21005,6 +21021,22 @@ ${itemsStr}
                                     <div className={`p-3 rounded-xl font-bold text-sm ${getTableBannerTitleClasses(idx, q)}`}>
                                       <span>{getTableBannerStatusText(idx, q)}</span>
                                     </div>
+                                    {q.diagram_svg && (
+  <div className="relative group my-2 overflow-hidden border border-slate-700/50 rounded-xl bg-[#0f172a] shadow-lg w-full mt-3">
+    <div className="px-2 py-1.5 bg-slate-800/80 border-b border-slate-700 flex items-center justify-between">
+      <span className="text-[10px] font-semibold text-emerald-400 font-mono tracking-wider flex items-center gap-1.5">
+        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+        </svg>
+        DIAGRAM
+      </span>
+    </div>
+    <div 
+      className="p-4 w-full flex justify-center items-center overflow-x-auto overflow-y-hidden custom-scrollbar" 
+      dangerouslySetInnerHTML={{ __html: q.diagram_svg }} 
+    />
+  </div>
+)}
                                     {q.explanation && (
                                       <div className="p-3 bg-slate-900/90 rounded-xl border border-slate-800 text-xs sm:text-sm leading-relaxed">
                                         <span className="font-extrabold text-amber-400">📝 풀이 및 해설:</span>
@@ -21096,6 +21128,22 @@ ${itemsStr}
                                     <div className={`text-[14px] sm:text-[16px] font-black flex justify-between items-center ${getTableBannerTitleClasses(idx, q)}`}>
                                       <span>{getTableBannerStatusText(idx, q)}</span>
                                     </div>
+                                    {q.diagram_svg && (
+  <div className="relative group my-2 overflow-hidden border border-slate-700/50 rounded-xl bg-[#0f172a] shadow-lg w-full mt-3">
+    <div className="px-2 py-1.5 bg-slate-800/80 border-b border-slate-700 flex items-center justify-between">
+      <span className="text-[10px] font-semibold text-emerald-400 font-mono tracking-wider flex items-center gap-1.5">
+        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+        </svg>
+        DIAGRAM
+      </span>
+    </div>
+    <div 
+      className="p-4 w-full flex justify-center items-center overflow-x-auto overflow-y-hidden custom-scrollbar" 
+      dangerouslySetInnerHTML={{ __html: q.diagram_svg }} 
+    />
+  </div>
+)}
                                     {q.explanation && (
                                       <div className="mt-2 pt-2 border-t border-current/10 text-[14px] sm:text-[16px] select-text">
                                         <span className="font-extrabold text-amber-400">📝 해설:</span>
@@ -21218,6 +21266,22 @@ ${itemsStr}
                                         </div>
                                       </div>
                                     )}
+                                    {q.diagram_svg && (
+  <div className="relative group my-2 overflow-hidden border border-slate-700/50 rounded-xl bg-[#0f172a] shadow-lg w-full mt-3">
+    <div className="px-2 py-1.5 bg-slate-800/80 border-b border-slate-700 flex items-center justify-between">
+      <span className="text-[10px] font-semibold text-emerald-400 font-mono tracking-wider flex items-center gap-1.5">
+        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+        </svg>
+        DIAGRAM
+      </span>
+    </div>
+    <div 
+      className="p-4 w-full flex justify-center items-center overflow-x-auto overflow-y-hidden custom-scrollbar" 
+      dangerouslySetInnerHTML={{ __html: q.diagram_svg }} 
+    />
+  </div>
+)}
                                     {q.explanation && (
                                       <div className="mt-2 pt-2 border-t border-current/10 text-[14px] sm:text-[16px] select-text">
                                         <span className="font-extrabold text-amber-400">📝 해설:</span>
@@ -21266,6 +21330,22 @@ ${itemsStr}
                                         <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.concept} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
                                       </div>
                                     )}
+                                    {q.diagram_svg && (
+  <div className="relative group my-2 overflow-hidden border border-slate-700/50 rounded-xl bg-[#0f172a] shadow-lg w-full mt-3">
+    <div className="px-2 py-1.5 bg-slate-800/80 border-b border-slate-700 flex items-center justify-between">
+      <span className="text-[10px] font-semibold text-emerald-400 font-mono tracking-wider flex items-center gap-1.5">
+        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+        </svg>
+        DIAGRAM
+      </span>
+    </div>
+    <div 
+      className="p-4 w-full flex justify-center items-center overflow-x-auto overflow-y-hidden custom-scrollbar" 
+      dangerouslySetInnerHTML={{ __html: q.diagram_svg }} 
+    />
+  </div>
+)}
                                     {q.explanation && (
                                       <div className="space-y-1 text-left pt-2 border-t border-amber-500/10">
                                         <span className="text-[10px] font-black text-amber-400">📝 해설: </span>
@@ -24358,7 +24438,23 @@ ${itemsStr}
                                   정답: <strong className="inline-block"><LatexRenderer text={q.answer} katexLoaded={katexLoaded} className="inline" enableAddFormula={true} /></strong>
                                 </span>
                               )}
-                              {q.explanation && <div className="mt-1.5 text-[14px] sm:text-[16px] text-slate-300"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} isExplanation={true} formulaSource="tutor" /></div>}
+                              {q.diagram_svg && (
+  <div className="relative group my-2 overflow-hidden border border-slate-700/50 rounded-xl bg-[#0f172a] shadow-lg w-full mt-3">
+    <div className="px-2 py-1.5 bg-slate-800/80 border-b border-slate-700 flex items-center justify-between">
+      <span className="text-[10px] font-semibold text-emerald-400 font-mono tracking-wider flex items-center gap-1.5">
+        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+        </svg>
+        DIAGRAM
+      </span>
+    </div>
+    <div 
+      className="p-4 w-full flex justify-center items-center overflow-x-auto overflow-y-hidden custom-scrollbar" 
+      dangerouslySetInnerHTML={{ __html: q.diagram_svg }} 
+    />
+  </div>
+)}
+                                {q.explanation && <div className="mt-1.5 text-[14px] sm:text-[16px] text-slate-300"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} isExplanation={true} formulaSource="tutor" /></div>}
                               
                               {/* AI 해설 및 보기분석 버튼 패널 */}
                               <div className="mt-2 pt-2 border-t border-slate-700/40">
@@ -24663,6 +24759,22 @@ ${itemsStr}
                                     <div className={`p-3 rounded-xl font-bold text-sm ${getTableBannerTitleClasses(idx, q)}`}>
                                       <span>{getTableBannerStatusText(idx, q)}</span>
                                     </div>
+                                    {q.diagram_svg && (
+  <div className="relative group my-2 overflow-hidden border border-slate-700/50 rounded-xl bg-[#0f172a] shadow-lg w-full mt-3">
+    <div className="px-2 py-1.5 bg-slate-800/80 border-b border-slate-700 flex items-center justify-between">
+      <span className="text-[10px] font-semibold text-emerald-400 font-mono tracking-wider flex items-center gap-1.5">
+        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+        </svg>
+        DIAGRAM
+      </span>
+    </div>
+    <div 
+      className="p-4 w-full flex justify-center items-center overflow-x-auto overflow-y-hidden custom-scrollbar" 
+      dangerouslySetInnerHTML={{ __html: q.diagram_svg }} 
+    />
+  </div>
+)}
                                     {q.explanation && (
                                       <div className="p-3 bg-slate-900/90 rounded-xl border border-slate-800 text-xs sm:text-sm leading-relaxed">
                                         <span className="font-extrabold text-amber-400">📝 풀이 및 해설:</span>
@@ -24754,6 +24866,22 @@ ${itemsStr}
                                     <div className={`text-[14px] sm:text-[16px] font-black flex justify-between items-center ${getTableBannerTitleClasses(idx, q)}`}>
                                       <span>{getTableBannerStatusText(idx, q)}</span>
                                     </div>
+                                    {q.diagram_svg && (
+  <div className="relative group my-2 overflow-hidden border border-slate-700/50 rounded-xl bg-[#0f172a] shadow-lg w-full mt-3">
+    <div className="px-2 py-1.5 bg-slate-800/80 border-b border-slate-700 flex items-center justify-between">
+      <span className="text-[10px] font-semibold text-emerald-400 font-mono tracking-wider flex items-center gap-1.5">
+        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+        </svg>
+        DIAGRAM
+      </span>
+    </div>
+    <div 
+      className="p-4 w-full flex justify-center items-center overflow-x-auto overflow-y-hidden custom-scrollbar" 
+      dangerouslySetInnerHTML={{ __html: q.diagram_svg }} 
+    />
+  </div>
+)}
                                     {q.explanation && (
                                       <div className="mt-2 pt-2 border-t border-current/10 text-[14px] sm:text-[16px] select-text">
                                         <span className="font-extrabold text-amber-400">📝 해설:</span>
@@ -24875,6 +25003,22 @@ ${itemsStr}
                                         </div>
                                       </div>
                                     )}
+                                    {q.diagram_svg && (
+  <div className="relative group my-2 overflow-hidden border border-slate-700/50 rounded-xl bg-[#0f172a] shadow-lg w-full mt-3">
+    <div className="px-2 py-1.5 bg-slate-800/80 border-b border-slate-700 flex items-center justify-between">
+      <span className="text-[10px] font-semibold text-emerald-400 font-mono tracking-wider flex items-center gap-1.5">
+        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+        </svg>
+        DIAGRAM
+      </span>
+    </div>
+    <div 
+      className="p-4 w-full flex justify-center items-center overflow-x-auto overflow-y-hidden custom-scrollbar" 
+      dangerouslySetInnerHTML={{ __html: q.diagram_svg }} 
+    />
+  </div>
+)}
                                     {q.explanation && (
                                       <div className="mt-2 pt-2 border-t border-current/10 text-[14px] sm:text-[16px] select-text">
                                         <span className="font-extrabold text-amber-400">📝 해설:</span>
@@ -24921,6 +25065,22 @@ ${itemsStr}
                                         <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.concept} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
                                     </div>
                                     )}
+                                    {q.diagram_svg && (
+  <div className="relative group my-2 overflow-hidden border border-slate-700/50 rounded-xl bg-[#0f172a] shadow-lg w-full mt-3">
+    <div className="px-2 py-1.5 bg-slate-800/80 border-b border-slate-700 flex items-center justify-between">
+      <span className="text-[10px] font-semibold text-emerald-400 font-mono tracking-wider flex items-center gap-1.5">
+        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+        </svg>
+        DIAGRAM
+      </span>
+    </div>
+    <div 
+      className="p-4 w-full flex justify-center items-center overflow-x-auto overflow-y-hidden custom-scrollbar" 
+      dangerouslySetInnerHTML={{ __html: q.diagram_svg }} 
+    />
+  </div>
+)}
                                     {q.explanation && (
                                       <div className="space-y-1 text-left pt-2 border-t border-amber-500/10">
                                         <span className="text-[10px] font-black text-amber-400">📝 해설: </span>
