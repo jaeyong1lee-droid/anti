@@ -60,15 +60,6 @@ export const AcronymQuiz = React.memo(function AcronymQuiz({
     if (isFloated) {
       setFloatedTableId(null);
     } else {
-      const w = floatedSize.width || 500;
-      const h = floatedSize.height || 450;
-      const maxX = Math.max(20, window.innerWidth - w - 24);
-      const maxY = Math.max(20, window.innerHeight - h - 24);
-      const curX = floatedPos.x || maxX;
-      const curY = floatedPos.y || 80;
-      const safeX = Math.max(20, Math.min(curX, maxX));
-      const safeY = Math.max(20, Math.min(curY, maxY));
-      setFloatedPos({ x: safeX, y: safeY });
       setFloatedTableId(acronymTableUniqueId);
     }
   };
