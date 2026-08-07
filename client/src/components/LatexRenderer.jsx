@@ -40,9 +40,9 @@ const parseAndRenderFlowchart = (flowchartText, katexLoaded, questionKey) => {
       continue;
     }
 
-    // 본문 줄 (세로선 │ 또는 ┃ 포함)
-    if (line.includes('│') || line.includes('┃')) {
-      const rawParts = line.split(/[│┃]/);
+    // 본문 줄 (세로선 │, ┃ 또는 | 포함)
+    if (line.includes('│') || line.includes('┃') || line.includes('|')) {
+      const rawParts = line.split(/[│┃|]/);
       let cols = [];
       if (rawParts.length > 2) {
         cols = rawParts.slice(1, rawParts.length - 1).map(c => c.trim());
@@ -66,7 +66,7 @@ const parseAndRenderFlowchart = (flowchartText, katexLoaded, questionKey) => {
     } else {
       // 연결 화살표 또는 분기 기호
       flushBoxes();
-      if (trimmed === '│' || trimmed === '┃' || trimmed === '▼' || trimmed === '↓') {
+      if (trimmed === '│' || trimmed === '┃' || trimmed === '|' || trimmed === '▼' || trimmed === '↓') {
         items.push({ type: 'arrow', text: '▼' });
       } else if (trimmed.includes('┌') || trimmed.includes('┴') || trimmed.includes('┐')) {
         items.push({ type: 'arrow', text: '▼ (분기)' });
