@@ -409,174 +409,30 @@ export function healDeep(obj, parentKey = null, context = null) {
   
   let currentContext = context;
   if (!currentContext && typeof obj === 'object') {
-    try {
-      const serialized = JSON.stringify(obj);
-      let symbol = null;
-      if (/포아송/i.test(serialized)) {
-        if (/(?:포아송)[^a-zA-Z0-9$]*\$?u\$?/i.test(serialized) || /\$?u\$?[^a-zA-Z0-9$]*(?:포아송)/i.test(serialized)) {
-          symbol = 'u';
-        }
-      }
-      if (!symbol && /포아송|비배수|탄성/i.test(serialized)) {
-        if (/(?:포아송|비배수|탄성)[^a-zA-Z0-9$]*\$?v\$?/i.test(serialized) || /\$?v\$?[^a-zA-Z0-9$]*(?:포아송|비배수|탄성)/i.test(serialized)) {
-          symbol = 'v';
-        }
-      }
-      currentContext = { poissonSymbol: symbol };
-    } catch (e) {
-      // ignore
-    }
+    currentContext = { poissonSymbol: null }; // Pass null, let AI or latex rendering handle it naturally
   }
 
   if (typeof obj === 'string') {
-    if (/\[INPUT_\d+(?:_\d+)?\]/i.test(obj)) {
+    // Avoid double healing
+    if (obj.includes('class="katex"') || obj.includes('<span class="katex-mathml">')) {
       return obj;
     }
-    if (/^(data:image\/|https?:\/\/|\/)/i.test(obj)) {
-      return obj;
-    }
-    const skipKeys = [
-      'title', 'pdf_name', 'pdf_url', 'id', 'topic_id', 'schedule_id', 
-      'answersheet_report_id', 'type', 'subtype', 'keywords',
-      'imageSrc', 'image_src', 'imageSrcs', 'image_srcs',
-      'base64Image', 'base64_image', 'base64Images', 'base64_images',
-      'originalId', 'original_id', 'memorizationTip', 'memorization_tip'
-    ];
-    if (parentKey && skipKeys.includes(parentKey)) {
-      let cleanVal = obj.trim();
-      if (cleanVal.startsWith('$') && cleanVal.endsWith('$')) {
-        cleanVal = cleanVal.slice(1, -1);
-      }
-      return cleanVal;
-    }
-    return healLatexFormulas(obj, false, currentContext?.poissonSymbol);
-  }
-  if (Array.isArray(obj)) {
+    const forceInline = (parentKey === 'answers' || parentKey === 'correct_answer' || parentKey === 'comparison');
+    return healLatexFormulas(obj, false, currentContext?.poissonSymbol, forceInline);
+  } else if (Array.isArray(obj)) {
     return obj.map(item => healDeep(item, parentKey, currentContext));
-  }
-  if (typeof obj === 'object') {
-    const healed = {};
+  } else if (typeof obj === 'object') {
+    const healedObj = {};
     for (const key in obj) {
-      if (Object.prototype.hasOwnProperty.call(obj, key)) {
-        healed[key] = healDeep(obj[key], key, currentContext);
+      if (key === 'originalId' || key === 'id' || key === 'type' || key === 'subtype') {
+        healedObj[key] = obj[key];
+      } else {
+        healedObj[key] = healDeep(obj[key], key, currentContext);
       }
     }
-    return healed;
+    return healedObj;
   }
   return obj;
-}
-
-export function cleanQuizQuestion(q) {
-  if (!q) return q;
-  let cleanText = typeof q === 'string' ? q : String(q || '');
-
-  // 1. Replace (A), (B), (C), (D) list garbage inside flowchart boxes with sequential single placeholders
-  let emptyBoxIdx = 0;
-  cleanText = cleanText.replace(/\[\s*\([^\]]*\)\s*,\s*\([^\]]*\)[\s\S]*?\]/gi, () => {
-    emptyBoxIdx++;
-    return emptyBoxIdx === 1 ? '[ (A) ]' : (emptyBoxIdx === 2 ? '[ (C) ]' : '[ (E) ]');
-  });
-
-  let emptyLineIdx = 0;
-  cleanText = cleanText.replace(/-\s*\([^)]*\)\s*,\s*\([^)]*\)[\s\S]*?(?=\r?\n|$)/gi, () => {
-    emptyLineIdx++;
-    return emptyLineIdx === 1 ? '- (B)' : (emptyLineIdx === 2 ? '- (D)' : '- (F)');
-  });
-
-  // 2. Strip remaining list garbage outside boxes
-  cleanText = cleanText.replace(/,?\s*\([A-Z]\)(?:\s*,\s*\([A-Z]\))+/gi, '');
-
-  const hasTableOrFlowchart = cleanText.includes('|') || cleanText.includes('┌──') || cleanText.includes('▼') || cleanText.includes('```') || cleanText.includes('흐름도') || cleanText.includes('플로우차트');
-  if (hasTableOrFlowchart) return cleanText.trim();
-  return cleanText.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ').trim();
-}
-
-export function sanitizeGarbageTextFromQuestion(text) {
-  if (!text || typeof text !== 'string') return text;
-  let clean = text;
-  clean = clean.replace(/,?\s*\([B-F]\)\s*(?:,\s*\([B-F]\))+/g, '');
-  clean = clean.replace(/,?\s*\(([A-F])\)\s*입력\s*,?\s*\([B-F]\)\s*(?:,\s*\([B-F]\))+/g, ' ($1) 입력');
-  return clean;
-}
-
-function parseQuestionTableText(questionText) {
-  let tableData = null;
-  if (!questionText) return { questionText, tableData };
-
-  // 1. Try parsing HTML table
-  if (questionText.toLowerCase().includes('<table') || questionText.toLowerCase().replace(/\s+/g, '').includes('<table')) {
-    let cleaned = questionText
-      .replace(/<\s*table[^>]*>/gi, '<table>')
-      .replace(/<\s*\/+\s*table[^>]*>/gi, '</table>')
-      .replace(/<\s*tr[^>]*>/gi, '<tr>')
-      .replace(/<\s*\/+\s*tr[^>]*>/gi, '</tr>')
-      .replace(/<\s*th[^>]*>/gi, '<th>')
-      .replace(/<\s*\/+\s*th[^>]*>/gi, '</th>')
-      .replace(/<\s*td[^>]*>/gi, '<td>')
-      .replace(/<\s*\/+\s*td[^>]*>/gi, '</td>');
-
-    const tableRegex = /<table>([\s\S]*?)<\/table>/i;
-    const match = cleaned.match(tableRegex);
-    if (match) {
-      const tableContent = match[1];
-      const trRegex = /<tr>([\s\S]*?)<\/tr>/gi;
-      let trMatch;
-      const headers = [];
-      const rows = [];
-      
-      while ((trMatch = trRegex.exec(tableContent)) !== null) {
-        const rowContent = trMatch[1];
-        const thRegex = /<th>([\s\S]*?)<\/th>/gi;
-        let thMatch;
-        const ths = [];
-        while ((thMatch = thRegex.exec(rowContent)) !== null) {
-          ths.push(thMatch[1].trim());
-        }
-        if (ths.length > 0) {
-          headers.push(...ths);
-          continue;
-        }
-        
-        const tdRegex = /<td>([\s\S]*?)<\/td>/gi;
-        let tdMatch;
-        const tds = [];
-        while ((tdMatch = tdRegex.exec(rowContent)) !== null) {
-          tds.push(tdMatch[1].trim());
-        }
-        if (tds.length > 0) {
-          rows.push(tds);
-        }
-      }
-
-      if (rows.length > 0) {
-        tableData = {
-          headers: headers.length > 0 ? headers : rows[0],
-          rows: headers.length > 0 ? rows : rows.slice(1)
-        };
-        
-        const tableStartIdx = questionText.toLowerCase().search(/<\s*table/i);
-        const tableEndIdx = questionText.toLowerCase().search(/<\s*\/+\s*table/i);
-        if (tableStartIdx !== -1 && tableEndIdx !== -1) {
-          const endBracketIdx = questionText.indexOf('>', tableEndIdx);
-          if (endBracketIdx !== -1) {
-            const originalTableHtml = questionText.substring(tableStartIdx, endBracketIdx + 1);
-            questionText = questionText.replace(originalTableHtml, '').trim();
-          }
-        }
-      }
-    }
-  }
-
-  // 2. Try parsing Markdown table if HTML table parsing wasn't successful/present
-  if (!tableData) {
-    const mdParsed = parseMarkdownTable(questionText);
-    if (mdParsed) {
-      tableData = mdParsed.tableData;
-      questionText = questionText.replace(mdParsed.originalTableText, '').trim();
-    }
-  }
-
-  return { questionText, tableData };
 }
 
 export const parseOverviewContent = (content) => {
