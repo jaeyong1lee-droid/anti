@@ -3,8 +3,10 @@ export function tokenizeForHealing(text) {
   if (!text) return [];
   const tokens = [];
   let lastIndex = 0;
-  // Match table blocks or inline/display math blocks
-  const regex = /(<!--START_TABLE-->[\s\S]*?<!--END_TABLE-->)|(\$\$.*?\$\$)|(\$[^\$\n]{1,200}\$)/gs;
+  // Match table blocks, HTML tags, or inline/display math blocks
+  const htmlTags = ['strong', 'em', 'sub', 'sup', 'div', 'span', 'br', 'table', 'tr', 'td', 'th', 'tbody', 'thead', 'p', 'b', 'i', 'u'];
+  const tagsRegex = htmlTags.join('|');
+  const regex = new RegExp(`(<!--START_TABLE-->[\\s\\S]*?<!--END_TABLE-->)|(<\\/?\\s*(?:${tagsRegex})\\b(?:\\s+[^>]*)?>)|(\\$\\$.*?\\$\\$)|(\\$\\s?[^\\$\\n]{1,200}\\s?\\$)`, 'gi');
   let match;
 
   while ((match = regex.exec(text)) !== null) {
@@ -14,6 +16,8 @@ export function tokenizeForHealing(text) {
     const content = match[0];
     if (content.startsWith('<!--START_TABLE-->')) {
       tokens.push({ type: 'table', content });
+    } else if (content.startsWith('<') && !content.startsWith('<!--')) {
+      tokens.push({ type: 'html', content });
     } else {
       tokens.push({
         type: content.startsWith('$$') ? 'block-math' : 'inline-math',
@@ -799,6 +803,9 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
     if (token.type === 'table') {
       return token.content; // Skip healing on the table structure itself!
     }
+    if (token.type === 'html') {
+      return token.content; // Skip healing on HTML tags
+    }
     if (token.type === 'text') {
       let t = token.content;
       // Auto-wrap unwrapped LaTeX math formulas
@@ -850,13 +857,15 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
     const prev = finalTokens[i - 1];
     let needSpace = false;
 
-    if (prev.type === 'text' && current.type !== 'text') {
+    const isMath = (t) => t.type === 'inline-math' || t.type === 'block-math';
+
+    if (prev.type === 'text' && isMath(current)) {
       const lastChar = prev.content[prev.content.length - 1];
       if (lastChar && !/\s/.test(lastChar) && !/[\(\[\{\'\"]/.test(lastChar)) needSpace = true;
-    } else if (prev.type !== 'text' && current.type === 'text') {
+    } else if (isMath(prev) && current.type === 'text') {
       const firstChar = current.content[0];
       if (firstChar && !/\s/.test(firstChar) && !/[\,\.\?\!\)\]\}\:\;\*]/.test(firstChar)) needSpace = true;
-    } else if (prev.type !== 'text' && current.type !== 'text') {
+    } else if (isMath(prev) && isMath(current)) {
       needSpace = true;
     }
     result += needSpace ? ' ' + current.content : current.content;
