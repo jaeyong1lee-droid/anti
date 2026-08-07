@@ -6,7 +6,7 @@ export function tokenizeForHealing(text) {
   // Match table blocks, HTML tags, or inline/display math blocks
   const htmlTags = ['strong', 'em', 'sub', 'sup', 'div', 'span', 'br', 'table', 'tr', 'td', 'th', 'tbody', 'thead', 'p', 'b', 'i', 'u'];
   const tagsRegex = htmlTags.join('|');
-  const regex = new RegExp(`(<!--START_TABLE-->[\\s\\S]*?<!--END_TABLE-->)|(<\\/?\\s*(?:${tagsRegex})\\b(?:\\s+[^>]*)?>)|(\\$\\$[\\s\\S]*?\\$\\$)|(\\$\\s?[^\\$\\n]{1,200}\\s?\\$)`, 'gi');
+  const regex = new RegExp(`(\`\`\`[\\s\\S]*?\`\`\`)|(<!--START_TABLE-->[\\s\\S]*?<!--END_TABLE-->)|(<\\/?\\s*(?:${tagsRegex})\\b(?:\\s+[^>]*)?>)|(\\$\\$[\\s\\S]*?\\$\\$)|(\\$\\s?[^\\$\\n]{1,200}\\s?\\$)`, 'gi');
   let match;
 
   while ((match = regex.exec(text)) !== null) {
@@ -14,7 +14,9 @@ export function tokenizeForHealing(text) {
     if (before) tokens.push({ type: 'text', content: before });
     
     const content = match[0];
-    if (content.startsWith('<!--START_TABLE-->')) {
+    if (content.startsWith('```')) {
+      tokens.push({ type: 'code', content });
+    } else if (content.startsWith('<!--START_TABLE-->')) {
       tokens.push({ type: 'table', content });
     } else if (content.startsWith('<') && !content.startsWith('<!--')) {
       tokens.push({ type: 'html', content });
@@ -807,6 +809,9 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
 
   const tokens = tokenizeForHealing(processed);
   processed = tokens.map(token => {
+    if (token.type === 'code') {
+      return token.content; // Skip healing on code blocks to protect format (e.g. flowcharts, ascii art)
+    }
     if (token.type === 'table') {
       return healMarkdownTable(token.content, passedPoissonSymbol); // Heal formulas inside each table cell individually!
     }
