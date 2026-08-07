@@ -609,6 +609,14 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
         return renderKatexString(math.trim(), { displayMode: false, throwOnError: false });
       });
     }
+    
+    if (lang === 'svg') {
+      const styledSvgHtml = `<div class="w-full my-4 border border-slate-700/60 rounded-xl overflow-hidden shadow-lg bg-slate-900/40 relative select-text"><div class="px-3 py-2 bg-slate-800/50 border-b border-slate-700/60 flex items-center justify-between"><span class="text-xs font-bold text-slate-300 flex items-center gap-2"><span class="text-amber-400">📊</span> 공학 다이어그램</span><span class="px-1.5 py-0.5 text-[9px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded">SVG</span></div><div class="p-3 overflow-x-auto flex items-center justify-center min-h-[120px] max-w-full text-slate-200">${codeHtml}</div></div>`;
+      codeBlocks.push({ placeholder, content: styledSvgHtml });
+      codeBlockIndex++;
+      return placeholder;
+    }
+
     const styledHtml = svgChart ? svgChart : `<pre class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-4 overflow-x-auto my-3 font-mono text-xs text-slate-300 leading-relaxed select-text" style="white-space: pre; font-family: monospace;">${codeHtml}</pre>`;
     codeBlocks.push({ placeholder, content: styledHtml });
     codeBlockIndex++;
