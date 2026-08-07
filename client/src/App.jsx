@@ -17,6 +17,7 @@ import { AcronymQuiz } from './components/AcronymQuiz';
 import { ReadOnlyTable } from './components/ReadOnlyTable';
 import { PopoutWindow } from './components/PopoutWindow';
 import { InteractiveQuizModal } from './components/InteractiveQuizModal';
+import SvgZoomModal from './components/SvgZoomModal';
 import { 
   buildHtmlDocument, 
   handleOpenHtmlAnswerPopup, 
@@ -2187,6 +2188,21 @@ export default function App() {
   const [activeAnswerPopupData, setActiveAnswerPopupData] = useState(null);
   const [quizPopupItem, setQuizPopupItem] = useState(null);
   const [quizPopupType, setQuizPopupType] = useState(null);
+
+  const [svgZoomContent, setSvgZoomContent] = useState(null);
+
+  useEffect(() => {
+    window.openSvgZoomModal = (btnElement) => {
+      const container = btnElement.parentElement.nextElementSibling;
+      const svgElement = container?.querySelector('svg');
+      if (svgElement) {
+        setSvgZoomContent(svgElement.outerHTML);
+      }
+    };
+    return () => {
+      delete window.openSvgZoomModal;
+    };
+  }, []);
 
   const [answerPopupPos, setAnswerPopupPos] = useState(() => {
     try {
@@ -30455,6 +30471,13 @@ ${itemsStr}
             </div>
           </div>
         )
+      )}
+
+      {svgZoomContent && (
+        <SvgZoomModal 
+          svgContent={svgZoomContent} 
+          onClose={() => setSvgZoomContent(null)} 
+        />
       )}
 
       {/* Custom Overview Prompt Modal */}
