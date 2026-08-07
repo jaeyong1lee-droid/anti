@@ -51,59 +51,6 @@ export function healBackslashes(str) {
   return healed;
 }
 
-export function htmlTableToMarkdown(html, poissonSymbol = null) {
-  if (!html) return html;
-
-  // 1. 깨진 공백 및 태그 정제 (시작 태그 및 끝 태그)
-  let cleanHtml = html
-    .replace(/<\s*table[^>]*>/gi, '<table>')
-    .replace(/<\s*\/+\s*table[^>]*>/gi, '</table>')
-    .replace(/<\s*tr[^>]*>/gi, '<tr>')
-    .replace(/<\s*\/+\s*tr[^>]*>/gi, '</tr>')
-    .replace(/<\s*th[^>]*>/gi, '<th>')
-    .replace(/<\s*\/+\s*th[^>]*>/gi, '</th>')
-    .replace(/<\s*td[^>]*>/gi, '<td>')
-    .replace(/<\s*\/+\s*td[^>]*>/gi, '</td>');
-
-  // 2. 정규식을 이용해 <table> 블록 전체 포착 후 마크다운 구조로 빌드
-  return cleanHtml.replace(/<table>([\s\S]*?)<\/table>/gi, (match, tableContent) => {
-    const rows = [];
-    const trRegex = /<tr>([\s\S]*?)<\/tr>/gi;
-    let trMatch;
-    let hasHeader = false;
-
-    while ((trMatch = trRegex.exec(tableContent)) !== null) {
-      const rowContent = trMatch[1];
-      const cells = [];
-      
-      const cellRegex = /<(?:th|td)[^>]*>([\s\S]*?)<\/\s*(?:th|td)>/gi;
-      let cellMatch;
-      while ((cellMatch = cellRegex.exec(rowContent)) !== null) {
-        cells.push(healLatexFormulas(cellMatch[1].trim(), true, poissonSymbol));
-      }
-      
-      if (cells.length > 0) {
-        rows.push(`| ${cells.join(' | ')} |`);
-        if (rowContent.includes('<th')) hasHeader = true;
-      }
-    }
-
-    if (rows.length === 0) return '';
-
-    const colCount = rows[0].split('|').length - 2;
-    const separator = `| ${Array(colCount).fill('---').join(' | ')} |`;
-
-    if (hasHeader) {
-      rows.splice(1, 0, separator);
-    } else {
-      rows.unshift(`| ${Array(colCount).fill(' ').join(' | ')} |`);
-      rows.splice(1, 0, separator);
-    }
-
-    return `\n\n${rows.join('\n')}\n\n`;
-  });
-}
-
 export function parseMarkdownTable(questionText) {
   if (!questionText) return null;
   const cleanStr = typeof questionText === 'string' ? questionText : String(questionText);
@@ -202,40 +149,6 @@ export function parseMarkdownTable(questionText) {
 }
 
 
-
-// Whitelisted LaTeX math commands for safe auto-wrapping
-const MATH_COMMANDS = [
-  'frac', 'dfrac', 'tfrac', 'sqrt', 'cdot', 'times', 'div', 'pm', 'infty', 'partial', 'sum', 'int', 'sim',
-  'le', 'ge', 'lt', 'gt', 'sin', 'cos', 'tan', 'log', 'ln', 'nabla', 'neq', 'ne', 'approx',
-  'sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta', 'nu', 'xi', 'zeta', 'chi', 'upsilon', 'kappa',
-  'Delta', 'Sigma', 'Gamma', 'Phi', 'Theta', 'Omega',
-  'rightarrow', 'leftarrow', 'circ', 'deg', 'dot', 'ddot', 'bar', 'hat', 'tilde',
-  'quad', 'qquad', 'text', 'left', 'right'
-];
-
-// Regex matching math formulas containing at least one whitelisted command
-const formulaRegex = new RegExp(
-  `(?:[a-zA-Z0-9_'\^\\(\\)\\{\\}\\[\\]\\+\\-\\*\\/=.,·][a-zA-Z0-9_'\^\\(\\)\\{\\}\\[\\]\\+\\-\\*\\/= \\t.,·]*)?` +
-  `\\\\(?:${MATH_COMMANDS.join('|')})` +
-  `(?![a-zA-Z])` +
-  `[a-zA-Z0-9_'\^\\(\\)\\{\\}\\[\\]\\+\\-\\*\\/= \\t.,<>%\\\\·]*`,
-  'g'
-);
-
-// Regex matching simple math variables/relations (without backslash commands)
-const simpleVariableRegex = new RegExp(
-  // 1. Relations (most specific, e.g. k_h = 10, y(x) = ax + b, z < z_c, c = a - b)
-  `\\b[a-zA-Z0-9_'\^\\(\\)\\{\\}\\[\\]]+\\s*(?:(?:[+=<>]|\\s+[-/\\*]\\s+)\\s*[a-zA-Z0-9_'\^\\(\\)\\{\\}\\[\\]]+\\s*)*[+=<>]\\s*[a-zA-Z0-9_'\^\\(\\)\\{\\}\\[\\]]+(?:\\s*(?:[+=<>]|\\s+[-/\\*]\\s+)\\s*[a-zA-Z0-9_'\^\\(\\)\\{\\}\\[\\]]+)*\\b|` +
-  // 2. Function notation (e.g. p(z), w(z))
-  `\\b[a-zA-Z]\\([a-zA-Z0-9_']+\\)(?![a-zA-Z0-9_'])|` +
-  // 3. Subscripted variables with braces or underscores (e.g. s_{t-\Delta t}, s_{t- \Delta t}, S_{max}, k_h, z_c)
-  `\\\\?[a-zA-Z0-9_']+_\{\\s*[^{}\\n]+\\s*\\}|` +
-  `\\b[a-zA-Z0-9]+_[a-zA-Z0-9_']+\\b|` +
-  // 4. Constants
-  `\\b(?:EI|EA|FS)\\b|` +
-  `\\bF\\.S\\.(?![a-zA-Z0-9_'])`,
-  'g'
-);
 
 function replaceRoots(str) {
   let processed = str;
@@ -446,7 +359,7 @@ const healCorruptedKatexHtml = (text) => {
 export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = null, forceInline = false) {
   if (!text || typeof text !== 'string') return text;
 
-  // [Self-Healing] Fix spaced-out formatting tags hallucinated by AI (e.g. < strong > -> <strong>)
+  // [Self-Healing] Fix spaced-out formatting tags hallucinated by AI
   const formatTags = ['strong', 'em', 'b', 'i', 'u', 'span', 'div', 'p', 'br', 'table', 'tr', 'td', 'th', 'tbody', 'thead'];
   const formatRegex = new RegExp(`(<\\s*\\/?\\s*)(${formatTags.join('|')})\\b(\\s*[^>]*)?>`, 'gi');
   text = text.replace(formatRegex, (match, prefix, tag, suffix) => {
@@ -454,373 +367,40 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
     return (isClosing ? '</' : '<') + tag + (suffix ? suffix.trim() : '') + '>';
   });
 
-  // [Self-Healing] Convert spaced-out sub/sup tags to LaTeX subscript/superscript
   text = text.replace(/<\s*\/\s*sub\s*>/gi, '');
   text = text.replace(/\s*<\s*sub\s*>\s*/gi, '_');
   text = text.replace(/<\s*\/\s*sup\s*>/gi, '');
   text = text.replace(/\s*<\s*sup\s*>\s*/gi, '^');
-
-  // [Self-Healing] Safely restore corrupted (₩t) or (\t) time interval notation to (${\Delta}t$)
   text = text.replace(/\([₩\\]?t\)/gi, '($\\Delta t$)');
 
-  text = text.replace(/₩/g, '\\')
-             .replace(/\\\(([\s\S]*?)\\\)/g, (m, p1) => '$' + p1.trim() + '$');
+  text = text.replace(/₩/g, '\\').replace(/\\\(([\\s\\S]*?)\\\)/g, (m, p1) => '$' + p1.trim() + '$');
   let processed = healCorruptedKatexHtml(text);
-  // [Self-Healing] Merge artificially fragmented inline math blocks separated only by spaces (e.g. $\sqrt{$ $\sqrt{\dots}$ $}$)
+  
   processed = processed.replace(/(?<!\$)\$\s+\$(?!\$)/g, ' ');
-  // [Self-Healing] Fix AI's weird nested root hallucination (e.g. $\sqrt{ \sqrt{\dots} }$ -> delete entirely to make sentences natural)
   processed = processed.replace(/\$\s*\\sqrt\{\s*\\sqrt\{\\dots\}\s*\}\s*\$\s*/g, '');
-  // [Self-Healing] Convert misplaced double dollar ($$) math inside parentheses or sentence flow to single dollar ($) inline math
-  processed = processed.replace(/\(([^()\n]*?)\$\$\s*([\s\S]*?)\s*\$\$\s*([^()\n]*?)\)/g, '($1 $$$2$$ $3)');
-  processed = processed.replace(/([([\uAC00-\uD7A3a-zA-Z0-9,])\s*\$\$\s*([^\$\n]+?)\s*\$\$\s*([)\],\.\uAC00-\uD7A3a-zA-Z0-9,])/g, '$1 $$$2$$ $3');
-  // [Self-Healing] Fix misplaced dollar signs inside parentheses like (s_{\infty}$) -> ($s_{\infty}$)
+  processed = processed.replace(/\(([^()\n]*?)\$\$\s*([\\s\\S]*?)\s*\$\$\s*([^()\n]*?)\)/g, '($1 $$$2$$ $3)');
+  processed = processed.replace(/([([\\uAC00-\\uD7A3a-zA-Z0-9,])\s*\$\$\s*([^\$\n]+?)\s*\$\$\s*([)\],\\.\\uAC00-\\uD7A3a-zA-Z0-9,])/g, '$1 $$$2$$ $3');
   processed = processed.replace(/\(([^$()\n]+?)\$\)/g, '($$$1$)');
 
-  // [Self-Healing] Fix corrupted HTML entity inequality symbols (&\lt;, &amp;\lt;, etc.)
-  processed = processed.replace(/&amp;\\?lt;?/gi, '<')
-                       .replace(/&amp;\\?gt;?/gi, '>')
-                       .replace(/&\\lt;?/gi, '<')
-                       .replace(/&\\gt;?/gi, '>')
-                       .replace(/&lt;/gi, '<')
-                       .replace(/&gt;/gi, '>');
+  processed = processed.replace(/&amp;\\?lt;?/gi, '<').replace(/&amp;\\?gt;?/gi, '>');
+  processed = processed.replace(/&\\lt;?/gi, '<').replace(/&\\gt;?/gi, '>');
+  processed = processed.replace(/&lt;/gi, '<').replace(/&gt;/gi, '>');
+  processed = processed.replace(/\\text\{\s*W유\s*\}m?/gi, '\\mu m').replace(/W유m?/gi, '\\mu m');
 
-  // [Self-Healing] Restore corrupted micro-unit symbols (\text{W유}m -> \mu m, W유m -> \mu m, W유 -> \mu)
-  processed = processed.replace(/\\text\{\s*W유\s*\}m?/gi, '\\mu m')
-                       .replace(/W유m?/gi, '\\mu m');
-
-
-  // [Self-Healing] Remove space between backslash and Greek commands (including trailing alphanumeric characters)
   const greekSubscriptFullLetters = 'alpha|beta|gamma|sigma|tau|phi|theta|epsilon|pi|delta|omega|mu|lambda|psi|rho|eta|nu|xi|zeta|chi|upsilon|kappa';
   const spaceRegex = new RegExp(`\\\\\\s+(${greekSubscriptFullLetters})([a-zA-Z0-9]*)\\b`, 'gi');
   processed = processed.replace(spaceRegex, '\\$1$2');
 
-  // [Self-Healing] Clean up Greek letter variables missing underscores (e.g. \sigmav -> \sigma_v, \sigma'v -> \sigma'_v)
   const greekSubscriptLetters = 'sigma|gamma|tau|theta|alpha|beta|epsilon|phi|psi|omega|mu|nu';
   const greekSubscriptRegex = new RegExp(`\\\\(${greekSubscriptLetters})('?)([a-zA-Z0-9])\\b`, 'gi');
   processed = processed.replace(greekSubscriptRegex, '\\$1$2_$3');
 
-  // [Self-Healing] Remove space between backslash and general math commands
-  processed = processed.replace(/\\\s+(Delta|Sigma|Gamma|Phi|Theta|Omega|frac|dfrac|tfrac|sqrt|cdot|times|div|pm|infty|partial|sum|int|sim|le|ge|lt|gt|sin|cos|tan|log|ln|nabla|neq|ne|approx)\b/g, '\\$1');
-
-  // [Self-Healing] Fix space-corrupted or missing-space Delta variables (e.g. \Deltau, \ Deltau, \Deltasigma)
-  const greekNames = 'alpha|beta|gamma|sigma|tau|phi|theta|epsilon|pi|delta|omega|mu|lambda|psi|rho|eta|nu|xi|zeta|chi|upsilon|kappa|Delta|Sigma|Gamma|Phi|Theta|Omega';
-  const deltaGreekRegex = new RegExp(`\\\\\\s*Delta\\s*(${greekNames})\\b`, 'gi');
-  processed = processed.replace(deltaGreekRegex, '\\Delta \\$1');
-  processed = processed.replace(/\\\s*Delta\s*([a-zA-Z])\b/gi, '\\Delta $1');
-
-  // [Self-Healing] Strip KaTeX-unsupported MathJax \pu{...} commands (renders red in KaTeX)
-  processed = processed.replace(/\\pu\s*\{([^}]+)\}/gi, '$1');
-
-  // [Self-Healing] Fix raw bearing capacity formula gamma terms
-  processed = processed.replace(/\\?\s*gamma\s*BN\\?\s*gamma/gi, '\\gamma B N_\\gamma')
-                       .replace(/\\?\s*gamma\s*B\s*N\s*\\?\s*gamma/gi, '\\gamma B N_\\gamma');
-
-
-  // [🚨 KaTeX HTML 블록 최우선 복원 필터 🚨]
-  // 텍스트 내부에 들어있는 KaTeX HTML 사전 렌더링 블록을 감지하여
-  // 그 내부에 들어있는 원본 LaTeX 수식 문자열(annotation encoding="application/x-tex")을 추출한 뒤,
-  // 일반 Markdown 수식($...$)으로 즉시 변환하여 토큰화 오작동 및 텍스트 쪼개짐을 완벽히 방지합니다.
-  try {
-    const rawKatexHtmlRegex = /<(div|span)\b[^>]*?class=["'][^"']*\b(?:formula-scroll-container|katex|inline|katex-display|katex-error)\b[^"']*["'][\s\S]*?<\/\s*\1\s*>/gi;
-    processed = processed.replace(rawKatexHtmlRegex, (htmlBlock) => {
-      const match = htmlBlock.match(/<annotation[^>]*?encoding=["']?application\/x-tex["']?[^>]*?>([\s\S]*?)<\/annotation>/i);
-      if (match && match[1]) {
-        const formula = match[1].trim().replace(/\\+/g, '\\');
-        return ` $${formula}$ `;
-      }
-      const errMatch = htmlBlock.match(/title=["']KaTeX error:\s*([\s\S]*?)["']/i);
-      if (errMatch && errMatch[1]) {
-        let msg = errMatch[1].trim();
-        const colonIdx = msg.lastIndexOf(':');
-        if (colonIdx !== -1 && colonIdx < msg.length - 1) {
-          msg = msg.substring(colonIdx + 1);
-        }
-        const formula = msg.trim().replace(/\\+/g, '\\');
-        return ` $${formula}$ `;
-      }
-      return '';
-    });
-
-    // 만약 이미 태그 사이에 이상한 띄어쓰기가 삽입되어 망가진 HTML 블록이 있다면 이것도 함께 복원
-    const spaceCorruptedKatexRegex = /<\s*(div|span)\b[\s\S]*?class\s*=\s*["'][^"']*\b(?:formula-scroll-container|katex|inline|katex-display|katex-error)\b[^"']*["'][\s\S]*?<\/\s*\1\s*>/gi;
-    processed = processed.replace(spaceCorruptedKatexRegex, (htmlBlock) => {
-      const match = htmlBlock.match(/<\s*annotation[^>]*encoding\s*=\s*["']?application\/x-tex["']?[^>]*?>([\s\S]*?)<\/\s*annotation\s*>/i);
-      if (match && match[1]) {
-        const formula = match[1].trim().replace(/\\+/g, '\\');
-        return ` $${formula}$ `;
-      }
-      return '';
-    });
-  } catch (e) {
-    console.warn('[healLatexFormulas] Failed to pre-process KaTeX HTML block:', e);
-  }
-
-  processed = healInvertedDelimiters(processed);
-
-  // Convert Greek letters with numbers (e.g. sigma1, sigma_1 -> \sigma_1)
-  const greekLetters = 'alpha|beta|gamma|sigma|tau|phi|theta|epsilon|pi|delta|omega|mu|lambda|psi|rho|eta|nu|xi|zeta|chi|upsilon|kappa';
-  const greekRegex = new RegExp(`(?<!\\\\)\\b(${greekLetters})_?(\\d+)\\b`, 'g');
-  processed = processed.replace(greekRegex, '\\$1_$2');
-
-  // Replace Won symbol (₩) with backslash (\) to restore LaTeX commands
-  processed = processed.replace(/₩/g, '\\');
-
-  // Replace hashtag (#) prefix before LaTeX commands/Greek letters with backslash (\)
-  const hashKeywords = [
-    'alpha', 'beta', 'gamma', 'sigma', 'tau', 'phi', 'theta', 'epsilon', 'pi', 'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta', 'nu', 'xi', 'zeta', 'chi', 'upsilon', 'kappa',
-    'Delta', 'Sigma', 'Gamma', 'Phi', 'Theta', 'Omega',
-    'frac', 'dfrac', 'sqrt', 'cdot', 'times', 'div', 'pm', 'infty', 'partial', 'sum', 'int', 'sim',
-    'le', 'ge', 'lt', 'gt', 'sin', 'cos', 'tan', 'log', 'ln', 'nabla', 'neq', 'ne', 'approx'
-  ];
-  const hashRegex = new RegExp(`#(${hashKeywords.join('|')})(?![a-zA-Z])`, 'g');
-  processed = processed.replace(hashRegex, '\\$1');
-
-  // Replace Greek unicode letters and standalone words with LaTeX commands
-  processed = processed.replace(/β/g, '\\beta')
-                       .replace(/α/g, '\\alpha')
-                       .replace(/γ/g, '\\gamma')
-                       .replace(/σ/g, '\\sigma')
-                       .replace(/τ/g, '\\tau')
-                       .replace(/φ/g, '\\phi')
-                       .replace(/θ/g, '\\theta')
-                       .replace(/μ/g, '\\mu')
-                       .replace(/λ/g, '\\lambda')
-                       .replace(/η/g, '\\eta')
-                       .replace(/ν/g, '\\nu')
-                       .replace(/π/g, '\\pi')
-                       .replace(/δ/g, '\\delta')
-                       .replace(/ω/g, '\\omega')
-                       .replace(/ε/g, '\\epsilon')
-                       .replace(/ψ/g, '\\psi')
-                       .replace(/ρ/g, '\\rho')
-                       .replace(/ξ/g, '\\xi')
-                       .replace(/ζ/g, '\\zeta')
-                       .replace(/χ/g, '\\chi')
-                       .replace(/υ/g, '\\upsilon')
-                       .replace(/κ/g, '\\kappa')
-                       .replace(/Δ/g, '\\Delta')
-                       .replace(/Σ/g, '\\Sigma')
-                       .replace(/Gamma/g, '\\Gamma')
-                       .replace(/Phi/g, '\\Phi')
-                       .replace(/Theta/g, '\\Theta')
-                       .replace(/Omega/g, '\\Omega');
-
-  // Convert English names of Greek letters if written as standalone words (case-insensitive)
-  processed = processed.replace(/(?<!\\)\b(alpha|beta|gamma|sigma|tau|phi|theta|epsilon|pi|delta|omega|mu|lambda|psi|rho|eta|nu|xi|zeta|chi|upsilon|kappa)\b/g, '\\$1');
-  processed = processed.replace(/(?<!\\)\b(Delta|Sigma|Gamma|Phi|Theta|Omega)\b/g, '\\$1');
-
-  // Parse root patterns
-  processed = replaceRoots(processed);
-
-  // Restore LaTeX commands corrupted by JSON escape sequence parsing (e.g. \neq -> \x0a + eq)
-  processed = processed.replace(/\x0a\s*eq\b/g, '\\neq')
-                       .replace(/\x0a\s*e\b/g, '\\ne')
-                       .replace(/\x0a\s*u\b/g, '\\nu')
-                       .replace(/\x0a\s*abla\b/g, '\\nabla')
-                       .replace(/\x0a\s*earrow\b/g, '\\nearrow')
-                       .replace(/\x0a\s*eg\b/g, '\\neg')
-                       .replace(/\x0a\s*i\b/g, '\\ni')
-                       .replace(/\x0a\s*otin\b/g, '\\notin')
-                       .replace(/\x0a\s*geq\b/g, '\\ngeq')
-                       .replace(/\x0a\s*leq\b/g, '\\nleq')
-                       .replace(/\x0a\s*sim\b/g, '\\nsim')
-                       .replace(/\x0a\s*cong\b/g, '\\ncong')
-                       .replace(/\x0a\s*parallel\b/g, '\\nparallel')
-                       .replace(/\x0a\s*ewline\b/g, '\\newline')
-                       .replace(/\x0a\s*oindent\b/g, '\\noindent');
-
-  processed = processed.replace(/\x09\s*heta\b/g, '\\theta')
-                       .replace(/\x09\s*au\b/g, '\\tau')
-                       .replace(/\x09\s*an\b/g, '\\tan')
-                       .replace(/\x09\s*imes\b/g, '\\times')
-                       .replace(/\x09\s*ilde\b/g, '\\tilde')
-                       .replace(/\x09\s*ext\b/g, '\\text')
-                       .replace(/\x09\s*frac\b/g, '\\tfrac')
-                       .replace(/\x09\s*riangle\b/g, '\\triangle')
-                       .replace(/\x09\s*op\b/g, '\\top')
-                       .replace(/\x09\s*o\b/g, '\\to');
-
-  processed = processed.replace(/\x0d\s*ho\b/g, '\\rho')
-                       .replace(/\x0d\s*ight\b/g, '\\right')
-                       .replace(/\x0d\s*ule\b/g, '\\rule')
-                       .replace(/\x0d\s*angle\b/g, '\\rangle')
-                       .replace(/\x0d\s*ightarrow\b/g, '\\rightarrow');
-
-  // [Self-Healing] (포아송비 강제 u/v -> \nu 오치환 로직 완전 삭제 - 간극수압 u 보존)
-
-  // [🚨 가독성 수동 개선 필터 (ReDoS 예방 루프 방식) 🚨]
-  // 원본 수식 구조($...$ 및 $$...$$)를 훼손하지 않고 안전하게 보존하며 수식 괄호를 정돈합니다.
-  const formatConsecutiveFormulas = (text) => {
-    if (!text || typeof text !== 'string') return text;
-    const parts = text.split('$');
-    if (parts.length < 3) return text;
-
-    let rebuilt = parts[0];
-    for (let i = 1; i < parts.length; i += 2) {
-      let formula = balanceMathBraces(parts[i]);
-      let plainText = parts[i + 1] || '';
-      rebuilt += '$' + formula + '$' + plainText;
-    }
-    return rebuilt;
-  };
   processed = formatConsecutiveFormulas(processed);
 
-  
+  processed = processed.replace(/(\$\s?[^\$]+\s?\$)(은|는|이|가|을|를|의|로|으로|에|에서|와|과|도|만|일때|입니다|라하면|값은)/g, '$1 $2');
+  processed = processed.replace(/\$?\\[\s*INPUT_(\d+(?:_\d+)?)\s*\\]\$?|\$?\\[\s*INPUT_(\d+(?:_\d+)?)\s*\\]\$?|\$\[\s*INPUT_(\d+(?:_\d+)?)\s*\]\$/gi, '[INPUT_$1]');
 
-  if (!isNested) {
-    processed = htmlTableToMarkdown(processed, null);
-  }
-
-  // (Poisson's ratio healing logic moved above JSON escape restoration to prevent table breaking)
-
-  // [Self-Healing] Restore collapsed newlines for variable list items
-  processed = processed.replace(/(?<=:[^\n]*)\s+([–—−-]\s*(?:\$[^\$]+\$|[a-zA-Z0-9_\\\{\}]+)\s*:)/g, '\n$1');
-
-  // [Self-Healing] Auto-wrap raw LaTeX symbols/variables in bullet lists with $ if missing
-  // Matches bullet points or numbers followed by a CJK-free math variable/symbol and a colon
-  if (typeof processed === 'string') {
-    processed = processed.split('\n').map(line => {
-      const bulletRegex = /^([ \t]*(?:\*|-|•|▪|▫|·|\d+\.(?!\d)|\d+\)|[a-zA-Z가-힣]\.|\b[a-zA-Z가-힣]\)|[①-⑳]|\[INPUT_\d+(?:_\d+)?\])[ \t]*)(?!\$)([a-zA-Z0-9_\\'\^\(\)\{\}\+\-\*\/=]+)(?!\$)([ \t]*:)/;
-      return line.replace(bulletRegex, (match, p1, p2, p3) => `${p1}$${p2}$${p3}`);
-    }).join('\n');
-  }
-
-  // [🔥 치명적 버그 해결] AI의 이중 이스케이프 오류(\\phi -> \phi) 최우선 복구
-  processed = processed.replace(/\\{2,}([a-zA-Z]+)/g, '\\$1');
-  // Collapse double or multiple backslashes before % to single backslash
-  processed = processed.replace(/\\{2,}%/g, '\\%');
-
-  // [Self-Healing] 수식 분리 오작동 치유 (예: \quad \text{N}$$_c or N$$_c or \text{N}$$_c -> $$\quad \text{N}_c)
-  processed = processed.replace(/(\\quad\s*\\text\{[a-zA-Z]+\}|\b[a-zA-Z]+\b|\b\\text\{[a-zA-Z]+\})\s*\$\$(\s*_[a-zA-Z0-9])/g, '$$$$ $1$2');
-  processed = processed.replace(/(\\quad\s*\\text\{[a-zA-Z]+\}|\b[a-zA-Z]+\b|\b\\text\{[a-zA-Z]+\})\s*\$(\s*_[a-zA-Z0-9])/g, '$$ $1$2');
-
-  // Also handle already space-corrupted "eq" symbols (e.g. "k_x eq k_z" -> "k_x \neq k_z", "k_xeqk_z" -> "k_x \neq k_z")
-  const isMathVariable = (str) => {
-    if (/^[a-zA-Z0-9]$/.test(str)) return true;
-    if (/[\\_^]/.test(str)) return true;
-    if (str.startsWith('\\')) return true;
-    return false;
-  };
-  processed = processed.replace(/\b([a-zA-Z0-9_\\'\^]+)\s*eq\s*([a-zA-Z0-9_\\'\^]+)\b/g, (match, p1, p2, offset, string) => {
-    if (string[offset - 1] === '\\') {
-      return match;
-    }
-    if (isMathVariable(p1) && isMathVariable(p2)) {
-      return `${p1} \\neq ${p2}`;
-    }
-    return match;
-  });
-
-  // 블록 수식($$) 바로 뒤에 공백이나 줄바꿈을 포함하여 단위가 올 경우, 해당 단위를 수식 블록 안의 \text{}로 병합하여 줄바꿈 방지
-  processed = processed.replace(/\$\$\s*([\s\S]*?)\s*\$\$\s*(\n*)\s*(kN\/m\\\^2|kN\/m\^2|kN\/m²|kN\/m\\\^3|kN\/m\^3|kN\/m³|t\/m\\\^3|t\/m\^3|t\/m³|kg\/cm\\\^2|kg\/cm\^2|kg\/cm²|kPa|MPa|kN|N|m|cm|mm|m\\\^2|m\^2|m²|m\\\^3|m\^3|m³|g\/cm\\\^3|g\/cm\^3|g\/cm³|kg\/m\\\^3|kg\/m\^3|kg\/m³|%)(?![a-zA-Z0-9가-힣])/gi, (match, math, newlines, unit) => {
-    let katexUnit = unit.replace(/\\/g, '');
-    if (katexUnit.includes('^')) {
-      const parts = katexUnit.split('^');
-      katexUnit = `\\text{${parts[0]}}^${parts[1]}`;
-    } else if (katexUnit.includes('²')) {
-      const base = katexUnit.replace('²', '');
-      katexUnit = `\\text{${base}}^2`;
-    } else if (katexUnit.includes('³')) {
-      const base = katexUnit.replace('³', '');
-      katexUnit = `\\text{${base}}^3`;
-    } else {
-      katexUnit = `\\text{${katexUnit}}`;
-    }
-    return `$$ ${math.trim()} \\quad ${katexUnit} $$`;
-  });
-
-  // 불필요한 HTML 태그 정제
-  processed = processed.replace(/<br\s*\/?>/gi, '\n\n')
-              .replace(/<div[^>]*>\s*[•*]?\s*([^<]+?)\s*<\/div>/gi, '\n\n* $1')
-              .replace(/<\/?(?:div|p|span|li|ul|ol)\b[^>]*>/gi, '')
-              .replace(/\n{3,}/g, '\n\n');
-
-  const tokens = tokenizeForHealing(processed);
-  processed = tokens.map(token => {
-    if (token.type === 'code') {
-      return token.content; // Skip healing on code blocks to protect format (e.g. flowcharts, ascii art)
-    }
-    if (token.type === 'html') {
-      return token.content; // Skip healing on HTML tags
-    }
-    if (token.type === 'text') {
-      let t = token.content;
-      // [Self-Healing] Merge single newlines in text tokens to prevent AI hard-wrapping from causing unwanted line breaks
-      t = t.replace(/(?<!\n)\n(?!\n|\s*(?:#{1,6}\s|\*|-|•|\d+\.|\d+\)|[a-zA-Z가-힣]\.|\([a-zA-Z가-힣0-9]\)|[ivx]+\.|\$|\||┌|└|│|▼|─|┃))/g, ' ');
-      // Auto-wrap unwrapped LaTeX math formulas
-      t = t.replace(formulaRegex, (match) => {
-        const trailingSpaces = match.match(/\s*$/)[0];
-        const trimmed = match.trim();
-        const trailingPunctuation = trimmed.match(/[.,;:!]+$/);
-        const punc = trailingPunctuation ? trailingPunctuation[0] : '';
-        const formula = trimmed.slice(0, trimmed.length - punc.length).trim();
-        return `$${formula}$${punc}${trailingSpaces}`;
-      });
-      // Re-tokenize and wrap simple variables in remaining text to prevent double-wrapping
-      const subTokens = tokenizeForHealing(t);
-      t = subTokens.map(subToken => {
-        if (subToken.type === 'text') {
-          return subToken.content.replace(simpleVariableRegex, (match) => {
-            const trailingSpaces = match.match(/\s*$/)[0];
-            const trimmed = match.trim();
-            const trailingPunctuation = trimmed.match(/[.,;:!]+$/);
-            const punc = trailingPunctuation ? trailingPunctuation[0] : '';
-            const formula = trimmed.slice(0, trimmed.length - punc.length).trim();
-            return `$${formula}$${punc}${trailingSpaces}`;
-          });
-        }
-        return subToken.content;
-      }).join('');
-      // Escape angle brackets for safety (preventing \gt -> ₩gt on Windows)
-      return t.replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    } else {
-      let math = token.content.replace(/^\$\$?|\$\$?$/g, '').trim();
-      math = healBackslashes(math).replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ');
-      math = math.replace(/</g, '\\lt ').replace(/>/g, '\\gt ')
-                 .replace(/_\s+/g, '_').replace(/\^\s+/g, '^');
-      return token.type === 'block-math' ? `$$${math}$$` : `$${math}$`;
-    }
-  }).join('');
-
-  // 4. 절대 준수 수칙: 토큰 기반 인터페이스 외부 공백 완벽 마킹
-  const finalTokens = tokenizeForHealing(processed);
-  let result = '';
-
-  for (let i = 0; i < finalTokens.length; i++) {
-    const current = finalTokens[i];
-    if (i === 0) {
-      result += current.content;
-      continue;
-    }
-    const prev = finalTokens[i - 1];
-    let needSpace = false;
-
-    const isMath = (t) => t.type === 'inline-math' || t.type === 'block-math';
-
-    if (prev.type === 'text' && isMath(current)) {
-      const lastChar = prev.content[prev.content.length - 1];
-      if (lastChar && !/\s/.test(lastChar) && !/[\(\[\{\'\"]/.test(lastChar)) needSpace = true;
-    } else if (isMath(prev) && current.type === 'text') {
-      const firstChar = current.content[0];
-      if (firstChar && !/\s/.test(firstChar) && !/[\,\.\?\!\)\]\}\:\;\*]/.test(firstChar)) needSpace = true;
-    } else if (isMath(prev) && isMath(current)) {
-      needSpace = true;
-    }
-    result += needSpace ? ' ' + current.content : current.content;
-  }
-
-  // 한국어 조사 결합 어미 공백 규격 조율
-  result = result.replace(/(\$[^\$]+\$)(은|는|이|가|을|를|의|로|으로|에|에서|와|과|도|만|일때|입니다|라하면|값은)/g, '$1 $2');
-  result = result.trim();
-
-  // 2. Restore [INPUT_n] placeholders (remove accidental math formatting)
-  result = result.replace(/\$?\[\s*INPUT_(\d+(?:_\d+)?)\s*\]\$?/gi, '[INPUT_$1]');
-
-  if (!isNested) {
-    result = result.replace(/(?:<!--|\\lt !--|&lt;!--)\s*(?:-\s*)*\s*(?:START|END)_TABLE\s*(?:-\s*)*\s*(?:-->|--\\gt|>|\\gt|--&gt;)\n?/gi, '');
-  }
-
-  return result;
+  return processed.trim();
 }
 
 // 오브젝트 딥 힐러 트리구조
