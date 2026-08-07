@@ -6,7 +6,7 @@ export function tokenizeForHealing(text) {
   // Match table blocks, HTML tags, or inline/display math blocks
   const htmlTags = ['strong', 'em', 'sub', 'sup', 'div', 'span', 'br', 'table', 'tr', 'td', 'th', 'tbody', 'thead', 'p', 'b', 'i', 'u'];
   const tagsRegex = htmlTags.join('|');
-  const regex = new RegExp(`(<!--START_TABLE-->[\\s\\S]*?<!--END_TABLE-->)|(<\\/?\\s*(?:${tagsRegex})\\b(?:\\s+[^>]*)?>)|(\\$\\$.*?\\$\\$)|(\\$\\s?[^\\$\\n]{1,200}\\s?\\$)`, 'gi');
+  const regex = new RegExp(`(<!--START_TABLE-->[\\s\\S]*?<!--END_TABLE-->)|(<\\/?\\s*(?:${tagsRegex})\\b(?:\\s+[^>]*)?>)|(\\$\\$[\\s\\S]*?\\$\\$)|(\\$\\s?[^\\$\\n]{1,200}\\s?\\$)`, 'gi');
   let match;
 
   while ((match = regex.exec(text)) !== null) {
@@ -795,16 +795,7 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
     return `$$ ${math.trim()} \\quad ${katexUnit} $$`;
   });
 
-  // 문장 한복판에 쪼개진 단일 줄바꿈(\n)을 공백으로 자동 병합 (수식 끊김 방지)
-  // 단, 마크다운 표 영역은 줄바꿈 병합을 하지 않고 원본 철저히 유지하기 위해 split 처리
-  const sections = processed.split(/(<!--START_TABLE-->[\s\S]*?<!--END_TABLE-->)/g);
-  processed = sections.map(section => {
-    if (section.startsWith('<!--START_TABLE-->')) {
-      return healMarkdownTable(section, null); // 표 영역은 개별 셀 치유 및 원본 구조 유지
-    }
-    // 문장 한복판에 쪼개진 단일 줄바꿈(\n)을 공백으로 병합하던 규칙을 비활성화하여 줄바꿈을 보존합니다.
-    return section;
-  }).join('');
+  // (Deleted legacy split by table, moving newline merge to text tokens for safety)
 
   // 불필요한 HTML 태그 정제
   processed = processed.replace(/<br\s*\/?>/gi, '\n\n')
@@ -815,13 +806,15 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   const tokens = tokenizeForHealing(processed);
   processed = tokens.map(token => {
     if (token.type === 'table') {
-      return token.content; // Skip healing on the table structure itself!
+      return healMarkdownTable(token.content, passedPoissonSymbol); // Heal formulas inside each table cell individually!
     }
     if (token.type === 'html') {
       return token.content; // Skip healing on HTML tags
     }
     if (token.type === 'text') {
       let t = token.content;
+      // [Self-Healing] Merge single newlines in text tokens to prevent AI hard-wrapping from causing unwanted line breaks
+      t = t.replace(/(?<!\n)\n(?!\n|\s*(?:#{1,6}\s|\*|-|•|\d+\.|\d+\)|[a-zA-Z가-힣]\.|\([a-zA-Z가-힣0-9]\)|[ivx]+\.|\$))/g, ' ');
       // Auto-wrap unwrapped LaTeX math formulas
       t = t.replace(formulaRegex, (match) => {
         const trailingSpaces = match.match(/\s*$/)[0];
