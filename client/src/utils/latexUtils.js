@@ -795,13 +795,15 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
     return `$$ ${math.trim()} \\quad ${katexUnit} $$`;
   });
 
-  // (Deleted legacy split by table, moving newline merge to text tokens for safety)
-
-  // 불필요한 HTML 태그 정제
-  processed = processed.replace(/<br\s*\/?>/gi, '\n\n')
-                       .replace(/<div[^>]*>\s*[•*]?\s*([^<]+?)\s*<\/div>/gi, '\n\n* $1')
-                       .replace(/<\/?(?:div|p|span|li|ul|ol)\b[^>]*>/gi, '')
-                       .replace(/\n{3,}/g, '\n\n');
+  // 불필요한 HTML 태그 정제 (단, 마크다운 표 내부는 <br> 등을 보존하기 위해 제외)
+  const tableSections = processed.split(/(<!--START_TABLE-->[\s\S]*?<!--END_TABLE-->)/g);
+  processed = tableSections.map(section => {
+    if (section.startsWith('<!--START_TABLE-->')) return section;
+    return section.replace(/<br\s*\/?>/gi, '\n\n')
+                  .replace(/<div[^>]*>\s*[•*]?\s*([^<]+?)\s*<\/div>/gi, '\n\n* $1')
+                  .replace(/<\/?(?:div|p|span|li|ul|ol)\b[^>]*>/gi, '')
+                  .replace(/\n{3,}/g, '\n\n');
+  }).join('');
 
   const tokens = tokenizeForHealing(processed);
   processed = tokens.map(token => {
