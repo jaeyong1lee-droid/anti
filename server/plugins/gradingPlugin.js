@@ -165,9 +165,7 @@ ${((colHeader && colHeader.includes('수치 계산 답안')) || category === '�
   const isCalcQuestion = ((colHeader && colHeader.includes('수치 계산 답안')) || category === '계산');
   const gradingTemperature = isCalcQuestion ? 0.1 : 0.7;
   const sysInst = getGradingSystemInstruction(gradingStandards, engineeringStandards);
-  const responseText = customLLMCaller 
-    ? await customLLMCaller(sysInst, userPrompt, null, 'grading', { temperature: gradingTemperature })
-    : await callLLMWithFailover(sysInst, userPrompt, null, 'grading', { temperature: gradingTemperature });
+  const responseText = await callLLMWithFailover(sysInst, userPrompt, null, 'grading', { temperature: gradingTemperature });
   let text = responseText.trim();
   
   try {
