@@ -382,6 +382,13 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   processed = processed.replace(/([([\\uAC00-\\uD7A3a-zA-Z0-9,])\s*\$\$\s*([^\$\n]+?)\s*\$\$\s*([)\],\\.\\uAC00-\\uD7A3a-zA-Z0-9,])/g, '$1 $$$2$$ $3');
   processed = processed.replace(/\(([^$()\n]+?)\$\)/g, '($$$1$)');
 
+  // [Self-Healing] Fix AI hallucinating $ around pure English words (e.g. $Mechanics$ -> Mechanics)
+  processed = processed.replace(/(?<!\$)\$([a-zA-Z][a-zA-Z\s]{2,})\$(?!\$)/g, (match, word) => {
+    // If it's a known math function without backslash, we could add backslash, but let's just strip $ for pure words.
+    // Length >= 3 ensures variables like $x$, $y$, $dx$, $FS$ are preserved, but $Mechanics$ is stripped.
+    return word;
+  });
+
   processed = processed.replace(/&amp;\\?lt;?/gi, '<').replace(/&amp;\\?gt;?/gi, '>');
   processed = processed.replace(/&\\lt;?/gi, '<').replace(/&\\gt;?/gi, '>');
   processed = processed.replace(/&lt;/gi, '<').replace(/&gt;/gi, '>');
