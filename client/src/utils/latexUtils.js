@@ -511,6 +511,20 @@ const healCorruptedKatexHtml = (text) => {
 export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = null, forceInline = false) {
   if (!text || typeof text !== 'string') return text;
 
+  // [Self-Healing] Fix spaced-out formatting tags hallucinated by AI (e.g. < strong > -> <strong>)
+  const formatTags = ['strong', 'em', 'b', 'i', 'u', 'span', 'div', 'p', 'br', 'table', 'tr', 'td', 'th', 'tbody', 'thead'];
+  const formatRegex = new RegExp(`(<\\s*\\/?\\s*)(${formatTags.join('|')})\\b(\\s*[^>]*)?>`, 'gi');
+  text = text.replace(formatRegex, (match, prefix, tag, suffix) => {
+    const isClosing = prefix.includes('/');
+    return (isClosing ? '</' : '<') + tag + (suffix ? suffix.trim() : '') + '>';
+  });
+
+  // [Self-Healing] Convert spaced-out sub/sup tags to LaTeX subscript/superscript
+  text = text.replace(/<\s*\/\s*sub\s*>/gi, '');
+  text = text.replace(/\s*<\s*sub\s*>\s*/gi, '_');
+  text = text.replace(/<\s*\/\s*sup\s*>/gi, '');
+  text = text.replace(/\s*<\s*sup\s*>\s*/gi, '^');
+
   // [Self-Healing] Safely restore corrupted (₩t) or (\t) time interval notation to (${\Delta}t$)
   text = text.replace(/\([₩\\]?t\)/gi, '($\\Delta t$)');
 
