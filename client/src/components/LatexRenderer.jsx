@@ -525,10 +525,7 @@ export const LatexRenderer = React.memo(function LatexRenderer({
   // 1) 불필요한 연속 개행을 최소 2개로 압축하여 컴팩트하게 정리
   let cleanedText = processedText;
   if (typeof cleanedText === 'string') {
-    cleanedText = cleanedText
-      .replace(/\\r\\n/g, '\n')
-      .replace(/\\n(?!(?:u|eq|e|abla|earrow|eg|i|otin|geq|leq|sim|cong|parallel|ewline|oindent)(?![a-zA-Z]))/g, '\n')
-      .replace(/\r\n/g, '\n');
+    cleanedText = cleanedText.replace(/\r\n/g, '\n');
   }
 
   cleanedText = healFormulas(cleanedText);
