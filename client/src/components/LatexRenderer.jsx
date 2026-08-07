@@ -527,7 +527,7 @@ export const LatexRenderer = React.memo(function LatexRenderer({
   if (typeof cleanedText === 'string') {
     cleanedText = cleanedText
       .replace(/\\r\\n/g, '\n')
-      .replace(/\\n/g, '\n')
+      .replace(/\\n(?!(?:u|eq|e|abla|earrow|eg|i|otin|geq|leq|sim|cong|parallel|ewline|oindent)\b)/g, '\n')
       .replace(/\r\n/g, '\n');
   }
 
