@@ -849,6 +849,18 @@ const localParseHtmlTable = (htmlStr) => {
 
 export function healQuizQuestionObject(q) {
   if (q && typeof q === 'object') {
+    if (q.diagram_svg && typeof q.diagram_svg === 'string') {
+      let svgStr = q.diagram_svg.trim();
+      // Remove markdown block if exists
+      svgStr = svgStr.replace(/^```[a-z]*\s*/im, '').replace(/```\s*$/im, '').trim();
+      
+      // Ensure it's wrapped in an <svg> tag if the AI forgot and only returned <foreignObject> or <g>
+      if (!svgStr.toLowerCase().includes('<svg')) {
+        svgStr = `<svg viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto">\n${svgStr}\n</svg>`;
+      }
+      
+      q.diagram_svg = svgStr;
+    }
     if (q.question && typeof q.question === 'string') {
       q.question = cleanQuizQuestion(q.question);
       // 1. MIT 방식 명칭 노출 방지 사후 보정
