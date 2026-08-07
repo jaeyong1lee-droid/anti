@@ -586,7 +586,7 @@ router.post('/topics/:id/ai-questions', async (req, res) => {
       ? `review_questions_schedule_${resolvedScheduleId}_sess_${sId}`
       : `review_questions_topic_${topicId}_sess_${sId}`;
 
-    let cached = await dbQuery.get('SELECT value FROM app_session WHERE key = ?', [key]);
+    let cached = await dbQuery.get('SELECT key, value FROM app_session WHERE key = ?', [key]);
 
     let newestSessionRow = null;
     const patterns = [];
@@ -607,8 +607,8 @@ router.post('/topics/:id/ai-questions', async (req, res) => {
 
     for (const pattern of patterns) {
       const row = await dbQuery.get(
-        'SELECT key, value FROM app_session WHERE key LIKE ? ORDER BY updated_at DESC LIMIT 1',
-        [pattern]
+        'SELECT key, value FROM app_session WHERE key LIKE ? AND key NOT LIKE ? ORDER BY updated_at DESC LIMIT 1',
+        [pattern, '%_q']
       );
       if (row && !newestSessionRow) newestSessionRow = row;
     }
@@ -633,11 +633,21 @@ router.post('/topics/:id/ai-questions', async (req, res) => {
       const legacyKey = resolvedScheduleId
         ? `review_questions_schedule_${resolvedScheduleId}`
         : `review_questions_topic_${topicId}`;
-      cached = await dbQuery.get('SELECT value FROM app_session WHERE key = ?', [legacyKey]);
+      cached = await dbQuery.get('SELECT key, value FROM app_session WHERE key = ?', [legacyKey]);
     }
 
     if (cached && cached.value) {
       const parsed = JSON.parse(cached.value);
+      
+      // Merge questions from separate _q key when using new split-storage format
+      if (!Array.isArray(parsed) && (!parsed.questions || parsed.questions.length === 0)) {
+        const actualKey = cached.key || key;
+        const qRow = await dbQuery.get('SELECT value FROM app_session WHERE key = ?', [`${actualKey}_q`]);
+        if (qRow && qRow.value) {
+          parsed.questions = JSON.parse(qRow.value);
+        }
+      }
+
       let cachedQuestions = null;
       let cachedMeta = {};
       if (Array.isArray(parsed) && parsed.length > 0) {

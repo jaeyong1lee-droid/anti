@@ -10142,9 +10142,11 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
         return;
       }
 
+      const existingSid = localStorage.getItem(`anti_session_id_${topicId}_${finalScheduleId || '9999'}`);
+
       try {
         console.log(`[handleOpenAIQuestions] STEP 1: Checking for existing server review session for topicId=${topicId}`);
-        const checkRes = await fetch(`${API_BASE}/api/session/review?topicId=${topicId}`);
+        const checkRes = await fetch(`${API_BASE}/api/session/review?topicId=${topicId}&scheduleId=${finalScheduleId || ''}&sessionId=${existingSid || ''}`);
         if (checkRes.ok) {
           const checkData = await checkRes.json();
           if (checkData.success && checkData.data && checkData.data.questions && checkData.data.questions.length > 0) {
@@ -10202,7 +10204,6 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
       setAiProgressPercent(60);
       
       let newSid;
-      const existingSid = localStorage.getItem(`anti_session_id_${topicId}_${finalScheduleId || '9999'}`);
       const isAbsoluteSid = existingSid && existingSid.startsWith('sess_topic_') && existingSid.includes('_round_') && existingSid !== 'legacy_default';
       if (isRestore || isAbsoluteSid) {
         newSid = existingSid || getOrCreateSessionId(topicId, finalScheduleId, finalReviewRound);
