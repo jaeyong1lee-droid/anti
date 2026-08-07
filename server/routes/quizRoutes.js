@@ -147,35 +147,6 @@ function normalizeMcText(text) {
 }
 
 function isQuestionMismatched(q, topicTitle, topicKeywords, topicCategory = '일반') {
-  if (!q) return true;
-  const qStr = typeof q === 'string' ? q : JSON.stringify(q);
-  const title = (topicTitle || '').toLowerCase();
-  const keywords = (topicKeywords || '').toLowerCase();
-  const category = topicCategory || '일반';
-
-  const isCalcQuestion = 
-    q.type === '주관식 (계산)' ||
-    qStr.includes('수치 계산 답안 작성') ||
-    qStr.includes('Terzaghi') ||
-    qStr.includes('허용지지력 q_all') ||
-    qStr.includes('허용하중 P_all') ||
-    (q.tableData && Array.isArray(q.tableData.headers) && q.tableData.headers[1] === '계산 결과 및 답안');
-
-  // Category mismatch check
-  if (category === '일반' && isCalcQuestion) {
-    console.log(`[Quiz Mismatch Check] Invalid calculation question found in '일반' category topic "${topicTitle}"!`);
-    return true;
-  }
-  // 계산 카테고리는 4문항 중 1~2개만 계산 관련이고 나머지는 이론 단답형이므로, 
-  // 단일 문항 단위로 !isCalcQuestion이라고 무조건 삭제하면 세션 유지 불가 버그(문제 재생성) 발생. 
-  // 따라서 단일 문항 단위의 엄격한 계산 검증은 제거.
-
-  // Cross-topic title check for known anomalies (e.g. Terzaghi bearing capacity vs Tunnel topic)
-  if (!title.includes('지지력') && !keywords.includes('지지력') && qStr.includes('Terzaghi')) {
-    console.log(`[Quiz Mismatch Check] Anomaly: Terzaghi question found in non-bearing capacity topic "${topicTitle}"!`);
-    return true;
-  }
-
   return false;
 }
 
@@ -686,25 +657,16 @@ router.post('/topics/:id/ai-questions', async (req, res) => {
       }
 
       if (cachedQuestions && cachedQuestions.length > 0) {
-        if (!(topic.category === '계산' && cachedQuestions.length !== 4)) {
-          const mismatchedCount = cachedQuestions.filter(q => isQuestionMismatched(q, topic.title, topic.keywords, topic.category)).length;
-          if (mismatchedCount === 0) {
-            const healed = cachedQuestions.map(q => healQuizQuestionObject({ ...q, category: topic.category }));
-            isCacheHit = true;
-            cachedResponseData = {
-              questions: healed,
-              ...cachedMeta,
-              sessionId: parsed.sessionId || sId,
-              isFallback: false,
-              isCached: true,
-              scheduleId: resolvedScheduleId
-            };
-          } else {
-            await dbQuery.run('DELETE FROM app_session WHERE key = ?', [key]);
-          }
-        } else {
-          await dbQuery.run('DELETE FROM app_session WHERE key = ?', [key]);
-        }
+        const healed = cachedQuestions.map(q => healQuizQuestionObject({ ...q, category: topic.category }));
+        isCacheHit = true;
+        cachedResponseData = {
+          questions: healed,
+          ...cachedMeta,
+          sessionId: parsed.sessionId || sId,
+          isFallback: false,
+          isCached: true,
+          scheduleId: resolvedScheduleId
+        };
       }
     }
   } catch (e) {
@@ -1746,21 +1708,6 @@ router.get('/session/review', async (req, res) => {
             chatHistory: [],
             savedQuizScroll: 0
           };
-        }
-
-        // Cross-verify with topic category & subject to prevent serving corrupted calculation session
-        const numericTopicId = Number(targetTopicId);
-        if (numericTopicId) {
-          const tInfo = await dbQuery.get('SELECT id, title, keywords, category FROM topics WHERE id = ?', [numericTopicId]);
-          if (tInfo && Array.isArray(data.questions) && data.questions.length > 0) {
-            const isLengthCorrupted = tInfo.category === '계산' && data.questions.length !== 4;
-            const hasMismatch = data.questions.some(q => isQuestionMismatched(q, tInfo.title, tInfo.keywords, tInfo.category));
-            if (hasMismatch || isLengthCorrupted) {
-              console.warn(`[Session Auto-Purge] Purging corrupted session key '${actualKey}' for topic #${numericTopicId} (${tInfo.category}) due to category/topic/length mismatch!`);
-              await dbQuery.run('DELETE FROM app_session WHERE key = ? OR key = ?', [actualKey, `${actualKey}_q`]);
-              return res.json({ success: false, data: null, error: '카테고리/주제/길이 불일치 세션 자동 정제' });
-            }
-          }
         }
 
         if (Array.isArray(data.questions)) {
