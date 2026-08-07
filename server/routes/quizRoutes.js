@@ -1678,20 +1678,48 @@ router.get('/session/review', async (req, res) => {
       return res.json({ success: true, data: null });
     }
 
-    const key = `review_questions_topic_${targetTopicId}`;
-    let row = await dbQuery.get('SELECT value FROM app_session WHERE key = ?', [key]);
-    let actualKey = key;
+    const targetScheduleId = String(req.query.scheduleId || '');
+    let rawSid = String(req.query.sessionId || 'legacy_default');
+    let cleanSid = rawSid;
+    if (cleanSid.startsWith('sess_')) cleanSid = cleanSid.substring(5);
+
+    let candidateKeys = [];
+    if (targetScheduleId && targetScheduleId !== '9999' && targetScheduleId !== 'null' && targetScheduleId !== 'undefined' && targetScheduleId !== '') {
+      candidateKeys.push(`review_questions_schedule_${targetScheduleId}_sess_${cleanSid}`);
+      candidateKeys.push(`review_questions_schedule_${targetScheduleId}`);
+    }
+    candidateKeys.push(`review_questions_topic_${targetTopicId}_sess_${cleanSid}`);
+    candidateKeys.push(`review_questions_topic_${targetTopicId}`);
+
+    let row = null;
+    let actualKey = null;
+
+    for (const ck of candidateKeys) {
+      const r = await dbQuery.get('SELECT value FROM app_session WHERE key = ?', [ck]);
+      if (r && r.value) {
+        row = r;
+        actualKey = ck;
+        break;
+      }
+    }
 
     if (!row) {
-      const topicPattern = `review_questions_topic_${targetTopicId}_sess_%`;
-      // Exclude _q (questions-only) keys so we only fetch state rows
-      const topicSessionRow = await dbQuery.get(
-        'SELECT key, value FROM app_session WHERE key LIKE ? AND key NOT LIKE ? ORDER BY updated_at DESC LIMIT 1',
-        [topicPattern, '%_q']
-      );
-      if (topicSessionRow) {
-        row = topicSessionRow;
-        actualKey = topicSessionRow.key;
+      let fallbackPatterns = [];
+      if (targetScheduleId && targetScheduleId !== '9999' && targetScheduleId !== 'null' && targetScheduleId !== 'undefined' && targetScheduleId !== '') {
+        fallbackPatterns.push(`review_questions_schedule_${targetScheduleId}%`);
+      }
+      fallbackPatterns.push(`review_questions_topic_${targetTopicId}%`);
+
+      for (const pattern of fallbackPatterns) {
+        const topicSessionRow = await dbQuery.get(
+          'SELECT key, value FROM app_session WHERE key LIKE ? AND key NOT LIKE ? ORDER BY updated_at DESC LIMIT 1',
+          [pattern, '%_q']
+        );
+        if (topicSessionRow && topicSessionRow.value) {
+          row = topicSessionRow;
+          actualKey = topicSessionRow.key;
+          break;
+        }
       }
     }
 
