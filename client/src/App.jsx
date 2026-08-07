@@ -3102,7 +3102,7 @@ export default function App() {
     if (!showExam && selectedTopic && selectedTopic.id && aiQuestions.length > 0 && !selectedTopic.isReadOnly) {
       lastSyncStateRef.current.revealedQuestions = { ...revealedQuestionsRef.current, [qIdx]: true };
       lastSyncStateRef.current.tableGradingResults = updatedGrading;
-      saveActiveSessionDebounced();
+      forceSaveActiveSessions(false, false, { tableGradingResults: updatedGrading, revealedQuestions: { ...revealedQuestionsRef.current, [qIdx]: true } });
     }
     
     return results;
@@ -4216,14 +4216,14 @@ export default function App() {
         tableGradingResultsRef.current = nextGrading;
       }
 
-      // DB 저장 (디바운스 적용)
+      // DB 저장 (제출/채점 시 즉시 저장)
       if (!showExam && selectedTopic && selectedTopic.id && aiQuestions.length > 0 && !selectedTopic.isReadOnly) {
         lastSyncStateRef.current.tableGradingResults = nextGrading;
-        saveActiveSessionDebounced();
+        forceSaveActiveSessions(false, false, { tableGradingResults: nextGrading });
       }
 
       if (showExam && examQuestions.length > 0 && !loadingExam) {
-        saveActiveSessionDebounced();
+        forceSaveActiveSessions(false, false, { examTableGradingResults: nextGrading });
       }
 
       stopProgressPolling('2단계: 주관식 표 채우기 채점 완료!', 100);
@@ -4328,14 +4328,14 @@ export default function App() {
       tableGradingResultsRef.current = nextGrading;
     }
     
-    // DB 저장 (디바운스 적용)
+    // DB 저장 (제출/채점 시 즉시 저장)
     if (!showExam && selectedTopic && selectedTopic.id && aiQuestions.length > 0 && !selectedTopic.isReadOnly) {
       lastSyncStateRef.current.tableGradingResults = nextGrading;
-      saveActiveSessionDebounced();
+      forceSaveActiveSessions(false, false, { tableGradingResults: nextGrading });
     }
     
     if (showExam && examQuestions.length > 0 && !loadingExam) {
-      saveActiveSessionDebounced();
+      forceSaveActiveSessions(false, false, { examTableGradingResults: nextGrading });
     }
     
     setCellGradingLoading(prev => ({ ...prev, [acronymKey]: false, [combKey]: false }));
@@ -4488,14 +4488,14 @@ export default function App() {
       tableGradingResultsRef.current = nextGrading;
     }
 
-    // DB 저장 (디바운스 적용)
+    // DB 저장 (제출/채점 시 즉시 저장)
     if (!showExam && selectedTopic && selectedTopic.id && aiQuestions.length > 0 && !selectedTopic.isReadOnly) {
       lastSyncStateRef.current.tableGradingResults = nextGrading;
-      saveActiveSessionDebounced();
+      forceSaveActiveSessions(false, false, { tableGradingResults: nextGrading });
     }
 
     if (showExam && examQuestions.length > 0 && !loadingExam) {
-      saveActiveSessionDebounced();
+      forceSaveActiveSessions(false, false, { examTableGradingResults: nextGrading });
     }
 
     stopProgressPolling('재채점 완료!', 100);
@@ -4718,14 +4718,14 @@ export default function App() {
           [`${qIdx}_INPUT`]: newResult
         };
 
-        // DB 저장 (디바운스 적용)
+        // DB 저장 (제출/채점 시 즉시 저장)
         if (!showExam && selectedTopic && selectedTopic.id && aiQuestions.length > 0 && !selectedTopic.isReadOnly) {
           lastSyncStateRef.current.tableGradingResults = nextResults;
-          saveActiveSessionDebounced();
+          forceSaveActiveSessions(false, false, { tableGradingResults: nextResults });
         }
 
         if (showExam && examQuestions.length > 0 && !loadingExam) {
-          saveActiveSessionDebounced();
+          forceSaveActiveSessions(false, false, { examTableGradingResults: nextResults });
         }
 
         return nextResults;
@@ -7797,8 +7797,10 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
         console.warn('[forceSaveActiveSessions] DOM scrape failed:', err);
       }
 
+      const finalQuestions = (overrideData && overrideData.questions !== undefined) ? overrideData.questions : aiQuestions;
       const finalSelectedAnswers = (overrideData && overrideData.selectedAnswers !== undefined) ? overrideData.selectedAnswers : selectedAnswersRef.current;
       const finalRevealedQuestions = (overrideData && overrideData.revealedQuestions !== undefined) ? overrideData.revealedQuestions : revealedQuestionsRef.current;
+      const finalTableAnswers = (overrideData && overrideData.tableAnswers !== undefined) ? overrideData.tableAnswers : latestTableAnswers;
       const finalTableGradingResults = (overrideData && overrideData.tableGradingResults !== undefined) ? overrideData.tableGradingResults : tableGradingResultsRef.current;
       const finalChatHistory = (overrideData && overrideData.chatHistory !== undefined) ? overrideData.chatHistory : chatHistoryRef.current;
       const finalTutorAnswers = (overrideData && overrideData.tutorAnswers !== undefined) ? overrideData.tutorAnswers : tutorAnswersRef.current;
@@ -7806,7 +7808,7 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
 
       // Local storage saving disabled per user instructions
 
-      const questionsStr = JSON.stringify(aiQuestions);
+      const questionsStr = JSON.stringify(finalQuestions);
       const chatHistoryStr = JSON.stringify(finalChatHistory);
 
       const requestPayload = {
@@ -7815,7 +7817,7 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
         sessionId: activeSid,
         selectedAnswers: finalSelectedAnswers,
         revealedQuestions: finalRevealedQuestions,
-        tableAnswers: latestTableAnswers,
+        tableAnswers: finalTableAnswers,
         tableGradingResults: finalTableGradingResults,
         tutorAnswers: finalTutorAnswers,
         tutorInputText: finalTutorInputText,
@@ -7823,8 +7825,8 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
         savedQuizScroll: quizBodyRef.current?.scrollTop || 0
       };
 
-      if (isResetAction || questionsStr !== syncedQuestionsRef.current) {
-        requestPayload.questions = aiQuestions;
+      if (isResetAction || questionsStr !== syncedQuestionsRef.current || (overrideData && overrideData.questions !== undefined)) {
+        requestPayload.questions = finalQuestions;
         syncedQuestionsRef.current = questionsStr;
       }
       if (chatHistoryStr !== syncedChatHistoryRef.current) {
@@ -7928,6 +7930,14 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
       console.log('[Auto-Save] Running debounced save...');
       forceSaveActiveSessions().catch(err => console.warn('Debounced save failed:', err));
     }, 5000);
+  };
+
+  const syncReviewSessionImmediately = (questionsOverride = null, extraOverrideData = null) => {
+    const overrideObj = extraOverrideData ? { ...extraOverrideData } : {};
+    if (questionsOverride) {
+      overrideObj.questions = questionsOverride;
+    }
+    return forceSaveActiveSessions(false, false, overrideObj);
   };
 
   const refreshActiveReviewSession = async (forceRefresh = false) => {
