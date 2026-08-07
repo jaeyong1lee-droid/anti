@@ -541,7 +541,7 @@ const localParseHtmlTable = (htmlStr) => {
 export function healQuizQuestionObject(q) {
   if (q && typeof q === 'object') {
     if (q.question && typeof q.question === 'string') {
-      q.question = cleanQuizQuestion(q.question);
+
       // 1. MIT 방식 명칭 노출 방지 사후 보정
       if (q.question.includes('MIT 방식의')) {
         q.question = q.question.replace(/MIT\s*방식의\s*/g, '');
