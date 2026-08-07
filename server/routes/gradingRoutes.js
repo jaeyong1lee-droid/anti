@@ -87,7 +87,8 @@ router.post('/grade-subjective', async (req, res) => {
       : prompt;
     const targetTemp = typeof temperature === 'number' ? temperature : 0.7;
     const prefModel = req.body.preferredModel || globalPreferredModel;
-    return callLLMWithFailover(sys, enrichedPrompt, img, scenario, { preferredModel: prefModel, ...opts, temperature: targetTemp, progressId });
+    const finalTemp = (opts && opts.temperature === 0.1) ? 0.1 : targetTemp;
+    return callLLMWithFailover(sys, enrichedPrompt, img, scenario, { preferredModel: prefModel, ...opts, temperature: finalTemp, progressId });
   };
 
   let attempt = 0;
