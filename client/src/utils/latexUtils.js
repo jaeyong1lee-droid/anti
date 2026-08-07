@@ -410,7 +410,7 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   processed = formatConsecutiveFormulas(processed);
 
   processed = processed.replace(/(\$\s?[^\$]+\s?\$)(은|는|이|가|을|를|의|로|으로|에|에서|와|과|도|만|일때|입니다|라하면|값은)/g, '$1 $2');
-  processed = processed.replace(/\$?\\[\s*INPUT_(\d+(?:_\d+)?)\s*\\]\$?|\$?\\[\s*INPUT_(\d+(?:_\d+)?)\s*\\]\$?|\$\[\s*INPUT_(\d+(?:_\d+)?)\s*\]\$/gi, '[INPUT_$1]');
+  processed = processed.replace(/\$?\[\s*INPUT_(\d+(?:_\d+)?)\s*\]\$?/gi, '[INPUT_$1]');
 
   return processed.trim();
 }
