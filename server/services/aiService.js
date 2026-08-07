@@ -355,6 +355,7 @@ export async function analyzeStandardsBeforeTask(progressId, topicTitle, standar
     return global.standardsAnalysisCache.get(progressId);
   }
 
+  let timer = null;
   try {
     const primaryKey = process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY.trim().replace(/^['"]|['"]$/g, '') : null;
     if (!primaryKey) return '';
@@ -386,7 +387,7 @@ ${scenarioGuideline}
 - 부가적인 서론이나 결론은 완벽하게 배제하고 알맹이 주의사항 텍스트만 출력하십시오.
 `;
 
-    updateProgress(progressId, 0, '0단계: 사전 절대 지침 준수 분석 중...', 5);
+    timer = startBackendProgressTimer(progressId, 0, '0단계: 사전 절대 지침 준수 분석 중...', 15, 600, 2);
     const genAI = new GoogleGenerativeAI(primaryKey);
     const targetModelName = preferredModel || globalPreferredModel || 'gemini-3.5-flash-lite';
     const model = genAI.getGenerativeModel({
@@ -398,16 +399,18 @@ ${scenarioGuideline}
     const result = await model.generateContent(userPrompt);
     const text = result.response.text().trim();
     console.log(`[analyzeStandardsBeforeTask] Success! Analysis:\n${text}`);
-    updateProgress(progressId, 0, '0단계: 사전 절대 지침 분석 완료!', 10);
+    stopBackendProgressTimer(progressId, 20, '0단계: 사전 절대 지침 분석 완료!', true, timer);
     
     if (progressId && text) {
       global.standardsAnalysisCache.set(progressId, text);
       setTimeout(() => global.standardsAnalysisCache.delete(progressId), 300000);
     }
     return text;
+    return text;
   } catch (err) {
     console.warn('[analyzeStandardsBeforeTask] Warning: standards analysis failed:', err.message);
-    updateProgress(progressId, 0, '0단계: 사전 지침 분석 스킵 (오류로 우회)', 10);
+    if (timer) stopBackendProgressTimer(progressId, 20, '0단계: 사전 지침 분석 스킵 (오류로 우회)', false, timer);
+    else updateProgress(progressId, 0, '0단계: 사전 지침 분석 스킵 (오류로 우회)', 20);
     return '';
   }
 }
