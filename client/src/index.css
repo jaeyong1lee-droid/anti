@@ -209,6 +209,11 @@ div[class*="overflow-y-auto"] {
   display: none;
 }
 
+/* Ensure SVG foreignObject text is always visible and never clipped */
+foreignObject {
+  overflow: visible !important;
+}
+
 @media (orientation: landscape) and (min-width: 768px) and (max-height: 600px) {
   .landscape-hide {
     display: none !important;
