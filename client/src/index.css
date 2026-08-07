@@ -1329,3 +1329,7 @@ pre {
   }
 }
 
+/* Ensure SVG text inherits the parent's light color (e.g. text-slate-200) in dark mode unless explicitly styled */
+svg text:not([fill]) {
+  fill: currentColor;
+}
