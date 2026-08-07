@@ -395,6 +395,18 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   const greekSubscriptRegex = new RegExp(`\\\\(${greekSubscriptLetters})('?)([a-zA-Z0-9])\\b`, 'gi');
   processed = processed.replace(greekSubscriptRegex, '\\$1$2_$3');
 
+  const formatConsecutiveFormulas = (text) => {
+    if (!text || typeof text !== 'string') return text;
+    const parts = text.split('$');
+    if (parts.length < 3) return text;
+    let rebuilt = parts[0];
+    for (let i = 1; i < parts.length; i += 2) {
+      let formula = balanceMathBraces(parts[i]);
+      let plainText = parts[i + 1] || '';
+      rebuilt += '$' + formula + '$' + plainText;
+    }
+    return rebuilt;
+  };
   processed = formatConsecutiveFormulas(processed);
 
   processed = processed.replace(/(\$\s?[^\$]+\s?\$)(은|는|이|가|을|를|의|로|으로|에|에서|와|과|도|만|일때|입니다|라하면|값은)/g, '$1 $2');
