@@ -1370,7 +1370,8 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
     });
 
     const isAllGraded = boxInputs.length > 0 && boxInputs.every(bi => revealed || (tableGradingResults?.[bi.inputKey] !== undefined));
-    const isAllCorrect = boxInputs.length > 0 && boxInputs.every(bi => tableGradingResults?.[bi.inputKey]?.isCorrect);
+    const isAllCorrect = boxInputs.length > 0 && boxInputs.every(bi => tableGradingResults?.[bi.inputKey]?.isCorrect || (tableGradingResults?.[bi.inputKey]?.score >= 8));
+    const isAnyPartial = boxInputs.length > 0 && boxInputs.every(bi => tableGradingResults?.[bi.inputKey]?.isCorrect || (tableGradingResults?.[bi.inputKey]?.score >= 5));
     const isAnyLoading = boxInputs.some(bi => cellGradingLoading?.[bi.inputKey]);
 
     const handleBoxSubmit = async (e) => {
@@ -1493,7 +1494,9 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
               isAllGraded
                 ? isAllCorrect
                   ? 'border-emerald-500/30 text-emerald-400 bg-transparent hover:scale-105'
-                  : 'border-rose-500/30 text-rose-400 bg-transparent hover:scale-105'
+                  : isAnyPartial
+                    ? 'border-orange-500/30 text-orange-400 bg-transparent hover:scale-105'
+                    : 'border-rose-500/30 text-rose-400 bg-transparent hover:scale-105'
                 : 'border-slate-700 bg-transparent text-white hover:bg-slate-800/40 hover:border-slate-600 active:scale-95'
             }`}
             title={isAllGraded ? "클릭하여 이 상자 내 모든 빈칸 재평가" : "이 상자의 모든 빈칸 채점 제출"}
@@ -1504,7 +1507,7 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
             ) : (
-              isAllGraded ? (isAllCorrect ? '✓' : '✗') : '제출'
+              isAllGraded ? (isAllCorrect ? '✓' : (isAnyPartial ? '△' : '✗')) : '제출'
             )}
           </button>
         )}
@@ -1581,14 +1584,25 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
                   <div className="font-extrabold flex items-center justify-between gap-2 mb-1">
                     <span className="flex items-center gap-1.5">
                       <span className={`w-5 h-5 flex items-center justify-center rounded-full text-[11px] font-black ${
-                        item.isCorrect ? 'bg-emerald-950 text-emerald-400 border border-emerald-500/30' : 'bg-rose-950 text-rose-400 border border-rose-500/30'
+                        item.isCorrect || item.score >= 9 ? 'bg-emerald-950 text-emerald-400 border border-emerald-500/30' :
+                        item.score >= 8 ? 'bg-yellow-950 text-yellow-400 border border-yellow-500/30' :
+                        item.score >= 5 ? 'bg-orange-950 text-orange-400 border border-orange-500/30' :
+                        'bg-rose-950 text-rose-400 border border-rose-500/30'
                       }`}>
                         {item.letter}
                       </span>
                       <span>입력값: "{item.userVal || '빈칸'}"</span>
                     </span>
-                    <span className={`text-[12px] sm:text-[14px] font-black ${item.isCorrect ? 'text-emerald-400' : 'text-rose-400'}`}>
-                      {item.isCorrect ? '정답 ✓' : '오답 ✗'} (점수: {item.score}점)
+                    <span className={`text-[12px] sm:text-[14px] font-black ${
+                      item.isCorrect || item.score >= 9 ? 'text-emerald-400' :
+                      item.score >= 8 ? 'text-yellow-400' :
+                      item.score >= 5 ? 'text-orange-400' :
+                      'text-rose-400'
+                    }`}>
+                      {item.isCorrect || item.score >= 9 ? '✅ 정답 인정' :
+                       item.score >= 8 ? '⚠️ 부분 인정 (우수)' :
+                       item.score >= 5 ? '⚠️ 부분 인정 (보통)' :
+                       '❌ 오답'} (점수: {item.score}점)
                     </span>
                   </div>
                   {item.reason && (

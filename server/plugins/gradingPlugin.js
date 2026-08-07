@@ -162,7 +162,9 @@ ${((colHeader && colHeader.includes('수치 계산 답안')) || category === '�
 반드시 지반공학/토목공학 전공 서적에 나오는 공인된 표준 학술 기호(예: $k_h$, $k_{h0}$, $k_{v0}$, $B$ 등)를 포함한 완전하고 정교한 표준 공식을 작성해야 합니다.
 `;
 
-  const responseText = await callLLMWithFailover(getGradingSystemInstruction(gradingStandards, engineeringStandards), userPrompt, null, 'grading');
+  const isCalcQuestion = ((colHeader && colHeader.includes('수치 계산 답안')) || category === '계산');
+  const gradingTemperature = isCalcQuestion ? 0.1 : 0.7;
+  const responseText = await callLLMWithFailover(getGradingSystemInstruction(gradingStandards, engineeringStandards), userPrompt, null, 'grading', { temperature: gradingTemperature });
   let text = responseText.trim();
   
   try {
