@@ -12,6 +12,8 @@ export const SVG_DIAGRAM_PROMPT = `
 3. [✅ 도식 내부 모든 텍스트 및 KaTeX 수식 표현 규칙 - 극도로 중요!]:
    - SVG 내부에 글자(레이블, 수치, 제목 등)나 수식을 넣을 때는 **절대로 \`<text>\` 태그를 사용하지 마십시오.** \`<text>\` 태그 내부에 수식 기호가 들어가면 프론트엔드의 KaTeX HTML 변환 과정에서 태그가 깨져 글자가 그림 밖으로 튕겨 나가는 치명적인 버그가 발생합니다.
    - 따라서 **SVG 내부의 모든 문자열(일반 텍스트 및 수식)은 무조건 \`<foreignObject>\` 태그와 그 안의 \`<div xmlns="http://www.w3.org/1999/xhtml">\`를 조합하여 작성**하십시오.
+   - ⚠️ [마크다운 절대 금지]: \`<foreignObject>\` 내부의 \`<div>\` 안에는 **절대로 별표(*), 볼드체(**), 리스트 문법(-) 등의 마크다운(Markdown) 기호를 사용하지 마십시오.** 순수한 일반 텍스트 문장과 HTML 태그, 그리고 수식($...$) 기호만 허용됩니다.
+   - ⚠️ [좌표 및 레이아웃 정밀도]: 여러 개의 \`<foreignObject>\` 텍스트 라벨을 배치할 때, X와 Y 좌표(x, y)를 대충 욱여넣지 마십시오. 글자들이 서로 겹치거나 텍스트가 박스 밖으로 탈선하지 않도록 충분한 간격(여백)을 두고, 도해의 선이나 도형과도 겹치지 않게 완벽하고 깔끔하게 분리 정돈하여 배치하십시오.
    - <foreignObject>에는 요소가 잘리지 않도록 \`overflow="visible"\` 속성을 반드시 추가하고 충분한 \`width\`와 \`height\`를 지정하십시오.
    - 예시 (일반 텍스트 및 수식 혼용):
      \`<foreignObject x="10" y="10" width="150" height="40" overflow="visible"><div xmlns="http://www.w3.org/1999/xhtml" style="color: #fbbf24; font-weight: bold; font-size: 14px; white-space: nowrap;">주동토압 ($P_a$)</div></foreignObject>\`
