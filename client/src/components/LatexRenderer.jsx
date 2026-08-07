@@ -729,7 +729,8 @@ export const LatexRenderer = React.memo(function LatexRenderer({
   // Split by block math $$ ... $$
   const parts = [];
   let lastIndex = 0;
-  const blockRegex = /\$\$(.*?)\$\$/gs;
+  // 방화벽(Block Boundary Firewall) 적용: $$ 수식이 HTML 구조 태그(svg, div, table 등)를 침범/집어삼키지 못하도록 차단
+  const blockRegex = /\$\$((?:(?!<\/?(?:div|svg|foreignObject|table|tr|td|th|p|pre|blockquote|ul|ol|li)\b)[\s\S])*?)\$\$/g;
   let match;
 
   while ((match = blockRegex.exec(cleanedText)) !== null) {
