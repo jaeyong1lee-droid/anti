@@ -3762,7 +3762,7 @@ export default function App() {
       setAiProgressPercent(finalPercent);
       setTimeout(() => {
         setShowAiProgress(false);
-      }, 1500);
+      }, 3500);
     } else {
       setShowAiProgress(false);
     }
