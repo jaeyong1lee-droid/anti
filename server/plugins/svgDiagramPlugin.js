@@ -1,7 +1,9 @@
 export const SVG_DIAGRAM_PROMPT = `
 [🚨 정밀 SVG 다이어그램 작도 지침 (ASCII 아트 절대 금지)]:
+export const SVG_DIAGRAM_PROMPT = `
+[🚨 정밀 SVG 다이어그램 작도 지침 (ASCII 아트 절대 금지)]:
 1. ⚠️ [절대 철칙]: 지반 거동, 옹벽 파괴면, 지중 응력, 추세선, 특정 공학적 도해 등 시각적 설명이 필요한 경우, **절대로 별표(*), 하이픈(-), 슬래시(/) 등을 이용한 아스키 아트(ASCII Art)를 그리지 마십시오.**
-2. 시각 자료가 필요한 경우 반드시 **마크다운 코드 블록 식별자인 \`\`\`svg 를 사용하여 완전한 <svg> HTML 태그 코드를 출력**하십시오. 
+2. 시각 자료가 필요한 경우 반드시 **마크다운 코드 블록 식별자인 \`\`\`svg 를 사용하여 완전한 \`<svg>\` HTML 태그 코드를 출력**하십시오. 
    - ⚠️ [경고]: 절대로 \`svg\` 단어나 \`<svg>\` 태그에 수식 기호인 \`$\`를 붙이지 마십시오. (예: \`\`\`$svg (X), <svg$ (X) -> \`\`\`svg (O), <svg (O))
    - 예시:
    \`\`\`svg
@@ -9,13 +11,14 @@ export const SVG_DIAGRAM_PROMPT = `
      ...
    </svg>
    \`\`\`
-3. [✅ 도식 내부 KaTeX 수식 표현 지원]:
-   - SVG 내부에서 텍스트 축 레이블(X축, Y축)이나 수식(기울기, 파괴각 등)을 표기할 때는 무조건 \`<foreignObject>\` 태그를 활용하고, 그 안에서 인라인 KaTeX(예: \`$s_t$\`, \`$\\theta=45^\\circ+\\phi/2$\`)를 사용하십시오.
-   - ⚠️ [경고]: \`<foreignObject>\` 내부에 마크다운 글머리 기호(예: \`* \`, \`- \`)를 절대로 사용하지 마십시오. 순수 텍스트와 수식만 입력하십시오.
-   - 예시:
-     \`<foreignObject x="10" y="10" width="100" height="30"><div xmlns="http://www.w3.org/1999/xhtml" style="color: #fbbf24; font-weight: bold; font-size: 14px;">$s_t$</div></foreignObject>\`
+3. [✅ 도식 내부 모든 텍스트 및 KaTeX 수식 표현 규칙 - 극도로 중요!]:
+   - SVG 내부에 글자(레이블, 수치, 제목 등)나 수식을 넣을 때는 **절대로 \`<text>\` 태그를 사용하지 마십시오.** \`<text>\` 태그 내부에 수식 기호가 들어가면 프론트엔드의 KaTeX HTML 변환 과정에서 태그가 깨져 글자가 그림 밖으로 튕겨 나가는 치명적인 버그가 발생합니다.
+   - 따라서 **SVG 내부의 모든 문자열(일반 텍스트 및 수식)은 무조건 \`<foreignObject>\` 태그와 그 안의 \`<div xmlns="http://www.w3.org/1999/xhtml">\`를 조합하여 작성**하십시오.
+   - \`<foreignObject>\`에는 요소가 잘리지 않도록 충분한 \`width\`와 \`height\`를 반드시 지정하십시오.
+   - 예시 (일반 텍스트 및 수식 혼용):
+     \`<foreignObject x="10" y="10" width="150" height="40"><div xmlns="http://www.w3.org/1999/xhtml" style="color: #fbbf24; font-weight: bold; font-size: 14px;">주동토압 ($P_a$)</div></foreignObject>\`
 4. [디자인 및 가독성 규칙]:
    - 기본적으로 어두운 배경(테마)에 잘 어울리도록 선 색상은 밝은 계열(예: \`stroke="#cbd5e1"\`, \`#fbbf24\`)을 사용하십시오.
    - 영역을 칠할 때는 반투명한 색상(예: \`fill="rgba(251, 191, 36, 0.2)"\`)을 사용하여 가독성을 높이십시오.
-   - 다이어그램 상단이나 여백에 어떤 다이어그램인지 명확히 알 수 있는 한글 제목을 \`<text>\` 또는 \`<foreignObject>\`로 포함하십시오.
+   - 다이어그램 상단이나 여백에 어떤 다이어그램인지 명확히 알 수 있는 한글 제목을 \`<foreignObject>\`로 포함하십시오.
 `;
