@@ -126,6 +126,40 @@ const ChartRenderer = ({ data }) => {
     );
   };
 
+  const CustomXAxisLabel = ({ viewBox }) => {
+    const { x = 0, y = 0, width = 0 } = viewBox || {};
+    let html = xAxisLabel;
+    if (window.katex && html && typeof html === 'string') {
+      try { html = window.katex.renderToString(html); } catch(e){}
+    }
+    return (
+      <g>
+        <foreignObject x={x} y={y - 5} width={width} height={30} style={{ overflow: 'visible' }}>
+          <div xmlns="http://www.w3.org/1999/xhtml" className="flex items-center justify-center text-[12px] font-bold text-slate-400 w-full h-full text-center">
+            <span dangerouslySetInnerHTML={{ __html: html }} />
+          </div>
+        </foreignObject>
+      </g>
+    );
+  };
+
+  const CustomYAxisLabel = ({ viewBox }) => {
+    const { x = 0, y = 0, height = 0 } = viewBox || {};
+    let html = yAxisLabel;
+    if (window.katex && html && typeof html === 'string') {
+      try { html = window.katex.renderToString(html); } catch(e){}
+    }
+    return (
+      <g transform={`translate(${x + 15}, ${y + height / 2}) rotate(-90)`}>
+        <foreignObject x={-height / 2} y={-15} width={height} height={30} style={{ overflow: 'visible' }}>
+          <div xmlns="http://www.w3.org/1999/xhtml" className="flex items-center justify-center text-[12px] font-bold text-slate-400 w-full h-full text-center">
+            <span dangerouslySetInnerHTML={{ __html: html }} />
+          </div>
+        </foreignObject>
+      </g>
+    );
+  };
+
   return (
     <div className="w-full my-4 border border-slate-700/60 rounded-xl overflow-hidden shadow-lg bg-slate-900/40 relative select-text">
       {/* Header */}
@@ -147,27 +181,12 @@ const ChartRenderer = ({ data }) => {
               dataKey="x" 
               stroke="#64748b" 
               tick={<CustomTickX />} 
-              label={{ 
-                value: xAxisLabel, 
-                position: 'bottom', 
-                offset: 5, 
-                fill: '#94a3b8',
-                fontSize: 12,
-                fontWeight: 'bold'
-              }} 
+              label={<CustomXAxisLabel />} 
             />
             <YAxis 
               stroke="#64748b" 
               tick={<CustomTickY />}
-              label={{ 
-                value: yAxisLabel, 
-                angle: -90, 
-                position: 'insideLeft', 
-                offset: 10,
-                fill: '#94a3b8',
-                fontSize: 12,
-                fontWeight: 'bold'
-              }} 
+              label={<CustomYAxisLabel />} 
             />
             <Tooltip content={<CustomTooltip />} />
             <Legend verticalAlign="top" align="right" content={<CustomLegend />} wrapperStyle={{ paddingBottom: '10px' }} />
