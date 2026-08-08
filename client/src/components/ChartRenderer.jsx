@@ -185,7 +185,7 @@ const ChartRenderer = ({ data }) => {
                 name={line.name}
                 stroke={line.stroke} 
                 strokeWidth={2.5}
-                dot={false}
+                dot={{ r: 2, strokeWidth: 1, fill: '#0f172a' }}
                 activeDot={{ r: 6, fill: line.stroke, stroke: '#fff', strokeWidth: 1.5 }}
                 animationDuration={1500}
                 animationEasing="ease-out"

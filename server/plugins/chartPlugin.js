@@ -9,8 +9,8 @@ export const CHART_DIAGRAM_PROMPT = `
      "xAxisLabel": "X축 레이블 (예: 시간 $t$)",
      "yAxisLabel": "Y축 레이블 (예: 응력 $\\\\sigma$)",
      "lines": [
-       { "name": "실측 데이터", "dataKey": "y1", "stroke": "#38bdf8", "dot": false },
-       { "name": "추세선", "dataKey": "y2", "stroke": "#f43f5e", "dot": false }
+       { "name": "실측 데이터", "dataKey": "y1", "stroke": "#38bdf8" },
+       { "name": "추세선", "dataKey": "y2", "stroke": "#f43f5e" }
      ],
      "data": [
        { "x": "0", "y1": 10, "y2": 10 },
@@ -26,5 +26,4 @@ export const CHART_DIAGRAM_PROMPT = `
 5. [데이터 스케일링 규칙 및 그래프 해상도 철칙 (매우 중요)]:
    - \`data\` 배열의 \`x\` 값은 문자열 또는 숫자로 자유롭게 입력하되 순서대로 입력해야 합니다. \`y1\`, \`y2\` 등 \`dataKey\`에 매핑되는 값은 반드시 실수 또는 정수(Number) 형태여야 차트가 그려집니다.
    - 🚨 **그래프의 곡선이 부드러운 일정한 선으로 표현되도록 데이터 간격을 촘촘하게 설정하여 x축 데이터(data 배열의 항목 수)를 반드시 15개 이상으로 생성하십시오.** (기존 7개 수준의 듬성듬성한 데이터 산출 금지)
-   - 각 \`lines\` 항목에 반드시 \`"dot": false\` 속성을 추가하여 불필요한 마커(점) 표시를 제거하십시오.
 `;
