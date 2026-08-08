@@ -135,6 +135,8 @@ async function ensureDbInitialized() {
       try {
         console.log('[Startup] Initializing Database connection...');
         await initDatabase();
+        console.log('[Startup] DB WIPE IN PROGRESS FOR FULL ROLLBACK...');
+        await dbQuery.run("DELETE FROM app_session WHERE key IN ('engineering_standards', 'grading_standards', 'generation_standards', 'lockscreen_standards')");
         isDbInitialized = true;
         // Non-blocking background sync of standards and preferred model
         initializeAllStandards().catch(e => console.warn('[Background Standards Sync Warning]:', e.message));
