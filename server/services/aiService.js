@@ -2,6 +2,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { dbQuery } from '../database.js';
 import { parseLlmJson } from '../utils/latexUtils.js';
 import { SVG_DIAGRAM_PROMPT } from '../plugins/svgDiagramPlugin.js';
+import { CHART_DIAGRAM_PROMPT } from '../plugins/chartPlugin.js';
 
 // Global AI progress tracker map
 global.progressTracker = global.progressTracker || new Map();
@@ -182,7 +183,7 @@ export function stopBackendProgressTimer(progressId, percentage, message, isSucc
 }
 
 export async function callLLMWithFailover(systemInstruction, userPrompt, image = null, scenario = 'default', options = {}) {
-  const finalSystemInstruction = (systemInstruction || '') + '\n\n' + SVG_DIAGRAM_PROMPT;
+  const finalSystemInstruction = (systemInstruction || '') + '\n\n' + SVG_DIAGRAM_PROMPT + '\n\n' + CHART_DIAGRAM_PROMPT;
   const primaryKey = process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY.trim().replace(/^['"]|['"]$/g, '') : null;
   const secondaryKey = process.env.GEMINI_API_KEY_SECONDARY ? process.env.GEMINI_API_KEY_SECONDARY.trim().replace(/^['"]|['"]$/g, '') : null;
   const tertiaryKey = process.env.GEMINI_API_KEY_TERTIARY ? process.env.GEMINI_API_KEY_TERTIARY.trim().replace(/^['"]|['"]$/g, '') : null;

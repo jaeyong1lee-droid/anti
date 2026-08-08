@@ -12,6 +12,7 @@ import {
 import { convertMarkdownTablesToHtml } from '../utils/markdownTableRenderer';
 import { convertMarkdownAcronymsToHtml } from '../utils/markdownAcronymRenderer';
 import { healLatexFormulas } from '../utils/latexUtils';
+import ChartRenderer from './ChartRenderer';
 
 const parseAndRenderFlowchart = (flowchartText, katexLoaded, questionKey) => {
   const lines = flowchartText.split('\n');
@@ -216,6 +217,8 @@ export const LatexRenderer = React.memo(function LatexRenderer({
 
       if (isFlowchart) {
         parts.push({ type: 'flowchart', content: blockContent });
+      } else if (lang === 'chart') {
+        parts.push({ type: 'chart', content: blockContent });
       } else {
         parts.push({ type: 'ascii', content: blockContent });
       }
@@ -246,6 +249,20 @@ export const LatexRenderer = React.memo(function LatexRenderer({
                 isRealTimeTutor={isRealTimeTutor} 
                 hideTableWrapper={hideTableWrapper} 
               />
+            );
+          } else if (part.type === 'chart') {
+            let chartData = null;
+            try {
+              // Strip any extra markdown formatting or backticks the AI might have included inside the block
+              const cleanJson = part.content.replace(/```json/gi, '').replace(/```/g, '').trim();
+              chartData = JSON.parse(cleanJson);
+            } catch (e) {
+              console.error("Failed to parse chart JSON:", e);
+            }
+            return (
+              <div key={pIdx} className="w-full">
+                {chartData ? <ChartRenderer data={chartData} /> : <div className="text-rose-400 p-4 bg-rose-900/20 rounded">⚠️ 차트 데이터 파싱 오류</div>}
+              </div>
             );
           } else if (part.type === 'ascii') {
             const cleanAscii = typeof part.content === 'string'
