@@ -559,7 +559,6 @@ export async function getTopicText(topic, fileUtils, ocrPlugin, pdfParse) {
 export async function searchSourceDocumentWithGeminiLite(systemInstruction, userPrompt, image = null, options = {}) {
   return await callLLMWithFailover(systemInstruction, userPrompt, image, 'source-search', {
     ...options,
-    preferredModel: 'gemini-3.1-flash-lite',
     isSourceSearch: true
   });
 }
