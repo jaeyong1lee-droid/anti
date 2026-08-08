@@ -148,13 +148,14 @@ const ChartRenderer = ({ data }) => {
   return (
     <div className="w-full my-4 border border-slate-700/60 rounded-xl overflow-hidden shadow-lg bg-slate-900/40 relative select-text">
       {/* Header */}
-      <div className="px-3 py-2 bg-slate-800/50 border-b border-slate-700/60 flex items-center justify-between">
-        <span className="text-xs font-bold text-slate-300 flex items-center gap-2">
-          <span className="text-amber-400">📈</span> {title}
-        </span>
-        <span className="px-1.5 py-0.5 text-[9px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded">
+      <div className="px-3 py-2 bg-slate-800/50 border-b border-slate-700/60 flex items-center justify-between mb-4">
+        <h4 className="text-[15px] font-semibold text-slate-200 flex items-center">
+          <span className="mr-2">📈</span>
+          <span dangerouslySetInnerHTML={{ __html: renderMixedText(title) }} />
+        </h4>
+        <div className="px-2 py-1 bg-amber-500/10 border border-amber-500/30 rounded text-[10px] text-amber-400 font-medium whitespace-nowrap">
           인터랙티브 차트
-        </span>
+        </div>
       </div>
 
       <div className="p-4 w-full h-[320px] sm:h-[400px]">
