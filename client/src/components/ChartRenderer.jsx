@@ -56,7 +56,7 @@ const CustomLegend = (props) => {
   const { payload } = props;
   
   return (
-    <ul className="flex items-center justify-end gap-4 mt-1 mb-2">
+    <ul className="flex flex-wrap items-center justify-end gap-x-4 gap-y-2 mt-1 mb-2 max-w-full">
       {payload.map((entry, index) => {
         const renderText = () => {
           if (window.katex && entry.value && typeof entry.value === 'string') {
