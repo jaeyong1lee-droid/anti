@@ -18,6 +18,7 @@ import { ReadOnlyTable } from './components/ReadOnlyTable';
 import { PopoutWindow } from './components/PopoutWindow';
 import { InteractiveQuizModal } from './components/InteractiveQuizModal';
 import SvgZoomModal from './components/SvgZoomModal';
+import ChartRenderer from './components/ChartRenderer';
 import { 
   buildHtmlDocument, 
   handleOpenHtmlAnswerPopup, 
@@ -1908,10 +1909,23 @@ const renderQuestionContent = (
 ) => {
   const { questionText, tableData, referenceTableData } = parseQuestionTable(q, topicTitle);
   const isFlowchart = questionText.includes('┌──') || questionText.includes('▼') || questionText.includes('```') || questionText.includes('흐름도') || questionText.includes('플로우차트');
-  const cleanQuestionText = isFlowchart 
+  let cleanQuestionText = isFlowchart 
     ? questionText.replace(/\r/g, '')
     : questionText.replace(/\r/g, '').replace(/[ \t]+/g, ' ');
   
+  let chartData = null;
+  if (cleanQuestionText.includes('```chart')) {
+    const chartMatch = cleanQuestionText.match(/```chart\s*(\{[\s\S]*?\})\s*```/);
+    if (chartMatch) {
+      try {
+        chartData = JSON.parse(chartMatch[1]);
+        cleanQuestionText = cleanQuestionText.replace(chartMatch[0], '').trim();
+      } catch (e) {
+        console.warn("Chart JSON parse error:", e);
+      }
+    }
+  }
+
   const conditionMatch = cleanQuestionText.match(/\[\s*조건\s*\]/);
  
   const resolvedCategory = q.category || topicCategory;
@@ -2037,8 +2051,14 @@ const renderQuestionContent = (
     });
     
     return (
-      <div className="space-y-3 w-full">
-        {renderDiagramSvgElement()}
+      <div className={`w-full ${chartData ? 'flex flex-col md:flex-row gap-6 items-start' : 'space-y-3'}`}>
+        {chartData && (
+          <div className="w-full md:w-[50%] lg:w-[55%] flex-shrink-0 flex items-center justify-center">
+            <ChartRenderer data={chartData} />
+          </div>
+        )}
+        <div className={`w-full ${chartData ? 'md:flex-1 space-y-3' : 'space-y-3'}`}>
+          {renderDiagramSvgElement()}
         {!(resolvedCategory === '계산' && showImage) && (
           <div className="text-[14px] sm:text-[16px] font-bold text-white leading-relaxed text-left w-full whitespace-pre-line">
             {renderResponsiveContent(mainText, katexLoaded, questionKey, false, questionIdx, tableAnswers, setTableAnswers, revealed, tableGradingResults, q, gradeSingleTableCell, cellGradingLoading, onSubmit, renderCardTutorChat, isExam)}
@@ -2076,13 +2096,20 @@ const renderQuestionContent = (
         {tableData && !showImage && q.type !== '주관식 (표채우기)' && q.subtype !== '표채우기' && !q.tableData && !q.comparisonTableData && q.type !== '주관식 (앞글자)' && (
           <ReadOnlyTable tableData={tableData} katexLoaded={katexLoaded} questionIdx={questionIdx} />
         )}
+        </div>
       </div>
     );
   }
   
   return (
-    <>
-      {renderDiagramSvgElement()}
+    <div className={`w-full ${chartData ? 'flex flex-col md:flex-row gap-6 items-start' : ''}`}>
+      {chartData && (
+        <div className="w-full md:w-[50%] lg:w-[55%] flex-shrink-0 flex items-center justify-center">
+          <ChartRenderer data={chartData} />
+        </div>
+      )}
+      <div className={`w-full ${chartData ? 'md:flex-1 space-y-3' : ''}`}>
+        {renderDiagramSvgElement()}
       {!(resolvedCategory === '계산' && showImage) && (
         <div className="text-[14px] sm:text-[16px] font-bold text-white leading-relaxed text-left w-full whitespace-pre-line">
           {renderResponsiveContent(cleanQuestionText, katexLoaded, questionKey, true, questionIdx, tableAnswers, setTableAnswers, revealed, tableGradingResults, q, gradeSingleTableCell, cellGradingLoading, onSubmit, renderCardTutorChat, isExam)}
@@ -2098,7 +2125,8 @@ const renderQuestionContent = (
       {tableData && !showImage && q.type !== '주관식 (표채우기)' && q.subtype !== '표채우기' && !q.tableData && !q.comparisonTableData && q.type !== '주관식 (앞글자)' && (
         <ReadOnlyTable tableData={tableData} katexLoaded={katexLoaded} questionIdx={questionIdx} />
       )}
-    </>
+      </div>
+    </div>
   );
 };
 

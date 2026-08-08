@@ -12,8 +12,8 @@ export function parseChartJson(rawJsonStr) {
 
   let jsonStr = rawJsonStr.trim();
   
-  // 1. 단일 백슬래시 교정: 이중 백슬래시로 이스케이프 되지 않은 LaTeX 기호(예: \varepsilon) 보호
-  jsonStr = jsonStr.replace(/(?<!\\)\\(?!["\\/bfnrtu])/g, '\\\\');
+  // 1. 단일 백슬래시 교정: 이중 백슬래시로 이스케이프 되지 않은 LaTeX 기호 보호 (\f, \n 등도 강제 이스케이프하여 KaTeX \frac 등 보호)
+  jsonStr = jsonStr.replace(/(?<!\\)\\(?!["\\/])/g, '\\\\');
   
   // 2. 후행 쉼표(Trailing Comma) 제거: JSON 배열이나 객체 마지막에 쉼표가 붙는 환각 방어
   jsonStr = jsonStr.replace(/,\s*([\]}])/g, '$1');
