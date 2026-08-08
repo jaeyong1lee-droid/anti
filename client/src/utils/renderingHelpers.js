@@ -549,8 +549,40 @@ export const buildSingleButtonHtml = (itemStr, fallbackBody = '') => {
   return `<details class="my-0.5 border border-slate-800 rounded-lg overflow-hidden bg-slate-900/80 shadow-xs"><summary class="px-3 py-1.5 bg-slate-850 hover:bg-slate-800 text-slate-100 font-medium text-xs sm:text-sm cursor-pointer flex items-center justify-between select-none transition-colors group border-b border-slate-800/40"><span class="flex items-center gap-1.5 min-w-0"><span class="px-1.5 py-0.5 text-[10px] font-bold rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0">${categoryBadge}</span><span class="text-slate-100 group-hover:text-amber-300 transition-colors truncate font-semibold">${mainTitle}</span></span><span class="ml-2 text-[10px] sm:text-[11px] text-amber-400/90 font-semibold px-1.5 py-0.5 rounded bg-amber-400/10 border border-amber-400/20 whitespace-nowrap flex items-center gap-0.5 shrink-0"><span>본문 확인</span><span class="text-[9px]">▼</span></span></summary><div class="p-2 bg-slate-950 text-xs text-slate-300 leading-relaxed border-t border-slate-800/80 space-y-1 select-text"><div class="pl-2.5 py-1 border-l-2 border-amber-500/50 text-slate-200 bg-slate-900/40 rounded-r-md text-[11px] sm:text-xs leading-relaxed">${mainContent}</div></div></details>`;
 };
 
-export function transformAsciiGraphToSvg(_code) {
-  return null;
+export function transformAsciiGraphToSvg(code) {
+  if (!code || typeof code !== 'string') return null;
+
+  // Check if code block looks like an ASCII graph (multiple slashes, trend lines, or slope formulas)
+  const slashCount = (code.match(/\//g) || []).length;
+  const isAsciiGraph = slashCount >= 4 || /기울기|추세선|실측 데이터|┌─|└─|시간/i.test(code);
+  if (!isAsciiGraph) return null;
+
+  let title = '실측 데이터 계측 역해석 추세선';
+  const titleMatch = code.match(/\(([^)]*추세선[^)]*)\)/i) || code.match(/(실측 데이터[^\n\r]*)/i);
+  if (titleMatch) title = titleMatch[1];
+
+  let slopeRaw = 'e^{-\\alpha \\Delta t}';
+  const slopeMatch = code.match(/기울기\s*=\s*([^\n\r]+)/i);
+  if (slopeMatch) {
+    slopeRaw = slopeMatch[1].replace(/[\^▲┌─]/g, '').trim();
+  }
+
+  let slopeKatex = slopeRaw;
+  if (!slopeKatex.startsWith('$')) {
+    slopeKatex = `$${slopeKatex}$`;
+  }
+  
+  let renderedSlope = slopeKatex;
+  let renderedY = '$s_t$';
+  let renderedX = '$s_{t-\\Delta t}$';
+  
+  if (typeof renderKatexString === 'function') {
+    renderedSlope = renderKatexString(slopeKatex, { displayMode: false, throwOnError: false });
+    renderedY = renderKatexString('$s_t$', { displayMode: false, throwOnError: false });
+    renderedX = renderKatexString('$s_{t-\\Delta t}$', { displayMode: false, throwOnError: false });
+  }
+
+  return `<div class="w-full my-3 border border-amber-500/30 rounded-xl p-3 sm:p-4 bg-gradient-to-b from-slate-900 via-slate-950 to-slate-900 shadow-md select-text"><div class="flex items-center justify-between border-b border-slate-800/80 pb-2 mb-3"><div class="flex items-center gap-2"><span class="text-amber-400 font-bold text-sm sm:text-base">📈</span><span class="text-slate-100 font-bold text-xs sm:text-sm truncate">${title}</span></div><span class="px-2 py-0.5 text-[10px] sm:text-xs font-bold text-amber-300 bg-amber-500/15 border border-amber-500/30 rounded-md shrink-0">SVG 역해석 추세선</span></div><div class="relative w-full overflow-hidden py-1"><svg width="100%" height="150" viewBox="0 0 500 150" class="w-full h-[130px] sm:h-[150px]"><line x1="45" y1="12" x2="45" y2="125" stroke="#475569" stroke-width="1.5"/><line x1="45" y1="125" x2="480" y2="125" stroke="#475569" stroke-width="1.5"/><path d="M 41 17 L 45 10 L 49 17" fill="none" stroke="#475569" stroke-width="1.5"/><path d="M 473 121 L 483 125 L 473 129" fill="none" stroke="#475569" stroke-width="1.5"/><line x1="45" y1="50" x2="480" y2="50" stroke="#1e293b" stroke-width="1" stroke-dasharray="3,3"/><line x1="45" y1="88" x2="480" y2="88" stroke="#1e293b" stroke-width="1" stroke-dasharray="3,3"/><line x1="180" y1="12" x2="180" y2="125" stroke="#1e293b" stroke-width="1" stroke-dasharray="3,3"/><line x1="330" y1="12" x2="330" y2="125" stroke="#1e293b" stroke-width="1" stroke-dasharray="3,3"/><path d="M 52 118 Q 190 55 455 22" fill="none" stroke="#f59e0b" stroke-width="2.5"/><circle cx="52" cy="118" r="4" fill="#fbbf24"/><circle cx="160" cy="72" r="4" fill="#fbbf24"/><circle cx="310" cy="42" r="4" fill="#fbbf24"/><circle cx="455" cy="22" r="4" fill="#fbbf24"/></svg><div class="absolute top-0 left-[8px] text-amber-400 font-bold text-xs sm:text-sm">${renderedY}</div><div class="absolute bottom-0 right-[10px] text-slate-300 font-semibold text-xs sm:text-sm flex items-center gap-1">${renderedX} <span class="text-slate-400 text-xs font-normal">(시간 t)</span></div><div class="absolute top-[30%] left-[35%] -translate-x-1/2 -translate-y-1/2 px-2.5 py-1 bg-slate-950/95 border border-amber-500/60 rounded-lg shadow-lg text-amber-300 font-bold text-xs sm:text-sm flex items-center gap-1.5 z-10"><span class="text-amber-400 shrink-0">기울기=</span><span class="inline-block">${renderedSlope}</span></div></div></div>`;
 }
 
 export function removeSourceCitationsFromText(text) {
@@ -562,6 +594,37 @@ export function removeSourceCitationsFromText(text) {
 
 export function getOnlySourceAccordion(text, qTitle = '') {
   return '';
+}
+
+export function sanitizeSvgDarkBackground(svgHtml) {
+  if (!svgHtml || typeof svgHtml !== 'string') return svgHtml;
+  let cleaned = svgHtml;
+
+  // 1. Replace white/light background styles in <svg> or child elements (#ffffff, #fff, white, #f8fafc, #f1f5f9, #e2e8f0, etc.)
+  cleaned = cleaned.replace(/(style="[^"]*background(?:-color)?\s*:\s*)(#ffffff|#fff|white|#f8fafc|#f1f5f9|#e2e8f0|#ffffff[0-9a-f]{2})/gi, '$1#1e1e1e');
+
+  // 2. If <svg> tag has style attribute, ensure it has our required base styles
+  cleaned = cleaned.replace(/<svg([^>]*\bstyle=")([^"]*)(")/gi, (match, prefix, styleVal, suffix) => {
+    let newStyle = styleVal;
+    if (!/background(-color)?\s*:/i.test(newStyle)) {
+      newStyle += '; background-color: #1e1e1e; border-radius: 8px;';
+    }
+    if (!/overflow\s*:/i.test(newStyle)) newStyle += '; overflow: visible;';
+    if (!/padding-bottom\s*:/i.test(newStyle)) newStyle += '; padding-bottom: 2.5rem;';
+    if (!/height\s*:/i.test(newStyle)) newStyle += '; height: auto;';
+    return `<svg${prefix}${newStyle}${suffix}`;
+  });
+
+  // 3. If <svg> tag has NO style attribute at all, add style
+  cleaned = cleaned.replace(/<svg(?![^>]*\bstyle=)/gi, '<svg style="background-color: #1e1e1e; border-radius: 8px; overflow: visible; padding-bottom: 2.5rem; height: auto;"');
+
+  // 4. Replace background <rect> elements with white/light fill
+  cleaned = cleaned.replace(/(<rect[^>]*\bfill=")(#ffffff|#fff|white|#f8fafc|#f1f5f9|#e2e8f0|#ffffff[0-9a-f]{2})(")/gi, '$1#1e1e1e$3');
+
+  // 5. Fix text color if dark/black text was used (which becomes invisible on dark background)
+  cleaned = cleaned.replace(/(style="[^"]*color\s*:\s*)(#000000|#000|black|#1e293b|#334155|#0f172a)/gi, '$1#e2e8f0');
+
+  return cleaned;
 }
 
 export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold = false, isTutor = false, isExplanation = false) {
@@ -614,7 +677,8 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
     }
     
     if (lang === 'svg') {
-      const styledSvgHtml = `<div class="w-full my-4 border border-slate-700/60 rounded-xl overflow-hidden shadow-lg bg-slate-900/40 relative select-text"><div class="px-3 py-2 bg-slate-800/50 border-b border-slate-700/60 flex items-center justify-between"><span class="text-xs font-bold text-slate-300 flex items-center gap-2"><span class="text-amber-400">📊</span> 공학 다이어그램</span><button onclick="if(window.openSvgZoomModal) window.openSvgZoomModal(this)" class="px-2 py-1 text-[10px] font-bold bg-amber-500/20 hover:bg-amber-500/40 text-amber-300 border border-amber-500/30 rounded cursor-pointer transition-all active:scale-95 flex items-center gap-1.5 shadow-sm" title="확대해서 보기"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>확대</button></div><div class="p-3 overflow-x-auto flex items-center justify-center min-h-[120px] max-w-full text-slate-200">${codeHtml}</div></div>`;
+      const darkSvgHtml = sanitizeSvgDarkBackground(codeHtml);
+      const styledSvgHtml = `<div class="w-full my-4 border border-slate-700/60 rounded-xl overflow-hidden shadow-lg bg-slate-900/40 relative select-text"><div class="px-3 py-2 bg-slate-800/50 border-b border-slate-700/60 flex items-center justify-between"><span class="text-xs font-bold text-slate-300 flex items-center gap-2"><span class="text-amber-400">📊</span> 공학 다이어그램</span><button onclick="if(window.openSvgZoomModal) window.openSvgZoomModal(this)" class="p-1.5 bg-amber-500/20 hover:bg-amber-500/40 text-amber-300 border border-amber-500/30 rounded-lg cursor-pointer transition-all active:scale-95 flex items-center justify-center shadow-sm" title="확대해서 보기"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg></button></div><div class="p-3 overflow-x-auto flex items-center justify-center min-h-[120px] max-w-full text-slate-200">${darkSvgHtml}</div></div>`;
       codeBlocks.push({ placeholder, content: styledSvgHtml });
       codeBlockIndex++;
       return placeholder;

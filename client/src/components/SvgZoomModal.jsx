@@ -1,7 +1,9 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { X, ZoomIn, ZoomOut, Maximize } from 'lucide-react';
+import { sanitizeSvgDarkBackground } from '../utils/renderingHelpers';
 
 const SvgZoomModal = ({ svgContent, onClose }) => {
+  const cleanSvgContent = sanitizeSvgDarkBackground(svgContent);
   const containerRef = useRef(null);
   
   const [scale, setScale] = useState(1);
@@ -147,7 +149,7 @@ const SvgZoomModal = ({ svgContent, onClose }) => {
           style={{ 
             transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
           }}
-          dangerouslySetInnerHTML={{ __html: svgContent }}
+          dangerouslySetInnerHTML={{ __html: cleanSvgContent }}
         />
       </div>
 
