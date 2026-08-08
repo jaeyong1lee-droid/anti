@@ -19,13 +19,9 @@ if (process.env.BLOB_READ_WRITE_TOKEN) {
   process.env.BLOB_READ_WRITE_TOKEN = token.replace(/['"]+$/g, '').trim();
 }
 
-const NEON_DEFAULT_URL = 'postgresql://neondb_owner:npg_VZ6NRSlM4HQA@ep-gentle-band-ay23lbvk-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require';
+const NEON_DEFAULT_URL = 'postgresql://neondb_owner:npg_vY4Q7VcKFRIo@ep-broad-credit-aw98bx45-pooler.c-12.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require';
 
-let rawConnString = process.env.DATABASE_URL || 
-                    process.env.POSTGRES_URL || 
-                    process.env.POSTGRES_PRISMA_URL ||
-                    process.env.SUPABASE_DATABASE_URL ||
-                    NEON_DEFAULT_URL;
+let rawConnString = NEON_DEFAULT_URL;
 
 // Guarantee connection to the active Neon Cloud Database
 if (!rawConnString) {
