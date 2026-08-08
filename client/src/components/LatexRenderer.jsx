@@ -13,6 +13,7 @@ import { convertMarkdownTablesToHtml } from '../utils/markdownTableRenderer';
 import { convertMarkdownAcronymsToHtml } from '../utils/markdownAcronymRenderer';
 import { healLatexFormulas } from '../utils/latexUtils';
 import ChartRenderer from './ChartRenderer';
+import { parseChartJson } from '../utils/parseChartJson';
 
 const parseAndRenderFlowchart = (flowchartText, katexLoaded, questionKey) => {
   const lines = flowchartText.split('\n');
@@ -255,23 +256,13 @@ export const LatexRenderer = React.memo(function LatexRenderer({
             try {
               // Strip any extra markdown formatting or backticks the AI might have included inside the block
               const cleanJson = part.content.replace(/```json/gi, '').replace(/```/g, '').trim();
-              try {
-                chartData = JSON.parse(cleanJson);
-              } catch (e1) {
-                // Fallback: AI often forgets to escape backslashes for KaTeX in JSON (e.g. \sigma instead of \\sigma)
-                try {
-                  const escapedJson = cleanJson.replace(/\\([a-zA-Z])/g, '\\\\$1');
-                  chartData = JSON.parse(escapedJson);
-                } catch (e2) {
-                  console.error("Failed to parse chart JSON even after escaping:", e2);
-                }
-              }
+              chartData = parseChartJson(cleanJson);
             } catch (e) {
-              console.error("Unexpected error parsing chart JSON:", e);
+              console.error("Failed to parse chart JSON:", e);
             }
             return (
               <div key={pIdx} className="w-full">
-                {chartData ? <ChartRenderer data={chartData} /> : <div className="text-rose-400 p-4 bg-rose-900/20 rounded">⚠️ 차트 데이터 파싱 오류</div>}
+                {chartData ? <ChartRenderer data={chartData} /> : <div className="text-rose-400 p-4 bg-rose-900/20 rounded font-bold text-sm">⚠️ 차트 데이터 파싱 오류</div>}
               </div>
             );
           } else if (part.type === 'ascii') {
