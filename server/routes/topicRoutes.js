@@ -1,4 +1,4 @@
-import express from 'express';
+﻿import express from 'express';
 import multer from 'multer';
 import pdfParse from 'pdf-parse';
 import { put, del } from '@vercel/blob';
@@ -116,7 +116,7 @@ async function generateWeakPointRecommendation(queryDate, isManual = false) {
       completed_at: null,
       score: scoreVal,
       isBonus: true,
-      category: topic.category || '일반'
+      category: topic.category || '?쇰컲'
     };
   }
   return null;
@@ -168,7 +168,7 @@ router.get('/topics', async (req, res) => {
     res.json(topicsWithSchedules);
   } catch (error) {
     console.error('Error fetching all topics:', error);
-    res.status(500).json({ error: '서버 오류로 토픽 목록을 조회하지 못했습니다.', details: error.message, stack: error.stack });
+    res.status(500).json({ error: '?쒕쾭 ?ㅻ쪟濡??좏뵿 紐⑸줉??議고쉶?섏? 紐삵뻽?듬땲??', details: error.message, stack: error.stack });
   }
 });
 
@@ -176,7 +176,7 @@ router.get('/topics', async (req, res) => {
 router.post('/topics', upload.single('pdf'), async (req, res) => {
   const { title, keywords, baseDate, category } = req.body;
   if (!title) {
-    return res.status(400).json({ error: '토픽 제목은 필수 입력 항목입니다.' });
+    return res.status(400).json({ error: '?좏뵿 ?쒕ぉ? ?꾩닔 ?낅젰 ??ぉ?낅땲??' });
   }
 
   try {
@@ -185,12 +185,12 @@ router.post('/topics', upload.single('pdf'), async (req, res) => {
 
     if (!req.body.fileNameUtf8 && req.file) {
       const name = req.file.originalname;
-      if (/[가-힣]/.test(name)) {
+      if (/[媛-??/.test(name)) {
         pdfName = name;
       } else {
         try {
           const decoded = Buffer.from(name, 'latin1').toString('utf-8');
-          pdfName = /[가-힣]/.test(decoded) ? decoded : name;
+          pdfName = /[媛-??/.test(decoded) ? decoded : name;
         } catch (e) {
           pdfName = name;
         }
@@ -274,7 +274,7 @@ router.post('/topics', upload.single('pdf'), async (req, res) => {
       pdfUrl,
       extractedText,
       dbDateStr,
-      category || '일반'
+      category || '?쇰컲'
     ]);
 
     const topicId = topicResult.id;
@@ -287,7 +287,7 @@ router.post('/topics', upload.single('pdf'), async (req, res) => {
     await dbQuery.run(insertScheduleSql, [topicId, plannedDate]);
 
     res.status(201).json({
-      message: '토픽 등록 및 복습 스케줄 생성이 완료되었습니다.',
+      message: '?좏뵿 ?깅줉 諛?蹂듭뒿 ?ㅼ?以??앹꽦???꾨즺?섏뿀?듬땲??',
       topicId: topicId,
       title: title,
       keywords: keywords,
@@ -295,7 +295,7 @@ router.post('/topics', upload.single('pdf'), async (req, res) => {
     });
   } catch (error) {
     console.error('Error registering topic:', error);
-    res.status(500).json({ error: '서버 오류로 토픽 등록에 실패했습니다.' });
+    res.status(500).json({ error: '?쒕쾭 ?ㅻ쪟濡??좏뵿 ?깅줉???ㅽ뙣?덉뒿?덈떎.' });
   }
 });
 
@@ -308,12 +308,12 @@ router.post('/topics/:id/replace-source', upload.single('pdf'), async (req, res)
 
     if (!req.body.fileNameUtf8 && req.file) {
       const name = req.file.originalname;
-      if (/[가-힣]/.test(name)) {
+      if (/[媛-??/.test(name)) {
         pdfName = name;
       } else {
         try {
           const decoded = Buffer.from(name, 'latin1').toString('utf-8');
-          pdfName = /[가-힣]/.test(decoded) ? decoded : name;
+          pdfName = /[媛-??/.test(decoded) ? decoded : name;
         } catch (e) {
           pdfName = name;
         }
@@ -378,10 +378,10 @@ router.post('/topics/:id/replace-source', upload.single('pdf'), async (req, res)
 
     // Clear extracted text cache
     await dbQuery.run('DELETE FROM app_session WHERE key = ?', [`topic_extracted_text_${topicId}`]);
-    res.json({ success: true, message: '소스 자료가 성공적으로 교체되었습니다.' });
+    res.json({ success: true, message: '?뚯뒪 ?먮즺媛 ?깃났?곸쑝濡?援먯껜?섏뿀?듬땲??' });
   } catch (error) {
     console.error('Error replacing topic source:', error);
-    res.status(500).json({ error: '서버 오류로 소스 자료 교체에 실패했습니다.' });
+    res.status(500).json({ error: '?쒕쾭 ?ㅻ쪟濡??뚯뒪 ?먮즺 援먯껜???ㅽ뙣?덉뒿?덈떎.' });
   }
 });
 
@@ -392,7 +392,7 @@ router.delete('/topics/:id', async (req, res) => {
     const checkSql = `SELECT id, title, pdf_url FROM topics WHERE id = ?`;
     const topic = await dbQuery.get(checkSql, [topicId]);
     if (!topic) {
-      return res.status(404).json({ error: '해당 토픽을 찾을 수 없습니다.' });
+      return res.status(404).json({ error: '?대떦 ?좏뵿??李얠쓣 ???놁뒿?덈떎.' });
     }
 
     if (topic.pdf_url && (process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_STORE_ID)) {
@@ -408,12 +408,12 @@ router.delete('/topics/:id', async (req, res) => {
     await dbQuery.run(deleteSql, [topicId]);
 
     res.json({
-      message: `토픽 [${topic.title}] 및 관련 복습 일정이 안전하게 삭제되었습니다.`,
+      message: `?좏뵿 [${topic.title}] 諛?愿??蹂듭뒿 ?쇱젙???덉쟾?섍쾶 ??젣?섏뿀?듬땲??`,
       topicId: topicId
     });
   } catch (error) {
     console.error('Error deleting topic:', error);
-    res.status(500).json({ error: '서버 오류로 토픽 삭제에 실패했습니다.' });
+    res.status(500).json({ error: '?쒕쾭 ?ㅻ쪟濡??좏뵿 ??젣???ㅽ뙣?덉뒿?덈떎.' });
   }
 });
 
@@ -423,14 +423,14 @@ router.put('/topics/:id/title', async (req, res) => {
   const { title } = req.body;
 
   if (!title || !title.trim()) {
-    return res.status(400).json({ error: '제목은 필수입니다.' });
+    return res.status(400).json({ error: '?쒕ぉ? ?꾩닔?낅땲??' });
   }
 
   try {
     const checkSql = `SELECT id, title FROM topics WHERE id = ?`;
     const topic = await dbQuery.get(checkSql, [topicId]);
     if (!topic) {
-      return res.status(404).json({ error: '해당 토픽을 찾을 수 없습니다.' });
+      return res.status(404).json({ error: '?대떦 ?좏뵿??李얠쓣 ???놁뒿?덈떎.' });
     }
 
     const updateSql = `UPDATE topics SET title = ? WHERE id = ?`;
@@ -439,11 +439,11 @@ router.put('/topics/:id/title', async (req, res) => {
 
     res.json({
       success: true,
-      message: '토픽 제목이 성공적으로 수정되었습니다.'
+      message: '?좏뵿 ?쒕ぉ???깃났?곸쑝濡??섏젙?섏뿀?듬땲??'
     });
   } catch (error) {
     console.error('Error updating topic title:', error);
-    res.status(500).json({ error: '서버 오류로 토픽 제목 수정에 실패했습니다.' });
+    res.status(500).json({ error: '?쒕쾭 ?ㅻ쪟濡??좏뵿 ?쒕ぉ ?섏젙???ㅽ뙣?덉뒿?덈떎.' });
   }
 });
 
@@ -454,7 +454,7 @@ router.get('/topics/:id/text', async (req, res) => {
     const topicSql = `SELECT id, title, keywords, pdf_name, category, pdf_url, extracted_text FROM topics WHERE id = ?`;
     const topic = await dbQuery.get(topicSql, [topicId]);
     if (!topic) {
-      return res.status(404).json({ error: '토픽을 찾을 수 없습니다.' });
+      return res.status(404).json({ error: '?좏뵿??李얠쓣 ???놁뒿?덈떎.' });
     }
 
     const fileText = await getTopicText(topic, fileUtils, ocrPlugin, pdfParse);
@@ -462,11 +462,11 @@ router.get('/topics/:id/text', async (req, res) => {
       id: topic.id,
       title: topic.title,
       pdf_name: topic.pdf_name,
-      text: fileText || '보고서 내용이 비어 있거나 추출된 텍스트가 없습니다.'
+      text: fileText || '蹂닿퀬???댁슜??鍮꾩뼱 ?덇굅??異붿텧???띿뒪?멸? ?놁뒿?덈떎.'
     });
   } catch (error) {
     console.error('Error fetching topic text:', error);
-    res.status(500).json({ error: '서버 오류로 보고서 전문을 불러오지 못했습니다.' });
+    res.status(500).json({ error: '?쒕쾭 ?ㅻ쪟濡?蹂닿퀬???꾨Ц??遺덈윭?ㅼ? 紐삵뻽?듬땲??' });
   }
 });
 
@@ -476,7 +476,7 @@ router.get('/topics/:id/html-raw', async (req, res) => {
   try {
     const topic = await dbQuery.get(`SELECT pdf_name, pdf_data, pdf_url FROM topics WHERE id = ?`, [topicId]);
     if (!topic) {
-      return res.status(404).json({ error: '첨부된 HTML 원본 파일을 찾을 수 없습니다.' });
+      return res.status(404).json({ error: '泥⑤???HTML ?먮낯 ?뚯씪??李얠쓣 ???놁뒿?덈떎.' });
     }
     let pdfData = topic.pdf_data;
     if (topic.pdf_url && (!pdfData || pdfData.length === 0)) {
@@ -495,7 +495,7 @@ router.get('/topics/:id/html-raw', async (req, res) => {
       }
     }
     if (!pdfData || pdfData.length === 0) {
-      return res.status(404).json({ error: '첨부된 HTML 원본 파일을 찾을 수 없습니다.' });
+      return res.status(404).json({ error: '泥⑤???HTML ?먮낯 ?뚯씪??李얠쓣 ???놁뒿?덈떎.' });
     }
     const html = fileUtils.decodeHtmlBuffer(pdfData);
     res.json({ success: true, html });
@@ -510,12 +510,12 @@ router.put('/topics/:id/html-raw', async (req, res) => {
   const topicId = req.params.id;
   const { html } = req.body;
   if (typeof html !== 'string') {
-    return res.status(400).json({ error: 'html 코드는 필수 문자열입니다.' });
+    return res.status(400).json({ error: 'html 肄붾뱶???꾩닔 臾몄옄?댁엯?덈떎.' });
   }
   try {
     const topic = await dbQuery.get(`SELECT pdf_name, pdf_url FROM topics WHERE id = ?`, [topicId]);
     if (!topic) {
-      return res.status(404).json({ error: '토픽을 찾을 수 없습니다.' });
+      return res.status(404).json({ error: '?좏뵿??李얠쓣 ???놁뒿?덈떎.' });
     }
     const buffer = Buffer.from(html, 'utf-8');
     let pdfUrl = null;
@@ -557,7 +557,7 @@ router.get('/topics/:id/pdf', async (req, res) => {
     const topicSql = `SELECT pdf_name, pdf_data, pdf_url FROM topics WHERE id = ?`;
     const topic = await dbQuery.get(topicSql, [topicId]);
     if (!topic) {
-      return res.status(404).send('첨부된 PDF/HTML 원본 파일을 찾을 수 없습니다.');
+      return res.status(404).send('泥⑤???PDF/HTML ?먮낯 ?뚯씪??李얠쓣 ???놁뒿?덈떎.');
     }
 
     let pdfData = topic.pdf_data;
@@ -576,7 +576,7 @@ router.get('/topics/:id/pdf', async (req, res) => {
     }
 
     if (!pdfData || pdfData.length === 0) {
-      return res.status(404).send('첨부된 PDF/HTML 원본 파일을 찾을 수 없습니다.');
+      return res.status(404).send('泥⑤???PDF/HTML ?먮낯 ?뚯씪??李얠쓣 ???놁뒿?덈떎.');
     }
 
     const isImage = isBufferPng(pdfData) || isBufferJpeg(pdfData) || isBufferGif(pdfData) || isBufferWebp(pdfData);
@@ -813,7 +813,7 @@ div, section, article, form, .container, .page, .wrapper, .section, .WordSection
     }
   } catch (error) {
     console.error('Error streaming PDF/HTML:', error);
-    res.status(500).send('서버 오류로 파일을 스트리밍하지 못했습니다.');
+    res.status(500).send('?쒕쾭 ?ㅻ쪟濡??뚯씪???ㅽ듃由щ컢?섏? 紐삵뻽?듬땲??');
   }
 });
 
@@ -849,24 +849,24 @@ router.post('/topics/:id/instructions', async (req, res) => {
   }
 });
 
-// GET /api/admin/heal-schedules -> 일괄 일정 정정 (망각곡선 버그 수정용 및 순서 꼬임 복구)
+// GET /api/admin/heal-schedules -> ?쇨큵 ?쇱젙 ?뺤젙 (留앷컖怨≪꽑 踰꾧렇 ?섏젙??諛??쒖꽌 瑗ъ엫 蹂듦뎄)
 router.get('/admin/heal-schedules', async (req, res) => {
   try {
     const healedDetails = [];
     let healedCount = 0;
 
-    // 1. 순서 꼬임(Chronological out-of-order) 복구
-    // 모든 토픽의 completed 일정들을 가져옴
+    // 1. ?쒖꽌 瑗ъ엫(Chronological out-of-order) 蹂듦뎄
+    // 紐⑤뱺 ?좏뵿??completed ?쇱젙?ㅼ쓣 媛?몄샂
     const allCompleted = await dbQuery.all(`SELECT * FROM schedules WHERE status = 'completed' AND review_round < 99 ORDER BY topic_id ASC, completed_at ASC`);
     
-    // topic_id 기준으로 그룹화
+    // topic_id 湲곗??쇰줈 洹몃９??
     const byTopic = {};
     for (const s of allCompleted) {
       if (!byTopic[s.topic_id]) byTopic[s.topic_id] = [];
       byTopic[s.topic_id].push(s);
     }
 
-    // 각 토픽별로 실제 시간순(completed_at)에 맞게 review_round 재부여
+    // 媛??좏뵿蹂꾨줈 ?ㅼ젣 ?쒓컙??completed_at)??留욊쾶 review_round ?щ???
     for (const [topicId, schedules] of Object.entries(byTopic)) {
       for (let i = 0; i < schedules.length; i++) {
         const correctRound = i + 1;
@@ -878,7 +878,7 @@ router.get('/admin/heal-schedules', async (req, res) => {
       }
     }
 
-    // 2. 대기중(pending) 일정의 planned_date 재계산
+    // 2. ?湲곗쨷(pending) ?쇱젙??planned_date ?ш퀎??
     const pending = await dbQuery.all(`SELECT * FROM schedules WHERE status = 'pending' AND review_round > 1 AND review_round < 99`);
     
     for (const p of pending) {
@@ -900,7 +900,7 @@ router.get('/admin/heal-schedules', async (req, res) => {
         }
       }
     }
-    res.json({ message: `성공적으로 ${healedCount}건의 일정을 정정했습니다.`, details: healedDetails });
+    res.json({ message: `?깃났?곸쑝濡?${healedCount}嫄댁쓽 ?쇱젙???뺤젙?덉뒿?덈떎.`, details: healedDetails });
   } catch (err) {
     res.status(500).json({ error: err.message, stack: err.stack });
   }
@@ -996,7 +996,7 @@ router.get('/dashboard', async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching dashboard reviews:', error);
-    res.status(500).json({ error: '서버 오류로 복습 대시보드를 불러올 수 없습니다.' });
+    res.status(500).json({ error: '?쒕쾭 ?ㅻ쪟濡?蹂듭뒿 ??쒕낫?쒕? 遺덈윭?????놁뒿?덈떎.' });
   }
 });
 
@@ -1010,7 +1010,7 @@ router.get('/dashboard/weak-points', async (req, res) => {
       [queryDate]
     );
     if (totalPendingTopics.count > 10) {
-      return res.json({ weakPoints: [], message: '오늘의 복습 토픽이 10개를 초과하여 약점 추천이 보류되었습니다.' });
+      return res.json({ weakPoints: [], message: '?ㅻ뒛??蹂듭뒿 ?좏뵿??10媛쒕? 珥덇낵?섏뿬 ?쎌젏 異붿쿇??蹂대쪟?섏뿀?듬땲??' });
     }
 
     const activeWeaknessCount = await dbQuery.get(
@@ -1019,7 +1019,7 @@ router.get('/dashboard/weak-points', async (req, res) => {
       [queryDate]
     );
     if (activeWeaknessCount.count >= 3) {
-      return res.json({ weakPoints: [], message: '오늘의 복습에 등록된 약점복습토픽이 3개를 초과할 수 없습니다.' });
+      return res.json({ weakPoints: [], message: '?ㅻ뒛??蹂듭뒿???깅줉???쎌젏蹂듭뒿?좏뵿??3媛쒕? 珥덇낵?????놁뒿?덈떎.' });
     }
 
     const recommended = await generateWeakPointRecommendation(queryDate);
@@ -1027,7 +1027,7 @@ router.get('/dashboard/weak-points', async (req, res) => {
     res.json({ weakPoints });
   } catch (error) {
     console.error('Error fetching weak points:', error);
-    res.status(500).json({ error: '서버 오류로 약점 토픽을 조회하지 못했습니다.' });
+    res.status(500).json({ error: '?쒕쾭 ?ㅻ쪟濡??쎌젏 ?좏뵿??議고쉶?섏? 紐삵뻽?듬땲??' });
   }
 });
 
@@ -1067,13 +1067,13 @@ router.post('/topics/suggest-title', async (req, res) => {
   try {
     const { image, mimeType, htmlText } = req.body;
     if (!image && !htmlText) {
-      return res.status(400).json({ error: '이미지 데이터 또는 HTML 텍스트가 필요합니다.' });
+      return res.status(400).json({ error: '?대?吏 ?곗씠???먮뒗 HTML ?띿뒪?멸? ?꾩슂?⑸땲??' });
     }
     const cleanTitle = await ocrPlugin.suggestTitleFromCalculation(image, mimeType, htmlText, callLLMWithFailover);
     return res.json({ title: cleanTitle });
   } catch (err) {
     console.error('Suggest title error:', err);
-    res.status(500).json({ error: '토픽 제목 자동 추천에 실패했습니다.' });
+    res.status(500).json({ error: '?좏뵿 ?쒕ぉ ?먮룞 異붿쿇???ㅽ뙣?덉뒿?덈떎.' });
   }
 });
 
@@ -1081,24 +1081,24 @@ router.post('/topics/suggest-title', async (req, res) => {
 router.post('/recommend-topics', async (req, res) => {
   try {
     const { existingTitles, isAcronym } = req.body;
-    const systemInstruction = `당신은 대한민국 국가기술자격 기술사(특히 토질및기초기술사, 토목시공기술사 등 토목공학/지반공학 관련) 시험의 최고 전문 교육 튜터입니다.
-공부하고 있는 수험생이 새로운 공부 주제(토픽)를 추천해달라고 요청했습니다.
-제공되는 [기존 암기 리스트]에 존재하는 주제들과 **절대 겹치지 않으면서**, 기술사 시험 준비에 반드시 필요한 핵심적이고 학술적인 전공 주제 3개를 선별하여 한글로 추천해 주십시오.
+    const systemInstruction = `?뱀떊? ??쒕?援?援??湲곗닠?먭꺽 湲곗닠???뱁엳 ?좎쭏諛뤾린珥덇린?좎궗, ?좊ぉ?쒓났湲곗닠?????좊ぉ怨듯븰/吏諛섍났??愿?? ?쒗뿕??理쒓퀬 ?꾨Ц 援먯쑁 ?쒗꽣?낅땲??
+怨듬??섍퀬 ?덈뒗 ?섑뿕?앹씠 ?덈줈??怨듬? 二쇱젣(?좏뵿)瑜?異붿쿇?대떖?쇨퀬 ?붿껌?덉뒿?덈떎.
+?쒓났?섎뒗 [湲곗〈 ?붽린 由ъ뒪????議댁옱?섎뒗 二쇱젣?ㅺ낵 **?덈? 寃뱀튂吏 ?딆쑝硫댁꽌**, 湲곗닠???쒗뿕 以鍮꾩뿉 諛섎뱶???꾩슂???듭떖?곸씠怨??숈닠?곸씤 ?꾧났 二쇱젣 3媛쒕? ?좊퀎?섏뿬 ?쒓?濡?異붿쿇??二쇱떗?쒖삤.
 
-[추천 기준]:
-1. 분야: 토질및기초기술사 자격시험(지반공학, 토질역학, 기초공학, 사면안정, 터널공학, 흙막이, 지반개량 등)에서 매우 높은 빈출 비중을 차지하는 중요한 공식, 개념, 이론, 현상, 공법, 시험명 등이어야 합니다.
-2. 제외 항목: 제공되는 [기존 암기 리스트]에 이미 포함된 주제는 절대 중복하여 추천하지 마십시오.
-3. 다양성: 매번 비슷한 주제만 반복하지 말고, 토질역학/기초공학/사면공학/터널 및 지하공간/토류벽/연약지반 개량 등 다양한 세부 분야에서 완전히 새롭고 다양한 주제를 고르게 무작위 추천해 주십시오.
-4. 형식: 오직 추천할 단어 3개만을 줄바꿈(\\n)으로 구분하여 깔끔하게 한글로 출력하십시오. 서론, 부연 설명, 숫자 번호(예: 1., 2.), 특수문자, 따옴표 등은 절대 포함하지 마십시오.
-5. 예시 출력 형태:
-과잉간극수압 소산 메커니즘
-사면 쐐기파괴 안정해석
-테르자기 극한지지력`;
+[異붿쿇 湲곗?]:
+1. 遺꾩빞: ?좎쭏諛뤾린珥덇린?좎궗 ?먭꺽?쒗뿕(吏諛섍났?? ?좎쭏??븰, 湲곗큹怨듯븰, ?щ㈃?덉젙, ?곕꼸怨듯븰, ?숇쭑?? 吏諛섍컻?????먯꽌 留ㅼ슦 ?믪? 鍮덉텧 鍮꾩쨷??李⑥??섎뒗 以묒슂??怨듭떇, 媛쒕뀗, ?대줎, ?꾩긽, 怨듬쾿, ?쒗뿕紐??깆씠?댁빞 ?⑸땲??
+2. ?쒖쇅 ??ぉ: ?쒓났?섎뒗 [湲곗〈 ?붽린 由ъ뒪?????대? ?ы븿??二쇱젣???덈? 以묐났?섏뿬 異붿쿇?섏? 留덉떗?쒖삤.
+3. ?ㅼ뼇?? 留ㅻ쾲 鍮꾩듂??二쇱젣留?諛섎났?섏? 留먭퀬, ?좎쭏??븰/湲곗큹怨듯븰/?щ㈃怨듯븰/?곕꼸 諛?吏?섍났媛??좊쪟踰??곗빟吏諛?媛쒕웾 ???ㅼ뼇???몃? 遺꾩빞?먯꽌 ?꾩쟾???덈∼怨??ㅼ뼇??二쇱젣瑜?怨좊Ⅴ寃?臾댁옉??異붿쿇??二쇱떗?쒖삤.
+4. ?뺤떇: ?ㅼ쭅 異붿쿇???⑥뼱 3媛쒕쭔??以꾨컮轅?\\n)?쇰줈 援щ텇?섏뿬 源붾걫?섍쾶 ?쒓?濡?異쒕젰?섏떗?쒖삤. ?쒕줎, 遺???ㅻ챸, ?レ옄 踰덊샇(?? 1., 2.), ?뱀닔臾몄옄, ?곗샂???깆? ?덈? ?ы븿?섏? 留덉떗?쒖삤.
+5. ?덉떆 異쒕젰 ?뺥깭:
+怨쇱엵媛꾧레?섏븬 ?뚯궛 硫붿빱?덉쬁
+?щ㈃ ?먭린?뚭눼 ?덉젙?댁꽍
+?뚮Ⅴ?먭린 洹뱁븳吏吏??;
 
-    const userPrompt = `[기존 암기 리스트]:
-${Array.isArray(existingTitles) ? existingTitles.join('\n') : '없음'}
+    const userPrompt = `[湲곗〈 ?붽린 由ъ뒪??:
+${Array.isArray(existingTitles) ? existingTitles.join('\n') : '?놁쓬'}
 
-위 기존 리스트에 포함되지 않은 새로운 토질및기초기술사 필수 암기 ${isAcronym ? '두문자(앞글자) 암기법' : '개요'} 주제 단어 3개를 매우 다양하고 창의적으로 무작위 선정하여 추천해 주십시오. (무작위 시드: ${Math.random()}, 타임스탬프: ${Date.now()})`;
+??湲곗〈 由ъ뒪?몄뿉 ?ы븿?섏? ?딆? ?덈줈???좎쭏諛뤾린珥덇린?좎궗 ?꾩닔 ?붽린 ${isAcronym ? '?먮Ц???욊??? ?붽린踰? : '媛쒖슂'} 二쇱젣 ?⑥뼱 3媛쒕? 留ㅼ슦 ?ㅼ뼇?섍퀬 李쎌쓽?곸쑝濡?臾댁옉???좎젙?섏뿬 異붿쿇??二쇱떗?쒖삤. (臾댁옉???쒕뱶: ${Math.random()}, ??꾩뒪?ы봽: ${Date.now()})`;
 
     const responseText = await callLLMWithFailover(
       systemInstruction,
@@ -1126,26 +1126,26 @@ router.post('/table/suggest-title-and-refine', async (req, res) => {
   try {
     const { tableHtml, chatHistory } = req.body;
     if (!tableHtml) {
-      return res.status(400).json({ error: '표 내용이 존재하지 않습니다.' });
+      return res.status(400).json({ error: '???댁슜??議댁옱?섏? ?딆뒿?덈떎.' });
     }
 
-    const systemInstruction = `당신은 대한민국 국가기술자격 기술사 시험(토질및기초기술사, 토목시공기술사, 토목구조기술사 등 토목공학 및 지반공학 분야) 전문 튜터입니다.
-사용자가 공부하던 중 실시간 튜터 창에서 내보내고자 하는 마크다운 표가 입력됩니다.
-해당 표의 원본 HTML 내용과 실시간 튜터 대화 맥락을 분석하여:
-1. 해당 표에 가장 걸맞은 전문적이고 깔끔한 핵심 제목(Title)을 한글로 한 줄(공백 포함 25자 이내)로 도출하십시오. (학자명/공법명 등을 적절히 반영하여 '~~ 비교표' 또는 '~~ 분석표' 등 형식으로 작성)
-2. 표의 전체 내용을 지반공학/토질역학 표준 용어 및 기술사 시험 서술 양식에 맞게 다듬은 정제된 HTML table 마크업을 반환하십시오. 원본 표의 행과 열 구조를 그대로 유지하되, 오탈자가 있거나 부자연스러운 서술이 있다면 깔끔하게 다듬으십시오. (별도의 css 스타일이나 wrapper div는 포함하지 말고 오직 <table>...</table> 형태만 출력해야 합니다.)
+    const systemInstruction = `?뱀떊? ??쒕?援?援??湲곗닠?먭꺽 湲곗닠???쒗뿕(?좎쭏諛뤾린珥덇린?좎궗, ?좊ぉ?쒓났湲곗닠?? ?좊ぉ援ъ“湲곗닠?????좊ぉ怨듯븰 諛?吏諛섍났??遺꾩빞) ?꾨Ц ?쒗꽣?낅땲??
+?ъ슜?먭? 怨듬??섎뜕 以??ㅼ떆媛??쒗꽣 李쎌뿉???대낫?닿퀬???섎뒗 留덊겕?ㅼ슫 ?쒓? ?낅젰?⑸땲??
+?대떦 ?쒖쓽 ?먮낯 HTML ?댁슜怨??ㅼ떆媛??쒗꽣 ???留λ씫??遺꾩꽍?섏뿬:
+1. ?대떦 ?쒖뿉 媛??嫄몃쭪? ?꾨Ц?곸씠怨?源붾걫???듭떖 ?쒕ぉ(Title)???쒓?濡???以?怨듬갚 ?ы븿 25???대궡)濡??꾩텧?섏떗?쒖삤. (?숈옄紐?怨듬쾿紐??깆쓣 ?곸젅??諛섏쁺?섏뿬 '~~ 鍮꾧탳?? ?먮뒗 '~~ 遺꾩꽍?? ???뺤떇?쇰줈 ?묒꽦)
+2. ?쒖쓽 ?꾩껜 ?댁슜??吏諛섍났???좎쭏??븰 ?쒖? ?⑹뼱 諛?湲곗닠???쒗뿕 ?쒖닠 ?묒떇??留욊쾶 ?ㅻ벉? ?뺤젣??HTML table 留덊겕?낆쓣 諛섑솚?섏떗?쒖삤. ?먮낯 ?쒖쓽 ?됯낵 ??援ъ“瑜?洹몃?濡??좎??섎릺, ?ㅽ깉?먭? ?덇굅??遺?먯뿰?ㅻ윭???쒖닠???덈떎硫?源붾걫?섍쾶 ?ㅻ벉?쇱떗?쒖삤. (蹂꾨룄??css ?ㅽ??쇱씠??wrapper div???ы븿?섏? 留먭퀬 ?ㅼ쭅 <table>...</table> ?뺥깭留?異쒕젰?댁빞 ?⑸땲??)
 
-반드시 다음 JSON 형식 규격으로만 정확하게 응답하십시오. (설명이나 마크다운 코드 블록 기호는 절대 출력하지 마십시오):
+諛섎뱶???ㅼ쓬 JSON ?뺤떇 洹쒓꺽?쇰줈留??뺥솗?섍쾶 ?묐떟?섏떗?쒖삤. (?ㅻ챸?대굹 留덊겕?ㅼ슫 肄붾뱶 釉붾줉 湲고샇???덈? 異쒕젰?섏? 留덉떗?쒖삤):
 {
-  "title": "여기에 최적화된 표 제목 기입",
-  "html": "여기에 정제된 <table>...</table> HTML 마크업 기입"
+  "title": "?ш린??理쒖쟻?붾맂 ???쒕ぉ 湲곗엯",
+  "html": "?ш린???뺤젣??<table>...</table> HTML 留덊겕??湲곗엯"
 }`;
 
     const chatContext = Array.isArray(chatHistory)
-      ? chatHistory.map(h => `${h.role === 'user' ? '사용자' : 'AI 튜터'}: ${h.text}`).join('\n')
-      : '(대화 없음)';
+      ? chatHistory.map(h => `${h.role === 'user' ? '?ъ슜?? : 'AI ?쒗꽣'}: ${h.text}`).join('\n')
+      : '(????놁쓬)';
 
-    const userPrompt = `[원본 표 HTML]:\n${tableHtml}\n\n[실시간 튜터 대화 맥락]:\n${chatContext}`;
+    const userPrompt = `[?먮낯 ??HTML]:\n${tableHtml}\n\n[?ㅼ떆媛??쒗꽣 ???留λ씫]:\n${chatContext}`;
 
     const responseText = await callLLMWithFailover(systemInstruction, userPrompt, null, 'tutor');
     
@@ -1161,15 +1161,15 @@ router.post('/table/suggest-title-and-refine', async (req, res) => {
     try {
       const result = parseLlmJson(cleanJsonText);
       res.json({
-        title: (result.title || '새 비교표').replace(/^[📊\s\t\n]+/, '').trim(),
+        title: (result.title || '??鍮꾧탳??).replace(/^[?뱤\s\t\n]+/, '').trim(),
         html: result.html || tableHtml
       });
     } catch (parseErr) {
       console.warn('Refined table JSON parsing failed, using fallback regex:', parseErr);
-      let fallbackTitle = '새 비교표';
+      let fallbackTitle = '??鍮꾧탳??;
       const titleMatch = responseText.match(/"title"\s*:\s*"([^"]+)"/);
       if (titleMatch && titleMatch[1]) {
-        fallbackTitle = titleMatch[1].replace(/^[📊\s\t\n]+/, '').trim();
+        fallbackTitle = titleMatch[1].replace(/^[?뱤\s\t\n]+/, '').trim();
       }
       let fallbackHtml = tableHtml;
       const htmlMatch = responseText.match(/"html"\s*:\s*"([\s\S]+?)"\s*}/);
@@ -1183,7 +1183,7 @@ router.post('/table/suggest-title-and-refine', async (req, res) => {
     }
   } catch (err) {
     console.error('Refine table route error:', err);
-    res.status(500).json({ error: '서버 오류가 발생했습니다.' });
+    res.status(500).json({ error: '?쒕쾭 ?ㅻ쪟媛 諛쒖깮?덉뒿?덈떎.' });
   }
 });
 
@@ -1192,29 +1192,29 @@ router.post('/table/regenerate', async (req, res) => {
   try {
     const { title, headers, rowHeaders } = req.body;
     if (!title || !headers || !rowHeaders) {
-      return res.status(400).json({ error: '필수 매개변수(title, headers, rowHeaders)가 누락되었습니다.' });
+      return res.status(400).json({ error: '?꾩닔 留ㅺ컻蹂??title, headers, rowHeaders)媛 ?꾨씫?섏뿀?듬땲??' });
     }
 
-    const systemInstruction = `당신은 지반공학 및 토목공학 전공을 지도하는 대학교수이자 전문 AI 튜터입니다.
-사용자가 제공한 표의 제목(주제), 열 헤더(첫 번째 행), 행 헤더(첫 번째 열)를 기준으로 표의 나머지 본문 셀 내용을 전공 지식에 맞게 전문적으로 채워주세요.
+    const systemInstruction = `?뱀떊? 吏諛섍났??諛??좊ぉ怨듯븰 ?꾧났??吏?꾪븯????숆탳?섏씠???꾨Ц AI ?쒗꽣?낅땲??
+?ъ슜?먭? ?쒓났???쒖쓽 ?쒕ぉ(二쇱젣), ???ㅻ뜑(泥?踰덉㎏ ??, ???ㅻ뜑(泥?踰덉㎏ ??瑜?湲곗??쇰줈 ?쒖쓽 ?섎㉧吏 蹂몃Ц ? ?댁슜???꾧났 吏?앹뿉 留욊쾶 ?꾨Ц?곸쑝濡?梨꾩썙二쇱꽭??
 
-반드시 다음 형식의 JSON 객체만 반환해야 합니다 (설명이나 마크다운 코드 블록 기호는 절대 출력하지 마십시오):
+諛섎뱶???ㅼ쓬 ?뺤떇??JSON 媛앹껜留?諛섑솚?댁빞 ?⑸땲??(?ㅻ챸?대굹 留덊겕?ㅼ슫 肄붾뱶 釉붾줉 湲고샇???덈? 異쒕젰?섏? 留덉떗?쒖삤):
 {
   "rows": [
-    ["행헤더1", "본문셀1-1", "본문셀1-2", ...],
-    ["행헤더2", "본문셀2-1", "본문셀2-2", ...]
+    ["?됲뿤??", "蹂몃Ц?1-1", "蹂몃Ц?1-2", ...],
+    ["?됲뿤??", "蹂몃Ц?2-1", "蹂몃Ц?2-2", ...]
   ]
 }
 
-주의사항:
-1. 각 행의 첫 번째 원소는 반드시 사용자가 제공한 행 헤더와 동일해야 합니다.
-2. 행 헤더와 열 헤더를 연계 분석하여 지반공학 전공 수준의 구체적이고 전문적인 지식을 한글로 작성해 주세요.
-3. 마크다운 기호나 추가적인 텍스트 설명은 배제하고 오직 위 형식의 JSON 데이터만 출력해 주세요. JSON 형식이 깨지면 안 됩니다.`;
+二쇱쓽?ы빆:
+1. 媛??됱쓽 泥?踰덉㎏ ?먯냼??諛섎뱶???ъ슜?먭? ?쒓났?????ㅻ뜑? ?숈씪?댁빞 ?⑸땲??
+2. ???ㅻ뜑? ???ㅻ뜑瑜??곌퀎 遺꾩꽍?섏뿬 吏諛섍났???꾧났 ?섏???援ъ껜?곸씠怨??꾨Ц?곸씤 吏?앹쓣 ?쒓?濡??묒꽦??二쇱꽭??
+3. 留덊겕?ㅼ슫 湲고샇??異붽??곸씤 ?띿뒪???ㅻ챸? 諛곗젣?섍퀬 ?ㅼ쭅 ???뺤떇??JSON ?곗씠?곕쭔 異쒕젰??二쇱꽭?? JSON ?뺤떇??源⑥?硫????⑸땲??`;
 
     const userPrompt = `
-- 표 제목(주제): ${title}
-- 열 헤더: ${JSON.stringify(headers)}
-- 행 헤더(첫 번째 열의 목록): ${JSON.stringify(rowHeaders)}
+- ???쒕ぉ(二쇱젣): ${title}
+- ???ㅻ뜑: ${JSON.stringify(headers)}
+- ???ㅻ뜑(泥?踰덉㎏ ?댁쓽 紐⑸줉): ${JSON.stringify(rowHeaders)}
 `;
 
     const responseText = await callLLMWithFailover(systemInstruction, userPrompt, null, 'tutor', { temperature: 0.2 });
@@ -1233,15 +1233,15 @@ router.post('/table/regenerate', async (req, res) => {
       if (result && Array.isArray(result.rows)) {
         res.json({ success: true, rows: result.rows });
       } else {
-        throw new Error('응답 형식이 올바르지 않습니다.');
+        throw new Error('?묐떟 ?뺤떇???щ컮瑜댁? ?딆뒿?덈떎.');
       }
     } catch (parseErr) {
       console.error('Regenerate table JSON parsing failed:', parseErr, 'Raw:', responseText);
-      res.status(500).json({ error: 'AI 응답 분석 실패. 다시 시도해 주세요.' });
+      res.status(500).json({ error: 'AI ?묐떟 遺꾩꽍 ?ㅽ뙣. ?ㅼ떆 ?쒕룄??二쇱꽭??' });
     }
   } catch (err) {
     console.error('Regenerate table error:', err);
-    res.status(500).json({ error: err.message || '표 내용 재작성에 실패했습니다.' });
+    res.status(500).json({ error: err.message || '???댁슜 ?ъ옉?깆뿉 ?ㅽ뙣?덉뒿?덈떎.' });
   }
 });
 
@@ -1249,7 +1249,7 @@ router.post('/table/regenerate', async (req, res) => {
 router.post('/session/answersheet/upload', upload.single('pdf'), async (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ error: '업로드된 파일이 없습니다.' });
+      return res.status(400).json({ error: '?낅줈?쒕맂 ?뚯씪???놁뒿?덈떎.' });
     }
     const pdfName = req.body.fileNameUtf8 || req.file.originalname || '';
 
@@ -1286,7 +1286,7 @@ router.post('/session/answersheet/upload', upload.single('pdf'), async (req, res
     res.json({
       theories: [{
         title: pdfName.replace(/\.[^/.]+$/, ""), // Remove file extension
-        concept: '업로드한 본문 보고서가 연동되었습니다.',
+        concept: '?낅줈?쒗븳 蹂몃Ц 蹂닿퀬?쒓? ?곕룞?섏뿀?듬땲??',
         assumptions: '',
         formula: '',
         answer: '',
@@ -1296,7 +1296,7 @@ router.post('/session/answersheet/upload', upload.single('pdf'), async (req, res
     });
   } catch (err) {
     console.error('POST /api/session/answersheet/upload error:', err);
-    res.status(500).json({ error: err.message || 'PDF/HTML 업로드에 실패했습니다.' });
+    res.status(500).json({ error: err.message || 'PDF/HTML ?낅줈?쒖뿉 ?ㅽ뙣?덉뒿?덈떎.' });
   }
 });
 
@@ -1307,10 +1307,10 @@ router.post('/session/answersheet/add-from-topic', async (req, res) => {
     // 1. Fetch topic from DB
     const topic = await dbQuery.get('SELECT title, category, pdf_name, pdf_data, pdf_url FROM topics WHERE id = ?', [topicId]);
     if (!topic) {
-      return res.status(404).json({ error: '해당 토픽을 찾을 수 없습니다.' });
+      return res.status(404).json({ error: '?대떦 ?좏뵿??李얠쓣 ???놁뒿?덈떎.' });
     }
     if (!topic.pdf_data && !topic.pdf_url) {
-      return res.status(400).json({ error: '해당 토픽에 첨부된 원본 보고서 파일이 없습니다.' });
+      return res.status(400).json({ error: '?대떦 ?좏뵿??泥⑤????먮낯 蹂닿퀬???뚯씪???놁뒿?덈떎.' });
     }
 
     const pdfName = topic.pdf_name || '';
@@ -1331,18 +1331,18 @@ router.post('/session/answersheet/add-from-topic', async (req, res) => {
     res.json({
       theories: [{
         title: topic.title,
-        concept: '연동된 토픽의 본문 보고서입니다.',
+        concept: '?곕룞???좏뵿??蹂몃Ц 蹂닿퀬?쒖엯?덈떎.',
         assumptions: '',
         formula: '',
         answer: '',
         answersheet_report_id: reportId,
         pdf_name: pdfName,
-        category: topic.category || '일반'
+        category: topic.category || '?쇰컲'
       }]
     });
   } catch (err) {
     console.error('POST /api/session/answersheet/add-from-topic error:', err);
-    res.status(500).json({ error: err.message || '보고서 연동에 실패했습니다.' });
+    res.status(500).json({ error: err.message || '蹂닿퀬???곕룞???ㅽ뙣?덉뒿?덈떎.' });
   }
 });
 
