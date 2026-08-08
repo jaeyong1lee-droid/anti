@@ -445,10 +445,12 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
   const carryOverShorts = (carryOverQuestions || []).filter(q => (q.type || '').includes('단답형') && q !== qIntro && q !== qFormula);
   const carryOverTables = (carryOverQuestions || []).filter(q => ((q.type || '').includes('표채우기') || q.subtype === '표채우기') && q !== qIntro && q !== qFormula);
   const carryOverMcs = (carryOverQuestions || []).filter(q => ((q.type || '').includes('객관식') || (q.options && q.options.length > 0)) && q !== qIntro && q !== qFormula);
+  const carryOverGraph = (carryOverQuestions || []).filter(q => q.type === '주관식 (그래프해석)' && q !== qIntro && q !== qFormula);
 
   const subjsShort = [...questions.filter(q => q.type === '주관식 (단답형)' && q !== qIntro && q !== qFormula), ...carryOverShorts];
   const subjsTable = [...questions.filter(q => (q.type === '주관식 (표채우기)' || q.subtype === '표채우기') && q !== qIntro && q !== qFormula), ...carryOverTables];
   const mcs = [...questions.filter(q => (q.type === '객관식 (4지선다)' || (q.options && q.options.length > 0)) && q !== qIntro && q !== qFormula), ...carryOverMcs];
+  const graphs = [...questions.filter(q => q.type === '주관식 (그래프해석)' && q !== qIntro && q !== qFormula), ...carryOverGraph];
 
   // AI-generated short subjectives (remove duplicates)
   let finalSubjsShort = [];
@@ -503,6 +505,7 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
   });
 
   const shuffledMcs = shuffleArray([...finalMcs]);
+  const finalGraph = graphs[0];
 
   // Fixed 13 questions returned list layout
   return [
@@ -510,13 +513,13 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
     qFormula,                   // 2번 주관식 (index 1)
     shuffledMcs[0],             // 3번 객관식 (index 2)
     finalCompTables[0],         // 4번 표채우기 1 (index 3) -> Comparison Table 1
-    shuffledMcs[1],             // 5번 객관식 (index 4)
+    finalGraph,                 // 5번 주관식 (그래프해석) (index 4)
     finalShorts4[0],            // 6번 주관식 (index 5) -> Short Subjective 1 (Concept 1)
     finalFlowchart,             // 7번 표채우기 (index 6) -> Flowchart Table
     finalCompTables[1],         // 8번 표채우기 2 (index 7) -> Comparison Table 2
-    shuffledMcs[2],             // 9번 객관식 (index 8)
+    shuffledMcs[1],             // 9번 객관식 (index 8)
     finalShorts4[1],            // 10번 주관식 (index 9) -> Short Subjective 2 (Concept 2)
-    shuffledMcs[3],             // 11번 객관식 (index 10)
+    shuffledMcs[2],             // 11번 객관식 (index 10)
     finalShorts4[2],            // 12번 주관식 (index 11) -> Short Subjective 3 (Concept 3)
     finalShorts4[3]             // 13번 주관식 (index 12) -> Short Subjective 4 (Field/Countermeasure)
   ].filter(Boolean);
