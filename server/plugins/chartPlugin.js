@@ -7,7 +7,7 @@ export const CHART_DIAGRAM_PROMPT = `
    {
      "title": "그래프 한글 제목",
      "xAxisLabel": "X축 레이블 (예: 시간 $t$)",
-     "yAxisLabel": "Y축 레이블 (예: 응력 $\\sigma$)",
+     "yAxisLabel": "Y축 레이블 (예: 응력 $\\\\sigma$)",
      "lines": [
        { "name": "실측 데이터", "dataKey": "y1", "stroke": "#38bdf8" },
        { "name": "추세선", "dataKey": "y2", "stroke": "#f43f5e" }
@@ -19,8 +19,9 @@ export const CHART_DIAGRAM_PROMPT = `
      ]
    }
    \`\`\`
-4. [수식(KaTeX) 적용 규칙]:
-   - \`xAxisLabel\`, \`yAxisLabel\`, \`name\`(범례 항목), \`x\`(X축 눈금) 값 내부에 수학 기호나 그리스 문자(예: $\\sigma$, $\\epsilon$, $t_0$ 등)가 들어갈 경우, 프론트엔드가 렌더링 엔진(KaTeX)을 자동 주입하므로 인라인 수식 \`$ ... $\`을 자유롭게 사용하십시오.
+4. [수식(KaTeX) 적용 및 JSON 이스케이프 철칙]:
+   - \`xAxisLabel\`, \`yAxisLabel\`, \`name\`(범례 항목), \`x\`(X축 눈금) 값 내부에 수학 기호나 그리스 문자(예: $\\\\sigma$, $\\\\epsilon$, $t_0$ 등)가 들어갈 경우 인라인 수식 \`$ ... $\`을 자유롭게 사용하십시오.
+   - ⚠️ [치명적 오류 주의]: JSON 문자열 내부에서 백슬래시(\\)를 사용할 때는 **반드시 이중 백슬래시(\\\\\\\\)로 이스케이프**해야 합니다. (잘못된 예: "$\sigma$", 올바른 예: "$\\\\sigma$")
 5. [데이터 스케일링 규칙]:
    - \`data\` 배열의 \`x\` 값은 문자열 또는 숫자로 자유롭게 입력하되 순서대로 입력해야 합니다. \`y1\`, \`y2\` 등 \`dataKey\`에 매핑되는 값은 반드시 실수 또는 정수(Number) 형태여야 차트가 그려집니다.
 `;

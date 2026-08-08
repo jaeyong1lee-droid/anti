@@ -255,9 +255,19 @@ export const LatexRenderer = React.memo(function LatexRenderer({
             try {
               // Strip any extra markdown formatting or backticks the AI might have included inside the block
               const cleanJson = part.content.replace(/```json/gi, '').replace(/```/g, '').trim();
-              chartData = JSON.parse(cleanJson);
+              try {
+                chartData = JSON.parse(cleanJson);
+              } catch (e1) {
+                // Fallback: AI often forgets to escape backslashes for KaTeX in JSON (e.g. \sigma instead of \\sigma)
+                try {
+                  const escapedJson = cleanJson.replace(/\\([a-zA-Z])/g, '\\\\$1');
+                  chartData = JSON.parse(escapedJson);
+                } catch (e2) {
+                  console.error("Failed to parse chart JSON even after escaping:", e2);
+                }
+              }
             } catch (e) {
-              console.error("Failed to parse chart JSON:", e);
+              console.error("Unexpected error parsing chart JSON:", e);
             }
             return (
               <div key={pIdx} className="w-full">
