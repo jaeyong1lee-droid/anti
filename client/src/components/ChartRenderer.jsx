@@ -10,19 +10,30 @@ import {
   ResponsiveContainer
 } from 'recharts';
 
+// Helper to render mixed text and KaTeX (e.g. "응력 $\\sigma$")
+const renderMixedText = (text) => {
+  if (!text || typeof text !== 'string') return text;
+  if (!window.katex) return text;
+  
+  try {
+    return text.replace(/\$([^\$]+)\$/g, (match, math) => {
+      try {
+        return window.katex.renderToString(math.trim(), { throwOnError: false });
+      } catch (e) {
+        return match;
+      }
+    });
+  } catch (e) {
+    return text;
+  }
+};
+
 // Custom Tooltip with KaTeX support via dangerouslySetInnerHTML
 const CustomTooltip = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
     // Process label through KaTeX if window.katex is available, else leave as is
     const renderLabel = () => {
-      if (window.katex && label && typeof label === 'string') {
-        try {
-          return <div dangerouslySetInnerHTML={{ __html: window.katex.renderToString(label) }} />;
-        } catch (e) {
-          return <span>{label}</span>;
-        }
-      }
-      return <span>{label}</span>;
+      return <div dangerouslySetInnerHTML={{ __html: renderMixedText(label) }} />;
     };
 
     return (
@@ -30,12 +41,7 @@ const CustomTooltip = ({ active, payload, label }) => {
         <div className="font-bold mb-2 border-b border-slate-700/60 pb-1">{renderLabel()}</div>
         {payload.map((entry, index) => {
           const renderName = () => {
-            if (window.katex && entry.name && typeof entry.name === 'string') {
-              try {
-                return <span dangerouslySetInnerHTML={{ __html: window.katex.renderToString(entry.name) }} />;
-              } catch(e) {}
-            }
-            return <span>{entry.name}</span>;
+            return <span dangerouslySetInnerHTML={{ __html: renderMixedText(entry.name) }} />;
           };
           
           return (
@@ -59,12 +65,7 @@ const CustomLegend = (props) => {
     <ul className="flex flex-wrap items-center justify-end gap-x-4 gap-y-2 mt-1 mb-2 max-w-full">
       {payload.map((entry, index) => {
         const renderText = () => {
-          if (window.katex && entry.value && typeof entry.value === 'string') {
-            try {
-              return <span dangerouslySetInnerHTML={{ __html: window.katex.renderToString(entry.value) }} />;
-            } catch(e) {}
-          }
-          return <span>{entry.value}</span>;
+          return <span dangerouslySetInnerHTML={{ __html: renderMixedText(entry.value) }} />;
         };
 
         return (
@@ -91,12 +92,7 @@ const ChartRenderer = ({ data }) => {
   // Custom tick formatter to render KaTeX in Axis ticks (via <foreignObject>)
   // Recharts XAxis tick supports React elements
   const CustomTickX = ({ x, y, payload }) => {
-    let tickHtml = payload.value;
-    if (window.katex && typeof payload.value === 'string') {
-      try {
-        tickHtml = window.katex.renderToString(payload.value);
-      } catch (e) {}
-    }
+    const tickHtml = renderMixedText(payload.value);
     return (
       <g transform={`translate(${x},${y})`}>
         <foreignObject x="-30" y="5" width="60" height="30" style={{ overflow: 'visible' }}>
@@ -109,12 +105,7 @@ const ChartRenderer = ({ data }) => {
   };
 
   const CustomTickY = ({ x, y, payload }) => {
-    let tickHtml = payload.value;
-    if (window.katex && typeof payload.value === 'string') {
-      try {
-        tickHtml = window.katex.renderToString(payload.value);
-      } catch (e) {}
-    }
+    const tickHtml = renderMixedText(payload.value);
     return (
       <g transform={`translate(${x},${y})`}>
         <foreignObject x="-40" y="-10" width="30" height="20" style={{ overflow: 'visible' }}>
@@ -128,13 +119,10 @@ const ChartRenderer = ({ data }) => {
 
   const CustomXAxisLabel = ({ viewBox }) => {
     const { x = 0, y = 0, width = 0 } = viewBox || {};
-    let html = xAxisLabel;
-    if (window.katex && html && typeof html === 'string') {
-      try { html = window.katex.renderToString(html); } catch(e){}
-    }
+    const html = renderMixedText(xAxisLabel);
     return (
       <g>
-        <foreignObject x={x} y={y - 5} width={width} height={30} style={{ overflow: 'visible' }}>
+        <foreignObject x={x} y={y + 15} width={width} height={30} style={{ overflow: 'visible' }}>
           <div xmlns="http://www.w3.org/1999/xhtml" className="flex items-center justify-center text-[12px] font-bold text-slate-400 w-full h-full text-center">
             <span dangerouslySetInnerHTML={{ __html: html }} />
           </div>
@@ -145,12 +133,9 @@ const ChartRenderer = ({ data }) => {
 
   const CustomYAxisLabel = ({ viewBox }) => {
     const { x = 0, y = 0, height = 0 } = viewBox || {};
-    let html = yAxisLabel;
-    if (window.katex && html && typeof html === 'string') {
-      try { html = window.katex.renderToString(html); } catch(e){}
-    }
+    const html = renderMixedText(yAxisLabel);
     return (
-      <g transform={`translate(${x + 15}, ${y + height / 2}) rotate(-90)`}>
+      <g transform={`translate(${x - 30}, ${y + height / 2}) rotate(-90)`}>
         <foreignObject x={-height / 2} y={-15} width={height} height={30} style={{ overflow: 'visible' }}>
           <div xmlns="http://www.w3.org/1999/xhtml" className="flex items-center justify-center text-[12px] font-bold text-slate-400 w-full h-full text-center">
             <span dangerouslySetInnerHTML={{ __html: html }} />
@@ -175,7 +160,7 @@ const ChartRenderer = ({ data }) => {
       <div className="p-4 w-full h-[320px] sm:h-[400px]">
         {/* Recharts Container */}
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={chartData} margin={{ top: 10, right: 30, left: 10, bottom: 30 }}>
+          <LineChart data={chartData} margin={{ top: 10, right: 30, left: 30, bottom: 45 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.5} />
             <XAxis 
               dataKey="x" 
