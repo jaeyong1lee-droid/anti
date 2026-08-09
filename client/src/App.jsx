@@ -13748,6 +13748,33 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
     }
   };
 
+  const handleAcronymClipboardRead = async () => {
+    try {
+      if (navigator.clipboard && typeof navigator.clipboard.read === 'function') {
+        const items = await navigator.clipboard.read();
+        for (const item of items) {
+          const imageTypes = item.types.filter(type => type.startsWith('image/'));
+          if (imageTypes.length > 0) {
+            const blob = await item.getType(imageTypes[0]);
+            const file = new File([blob], 'pasted-image.png', { type: blob.type });
+            const compressed = await compressImageFile(file);
+            if (compressed) {
+              setAcronymPromptImage({ ...compressed, name: 'clipboard.png' });
+              showNotification('클립보드 이미지가 첨부되었습니다.', 'success');
+            }
+            return;
+          }
+        }
+        showNotification('클립보드에 이미지가 없습니다.', 'error');
+      } else {
+        showNotification('이 브라우저에서는 클립보드 읽기를 지원하지 않습니다.', 'error');
+      }
+    } catch (err) {
+      console.error('Clipboard read failed:', err);
+      showNotification('클립보드 접근 권한이 없거나 실패했습니다.', 'error');
+    }
+  };
+
   const handleAcronymPromptRequest = (chatType = 'sidebar') => {
     setAcronymPromptTopic('');
     setAcronymPromptImage(null);
@@ -30145,62 +30172,6 @@ ${itemsStr}
                 앞글자(두문자) 암기법 생성기
               </h3>
               <div className="flex items-center gap-2">
-                <input 
-                  type="file" 
-                  accept="image/*" 
-                  onChange={handleAcronymFileSelect} 
-                  className="hidden" 
-                  id="acronym-image-upload" 
-                />
-                <label 
-                  htmlFor="acronym-image-upload" 
-                  className={`p-1.5 rounded-lg cursor-pointer transition-colors flex items-center justify-center ${acronymPromptImage ? 'bg-emerald-500/20 text-emerald-400' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
-                  title={acronymPromptImage ? "첨부된 이미지 변경" : "참고 스크린샷 첨부"}
-                >
-                  <Image size={16} />
-                </label>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    try {
-                      if (navigator.clipboard && typeof navigator.clipboard.read === 'function') {
-                        const items = await navigator.clipboard.read();
-                        for (const item of items) {
-                          const imageTypes = item.types.filter(type => type.startsWith('image/'));
-                          if (imageTypes.length > 0) {
-                            const blob = await item.getType(imageTypes[0]);
-                            const file = new File([blob], 'pasted-image.png', { type: blob.type });
-                            const compressed = await compressImageFile(file);
-                            if (compressed) {
-                              setAcronymPromptImage({ ...compressed, name: 'clipboard.png' });
-                              showNotification('클립보드 이미지가 첨부되었습니다.', 'success');
-                            }
-                            return;
-                          }
-                        }
-                        showNotification('클립보드에 이미지가 없습니다.', 'error');
-                      } else {
-                        showNotification('이 브라우저에서는 클립보드 읽기를 지원하지 않습니다.', 'error');
-                      }
-                    } catch (err) {
-                      console.error('Clipboard read failed:', err);
-                      showNotification('클립보드 접근 권한이 없거나 실패했습니다.', 'error');
-                    }
-                  }}
-                  className="p-1.5 rounded-lg cursor-pointer transition-colors flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800"
-                  title="클립보드에서 붙여넣기"
-                >
-                  <Clipboard size={16} />
-                </button>
-                {acronymPromptImage && (
-                  <button 
-                    onClick={() => setAcronymPromptImage(null)} 
-                    className="p-1.5 text-rose-400 hover:bg-rose-500/20 hover:text-rose-300 rounded-lg transition-colors flex items-center justify-center"
-                    title="첨부된 이미지 삭제"
-                  >
-                    <X size={14} />
-                  </button>
-                )}
                 <div className="w-px h-4 bg-slate-700 mx-1"></div>
                 <button 
                   onClick={() => setShowAcronymPromptModal(false)}
@@ -30261,22 +30232,16 @@ ${itemsStr}
                     </button>
                   </div>
                 ) : (
-                  <label 
-                    htmlFor="acronym-image-upload-main"
-                    className="w-full h-16 bg-slate-950/50 border border-dashed border-slate-700 hover:border-emerald-500/50 rounded-xl flex flex-col items-center justify-center cursor-pointer transition-colors text-slate-500 hover:text-emerald-400"
+                  <div 
+                    tabIndex={0}
+                    onDoubleClick={handleAcronymClipboardRead}
+                    className="w-full h-16 bg-slate-950/50 border border-dashed border-slate-700 focus:border-emerald-500/50 hover:border-emerald-500/50 rounded-xl flex flex-col items-center justify-center cursor-pointer transition-colors text-slate-500 hover:text-emerald-400 focus:outline-none focus:ring-1 focus:ring-emerald-500/30"
                   >
-                    <input 
-                      type="file" 
-                      accept="image/*" 
-                      onChange={handleAcronymFileSelect} 
-                      className="hidden" 
-                      id="acronym-image-upload-main" 
-                    />
                     <div className="flex items-center gap-2">
                       <Image size={16} />
-                      <span className="text-[11px] font-bold">클릭하여 첨부하거나 <kbd className="bg-slate-800 px-1.5 py-0.5 rounded text-[10px] mx-0.5 font-sans border border-slate-700">Ctrl + V</kbd></span>
+                      <span className="text-[11px] font-bold">더블클릭 또는 <kbd className="bg-slate-800 px-1.5 py-0.5 rounded text-[10px] mx-0.5 font-sans border border-slate-700">Ctrl + V</kbd>로 붙여넣기</span>
                     </div>
-                  </label>
+                  </div>
                 )}
               </div>
 
