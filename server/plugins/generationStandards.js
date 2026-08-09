@@ -35,12 +35,7 @@ export let generationStandardsList = [
     "content": "🚨 [수식 기호 단순화 - 극도로 중요!]: 수식과 수치/단위 작성 시 `\\(` `\\)` 나 `\\[` `\\]`, `(\\ (` 같은 이중 괄호 이스케이프 및 불필요하게 꼬인 지시 표현을 철저히 금지합니다.",
     "updatedAt": new Date().toISOString()
   },
-  {
-    "id": "user_generation_subscript_braces",
-    "title": "7. 수식 밑첨자 다중 문자 중괄호 필수 철칙",
-    "content": "🚨 [수식 밑첨자 다중 문자 중괄호 필수 철칙 - 극도로 중요!]: 2자리 이상의 숫자나 문자가 결합된 밑첨자를 표현할 때는 반드시 전체를 중괄호 `{}`로 감싸서 출력하십시오. (예시: `E_{50}`, `D_{10}`, `C_u`) 절대로 `E_50`과 같이 중괄호를 누락하여 수식이 깨지게 만들지 마십시오.",
-    "updatedAt": new Date().toISOString()
-  },
+
   {
     "id": "user_generation_svg_layout",
     "title": "8. SVG 다이어그램 반응형 너비 및 텍스트 배치 철칙",
