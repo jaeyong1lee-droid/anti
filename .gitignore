@@ -43,3 +43,9 @@ client/dist/
 .vercel/
 scratch/
 
+# Temporary / Binary runtimes & test scripts
+node-v*
+*.zip
+*.mjs
+
+
