@@ -1220,9 +1220,10 @@ export function isCalculationQuestion(q, topicCategory = null) {
   // 1. Explicit Category Flags (Top Priority)
   const resolvedCategory = q.category || topicCategory;
   if (resolvedCategory === '계산') return true;
-  if (resolvedCategory === '일반' || resolvedCategory === '이론' || resolvedCategory === '서술') return false;
+  if (resolvedCategory === '일반' || resolvedCategory === '이론' || resolvedCategory === '서술' || resolvedCategory === '믹스') return false;
 
   if (q.type === '주관식 (계산)' || q.subtype === '계산') return true;
+
   if (q.type === '주관식 (일반)' || q.type === '주관식 (서술)' || q.subtype === '일반' || q.subtype === '서술' || q.subtype === '이론') return false;
 
   // 2. Structural checks (Fallback if no category provided)

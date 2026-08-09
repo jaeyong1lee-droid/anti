@@ -1336,7 +1336,7 @@ router.post('/evaluate-answer', async (req, res) => {
       return res.status(400).json({ error: 'questionText is required' });
     }
 
-    const isCalc = category === '계산' || questionText.includes('계산') || questionText.includes('구하시오') || questionText.includes('산정');
+    const isCalc = (category !== '믹스' && category !== '일반' && category !== '이론' && category !== '서술') && (category === '계산' || questionText.includes('계산') || questionText.includes('구하시오') || questionText.includes('값은'));
     const prompt = `
 [🚨 공학 문제 및 정답/해설 정밀 분석 튜터 🚨]
 당신은 국가기술자격(토목기사, 건축기사, 기술사 등) 및 공학 시험의 문제 분석 및 정답 검증 전문가입니다.
