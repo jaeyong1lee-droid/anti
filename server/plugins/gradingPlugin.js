@@ -188,9 +188,16 @@ ${((colHeader && colHeader.includes('수치 계산 답안')) || category === '�
     const isCorrect = isCorrectVal !== null ? !!isCorrectVal : !!result.isCorrect;
 
     const scoreVal = findKey(result, 'score');
-    const scoreNum = Number(scoreVal);
-    const score = (!isNaN(scoreNum) && scoreVal !== null && scoreVal !== '') 
-      ? scoreNum 
+    let parsedScore = NaN;
+    if (typeof scoreVal === 'number') {
+      parsedScore = scoreVal;
+    } else if (typeof scoreVal === 'string' || typeof scoreVal === 'boolean') {
+      const extracted = String(scoreVal).match(/\d+/);
+      parsedScore = extracted ? parseInt(extracted[0], 10) : NaN;
+    }
+    
+    const score = (!isNaN(parsedScore)) 
+      ? parsedScore 
       : (typeof result.score === 'number' ? result.score : (isCorrect ? 10 : 0));
 
     const reason = findKey(result, 'reason') || result.reason || 'AI 채점 완료';
