@@ -37,17 +37,17 @@ const CustomTooltip = ({ active, payload, label }) => {
     };
 
     return (
-      <div className="bg-slate-900 border border-slate-700/60 p-3 rounded-lg shadow-xl text-slate-200">
-        <div className="font-bold mb-2 border-b border-slate-700/60 pb-1">{renderLabel()}</div>
+      <div className="bg-slate-900 border border-slate-700/60 p-2 sm:p-3 rounded-lg shadow-xl text-slate-200">
+        <div className="text-[9px] sm:text-[11px] font-bold mb-1.5 border-b border-slate-700/60 pb-1">{renderLabel()}</div>
         {payload.map((entry, index) => {
           const renderName = () => {
             return <span dangerouslySetInnerHTML={{ __html: renderMixedText(entry.name) }} />;
           };
           
           return (
-            <div key={index} className="flex items-center gap-2 text-sm" style={{ color: entry.color }}>
-              <span className="w-3 h-3 rounded-full" style={{ backgroundColor: entry.color }}></span>
-              {renderName()}: <span className="font-mono ml-1 font-semibold">{entry.value}</span>
+            <div key={index} className="flex items-center gap-1.5 text-[9px] sm:text-[11px] font-semibold" style={{ color: entry.color }}>
+              <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full" style={{ backgroundColor: entry.color }}></span>
+              {renderName()}: <span className="font-mono ml-1 font-bold">{entry.value}</span>
             </div>
           );
         })}
@@ -110,7 +110,7 @@ const ChartRenderer = ({ data }) => {
     const tickHtml = renderMixedText(payload.value);
     return (
       <g transform={`translate(${x},${y})`}>
-        <foreignObject x="-35" y="-10" width="30" height="20" style={{ overflow: 'visible' }}>
+        <foreignObject x="-50" y="-10" width="45" height="20" style={{ overflow: 'visible' }}>
           <div xmlns="http://www.w3.org/1999/xhtml" className="flex items-center justify-end text-[9px] sm:text-[11px] font-semibold text-slate-400 w-full h-full pr-1">
             <span dangerouslySetInnerHTML={{ __html: tickHtml }} />
           </div>
@@ -173,7 +173,7 @@ const ChartRenderer = ({ data }) => {
             />
             <YAxis 
               stroke="#64748b" 
-              width={35}
+              width={50}
               tick={<CustomTickY />}
               label={<CustomYAxisLabel />} 
             />
