@@ -21456,6 +21456,7 @@ ${itemsStr}
                         </button>
                         <button
                           onClick={async () => { 
+                            if (!window.confirm("문제를 종료하고 초기화하시겠습니까? (재개 시 새 문제 생성)")) return;
                             if (selectedTopic?.id) {
                               const deleteUrl = selectedTopic.schedule_id
                                 ? `${API_BASE}/api/session/review/topic/${selectedTopic.id}?scheduleId=${selectedTopic.schedule_id}`
