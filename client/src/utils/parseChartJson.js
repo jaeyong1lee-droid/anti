@@ -22,5 +22,15 @@ export function parseChartJson(rawJsonStr) {
   jsonStr = jsonStr.replace(/\}\s*\{/g, '}, {');
   jsonStr = jsonStr.replace(/"\s*\{/g, '", {');
   jsonStr = jsonStr.replace(/\]\s*\[/g, '], [');
-  return JSON.parse(jsonStr);
+  try {
+    return JSON.parse(jsonStr);
+  } catch (e) {
+    try {
+      // Forgiving fallback for AI-generated malformed JSON (missing commas, unquoted keys, trailing commas)
+      return (new Function('return ' + jsonStr))();
+    } catch (e2) {
+      console.error("[parseChartJson] Failed to parse JSON even with Function fallback. Original string:", rawJsonStr);
+      throw e2;
+    }
+  }
 }
