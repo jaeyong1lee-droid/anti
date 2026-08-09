@@ -13721,6 +13721,33 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
     e.target.value = '';
   };
 
+  const handleAcronymPaste = async (e) => {
+    if (!e.clipboardData) return;
+    const items = e.clipboardData.items;
+    for (const item of items) {
+      if (item.type.indexOf('image/') !== -1) {
+        // Only prevent default if we actually found an image, so text paste still works
+        e.preventDefault();
+        const file = item.getAsFile();
+        if (file) {
+          try {
+            const compressed = await compressImageFile(file);
+            if (compressed) {
+              setAcronymPromptImage({
+                ...compressed,
+                name: 'clipboard.png'
+              });
+              showNotification('클립보드 이미지가 첨부되었습니다.', 'success');
+            }
+          } catch (err) {
+            console.error('Pasted image compression failed', err);
+          }
+        }
+        return;
+      }
+    }
+  };
+
   const handleAcronymPromptRequest = (chatType = 'sidebar') => {
     setAcronymPromptTopic('');
     setAcronymPromptImage(null);
@@ -30106,6 +30133,7 @@ ${itemsStr}
             maxWidth: '384px',
           }}
           className="bg-slate-900/95 border border-white/20 rounded-3xl p-6 space-y-5 shadow-[0_20px_50px_rgba(0,0,0,0.6)] glassmorphism animate-scale-up text-left select-text"
+          onPaste={handleAcronymPaste}
         >
           <div 
             onMouseDown={isDesktop ? handleGeneratorPopupMoveStart : undefined}
@@ -30218,6 +30246,40 @@ ${itemsStr}
                   className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all font-bold"
                 />
               </div>
+
+              {/* 스크린샷 첨부 영역 */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-black text-slate-400">참고 스크린샷 (선택)</label>
+                {acronymPromptImage ? (
+                  <div className="relative w-full h-24 bg-slate-950 border border-slate-800 rounded-xl overflow-hidden group">
+                    <img src={acronymPromptImage.preview} alt="첨부된 이미지" className="w-full h-full object-contain" />
+                    <button 
+                      onClick={() => setAcronymPromptImage(null)}
+                      className="absolute top-1.5 right-1.5 p-1.5 bg-rose-500/80 text-white rounded-lg hover:bg-rose-500 transition-colors opacity-0 group-hover:opacity-100"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ) : (
+                  <label 
+                    htmlFor="acronym-image-upload-main"
+                    className="w-full h-16 bg-slate-950/50 border border-dashed border-slate-700 hover:border-emerald-500/50 rounded-xl flex flex-col items-center justify-center cursor-pointer transition-colors text-slate-500 hover:text-emerald-400"
+                  >
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      onChange={handleAcronymFileSelect} 
+                      className="hidden" 
+                      id="acronym-image-upload-main" 
+                    />
+                    <div className="flex items-center gap-2">
+                      <Image size={16} />
+                      <span className="text-[11px] font-bold">클릭하여 첨부하거나 <kbd className="bg-slate-800 px-1.5 py-0.5 rounded text-[10px] mx-0.5 font-sans border border-slate-700">Ctrl + V</kbd></span>
+                    </div>
+                  </label>
+                )}
+              </div>
+
               {/* 추천 단어 영역 */}
               <div className="space-y-2 pt-1 border-t border-slate-800/40">
                 <div className="flex items-center justify-between">
