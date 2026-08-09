@@ -163,7 +163,7 @@ const ChartRenderer = ({ data }) => {
       <div className="p-2 sm:p-4 w-full h-[360px] sm:h-[400px]">
         {/* Recharts Container */}
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={chartData} margin={{ top: 30, right: 15, left: 15, bottom: 10 }}>
+          <LineChart data={chartData} margin={{ top: 30, right: 15, left: 0, bottom: 10 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.5} />
             <XAxis 
               dataKey="x" 
@@ -173,6 +173,7 @@ const ChartRenderer = ({ data }) => {
             />
             <YAxis 
               stroke="#64748b" 
+              width={35}
               tick={<CustomTickY />}
               label={<CustomYAxisLabel />} 
             />
