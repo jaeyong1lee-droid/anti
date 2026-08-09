@@ -2237,6 +2237,22 @@ export default function App() {
     };
   }, []);
 
+  // Database Warm-up Ping (Prevent Neon Serverless Cold Start Timeout)
+  useEffect(() => {
+    const pingDb = async () => {
+      try {
+        await fetch(`${import.meta.env.VITE_API_URL || ''}/api/health-db`);
+      } catch (err) {
+        // Ignore errors, it's just a background ping
+      }
+    };
+    // Initial ping on load
+    pingDb();
+    // Ping every 3.5 minutes (210,000 ms) to keep the 5-minute Neon suspend timer refreshed
+    const timer = setInterval(pingDb, 210000);
+    return () => clearInterval(timer);
+  }, []);
+
   const [answerPopupPos, setAnswerPopupPos] = useState(() => {
     try {
       const saved = localStorage.getItem('anti_answer_popup_pos');
@@ -3448,10 +3464,11 @@ export default function App() {
   };
 
   const triggerLockscreenQuiz = () => {
-    if (!isLockscreenQuizEnabled) return;
+    if (!isLockscreenQuizEnabled || isDesktop) return;
 
-    // 락스크린 주기: 마지막 문제 제출 후 10분이 경과되었을 경우에만 문제 제공
     const now = Date.now();
+    
+    // 락스크린 주기: 마지막 락스크린 문제 제출 후 10분이 경과되었을 경우에만 문제 제공
     const lastSubmitStr = localStorage.getItem('anti_last_lockscreen_submit_time');
     if (lastSubmitStr) {
       const lastSubmitTime = parseInt(lastSubmitStr, 10);
@@ -3459,6 +3476,11 @@ export default function App() {
         // 마지막 문제 제출 후 10분이 미경과된 경우 퀴즈 미제공
         return;
       }
+    }
+
+    // 웹에서 актив하게 문제를 풀고 있는 중 방해하지 않음 (10분 비활성화 후 표시)
+    if (lastActivityTimeRef.current && (now - lastActivityTimeRef.current < 10 * 60 * 1000)) {
+      return;
     }
 
     const cached = localStorage.getItem('anti_lockscreen_questions');
@@ -6535,6 +6557,28 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
   const lastTickRef = useRef(Date.now());
   const tickCountRef = useRef(0);
   const wasInBackgroundRef = useRef(false);
+  const lastActivityTimeRef = useRef(Date.now());
+
+  // Track global user activity to prevent lockscreen popup while actively using the web app
+  useEffect(() => {
+    if (isDesktop) return;
+    
+    const updateActivity = () => {
+      lastActivityTimeRef.current = Date.now();
+    };
+
+    window.addEventListener('touchstart', updateActivity, { passive: true });
+    window.addEventListener('mousedown', updateActivity, { passive: true });
+    window.addEventListener('keydown', updateActivity, { passive: true });
+    window.addEventListener('scroll', updateActivity, { passive: true });
+
+    return () => {
+      window.removeEventListener('touchstart', updateActivity);
+      window.removeEventListener('mousedown', updateActivity);
+      window.removeEventListener('keydown', updateActivity);
+      window.removeEventListener('scroll', updateActivity);
+    };
+  }, [isDesktop]);
 
   // Interval to update the tick timestamp while visible
   useEffect(() => {

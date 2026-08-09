@@ -210,6 +210,17 @@ app.get('/api/test-llm', async (req, res) => {
   res.json({ success: true, logs });
 });
 
+// Database Warm-up Ping (Prevent Neon Serverless Cold Start Timeout)
+app.get('/api/health-db', async (req, res) => {
+  try {
+    await dbQuery.get('SELECT 1 as ping');
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[Health DB Ping Error]:', err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // Bind Modularized Express Routers
 app.use('/api', configRoutes);
 app.use('/api', topicRoutes);
