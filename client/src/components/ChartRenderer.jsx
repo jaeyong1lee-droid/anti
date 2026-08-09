@@ -148,7 +148,7 @@ const ChartRenderer = ({ data }) => {
   };
 
   return (
-    <div className="w-full my-4 border border-slate-700/60 rounded-xl overflow-hidden shadow-lg bg-slate-900/40 relative select-text">
+    <div className="w-full my-4 border border-slate-700/60 rounded-xl overflow-hidden shadow-lg bg-slate-900/40 relative select-text normal-nums">
       {/* Header */}
       <div className="px-3 py-2 bg-slate-800/50 border-b border-slate-700/60 flex items-center justify-between mb-4">
         <h4 className="text-[14px] font-semibold text-slate-200 flex items-center leading-relaxed">
