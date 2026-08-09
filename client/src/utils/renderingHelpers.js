@@ -343,15 +343,12 @@ export const buildHtmlDocument = (text, isPopup = false) => {
           }
           const text = node.nodeValue;
           if (!text) continue;
-          if (/[a-zA-Z0-9_'\\]+_\{\s*[^{}\n]+\s*\}/.test(text) || /\\(Delta|sigma|gamma|cdot|tau|pi|theta|alpha|beta|phi|omega|mu|lambda|rho|nu|times|frac|dfrac|le|ge|ne|neq|sqrt|sum|int|partial|sin|cos|tan)\b/.test(text)) {
+          if (text.includes('₩')) {
             mathNodes.push(node);
           }
         }
         mathNodes.forEach(node => {
-          node.nodeValue = node.nodeValue.replace(/₩/g, '\\')
-            .replace(/(?<!\$)(?:\\?[a-zA-Z0-9_']+_\{\s*[^{}\n]+\s*\}|\\(?:Delta|sigma|gamma|cdot|tau|pi|theta|alpha|beta|phi|omega|mu|lambda|rho|nu|times|frac|dfrac|le|ge|ne|neq|sqrt|sum|int|partial|sin|cos|tan)\b[a-zA-Z0-9_'\^\(\)\{\}\[\]\+\-\*\/= \t.,·]*)(?!\$)/g, function(m) {
-              return '$' + m.trim() + '$';
-            });
+          node.nodeValue = node.nodeValue.replace(/₩/g, '\\');
         });
       }
 
@@ -898,10 +895,8 @@ export const renderKatexString = (math, options = {}) => {
   cleaned = cleaned.replace(/^\$|\$/g, '').trim();
   processedMath = cleaned.replace(/₩/g, '\\');
 
-  // Auto-heal empty fraction denominator followed by variable or trailing duplicate
-  processedMath = processedMath
-    .replace(/\\(d?frac)\{([^{}\n]+)\}\s*\{\s*\}\s*(\\?[a-zA-Z0-9_]+)/g, '\\$1{$2}{$3}')
-    .replace(/\\(d?frac)\{([^{}\n]+)\}\s*\{\s*([^{}\n]+?)\s*\}\s*\\?\3\b/g, '\\$1{$2}{$3}');
+  // Strip accidental HTML tags (like <em> or <strong>) that markdown parsers might have injected inside the math block
+  processedMath = processedMath.replace(/<\/?(?:em|strong|b|i|u|span|div|p)[^>]*>/gi, '');
 
   // Auto-heal brace balancing (open & orphan closing braces) before passing to KaTeX
   processedMath = balanceMathBraces(processedMath);

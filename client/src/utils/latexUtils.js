@@ -240,7 +240,44 @@ export function healInvertedDelimiters(text) {
 }
 
 export function balanceMathBraces(str) {
-  return str;
+  if (!str || typeof str !== 'string') return str;
+  
+  let depth = 0;
+  let result = '';
+  let i = 0;
+
+  while (i < str.length) {
+    const char = str[i];
+    
+    let backslashCount = 0;
+    let k = i - 1;
+    while (k >= 0 && str[k] === '\\') {
+      backslashCount++;
+      k--;
+    }
+    const isEscaped = (backslashCount % 2 === 1);
+
+    if (char === '{' && !isEscaped) {
+      depth++;
+      result += char;
+    } else if (char === '}' && !isEscaped) {
+      if (depth > 0) {
+        depth--;
+        result += char;
+      } else {
+        // Orphan closing brace with depth 0 -> drop it!
+      }
+    } else {
+      result += char;
+    }
+    i++;
+  }
+
+  if (depth > 0) {
+    result += '}'.repeat(depth);
+  }
+
+  return result;
 }
 
 const healCorruptedKatexHtml = (text) => {
