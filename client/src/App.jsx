@@ -88,7 +88,8 @@ import {
   Type,
   ChevronLeft,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  Clipboard
 } from 'lucide-react';
 
 const MODEL_DISPLAY_NAMES = {
@@ -5538,6 +5539,7 @@ export default function App() {
   const [exportAddedTarget, setExportAddedTarget] = useState(null);
   const [showAcronymPromptModal, setShowAcronymPromptModal] = useState(false);
   const [acronymPromptTopic, setAcronymPromptTopic] = useState('');
+  const [acronymPromptImage, setAcronymPromptImage] = useState(null);
   const [acronymPromptCount, setAcronymPromptCount] = useState('4');
   const [acronymRecommendations, setAcronymRecommendations] = useState([]);
   const [isAcronymRecommending, setIsAcronymRecommending] = useState(false);
@@ -13723,8 +13725,10 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
     if (!topic) return;
 
     // Immediately close modal & clean up prompt state to avoid duplicate submits
+    const currentImage = acronymPromptImage;
     setShowAcronymPromptModal(false);
     setAcronymPromptTopic('');
+    setAcronymPromptImage(null);
 
     showNotification(`[${topic}] 앞글자 암기법 생성을 시작했습니다.`, 'info');
 
@@ -13749,7 +13753,7 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
         body: JSON.stringify({
           history: [],
           message: query,
-          image: null,
+          image: currentImage ? { mimeType: currentImage.mimeType, data: currentImage.data } : null,
           acronymMode: true
         })
       });
@@ -30097,12 +30101,71 @@ ${itemsStr}
                 <span className="px-1.5 py-0.5 bg-emerald-500/10 rounded text-[10px] font-black">AI</span>
                 앞글자(두문자) 암기법 생성기
               </h3>
-              <button 
-                onClick={() => setShowAcronymPromptModal(false)}
-                className="text-slate-400 hover:text-white transition-colors cursor-pointer"
-              >
-                <X size={16} />
-              </button>
+              <div className="flex items-center gap-2">
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  onChange={handleAcronymFileSelect} 
+                  className="hidden" 
+                  id="acronym-image-upload" 
+                />
+                <label 
+                  htmlFor="acronym-image-upload" 
+                  className={`p-1.5 rounded-lg cursor-pointer transition-colors flex items-center justify-center ${acronymPromptImage ? 'bg-emerald-500/20 text-emerald-400' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
+                  title={acronymPromptImage ? "첨부된 이미지 변경" : "참고 스크린샷 첨부"}
+                >
+                  <Image size={16} />
+                </label>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      if (navigator.clipboard && typeof navigator.clipboard.read === 'function') {
+                        const items = await navigator.clipboard.read();
+                        for (const item of items) {
+                          const imageTypes = item.types.filter(type => type.startsWith('image/'));
+                          if (imageTypes.length > 0) {
+                            const blob = await item.getType(imageTypes[0]);
+                            const file = new File([blob], 'pasted-image.png', { type: blob.type });
+                            const compressed = await compressImageFile(file);
+                            if (compressed) {
+                              setAcronymPromptImage({ ...compressed, name: 'clipboard.png' });
+                              showNotification('클립보드 이미지가 첨부되었습니다.', 'success');
+                            }
+                            return;
+                          }
+                        }
+                        showNotification('클립보드에 이미지가 없습니다.', 'error');
+                      } else {
+                        showNotification('이 브라우저에서는 클립보드 읽기를 지원하지 않습니다.', 'error');
+                      }
+                    } catch (err) {
+                      console.error('Clipboard read failed:', err);
+                      showNotification('클립보드 접근 권한이 없거나 실패했습니다.', 'error');
+                    }
+                  }}
+                  className="p-1.5 rounded-lg cursor-pointer transition-colors flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800"
+                  title="클립보드에서 붙여넣기"
+                >
+                  <Clipboard size={16} />
+                </button>
+                {acronymPromptImage && (
+                  <button 
+                    onClick={() => setAcronymPromptImage(null)} 
+                    className="p-1.5 text-rose-400 hover:bg-rose-500/20 hover:text-rose-300 rounded-lg transition-colors flex items-center justify-center"
+                    title="첨부된 이미지 삭제"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+                <div className="w-px h-4 bg-slate-700 mx-1"></div>
+                <button 
+                  onClick={() => setShowAcronymPromptModal(false)}
+                  className="text-slate-400 hover:text-white transition-colors cursor-pointer p-1.5 hover:bg-slate-800 rounded-lg"
+                >
+                  <X size={16} />
+                </button>
+              </div>
           </div>
           
           <div className="space-y-4">
