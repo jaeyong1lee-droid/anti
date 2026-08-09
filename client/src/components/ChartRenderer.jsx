@@ -138,7 +138,7 @@ const ChartRenderer = ({ data }) => {
     const html = renderMixedText(yAxisLabel);
     return (
       <g>
-        <foreignObject x={x - 5} y={y - 25} width={250} height={20} style={{ overflow: 'visible' }}>
+        <foreignObject x={10} y={y - 25} width={250} height={20} style={{ overflow: 'visible' }}>
           <div xmlns="http://www.w3.org/1999/xhtml" className="flex items-center justify-start text-left text-[10px] sm:text-[12px] font-bold text-slate-400 w-full h-full whitespace-nowrap">
             <span dangerouslySetInnerHTML={{ __html: html }} />
           </div>
