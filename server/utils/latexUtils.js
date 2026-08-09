@@ -684,9 +684,7 @@ export function cleanQuizQuestion(q) {
   // 2. Strip remaining list garbage outside boxes
   cleanText = cleanText.replace(/,?\s*\([A-Z]\)(?:\s*,\s*\([A-Z]\))+/gi, '');
 
-  const hasTableOrFlowchart = cleanText.includes('|') || cleanText.includes('┌──') || cleanText.includes('▼') || cleanText.includes('```') || cleanText.includes('흐름도') || cleanText.includes('플로우차트');
-  if (hasTableOrFlowchart) return cleanText.trim();
-  return cleanText.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ').trim();
+  return cleanText.trim();
 }
 
 // 오브젝트 딥 힐러 트리구조
