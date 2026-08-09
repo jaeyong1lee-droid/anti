@@ -108,7 +108,7 @@ const ChartRenderer = ({ data }) => {
     const tickHtml = renderMixedText(payload.value);
     return (
       <g transform={`translate(${x},${y})`}>
-        <foreignObject x="-15" y="-10" width="15" height="20" style={{ overflow: 'visible' }}>
+        <foreignObject x="-20" y="-10" width="20" height="20" style={{ overflow: 'visible' }}>
           <div xmlns="http://www.w3.org/1999/xhtml" className="flex items-center justify-end text-[11px] font-semibold text-slate-400 w-full h-full pr-1">
             <span dangerouslySetInnerHTML={{ __html: tickHtml }} />
           </div>
@@ -135,7 +135,7 @@ const ChartRenderer = ({ data }) => {
     const { x = 0, y = 0, height = 0 } = viewBox || {};
     const html = renderMixedText(yAxisLabel);
     return (
-      <g transform={`translate(5, ${y + height / 2}) rotate(-90)`}>
+      <g transform={`translate(10, ${y + height / 2}) rotate(-90)`}>
         <foreignObject x={-height / 2} y={-10} width={height} height={20} style={{ overflow: 'visible' }}>
           <div xmlns="http://www.w3.org/1999/xhtml" className="flex items-center justify-center text-[12px] font-bold text-slate-400 w-full h-full text-center">
             <span dangerouslySetInnerHTML={{ __html: html }} />
@@ -161,7 +161,7 @@ const ChartRenderer = ({ data }) => {
       <div className="p-4 w-full h-[320px] sm:h-[400px]">
         {/* Recharts Container */}
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={chartData} margin={{ top: 5, right: 10, left: 10, bottom: 40 }}>
+          <LineChart data={chartData} margin={{ top: 5, right: 20, left: 20, bottom: 50 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.5} />
             <XAxis 
               dataKey="x" 
