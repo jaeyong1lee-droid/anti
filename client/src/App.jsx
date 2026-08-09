@@ -13707,8 +13707,23 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
     }
   };
 
+  const handleAcronymFileSelect = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const compressed = await compressImageFile(file);
+    if (compressed) {
+      setAcronymPromptImage({
+        ...compressed,
+        name: file.name
+      });
+      showNotification('이미지가 첨부되었습니다.', 'success');
+    }
+    e.target.value = '';
+  };
+
   const handleAcronymPromptRequest = (chatType = 'sidebar') => {
     setAcronymPromptTopic('');
+    setAcronymPromptImage(null);
     setAcronymPromptCount('4');
     setAcronymRecommendations([]);
     setIsAcronymRecommending(false);
