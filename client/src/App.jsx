@@ -13721,6 +13721,29 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
     e.target.value = '';
   };
 
+  const suggestAcronymTopicFromImage = async (compressedData) => {
+    try {
+      const rawBase64 = compressedData.data.split(',')[1] || compressedData.data;
+      const res = await fetch(`${API_BASE}/api/topics/suggest-title`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: rawBase64, mimeType: compressedData.type || 'image/png' })
+      });
+      const data = await res.json();
+      if (data.title) {
+        setAcronymPromptTopic(prev => {
+          if (!prev.trim()) {
+            showNotification(`[추천 제목] "${data.title}"이(가) 자동으로 입력되었습니다.`, 'success');
+            return data.title;
+          }
+          return prev;
+        });
+      }
+    } catch (err) {
+      console.warn('Failed to suggest acronym topic:', err);
+    }
+  };
+
   const handleAcronymPaste = async (e) => {
     if (!e.clipboardData) return;
     const items = e.clipboardData.items;
@@ -13738,6 +13761,9 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
                 name: 'clipboard.png'
               });
               showNotification('클립보드 이미지가 첨부되었습니다.', 'success');
+              
+              // Start background title suggestion
+              suggestAcronymTopicFromImage(compressed);
             }
           } catch (err) {
             console.error('Pasted image compression failed', err);
@@ -13761,6 +13787,9 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
             if (compressed) {
               setAcronymPromptImage({ ...compressed, name: 'clipboard.png' });
               showNotification('클립보드 이미지가 첨부되었습니다.', 'success');
+              
+              // Start background title suggestion
+              suggestAcronymTopicFromImage(compressed);
             }
             return;
           }

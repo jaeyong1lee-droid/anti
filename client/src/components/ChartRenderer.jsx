@@ -62,15 +62,15 @@ const CustomLegend = (props) => {
   const { payload } = props;
   
   return (
-    <ul className="flex flex-wrap items-center justify-end gap-x-4 gap-y-2 mt-1 mb-2 max-w-full">
+    <ul className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 mt-4 w-full px-2">
       {payload.map((entry, index) => {
         const renderText = () => {
           return <span dangerouslySetInnerHTML={{ __html: renderMixedText(entry.value) }} />;
         };
 
         return (
-          <li key={`item-${index}`} className="flex items-center gap-1.5 text-xs font-bold text-slate-300">
-            <span className="block w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }}></span>
+          <li key={`item-${index}`} className="flex items-center gap-1.5 text-[10px] sm:text-xs font-bold text-slate-300">
+            <span className="block w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full" style={{ backgroundColor: entry.color }}></span>
             {renderText()}
           </li>
         );
@@ -89,6 +89,8 @@ const ChartRenderer = ({ data }) => {
   // Default line if none provided
   const plotLines = lines.length > 0 ? lines : [{ name: '측정값', dataKey: 'y', stroke: '#38bdf8' }];
 
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
+
   // Custom tick formatter to render KaTeX in Axis ticks (via <foreignObject>)
   // Recharts XAxis tick supports React elements
   const CustomTickX = ({ x, y, payload }) => {
@@ -96,7 +98,7 @@ const ChartRenderer = ({ data }) => {
     return (
       <g transform={`translate(${x},${y})`}>
         <foreignObject x="-30" y="5" width="60" height="20" style={{ overflow: 'visible' }}>
-          <div xmlns="http://www.w3.org/1999/xhtml" className="flex items-start justify-center text-[11px] font-semibold text-slate-400 w-full h-full pt-1">
+          <div xmlns="http://www.w3.org/1999/xhtml" className="flex items-start justify-center text-[9px] sm:text-[11px] font-semibold text-slate-400 w-full h-full pt-1">
             <span dangerouslySetInnerHTML={{ __html: tickHtml }} />
           </div>
         </foreignObject>
@@ -108,8 +110,8 @@ const ChartRenderer = ({ data }) => {
     const tickHtml = renderMixedText(payload.value);
     return (
       <g transform={`translate(${x},${y})`}>
-        <foreignObject x="-20" y="-10" width="20" height="20" style={{ overflow: 'visible' }}>
-          <div xmlns="http://www.w3.org/1999/xhtml" className="flex items-center justify-end text-[11px] font-semibold text-slate-400 w-full h-full pr-1">
+        <foreignObject x="-35" y="-10" width="30" height="20" style={{ overflow: 'visible' }}>
+          <div xmlns="http://www.w3.org/1999/xhtml" className="flex items-center justify-end text-[9px] sm:text-[11px] font-semibold text-slate-400 w-full h-full pr-1">
             <span dangerouslySetInnerHTML={{ __html: tickHtml }} />
           </div>
         </foreignObject>
@@ -122,8 +124,8 @@ const ChartRenderer = ({ data }) => {
     const html = renderMixedText(xAxisLabel);
     return (
       <g>
-        <foreignObject x={x} y={y + 45} width={width} height={20} style={{ overflow: 'visible' }}>
-          <div xmlns="http://www.w3.org/1999/xhtml" className="flex items-start justify-center text-[12px] font-bold text-slate-400 w-full h-full text-center pt-1">
+        <foreignObject x={x} y={y + 25} width={width} height={20} style={{ overflow: 'visible' }}>
+          <div xmlns="http://www.w3.org/1999/xhtml" className="flex items-start justify-center text-[10px] sm:text-[12px] font-bold text-slate-400 w-full h-full text-center pt-1">
             <span dangerouslySetInnerHTML={{ __html: html }} />
           </div>
         </foreignObject>
@@ -132,12 +134,12 @@ const ChartRenderer = ({ data }) => {
   };
 
   const CustomYAxisLabel = ({ viewBox }) => {
-    const { x = 0, y = 0, height = 0 } = viewBox || {};
+    const { x = 0, y = 0 } = viewBox || {};
     const html = renderMixedText(yAxisLabel);
     return (
-      <g transform={`translate(10, ${y + height / 2}) rotate(-90)`}>
-        <foreignObject x={-height / 2} y={-10} width={height} height={20} style={{ overflow: 'visible' }}>
-          <div xmlns="http://www.w3.org/1999/xhtml" className="flex items-center justify-center text-[12px] font-bold text-slate-400 w-full h-full text-center">
+      <g>
+        <foreignObject x={x - 25} y={y - 25} width={200} height={20} style={{ overflow: 'visible' }}>
+          <div xmlns="http://www.w3.org/1999/xhtml" className="flex items-center justify-start text-[10px] sm:text-[12px] font-bold text-slate-400 w-full h-full">
             <span dangerouslySetInnerHTML={{ __html: html }} />
           </div>
         </foreignObject>
@@ -158,10 +160,10 @@ const ChartRenderer = ({ data }) => {
         </div>
       </div>
 
-      <div className="p-4 w-full h-[320px] sm:h-[400px]">
+      <div className="p-2 sm:p-4 w-full h-[360px] sm:h-[400px]">
         {/* Recharts Container */}
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={chartData} margin={{ top: 5, right: 20, left: 20, bottom: 50 }}>
+          <LineChart data={chartData} margin={{ top: 30, right: 15, left: -5, bottom: 10 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.5} />
             <XAxis 
               dataKey="x" 
@@ -175,7 +177,7 @@ const ChartRenderer = ({ data }) => {
               label={<CustomYAxisLabel />} 
             />
             <Tooltip content={<CustomTooltip />} />
-            <Legend verticalAlign="top" align="right" content={<CustomLegend />} wrapperStyle={{ paddingBottom: '10px' }} />
+            <Legend verticalAlign="bottom" align="center" content={<CustomLegend />} />
             
             {plotLines.map((line, idx) => (
               <Line 
@@ -184,9 +186,9 @@ const ChartRenderer = ({ data }) => {
                 dataKey={line.dataKey} 
                 name={line.name}
                 stroke={line.stroke} 
-                strokeWidth={2.5}
-                dot={{ r: 2, strokeWidth: 1, fill: '#0f172a' }}
-                activeDot={{ r: 6, fill: line.stroke, stroke: '#fff', strokeWidth: 1.5 }}
+                strokeWidth={isMobile ? 1.5 : 2.5}
+                dot={{ r: isMobile ? 1 : 2, strokeWidth: 1, fill: '#0f172a' }}
+                activeDot={{ r: isMobile ? 4 : 6, fill: line.stroke, stroke: '#fff', strokeWidth: 1.5 }}
                 animationDuration={1500}
                 animationEasing="ease-out"
               />
