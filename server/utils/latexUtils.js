@@ -578,8 +578,16 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
         const trimmed = match.trim();
         const trailingPunctuation = trimmed.match(/[.,;:!]+$/);
         const punc = trailingPunctuation ? trailingPunctuation[0] : '';
-        const formula = trimmed.slice(0, trimmed.length - punc.length).trim();
-        return `$${formula}$${punc}${trailingSpaces}`;
+        let formula = trimmed.slice(0, trimmed.length - punc.length).trim();
+        
+        let trailingAsterisks = '';
+        const asteriskMatch = formula.match(/(\*+)$/);
+        if (asteriskMatch) {
+          trailingAsterisks = asteriskMatch[1];
+          formula = formula.slice(0, formula.length - trailingAsterisks.length).trim();
+        }
+        
+        return `$${formula}$${trailingAsterisks}${punc}${trailingSpaces}`;
       });
       // Re-tokenize and wrap simple variables in remaining text to prevent double-wrapping
       const subTokens = tokenizeForHealing(t);
@@ -591,8 +599,16 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
             if (trimmed === 'START_TABLE' || trimmed === 'END_TABLE') return match;
             const trailingPunctuation = trimmed.match(/[.,;:!]+$/);
             const punc = trailingPunctuation ? trailingPunctuation[0] : '';
-            const formula = trimmed.slice(0, trimmed.length - punc.length).trim();
-            return `$${formula}$${punc}${trailingSpaces}`;
+            let formula = trimmed.slice(0, trimmed.length - punc.length).trim();
+            
+            let trailingAsterisks = '';
+            const asteriskMatch = formula.match(/(\*+)$/);
+            if (asteriskMatch) {
+              trailingAsterisks = asteriskMatch[1];
+              formula = formula.slice(0, formula.length - trailingAsterisks.length).trim();
+            }
+            
+            return `$${formula}$${trailingAsterisks}${punc}${trailingSpaces}`;
           });
         }
         return subToken.content;
