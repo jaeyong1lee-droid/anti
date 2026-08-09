@@ -635,15 +635,17 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
   const tableBlocks = [];
   let tempText = mdText || '';
 
+  // Normalize Windows line endings early to prevent regex bugs
+  tempText = tempText.replace(/\r\n/g, '\n');
+
   // Clean and transform raw :::mechanism [Title] or ::: directive tags
   tempText = tempText.replace(/:::mechanism\s*\[(.*?)\]/gi, (match, title) => {
     return title ? `⚙️ **${title.trim()}**` : '';
   });
   tempText = tempText.replace(/:::[a-zA-Z0-9_-]*/g, '');
 
-  // Always remove inline source citation texts and standalone # artifact lines
+  // Always remove inline source citation texts
   tempText = removeSourceCitationsFromText(tempText);
-  tempText = tempText.replace(/^[ \t]*#[ \t]*$/gm, '');
 
   // Protect details/summary HTML blocks so markdown line splitters don't break them
   const detailsBlocks = [];
@@ -708,8 +710,7 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
     return placeholder;
   });
 
-  // Normalize Windows line endings
-  tempText = tempText.replace(/\r\n/g, '\n');
+  // (Line endings normalized early at top)
 
   // Protect $$ ... $$
   tempText = tempText.replace(/\$\$\s*([\s\S]*?)\s*\$\$/g, (match) => {
