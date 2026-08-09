@@ -8,13 +8,11 @@ export const SVG_DIAGRAM_PROMPT = `
      ...
    </svg>
    \`\`\`
-3. [✅ 도식 내부 모든 텍스트 및 KaTeX 수식 표현 규칙 - 극도로 중요!]:
-   - SVG 내부에 글자(레이블, 수치, 제목 등)나 수식을 넣을 때는 **절대로 \`<text>\` 태그를 사용하지 마십시오.** \`<text>\` 태그 내부에 수식 기호가 들어가면 프론트엔드의 KaTeX HTML 변환 과정에서 태그가 깨져 글자가 그림 밖으로 튕겨 나가는 치명적인 버그가 발생합니다.
-   - 따라서 **SVG 내부의 모든 문자열(일반 텍스트 및 수식)은 무조건 \`<foreignObject>\` 태그와 그 안의 \`<div xmlns="http://www.w3.org/1999/xhtml">\`를 조합하여 작성**하십시오.
-   - ⚠️ [마크다운 절대 금지]: \`<foreignObject>\` 내부의 \`<div>\` 안에는 **절대로 별표(*), 볼드체(**), 리스트 문법(-) 등의 마크다운(Markdown) 기호를 사용하지 마십시오.** 순수한 일반 텍스트 문장과 HTML 태그, 그리고 수식($...$) 기호만 허용됩니다.
-   - <foreignObject>에는 요소가 잘리지 않도록 \`overflow="visible"\` 속성을 반드시 추가하고 충분한 \`width\`와 \`height\`를 지정하십시오.
-   - 예시 (일반 텍스트 및 수식 혼용):
-     \`<foreignObject x="10" y="10" width="150" height="40" overflow="visible"><div xmlns="http://www.w3.org/1999/xhtml" style="color: #fbbf24; font-weight: bold; font-size: 14px; white-space: nowrap;">주동토압 ($P_a$)</div></foreignObject>\`
+3. [✅ 도식 내부 KaTeX 수식 표현 지원]:
+   - SVG 내부에서 텍스트 축 레이블(X축, Y축)이나 수식(기울기, 파괴각 등)을 표기할 때는 무조건 `<foreignObject>` 태그를 활용하고, 그 안에서 인라인 KaTeX(예: `$s_t$`, `$\\theta=45^\\circ+\\phi/2$`)를 사용하십시오.
+   - ⚠️ [경고]: `<foreignObject>` 내부에 마크다운 글머리 기호(예: `* `, `- `)를 절대로 사용하지 마십시오. 순수 텍스트와 수식만 입력하십시오.
+   - 예시:
+     `<foreignObject x="10" y="10" width="100" height="30"><div xmlns="http://www.w3.org/1999/xhtml" style="color: #fbbf24; font-weight: bold; font-size: 14px;">$s_t$</div></foreignObject>`
 4. [디자인 및 가독성 규칙]:
    - **그림 너비를 창너비로 맞추기 위해**, \`<svg>\` 태그에 \`width="100%"\` 속성을 부여하고 넉넉한 \`viewBox\` (예: \`viewBox="0 0 1000 500"\`)를 설정하여 가로폭을 가득 채우도록 하십시오.
    - ⚠️ **[배경색 절대 철칙]**: 바탕은 무조건 어두운/검은색 계열(\`style="background-color: #1e1e1e;"\` 또는 \`<rect width="100%" height="100%" fill="#1e1e1e"/>\`)로 설정해야 합니다. 절대로 흰색(#ffffff, white) 배경이나 흰색 채우기 사각형을 생성하지 마십시오.
