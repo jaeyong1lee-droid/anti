@@ -386,6 +386,11 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   if (!text || typeof text !== 'string') return text;
 
   text = text.replace(/₩/g, '\\');
+  
+  // [Self-Healing] Convert AI's hallucinated \\( and \\[ LaTeX delimiters strictly to $ and $$
+  text = text.replace(/\\\(([\\s\\S]*?)\\\)/g, (m, p1) => '$' + p1.trim() + '$');
+  text = text.replace(/\\\[([\\s\\S]*?)\\\]/g, (m, p1) => '$$' + p1.trim() + '$$');
+
   let processed = text;
   // Normalize dashes (en-dash, em-dash, math minus) to standard hyphens
   processed = processed.replace(/[–—−]/g, '-');

@@ -521,7 +521,7 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
     finalShorts4[1],            // 10번 주관식 (index 9) -> Short Subjective 2 (Concept 2)
     shuffledMcs[2],             // 11번 객관식 (index 10)
     finalShorts4[2],            // 12번 주관식 (index 11) -> Short Subjective 3 (Concept 3)
-    finalShorts4[3]             // 13번 주관식 (index 12) -> Short Subjective 4 (Field/Countermeasure)
+    shuffledMcs[3]              // 13번 객관식 (index 12) -> MCQ 4
   ].filter(Boolean);
 }
 async function ensureSessionTable() {

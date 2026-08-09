@@ -18,6 +18,9 @@ export function parseChartJson(rawJsonStr) {
   // 2. 후행 쉼표(Trailing Comma) 제거: JSON 배열이나 객체 마지막에 쉼표가 붙는 환각 방어
   jsonStr = jsonStr.replace(/,\s*([\]}])/g, '$1');
   
-  // 교정된 문자열을 파싱
+  // 3. 누락된 쉼표 복구 (Missing Comma Healing): 객체와 객체 사이 (} {) 또는 문자열/숫자와 객체 사이의 쉼표 누락 복구
+  jsonStr = jsonStr.replace(/\}\s*\{/g, '}, {');
+  jsonStr = jsonStr.replace(/"\s*\{/g, '", {');
+  jsonStr = jsonStr.replace(/\]\s*\[/g, '], [');
   return JSON.parse(jsonStr);
 }
