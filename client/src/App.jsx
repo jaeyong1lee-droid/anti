@@ -1919,7 +1919,11 @@ const renderQuestionContent = (
     const chartMatch = cleanQuestionText.match(/```chart\s*(\{[\s\S]*?\})\s*```/);
     if (chartMatch) {
       try {
-        chartData = JSON.parse(chartMatch[1]);
+        let rawJson = chartMatch[1];
+        // [AI 환각 방어] 마크다운 이스케이프(\_, \*, \s 등)가 JSON 문자열 안에 침투하여 파싱을 터뜨리는 현상 원천 차단
+        // 유효한 JSON 이스케이프(", \, /, b, f, n, r, t, u)가 아닌 백슬래시는 모두 제거
+        rawJson = rawJson.replace(/\\(?![\\"/bfnrtu])/g, '');
+        chartData = JSON.parse(rawJson);
         cleanQuestionText = cleanQuestionText.replace(chartMatch[0], '').trim();
       } catch (e) {
         console.warn("Chart JSON parse error:", e);

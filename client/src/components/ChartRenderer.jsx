@@ -13,10 +13,16 @@ import {
 // Helper to render mixed text and KaTeX (e.g. "응력 $\\sigma$")
 const renderMixedText = (text) => {
   if (!text || typeof text !== 'string') return text;
-  if (!window.katex) return text;
+  
+  // [LATEX Rendering Logic Defense Shield] 
+  // 메인 파이프라인(latexUtils.js)을 보호하기 위해, 차트 컴포넌트 내부에만 격리된 치유 로직 적용.
+  // AI가 환각으로 슬래시 바로 뒤에 아래첨자를 붙여 생긴 콤마 착시(t/_S)를 t/S로 평탄화.
+  let cleanText = text.replace(/([a-zA-Z])\/_([a-zA-Z0-9])/g, '$1/$2');
+
+  if (!window.katex) return cleanText;
   
   try {
-    return text.replace(/\$([^\$]+)\$/g, (match, math) => {
+    return cleanText.replace(/\$([^\$]+)\$/g, (match, math) => {
       try {
         return window.katex.renderToString(math.trim(), { throwOnError: false });
       } catch (e) {
@@ -24,7 +30,7 @@ const renderMixedText = (text) => {
       }
     });
   } catch (e) {
-    return text;
+    return cleanText;
   }
 };
 
