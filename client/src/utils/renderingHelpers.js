@@ -818,13 +818,7 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
     return html;
   });
 
-  if (isMarkdown) {
-    tempText = tempText.replace(/\n\n/g, '<div style="height: 1.2rem;"></div>');
-    tempText = tempText.replace(/\n/g, '<br/>');
-  } else {
-    tempText = tempText.replace(/\n\n/g, '<div style="height: 0.6rem;"></div>');
-    tempText = tempText.replace(/\n/g, '<br/>');
-  }
+
 
   tempText = tempText.replace(/(?:<br\/>|<div style="height: [^"]*"><\/div>)*\s*(___BLOCK_MATH_\d+___)\s*(?:<br\/>|<div style="height: [^"]*"><\/div>)*/g, '$1');
   tempText = tempText.replace(/(?:<br\/>|<div style="height: [^"]*"><\/div>)+(<div style="[^"]*padding-left:[^"]*")/g, '$1');
