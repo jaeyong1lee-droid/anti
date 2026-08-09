@@ -19944,7 +19944,7 @@ ${itemsStr}
                   <button
                     onClick={async () => {
                       showNotification('서버에 현재 진행 상황을 저장합니다...', 'info');
-                      await forceSaveActiveSessions();
+                      await forceSaveActiveSessions(false, true);
                       showNotification('저장 완료!', 'success');
                     }}
                     className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-slate-700 bg-slate-800/80 hover:bg-slate-700 hover:text-white text-slate-350 transition-all duration-200 cursor-pointer active:scale-95 text-[11px] font-black"
@@ -19996,7 +19996,7 @@ ${itemsStr}
                   <button
                     onClick={async () => {
                       showNotification('서버에 현재 진행 상황을 저장합니다...', 'info');
-                      await forceSaveActiveSessions();
+                      await forceSaveActiveSessions(false, true);
                       showNotification('저장 완료!', 'success');
                     }}
                     className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-350 hover:text-white border border-slate-700/40 rounded-xl text-[11px] sm:text-xs md:text-sm font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center whitespace-nowrap min-w-0"
