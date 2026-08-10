@@ -1338,3 +1338,9 @@ pre {
 svg text:not([fill]) {
   fill: currentColor;
 }
+
+
+/* Fix KaTeX fraction line disappearing in very small fonts (e.g. text-[10px]) */
+.katex .frac-line {
+    border-bottom-width: max(1px, 0.04em) !important;
+}
