@@ -1032,7 +1032,7 @@ export function healQuizQuestionObject(q) {
     const hasMultipleSubItems = /(?:\(1\)|①).*?(?:\(2\)|②)/.test(qText);
     const hasCalcKeyword = /구하시오|산정하시오|계산하시오|결정하시오/i.test(qText);
 
-    const isCalcQ = !isExplicitCompOrTheory && (
+    const isCalcQ = (q.category === '계산') && !isExplicitCompOrTheory && (
       q.type === '주관식 (계산)' || 
       q.subtype === '계산' || 
       hasCalcHeaders ||
@@ -1617,6 +1617,10 @@ export function parseLlmJson(text) {
 
 export function isCalculationQuestion(q) {
   if (!q) return false;
+
+  // The ultimate root cause fix: subjective calculation UI is ONLY for '계산' category topics.
+  if (q.category !== '계산') return false;
+
   const qText = q.question || '';
 
   // Explicit comparison tables (Q2) and theory questions (Q3) are never calculation questions
