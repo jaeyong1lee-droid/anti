@@ -1395,6 +1395,19 @@ let parsedArray = null;
       } else if (type === '객관식' || type === '객관식 (4지선다)') {
         newType = '객관식 (4지선다)';
       }
+
+      // AI Hallucination Fix: If AI outputs '주관식 (계산)' or similar for a normal topic, force it back to intended types
+      if (newType.includes('계산') && topic.category !== '계산') {
+        if (newSubtype === '표채우기' || (q.question && (q.question.includes('┌') || q.question.includes('흐름도') || q.question.includes('플로우차트')))) {
+          newType = '주관식 (표채우기)';
+          newSubtype = '표채우기';
+        } else if (q.options && q.options.length > 0) {
+          newType = '객관식 (4지선다)';
+        } else {
+          newType = '주관식 (단답형)';
+          newSubtype = '단답형';
+        }
+      }
       
       return {
         ...q,
