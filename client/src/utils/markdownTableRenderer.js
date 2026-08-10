@@ -1,5 +1,5 @@
 import { cleanAndSanitizeMathText } from './renderingHelpers.js';
-import { healLatexFormulas } from './latexUtils.js';
+import { healLatexFormulas } from '@server-utils/latexUtils';
 
 export function getDefaultSmartColWidth(hIdx, totalCols) {
   if (totalCols <= 1) return '100%';

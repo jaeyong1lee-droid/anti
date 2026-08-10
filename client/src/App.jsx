@@ -7,7 +7,7 @@ import {
   healFormulaQuestionObject, 
   healAnswersheetQuestionObject,
   isCalculationQuestion
-} from './utils/latexUtils';
+} from '@server-utils/latexUtils';
 import { convertMarkdownTablesToHtml } from './utils/markdownTableRenderer';
 import { convertMarkdownAcronymsToHtml } from './utils/markdownAcronymRenderer';
 import { BufferedTextarea } from './components/BufferedInput';
@@ -6735,7 +6735,7 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
   const chatBodyRef = useRef(null);
   const tutorFileInputRef = useRef(null);
   const mobileTutorFileInputRef = useRef(null);
-  const [attachedImage, setAttachedImage] = useState(null); // { name, mimeType, data }
+  const [attachedImages, setAttachedImages] = useState([]); // [{ name, mimeType, data }]
   const [hintText, setHintText] = useState(null);
   const [isHintLoading, setIsHintLoading] = useState(false);
   const [showHintModal, setShowHintModal] = useState(false);
@@ -12506,12 +12506,12 @@ ${item.intuitive || ''}
 
     const compressed = await compressImageFile(file);
     if (compressed) {
-      setAttachedImage(compressed);
+      setAttachedImages(prev => [...prev, compressed]);
     }
   };
 
   const handleClearAttachedImage = () => {
-    setAttachedImage(null);
+    setAttachedImages([]);
   };
 
   const handlePasteImage = async (e) => {
@@ -12667,7 +12667,7 @@ ${item.intuitive || ''}
         body: JSON.stringify({ 
           history: realTimeChatHistory.map(h => ({ role: h.role, text: h.text })), 
           message: apiMessage,
-          image: currentAttachedImage ? { mimeType: currentAttachedImage.mimeType, data: currentAttachedImage.data } : null,
+          image: currentAttachedImages.length > 0 ? currentAttachedImages.map(img => ({ mimeType: img.mimeType, data: img.data })) : null,
           acronymMode: overrideAcronymMode || acronymModeActive,
           progressId
         })
@@ -13679,9 +13679,9 @@ ${item.intuitive || ''}
   // ── Gemini Sidebar Chat Handler ───────────────────────────────
   const handleSendChat = async (customMessage, overrideAcronymMode = false) => {
     const userMessage = (typeof customMessage === 'string' ? customMessage : chatInput).trim();
-    if ((!userMessage && !attachedImage) || isChatLoading) return;
+    if ((!userMessage && attachedImages.length === 0) || isChatLoading) return;
     
-    const currentAttachedImage = attachedImage;
+    const currentAttachedImages = [...attachedImages];
     if (typeof customMessage !== 'string') {
       setChatInput('');
       if (sidebarChatInputRef.current) sidebarChatInputRef.current.style.height = 'auto';
@@ -13703,7 +13703,7 @@ ${item.intuitive || ''}
       displayMessage = `$$${sentAttachedFormula}$$\n\n${userMessage}`;
     }
     
-    const newUserMsg = { role: 'user', text: displayMessage, image: currentAttachedImage };
+    const newUserMsg = { role: 'user', text: displayMessage, image: currentAttachedImages.length > 0 ? currentAttachedImages : null };
     const historyWithUser = [...chatHistoryRef.current, newUserMsg];
     setChatHistory(historyWithUser);
     chatHistoryRef.current = historyWithUser;
@@ -13725,7 +13725,7 @@ ${item.intuitive || ''}
         body: JSON.stringify({ 
           history: historyWithUser.map(h => ({ role: h.role, text: h.text })), 
           message: apiMessage,
-          image: currentAttachedImage ? { mimeType: currentAttachedImage.mimeType, data: currentAttachedImage.data } : null,
+          image: currentAttachedImages.length > 0 ? currentAttachedImages.map(img => ({ mimeType: img.mimeType, data: img.data })) : null,
           acronymMode: overrideAcronymMode || acronymModeActive,
           progressId
         })
@@ -17447,7 +17447,7 @@ ${itemsStr}
             image: h.image ? { mimeType: h.image.mimeType, data: h.image.data } : null
           })),
           message: promptText,
-          image: currentAttachedImage ? { mimeType: currentAttachedImage.mimeType, data: currentAttachedImage.data } : null,
+          image: currentAttachedImages.length > 0 ? currentAttachedImages.map(img => ({ mimeType: img.mimeType, data: img.data })) : null,
           progressId
         })
       });
@@ -21904,7 +21904,7 @@ ${itemsStr}
                     type="file" 
                     ref={tutorFileInputRef} 
                     onChange={handleImageAttachment} 
-                    accept="image/*" 
+                    accept="image/*" multiple
                     className="hidden" 
                   />
 
@@ -21935,7 +21935,7 @@ ${itemsStr}
                   {/* 전송 버튼 */}
                   <button
                     type="submit"
-                    disabled={(!chatInput.trim() && !attachedImage) || isChatLoading}
+                    disabled={(!chatInput.trim() && attachedImages.length === 0) || isChatLoading}
                     className="w-8 h-8 bg-slate-300 hover:bg-slate-200 disabled:opacity-30 disabled:hover:bg-slate-300 rounded-xl flex items-center justify-center transition-all cursor-pointer shadow-md shadow-slate-300/10 active:scale-95 flex-shrink-0"
                   >
                     <Send size={12} className="text-slate-900" />
@@ -25513,7 +25513,7 @@ ${itemsStr}
                     type="file" 
                     ref={mobileTutorFileInputRef} 
                     onChange={handleImageAttachment} 
-                    accept="image/*" 
+                    accept="image/*" multiple
                     className="hidden" 
                   />
 
@@ -25544,7 +25544,7 @@ ${itemsStr}
                   {/* 전송 버튼 */}
                   <button
                     type="submit"
-                    disabled={(!chatInput.trim() && !attachedImage) || isChatLoading}
+                    disabled={(!chatInput.trim() && attachedImages.length === 0) || isChatLoading}
                     className="w-8 h-8 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-30 disabled:hover:bg-indigo-600 rounded-xl flex items-center justify-center transition-all cursor-pointer shadow-md shadow-indigo-600/10 active:scale-95 flex-shrink-0"
                   >
                     <Send size={12} className="text-white" />
@@ -28166,8 +28166,8 @@ ${itemsStr}
                           type="file"
                           ref={formulaTutorFileInputRef}
                           onChange={handleFormulaImageAttachment}
-                          accept="image/*"
-                          className="hidden"
+                          accept="image/*" multiple
+                    className="hidden"
                         />
                         <button
                           type="button"
@@ -28407,8 +28407,8 @@ ${itemsStr}
                       type="file"
                       ref={formulaTutorFileInputRef}
                       onChange={handleFormulaImageAttachment}
-                      accept="image/*"
-                      className="hidden"
+                      accept="image/*" multiple
+                    className="hidden"
                     />
                     <button
                       type="button"
@@ -30056,8 +30056,8 @@ ${itemsStr}
                 type="file"
                 ref={realTimeFileInputRef}
                 onChange={handleRealTimeImageAttachment}
-                accept="image/*"
-                className="hidden"
+                accept="image/*" multiple
+                    className="hidden"
               />
 
               <textarea
