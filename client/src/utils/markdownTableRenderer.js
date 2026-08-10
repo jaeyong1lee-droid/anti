@@ -378,15 +378,35 @@ export function convertMarkdownTablesToHtml(text, hideWrapper = false, hideRemar
 
         while (j < lines.length) {
           const l = lines[j].trim();
-          if (l === '') {
-             if (currentRowStr) {
-                 tableLines.push(currentRowStr);
-                 currentRowStr = "";
-             }
-             break;
-          }
           
-          if (l.includes('|')) {
+          let k = j + 1;
+          let nextContainsPipe = false;
+          let lookaheadCount = 0;
+          while (k < lines.length && lookaheadCount < 8) {
+            if (lines[k].includes('|')) {
+              nextContainsPipe = true;
+              break;
+            }
+            if (lines[k].trim().match(/^#+\s/) || lines[k].trim().startsWith('```')) {
+              break; // Definitive end of table
+            }
+            k++;
+            lookaheadCount++;
+          }
+
+          if (l === '') {
+             if (nextContainsPipe && tableLines.length > 0) {
+                 // Blank line inside a broken table cell!
+                 if (currentRowStr) currentRowStr += '\n';
+             } else {
+                 if (currentRowStr) {
+                     tableLines.push(currentRowStr);
+                     currentRowStr = "";
+                 }
+                 break;
+             }
+          }
+          else if (l.includes('|')) {
              if (currentRowStr === "") {
                 currentRowStr = lines[j];
              } else {
@@ -407,24 +427,12 @@ export function convertMarkdownTablesToHtml(text, hideWrapper = false, hideRemar
                 }
              }
           } else {
-             // Line doesn't contain '|'. Check lookahead to see if it's a cell continuation.
-             let k = j + 1;
-             let nextContainsPipe = false;
-             let lookaheadCount = 0;
-             while (k < lines.length && lines[k].trim() !== '' && lookaheadCount < 6) {
-               if (lines[k].includes('|')) {
-                 nextContainsPipe = true;
-                 break;
-               }
-               k++;
-               lookaheadCount++;
-             }
-             
+             // Line doesn't contain '|'.
              if (nextContainsPipe) {
                 if (currentRowStr !== "") {
                    currentRowStr += '\n' + lines[j];
                 } else {
-                   currentRowStr = lines[j];
+                   currentRowStr = lines[j]; // weird case
                 }
              } else {
                 if (currentRowStr) {
