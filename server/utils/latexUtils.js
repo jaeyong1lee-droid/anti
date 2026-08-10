@@ -535,6 +535,14 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
     }
     if (token.type === 'text') {
       let t = token.content;
+
+      // [Self-Healing] 리스트 마커 보호 (마크다운 리스트 기호가 수식으로 흡수되는 현상 방지)
+      const listMarkers = [];
+      t = t.replace(/^([ \t]*)([-*•]|\d+\.)([ \t]+)/gm, (match) => {
+        listMarkers.push(match);
+        return '리스트마커임시보호절대치환금지';
+      });
+
       // Auto-wrap unwrapped LaTeX math formulas
       t = t.replace(formulaRegex, (match) => {
         const trailingSpaces = match.match(/\s*$/)[0];
@@ -559,7 +567,7 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
           return subToken.content.replace(simpleVariableRegex, (match) => {
             const trailingSpaces = match.match(/\s*$/)[0];
             const trimmed = match.trim();
-            if (trimmed === 'START_TABLE' || trimmed === 'END_TABLE') return match;
+            if (trimmed === 'START_TABLE' || trimmed === 'END_TABLE' || trimmed === '리스트마커임시보호절대치환금지') return match;
             const trailingPunctuation = trimmed.match(/[.,;:!]+$/);
             const punc = trailingPunctuation ? trailingPunctuation[0] : '';
             let formula = trimmed.slice(0, trimmed.length - punc.length).trim();
@@ -576,6 +584,12 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
         }
         return subToken.content;
       }).join('');
+
+      // 리스트 마커 복원
+      t = t.replace(/리스트마커임시보호절대치환금지/g, () => {
+        return listMarkers.shift();
+      });
+
       // Escape angle brackets for safety (preventing \gt -> ₩gt on Windows)
       return t.replace(/</g, '&lt;').replace(/>/g, '&gt;');
     } else {
