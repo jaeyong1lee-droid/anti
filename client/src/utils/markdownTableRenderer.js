@@ -184,7 +184,7 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false,
 
   if (hideWrapper) {
     // Render clean table container without Comparison Table card, buttons, or extra headers
-    html += `<div class="markdown-table-container floating-table-container custom-col-widths w-full my-2 overflow-x-auto rounded-xl border border-slate-600 bg-slate-950/20">`;
+    html += `<div class="markdown-table-container floating-table-container custom-col-widths w-full min-w-0 max-w-full my-2 overflow-x-auto rounded-xl border border-slate-600 bg-slate-950/20">`;
     html += `<table class="${tableClass} border-collapse text-[14px] sm:text-[15px] min-w-full" ${tableAttrStyle}>`;
     html += `<thead>`;
     html += `<tr class="bg-slate-900/80 text-slate-355 border-b border-slate-600">`;
@@ -252,7 +252,7 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false,
   const cleanTitle = precedingTitle ? precedingTitle.replace(/["']/g, '&quot;') : '비교표';
   const safeTitleForDataAttr = cleanTitle.replace(/\$/g, '&#36;');
 
-  html += `<div class="w-full my-4 space-y-2 table-export-wrapper relative">`;
+  html += `<div class="w-full min-w-0 max-w-full my-4 space-y-2 table-export-wrapper relative">`;
   html += `<div class="flex items-center justify-between gap-4 border-b border-slate-800/60 pb-2">`;
   html += `<span class="text-xs sm:text-sm font-extrabold text-slate-350 select-none flex items-start gap-1.5">`;
   html += `<span>📊</span>`;
@@ -264,7 +264,7 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false,
   html += `</button>`;
   html += `</div>`;
 
-  html += `<div class="markdown-table-container floating-table-container custom-col-widths w-full overflow-x-auto rounded-xl border border-slate-600 bg-slate-950/40">`;
+  html += `<div class="markdown-table-container floating-table-container custom-col-widths w-full min-w-0 max-w-full overflow-x-auto rounded-xl border border-slate-600 bg-slate-950/40">`;
   html += `<table class="${tableClass} border-collapse text-[14px] sm:text-[15px] min-w-full" ${tableAttrStyle}>`;
   html += `<thead>`;
   html += `<tr class="bg-slate-900/80 text-slate-350 border-b border-slate-600">`;

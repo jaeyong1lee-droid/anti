@@ -231,7 +231,7 @@ export const LatexRenderer = React.memo(function LatexRenderer({
     }
 
     return (
-      <div className={`w-full space-y-2 select-text text-left ${className}`}>
+      <div className={`w-full min-w-0 max-w-full space-y-2 select-text text-left ${className}`}>
         {parts.map((part, pIdx) => {
           if (part.type === 'text') {
             return (

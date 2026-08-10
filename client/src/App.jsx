@@ -21786,14 +21786,14 @@ ${itemsStr}
 
               <div ref={chatBodyRef} className="flex-1 overflow-y-auto p-3 space-y-3 scroll-smooth">
                 {chatHistory.map((msg, i) => (
-                  <div key={i} id={`chat-msg-${i}`} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} w-full ${msg.role === 'model' ? 'tutor-msg-bubble-container' : ''}`}>
+                  <div key={i} id={`chat-msg-${i}`} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} w-full min-w-0 ${msg.role === 'model' ? 'tutor-msg-bubble-container' : ''}`}>
                     <div className={`text-[10px] mb-1 font-bold ${msg.role === 'user' ? 'text-indigo-400 mr-1' : 'text-violet-400 ml-1'}`}>
                       {msg.role === 'user' ? '나' : 'Gemini'}
                     </div>
                     <div className={
                       msg.role === 'user'
-                        ? 'tutor-msg-text px-3 py-2 rounded-2xl max-w-[90%] leading-relaxed bg-indigo-600 text-white rounded-br-sm'
-                        : 'tutor-msg-text leading-relaxed text-slate-200 md:bg-slate-800 md:border md:border-slate-700 md:rounded-bl-sm md:px-3 md:py-2 md:rounded-2xl md:max-w-[99%] bg-transparent border-0 p-0 max-w-full w-full [&_svg]:w-full [&_svg]:max-w-full [&_svg]:h-auto'
+                        ? 'tutor-msg-text px-3 py-2 rounded-2xl max-w-[90%] leading-relaxed bg-indigo-600 text-white rounded-br-sm min-w-0'
+                        : 'tutor-msg-text leading-relaxed text-slate-200 md:bg-slate-800 md:border md:border-slate-700 md:rounded-bl-sm md:px-3 md:py-2 md:rounded-2xl md:max-w-[99%] bg-transparent border-0 p-0 max-w-full w-full min-w-0 [&_svg]:w-full [&_svg]:max-w-full [&_svg]:h-auto'
                     }>
                       {msg.role === 'user' ? (
                         <div className="flex flex-col gap-2">
