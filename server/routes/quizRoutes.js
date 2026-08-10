@@ -2019,112 +2019,111 @@ router.get('/session/completed-review/by-topic/:topicId', async (req, res) => {
 
 // GET /api/session/last-active-review -> Get last active review session metadata
 router.get('/session/last-active-review', async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   try {
     await ensureSessionTable();
-    const row = await dbQuery.get(
+    const rows = await dbQuery.all(
       `SELECT key FROM app_session 
        WHERE key LIKE 'review_questions_schedule_%' 
           OR key LIKE 'review_questions_topic_%' 
           OR key LIKE 'completed_review_schedule_%' 
-       ORDER BY updated_at DESC LIMIT 1`
+       ORDER BY updated_at DESC LIMIT 20`
     );
 
-    if (!row) {
-      return res.json({ success: true, lastActive: null });
-    }
-
-    const key = row.key;
-    if (key.startsWith('completed_review_schedule_') || key.startsWith('review_questions_schedule_')) {
-      const isCompleted = key.startsWith('completed_review_schedule_');
-      const rawSchedId = key.replace(isCompleted ? 'completed_review_schedule_' : 'review_questions_schedule_', '');
-      
-      if (rawSchedId.startsWith('mixed_')) {
-        return res.json({
-          success: true,
-          lastActive: {
-            topicId: rawSchedId.includes('_sess_') ? rawSchedId.split('_sess_')[0] : (rawSchedId.startsWith('mixed_schedule_') ? `mixed_${rawSchedId.replace('mixed_schedule_', '')}` : rawSchedId),
-            title: '오늘의 필수 믹스복습 (11제 1세트)',
-            keywords: '',
-            pdfName: 'mixed.html',
-            mode: isCompleted ? 'completed' : 'ai',
-            scheduleId: rawSchedId,
-            reviewRound: 'MIX',
-            isReadOnly: isCompleted,
-            isBonus: false,
-            category: '믹스'
-          }
-        });
-      }
-
-      const scheduleId = parseInt(rawSchedId, 10);
-      if (!isNaN(scheduleId) && scheduleId > 0) {
-        const sched = await dbQuery.get(
-          `SELECT s.id, s.topic_id, s.review_round, t.title, t.keywords, t.pdf_name, t.category 
-           FROM schedules s 
-           JOIN topics t ON s.topic_id = t.id 
-           WHERE s.id = ?`,
-          [scheduleId]
-        );
-        if (sched) {
+    for (const row of rows) {
+      const key = row.key;
+      if (key.startsWith('completed_review_schedule_') || key.startsWith('review_questions_schedule_')) {
+        const isCompleted = key.startsWith('completed_review_schedule_');
+        const rawSchedId = key.replace(isCompleted ? 'completed_review_schedule_' : 'review_questions_schedule_', '');
+        
+        if (rawSchedId.startsWith('mixed_')) {
           return res.json({
             success: true,
             lastActive: {
-              topicId: sched.topic_id,
-              title: sched.title,
-              keywords: sched.keywords || '',
-              pdfName: sched.pdf_name || '',
+              topicId: rawSchedId.includes('_sess_') ? rawSchedId.split('_sess_')[0] : (rawSchedId.startsWith('mixed_schedule_') ? `mixed_${rawSchedId.replace('mixed_schedule_', '')}` : rawSchedId),
+              title: '오늘의 필수 믹스복습 (11제 1세트)',
+              keywords: '',
+              pdfName: 'mixed.html',
               mode: isCompleted ? 'completed' : 'ai',
-              scheduleId: sched.id,
-              reviewRound: sched.review_round,
+              scheduleId: rawSchedId,
+              reviewRound: 'MIX',
               isReadOnly: isCompleted,
-              isBonus: sched.review_round === 99,
-              category: sched.category || '일반'
+              isBonus: false,
+              category: '믹스'
             }
           });
         }
-      }
-    } else if (key.startsWith('review_questions_topic_')) {
-      let topicIdRaw = key.replace('review_questions_topic_', '');
-      if (topicIdRaw.includes('_sess_')) {
-        topicIdRaw = topicIdRaw.split('_sess_')[0];
-      }
-      if (topicIdRaw.startsWith('mixed_')) {
-        return res.json({
-          success: true,
-          lastActive: {
-            topicId: topicIdRaw,
-            title: '오늘의 필수 믹스복습 (11제 1세트)',
-            keywords: '',
-            pdfName: 'mixed.html',
-            mode: 'ai',
-            scheduleId: `mixed_schedule_${topicIdRaw.replace('mixed_', '')}`,
-            reviewRound: 'MIX',
-            isReadOnly: false,
-            isBonus: false,
-            category: '믹스'
+
+        const scheduleId = parseInt(rawSchedId, 10);
+        if (!isNaN(scheduleId) && scheduleId > 0) {
+          const sched = await dbQuery.get(
+            `SELECT s.id, s.topic_id, s.review_round, t.title, t.keywords, t.pdf_name, t.category 
+             FROM schedules s 
+             JOIN topics t ON s.topic_id = t.id 
+             WHERE s.id = ?`,
+            [scheduleId]
+          );
+          if (sched) {
+            return res.json({
+              success: true,
+              lastActive: {
+                topicId: sched.topic_id,
+                title: sched.title,
+                keywords: sched.keywords || '',
+                pdfName: sched.pdf_name || '',
+                mode: isCompleted ? 'completed' : 'ai',
+                scheduleId: sched.id,
+                reviewRound: sched.review_round,
+                isReadOnly: isCompleted,
+                isBonus: sched.review_round === 99,
+                category: sched.category || '일반'
+              }
+            });
           }
-        });
-      }
-      const topicId = parseInt(topicIdRaw, 10);
-      if (!isNaN(topicId) && topicId > 0) {
-        const topicObj = await dbQuery.get(`SELECT id, title, keywords, pdf_name, category FROM topics WHERE id = ?`, [topicId]);
-        if (topicObj) {
-          const sched = await dbQuery.get(`SELECT id, review_round FROM schedules WHERE topic_id = ? AND status = 'pending' LIMIT 1`, [topicId]);
+        }
+      } else if (key.startsWith('review_questions_topic_')) {
+        let topicIdRaw = key.replace('review_questions_topic_', '');
+        if (topicIdRaw.includes('_sess_')) {
+          topicIdRaw = topicIdRaw.split('_sess_')[0];
+        }
+        if (topicIdRaw.startsWith('mixed_')) {
           return res.json({
             success: true,
             lastActive: {
-              topicId: topicObj.id,
-              title: topicObj.title,
-              keywords: topicObj.keywords || '',
-              pdfName: topicObj.pdf_name || '',
+              topicId: topicIdRaw,
+              title: '오늘의 필수 믹스복습 (11제 1세트)',
+              keywords: '',
+              pdfName: 'mixed.html',
               mode: 'ai',
-              scheduleId: sched ? sched.id : null,
-              reviewRound: sched ? sched.review_round : null,
+              scheduleId: `mixed_schedule_${topicIdRaw.replace('mixed_', '')}`,
+              reviewRound: 'MIX',
               isReadOnly: false,
-              isBonus: sched ? sched.review_round === 99 : false,
-              category: topicObj.category || '일반'
+              isBonus: false,
+              category: '믹스'
             }
           });
+        }
+        const topicId = parseInt(topicIdRaw, 10);
+        if (!isNaN(topicId) && topicId > 0) {
+          const topicObj = await dbQuery.get(`SELECT id, title, keywords, pdf_name, category FROM topics WHERE id = ?`, [topicId]);
+          if (topicObj) {
+            const sched = await dbQuery.get(`SELECT id, review_round FROM schedules WHERE topic_id = ? AND status = 'pending' LIMIT 1`, [topicId]);
+            return res.json({
+              success: true,
+              lastActive: {
+                topicId: topicObj.id,
+                title: topicObj.title,
+                keywords: topicObj.keywords || '',
+                pdfName: topicObj.pdf_name || '',
+                mode: 'ai',
+                scheduleId: sched ? sched.id : null,
+                reviewRound: sched ? sched.review_round : null,
+                isReadOnly: false,
+                isBonus: sched ? sched.review_round === 99 : false,
+                category: topicObj.category || '일반'
+              }
+            });
+          }
         }
       }
     }
