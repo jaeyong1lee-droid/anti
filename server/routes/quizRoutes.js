@@ -2037,9 +2037,10 @@ router.get('/session/last-active-review', async (req, res) => {
     await ensureSessionTable();
     const rows = await dbQuery.all(
       `SELECT key FROM app_session 
-       WHERE key LIKE 'review_questions_schedule_%' 
+       WHERE (key LIKE 'review_questions_schedule_%' 
           OR key LIKE 'review_questions_topic_%' 
-          OR key LIKE 'completed_review_schedule_%' 
+          OR key LIKE 'completed_review_schedule_%')
+         AND key NOT LIKE '%_q'
        ORDER BY updated_at DESC LIMIT 20`
     );
 
