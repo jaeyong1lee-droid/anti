@@ -21817,7 +21817,7 @@ ${itemsStr}
                         </div>
                       ) : (
                         <LatexRenderer 
-                          text={msg.text} 
+                          text={msg.text?.replace(/^\$(?!\$)/, '').trimStart()}
                           katexLoaded={katexLoaded} 
                           enableAddFormula={true}
                           formulaSource="tutor"
@@ -25426,7 +25426,7 @@ ${itemsStr}
                         </div>
                       ) : (
                         <LatexRenderer 
-                          text={msg.text} 
+                          text={msg.text?.replace(/^\$(?!\$)/, '').trimStart()}
                           katexLoaded={katexLoaded} 
                           enableAddFormula={true}
                           formulaSource="tutor"
