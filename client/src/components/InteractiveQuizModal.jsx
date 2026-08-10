@@ -2,7 +2,7 @@ import React, { useState, useMemo, useRef } from 'react';
 import { X, Sparkles, Eye, EyeOff, BookOpen, CheckCircle, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { TableQuiz } from './TableQuiz';
 import { AcronymQuiz } from './AcronymQuiz';
-import { parseMarkdownTable } from '@server-utils/latexUtils';
+import { parseMarkdownTable } from '../utils/latexUtils';
 import { areCellsEqual } from '../utils/renderingHelpers';
 import { LatexRenderer } from './LatexRenderer';
 

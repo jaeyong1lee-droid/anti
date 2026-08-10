@@ -11,7 +11,7 @@ import {
 } from '../utils/renderingHelpers';
 import { convertMarkdownTablesToHtml } from '../utils/markdownTableRenderer';
 import { convertMarkdownAcronymsToHtml } from '../utils/markdownAcronymRenderer';
-import { healLatexFormulas } from '@server-utils/latexUtils';
+import { healLatexFormulas } from '../utils/latexUtils';
 import ChartRenderer from './ChartRenderer';
 import { parseChartJson } from '../utils/parseChartJson';
 
