@@ -107,7 +107,7 @@ export function htmlTableToMarkdown(html, poissonSymbol = null) {
   });
 }
 
-function parseMarkdownTable(questionText) {
+export function parseMarkdownTable(questionText) {
   if (!questionText) return null;
   const lines = questionText.split('\n');
   
