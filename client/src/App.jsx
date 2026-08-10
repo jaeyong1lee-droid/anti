@@ -12918,7 +12918,7 @@ ${item.intuitive || ''}
 
   const handleDeleteStandard = async (id) => {
     if (!window.confirm('정말 이 공학 기준을 삭제하시겠습니까?')) return;
-    const updatedList = standardsList.filter(s => s.id !== id);
+    const updatedList = standardsList.map(s => s.id === id ? { ...s, isDeleted: true } : s);
     setIsSavingStandardsList(true);
     try {
       const res = await fetch(`${API_BASE}/api/engineering-standards`, {
@@ -13023,7 +13023,7 @@ ${item.intuitive || ''}
 
   const handleDeleteGradingStandard = async (id) => {
     if (!window.confirm('정말 이 채점 기준을 삭제하시겠습니까?')) return;
-    const updatedList = gradingStandardsList.filter(s => s.id !== id);
+    const updatedList = gradingStandardsList.map(s => s.id === id ? { ...s, isDeleted: true } : s);
     setIsSavingGradingStandardsList(true);
     try {
       const res = await fetch(`${API_BASE}/api/grading-standards`, {
@@ -13180,7 +13180,7 @@ ${item.intuitive || ''}
     const activeTopic = selectedTopic || examTopic;
     if (!activeTopic?.id) return;
     if (!window.confirm('정말 이 토픽 출제 지침을 삭제하시겠습니까?')) return;
-    const updatedList = topicInstructionsList.filter(s => s.id !== id);
+    const updatedList = topicInstructionsList.map(s => s.id === id ? { ...s, isDeleted: true } : s);
     setIsSavingTopicInstructionsList(true);
     try {
       const res = await fetch(`${API_BASE}/api/topics/${activeTopic.id}/instructions`, {
@@ -13292,7 +13292,7 @@ ${item.intuitive || ''}
 
   const handleDeleteGenerationStandard = async (id) => {
     if (!window.confirm('정말 이 문제생성 지침을 삭제하시겠습니까?')) return;
-    const updatedList = generationStandardsList.filter(s => s.id !== id);
+    const updatedList = generationStandardsList.map(s => s.id === id ? { ...s, isDeleted: true } : s);
     setIsSavingGenerationStandardsList(true);
     try {
       const res = await fetch(`${API_BASE}/api/generation-standards`, {
@@ -13397,7 +13397,7 @@ ${item.intuitive || ''}
 
   const handleDeleteLockscreenStandard = async (id) => {
     if (!window.confirm('정말 이 락스크린 출제 지침을 삭제하시겠습니까?')) return;
-    const updatedList = lockscreenStandardsList.filter(s => s.id !== id);
+    const updatedList = lockscreenStandardsList.map(s => s.id === id ? { ...s, isDeleted: true } : s);
     setIsSavingLockscreenStandardsList(true);
     try {
       const res = await fetch(`${API_BASE}/api/lockscreen-standards`, {
@@ -13502,7 +13502,7 @@ ${item.intuitive || ''}
 
   const handleDeleteOtherStandard = async (id) => {
     if (!window.confirm('정말 이 기타 지침을 삭제하시겠습니까?')) return;
-    const updatedList = otherStandardsList.filter(s => s.id !== id);
+    const updatedList = otherStandardsList.map(s => s.id === id ? { ...s, isDeleted: true } : s);
     setIsSavingOtherStandardsList(true);
     try {
       const res = await fetch(`${API_BASE}/api/engineering-standards`, {
@@ -22049,7 +22049,7 @@ ${itemsStr}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800 bg-slate-900/20">
-                      {standardsList.map((std, idx) => (
+                      {standardsList.filter(std => !std.isDeleted).map((std, idx) => (
                         <tr key={std.id} className="hover:bg-slate-800/30 transition-colors">
                           <td className="px-4 py-3 font-semibold text-slate-500">{idx + 1}</td>
                           <td className="px-4 py-3 font-bold text-white whitespace-nowrap overflow-hidden text-ellipsis max-w-[190px]" title={std.title}>{std.title}</td>
@@ -22077,7 +22077,7 @@ ${itemsStr}
                           </td>
                         </tr>
                       ))}
-                      {standardsList.length === 0 && (
+                      {standardsList.filter(std => !std.isDeleted).length === 0 && (
                         <tr>
                           <td colSpan="4" className="px-4 py-8 text-center text-slate-500 font-semibold">
                             등록된 공학 기준이 없습니다. 새로운 기준을 추가해보세요.
@@ -22239,7 +22239,7 @@ ${itemsStr}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800 bg-slate-900/20">
-                      {gradingStandardsList.map((std, idx) => (
+                      {gradingStandardsList.filter(std => !std.isDeleted).map((std, idx) => (
                         <tr key={std.id} className="hover:bg-slate-800/30 transition-colors">
                           <td className="px-4 py-3 font-semibold text-slate-500">{idx + 1}</td>
                           <td className="px-4 py-3 font-bold text-white whitespace-nowrap overflow-hidden text-ellipsis max-w-[190px]" title={std.title}>{std.title}</td>
@@ -22267,7 +22267,7 @@ ${itemsStr}
                           </td>
                         </tr>
                       ))}
-                      {gradingStandardsList.length === 0 && (
+                      {gradingStandardsList.filter(std => !std.isDeleted).length === 0 && (
                         <tr>
                           <td colSpan="4" className="px-4 py-8 text-center text-slate-500 font-semibold">
                             등록된 채점 기준이 없습니다. 새로운 기준을 추가해보세요.
@@ -22429,7 +22429,7 @@ ${itemsStr}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800 bg-slate-900/20">
-                      {generationStandardsList.map((std, idx) => (
+                      {generationStandardsList.filter(std => !std.isDeleted).map((std, idx) => (
                         <tr key={std.id} className="hover:bg-slate-800/30 transition-colors">
                           <td className="px-4 py-3 font-semibold text-slate-500">{idx + 1}</td>
                           <td className="px-4 py-3 font-bold text-white whitespace-nowrap overflow-hidden text-ellipsis max-w-[190px]" title={std.title}>{std.title}</td>
@@ -22457,7 +22457,7 @@ ${itemsStr}
                           </td>
                         </tr>
                       ))}
-                      {generationStandardsList.length === 0 && (
+                      {generationStandardsList.filter(std => !std.isDeleted).length === 0 && (
                         <tr>
                           <td colSpan="4" className="px-4 py-8 text-center text-slate-500 font-semibold">
                             등록된 문제생성 지침이 없습니다. 새로운 지침을 추가해보세요.
@@ -22616,14 +22616,14 @@ ${itemsStr}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800/60 bg-slate-900/20">
-                      {lockscreenStandardsList.length === 0 ? (
+                      {lockscreenStandardsList.filter(std => !std.isDeleted).length === 0 ? (
                         <tr>
                           <td colSpan={4} className="px-4 py-8 text-center text-slate-500 font-semibold">
                             등록된 락스크린 출제 지침이 없습니다. 새로운 지침을 추가해보세요.
                           </td>
                         </tr>
                       ) : (
-                        lockscreenStandardsList.map((std, idx) => (
+                        lockscreenStandardsList.filter(std => !std.isDeleted).map((std, idx) => (
                           <tr key={std.id || idx} className="hover:bg-slate-800/30 transition-colors">
                             <td className="px-4 py-3 font-mono font-bold text-slate-500 text-left">{idx + 1}</td>
                             <td className="px-4 py-3 font-bold text-slate-200 text-left whitespace-nowrap">{std.title}</td>
@@ -22801,14 +22801,14 @@ ${itemsStr}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800/60 bg-slate-900/20">
-                      {otherStandardsList.length === 0 ? (
+                      {otherStandardsList.filter(std => !std.isDeleted).length === 0 ? (
                         <tr>
                           <td colSpan={4} className="px-4 py-8 text-center text-slate-500 font-semibold">
                             등록된 기타 지침이 없습니다. 새로운 지침을 추가해보세요.
                           </td>
                         </tr>
                       ) : (
-                        otherStandardsList.map((std, idx) => (
+                        otherStandardsList.filter(std => !std.isDeleted).map((std, idx) => (
                           <tr key={std.id || idx} className="hover:bg-slate-800/30 transition-colors">
                             <td className="px-4 py-3 font-mono font-bold text-slate-500 text-left align-top">{idx + 1}</td>
                             <td className="px-4 py-3 font-bold text-slate-200 text-left align-top whitespace-nowrap overflow-hidden text-ellipsis">{std.title}</td>
@@ -22985,7 +22985,7 @@ ${itemsStr}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800 bg-slate-900/20">
-                      {topicInstructionsList.map((inst, idx) => (
+                      {topicInstructionsList.filter(inst => !inst.isDeleted).map((inst, idx) => (
                         <tr key={inst.id} className="hover:bg-slate-800/30 transition-colors">
                           <td className="px-4 py-3 font-semibold text-slate-500">{idx + 1}</td>
                           <td className="px-4 py-3 font-bold text-white whitespace-nowrap overflow-hidden text-ellipsis max-w-[190px]" title={inst.title}>{inst.title}</td>
@@ -23013,7 +23013,7 @@ ${itemsStr}
                           </td>
                         </tr>
                       ))}
-                      {topicInstructionsList.length === 0 && (
+                      {topicInstructionsList.filter(inst => !inst.isDeleted).length === 0 && (
                         <tr>
                           <td colSpan="4" className="px-4 py-8 text-center text-slate-500 font-semibold">
                             등록된 출제 지침이 없습니다. 새로운 지침을 추가해보세요.
