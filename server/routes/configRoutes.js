@@ -16,7 +16,8 @@ import { updateLiveLockscreenStandards, lockscreenStandardsList } from '../plugi
 import { healFormulaQuestionObject, healAnswersheetQuestionObject, healQuizQuestionObject, parseLlmJson, healLatexFormulas, LATEX_CHAT_PROMPT_INSTRUCTIONS } from '../utils/latexUtils.js';
 import { defaultAcronyms, generateAcronymTutorResponse } from '../plugins/acronymsPlugin.js';
 import { defaultOverviews, generateOverviewTutorResponse } from '../plugins/overviewsPlugin.js';
-import { ASCII_DIAGRAM_PROMPT } from '../plugins/asciiDiagramPlugin.js';
+import { SVG_DIAGRAM_PROMPT } from '../plugins/svgDiagramPlugin.js';
+import { CHART_DIAGRAM_PROMPT } from '../plugins/chartPlugin.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -1532,7 +1533,8 @@ router.post('/chat', async (req, res) => {
    - 개별 이론이나 공법, 개념을 비교 설명할 때는 불필요한 공백 라인을 줄이고 중제목(###)으로 구조를 명확히 분할하십시오 (예: ### 1. 테르자기의 1차원 압밀이론 등).
    - 표(Table)를 사용할 경우 반드시 마크다운 테이블 표준 포맷(| 구분 | 공법 A | 공법 B |)만을 이용해 작성하십시오.
 ${ENGINEERING_STANDARDS}
-${ASCII_DIAGRAM_PROMPT}
+${SVG_DIAGRAM_PROMPT}
+${CHART_DIAGRAM_PROMPT}
 ${LATEX_CHAT_PROMPT_INSTRUCTIONS}`;
 
       const responseText = await localCallLLM(systemInstruction, structuredPrompt, image, 'tutor');
