@@ -26,8 +26,11 @@ const renderMixedText = (text) => {
   };
   let cleanText = text.replace(/[ᵗᵃᵇᶜᵈᵉᶠᵍʰⁱʲᵏˡᵐⁿᵒᵖʳˢᵘᵛʷˣʸᶻ⁰¹²³⁴⁵⁶⁷⁸⁹₀₁₂₃₄₅₆₇₈₉ₛₜₐₑₕᵢₖₗₘₙₒₚᵣᵤᵥₓ]/g, match => unicodeSupSubMap[match] || match);
 
-  // 2. AI가 환각으로 슬래시 바로 뒤에 아래첨자를 붙여 생긴 콤마 착시(t/_S)를 t/S로 평탄화.
-  cleanText = cleanText.replace(/([a-zA-Z])\/_([a-zA-Z0-9])/g, '$1/$2');
+  // 2. AI가 환각으로 슬래시 바로 뒤에 아래첨자를 붙여 생긴 콤마 착시 방어 (t/_S, t/_{S_t}, t/_{\alpha} 등 모두 대응)
+  // 중괄호 포함 여부와 관계없이 /_ 뒤에 오는 묶음을 모두 일반 슬래시(/)로 평탄화합니다.
+  cleanText = cleanText.replace(/([a-zA-Z0-9])\s*\/\_\s*(\{?[^$\n]+?\}?)(?=\s|$|\=)/g, '$1/$2');
+  // 만약 괄호 없이 남은 잔여 /_ 가 있다면 마저 처리
+  cleanText = cleanText.replace(/\/_/g, '/');
 
   if (!window.katex) return cleanText;
   
