@@ -371,12 +371,73 @@ export function convertMarkdownTablesToHtml(text, hideWrapper = false, hideRemar
                               /^[|:\s\-]+$/.test(nextLine);
                               
       if (isNextSeparator) {
-        // Collect all consecutive lines that contain '|'
+        // Collect all consecutive lines that belong to the table, auto-healing multi-line cells
         const tableLines = [];
         let j = i;
-        while (j < lines.length && lines[j].includes('|')) {
-          tableLines.push(lines[j]);
+        let currentRowStr = "";
+
+        while (j < lines.length) {
+          const l = lines[j].trim();
+          if (l === '') {
+             if (currentRowStr) {
+                 tableLines.push(currentRowStr);
+                 currentRowStr = "";
+             }
+             break;
+          }
+          
+          if (l.includes('|')) {
+             if (currentRowStr === "") {
+                currentRowStr = lines[j];
+             } else {
+                const prevEndsWithPipe = currentRowStr.trim().endsWith('|');
+                const currStartsWithPipe = l.startsWith('|');
+                
+                if (!prevEndsWithPipe && !currStartsWithPipe) {
+                   currentRowStr += '\n' + lines[j];
+                } else if (!currStartsWithPipe && prevEndsWithPipe) {
+                   tableLines.push(currentRowStr);
+                   currentRowStr = lines[j];
+                } else if (currStartsWithPipe && !prevEndsWithPipe) {
+                   tableLines.push(currentRowStr);
+                   currentRowStr = lines[j];
+                } else {
+                   tableLines.push(currentRowStr);
+                   currentRowStr = lines[j];
+                }
+             }
+          } else {
+             // Line doesn't contain '|'. Check lookahead to see if it's a cell continuation.
+             let k = j + 1;
+             let nextContainsPipe = false;
+             let lookaheadCount = 0;
+             while (k < lines.length && lines[k].trim() !== '' && lookaheadCount < 6) {
+               if (lines[k].includes('|')) {
+                 nextContainsPipe = true;
+                 break;
+               }
+               k++;
+               lookaheadCount++;
+             }
+             
+             if (nextContainsPipe) {
+                if (currentRowStr !== "") {
+                   currentRowStr += '\n' + lines[j];
+                } else {
+                   currentRowStr = lines[j];
+                }
+             } else {
+                if (currentRowStr) {
+                   tableLines.push(currentRowStr);
+                   currentRowStr = "";
+                }
+                break;
+             }
+          }
           j++;
+        }
+        if (currentRowStr) {
+           tableLines.push(currentRowStr);
         }
         
         // Parse the collected lines
