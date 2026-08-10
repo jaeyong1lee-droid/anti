@@ -24,8 +24,7 @@ const renderMixedText = (text) => {
   };
   let cleanText = text.replace(/[ᵗᵃᵇᶜᵈᵉᶠᵍʰⁱʲᵏˡᵐⁿᵒᵖʳˢᵘᵛʷˣʸᶻ⁰¹²³⁴⁵⁶⁷⁸⁹₀₁₂₃₄₅₆₇₈₉ₛₜₐₑₕᵢₖₗₘₙₒₚᵣᵤᵥₓ]/g, match => unicodeSupSubMap[match] || match);
 
-  // 2. AI가 환각으로 슬래시 바로 뒤에 아래첨자를 붙여 생긴 콤마 착시 방어 (t/_S, t/_{S_t}, t/_{\alpha} 등 모두 대응)
-  cleanText = cleanText.replace(/([a-zA-Z0-9])\s*\/\_\s*(\{?[^$\n]+?\}?)(?=\s|$|\=)/g, '$1/$2');
+  // 2. AI가 환각으로 슬래시 바로 뒤에 아래첨자를 붙여 생긴 콤마 착시 방어
   cleanText = cleanText.replace(/\/_/g, '/');
 
   if (!window.katex) return cleanText;
