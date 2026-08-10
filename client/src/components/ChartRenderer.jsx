@@ -14,28 +14,10 @@ import {
 const renderMixedText = (text) => {
   if (!text || typeof text !== 'string') return text;
   
-  // [LATEX Rendering Logic Defense Shield] 
-  // 메인 파이프라인(latexUtils.js)을 보호하기 위해, 차트 컴포넌트 내부에만 격리된 치유 로직 적용.
-  
-  // 1. 유니코드 위첨자/아래첨자 평탄화 (AI 환각 방어)
-  const unicodeSupSubMap = {
-    'ᵗ': 't', 'ᵃ': 'a', 'ᵇ': 'b', 'ᶜ': 'c', 'ᵈ': 'd', 'ᵉ': 'e', 'ᶠ': 'f', 'ᵍ': 'g', 'ʰ': 'h', 'ⁱ': 'i', 'ʲ': 'j', 'ᵏ': 'k', 'ˡ': 'l', 'ᵐ': 'm', 'ⁿ': 'n', 'ᵒ': 'o', 'ᵖ': 'p', 'ʳ': 'r', 'ˢ': 's', 'ᵘ': 'u', 'ᵛ': 'v', 'ʷ': 'w', 'ˣ': 'x', 'ʸ': 'y', 'ᶻ': 'z',
-    '⁰': '0', '¹': '1', '²': '2', '³': '3', '⁴': '4', '⁵': '5', '⁶': '6', '⁷': '7', '⁸': '8', '⁹': '9',
-    '₀': '0', '₁': '1', '₂': '2', '₃': '3', '₄': '4', '₅': '5', '₆': '6', '₇': '7', '₈': '8', '₉': '9',
-    'ₛ': 's', 'ₜ': 't', 'ₐ': 'a', 'ₑ': 'e', 'ₕ': 'h', 'ᵢ': 'i', 'ₖ': 'k', 'ₗ': 'l', 'ₘ': 'm', 'ₙ': 'n', 'ₒ': 'o', 'ₚ': 'p', 'ᵣ': 'r', 'ᵤ': 'u', 'ᵥ': 'v', 'ₓ': 'x'
-  };
-  let cleanText = text.replace(/[ᵗᵃᵇᶜᵈᵉᶠᵍʰⁱʲᵏˡᵐⁿᵒᵖʳˢᵘᵛʷˣʸᶻ⁰¹²³⁴⁵⁶⁷⁸⁹₀₁₂₃₄₅₆₇₈₉ₛₜₐₑₕᵢₖₗₘₙₒₚᵣᵤᵥₓ]/g, match => unicodeSupSubMap[match] || match);
-
-  // 2. AI가 환각으로 슬래시 바로 뒤에 아래첨자를 붙여 생긴 콤마 착시 방어 (t/_S, t/_{S_t}, t/_{\alpha} 등 모두 대응)
-  // 중괄호 포함 여부와 관계없이 /_ 뒤에 오는 묶음을 모두 일반 슬래시(/)로 평탄화합니다.
-  cleanText = cleanText.replace(/([a-zA-Z0-9])\s*\/\_\s*(\{?[^$\n]+?\}?)(?=\s|$|\=)/g, '$1/$2');
-  // 만약 괄호 없이 남은 잔여 /_ 가 있다면 마저 처리
-  cleanText = cleanText.replace(/\/_/g, '/');
-
-  if (!window.katex) return cleanText;
+  if (!window.katex) return text;
   
   try {
-    return cleanText.replace(/\$([^\$]+)\$/g, (match, math) => {
+    return text.replace(/\$([^\$]+)\$/g, (match, math) => {
       try {
         return window.katex.renderToString(math.trim(), { throwOnError: false });
       } catch (e) {
