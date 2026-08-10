@@ -25,7 +25,7 @@ const renderMixedText = (text) => {
       }
     });
   } catch (e) {
-    return cleanText;
+    return text;
   }
 };
 
