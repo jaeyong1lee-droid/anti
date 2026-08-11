@@ -26354,10 +26354,10 @@ ${itemsStr}
                                                       }
                                                     }}
                                                   >
-                                                    {hIdx === 0 && lockedTableIds[t.id] && (
+                                                    {lockedTableIds[t.id] && (
                                                       <div 
                                                         className="markdown-table-resize-handle" 
-                                                        title="더블클릭: 등간격 배분 / 드래그: 너비 조절"
+                                                        title="더블클릭: 자동 너비 맞춤(1열은 등간격 배분) / 드래그: 너비 조절"
                                                         onDoubleClick={(e) => {
                                                           if(window.__handleTableColumnDoubleClick) { 
                                                             window.__handleTableColumnDoubleClick(e, e.currentTarget, hIdx);
