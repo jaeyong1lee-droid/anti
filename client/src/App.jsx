@@ -3535,6 +3535,7 @@ export default function App() {
   const [loadingReviews, setLoadingReviews] = useState(false);
   const [loadingTopics, setLoadingTopics] = useState(false);
   const [submitLoading, setSubmitLoading] = useState(false);
+  const [isQuizCompleting, setIsQuizCompleting] = useState(false);
   
   // Registration Form States
   const [title, setTitle] = useState('');
@@ -8683,11 +8684,11 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
       });
 
       if (gradingPromises.length > 0) {
-        setLoadingAI(true);
+        setIsQuizCompleting(true);
         try {
           await Promise.all(gradingPromises);
         } catch (e) {}
-        setLoadingAI(false);
+        setIsQuizCompleting(false);
       }
 
       const unsolvedNums = [];
@@ -8755,6 +8756,7 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
       });
 
       if (unsolvedNums.length > 0) {
+        await new Promise(resolve => setTimeout(resolve, 50));
         const confirmComplete = window.confirm(`풀지 않은 문제가 있습니다 (${unsolvedNums.join(', ')}번 문제). 완료할까요?`);
         if (!confirmComplete) return;
       }
@@ -8962,14 +8964,14 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
     });
 
     if (gradingPromises.length > 0) {
-      setLoadingAI(true);
+      setIsQuizCompleting(true);
       try {
         await Promise.all(gradingPromises);
         console.log('[Auto-Grading] All pending subjective questions graded.');
       } catch (err) {
         console.warn('[Auto-Grading] Error during automatic grading:', err);
       } finally {
-        setLoadingAI(false);
+        setIsQuizCompleting(false);
       }
     }
 
@@ -9039,6 +9041,7 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
     });
 
     if (unsolvedNums.length > 0) {
+      await new Promise(resolve => setTimeout(resolve, 50));
       const confirmComplete = window.confirm(`풀지 않은 문제가 있습니다 (${unsolvedNums.join(', ')}번 문제). 완료할까요?`);
       if (!confirmComplete) {
         return;
