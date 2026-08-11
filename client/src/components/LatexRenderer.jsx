@@ -192,7 +192,7 @@ export const LatexRenderer = React.memo(function LatexRenderer({
   }
 
   // Option 3: Explicit code block type matching (ascii vs flowchart) with legacy mixed block protection
-  const codeBlockRegex = /```(ascii|ascii-art|flowchart|step|sequence|[a-zA-Z0-9_-]*)?\r?\n([\s\S]*?)```/gi;
+  const codeBlockRegex = /```(ascii|ascii-art|flowchart|step|sequence|[a-zA-Z0-9_-]*)?\n([\s\S]*?)```/gi;
   const hasCodeBlocks = codeBlockRegex.test(parsedText);
   codeBlockRegex.lastIndex = 0;
 
@@ -216,15 +216,12 @@ export const LatexRenderer = React.memo(function LatexRenderer({
         (lang !== 'ascii' && lang !== 'ascii-art' && (blockContent.includes('┌') || blockContent.includes('└') || blockContent.includes('│') || blockContent.includes('▼')) &&
          /\[[\d\*\s가-힣a-zA-Z\-]+\]/.test(blockContent));
 
-      const hasSvgTag = blockContent.includes('<svg') && blockContent.includes('</svg>');
-
       if (isFlowchart) {
         parts.push({ type: 'flowchart', content: blockContent });
       } else if (lang === 'chart') {
         parts.push({ type: 'chart', content: blockContent });
-      } else if (lang === 'svg' || hasSvgTag) {
-        const svgMatch = blockContent.match(/(<svg[\s\S]*<\/svg>)/i);
-        parts.push({ type: 'svg', content: svgMatch ? svgMatch[1] : blockContent });
+      } else if (lang === 'svg' || (blockContent.trim().startsWith('<svg') && blockContent.includes('</svg>'))) {
+        parts.push({ type: 'svg', content: blockContent });
       } else {
         parts.push({ type: 'ascii', content: blockContent });
       }

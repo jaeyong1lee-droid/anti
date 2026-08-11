@@ -675,12 +675,8 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
       });
     }
     
-    const hasSvgTag = codeHtml.includes('<svg') && codeHtml.includes('</svg>');
-    
-    if (lang === 'svg' || hasSvgTag) {
-      const svgMatch = codeHtml.match(/(<svg[\s\S]*<\/svg>)/i);
-      const pureSvg = svgMatch ? svgMatch[1] : codeHtml;
-      const darkSvgHtml = sanitizeSvgDarkBackground(pureSvg);
+    if (lang === 'svg') {
+      const darkSvgHtml = sanitizeSvgDarkBackground(codeHtml);
       const styledSvgHtml = `<div class="w-full my-4 border border-slate-700/60 rounded-xl overflow-hidden shadow-lg bg-slate-900/40 relative select-text"><div class="px-3 py-2 bg-slate-800/50 border-b border-slate-700/60 flex items-center justify-between"><span class="text-xs font-bold text-slate-300 flex items-center gap-2"><span class="text-amber-400">📊</span> 공학 다이어그램</span><button onclick="if(window.openSvgZoomModal) window.openSvgZoomModal(this)" class="p-1.5 bg-amber-500/20 hover:bg-amber-500/40 text-amber-300 border border-amber-500/30 rounded-lg cursor-pointer transition-all active:scale-95 flex items-center justify-center shadow-sm" title="확대해서 보기"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg></button></div><div class="p-3 overflow-x-auto flex items-center justify-center min-h-[120px] max-w-full text-slate-200">${darkSvgHtml}</div></div>`;
       codeBlocks.push({ placeholder, content: styledSvgHtml });
       codeBlockIndex++;
