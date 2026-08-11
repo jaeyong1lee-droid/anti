@@ -26212,6 +26212,38 @@ ${itemsStr}
 
                                   {/* Action Buttons Group */}
                                   <div className="flex items-center gap-2 self-end md:self-auto shrink-0 select-none">
+                                    {/* 행/열 추가 버튼 (잠금 해제 상태에서만 표시, 잠금버튼 왼쪽) */}
+                                    {isExpanded && !lockedTableIds[t.id] && (
+                                      <div className="flex items-center gap-1 shrink-0">
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            e.preventDefault();
+                                            const parsed = parseHtmlTable(t.html);
+                                            handleAddRow(t.id, parsed);
+                                          }}
+                                          className="px-1.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] sm:text-[11px] font-black cursor-pointer transition-all active:scale-95 border border-emerald-500/30 shadow-sm flex items-center gap-0.5"
+                                          title="행 추가 (아래에 빈 행 1줄을 만듭니다)"
+                                        >
+                                          + 행 추가
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            e.preventDefault();
+                                            const parsed = parseHtmlTable(t.html);
+                                            handleAddColumn(t.id, parsed);
+                                          }}
+                                          className="px-1.5 py-1 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-[10px] sm:text-[11px] font-black cursor-pointer transition-all active:scale-95 border border-sky-500/30 shadow-sm flex items-center gap-0.5"
+                                          title="열 추가 (우측에 새 열 1개를 만듭니다)"
+                                        >
+                                          + 열 추가
+                                        </button>
+                                      </div>
+                                    )}
+
                                     {/* 🔒 자물쇠 잠금/잠금해제 버튼 (AI 재작성 바로 왼쪽) */}
                                     {isExpanded && (
                                       <button
@@ -26313,43 +26345,37 @@ ${itemsStr}
                                                 return (
                                                   <th 
                                                     key={hIdx} 
-                                                    className={`p-1.5 border-r border-white/20 last:border-r-0 align-middle ${lockedTableIds[t.id] ? 'cursor-text' : 'cursor-pointer'} min-w-[90px] ${(hIdx > 0 && (!h || !h.trim())) ? 'bg-white/[0.05]' : ''}`}
+                                                    className={`relative p-1.5 border-r border-white/20 last:border-r-0 align-middle ${lockedTableIds[t.id] ? 'cursor-text' : 'cursor-pointer'} min-w-[90px] ${(hIdx > 0 && (!h || !h.trim())) ? 'bg-white/[0.05]' : ''}`}
                                                     onClick={() => {
-                                                      if (lockedTableIds[t.id] || hIdx === 0) return;
+                                                      if (lockedTableIds[t.id]) return;
                                                       if (!isEditing) {
                                                         setActiveEditCell({ tableId: t.id, type: 'header', colIdx: hIdx });
                                                         setEditingCellValue(h);
                                                       }
                                                     }}
                                                   >
-                                                    {hIdx === 0 ? (
-                                                       <div className="flex items-center justify-center gap-1 select-none py-0.5" onClick={(e) => e.stopPropagation()}>
-                                                         <button
-                                                           type="button"
-                                                           onClick={(e) => {
-                                                             e.stopPropagation();
-                                                             e.preventDefault();
-                                                             handleAddRow(t.id, parsed);
-                                                           }}
-                                                           className="px-1.5 py-0.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-black cursor-pointer transition-all active:scale-95 border border-emerald-500/30 shadow-sm flex items-center gap-0.5"
-                                                           title="행 추가 (아래에 빈 행 1줄을 만듭니다)"
-                                                         >
-                                                           + 행 추가
-                                                         </button>
-                                                         <button
-                                                           type="button"
-                                                           onClick={(e) => {
-                                                             e.stopPropagation();
-                                                             e.preventDefault();
-                                                             handleAddColumn(t.id, parsed);
-                                                           }}
-                                                           className="px-1.5 py-0.5 rounded bg-sky-600 hover:bg-sky-500 text-white text-[10px] font-black cursor-pointer transition-all active:scale-95 border border-sky-500/30 shadow-sm flex items-center gap-0.5"
-                                                           title="열 추가 (우측에 새 열 1개를 만듭니다)"
-                                                         >
-                                                           + 열 추가
-                                                         </button>
-                                                       </div>
-                                                     ) : isEditing ? (
+                                                    {hIdx === 0 && lockedTableIds[t.id] && (
+                                                      <div 
+                                                        className="markdown-table-resize-handle" 
+                                                        title="더블클릭: 등간격 배분 / 드래그: 너비 조절"
+                                                        onDoubleClick={(e) => {
+                                                          if(window.__handleTableColumnDoubleClick) { 
+                                                            window.__handleTableColumnDoubleClick(e, e.currentTarget, hIdx);
+                                                          }
+                                                        }}
+                                                        onMouseDown={(e) => {
+                                                          if(window.__startMarkdownTableResize) { 
+                                                            window.__startMarkdownTableResize(e, e.currentTarget, hIdx, false);
+                                                          }
+                                                        }}
+                                                        onTouchStart={(e) => {
+                                                          if(window.__startMarkdownTableResize) { 
+                                                            window.__startMarkdownTableResize(e, e.currentTarget, hIdx, true);
+                                                          }
+                                                        }}
+                                                      ></div>
+                                                    )}
+                                                    {isEditing ? (
                                                       <textarea
                                                         value={editingCellValue}
                                                         onChange={(e) => {
