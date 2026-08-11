@@ -191,8 +191,8 @@ export const LatexRenderer = React.memo(function LatexRenderer({
     parsedText = parsedText.replace(/\$\$/g, '$').trim();
   }
 
-  // Option 3: Explicit code block type matching (ascii vs flowchart) with legacy mixed block protection
-  const codeBlockRegex = /```(ascii|ascii-art|flowchart|step|sequence|[a-zA-Z0-9_-]*)?\n([\s\S]*?)```/gi;
+  // Option 3: Explicit code block type matching (ascii vs flowchart vs chart)
+  const codeBlockRegex = /```(ascii|ascii-art|flowchart|step|sequence|chart)?\n([\s\S]*?)```/gi;
   const hasCodeBlocks = codeBlockRegex.test(parsedText);
   codeBlockRegex.lastIndex = 0;
 
@@ -220,9 +220,6 @@ export const LatexRenderer = React.memo(function LatexRenderer({
         parts.push({ type: 'flowchart', content: blockContent });
       } else if (lang === 'chart') {
         parts.push({ type: 'chart', content: blockContent });
-      } else if (lang === 'svg' || (blockContent.includes('<svg') && blockContent.includes('</svg>'))) {
-        const svgMatch = blockContent.match(/(<svg[\s\S]*<\/svg>)/i);
-        parts.push({ type: 'svg', content: svgMatch ? svgMatch[1] : blockContent });
       } else {
         parts.push({ type: 'ascii', content: blockContent });
       }
@@ -267,14 +264,6 @@ export const LatexRenderer = React.memo(function LatexRenderer({
               <div key={pIdx} className="w-full">
                 {chartData ? <ChartRenderer data={chartData} /> : <div className="text-rose-400 p-4 bg-rose-900/20 rounded font-bold text-sm">⚠️ 차트 데이터 파싱 오류</div>}
               </div>
-            );
-          } else if (part.type === 'svg') {
-            return (
-              <div 
-                key={pIdx} 
-                className="w-full flex justify-center items-center my-4 overflow-x-auto overflow-y-hidden custom-scrollbar [&>svg]:max-w-full [&>svg]:h-auto bg-[#0f172a] p-4 rounded-xl border border-slate-700/50 shadow-lg"
-                dangerouslySetInnerHTML={{ __html: part.content }}
-              />
             );
           } else if (part.type === 'ascii') {
             const cleanAscii = typeof part.content === 'string'
@@ -755,30 +744,6 @@ export const LatexRenderer = React.memo(function LatexRenderer({
     return <div className={`${className} whitespace-pre-line leading-relaxed select-text`}>{cleanedText}</div>;
   }
 
-  // 1. 명확한 SVG 코드 시작과 끝 추출 및 완벽 격리 (사용자 지시사항 적용)
-  const isolatedSvgBlocks = [];
-  let svgIdx = 0;
-  
-  // SVG 내부에서만 딱 이루어지게 하기 위해 전체 텍스트에서 SVG 부분을 먼저 통째로 빼냅니다.
-  let textToProcess = cleanedText.replace(/(<div[^>]*class="[^"]*svg-container[^"]*"[^>]*>[\s\S]*?<\/svg>\s*<\/div>|<svg\b[^>]*>[\s\S]*?<\/svg>)/gi, (match) => {
-    const placeholder = `___ISOLATED_SVG_${svgIdx}___`;
-    
-    let processedSvg = match;
-    // SVG 내부 텍스트에 대해서만 독립적으로 수식 렌더링 (외부 텍스트와 절대 섞이지 않음)
-    if (window.katex) {
-      processedSvg = processedSvg.replace(/\$\$\s*([\s\S]*?)\s*\$\$/g, (m, math) => {
-        return renderKatexString(math.trim(), { displayMode: true, throwOnError: false });
-      });
-      processedSvg = processedSvg.replace(/\$((?:[^\$\n<]|<(?![a-zA-Z/!]))+?)\$/g, (m, math) => {
-        return renderKatexString(math.trim(), { displayMode: false, throwOnError: false });
-      });
-    }
-    
-    isolatedSvgBlocks.push(processedSvg);
-    svgIdx++;
-    return placeholder;
-  });
-
   // Split by block math $$ ... $$
   const parts = [];
   let lastIndex = 0;
@@ -786,8 +751,8 @@ export const LatexRenderer = React.memo(function LatexRenderer({
   const blockRegex = /\$\$((?:(?!<\/?(?:div|svg|foreignObject|table|tr|td|th|p|pre|blockquote|ul|ol|li)\b)[\s\S])*?)\$\$/g;
   let match;
 
-  while ((match = blockRegex.exec(textToProcess)) !== null) {
-    const beforeText = textToProcess.substring(lastIndex, match.index);
+  while ((match = blockRegex.exec(cleanedText)) !== null) {
+    const beforeText = cleanedText.substring(lastIndex, match.index);
     if (beforeText && beforeText.trim() !== '') {
       parts.push({ type: 'text', content: beforeText });
     }
@@ -795,7 +760,7 @@ export const LatexRenderer = React.memo(function LatexRenderer({
     lastIndex = blockRegex.lastIndex;
   }
 
-  const afterText = textToProcess.substring(lastIndex);
+  const afterText = cleanedText.substring(lastIndex);
   if (afterText && afterText.trim() !== '') {
     parts.push({ type: 'text', content: afterText });
   }
@@ -888,10 +853,6 @@ export const LatexRenderer = React.memo(function LatexRenderer({
           } catch (e) {
             console.warn(e);
           }
-          // SVG 블록 원래 위치로 완벽히 복원 (격리되었던 렌더링 결과물)
-          htmlContent = htmlContent.replace(/___ISOLATED_SVG_(\d+)___/g, (match, p1) => {
-            return isolatedSvgBlocks[p1];
-          });
           return (
             <div 
               key={idx}

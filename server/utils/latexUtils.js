@@ -238,7 +238,7 @@ const formulaRegex = new RegExp(
 // Regex matching simple math variables/relations (without backslash commands)
 const simpleVariableRegex = new RegExp(
   // 1. Relations (most specific, e.g. k_h = 10, y(x) = ax + b, z < z_c)
-  `\\b[a-zA-Z0-9_'\^\\(\\)\\{\\}\\[\\]]+\\s*(?:[+=<>]|\\s+[-/\\*]\\s+)\\s*[a-zA-Z0-9_'\^\\(\\)\\{\\}\\[\\]]+(?:\\s*(?:[+=<>]|\\s+[-/\\*]\\s+)\\s*[a-zA-Z0-9_'\^\\(\\)\\{\\}\\[\\]]+)*\\b|` +
+  `\\b[a-zA-Z0-9_'\^\\(\\)\\{\\}\\[\\]]+[ \\t]*(?:[+=<>]|[ \\t]+[-/\\*][ \\t]+)[ \\t]*[a-zA-Z0-9_'\^\\(\\)\\{\\}\\[\\]]+(?:[ \\t]*(?:[+=<>]|[ \\t]+[-/\\*][ \\t]+)[ \\t]*[a-zA-Z0-9_'\^\\(\\)\\{\\}\\[\\]]+)*\\b|` +
   // 2. Function notation (e.g. p(z), w(z))
   `\\b[a-zA-Z]\\([a-zA-Z0-9_'\\s\\\\]+\\)(?![a-zA-Z0-9_'])|` +
   // 3. Subscripted variables with braces or underscores (e.g. s_{t-\Delta t}, s_{t- \Delta t}, S_{max}, k_h, z_c)
