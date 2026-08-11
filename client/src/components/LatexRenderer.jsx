@@ -220,8 +220,9 @@ export const LatexRenderer = React.memo(function LatexRenderer({
         parts.push({ type: 'flowchart', content: blockContent });
       } else if (lang === 'chart') {
         parts.push({ type: 'chart', content: blockContent });
-      } else if (lang === 'svg' || (blockContent.trim().startsWith('<svg') && blockContent.includes('</svg>'))) {
-        parts.push({ type: 'svg', content: blockContent });
+      } else if (lang === 'svg' || (blockContent.includes('<svg') && blockContent.includes('</svg>'))) {
+        const svgMatch = blockContent.match(/(<svg[\s\S]*<\/svg>)/i);
+        parts.push({ type: 'svg', content: svgMatch ? svgMatch[1] : blockContent });
       } else {
         parts.push({ type: 'ascii', content: blockContent });
       }
