@@ -250,94 +250,9 @@ const simpleVariableRegex = new RegExp(
   'g'
 );
 
-function replaceRoots(str) {
-  let processed = str;
-  processed = processed.replace(/√(?!\()/g, '\\sqrt ');
 
-  let regex = /(?:([0-9]+)(?:_|계)?)?(?:루트|√)\(/;
-  let match;
-  
-  while ((match = processed.match(regex)) !== null) {
-    const index = match.index;
-    const matchLength = match[0].length;
-    const rootNum = match[1] || '';
-    
-    let depth = 1;
-    let scanIdx = index + matchLength;
-    while (scanIdx < processed.length && depth > 0) {
-      if (processed[scanIdx] === '(') depth++;
-      else if (processed[scanIdx] === ')') depth--;
-      scanIdx++;
-    }
-    
-    if (depth === 0) {
-      const content = processed.substring(index + matchLength, scanIdx - 1);
-      
-      // Check if the match is already inside an existing math block
-      const beforeText = processed.substring(0, index);
-      const dollarCount = (beforeText.match(/\$/g) || []).length;
-      const isAlreadyInMath = (dollarCount % 2 === 1);
-      
-      let replacement;
-      if (isAlreadyInMath) {
-        replacement = rootNum ? `\\sqrt[${rootNum}]{${content}}` : `\\sqrt{${content}}`;
-      } else {
-        replacement = rootNum ? `$\\sqrt[${rootNum}]{${content}}$` : `$\\sqrt{${content}}$`;
-      }
-      processed = processed.substring(0, index) + replacement + processed.substring(scanIdx);
-    } else {
-      break;
-    }
-  }
-  return processed;
-}
 
-export function healInvertedDelimiters(text) {
-  if (!text || typeof text !== 'string') return text;
 
-  const hasFormulaCommands = (str) => {
-    // Check if it has backslash/won commands or common math notations
-    const rx = /(?:₩|\\)(?:Delta|sigma|gamma|cdot|tau|pi|theta|alpha|beta|phi|omega|mu|lambda|rho|nu|times|frac|dfrac|le|ge|ne|neq|sqrt|sum|int|partial|sin|cos|tan)\b|[+\-*/=<>_^]|\b[a-zA-Z]_[a-zA-Z0-9]\b/i;
-    return rx.test(str);
-  };
-
-  const parts = text.split('$');
-  if (parts.length > 2) {
-    let oddPlainCount = 0;
-    let evenFormulaCount = 0;
-
-    for (let i = 0; i < parts.length; i++) {
-      const isOdd = i % 2 !== 0;
-      const content = parts[i].trim();
-      if (!content) continue;
-
-      const isFormula = hasFormulaCommands(content);
-      if (isOdd && !isFormula && /[가-힣]/.test(content)) {
-        oddPlainCount++;
-      }
-      if (!isOdd && isFormula) {
-        evenFormulaCount++;
-      }
-    }
-
-    if (oddPlainCount > 0 && evenFormulaCount > 0) {
-      // Rebuild by swapping delimiters
-      let rebuilt = '';
-      for (let i = 0; i < parts.length; i++) {
-        const content = parts[i];
-        if (hasFormulaCommands(content)) {
-          // If it's a formula, make sure it is wrapped in $
-          rebuilt += `$${content.trim()}$`;
-        } else {
-          // Otherwise, it's plain text, keep it as-is (without $)
-          rebuilt += content;
-        }
-      }
-      return rebuilt;
-    }
-  }
-  return text;
-}
 
 export function balanceMathBraces(str) {
   return str;
@@ -358,42 +273,7 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   // Normalize dashes (en-dash, em-dash, math minus) to standard hyphens
   processed = processed.replace(/[–—−]/g, '-');
 
-  // [Self-Healing] Fix beta subscript sub-nesting rendering error (\beta_{0,\beta_1} -> \beta_0, \beta_1)
-  processed = processed.replace(/\\?beta_\{0,\s*\\?beta_[01]\}/g, '\\beta_0, \\beta_1');
 
-  // [Self-Healing] Fix empty fraction denominator followed by variable (e.g. \frac{1}{} \beta or \frac{1}{ } \beta -> \frac{1}{\beta})
-  processed = processed.replace(/\\(d?frac)\{([^{}\n]+)\}\s*\{\s*\}\s*(\\?[a-zA-Z0-9_]+)/g, '\\$1{$2}{$3}');
-
-  // [Self-Healing] Fix duplicated variable right after fraction (e.g. \frac{1}{\beta} \beta -> \frac{1}{\beta})
-  processed = processed.replace(/\\(d?frac)\{([^{}\n]+)\}\s*\{\s*([^{}\n]+?)\s*\}\s*\\?\3\b/g, '\\$1{$2}{$3}');
-
-  
-  // [Self-Healing] Fix split dollar signs inside brace subscripts (e.g. s_{t- $\Delta t$} or s_{t- $\Delta$ t} -> $s_{t-\Delta t}$)
-  processed = processed.replace(/(\b\\?[a-zA-Z0-9_']+_\{\s*[^{}\$\n]*)\$([^\$\n]+)\$([^{}\$\n]*\})/g, (match, p1, math, p3) => {
-    return `$${p1}${math}${p3}$`;
-  });
-
-  
-  
-  // [Self-Healing] Remove space between backslash and general math commands
-  processed = processed.replace(/\\\s+(Delta|Sigma|Gamma|Phi|Theta|Omega|frac|dfrac|tfrac|sqrt|cdot|times|div|pm|infty|partial|sum|int|sim|le|ge|lt|gt|sin|cos|tan|log|ln|nabla|neq|ne|approx)\b/g, '\\$1');
-
-  // [Self-Healing] Fix space-corrupted or missing-space Delta variables (e.g. \Deltau, \ Deltau, \Deltasigma)
-  const greekNames = 'alpha|beta|gamma|sigma|tau|phi|theta|epsilon|pi|delta|omega|mu|lambda|psi|rho|eta|nu|xi|zeta|chi|upsilon|kappa|Delta|Sigma|Gamma|Phi|Theta|Omega';
-  const deltaGreekRegex = new RegExp(`\\\\\\s*Delta\\s*(${greekNames})\\b`, 'gi');
-  processed = processed.replace(deltaGreekRegex, '\\Delta \\$1');
-  processed = processed.replace(/\\\s*Delta\s*([a-zA-Z])\b/gi, '\\Delta $1');
-
-  // [Self-Healing] Strip KaTeX-unsupported MathJax \pu{...} commands (renders red in KaTeX)
-  processed = processed.replace(/\\pu\s*\{([^}]+)\}/gi, '$1');
-
-  
-  processed = healInvertedDelimiters(processed);
-
-  // Convert Greek letters with numbers (e.g. sigma1, sigma_1 -> \sigma_1)
-  const greekLetters = 'alpha|beta|gamma|sigma|tau|phi|theta|epsilon|pi|delta|omega|mu|lambda|psi|rho|eta|nu|xi|zeta|chi|upsilon|kappa';
-  const greekRegex = new RegExp(`(?<!\\\\)\\b(${greekLetters})_?(\\d+)\\b`, 'g');
-  processed = processed.replace(greekRegex, '\\$1_$2');
 
   // Replace Won symbol (₩) with backslash (\) to restore LaTeX commands
   processed = processed.replace(/₩/g, '\\');
@@ -402,52 +282,7 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   // This must be done here before math expression detection to prevent malformed regex matches.
   processed = processed.replace(/\\([가-힣]+)/g, ' $1');
 
-  // Replace hashtag (#) prefix before LaTeX commands/Greek letters with backslash (\)
-  const hashKeywords = [
-    'alpha', 'beta', 'gamma', 'sigma', 'tau', 'phi', 'theta', 'epsilon', 'pi', 'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta', 'nu', 'xi', 'zeta', 'chi', 'upsilon', 'kappa',
-    'Delta', 'Sigma', 'Gamma', 'Phi', 'Theta', 'Omega',
-    'frac', 'dfrac', 'sqrt', 'cdot', 'times', 'div', 'pm', 'infty', 'partial', 'sum', 'int', 'sim',
-    'le', 'ge', 'lt', 'gt', 'sin', 'cos', 'tan', 'log', 'ln', 'nabla', 'neq', 'ne', 'approx'
-  ];
-  const hashRegex = new RegExp(`#(${hashKeywords.join('|')})(?![a-zA-Z])`, 'g');
-  processed = processed.replace(hashRegex, '\\$1');
 
-  // Replace Greek unicode letters and standalone words with LaTeX commands
-  processed = processed.replace(/β/g, '\\beta')
-                       .replace(/α/g, '\\alpha')
-                       .replace(/γ/g, '\\gamma')
-                       .replace(/σ/g, '\\sigma')
-                       .replace(/τ/g, '\\tau')
-                       .replace(/φ/g, '\\phi')
-                       .replace(/θ/g, '\\theta')
-                       .replace(/μ/g, '\\mu')
-                       .replace(/λ/g, '\\lambda')
-                       .replace(/η/g, '\\eta')
-                       .replace(/ν/g, '\\nu')
-                       .replace(/π/g, '\\pi')
-                       .replace(/δ/g, '\\delta')
-                       .replace(/ω/g, '\\omega')
-                       .replace(/ε/g, '\\epsilon')
-                       .replace(/ψ/g, '\\psi')
-                       .replace(/ρ/g, '\\rho')
-                       .replace(/ξ/g, '\\xi')
-                       .replace(/ζ/g, '\\zeta')
-                       .replace(/χ/g, '\\chi')
-                       .replace(/υ/g, '\\upsilon')
-                       .replace(/κ/g, '\\kappa')
-                       .replace(/Δ/g, '\\Delta')
-                       .replace(/Σ/g, '\\Sigma')
-                       .replace(/Gamma/g, '\\Gamma')
-                       .replace(/Phi/g, '\\Phi')
-                       .replace(/Theta/g, '\\Theta')
-                       .replace(/Omega/g, '\\Omega');
-
-  // Convert English names of Greek letters if written as standalone words (case-insensitive)
-  processed = processed.replace(/(?<!\\)\b(alpha|beta|gamma|sigma|tau|phi|theta|epsilon|pi|delta|omega|mu|lambda|psi|rho|eta|nu|xi|zeta|chi|upsilon|kappa)\b/g, '\\$1');
-  processed = processed.replace(/(?<!\\)\b(Delta|Sigma|Gamma|Phi|Theta|Omega)\b/g, '\\$1');
-
-  // Parse root patterns
-  processed = replaceRoots(processed);
 
   
   // [Self-Healing] (포아송비 강제 u/v -> \nu 오치환 로직 완전 삭제 - 간극수압 u 보존)
@@ -478,9 +313,7 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   // Collapse double or multiple backslashes before % to single backslash
   processed = processed.replace(/\\{2,}%/g, '\\%');
 
-  // [Self-Healing] 수식 분리 오작동 치유 (예: \quad \text{N}$$_c or N$$_c or \text{N}$$_c -> $$\quad \text{N}_c)
-  processed = processed.replace(/(\\quad\s*\\text\{[a-zA-Z]+\}|\b[a-zA-Z]+\b|\b\\text\{[a-zA-Z]+\})\s*\$\$(\s*_[a-zA-Z0-9])/g, '$$$$ $1$2');
-  processed = processed.replace(/(\\quad\s*\\text\{[a-zA-Z]+\}|\b[a-zA-Z]+\b|\b\\text\{[a-zA-Z]+\})\s*\$(\s*_[a-zA-Z0-9])/g, '$$ $1$2');
+
 
   
   // 블록 수식($$) 바로 뒤에 공백이나 줄바꿈을 포함하여 단위가 올 경우, 해당 단위를 수식 블록 안의 \text{}로 병합하여 줄바꿈 방지
@@ -1473,6 +1306,7 @@ export const LATEX_PROMPT_INSTRUCTIONS = `
 3. 🚨 [대체 기호 사용 절대 금지]: JSON 파싱 에러를 우회한다는 명목으로 역슬래시(\\) 대신 샵(#) 기호나 다른 임의의 기호(예: #sigma_1, #frac, #sigma_3 등)를 LaTeX 명령어 자리에 대입하여 출력하는 행위를 엄격히 금지합니다. 수식 기호는 반드시 \\\\sigma_1, \\\\sigma_3 와 같이 이중 백슬래시로 시작하는 올바른 LaTeX 수식으로만 작성하십시오.
 4. 인라인 수식 작성 시 $ 기호와 수식 내용 사이에 절대 공백(스페이스)을 두지 마십시오. (예: $수식$ (O) / $ 수식 $ (X))
 5. 인라인 수식 내 줄바꿈 절대 금지: 문장 중간의 $ 기호 사이 내용에서는 엔터(줄바꿈)를 절대 하지 말고 단일 줄로 이어서 작성하십시오.
+6. 🚨 [명령어 띄어쓰기 엄수]: \Delta 와 \sigma 등 두 개 이상의 연속된 LaTeX 명령어(그리스 문자 등)를 작성할 때는 반드시 그 사이에 공백(스페이스)을 넣어 \Delta \sigma 처럼 작성하십시오. \Deltasigma 처럼 띄어쓰기 없이 붙여 쓰거나, \ Delta 처럼 백슬래시 뒤에 공백을 넣으면 시스템 파싱 에러가 발생하므로 엄격히 금지합니다.
 
 8. 단순 수치나 단위(예: 10m, 20% 등)에는 LaTeX 기호($)를 쓰지 말고 일반 텍스트로 작성하십시오.
 9. 수식 내부에서 특수 기호인 '작다' 기호는 \\\\lt 로, '크다' 기호는 \\\\gt 로 표기하여 마크다운 파싱 에러를 원천 차단하십시오.
@@ -1506,6 +1340,7 @@ export const LATEX_CHAT_PROMPT_INSTRUCTIONS = `
 3. 🚨 [대체 기호 사용 절대 금지]: 역슬래시(\\) 대신 샵(#) 기호나 다른 임의의 기호(예: #sigma_1, #frac, #sigma_3 등)를 LaTeX 명령어 자리에 대입하여 출력하는 행위를 엄격히 금지합니다. 수식 기호는 반드시 \\sigma_1, \\sigma_3 와 같이 올바른 백슬래시 기호로만 작성하십시오.
 4. In라인 수식 작성 시 $ 기호와 수식 내용 사이에 절대 공백(스페이스)을 두지 마십시오. (예: $수식$ (O) / $ 수식 $ (X))
 5. 인라인 수식 내 줄바꿈 절대 금지: 문장 중간의 $ 기호 사이 내용에서는 엔터(줄바꿈)를 절대 하지 말고 단일 줄로 이어서 작성하십시오.
+6. 🚨 [명령어 띄어쓰기 엄수]: \Delta 와 \sigma 등 두 개 이상의 연속된 LaTeX 명령어(그리스 문자 등)를 작성할 때는 반드시 그 사이에 공백(스페이스)을 넣어 \Delta \sigma 처럼 작성하십시오. \Deltasigma 처럼 띄어쓰기 없이 붙여 쓰거나, \ Delta 처럼 백슬래시 뒤에 공백을 넣으면 시스템 파싱 에러가 발생하므로 엄격히 금지합니다.
 7. 단순 수치나 단위(예: 10m, 20% 등)에는 LaTeX 기호($)를 쓰지 말고 일반 텍스트로 작성하십시오.
 8. 수식 내부에서 특수 기호인 '작다' 기호는 \\lt 로, '크다' 기호는 \\gt 로 표기하여 마크다운 파싱 에러를 원천 차단하십시오.
 9. 아래첨자('_')나 괄호 기호 앞에 임의의 역슬래시(\\)를 붙이지 마십시오.
