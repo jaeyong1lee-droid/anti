@@ -220,6 +220,8 @@ export const LatexRenderer = React.memo(function LatexRenderer({
         parts.push({ type: 'flowchart', content: blockContent });
       } else if (lang === 'chart') {
         parts.push({ type: 'chart', content: blockContent });
+      } else if (lang === 'svg' || (blockContent.trim().startsWith('<svg') && blockContent.includes('</svg>'))) {
+        parts.push({ type: 'svg', content: blockContent });
       } else {
         parts.push({ type: 'ascii', content: blockContent });
       }
@@ -264,6 +266,14 @@ export const LatexRenderer = React.memo(function LatexRenderer({
               <div key={pIdx} className="w-full">
                 {chartData ? <ChartRenderer data={chartData} /> : <div className="text-rose-400 p-4 bg-rose-900/20 rounded font-bold text-sm">⚠️ 차트 데이터 파싱 오류</div>}
               </div>
+            );
+          } else if (part.type === 'svg') {
+            return (
+              <div 
+                key={pIdx} 
+                className="w-full flex justify-center items-center my-4 overflow-x-auto overflow-y-hidden custom-scrollbar [&>svg]:max-w-full [&>svg]:h-auto bg-[#0f172a] p-4 rounded-xl border border-slate-700/50 shadow-lg"
+                dangerouslySetInnerHTML={{ __html: part.content }}
+              />
             );
           } else if (part.type === 'ascii') {
             const cleanAscii = typeof part.content === 'string'
