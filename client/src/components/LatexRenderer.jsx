@@ -744,6 +744,30 @@ export const LatexRenderer = React.memo(function LatexRenderer({
     return <div className={`${className} whitespace-pre-line leading-relaxed select-text`}>{cleanedText}</div>;
   }
 
+  // 1. 명확한 SVG 코드 시작과 끝 추출 및 완벽 격리 (사용자 지시사항 적용)
+  const isolatedSvgBlocks = [];
+  let svgIdx = 0;
+  
+  // SVG 내부에서만 딱 이루어지게 하기 위해 전체 텍스트에서 SVG 부분을 먼저 통째로 빼냅니다.
+  let textToProcess = cleanedText.replace(/(<div[^>]*class="[^"]*svg-container[^"]*"[^>]*>[\s\S]*?<\/svg>\s*<\/div>|<svg\b[^>]*>[\s\S]*?<\/svg>)/gi, (match) => {
+    const placeholder = `___ISOLATED_SVG_${svgIdx}___`;
+    
+    let processedSvg = match;
+    // SVG 내부 텍스트에 대해서만 독립적으로 수식 렌더링 (외부 텍스트와 절대 섞이지 않음)
+    if (window.katex) {
+      processedSvg = processedSvg.replace(/\$\$\s*([\s\S]*?)\s*\$\$/g, (m, math) => {
+        return renderKatexString(math.trim(), { displayMode: true, throwOnError: false });
+      });
+      processedSvg = processedSvg.replace(/\$((?:[^\$\n<]|<(?![a-zA-Z/!]))+?)\$/g, (m, math) => {
+        return renderKatexString(math.trim(), { displayMode: false, throwOnError: false });
+      });
+    }
+    
+    isolatedSvgBlocks.push(processedSvg);
+    svgIdx++;
+    return placeholder;
+  });
+
   // Split by block math $$ ... $$
   const parts = [];
   let lastIndex = 0;
@@ -751,8 +775,8 @@ export const LatexRenderer = React.memo(function LatexRenderer({
   const blockRegex = /\$\$((?:(?!<\/?(?:div|svg|foreignObject|table|tr|td|th|p|pre|blockquote|ul|ol|li)\b)[\s\S])*?)\$\$/g;
   let match;
 
-  while ((match = blockRegex.exec(cleanedText)) !== null) {
-    const beforeText = cleanedText.substring(lastIndex, match.index);
+  while ((match = blockRegex.exec(textToProcess)) !== null) {
+    const beforeText = textToProcess.substring(lastIndex, match.index);
     if (beforeText && beforeText.trim() !== '') {
       parts.push({ type: 'text', content: beforeText });
     }
@@ -760,7 +784,7 @@ export const LatexRenderer = React.memo(function LatexRenderer({
     lastIndex = blockRegex.lastIndex;
   }
 
-  const afterText = cleanedText.substring(lastIndex);
+  const afterText = textToProcess.substring(lastIndex);
   if (afterText && afterText.trim() !== '') {
     parts.push({ type: 'text', content: afterText });
   }
@@ -853,6 +877,10 @@ export const LatexRenderer = React.memo(function LatexRenderer({
           } catch (e) {
             console.warn(e);
           }
+          // SVG 블록 원래 위치로 완벽히 복원 (격리되었던 렌더링 결과물)
+          htmlContent = htmlContent.replace(/___ISOLATED_SVG_(\d+)___/g, (match, p1) => {
+            return isolatedSvgBlocks[p1];
+          });
           return (
             <div 
               key={idx}

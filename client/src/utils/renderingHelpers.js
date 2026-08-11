@@ -606,14 +606,13 @@ export function sanitizeSvgDarkBackground(svgHtml) {
     if (!/background(-color)?\s*:/i.test(newStyle)) {
       newStyle += '; background-color: #1e1e1e; border-radius: 8px;';
     }
-    if (!/overflow\s*:/i.test(newStyle)) newStyle += '; overflow: visible;';
-    if (!/padding-bottom\s*:/i.test(newStyle)) newStyle += '; padding-bottom: 2.5rem;';
-    if (!/height\s*:/i.test(newStyle)) newStyle += '; height: auto;';
-    return `<svg${prefix}${newStyle}${suffix}`;
+      if (!/overflow\s*:/i.test(newStyle)) newStyle += '; overflow: visible;';
+      if (!/padding-bottom\s*:/i.test(newStyle)) newStyle += '; padding-bottom: 2.5rem;';
+      return `<svg${prefix}${newStyle}${suffix}`;
   });
 
   // 3. If <svg> tag has NO style attribute at all, add style
-  cleaned = cleaned.replace(/<svg(?![^>]*\bstyle=)/gi, '<svg style="background-color: #1e1e1e; border-radius: 8px; overflow: visible; padding-bottom: 2.5rem; height: auto;"');
+  cleaned = cleaned.replace(/<svg(?![^>]*\bstyle=)/gi, '<svg style="background-color: #1e1e1e; border-radius: 8px; overflow: visible; padding-bottom: 2.5rem;"');
 
   // 4. Replace background <rect> elements with white/light fill
   cleaned = cleaned.replace(/(<rect[^>]*\bfill=")(#ffffff|#fff|white|#f8fafc|#f1f5f9|#e2e8f0|#ffffff[0-9a-f]{2})(")/gi, '$1#1e1e1e$3');
@@ -680,7 +679,7 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
       const svgMatch = codeHtml.match(/(<svg[\s\S]*<\/svg>)/i);
       const pureSvg = svgMatch ? svgMatch[1] : codeHtml;
       const darkSvgHtml = sanitizeSvgDarkBackground(pureSvg);
-      const styledSvgHtml = `<div class="w-full my-4 border border-slate-700/60 rounded-xl overflow-hidden shadow-lg bg-slate-900/40 relative select-text"><div class="px-3 py-2 bg-slate-800/50 border-b border-slate-700/60 flex items-center justify-between"><span class="text-xs font-bold text-slate-300 flex items-center gap-2"><span class="text-amber-400">📊</span> 공학 다이어그램</span><button onclick="if(window.openSvgZoomModal) window.openSvgZoomModal(this)" class="p-1.5 bg-amber-500/20 hover:bg-amber-500/40 text-amber-300 border border-amber-500/30 rounded-lg cursor-pointer transition-all active:scale-95 flex items-center justify-center shadow-sm" title="확대해서 보기"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg></button></div><div class="p-3 overflow-x-auto flex items-center justify-center min-h-[120px] max-w-full text-slate-200">${darkSvgHtml}</div></div>`;
+      const styledSvgHtml = `<div class="w-full my-4 border border-slate-700/60 rounded-xl overflow-hidden shadow-lg bg-slate-900/40 relative select-text"><div class="px-3 py-2 bg-slate-800/50 border-b border-slate-700/60 flex items-center justify-between"><span class="text-xs font-bold text-slate-300 flex items-center gap-2"><span class="text-amber-400">📊</span> 공학 다이어그램</span><button onclick="if(window.openSvgZoomModal) window.openSvgZoomModal(this)" class="p-1.5 bg-amber-500/20 hover:bg-amber-500/40 text-amber-300 border border-amber-500/30 rounded-lg cursor-pointer transition-all active:scale-95 flex items-center justify-center shadow-sm" title="확대해서 보기"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg></button></div><div class="p-3 overflow-x-auto min-h-[120px] max-w-full text-slate-200">${darkSvgHtml}</div></div>`;
       codeBlocks.push({ placeholder, content: styledSvgHtml });
       codeBlockIndex++;
       return placeholder;
