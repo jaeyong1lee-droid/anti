@@ -590,8 +590,10 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
         return listMarkers.shift();
       });
 
-      // Escape angle brackets for safety (preventing \gt -> ₩gt on Windows)
-      return t.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      // 꺾쇠 기호(<, >)를 무조건 HTML 엔티티(&lt;, &gt;)로 변환하는 불필요한/과도한 이스케이프 로직 제거 (Root Cause Removal)
+      // 이로 인해 SVG 태그 등 정상적인 HTML 태그들이 텍스트로 노출되는 부작용이 발생했음.
+      // 렌더링 보안(XSS) 및 < 기호 방어는 LatexRenderer.jsx의 hasHtml 분기에서 자체적으로 안전하게 처리됨.
+      return t;
     } else {
       let math = token.content.replace(/^\$\$?|\$\$?$/g, '').trim();
       math = healBackslashes(math);

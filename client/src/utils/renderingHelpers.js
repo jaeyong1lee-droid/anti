@@ -1261,11 +1261,6 @@ export const cleanAndSanitizeMathText = (rawText) => {
     return `$${math}$`;
   });
 
-  // [🚨 긴급 수정]: healLatexFormulas에서 무조건 텍스트 토큰 내의 < > 기호를 &lt; &gt;로 이스케이프하여 
-  // 일반 텍스트 영역의 순수 SVG 태그(마크다운 블록이 없는)와 주석이 텍스트로 노출되는 현상 치유
-  cleaned = cleaned.replace(/&lt;(\/?(?:svg|path|polyline|line|polygon|rect|circle|ellipse|g|defs|marker|clipPath|pattern|image|foreignObject|text)(?:\s+[^&]*)?\/?)&gt;/gi, '<$1>');
-  cleaned = cleaned.replace(/&lt;!--([\s\S]*?)(?:--&gt;|-&gt;|→)/g, '<!--$1-->');
-
   return cleaned;
 };
 
