@@ -238,7 +238,7 @@ const formulaRegex = new RegExp(
 // Regex matching simple math variables/relations (without backslash commands)
 const simpleVariableRegex = new RegExp(
   // 1. Relations (most specific, e.g. k_h = 10, y(x) = ax + b, z < z_c)
-  `\\b[a-zA-Z0-9_'\^\\(\\)\\{\\}\\[\\]]+\\s*(?:[+=<>]|\\s+[-/\\*]\\s+)\\s*[a-zA-Z0-9_'\^\\(\\)\\{\\}\\[\\]]+(?:\\s*(?:[+=<>]|\\s+[-/\\*]\\s+)\\s*[a-zA-Z0-9_'\^\\(\\)\\{\\}\\[\\]]+)*\\b|` +
+  `\\b[a-zA-Z0-9_'\^\\(\\)\\{\\}\\[\\]]+[ \\t]*(?:[+=<>]|[ \\t]+[-/\\*][ \\t]+)[ \\t]*[a-zA-Z0-9_'\^\\(\\)\\{\\}\\[\\]]+(?:[ \\t]*(?:[+=<>]|[ \\t]+[-/\\*][ \\t]+)[ \\t]*[a-zA-Z0-9_'\^\\(\\)\\{\\}\\[\\]]+)*\\b|` +
   // 2. Function notation (e.g. p(z), w(z))
   `\\b[a-zA-Z]\\([a-zA-Z0-9_'\\s\\\\]+\\)(?![a-zA-Z0-9_'])|` +
   // 3. Subscripted variables with braces or underscores (e.g. s_{t-\Delta t}, s_{t- \Delta t}, S_{max}, k_h, z_c)
@@ -375,16 +375,6 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
 
   
   
-  // [Self-Healing] Remove space between backslash and Greek commands (including trailing alphanumeric characters)
-  const greekSubscriptFullLetters = 'alpha|beta|gamma|sigma|tau|phi|theta|epsilon|pi|delta|omega|mu|lambda|psi|rho|eta|nu|xi|zeta|chi|upsilon|kappa';
-  const spaceRegex = new RegExp(`\\\\\\s+(${greekSubscriptFullLetters})([a-zA-Z0-9]*)\\b`, 'gi');
-  processed = processed.replace(spaceRegex, '\\$1$2');
-
-  // [Self-Healing] Clean up Greek letter variables missing underscores (e.g. \sigmav -> \sigma_v, \sigma'v -> \sigma'_v)
-  const greekSubscriptLetters = 'sigma|gamma|tau|theta|alpha|beta|epsilon|phi|psi|omega|mu|nu';
-  const greekSubscriptRegex = new RegExp(`\\\\(${greekSubscriptLetters})('?)([a-zA-Z0-9])\\b`, 'gi');
-  processed = processed.replace(greekSubscriptRegex, '\\$1$2_$3');
-
   // [Self-Healing] Remove space between backslash and general math commands
   processed = processed.replace(/\\\s+(Delta|Sigma|Gamma|Phi|Theta|Omega|frac|dfrac|tfrac|sqrt|cdot|times|div|pm|infty|partial|sum|int|sim|le|ge|lt|gt|sin|cos|tan|log|ln|nabla|neq|ne|approx)\b/g, '\\$1');
 
