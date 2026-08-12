@@ -9,7 +9,6 @@ import {
   Legend,
   ResponsiveContainer
 } from 'recharts';
-import { renderKatexString } from '../utils/renderingHelpers';
 
 // Helper to render mixed text and KaTeX (e.g. "응력 $\sigma$")
 const renderMixedText = (text) => {
@@ -33,10 +32,8 @@ const renderMixedText = (text) => {
   try {
     return cleanText.replace(/\$([^\$]+)\$/g, (match, math) => {
       try {
-        if (typeof renderKatexString === 'function') {
-          return renderKatexString(math.trim(), { displayMode: false, throwOnError: false });
-        }
-        return window.katex.renderToString(math.trim(), { throwOnError: false });
+        const safeMath = math.trim().replace(/\\?%/g, '\\%');
+        return window.katex.renderToString(safeMath, { throwOnError: false, strict: 'ignore' });
       } catch (e) {
         return match;
       }
