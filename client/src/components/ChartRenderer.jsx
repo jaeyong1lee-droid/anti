@@ -27,9 +27,6 @@ const renderMixedText = (text) => {
   // 2. AI가 환각으로 슬래시 바로 뒤에 아래첨자를 붙여 생긴 콤마 착시 방어
   cleanText = cleanText.replace(/\/_/g, '/');
 
-  // 3. 과거 DB나 로컬 스토리지에 저장된 오염된 분수(\frac{t}{,S}, \frac{t}{s} 등)를 1차원 슬래시로 렌더링 직전에 치환 (하위 호환성 복구)
-  cleanText = cleanText.replace(/\\frac{([^}]+)}{[,_\\s]*([^}]+)}/g, '$1/$2');
-
   if (!window.katex) return cleanText;
   
   try {
