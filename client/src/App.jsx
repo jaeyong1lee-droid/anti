@@ -11033,7 +11033,7 @@ ${item.intuitive || ''}
           (t.title && cleanQTitle.includes(t.title)) || 
           (t.title && t.title.includes(cleanQTitle))
         );
-        const latestTableContent = matchingTable ? (matchingTable.html || matchingTable.content || matchingTable.comparison) : null;
+        const latestTableContent = matchingTable ? (matchingTable.comparison || matchingTable.markdown || matchingTable.content || matchingTable.html) : null;
 
         const body = {
           mode,
@@ -11605,7 +11605,7 @@ ${item.intuitive || ''}
         (t.title && cleanQTitle.includes(t.title)) || 
         (t.title && t.title.includes(cleanQTitle))
       );
-      const latestTableContent = matchingTable ? (matchingTable.html || matchingTable.content || matchingTable.comparison) : null;
+      const latestTableContent = matchingTable ? (matchingTable.comparison || matchingTable.markdown || matchingTable.content || matchingTable.html) : null;
 
       const body = {
         mode,
@@ -14623,7 +14623,17 @@ ${item.intuitive || ''}
         const newHtml = rebuildTableHtml(headers, data.rows);
         const updatedTables = formulaTables.map(item => item.id === tableId ? { ...item, html: newHtml } : item);
         setFormulaTables(updatedTables);
-        handleSaveFormulaTables(updatedTables, false);
+        
+        // Save to DB and set as tableConfirmTarget to prioritize in latestTableContent
+        const markdown = data.markdown || null;
+        setTableConfirmTarget({
+          html: newHtml,
+          title: title,
+          markdown: markdown,
+          isLoading: false
+        });
+        
+        await handleSaveFormulaTables(updatedTables, false);
         showNotification('표 내용이 성공적으로 재작성되었습니다!', 'success');
       } else {
         throw new Error('응답 형식 분석에 실패했습니다.');
@@ -15839,6 +15849,7 @@ ${itemsStr}
       id: 'table-' + Date.now(),
       title: finalTitle,
       html: tableConfirmTarget.html,
+      comparison: tableConfirmTarget.markdown || null,
       createdAt: new Date().toISOString()
     };
     const updated = [newTable, ...formulaTables];

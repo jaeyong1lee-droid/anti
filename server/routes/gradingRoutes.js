@@ -285,7 +285,7 @@ function parseAnyTableServer(tableStr) {
     const headers = [];
     const rows = [];
 
-    const thMatches = tableStr.match(/<th[^>]*>(.*?)<\/th>/gis);
+    const thMatches = tableStr.match(/<th[^>]*>(.*?)<\/th\s*>/gis);
     if (thMatches) {
       thMatches.forEach(th => {
         const text = th.replace(/<[^>]*>/g, '').trim();
@@ -293,13 +293,13 @@ function parseAnyTableServer(tableStr) {
       });
     }
 
-    const trMatches = tableStr.match(/<tr[^>]*>(.*?)<\/tr>/gis);
+    const trMatches = tableStr.match(/<tr[^>]*>(.*?)<\/tr\s*>/gis);
     if (trMatches) {
       trMatches.forEach((tr, rIdx) => {
         if (rIdx === 0 && thMatches && thMatches.length > 0) return;
 
         const rowCells = [];
-        const tdMatches = tr.match(/<td[^>]*>(.*?)<\/td>/gis);
+        const tdMatches = tr.match(/<td[^>]*>(.*?)<\/td\s*>/gis);
         if (tdMatches) {
           tdMatches.forEach(td => {
             const text = td.replace(/<[^>]*>/g, '').trim();

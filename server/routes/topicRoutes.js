@@ -1134,11 +1134,13 @@ router.post('/table/suggest-title-and-refine', async (req, res) => {
 해당 표의 원본 HTML 내용과 실시간 튜터 대화 맥락을 분석하여:
 1. 해당 표에 가장 걸맞은 전문적이고 깔끔한 핵심 제목(Title)을 한글로 한 줄(공백 포함 25자 이내)로 도출하십시오. (학자명/공법명 등을 적절히 반영하여 '~~ 비교표' 또는 '~~ 분석표' 등 형식으로 작성)
 2. 표의 전체 내용을 지반공학/토질역학 표준 용어 및 기술사 시험 서술 양식에 맞게 다듬은 정제된 HTML table 마크업을 반환하십시오. 원본 표의 행과 열 구조를 그대로 유지하되, 오탈자가 있거나 부자연스러운 서술이 있다면 깔끔하게 다듬으십시오. (별도의 css 스타일이나 wrapper div는 포함하지 말고 오직 <table>...</table> 형태만 출력해야 합니다.)
+3. 방금 정제한 표와 완전히 동일한 내용을 담은 순수한 **마크다운(Markdown) 표 문자열**을 추가로 생성하십시오.
 
 반드시 다음 JSON 형식 규격으로만 정확하게 응답하십시오. (설명이나 마크다운 코드 블록 기호는 절대 출력하지 마십시오):
 {
   "title": "여기에 최적화된 표 제목 기입",
-  "html": "여기에 정제된 <table>...</table> HTML 마크업 기입"
+  "html": "여기에 정제된 <table>...</table> HTML 마크업 기입",
+  "markdown": "여기에 정제된 순수 마크다운 표 문자열 기입"
 }`;
 
     const chatContext = Array.isArray(chatHistory)
@@ -1162,7 +1164,8 @@ router.post('/table/suggest-title-and-refine', async (req, res) => {
       const result = parseLlmJson(cleanJsonText);
       res.json({
         title: (result.title || '새 비교표').replace(/^[📊\s\t\n]+/, '').trim(),
-        html: result.html || tableHtml
+        html: result.html || tableHtml,
+        markdown: result.markdown || null
       });
     } catch (parseErr) {
       console.warn('Refined table JSON parsing failed, using fallback regex:', parseErr);
@@ -1172,13 +1175,21 @@ router.post('/table/suggest-title-and-refine', async (req, res) => {
         fallbackTitle = titleMatch[1].replace(/^[📊\s\t\n]+/, '').trim();
       }
       let fallbackHtml = tableHtml;
-      const htmlMatch = responseText.match(/"html"\s*:\s*"([\s\S]+?)"\s*}/);
+      const htmlMatch = responseText.match(/"html"\s*:\s*"([\s\S]+?)"/);
       if (htmlMatch && htmlMatch[1]) {
         fallbackHtml = htmlMatch[1].replace(/\\"/g, '"').replace(/\\n/g, '\n').trim();
       }
+      
+      let fallbackMarkdown = null;
+      const mdMatch = responseText.match(/"markdown"\s*:\s*"([\s\S]+?)"/);
+      if (mdMatch && mdMatch[1]) {
+        fallbackMarkdown = mdMatch[1].replace(/\\"/g, '"').replace(/\\n/g, '\n').replace(/\\\\/g, '\\').trim();
+      }
+
       res.json({
         title: fallbackTitle,
-        html: fallbackHtml
+        html: fallbackHtml,
+        markdown: fallbackMarkdown
       });
     }
   } catch (err) {
