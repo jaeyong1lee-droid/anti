@@ -30,12 +30,6 @@ export let lockscreenStandardsList = [
     "content": "락스크린 주기는 웹 시스템 사용 종료 후 10분이 경과되었을 때 제공하며, 10분 이내로 재접속 시에는 등장하지 않습니다.",
     "updatedAt": new Date().toISOString()
   },
-  {
-    "id": "user_generation_math_subscript",
-    "title": "18. 수식 변수 및 아래첨자 결합 유지 규칙",
-    "content": "🚨 [수식 변수 및 아래첨자 결합 유지 규칙]: 수학 기호나 공식 내에서 물리량 변수 기호와 그 아래첨자(예: Nc, Df, kh 등)는 절대로 중간에 달러 기호($ 또는 $$)를 끼워 넣어서 서로 다른 블록으로 쪼개서 출력하지 마십시오. 반드시 수식 전체를 감싸서 하나의 수식 블록 내에 모두 포함시켜야 합니다. (예: $N_c$ (O) / N$_c$ (X), $\\text{N}_c$ (O) / \\text{N}$$_c (X))",
-    "updatedAt": new Date().toISOString()
-  }
 ];
 
 export let LOCKSCREEN_STANDARDS = assembleLockscreenStandardsPrompt(lockscreenStandardsList);
