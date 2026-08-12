@@ -1212,55 +1212,6 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
     }
   });
 
-  let expectedBoxNum = 1;
-  let nextExpectedLetterIdx = 0; // 0 for A, 1 for B...
-  const fixTitleSequence = (boxObj) => {
-    if (!boxObj || !boxObj.content || boxObj.content.length === 0) return;
-    
-    // Fix letter sequences dynamically to handle old hallucinated DB entries
-    boxObj.content = boxObj.content.map((line) => {
-      let lContent = line;
-      const firstLetter = lContent.search(/\([A-F]\)/);
-      if (firstLetter !== -1) {
-        // Remove trailing hallucinatory letters like ", (B), (C)"
-        lContent = lContent.replace(/\([A-F]\)/g, (m, o) => o === firstLetter ? m : '');
-        // Remove "입력" garbage and trailing commas
-        lContent = lContent.replace(/입력\s*_*/g, '').replace(/[,\s]+\]$/, ' ]').replace(/^\[\s*[,\s]+/, '[ ').replace(/[,\s]+$/, '');
-        
-        // Dynamically reassign letter to ensure sequential order (A, B, C...)
-        const newLetter = String.fromCharCode(65 + nextExpectedLetterIdx);
-        lContent = lContent.replace(/\([A-F]\)/, `(${newLetter})`);
-        nextExpectedLetterIdx++;
-      }
-      return lContent;
-    });
-
-    const title = boxObj.content[0];
-    const match = title.match(/\[(\d+|\*)\]/);
-    if (match) {
-      const numStr = match[1];
-      if (numStr === '*') {
-        boxObj.content[0] = title.replace(`[${numStr}]`, `[${expectedBoxNum}]`);
-        expectedBoxNum++;
-      } else {
-        const num = parseInt(numStr, 10);
-        if (num < expectedBoxNum) {
-          boxObj.content[0] = title.replace(`[${numStr}]`, `[${expectedBoxNum}]`);
-          expectedBoxNum++;
-        } else {
-          expectedBoxNum = num + 1;
-        }
-      }
-    }
-  };
-
-  cleanItems.forEach(item => {
-    if (item.type === 'box') {
-      fixTitleSequence(item);
-    } else if (item.type === 'branch' && Array.isArray(item.boxes)) {
-      item.boxes.forEach(b => fixTitleSequence(b));
-    }
-  });
 
   const renderLineContent = (rawContent) => {
     let content = rawContent;
