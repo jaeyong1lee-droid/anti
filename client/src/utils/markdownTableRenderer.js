@@ -1,4 +1,4 @@
-import { cleanAndSanitizeMathText } from './renderingHelpers.js';
+import { cleanAndSanitizeMathText, renderKatexString } from './renderingHelpers.js';
 import { healLatexFormulas } from './latexUtils.js';
 
 export function getDefaultSmartColWidth(hIdx, totalCols) {
@@ -33,14 +33,14 @@ function renderCellMath(text) {
   
   // Replace $$ ... $$ first (block math in table cells: render compact without display margins)
   let temp = cleanedText.replace(/\$\$\s*([\s\S]*?)\s*\$\$/g, (match, math) => {
-    if (window.katex) {
+    if (typeof renderKatexString === 'function') {
       try {
         let cleaned = math.trim();
         cleaned = cleaned.replace(/\\frac\b/g, '\\dfrac');
         cleaned = cleaned.replace(/\\{2,}%/g, '\\%');
         cleaned = cleaned.replace(/(?<!\\)%/g, '\\%');
         cleaned = cleaned.replace(/^\$|\$/g, '').trim();
-        return window.katex.renderToString(cleaned, { displayMode: false, throwOnError: false });
+        return renderKatexString(cleaned, { displayMode: false, throwOnError: false });
       } catch (e) {
         console.warn('KaTeX render error in table cell (block):', e);
         return match;
@@ -55,14 +55,14 @@ function renderCellMath(text) {
     if (!isReal) {
       return match;
     }
-    if (window.katex) {
+    if (typeof renderKatexString === 'function') {
       try {
         let cleaned = math.trim();
         cleaned = cleaned.replace(/\\frac\b/g, '\\dfrac');
         cleaned = cleaned.replace(/\\{2,}%/g, '\\%');
         cleaned = cleaned.replace(/(?<!\\)%/g, '\\%');
         cleaned = cleaned.replace(/^\$|\$/g, '').trim();
-        return window.katex.renderToString(cleaned, { displayMode: false, throwOnError: false });
+        return renderKatexString(cleaned, { displayMode: false, throwOnError: false });
       } catch (e) {
         console.warn('KaTeX render error in table cell (inline):', e);
         return match;
