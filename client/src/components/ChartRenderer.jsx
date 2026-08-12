@@ -32,8 +32,9 @@ const renderMixedText = (text) => {
   try {
     return cleanText.replace(/\$([^\$]+)\$/g, (match, math) => {
       try {
-        const safeMath = math.trim().replace(/\\?%/g, '\\%');
-        return window.katex.renderToString(safeMath, { throwOnError: false, strict: 'ignore' });
+        // [Root Cause Fix]: AI is strictly instructed to keep % outside math blocks.
+        // strict: 'ignore' is kept purely to prevent 3rd-party library (KaTeX) from crashing the app if invalid LaTeX is ever passed.
+        return window.katex.renderToString(math.trim(), { throwOnError: false, strict: 'ignore' });
       } catch (e) {
         return match;
       }
