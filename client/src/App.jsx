@@ -19243,24 +19243,22 @@ ${itemsStr}
             ) : (() => {
               const filteredTopics = allTopics.filter(topic => {
                 const cat = topic.category || '일반';
-                if (topicFilter === '전체') return true;
-                return cat === topicFilter;
+                const catMatch = topicFilter === '전체' ? true : cat === topicFilter;
+                if (!catMatch) return false;
+                if (searchQuery) {
+                  return topic.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         (topic.keywords && topic.keywords.toLowerCase().includes(searchQuery.toLowerCase()));
+                }
+                return true;
               });
 
               if (filteredTopics.length === 0) {
                 return (
                   <div className="py-12 text-center bg-slateCustom-900/10 rounded-2xl border border-slate-800/40 w-full">
-                    <p className="text-sm text-slate-400">선택한 카테고리('{topicFilter}')에 해당하는 복습 토픽이 아직 없습니다.</p>
+                    <p className="text-sm text-slate-400">선택한 조건에 해당하는 복습 토픽이 없습니다.</p>
                   </div>
                 );
               }
-
-              const matchedIndex = searchQuery 
-                ? filteredTopics.findIndex(topic => 
-                    topic.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    (topic.keywords && topic.keywords.toLowerCase().includes(searchQuery.toLowerCase()))
-                  )
-                : -1;
 
               // Calculate bottom 5% threshold logic (only among studied topics to prevent unstudied 0-scores skewing the metric)
               const studiedScores = allTopics
@@ -19298,7 +19296,7 @@ ${itemsStr}
                     </thead>
                     <tbody className="divide-y divide-slate-800 text-sm">
                       {filteredTopics.map((topic, idx) => {
-                        const isFirstMatch = searchQuery && idx === matchedIndex;
+                        const isFirstMatch = searchQuery && idx === 0; // Highlight the first matching item since it's filtered
                         
                         const completedNormal = topic.schedules?.filter(s => s.status === 'completed' && s.review_round < 99 && s.score !== null && s.score !== undefined) || [];
                         const completedWeak = topic.schedules?.filter(s => s.status === 'completed' && s.review_round === 99 && s.score !== null && s.score !== undefined) || [];
