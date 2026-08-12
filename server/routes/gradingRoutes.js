@@ -4,7 +4,6 @@ import { dbQuery } from '../database.js';
 import { callLLMWithFailover, analyzeStandardsBeforeTask, getTopicText, startBackendProgressTimer, updateProgress, stopBackendProgressTimer, globalPreferredModel } from '../services/aiService.js';
 import { healQuizQuestionObject, parseLlmJson, healLatexFormulas, validateAndHealQuestion } from '../utils/latexUtils.js';
 import * as fileUtils from '../utils/fileUtils.js';
-import { generateFallbackQuestions } from '../fallback_generator.js';
 import { gradeSubjective, GRADING_STANDARDS, gradingStandardsList } from '../plugins/gradingPlugin.js';
 import { ENGINEERING_STANDARDS, standardsList as engineeringStandardsList } from '../plugins/engineeringStandards.js';
 import { GENERATION_STANDARDS, generationStandardsList } from '../plugins/generationStandards.js';
@@ -790,7 +789,7 @@ ${otherQs.map((q, i) => `기존 문제 ${i + 1}: ${q.question || '없음'}`).joi
       }
 
       if (!hasAnyAiKey) {
-        const fallbackList = generateFallbackQuestions(topic.title, topic.keywords, fileText);
+        const fallbackList = [];
         const candidates = fallbackList.filter(q => {
           if (targetType === '주관식 (개요)') return q.type?.includes('개요');
           if (targetType === '주관식 (공식)') return q.type?.includes('공식');

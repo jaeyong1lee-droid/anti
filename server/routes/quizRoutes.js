@@ -6,7 +6,6 @@ import { dbQuery, isPostgres } from '../database.js';
 import { callLLMWithFailover, searchSourceDocumentWithGeminiLite, analyzeStandardsBeforeTask, saveSessionValue, getTopicText, startBackendProgressTimer, updateProgress, globalPreferredModel } from '../services/aiService.js';
 import { healLatexFormulas, healQuizQuestionObject, healAnswersheetQuestionObject, parseLlmJson, LATEX_PROMPT_INSTRUCTIONS, LATEX_CHAT_PROMPT_INSTRUCTIONS } from '../utils/latexUtils.js';
 import * as fileUtils from '../utils/fileUtils.js';
-import { generateFallbackQuestions } from '../fallback_generator.js';
 import { GENERATION_STANDARDS, generationStandardsList } from '../plugins/generationStandards.js';
 import { ENGINEERING_STANDARDS, standardsList as engineeringStandardsList } from '../plugins/engineeringStandards.js';
 import { FLOWCHART_QUIZ_GENERATION_PROMPT } from '../plugins/flowchartQuizPlugin.js';
@@ -808,7 +807,7 @@ router.post('/topics/:id/ai-questions', async (req, res) => {
 
     if (isCoreTopic && (forceLocal || !hasAnyAiKey)) {
       console.log(`[AI Route Interceptor - Local Fallback] Precision routed core topic "${topic.title}"`);
-      const coreQuestions = generateFallbackQuestions(topic.title, topic.keywords, fileText);
+      const coreQuestions = [];
       const finalQuestions = topic.category === '계산'
         ? assembleFinalCalculationQuestions(coreQuestions, topic, fileText)
         : assembleFinalQuestions(coreQuestions, topic, carryOverQuestions, fileText);
@@ -845,7 +844,7 @@ router.post('/topics/:id/ai-questions', async (req, res) => {
     }
 
     if (forceLocal || !hasAnyAiKey) {
-      const fallbackQuestions = generateFallbackQuestions(topic.title, topic.keywords, fileText);
+      const fallbackQuestions = [];
       const finalQuestions = topic.category === '계산'
         ? assembleFinalCalculationQuestions(fallbackQuestions, topic, fileText)
         : assembleFinalQuestions(fallbackQuestions, topic, carryOverQuestions, fileText);
@@ -1447,7 +1446,7 @@ let parsedArray = null;
     console.error('Error generating AI questions, falling back to local questions:', err);
     try {
       const safeFileText = typeof topicText !== 'undefined' ? topicText : (topic ? (topic.extracted_text || '') : '');
-      const fallbackQuestions = generateFallbackQuestions(topic.title, topic.keywords, safeFileText);
+      const fallbackQuestions = [];
       const finalQuestions = topic.category === '계산'
         ? assembleFinalCalculationQuestions(fallbackQuestions, topic, fileText)
         : assembleFinalQuestions(fallbackQuestions, topic, carryOverQuestions, safeFileText);
@@ -2795,7 +2794,7 @@ ${adjustments.map((a, idx) => `
           }
           topicText = fileUtils.mergeVerticalText(topicText);
         }
-        const fallbackQs = generateFallbackQuestions(t.title, t.keywords, topicText);
+        const fallbackQs = [];
         if (Array.isArray(fallbackQs)) {
           fallbackQuestionsPool.push(...fallbackQs);
         }
