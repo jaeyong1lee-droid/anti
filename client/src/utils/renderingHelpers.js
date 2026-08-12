@@ -738,10 +738,6 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
   tempText = tempText.replace(/\n\s*\n/g, '\n\n');
   tempText = tempText.replace(/\n{3,}/g, '\n\n');
 
-
-  // Cleanup AI hallucinated multiple hash groups like "### ### 1." -> "### 1."
-  tempText = tempText.replace(/^(#+)(?:\s+#+)+\s+/gm, '$1 ');
-
   // Headings on same line
   tempText = tempText.replace(/([^\n#])\s*(#{2,6}\s+)/g, '$1\n\n$2');
 
