@@ -113,9 +113,9 @@ const ChartRenderer = ({ data }) => {
     const tickHtml = renderMixedText(payload.value);
     return (
       <g transform={`translate(${x},${y})`}>
-        <foreignObject x="-40" y="5" width="80" height="40" style={{ overflow: 'visible' }}>
-          <div xmlns="http://www.w3.org/1999/xhtml" className="text-[9px] sm:text-[11px] font-semibold text-slate-400 w-full h-full normal-nums" style={{ display: 'table' }}>
-            <span style={{ display: 'table-cell', verticalAlign: 'top', textAlign: 'center' }} dangerouslySetInnerHTML={{ __html: tickHtml }} />
+        <foreignObject x="-30" y="5" width="60" height="20" style={{ overflow: 'visible' }}>
+          <div xmlns="http://www.w3.org/1999/xhtml" className="flex items-start justify-center text-[9px] sm:text-[11px] font-semibold text-slate-400 w-full h-full pt-1 normal-nums">
+            <span dangerouslySetInnerHTML={{ __html: tickHtml }} />
           </div>
         </foreignObject>
       </g>
@@ -126,9 +126,9 @@ const ChartRenderer = ({ data }) => {
     const tickHtml = renderMixedText(payload.value);
     return (
       <g transform={`translate(${x},${y})`}>
-        <foreignObject x="-80" y="-20" width="75" height="40" style={{ overflow: 'visible' }}>
-          <div xmlns="http://www.w3.org/1999/xhtml" className="text-[9px] sm:text-[11px] font-semibold text-slate-400 w-full h-full normal-nums" style={{ display: 'table' }}>
-            <span style={{ display: 'table-cell', verticalAlign: 'middle', textAlign: 'right' }} dangerouslySetInnerHTML={{ __html: tickHtml }} />
+        <foreignObject x="-50" y="-10" width="45" height="20" style={{ overflow: 'visible' }}>
+          <div xmlns="http://www.w3.org/1999/xhtml" className="flex items-center justify-end text-[9px] sm:text-[11px] font-semibold text-slate-400 w-full h-full pr-1 normal-nums">
+            <span dangerouslySetInnerHTML={{ __html: tickHtml }} />
           </div>
         </foreignObject>
       </g>
@@ -140,9 +140,9 @@ const ChartRenderer = ({ data }) => {
     const html = renderMixedText(xAxisLabel);
     return (
       <g>
-        <foreignObject x={x} y={y + 15} width={width} height={50} style={{ overflow: 'visible' }}>
-          <div xmlns="http://www.w3.org/1999/xhtml" className="text-[10px] sm:text-[12px] font-bold text-slate-400 w-full h-full normal-nums" style={{ display: 'table' }}>
-            <span style={{ display: 'table-cell', verticalAlign: 'top', textAlign: 'center' }} dangerouslySetInnerHTML={{ __html: html }} />
+        <foreignObject x={x} y={y + 25} width={width} height={20} style={{ overflow: 'visible' }}>
+          <div xmlns="http://www.w3.org/1999/xhtml" className="flex items-start justify-center text-[10px] sm:text-[12px] font-bold text-slate-400 w-full h-full text-center pt-1 normal-nums">
+            <span dangerouslySetInnerHTML={{ __html: html }} />
           </div>
         </foreignObject>
       </g>
@@ -154,9 +154,9 @@ const ChartRenderer = ({ data }) => {
     const html = renderMixedText(yAxisLabel);
     return (
       <g>
-        <foreignObject x={10} y={y - 45} width={250} height={50} style={{ overflow: 'visible' }}>
-          <div xmlns="http://www.w3.org/1999/xhtml" className="text-[10px] sm:text-[12px] font-bold text-slate-400 w-full h-full whitespace-nowrap normal-nums" style={{ display: 'table' }}>
-            <span style={{ display: 'table-cell', verticalAlign: 'middle', textAlign: 'left' }} dangerouslySetInnerHTML={{ __html: html }} />
+        <foreignObject x={10} y={y - 25} width={250} height={20} style={{ overflow: 'visible' }}>
+          <div xmlns="http://www.w3.org/1999/xhtml" className="flex items-center justify-start text-left text-[10px] sm:text-[12px] font-bold text-slate-400 w-full h-full whitespace-nowrap normal-nums">
+            <span dangerouslySetInnerHTML={{ __html: html }} />
           </div>
         </foreignObject>
       </g>
