@@ -1354,7 +1354,8 @@ ${isCalc ? `2. 지문의 모든 단위를 정확히 환산하여 대입하고, "
 [반환 JSON 응답 규격]:
 {
   ${isCalc ? `"mathExpression": "(4 * 0.0728) / (9810 * 0.00008)",` : ''}
-  "correctAnswer": "제시된 보기(Options) 중 하나와 정확히 일치하는 정답 문자열",
+  "correctIndex": 0,
+  "correctAnswer": "제시된 보기(Options) 배열 중 정답에 해당하는 항목의 전체 문자열 그대로",
   "explanation": "LaTeX 수식이 포함된 명확하고 수려한 정밀 풀이 해설"
 }
 `;
