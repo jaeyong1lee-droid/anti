@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background: #0f172a; color: #94a3b8; font-family: sans-serif; }
+  </style>
+</head>
+<body class="p-10">
+  <div class="flex items-center justify-start text-left text-[12px] font-bold text-slate-400 w-full h-full whitespace-nowrap normal-nums">
+    <span id="test"></span>
+  </div>
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      document.getElementById("test").innerHTML = "시간-침하비 " + katex.renderToString("t/S", {throwOnError: false}) + " (일/cm)";
+    });
+  </script>
+</body>
+</html>

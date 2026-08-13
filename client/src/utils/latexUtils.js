@@ -1237,6 +1237,7 @@ export function healQuizQuestionObject(q) {
         if (!Array.isArray(row)) return [];
         const colCount = row.length;
         const targetCIdx = (rIdx % Math.max(1, colCount - 1)) + 1;
+        let placeholderSeq = 1; // Track the sequence of actual placeholders
 
         return row.map((cell, cIdx) => {
           if (cIdx === 0) return cell; // Keep the row label intact
@@ -1274,12 +1275,23 @@ export function healQuizQuestionObject(q) {
 
           // Robust check helper
           const lookup = (key) => {
-            if (key === undefined || key === null) return undefined;
+            if (key === undefined || key === null || key === '') return undefined;
             return oldAnswers[key];
           };
 
+          const isPlaceholder = isCellPlaceholder(trimmedCell);
+          const isEmpty = !trimmedCell;
+          let currentPlaceholderSeq = null;
+          if (isPlaceholder || isEmpty) {
+            currentPlaceholderSeq = placeholderSeq;
+            placeholderSeq++;
+          }
+
           // 1. Try directly with placeholderId (case insensitive)
-          let foundVal = lookup(placeholderId) ?? lookup(placeholderId?.toLowerCase()) ?? lookup(placeholderId?.toUpperCase());
+          let foundVal = undefined;
+          if (placeholderId) {
+            foundVal = lookup(placeholderId) ?? lookup(placeholderId?.toLowerCase()) ?? lookup(placeholderId?.toUpperCase());
+          }
 
           // 2. If matchedNum is available, try corresponding index / letter
           if (foundVal === undefined && matchedNum !== null) {
@@ -1299,17 +1311,17 @@ export function healQuizQuestionObject(q) {
             }
           }
 
-          // 3. Sequential fallback based on currentCount
-          if (foundVal === undefined) {
-            const seqLetter = String.fromCharCode(64 + currentCount); // A, B, C...
-            foundVal = lookup(`INPUT_${currentCount}`) ?? lookup(`input_${currentCount}`) ?? lookup(currentCount) ?? lookup(String(currentCount)) ?? lookup(seqLetter) ?? lookup(seqLetter.toLowerCase());
+          // 3. Sequential fallback based on actual placeholder sequence (ONLY if it was a placeholder/empty)
+          if (foundVal === undefined && currentPlaceholderSeq !== null) {
+            const seqLetter = String.fromCharCode(64 + currentPlaceholderSeq); // A, B, C...
+            foundVal = lookup(`INPUT_${currentPlaceholderSeq}`) ?? lookup(`input_${currentPlaceholderSeq}`) ?? lookup(currentPlaceholderSeq) ?? lookup(String(currentPlaceholderSeq)) ?? lookup(seqLetter) ?? lookup(seqLetter.toLowerCase());
             
-            // Suffix-based recovery for sequential fallback (e.g., match INPUT_2_1 for currentCount = 1)
+            // Suffix-based recovery for sequential fallback
             if (foundVal === undefined) {
               const matchedKey = Object.keys(oldAnswers).find(key => {
                 const parts = key.split('_');
                 const lastPart = parts[parts.length - 1];
-                return parts[0].toLowerCase() === 'input' && parseInt(lastPart, 10) === currentCount;
+                return parts[0].toLowerCase() === 'input' && parseInt(lastPart, 10) === currentPlaceholderSeq;
               });
               if (matchedKey) {
                 foundVal = oldAnswers[matchedKey];
@@ -1342,11 +1354,15 @@ export function healQuizQuestionObject(q) {
             }
           }
 
+          // 5. If it's NOT a placeholder/empty, it's just normal text. Never hijack oldAnswers, just use its own text!
+          if (!isPlaceholder && !isEmpty && foundVal === undefined) {
+            foundVal = cell;
+          }
+
           if (foundVal !== undefined) {
             correctAnswer = foundVal;
           } else {
             // If no placeholder value was found in oldAnswers, keep the cell text if it's not a placeholder
-            const isPlaceholder = isCellPlaceholder(trimmedCell);
             correctAnswer = isPlaceholder ? '' : cell;
           }
 

@@ -3730,7 +3730,7 @@ export default function App() {
         const res = await fetch(`${API_BASE}/api/progress/${progressId}`);
         if (res.ok) {
           const data = await res.json();
-          if (data && data.message) {
+          if (data && data.message && progressIntervalRef.current !== null) {
             setAiProgressMessage(data.message);
             setAiProgressPercent(data.percentage || 0);
 
@@ -3785,7 +3785,7 @@ export default function App() {
       setAiProgressPercent(finalPercent);
       setTimeout(() => {
         setShowAiProgress(false);
-      }, 3500);
+      }, 1000);
     } else {
       setShowAiProgress(false);
     }

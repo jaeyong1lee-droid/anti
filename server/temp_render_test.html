@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <style>
+    body { background: #1e293b; color: #94a3b8; font-family: sans-serif; font-size: 12px; font-weight: bold; }
+    .label { padding: 20px; }
+  </style>
+</head>
+<body>
+  <div class="label" id="test1"></div>
+  <div class="label" id="test2"></div>
+  <div class="label" id="test3"></div>
+  <div class="label" id="test4"></div>
+  
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      document.getElementById("test1").innerHTML = "시간-침하비 " + katex.renderToString("^t/S", {throwOnError: false}) + " (일/cm)";
+      document.getElementById("test2").innerHTML = "시간-침하비 " + katex.renderToString("t/S", {throwOnError: false}) + " (일/cm)";
+      document.getElementById("test3").innerHTML = "시간-침하비 <sup>t</sup>/S (일/cm)";
+      document.getElementById("test4").innerHTML = "시간-침하비 ᵗ/S (일/cm)";
+    });
+  </script>
+</body>
+</html>
