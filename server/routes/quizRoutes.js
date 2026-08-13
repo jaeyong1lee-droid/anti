@@ -1,4 +1,4 @@
-import express from 'express';
+﻿import express from 'express';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -99,7 +99,7 @@ function cleanQuizQuestion(q) {
   if (!q) return q;
   let cleanText = typeof q === 'string' ? q : String(q || '');
 
-  // 1. Replace (A), (B), (C), (D) list garbage inside flowchart boxes with sequential single placeholders
+  // 1. Replace (1), (2), (3), (4) list garbage inside flowchart boxes with sequential single placeholders
   let emptyBoxIdx = 0;
   cleanText = cleanText.replace(/\[\s*\([^\]]*\)\s*,\s*\([^\]]*\)[\s\S]*?\]/gi, () => {
     emptyBoxIdx++;
@@ -1017,7 +1017,7 @@ ${activeGenerationStandards}
 ${activeEngineeringStandards}
 `;
 
-    const flowchartSpecificInstruction = "이번 흐름도 문제 출제 시, [1번 상자 채우기 지침]: 1번 상자는 설명 텍스트를 채워서 노출하고, 빈칸은 2번 상자부터 시작하여 (A), (B), (C), (D) 순서대로 1개씩 비우십시오. 상자 우측이나 바깥에 (A)~(F) 전체 목록을 덧붙이는 행위는 절대 금지됩니다.";
+    const flowchartSpecificInstruction = "이번 흐름도 문제 출제 시, [1번 상자 채우기 지침]: 1번 상자는 설명 텍스트를 채워서 노출하고, 빈칸은 2번 상자부터 시작하여 (1), (2), (3), (4) 순서대로 1개씩 비우십시오. 상자 우측이나 바깥에 (1)~(6) 전체 목록을 덧붙이는 행위는 절대 금지됩니다.";
 
     // Batch prompts for standard topics (non-calculation) to ensure high-quality technical questions
     const promptBatch1 = `
