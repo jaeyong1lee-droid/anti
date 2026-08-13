@@ -488,6 +488,29 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   // Collapse double or multiple backslashes before % to single backslash
   processed = processed.replace(/\\{2,}%/g, '\\%');
 
+  // [Self-Healing] 수식 분리 오작동 치유 (예: \quad \text{N}$$_c or N$$_c or \text{N}$$_c -> $$\quad \text{N}_c)
+  processed = processed.replace(/(\\quad\s*\\text\{[a-zA-Z]+\}|\b[a-zA-Z]+\b|\b\\text\{[a-zA-Z]+\})\s*\$\$(\s*_[a-zA-Z0-9])/g, '$$$$ $1$2');
+  processed = processed.replace(/(\\quad\s*\\text\{[a-zA-Z]+\}|\b[a-zA-Z]+\b|\b\\text\{[a-zA-Z]+\})\s*\$(\s*_[a-zA-Z0-9])/g, '$$ $1$2');
+
+  
+  // 블록 수식($$) 바로 뒤에 공백이나 줄바꿈을 포함하여 단위가 올 경우, 해당 단위를 수식 블록 안의 \text{}로 병합하여 줄바꿈 방지
+  processed = processed.replace(/\$\$\s*([\s\S]*?)\s*\$\$\s*(\n*)\s*(kN\/m\\\^2|kN\/m\^2|kN\/m²|kN\/m\\\^3|kN\/m\^3|kN\/m³|t\/m\\\^3|t\/m\^3|t\/m³|kg\/cm\\\^2|kg\/cm\^2|kg\/cm²|kPa|MPa|kN|N|m|cm|mm|m\\\^2|m\^2|m²|m\\\^3|m\^3|m³|g\/cm\\\^3|g\/cm\^3|g\/cm³|kg\/m\\\^3|kg\/m\^3|kg\/m³|%)(?![a-zA-Z0-9가-힣])/gi, (match, math, newlines, unit) => {
+    let katexUnit = unit.replace(/\\/g, '');
+    if (katexUnit.includes('^')) {
+      const parts = katexUnit.split('^');
+      katexUnit = `\\text{${parts[0]}}^${parts[1]}`;
+    } else if (katexUnit.includes('²')) {
+      const base = katexUnit.replace('²', '');
+      katexUnit = `\\text{${base}}^2`;
+    } else if (katexUnit.includes('³')) {
+      const base = katexUnit.replace('³', '');
+      katexUnit = `\\text{${base}}^3`;
+    } else {
+      katexUnit = `\\text{${katexUnit}}`;
+    }
+    return `$$ ${math.trim()} \\quad ${katexUnit} $$`;
+  });
+
   // 문장 한복판에 쪼개진 단일 줄바꿈(\n)을 공백으로 자동 병합 (수식 끊김 방지)
   // 단, 마크다운 표 영역은 줄바꿈 병합을 하지 않고 원본 철저히 유지하기 위해 split 처리
   const sections = processed.split(/(<!--START_TABLE-->[\s\S]*?<!--END_TABLE-->)/g);
