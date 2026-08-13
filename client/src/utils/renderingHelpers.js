@@ -1,4 +1,4 @@
-﻿// ============================================================================
+// ============================================================================
 // Markdown, KaTeX LaTeX, and HTML Iframe Rendering Helper Utilities
 // ============================================================================
 import { healLatexFormulas, balanceMathBraces } from './latexUtils.js';
@@ -656,7 +656,7 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
   // Protect and convert markdown code blocks (``` ... ```) to styled pre/code blocks or SVG charts
   const codeBlocks = [];
   let codeBlockIndex = 0;
-  tempText = tempText.replace(/```([a-zA-Z0-9_\-\$]*)(?:[ \t]*\n)?([\s\S]*?)\n```/g, (match, rawLang, code) => {
+  tempText = tempText.replace(/```([a-zA-Z0-9_\-\$]*)[ \t]*\n([\s\S]*?)\n```/g, (match, rawLang, code) => {
     const placeholder = `___CODE_BLOCK_${codeBlockIndex}___`;
     let lang = rawLang.replace(/\$/g, '');
     code = code.replace(/<svg\$/gi, '<svg'); // Fix AI inserting $ into svg tag

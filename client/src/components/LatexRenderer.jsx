@@ -1,4 +1,4 @@
-﻿import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { Brain } from 'lucide-react';
 import { 
   convertMarkdownToHtml, 
@@ -192,7 +192,7 @@ export const LatexRenderer = React.memo(function LatexRenderer({
   }
 
   // Option 3: Explicit code block type matching (ascii vs flowchart vs chart)
-  const codeBlockRegex = /```(ascii|ascii-art|flowchart|step|sequence|chart)?(?:[ \t]*\n)?([\s\S]*?)```/gi;
+  const codeBlockRegex = /```(ascii|ascii-art|flowchart|step|sequence|chart)?\n([\s\S]*?)```/gi;
   const hasCodeBlocks = codeBlockRegex.test(parsedText);
   codeBlockRegex.lastIndex = 0;
 
