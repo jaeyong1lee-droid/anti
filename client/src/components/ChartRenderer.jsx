@@ -127,7 +127,7 @@ const ChartRenderer = ({ data }) => {
     return <div className="text-rose-400 p-4 bg-rose-900/20 border border-rose-500/30 rounded-xl my-4 text-sm font-bold">⚠️ 유효하지 않은 차트 데이터입니다 (JSON 형식이 올바르지 않습니다).</div>;
   }
 
-  const { title = '공학 차트그래프', xAxisLabel = 'X축', yAxisLabel = 'Y축', lines = [], data: chartData } = data;
+  const { title = '공학 차트그래프', xAxisLabel = 'X축', yAxisLabel = 'Y축', description, lines = [], data: chartData } = data;
   
   // Default line if none provided
   const plotLines = lines.length > 0 ? lines : [{ name: '측정값', dataKey: 'y', stroke: '#38bdf8' }];
@@ -241,6 +241,15 @@ const ChartRenderer = ({ data }) => {
           </LineChart>
         </ResponsiveContainer>
       </div>
+
+      {description && (
+        <div className="mx-3 mb-4 p-3 bg-slate-800/80 border border-slate-700/60 rounded-lg text-[12px] sm:text-[13px] text-slate-300 font-medium leading-relaxed shadow-inner">
+          <div className="flex items-start">
+            <span className="mr-2 text-blue-400 mt-[1px]">💡</span>
+            <span dangerouslySetInnerHTML={{ __html: renderMixedText(description) }} />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

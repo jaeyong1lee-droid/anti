@@ -8,6 +8,7 @@ export const CHART_DIAGRAM_PROMPT = `
      "title": "그래프 한글 제목",
      "xAxisLabel": "X축 레이블 (예: 시간 $t$)",
      "yAxisLabel": "Y축 레이블 (예: 응력 $\\\\sigma$)",
+     "description": "그래프가 의미하는 주요 공학적 원리, 변곡점, 기울기, 또는 y=ax+b와 같은 수식 및 절편의 의미를 설명하는 해설 텍스트 (반드시 한 줄로 작성할 것)",
      "lines": [
        { "name": "실측 데이터", "dataKey": "y1", "stroke": "#38bdf8" },
        { "name": "추세선", "dataKey": "y2", "stroke": "#f43f5e" }
