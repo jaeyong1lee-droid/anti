@@ -18,10 +18,8 @@ export function parseChartJson(rawJsonStr) {
   // 2. 후행 쉼표(Trailing Comma) 제거: JSON 배열이나 객체 마지막에 쉼표가 붙는 환각 방어
   jsonStr = jsonStr.replace(/,\s*([\]}])/g, '$1');
   
-  // 3. 누락된 쉼표 복구 (Missing Comma Healing): 객체와 객체 사이 (} {) 또는 문자열/숫자와 객체 사이의 쉼표 누락 복구
-  jsonStr = jsonStr.replace(/\}\s*\{/g, '}, {');
-  jsonStr = jsonStr.replace(/"\s*\{/g, '", {');
-  jsonStr = jsonStr.replace(/\]\s*\[/g, '], [');
+  // 3. 누락된 쉼표 복구 (Missing Comma Healing) 로직 제거됨:
+  // LaTeX 수식 내부의 }{ (예: \frac{t}{S_t})를 JSON 객체 경계로 오인하여 }, { 로 강제 치환하는 치명적 버그가 발견되어 삭제함.
   try {
     return JSON.parse(jsonStr);
   } catch (e) {
