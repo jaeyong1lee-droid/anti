@@ -862,6 +862,9 @@ export function healQuizQuestionObject(q) {
     if (q.question && typeof q.question === 'string') {
       q.question = cleanQuizQuestion(q.question);
     }
+    if (typeof q.correctIndex === 'number' && Array.isArray(q.options) && q.correctIndex >= 0 && q.correctIndex < q.options.length) {
+      q.answer = q.options[q.correctIndex];
+    }
 
     // Real-time healing for overview questions to ensure both 학술적 정의 & 공학적 작동 메커니즘 are present
     if ((q.mixedType === 'overview' || String(q.question || '').includes('[개요 복습]')) && q.tableData) {

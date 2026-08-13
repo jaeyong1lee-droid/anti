@@ -93,7 +93,7 @@ ${ENGINEERING_STANDARDS}
   "formulaTitle": "${formulaTitle}",
   "question": "문제 질문 내용 (구체적인 설계 조건 수치 포함)",
   "options": ["보기 1", "보기 2", "보기 3", "보기 4"],
-  "answer": "정답 보기의 텍스트와 토씨 하나 틀리지 않는 정답 텍스트",
+  "correctIndex": 0,
   "explanation": "해설 내용 (공식 유도 및 각 조건 대입을 통한 구체적인 계산 전개 과정 포함)"
 }
 `;

@@ -853,7 +853,7 @@ ${otherQs.map((q, i) => `기존 문제 ${i + 1}: ${q.question || '없음'}`).joi
         formatRequirement = `{"type": "주관식 (단답형)", "question": "질문", "answer": "답안", "explanation": "해설"}`;
       } else {
         typeRequirement = `[객관식 4지선다 유형으로 생성하십시오]`;
-        formatRequirement = `{"type": "객관식 (4지선다)", "question": "질문", "tableData": null, "options": ["보기1", "보기2", "보기3", "보기4"], "answer": "정답보기", "explanation": "해설"}`;
+        formatRequirement = `{"type": "객관식 (4지선다)", "question": "질문", "tableData": null, "options": ["보기1", "보기2", "보기3", "보기4"], "correctIndex": 0, "explanation": "해설"}`;
       }
 
       let flowchartDuplicationPrompt = '';
