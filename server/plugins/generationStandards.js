@@ -48,12 +48,6 @@ export let generationStandardsList = [
     "content": "🚨 [아스키 아트 제한 철칙 - 극도로 중요!]: 일반적인 상황에서 아스키 아트(ASCII Art)를 사용하여 조잡하게 그래프나 그림을 그리는 행위는 전면 금지됩니다. 단, 사용자가 지문에서 명시적으로 '복습 7번', '믹스 11번', 또는 '흐름문제'라고 특별히 지정하여 출제를 요청하는 경우에 한해서만 예외적으로 아스키 아트를 사용하여 흐름도나 구조도를 그리는 것이 허용됩니다.",
     "updatedAt": new Date().toISOString()
   },
-  {
-    "id": "user_generation_json_formatting_and_katex",
-    "title": "11. JSON 문자열 포맷팅 및 수식 기입 철칙",
-    "content": "🚨 [JSON 문자열 포맷팅 및 수식 기입 철칙 - 극도로 중요!]:\n1. [줄바꿈 이스케이프 엄수]: JSON 형식으로 데이터를 출력할 때, 아스키(ASCII) 아트, 흐름도(flowchart), 마크다운 코드 블록 등 줄바꿈이 필수적인 문자열을 값으로 넣을 때는 절대로 줄바꿈을 누락하여 한 줄로 붙여 쓰지 마십시오. 반드시 각 줄의 끝에 명시적으로 `\\n` 이스케이프 문자를 삽입하여 포맷이 깨지지 않도록 하십시오.\n2. [편법 수식 및 HTML 태그 금지]: 차트의 Y축 라벨이나 지문에서 분수나 수식을 표현할 때, `^t`, `_S`와 같은 억지 텍스트 변형, `<sup>`, `<sub>` 같은 HTML 태그, 또는 `ᵗ`, `ₛ` 같은 유니코드 첨자 기호를 절대 사용하지 마십시오.\n3. [순수 KaTeX 사용]: 수식 기호가 필요한 경우 반드시 표준 KaTeX 블록(예: `$t / S_t$`)만을 사용하며, 특히 분수를 기입할 때는 억지로 슬래시 뒤에 밑줄을 긋는(`t/_S`) 등의 환각 동작을 엄격히 금지합니다.",
-    "updatedAt": new Date().toISOString()
-  }
 ];
 
 export let GENERATION_STANDARDS = assembleGenerationStandardsPrompt(generationStandardsList);
