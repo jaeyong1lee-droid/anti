@@ -167,8 +167,8 @@ const ChartRenderer = ({ data }) => {
     const html = renderMixedText(xAxisLabel);
     return (
       <g>
-        <foreignObject x={x} y={y + 20} width={width} height={25} style={{ overflow: 'visible' }}>
-          <div xmlns="http://www.w3.org/1999/xhtml" className="flex items-start justify-center text-[10px] sm:text-[12px] font-bold text-slate-400 w-full h-full text-center normal-nums">
+        <foreignObject x={x} y={y - 35} width={width} height={30} style={{ overflow: 'visible' }}>
+          <div xmlns="http://www.w3.org/1999/xhtml" className="flex items-end justify-end text-[10px] sm:text-[12px] font-bold text-slate-400 w-full h-full text-right pr-2 pb-1 normal-nums">
             <span dangerouslySetInnerHTML={{ __html: html }} />
           </div>
         </foreignObject>
@@ -211,7 +211,7 @@ const ChartRenderer = ({ data }) => {
             <XAxis 
               dataKey="x" 
               stroke="#64748b" 
-              height={45}
+              height={25}
               tick={<CustomTickX />} 
               label={<CustomXAxisLabel />} 
             />
