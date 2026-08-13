@@ -1,4 +1,4 @@
-﻿// 1. 수식($), 일반 텍스트, 그리고 보호된 표 블록 분리 (인라인 줄바꿈 오염 방지)
+// 1. 수식($), 일반 텍스트, 그리고 보호된 표 블록 분리 (인라인 줄바꿈 오염 방지)
 export function tokenizeForHealing(text) {
   if (!text) return [];
   const tokens = [];
@@ -494,7 +494,7 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
 
   
   // 블록 수식($$) 바로 뒤에 공백이나 줄바꿈을 포함하여 단위가 올 경우, 해당 단위를 수식 블록 안의 \text{}로 병합하여 줄바꿈 방지
-  processed = processed.replace(/\$\$\s*([\s\S]*?)\s*\$\$\s*(\n*)\s*(kN\/m\\\^2|kN\/m\^2|kN\/m²|kN\/m\\\^3|kN\/m\^3|kN\/m³|t\/m\\\^3|t\/m\^3|t\/m³|kg\/cm\\\^2|kg\/cm\^2|kg\/cm²|kPa|MPa|kN|N|m|cm|mm|m\\\^2|m\^2|m²|m\\\^3|m\^3|m³|g\/cm\\\^3|g\/cm\^3|g\/cm³|kg\/m\\\^3|kg\/m\^3|kg\/m³|%)(?![a-zA-Z0-9가-힣])/gi, (match, math, newlines, unit) => {
+  processed = processed.replace(/\$\$\s*([\s\S]*?)\s*\$\$\s*(\n*)\s*(kN\/m\\\^2|kN\/m\^2|kN\/m²|kN\/m\\\^3|kN\/m\^3|kN\/m³|t\/m\\\^3|t\/m\^3|t\/m³|kg\/cm\\\^2|kg\/cm\^2|kg\/cm²|kPa|MPa|kN|N|m|cm|mm|m\\\^2|m\^2|m²|m\\\^3|m\^3|m³|g\/cm\\\^3|g\/cm\^3|g\/cm³|kg\/m\\\^3|kg\/m\^3|kg\/m³|%)(?![a-zA-Z0-9가-힣])([.,;:!]*)/gi, (match, math, newlines, unit, punc) => {
     let katexUnit = unit.replace(/\\/g, '');
     if (katexUnit.includes('^')) {
       const parts = katexUnit.split('^');
@@ -508,7 +508,7 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
     } else {
       katexUnit = `\\text{${katexUnit}}`;
     }
-    return `$$ ${math.trim()} \\quad ${katexUnit} $$`;
+    return `$$ ${math.trim()} \\quad ${katexUnit}${punc ? ` \\text{${punc}}` : ''} $$`;
   });
 
   // 문장 한복판에 쪼개진 단일 줄바꿈(\n)을 공백으로 자동 병합 (수식 끊김 방지)
