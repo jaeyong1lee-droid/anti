@@ -10,38 +10,65 @@ import {
   ResponsiveContainer
 } from 'recharts';
 
-// Helper to render mixed text and KaTeX (e.g. "응력 $\sigma$")
-const renderMixedText = (text) => {
+// Helper to render mixed text and simplified Math (Mini-KaTeX) safely inside SVG <foreignObject>
+// We avoid calling window.katex.renderToString because its complex .vlist absolute positioning
+// collapses inside SVG <foreignObject> on WebKit/Blink, causing mangled fractions.
+export const renderMixedText = (text) => {
   if (!text || typeof text !== 'string') return text;
   
-  // [LATEX Rendering Logic Defense Shield] 
-  // 1. 유니코드 위첨자/아래첨자 평탄화 (AI 환각 방어)
-  const unicodeSupSubMap = {
-    'ᵗ': 't', 'ᵃ': 'a', 'ᵇ': 'b', 'ᶜ': 'c', 'ᵈ': 'd', 'ᵉ': 'e', 'ᶠ': 'f', 'ᵍ': 'g', 'ʰ': 'h', 'ⁱ': 'i', 'ʲ': 'j', 'ᵏ': 'k', 'ˡ': 'l', 'ᵐ': 'm', 'ⁿ': 'n', 'ᵒ': 'o', 'ᵖ': 'p', 'ʳ': 'r', 'ˢ': 's', 'ᵘ': 'u', 'ᵛ': 'v', 'ʷ': 'w', 'ˣ': 'x', 'ʸ': 'y', 'ᶻ': 'z',
-    '⁰': '0', '¹': '1', '²': '2', '³': '3', '⁴': '4', '⁵': '5', '⁶': '6', '⁷': '7', '⁸': '8', '⁹': '9',
-    '₀': '0', '₁': '1', '₂': '2', '₃': '3', '₄': '4', '₅': '5', '₆': '6', '₇': '7', '₈': '8', '₉': '9',
-    'ₛ': 's', 'ₜ': 't', 'ₐ': 'a', 'ₑ': 'e', 'ₕ': 'h', 'ᵢ': 'i', 'ₖ': 'k', 'ₗ': 'l', 'ₘ': 'm', 'ₙ': 'n', 'ₒ': 'o', 'ₚ': 'p', 'ᵣ': 'r', 'ᵤ': 'u', 'ᵥ': 'v', 'ₓ': 'x'
+  let result = text;
+
+  // 1. Strip block and inline dollar signs
+  result = result.replace(/\$/g, '');
+
+  // 2. Convert Greek letters
+  const greek = {
+    '\\alpha': 'α', '\\beta': 'β', '\\gamma': 'γ', '\\Gamma': 'Γ',
+    '\\delta': 'δ', '\\Delta': 'Δ', '\\epsilon': 'ε', '\\varepsilon': 'ε',
+    '\\zeta': 'ζ', '\\eta': 'η', '\\theta': 'θ', '\\Theta': 'Θ',
+    '\\kappa': 'κ', '\\lambda': 'λ', '\\Lambda': 'Λ', '\\mu': 'μ',
+    '\\nu': 'ν', '\\xi': 'ξ', '\\Xi': 'Ξ', '\\pi': 'π', '\\Pi': 'Π',
+    '\\rho': 'ρ', '\\sigma': 'σ', '\\Sigma': 'Σ', '\\tau': 'τ',
+    '\\upsilon': 'υ', '\\phi': 'φ', '\\Phi': 'Φ', '\\chi': 'χ',
+    '\\psi': 'ψ', '\\Psi': 'Ψ', '\\omega': 'ω', '\\Omega': 'Ω',
+    '\\times': '×', '\\cdot': '·', '\\approx': '≈', '\\neq': '≠',
+    '\\leq': '≤', '\\geq': '≥', '\\pm': '±', '\\infty': '∞'
   };
-  let cleanText = text.replace(/[ᵗᵃᵇᶜᵈᵉᶠᵍʰⁱʲᵏˡᵐⁿᵒᵖʳˢᵘᵛʷˣʸᶻ⁰¹²³⁴⁵⁶⁷⁸⁹₀₁₂₃₄₅₆₇₈₉ₛₜₐₑₕᵢₖₗₘₙₒₚᵣᵤᵥₓ]/g, match => unicodeSupSubMap[match] || match);
-
-  // 2. AI가 환각으로 슬래시 바로 뒤에 아래첨자를 붙여 생긴 콤마 착시 방어
-  cleanText = cleanText.replace(/\/_/g, '/');
-
-  if (!window.katex) return cleanText;
-  
-  try {
-    return cleanText.replace(/\$([^\$]+)\$/g, (match, math) => {
-      try {
-        // [Root Cause Fix]: AI is strictly instructed to keep % outside math blocks.
-        // strict: 'ignore' is kept purely to prevent 3rd-party library (KaTeX) from crashing the app if invalid LaTeX is ever passed.
-        return window.katex.renderToString(math.trim(), { throwOnError: false, strict: 'ignore' });
-      } catch (e) {
-        return match;
-      }
-    });
-  } catch (e) {
-    return cleanText;
+  for (const [tex, uni] of Object.entries(greek)) {
+    const regex = new RegExp(tex.replace(/\\/g, '\\\\') + '(?![a-zA-Z])', 'g');
+    result = result.replace(regex, uni);
   }
+
+  // 3. Render Fractions \frac{A}{B} or \dfrac{A}{B} using bulletproof inline-block HTML
+  // This layout naturally aligns without absolute positioning, making it 100% safe for SVG.
+  result = result.replace(/\\d?frac{([^{}]+)}{([^{}]+)}/g, (match, num, den) => {
+    return `<span style="display: inline-block; vertical-align: middle; text-align: center; font-size: 0.9em; line-height: 1.1; margin: 0 0.2em;">
+      <span style="display: block; padding: 0 0.1em;">${num}</span>
+      <span style="display: block; border-top: 1px solid currentColor;"></span>
+      <span style="display: block; padding: 0 0.1em;">${den}</span>
+    </span>`;
+  });
+
+  // 4. Superscripts
+  result = result.replace(/\^\{([^{}]+)\}/g, '<sup style="font-size: 0.75em; margin-left: 1px;">$1</sup>');
+  result = result.replace(/\^([a-zA-Z0-9_]+)/g, '<sup style="font-size: 0.75em; margin-left: 1px;">$1</sup>');
+
+  // 5. Subscripts
+  result = result.replace(/_\{([^{}]+)\}/g, '<sub style="font-size: 0.75em; margin-left: 1px;">$1</sub>');
+  result = result.replace(/_([a-zA-Z0-9])/g, '<sub style="font-size: 0.75em; margin-left: 1px;">$1</sub>');
+
+  // 6. Fix legacy AI hallucinations (e.g., ^t/S -> t/S)
+  result = result.replace(/\/_/g, '/');
+  result = result.replace(/\^t\//g, 't/');
+
+  // 7. Convert unicode super/sub scripts to HTML tags for better cross-browser sizing
+  const uniSupMap = { 'ᵗ': 't', 'ᵃ': 'a', 'ᵇ': 'b', 'ᶜ': 'c', 'ᵈ': 'd', 'ᵉ': 'e', 'ᶠ': 'f', 'ᵍ': 'g', 'ʰ': 'h', 'ⁱ': 'i', 'ʲ': 'j', 'ᵏ': 'k', 'ˡ': 'l', 'ᵐ': 'm', 'ⁿ': 'n', 'ᵒ': 'o', 'ᵖ': 'p', 'ʳ': 'r', 'ˢ': 's', 'ᵘ': 'u', 'ᵛ': 'v', 'ʷ': 'w', 'ˣ': 'x', 'ʸ': 'y', 'ᶻ': 'z', '⁰': '0', '¹': '1', '²': '2', '³': '3', '⁴': '4', '⁵': '5', '⁶': '6', '⁷': '7', '⁸': '8', '⁹': '9' };
+  const uniSubMap = { '₀': '0', '₁': '1', '₂': '2', '₃': '3', '₄': '4', '₅': '5', '₆': '6', '₇': '7', '₈': '8', '₉': '9', 'ₛ': 's', 'ₜ': 't', 'ₐ': 'a', 'ₑ': 'e', 'ₕ': 'h', 'ᵢ': 'i', 'ₖ': 'k', 'ₗ': 'l', 'ₘ': 'm', 'ₙ': 'n', 'ₒ': 'o', 'ₚ': 'p', 'ᵣ': 'r', 'ᵤ': 'u', 'ᵥ': 'v', 'ₓ': 'x' };
+  
+  result = result.replace(/[ᵗᵃᵇᶜᵈᵉᶠᵍʰⁱʲᵏˡᵐⁿᵒᵖʳˢᵘᵛʷˣʸᶻ⁰¹²³⁴⁵⁶⁷⁸⁹]/g, m => `<sup style="font-size: 0.75em;">${uniSupMap[m]}</sup>`);
+  result = result.replace(/[₀₁₂₃₄₅₆₇₈₉ₛₜₐₑₕᵢₖₗₘₙₒₚᵣᵤᵥₓ]/g, m => `<sub style="font-size: 0.75em;">${uniSubMap[m]}</sub>`);
+
+  return result.trim();
 };
 
 // Custom Tooltip with KaTeX support via dangerouslySetInnerHTML
