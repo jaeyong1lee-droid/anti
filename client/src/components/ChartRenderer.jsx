@@ -167,8 +167,8 @@ const ChartRenderer = ({ data }) => {
     const html = renderMixedText(xAxisLabel);
     return (
       <g>
-        <foreignObject x={x} y={y + 25} width={width} height={20} style={{ overflow: 'visible' }}>
-          <div xmlns="http://www.w3.org/1999/xhtml" className="flex items-start justify-center text-[10px] sm:text-[12px] font-bold text-slate-400 w-full h-full text-center pt-1 normal-nums">
+        <foreignObject x={x} y={y + 30} width={width} height={40} style={{ overflow: 'visible' }}>
+          <div xmlns="http://www.w3.org/1999/xhtml" className="flex items-start justify-center text-[10px] sm:text-[12px] font-bold text-slate-400 w-full h-full text-center normal-nums">
             <span dangerouslySetInnerHTML={{ __html: html }} />
           </div>
         </foreignObject>
@@ -206,22 +206,23 @@ const ChartRenderer = ({ data }) => {
       <div className="p-2 sm:p-4 w-full h-[360px] sm:h-[400px]">
         {/* Recharts Container */}
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={chartData} margin={{ top: 30, right: 15, left: 0, bottom: 10 }}>
+          <LineChart data={chartData} margin={{ top: 30, right: 15, left: 0, bottom: 25 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.5} />
             <XAxis 
               dataKey="x" 
               stroke="#64748b" 
+              height={65}
               tick={<CustomTickX />} 
               label={<CustomXAxisLabel />} 
             />
             <YAxis 
               stroke="#64748b" 
-              width={50}
+              width={55}
               tick={<CustomTickY />}
               label={<CustomYAxisLabel />} 
             />
             <Tooltip content={<CustomTooltip />} />
-            <Legend verticalAlign="bottom" align="center" content={<CustomLegend />} />
+            <Legend wrapperStyle={{ paddingTop: '10px' }} verticalAlign="bottom" align="center" content={<CustomLegend />} />
             
             {plotLines.map((line, idx) => (
               <Line 
