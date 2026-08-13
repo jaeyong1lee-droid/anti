@@ -40,8 +40,8 @@ export const renderMixedText = (text) => {
   }
 
   // 3. Render Fractions \frac{A}{B} or \dfrac{A}{B} using bulletproof inline-block HTML
-  // This layout naturally aligns without absolute positioning, making it 100% safe for SVG.
-  result = result.replace(/\\d?frac{([^{}]+)}{([^{}]+)}/g, (match, num, den) => {
+  // We use [\\s,]* between brackets to catch AI hallucinations like \frac{t}, {S_t} where it inserts a comma!
+  result = result.replace(/\\d?frac{([^{}]+)}[\s,]*{([^{}]+)}/g, (match, num, den) => {
     return `<span style="display: inline-block; vertical-align: middle; text-align: center; font-size: 0.9em; line-height: 1.1; margin: 0 0.2em;">
       <span style="display: block; padding: 0 0.1em;">${num}</span>
       <span style="display: block; border-top: 1px solid currentColor;"></span>
