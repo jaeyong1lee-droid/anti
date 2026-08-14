@@ -451,10 +451,9 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   }).join('');
 
   // 불필요한 HTML 태그 정제
-  processed = processed.replace(/<br\s*\/?>/gi, '\n\n')
-                       .replace(/<div[^>]*>\s*[•*]?\s*([^<]+?)\s*<\/div>/gi, '\n\n* $1')
-                       .replace(/<\/?(?:div|p|span|li|ul|ol)\b[^>]*>/gi, '')
-                       .replace(/\n{3,}/g, '\n\n');
+  processed = processed.replace(/<br\s*\/?>/gi, '\n')
+                       .replace(/<div[^>]*>\s*[•*]?\s*([^<]+?)\s*<\/div>/gi, '\n* $1')
+                       .replace(/<\/?(?:div|p|span|li|ul|ol)\b[^>]*>/gi, '');
 
   const tokens = tokenizeForHealing(processed);
   processed = tokens.map(token => {

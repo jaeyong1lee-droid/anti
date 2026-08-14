@@ -735,11 +735,7 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
   tempText = tempText.replace(/(___INLINE_MATH_\d+___)\n(?!\n)([)}\],.!?\uAC00-\uD7A3a-zA-Z0-9])/g, '$1$2');
   tempText = tempText.replace(/([(\[{\uAC00-\uD7A3a-zA-Z0-9])\n(?!\n)(___INLINE_MATH_\d+___)/g, '$1 $2');
 
-  tempText = tempText.replace(/\n\s*\n/g, '\n\n');
-  tempText = tempText.replace(/\n{3,}/g, '\n\n');
 
-  // Headings on same line
-  tempText = tempText.replace(/([^\n#])\s*(#{2,6}\s+)/g, '$1\n\n$2');
 
   // Bold & Italics text highlight
   const yellowColor = '#fbbf24';
