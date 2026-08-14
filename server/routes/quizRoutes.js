@@ -1480,7 +1480,13 @@ let parsedArray = null;
       });
     } catch (fallbackErr) {
       console.error('Local fallback generation also failed:', fallbackErr);
-      res.status(500).json({ error: err.message });
+      return res.json({
+        questions: [],
+        isFallback: true,
+        mode: 'local-fallback',
+        scheduleId: resolvedScheduleId,
+        error: err.message
+      });
     }
   }
 });
@@ -1711,9 +1717,24 @@ router.get('/session/review', async (req, res) => {
       return res.json({ success: true, data: null });
     }
 
-    const key = `review_questions_topic_${targetTopicId}`;
+    const sId = req.query.sessionId || 'legacy_default';
+    const key = req.query.scheduleId 
+      ? `review_questions_schedule_${req.query.scheduleId}_sess_${sId}`
+      : `review_questions_topic_${targetTopicId}_sess_${sId}`;
     let row = await dbQuery.get('SELECT value FROM app_session WHERE key = ?', [key]);
     let actualKey = key;
+
+    if (!row && req.query.scheduleId) {
+      const schedulePattern = `review_questions_schedule_${req.query.scheduleId}_sess_%`;
+      const scheduleSessionRow = await dbQuery.get(
+        'SELECT key, value FROM app_session WHERE key LIKE ? AND key NOT LIKE ? ORDER BY updated_at DESC LIMIT 1',
+        [schedulePattern, '%_q']
+      );
+      if (scheduleSessionRow) {
+        row = scheduleSessionRow;
+        actualKey = scheduleSessionRow.key;
+      }
+    }
 
     if (!row) {
       const topicPattern = `review_questions_topic_${targetTopicId}_sess_%`;
@@ -1855,7 +1876,10 @@ router.post('/session/review', async (req, res) => {
       return res.json({ success: true, message: 'Mixed session stored.' });
     }
 
-    const key = `review_questions_topic_${targetTopicId}`;
+    const sId = sessionId || 'legacy_default';
+    const key = req.body.scheduleId 
+      ? `review_questions_schedule_${req.body.scheduleId}_sess_${sId}`
+      : `review_questions_topic_${targetTopicId}_sess_${sId}`;
     const questionsKey = `${key}_q`;
 
     // Merge with existing state for missing fields
