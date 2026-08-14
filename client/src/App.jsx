@@ -3675,6 +3675,7 @@ export default function App() {
   });
   const [showAiHistoryModal, setShowAiHistoryModal] = useState(false);
   const [showModelSelectModal, setShowModelSelectModal] = useState(false);
+  const [modelPopupPos, setModelPopupPos] = useState(null);
   const [showMemoryTypeSelectPopup, setShowMemoryTypeSelectPopup] = useState(false);
   const [showMainMemoryTypePopup, setShowMainMemoryTypePopup] = useState(false);
   const [showMobileReviewMemoryPopup, setShowMobileReviewMemoryPopup] = useState(false);
@@ -12847,7 +12848,13 @@ ${item.intuitive || ''}
     }
   };
 
-  const handleTogglePreferredModel = () => {
+  const handleTogglePreferredModel = (e) => {
+    if (e && e.currentTarget) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      setModelPopupPos({ top: rect.bottom + 8, left: rect.left + rect.width / 2 });
+    } else {
+      setModelPopupPos(null);
+    }
     setShowModelSelectModal(true);
   };
 
@@ -23419,40 +23426,34 @@ ${itemsStr}
         </div>
       )}
 
-      {/* API 모델 선택 팝업 모달 */}
+      {/* API 모델 선택 미니 팝업 */}
       {showModelSelectModal && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-fadeIn" onClick={() => setShowModelSelectModal(false)}>
-          <div className="relative w-full max-w-sm flex flex-col bg-slate-900 border border-slate-700/50 rounded-2xl shadow-2xl overflow-hidden glassmorphism text-slate-100 font-sans" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-800 bg-slate-950/40">
-              <h3 className="text-[13px] font-black tracking-tight text-white flex items-center gap-2">
-                <Cpu size={14} className="text-emerald-400" />
-                API 모델 선택
-              </h3>
-              <button
-                onClick={() => setShowModelSelectModal(false)}
-                className="p-1 rounded-md hover:bg-slate-800 text-slate-400 hover:text-white transition-all cursor-pointer"
-              >
-                <X size={16} />
-              </button>
-            </div>
-            <div className="p-2 flex flex-col gap-1 max-h-[60vh] overflow-y-auto">
+        <>
+          {/* 투명 백드롭 (배경 블러 없음) */}
+          <div className="fixed inset-0 z-[9998]" onClick={() => setShowModelSelectModal(false)} />
+          <div 
+            className="fixed z-[9999] w-48 flex flex-col bg-slate-900 border border-slate-700/60 rounded-xl shadow-2xl overflow-hidden animate-fadeIn" 
+            style={modelPopupPos ? { top: `${modelPopupPos.top}px`, left: `${modelPopupPos.left}px`, transform: 'translateX(-50%)' } : { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-1.5 flex flex-col gap-0.5 max-h-[60vh] overflow-y-auto">
               {['gemini-3.5-flash-lite', 'gemini-3.7-flash', 'gemini-3.1-flash-lite', 'gemini-3.6-flash', 'gemini-3.5-flash'].map((m) => (
                 <button
                   key={m}
                   onClick={() => handleModelSelect(m)}
-                  className={`flex items-center justify-between px-4 py-3 rounded-xl transition-all cursor-pointer text-left border ${
+                  className={`flex items-center justify-between px-3 py-2.5 rounded-lg transition-all cursor-pointer text-left border-none ${
                     preferredModel === m
-                      ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 font-bold'
-                      : 'bg-transparent border-transparent text-slate-300 hover:bg-slate-800 hover:text-slate-100'
+                      ? 'bg-emerald-500/10 text-emerald-400 font-extrabold'
+                      : 'bg-transparent text-slate-300 hover:bg-slate-800/80 hover:text-slate-100 font-medium'
                   }`}
                 >
-                  <span className="text-[13px]">{getModelDisplayName(m)}</span>
+                  <span className="text-[12px]">{getModelDisplayName(m)}</span>
                   {preferredModel === m && <Check size={14} className="text-emerald-400" />}
                 </button>
               ))}
             </div>
           </div>
-        </div>
+        </>
       )}
 
       {/* AI 작업이력 팝업 모달 */}
