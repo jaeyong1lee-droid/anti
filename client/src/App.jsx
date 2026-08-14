@@ -3674,6 +3674,7 @@ export default function App() {
     }
   });
   const [showAiHistoryModal, setShowAiHistoryModal] = useState(false);
+  const [showModelSelectModal, setShowModelSelectModal] = useState(false);
   const [showMemoryTypeSelectPopup, setShowMemoryTypeSelectPopup] = useState(false);
   const [showMainMemoryTypePopup, setShowMainMemoryTypePopup] = useState(false);
   const [showMobileReviewMemoryPopup, setShowMobileReviewMemoryPopup] = useState(false);
@@ -12846,13 +12847,15 @@ ${item.intuitive || ''}
     }
   };
 
-  const handleTogglePreferredModel = async () => {
-    const models = ['gemini-3.5-flash-lite', 'gemini-3.7-flash', 'gemini-3.1-flash-lite', 'gemini-3.6-flash', 'gemini-3.5-flash'];
-    const currentIdx = models.indexOf(preferredModelRef.current || preferredModel);
-    const nextModel = models[(currentIdx + 1) % models.length];
+  const handleTogglePreferredModel = () => {
+    setShowModelSelectModal(true);
+  };
+
+  const handleModelSelect = async (nextModel) => {
     preferredModelRef.current = nextModel;
     setPreferredModel(nextModel);
     localStorage.setItem('anti_preferred_model', nextModel);
+    setShowModelSelectModal(false);
 
     try {
       const response = await fetch(`${API_BASE}/api/preferred-model`, {
@@ -23412,6 +23415,42 @@ ${itemsStr}
               </button>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* API 모델 선택 팝업 모달 */}
+      {showModelSelectModal && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-fadeIn" onClick={() => setShowModelSelectModal(false)}>
+          <div className="relative w-full max-w-sm flex flex-col bg-slate-900 border border-slate-700/50 rounded-2xl shadow-2xl overflow-hidden glassmorphism text-slate-100 font-sans" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-800 bg-slate-950/40">
+              <h3 className="text-[13px] font-black tracking-tight text-white flex items-center gap-2">
+                <Cpu size={14} className="text-emerald-400" />
+                API 모델 선택
+              </h3>
+              <button
+                onClick={() => setShowModelSelectModal(false)}
+                className="p-1 rounded-md hover:bg-slate-800 text-slate-400 hover:text-white transition-all cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="p-2 flex flex-col gap-1 max-h-[60vh] overflow-y-auto">
+              {['gemini-3.5-flash-lite', 'gemini-3.7-flash', 'gemini-3.1-flash-lite', 'gemini-3.6-flash', 'gemini-3.5-flash'].map((m) => (
+                <button
+                  key={m}
+                  onClick={() => handleModelSelect(m)}
+                  className={`flex items-center justify-between px-4 py-3 rounded-xl transition-all cursor-pointer text-left border ${
+                    preferredModel === m
+                      ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 font-bold'
+                      : 'bg-transparent border-transparent text-slate-300 hover:bg-slate-800 hover:text-slate-100'
+                  }`}
+                >
+                  <span className="text-[13px]">{getModelDisplayName(m)}</span>
+                  {preferredModel === m && <Check size={14} className="text-emerald-400" />}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       )}
