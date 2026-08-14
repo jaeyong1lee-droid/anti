@@ -1257,12 +1257,12 @@ export const TableQuiz = React.memo(function TableQuiz({
 
   const mainTable = (() => {
     const tableEl = (
-      <div className={isMainFloated ? "flex-1 overflow-auto w-full" : "w-full overflow-x-auto min-w-0"}>
+      <div className={isMainFloated ? "flex-1 overflow-auto w-full min-w-0" : "w-full overflow-x-auto min-w-0"}>
         <table 
           ref={tableRef} 
           className={`table-quiz-table w-full table-fixed text-center border-collapse text-[14px] sm:text-[16px] min-w-full`}
         style={{
-          '--table-width': isMobileView ? (colCount === 2 ? '100%' : `max(100%, ${mobileColWidths.reduce((sum, w) => sum + parseInt(w || '0', 10), 0)}px)`) : '100%',
+          '--table-width': (isMobileView && colCount === 2) ? '100%' : `max(100%, ${(mobileColWidths && mobileColWidths.length > 0) ? mobileColWidths.reduce((sum, w) => sum + parseInt(w || '0', 10), 0) : (150 + (colCount - 1) * 160)}px)`,
           minWidth: '0px'
         }}
       >
@@ -1598,12 +1598,12 @@ export const TableQuiz = React.memo(function TableQuiz({
   const compTable = q.comparisonTableData ? (
     (() => {
       const tableEl = (
-        <div className={isCompFloated ? "flex-1 overflow-auto w-full" : "w-full overflow-x-auto min-w-0"}>
+        <div className={isCompFloated ? "flex-1 overflow-auto w-full min-w-0" : "w-full overflow-x-auto min-w-0"}>
           <table 
             ref={compTableRef}
             className={`table-quiz-table w-full table-fixed text-center border-collapse text-[14px] sm:text-[15px] min-w-full`}
             style={{
-              '--table-width': isMobileView ? (compColCount === 2 ? '100%' : `max(100%, ${compMobileColWidths.reduce((sum, w) => sum + parseInt(w || '0', 10), 0)}px)`) : '100%',
+              '--table-width': (isMobileView && compColCount === 2) ? '100%' : `max(100%, ${(compMobileColWidths && compMobileColWidths.length > 0) ? compMobileColWidths.reduce((sum, w) => sum + parseInt(w || '0', 10), 0) : (150 + (compColCount - 1) * 160)}px)`,
               minWidth: '0px'
             }}
           >
