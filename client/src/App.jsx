@@ -32,7 +32,6 @@ import {
   formatGradingReason,
   stripHtmlTagsFromRawData,
   isOverviewReview,
-  cleanCorruptedFormula,
   getAnswerValue,
   getGradingResult,
   getCorrectAnswerForInput
@@ -14336,7 +14335,7 @@ ${item.intuitive || ''}
 
       // 3. [보상기초 보상도 공식] 기호 정의 자가 치유 (Self-Healing)
       // 만약 타이틀이 보상도 공식이면 디폴트 기본 스펙으로 100% 무조건 강제 정화 및 자가 치유!
-      let newFormula = cleanCorruptedFormula(f.formula || "");
+      let newFormula = f.formula || "";
       let newConcept = f.concept;
       if (newTitle.includes("보상도") || newTitle.includes("보상기초")) {
         newFormula = "$$C = \\frac{\\gamma D_f}{q}$$\n\n- $C$: 보상도 (Compensational ratio, $C = 1.0$이면 완전 보상)\n- $\\gamma$: 굴착하여 배출한 흙의 단위중량\n- $D_f$: 기초의 굴착 깊이\n- $q$: 상부 구조물 총 자중 및 하중 합산값";
