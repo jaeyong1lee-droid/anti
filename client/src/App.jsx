@@ -14571,19 +14571,12 @@ ${item.intuitive || ''}
 
       const data = await res.json();
       if (data.success && Array.isArray(data.rows)) {
+        const markdown = data.markdown || null;
         const newHtml = rebuildTableHtml(headers, data.rows);
-        const updatedTables = formulaTables.map(item => item.id === tableId ? { ...item, html: newHtml } : item);
+        const updatedTables = formulaTables.map(item => item.id === tableId ? { ...item, html: newHtml, markdown: markdown } : item);
         setFormulaTables(updatedTables);
         
-        // Save to DB and set as tableConfirmTarget to prioritize in latestTableContent
-        const markdown = data.markdown || null;
-        setTableConfirmTarget({
-          html: newHtml,
-          title: title,
-          markdown: markdown,
-          isLoading: false
-        });
-        
+        // Save to DB (UI refreshes automatically)
         await handleSaveFormulaTables(updatedTables, false);
         showNotification('표 내용이 성공적으로 재작성되었습니다!', 'success');
       } else {
