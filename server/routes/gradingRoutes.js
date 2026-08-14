@@ -565,7 +565,7 @@ router.post('/question/regenerate', async (req, res) => {
    - **이전 문제에서 빈칸이 아니었던 다른 상자(즉, 이전 문제에서 텍스트가 가득 채워져 노출되어 있던 상자)들 중에서 M개를 골라 완전히 새롭게 빈칸으로 뚫어야 합니다.**
    - 만약 이전과 동일한 상자 단계를 빈칸으로 다시 출제하는 게으른 복사 행위를 할 경우 시스템 필터링에 의해 문제 생성이 취소되므로, 반드시 빈칸의 위치(상자 단계)를 완전히 새롭게 교체하십시오.
 6. **[🚨 절대 빈칸 기호 중복 금지 철칙]**: (A), (B), (C), (D) 등의 기호를 뚫을 때, 실수로 **(C)를 두 번 쓰거나 하는 기호 중복 할당을 절대 금지합니다.** 반드시 (A), (B), (C), (D) 순서대로 각각 1번씩만 고유하게 사용하여야 합니다.
-7. **[동적 tableData/answers 스키마]**: 뚫어낸 빈칸의 개수(총 6개)에 맞추어 tableData의 rows와 answers의 INPUT도 정확히 6개(INPUT_1부터 INPUT_6까지)로 동적 구성하여 JSON을 출력하십시오.
+7. **[동적 tableData/answers 스키마]**: 뚫어낸 빈칸의 개수(총 6개)에 맞추어 tableData의 rows와 answers의 INPUT도 정확히 6개([INPUT_R1_C2] 등 좌표 기반)로 동적 구성하여 JSON을 출력하십시오.
 8. **[🚨 상자 내부 기술사급 상세 내용 기입 철칙 - 간소화 금지]**: 
    - 각 단계별 박스 내부의 텍스트 설명은 대충 명사 몇 개로 단순 요약 나열하는 것을 절대 금지합니다.
 8. **[흐름도 진행 단계 및 내용 분석 기반의 구체적 질문 제목 생성]**: 질문("question" 필드) 텍스트를 작성할 때 단순히 기계적으로 토픽 대제목을 그대로 복사해 박거나 [(A)] 같은 기호를 넣는 것을 절대 금지합니다. 제공된 아스키 흐름도의 단계별 세부 단어들과 공학적 흐름을 스스로 똑똑하게 분석하여, 이것이 구체적으로 무슨 실무 절차(예: "사질토 전단시험 분석 및 강도정수 결정", "NATM 지반 변위 계측 및 보강 공법 설계" 등)에 해당하는지를 명확하게 파악하고 이를 반영하여 "다음 [OOO 설계/시험 분석 절차] 흐름도를 보고..." 형식으로 질문 지문을 우아하고 구체적으로 작성하십시오.
@@ -583,7 +583,7 @@ ${FLOWCHART_QUIZ_GENERATION_PROMPT}
 
 오직 순수 JSON 데이터만 반환하십시오.
 [응답 포맷]:
-{"type": "주관식 (표채우기)", "question": "다음 [사질토 전단강도 정수 결정 절차] 흐름도를 보고 빈칸 (A), (B)에 들어갈 올바른 단계를 입력하시오 (마크다운 고정폭 코드블록으로 감싼 아스키 흐름도 포함)", "tableData": {"headers": ["빈칸 구분", "입력 답안"], "rows": [["(A)", "[INPUT_1]"], ["(B)", "[INPUT_2]"], ["(C)", "[INPUT_3]"], ["(D)", "[INPUT_4]"]]}, "answers": {"INPUT_1": "(A)정답", "INPUT_2": "(B)정답", "INPUT_3": "(C)정답", "INPUT_4": "(D)정답"}, "explanation": "해설"}`;
+{"type": "주관식 (표채우기)", "question": "다음 [사질토 전단강도 정수 결정 절차] 흐름도를 보고 빈칸 (A), (B)에 들어갈 올바른 단계를 입력하시오 (마크다운 고정폭 코드블록으로 감싼 아스키 흐름도 포함)", "tableData": {"headers": ["빈칸 구분", "입력 답안"], "rows": [["(A)", "[INPUT_R1_C2]"], ["(B)", "[INPUT_R2_C2]"], ["(C)", "[INPUT_R3_C2]"], ["(D)", "[INPUT_R4_C2]"]]}, "answers": {"INPUT_R1_C2": "(A)정답", "INPUT_R2_C2": "(B)정답", "INPUT_R3_C2": "(C)정답", "INPUT_R4_C2": "(D)정답"}, "explanation": "해설"}`;
 
         userPrompt = `[토픽 원본 학습자료]:
 ${fileText || '없음'}
@@ -812,7 +812,7 @@ ${otherQs.map((q, i) => `기존 문제 ${i + 1}: ${q.question || '없음'}`).joi
       let formatRequirement = '';
       if (isFlowchartQ) {
         typeRequirement = `[주관식 (표채우기) 유형으로 아스키 흐름도 문제를 생성하십시오]`;
-        formatRequirement = `{"type": "주관식 (표채우기)", "question": "질문(마크다운 고정폭 코드블록으로 감싼 아스키 흐름도 포함)", "tableData": {"headers": ["빈칸 구분", "입력 답안"], "rows": [["(A)", "[INPUT_1]"], ["(B)", "[INPUT_2]"], ["(C)", "[INPUT_3]"], ["(D)", "[INPUT_4]"]]}, "answers": {"INPUT_1": "(A)정답", "INPUT_2": "(B)정답", "INPUT_3": "(C)정답", "INPUT_4": "(D)정답"}, "explanation": "해설"}`;
+        formatRequirement = `{"type": "주관식 (표채우기)", "question": "질문(마크다운 고정폭 코드블록으로 감싼 아스키 흐름도 포함)", "tableData": {"headers": ["빈칸 구분", "입력 답안"], "rows": [["(A)", "[INPUT_R1_C2]"], ["(B)", "[INPUT_R2_C2]"], ["(C)", "[INPUT_R3_C2]"], ["(D)", "[INPUT_R4_C2]"]]}, "answers": {"INPUT_R1_C2": "(A)정답", "INPUT_R2_C2": "(B)정답", "INPUT_R3_C2": "(C)정답", "INPUT_R4_C2": "(D)정답"}, "explanation": "해설"}`;
       } else if (targetType === '주관식 (개요)') {
         typeRequirement = `[주관식 (개요) 유형으로 생성하십시오]`;
         formatRequirement = `{"type": "주관식 (개요)", "question": "질문", "concept": "개요", "formula": "", "structure": ""}`;
@@ -826,11 +826,11 @@ ${otherQs.map((q, i) => `기존 문제 ${i + 1}: ${q.question || '없음'}`).joi
         if (isCalcTable) {
           typeRequirement = `[수치 계산용 2열 표채우기 유형으로 생성하십시오]
 - 🚨 **[절대 지침]**: Q1은 오직 "수치 계산용 표"입니다! AI 임의로 이론적인 "특성 비교표"나 3열 이상의 표를 절대 만들지 마십시오.
-- [입력칸(INPUT) 동적 분할 철칙]: 지문이 묻는 "(1) 침투수량", "(2) X점, Y점" 등을 분석하여 구해야 하는 각 정답 수치마다 동적으로 별도의 행과 \`[INPUT_N]\`을 배정하십시오.`;
-          formatRequirement = `{"type": "주관식 (표채우기)", "question": "실제 문제 지문 그대로 유지", "tableData": {"headers": ["구하는 항목", "계산 결과 및 답안"], "rows": [["(1) 분할된 세부 항목명 1", "[INPUT_1]"], ["(2) 분할된 세부 항목명 2 - X점", "[INPUT_2]"], ["(2) 분할된 세부 항목명 2 - Y점", "[INPUT_3]"], ["(3) 분할된 세부 항목명 3", "[INPUT_4]"]]}, "answers": {"INPUT_1": "정답 풀이 1", "INPUT_2": "X점 정답", "INPUT_3": "Y점 정답", "INPUT_4": "정답 3"}, "explanation": "해설"}`;
+- [입력칸(INPUT) 동적 분할 철칙]: 지문이 묻는 "(1) 침투수량", "(2) X점, Y점" 등을 분석하여 구해야 하는 각 정답 수치마다 동적으로 별도의 행과 \`[INPUT_R행_C열]\`을 배정하십시오.`;
+          formatRequirement = `{"type": "주관식 (표채우기)", "question": "실제 문제 지문 그대로 유지", "tableData": {"headers": ["구하는 항목", "계산 결과 및 답안"], "rows": [["(1) 분할된 세부 항목명 1", "[INPUT_R1_C2]"], ["(2) 분할된 세부 항목명 2 - X점", "[INPUT_R2_C2]"], ["(2) 분할된 세부 항목명 2 - Y점", "[INPUT_R3_C2]"], ["(3) 분할된 세부 항목명 3", "[INPUT_R4_C2]"]]}, "answers": {"INPUT_R1_C2": "정답 풀이 1", "INPUT_R2_C2": "X점 정답", "INPUT_R3_C2": "Y점 정답", "INPUT_R4_C2": "정답 3"}, "explanation": "해설"}`;
         } else {
           typeRequirement = `[주관식 (표채우기) 비교용 다열 표 유형으로 생성하십시오]`;
-          formatRequirement = `{"type": "주관식 (표채우기)", "question": "질문", "tableData": {"headers": ["구분", "비교1", "비교2"], "rows": [["항목", "[INPUT_1]", "[INPUT_2]"]]}, "answers": {"INPUT_1": "답1", "INPUT_2": "답2"}, "explanation": "해설"}`;
+          formatRequirement = `{"type": "주관식 (표채우기)", "question": "질문", "tableData": {"headers": ["구분", "비교1", "비교2"], "rows": [["항목", "[INPUT_R1_C2]", "[INPUT_R1_C3]"]]}, "answers": {"INPUT_R1_C2": "답1", "INPUT_R1_C3": "답2"}, "explanation": "해설"}`;
         }
       } else if (targetType === '주관식 (단답형)') {
         let subtypeInstruction = '';
@@ -873,7 +873,7 @@ ${otherQs.map((q, i) => `기존 문제 ${i + 1}: ${q.question || '없음'}`).joi
    - 기존의 빈칸 정답들은 다음과 같습니다: [ ${prevAnswers || '없음'} ]
    - 이번 재생성에서는 **기존에 뚫려 있던 위 단계 정답 단어들을 절대로 정답 타겟으로 삼지 마십시오.** 즉, 이전 문제에서 비워두었던 상자는 이번 문제에서는 설명 텍스트를 고스란히 복원해 두고, **이전에 비어있지 않고 차있던 상자 중 M개를 새로 골라 빈칸으로 비워야 합니다.**
 6. **[🚨 절대 빈칸 기호 중복 금지 철칙]**: (A), (B), (C), (D) 등의 기호를 뚫을 때, 실수로 **(C)를 두 번 쓰거나 하는 기호 중복 할당을 절대 금지합니다.** 반드시 (A), (B), (C), (D) 순서대로 각각 1번씩만 고유하게 사용하여야 합니다.
-7. **[동적 tableData/answers 스키마]**: 뚫어낸 빈칸의 개수(총 6개)에 맞추어 tableData의 rows와 answers의 INPUT도 정확히 6개(INPUT_1부터 INPUT_6까지)로 동적 구성하여 JSON을 출력하십시오.
+7. **[동적 tableData/answers 스키마]**: 뚫어낸 빈칸의 개수(총 6개)에 맞추어 tableData의 rows와 answers의 INPUT도 정확히 6개([INPUT_R1_C2] 등 좌표 기반)로 동적 구성하여 JSON을 출력하십시오.
 8. **[🚨 상자 내부 기술사급 상세 내용 기입 철칙 - 간소화 금지]**: 
    - 각 단계별 박스 내부의 텍스트 설명은 대충 명사 몇 개로 단순 요약 나열하는 것을 절대 금지합니다.
    - 예: [4] 안정성 및 변위 검토 단계에서는 단순히 '벽체 근입 깊이, 지지구조 배치, 벽체 강성 검토'라고 나열하지 말고, 반드시 다음 세 가지 공학 요소들을 구체적으로 서술하십시오.
