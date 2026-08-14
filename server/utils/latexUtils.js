@@ -1409,7 +1409,7 @@ export function healAnswersheetQuestionObject(a) { return healQuizQuestionObject
 export const LATEX_PROMPT_INSTRUCTIONS = `
 [🚨 극도로 중요한 LaTeX 수식 및 마크다운 렌더링 절대 준수 수칙]:
 1. 🚨 [수식 달러 기호($) 감싸기 필수 및 역슬래시 유출 엄격 금지]: 모든 수학 공식, 변수 기호(예: $t$, $\\\\Delta t$, $\\\\sigma$, $\\\\gamma_w$, $S_t$, $\\\\alpha$, $\\\\beta$ 등)는 단 하나도 빠짐없이 100% $ 형태의 달러 기호로 감싸서 출력하십시오. 날것의 텍스트 표기(예: \\\\gamma_w)나 마크다운 백틱(\`) 사용은 엄격히 금지합니다. 반드시 $\\\\gamma_w$ 와 같이 감싸십시오. 보기 문항과 해설(explanation, answer 등)에도 수식을 적극적으로 활용하되 반드시 기호로 감싸야 합니다.
-2. 모든 LaTeX 명령어의 역슬래시(\\)는 JSON 파싱 에러 방지를 위해 반드시 이중 역슬래시(\\\\)로 작성하십시오. (예: \\\\frac{a}{b}, \\\\sigma, \\\\cdot 등)
+2. 모든 LaTeX 명령어의 역슬래시(\\)는 JSON 파싱 에러 방지를 위해 반드시 이중 역슬래시(\\\\)로 작성하십시오. (예: \\\\frac{a}{b}, \\\\sigma, \\\\cdot 등). **단, 줄바꿈을 의미하는 제어문자 `\\n`은 절대 이중 역슬래시(`\\\\n`)로 변환하지 마십시오. 화면에 문자 그대로 '\\n'이 노출되는 버그를 유발합니다.**
 3. 🚨 [대체 기호 사용 절대 금지]: JSON 파싱 에러를 우회한다는 명목으로 역슬래시(\\) 대신 샵(#) 기호나 다른 임의의 기호(예: #sigma_1, #frac, #sigma_3 등)를 LaTeX 명령어 자리에 대입하여 출력하는 행위를 엄격히 금지합니다. 수식 기호는 반드시 \\\\sigma_1, \\\\sigma_3 와 같이 이중 백슬래시로 시작하는 올바른 LaTeX 수식으로만 작성하십시오.
 4. 인라인 수식 작성 시 $ 기호와 수식 내용 사이에 절대 공백(스페이스)을 두지 마십시오. (예: $수식$ (O) / $ 수식 $ (X))
 5. 인라인 수식 내 줄바꿈 절대 금지: 문장 중간의 $ 기호 사이 내용에서는 엔터(줄바꿈)를 절대 하지 말고 단일 줄로 이어서 작성하십시오.
@@ -1429,7 +1429,7 @@ export const LATEX_PROMPT_INSTRUCTIONS = `
 - 절대로 단일 백슬래시('\\frac') 형태로 가공되지 않은 원시 문자열을 JSON 내부에 주입하여 문법 에러(Cartesian/Escape Syntax Error)를 유발하지 마십시오.
 
 [JSON String Escape Rule]:
-When generating LaTeX formulas inside a JSON string, you must strictly escape the backslash twice (e.g., "\\\\frac", "\\\\alpha") to ensure that the response remains perfectly valid for native JSON.parse() without crashing the backend system.
+When generating LaTeX formulas inside a JSON string, you must strictly escape the backslash twice (e.g., "\\\\frac", "\\\\alpha") to ensure that the response remains perfectly valid for native JSON.parse(). **However, NEVER double-escape the newline character `\\n` into `\\\\n`. Leave newlines as `\\n` so they render properly as line breaks instead of literal strings.**
 
 [🚨 수학적/산술적 검증 및 모순 방지 규칙 - 극도로 중요!]:
 - 객관식 문제 출제 시, 정답("answer")으로 지정하는 값은 반드시 해설("explanation")에서 풀이하여 유도한 최종 계산값과 완벽하게 일치해야 합니다.
