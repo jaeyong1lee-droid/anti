@@ -46,7 +46,7 @@ export function healBackslashes(str) {
                  .replace(/(?<!\\)\b(log|ln)(?=[pt_0-9])/g, '\\$1 ');
 
   // [Self-Healing] Remove hallucinated backslashes right before Korean words (e.g., \증가 -> 증가)
-  healed = healed.replace(/\\([가-힣]+)/g, ' $1');
+
 
   BACKSLASH_REGEXES.forEach(({ kw, regex }) => {
     healed = healed.replace(regex, `\\${kw}`);
@@ -359,7 +359,7 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   processed = processed.replace(/[–—−]/g, '-');
 
   // [Self-Healing] Fix beta subscript sub-nesting rendering error (\beta_{0,\beta_1} -> \beta_0, \beta_1)
-  processed = processed.replace(/\\?beta_\{0,\s*\\?beta_[01]\}/g, '\\beta_0, \\beta_1');
+
 
   // [Self-Healing] Fix empty fraction denominator followed by variable (e.g. \frac{1}{} \beta or \frac{1}{ } \beta -> \frac{1}{\beta})
   processed = processed.replace(/\\(d?frac)\{([^{}\n]+)\}\s*\{\s*\}\s*(\\?[a-zA-Z0-9_]+)/g, '\\$1{$2}{$3}');
@@ -410,7 +410,7 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
 
   // [Self-Healing] Remove hallucinated backslashes right before Korean words (e.g., \증가 -> 증가)
   // This must be done here before math expression detection to prevent malformed regex matches.
-  processed = processed.replace(/\\([가-힣]+)/g, ' $1');
+
 
   // Replace hashtag (#) prefix before LaTeX commands/Greek letters with backslash (\)
   const hashKeywords = [
@@ -488,28 +488,7 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   // Collapse double or multiple backslashes before % to single backslash
   processed = processed.replace(/\\{2,}%/g, '\\%');
 
-  // [Self-Healing] 수식 분리 오작동 치유 (예: \quad \text{N}$$_c or N$$_c or \text{N}$$_c -> $$\quad \text{N}_c)
-  processed = processed.replace(/(\\quad\s*\\text\{[a-zA-Z]+\}|\b[a-zA-Z]+\b|\b\\text\{[a-zA-Z]+\})\s*\$\$(\s*_[a-zA-Z0-9])/g, '$$$$ $1$2');
-  processed = processed.replace(/(\\quad\s*\\text\{[a-zA-Z]+\}|\b[a-zA-Z]+\b|\b\\text\{[a-zA-Z]+\})\s*\$(\s*_[a-zA-Z0-9])/g, '$$ $1$2');
 
-  
-  // 블록 수식($$) 바로 뒤에 공백이나 줄바꿈을 포함하여 단위가 올 경우, 해당 단위를 수식 블록 안의 \text{}로 병합하여 줄바꿈 방지
-  processed = processed.replace(/\$\$\s*([\s\S]*?)\s*\$\$\s*(\n*)\s*(kN\/m\\\^2|kN\/m\^2|kN\/m²|kN\/m\\\^3|kN\/m\^3|kN\/m³|t\/m\\\^3|t\/m\^3|t\/m³|kg\/cm\\\^2|kg\/cm\^2|kg\/cm²|kPa|MPa|kN|N|m|cm|mm|m\\\^2|m\^2|m²|m\\\^3|m\^3|m³|g\/cm\\\^3|g\/cm\^3|g\/cm³|kg\/m\\\^3|kg\/m\^3|kg\/m³|%)(?![a-zA-Z0-9가-힣])/gi, (match, math, newlines, unit) => {
-    let katexUnit = unit.replace(/\\/g, '');
-    if (katexUnit.includes('^')) {
-      const parts = katexUnit.split('^');
-      katexUnit = `\\text{${parts[0]}}^${parts[1]}`;
-    } else if (katexUnit.includes('²')) {
-      const base = katexUnit.replace('²', '');
-      katexUnit = `\\text{${base}}^2`;
-    } else if (katexUnit.includes('³')) {
-      const base = katexUnit.replace('³', '');
-      katexUnit = `\\text{${base}}^3`;
-    } else {
-      katexUnit = `\\text{${katexUnit}}`;
-    }
-    return `$$ ${math.trim()} \\quad ${katexUnit} $$`;
-  });
 
   // 문장 한복판에 쪼개진 단일 줄바꿈(\n)을 공백으로 자동 병합 (수식 끊김 방지)
   // 단, 마크다운 표 영역은 줄바꿈 병합을 하지 않고 원본 철저히 유지하기 위해 split 처리
@@ -629,7 +608,7 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   }
 
   // 한국어 조사 결합 어미 공백 규격 조율
-  result = result.replace(/(\$[^\$]+\$)(은|는|이|가|을|를|의|로|으로|에|에서|와|과|도|만|일때|입니다|라하면|값은)/g, '$1 $2');
+
   result = result.trim();
 
   // 2. Restore [INPUT_n] placeholders (remove accidental math formatting)

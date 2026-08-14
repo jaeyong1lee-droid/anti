@@ -585,7 +585,7 @@ export function transformAsciiGraphToSvg(code) {
 export function removeSourceCitationsFromText(text) {
   if (!text || typeof text !== 'string') return text;
   // Separate multiple inline citation bullets onto their own lines
-  let formatted = text.replace(/([^\n])\s+(\*\s*(?:KDS|KCS|KWCS|KS|ASTM|AASHTO|국토교통부|한국도로공사|원보고서|Wikipedia|출처|참고문헌|설계기준))/gi, '$1\n$2');
+  let formatted = text;
   return formatted.replace(/\n{3,}/g, '\n\n').trim();
 }
 
