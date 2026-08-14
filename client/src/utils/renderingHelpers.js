@@ -1109,52 +1109,11 @@ export const healCorruptedKatexHtml = (text) => {
   return cleaned;
 };
 
-export const cleanCorruptedFormula = (formula) => {
-  if (!formula || typeof formula !== 'string') return formula;
-  
-  let cleaned = formula.replace(/₩/g, '\\');
-  if (cleaned.includes('color:#cc0000') || cleaned.includes('math mode at position')) {
-    const match = cleaned.match(/color:#cc0000"\s*>\s*([^<]+?)\s*<\s*\/\s*span\s*>/i) ||
-                  cleaned.match(/color:#cc0000"\s*&gt;\s*([^&]+?)\s*&lt;\s*\/\s*span\s*&gt;/i);
-                  
-    if (match) {
-      let coreMath = match[1].trim().replace(/₩/g, '\\');
-      const closingSpanIndex = cleaned.search(/<\s*\/\s*span\s*>/i);
-      let rest = '';
-      if (closingSpanIndex !== -1) {
-        const restStart = cleaned.indexOf('>', closingSpanIndex);
-        if (restStart !== -1) {
-          rest = cleaned.substring(restStart + 1);
-        }
-      } else {
-        const closingSpanIndexEntity = cleaned.search(/&lt;\s*\/\s*span\s*&gt;/i);
-        if (closingSpanIndexEntity !== -1) {
-          const restStart = cleaned.indexOf('&gt;', closingSpanIndexEntity);
-          if (restStart !== -1) {
-            rest = cleaned.substring(restStart + 4);
-          }
-        }
-      }
-      
-      let cleanRest = rest
-        .replace(/<\s*\/\s*(span|div|p)\s*>/gi, '')
-        .replace(/<\s*(div|span|p)[^>]*>/gi, '')
-        .replace(/&lt;\s*\/\s*(span|div|p)\s*&gt;/gi, '')
-        .replace(/&lt;\s*(div|span|p)[^&]*&gt;/gi, '')
-        .trim();
-        
-      cleaned = `$$${coreMath}$$\n\n${cleanRest}`;
-    }
-  }
-  return cleaned;
-};
-
 export const cleanAndSanitizeMathText = (rawText) => {
   if (!rawText || typeof rawText !== 'string') return rawText || '';
   
   let cleaned = (rawText || '').replace(/₩/g, '\\');
   cleaned = healCorruptedKatexHtml(cleaned);
-  cleaned = cleanCorruptedFormula(cleaned);
 
   cleaned = cleaned.replace(/&amp;#gt;/gi, '>')
                    .replace(/&amp;#lt;/gi, '<')
