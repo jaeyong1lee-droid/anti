@@ -46,7 +46,7 @@ export function healBackslashes(str) {
                  .replace(/(?<!\\)\b(log|ln)(?=[pt_0-9])/g, '\\$1 ');
 
   // [Self-Healing] Remove hallucinated backslashes right before Korean words (e.g., \증가 -> 증가)
-  healed = healed.replace(/\\([가-힣]+)/g, ' $1');
+
 
   BACKSLASH_REGEXES.forEach(({ kw, regex }) => {
     healed = healed.replace(regex, `\\${kw}`);
@@ -359,7 +359,7 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   processed = processed.replace(/[–—−]/g, '-');
 
   // [Self-Healing] Fix beta subscript sub-nesting rendering error (\beta_{0,\beta_1} -> \beta_0, \beta_1)
-  processed = processed.replace(/\\?beta_\{0,\s*\\?beta_[01]\}/g, '\\beta_0, \\beta_1');
+
 
   // [Self-Healing] Fix empty fraction denominator followed by variable (e.g. \frac{1}{} \beta or \frac{1}{ } \beta -> \frac{1}{\beta})
   processed = processed.replace(/\\(d?frac)\{([^{}\n]+)\}\s*\{\s*\}\s*(\\?[a-zA-Z0-9_]+)/g, '\\$1{$2}{$3}');
@@ -376,23 +376,13 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   
   
   // [Self-Healing] Remove space between backslash and Greek commands (including trailing alphanumeric characters)
-  const greekSubscriptFullLetters = 'alpha|beta|gamma|sigma|tau|phi|theta|epsilon|pi|delta|omega|mu|lambda|psi|rho|eta|nu|xi|zeta|chi|upsilon|kappa';
-  const spaceRegex = new RegExp(`\\\\\\s+(${greekSubscriptFullLetters})([a-zA-Z0-9]*)\\b`, 'gi');
-  processed = processed.replace(spaceRegex, '\\$1$2');
 
-  // [Self-Healing] Clean up Greek letter variables missing underscores (e.g. \sigmav -> \sigma_v, \sigma'v -> \sigma'_v)
-  const greekSubscriptLetters = 'sigma|gamma|tau|theta|alpha|beta|epsilon|phi|psi|omega|mu|nu';
-  const greekSubscriptRegex = new RegExp(`\\\\(${greekSubscriptLetters})('?)([a-zA-Z0-9])\\b`, 'gi');
-  processed = processed.replace(greekSubscriptRegex, '\\$1$2_$3');
 
-  // [Self-Healing] Remove space between backslash and general math commands
-  processed = processed.replace(/\\\s+(Delta|Sigma|Gamma|Phi|Theta|Omega|frac|dfrac|tfrac|sqrt|cdot|times|div|pm|infty|partial|sum|int|sim|le|ge|lt|gt|sin|cos|tan|log|ln|nabla|neq|ne|approx)\b/g, '\\$1');
 
-  // [Self-Healing] Fix space-corrupted or missing-space Delta variables (e.g. \Deltau, \ Deltau, \Deltasigma)
-  const greekNames = 'alpha|beta|gamma|sigma|tau|phi|theta|epsilon|pi|delta|omega|mu|lambda|psi|rho|eta|nu|xi|zeta|chi|upsilon|kappa|Delta|Sigma|Gamma|Phi|Theta|Omega';
-  const deltaGreekRegex = new RegExp(`\\\\\\s*Delta\\s*(${greekNames})\\b`, 'gi');
-  processed = processed.replace(deltaGreekRegex, '\\Delta \\$1');
-  processed = processed.replace(/\\\s*Delta\s*([a-zA-Z])\b/gi, '\\Delta $1');
+
+
+
+
 
   // [Self-Healing] Strip KaTeX-unsupported MathJax \pu{...} commands (renders red in KaTeX)
   processed = processed.replace(/\\pu\s*\{([^}]+)\}/gi, '$1');
@@ -401,60 +391,19 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   processed = healInvertedDelimiters(processed);
 
   // Convert Greek letters with numbers (e.g. sigma1, sigma_1 -> \sigma_1)
-  const greekLetters = 'alpha|beta|gamma|sigma|tau|phi|theta|epsilon|pi|delta|omega|mu|lambda|psi|rho|eta|nu|xi|zeta|chi|upsilon|kappa';
-  const greekRegex = new RegExp(`(?<!\\\\)\\b(${greekLetters})_?(\\d+)\\b`, 'g');
-  processed = processed.replace(greekRegex, '\\$1_$2');
-
+  
   // Replace Won symbol (₩) with backslash (\) to restore LaTeX commands
   processed = processed.replace(/₩/g, '\\');
 
   // [Self-Healing] Remove hallucinated backslashes right before Korean words (e.g., \증가 -> 증가)
   // This must be done here before math expression detection to prevent malformed regex matches.
-  processed = processed.replace(/\\([가-힣]+)/g, ' $1');
 
-  // Replace hashtag (#) prefix before LaTeX commands/Greek letters with backslash (\)
-  const hashKeywords = [
-    'alpha', 'beta', 'gamma', 'sigma', 'tau', 'phi', 'theta', 'epsilon', 'pi', 'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta', 'nu', 'xi', 'zeta', 'chi', 'upsilon', 'kappa',
-    'Delta', 'Sigma', 'Gamma', 'Phi', 'Theta', 'Omega',
-    'frac', 'dfrac', 'sqrt', 'cdot', 'times', 'div', 'pm', 'infty', 'partial', 'sum', 'int', 'sim',
-    'le', 'ge', 'lt', 'gt', 'sin', 'cos', 'tan', 'log', 'ln', 'nabla', 'neq', 'ne', 'approx'
-  ];
-  const hashRegex = new RegExp(`#(${hashKeywords.join('|')})(?![a-zA-Z])`, 'g');
-  processed = processed.replace(hashRegex, '\\$1');
+
+
 
   // Replace Greek unicode letters and standalone words with LaTeX commands
-  processed = processed.replace(/β/g, '\\beta')
-                       .replace(/α/g, '\\alpha')
-                       .replace(/γ/g, '\\gamma')
-                       .replace(/σ/g, '\\sigma')
-                       .replace(/τ/g, '\\tau')
-                       .replace(/φ/g, '\\phi')
-                       .replace(/θ/g, '\\theta')
-                       .replace(/μ/g, '\\mu')
-                       .replace(/λ/g, '\\lambda')
-                       .replace(/η/g, '\\eta')
-                       .replace(/ν/g, '\\nu')
-                       .replace(/π/g, '\\pi')
-                       .replace(/δ/g, '\\delta')
-                       .replace(/ω/g, '\\omega')
-                       .replace(/ε/g, '\\epsilon')
-                       .replace(/ψ/g, '\\psi')
-                       .replace(/ρ/g, '\\rho')
-                       .replace(/ξ/g, '\\xi')
-                       .replace(/ζ/g, '\\zeta')
-                       .replace(/χ/g, '\\chi')
-                       .replace(/υ/g, '\\upsilon')
-                       .replace(/κ/g, '\\kappa')
-                       .replace(/Δ/g, '\\Delta')
-                       .replace(/Σ/g, '\\Sigma')
-                       .replace(/Gamma/g, '\\Gamma')
-                       .replace(/Phi/g, '\\Phi')
-                       .replace(/Theta/g, '\\Theta')
-                       .replace(/Omega/g, '\\Omega');
-
+  
   // Convert English names of Greek letters if written as standalone words (case-insensitive)
-  processed = processed.replace(/(?<!\\)\b(alpha|beta|gamma|sigma|tau|phi|theta|epsilon|pi|delta|omega|mu|lambda|psi|rho|eta|nu|xi|zeta|chi|upsilon|kappa)\b/g, '\\$1');
-  processed = processed.replace(/(?<!\\)\b(Delta|Sigma|Gamma|Phi|Theta|Omega)\b/g, '\\$1');
 
   // Parse root patterns
   processed = replaceRoots(processed);
@@ -489,24 +438,6 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   processed = processed.replace(/\\{2,}%/g, '\\%');
 
 
-  
-  // 블록 수식($$) 바로 뒤에 공백이나 줄바꿈을 포함하여 단위가 올 경우, 해당 단위를 수식 블록 안의 \text{}로 병합하여 줄바꿈 방지
-  processed = processed.replace(/\$\$\s*([\s\S]*?)\s*\$\$\s*(\n*)\s*(kN\/m\\\^2|kN\/m\^2|kN\/m²|kN\/m\\\^3|kN\/m\^3|kN\/m³|t\/m\\\^3|t\/m\^3|t\/m³|kg\/cm\\\^2|kg\/cm\^2|kg\/cm²|kPa|MPa|kN|N|m|cm|mm|m\\\^2|m\^2|m²|m\\\^3|m\^3|m³|g\/cm\\\^3|g\/cm\^3|g\/cm³|kg\/m\\\^3|kg\/m\^3|kg\/m³|%)(?![a-zA-Z0-9가-힣])/gi, (match, math, newlines, unit) => {
-    let katexUnit = unit.replace(/\\/g, '');
-    if (katexUnit.includes('^')) {
-      const parts = katexUnit.split('^');
-      katexUnit = `\\text{${parts[0]}}^${parts[1]}`;
-    } else if (katexUnit.includes('²')) {
-      const base = katexUnit.replace('²', '');
-      katexUnit = `\\text{${base}}^2`;
-    } else if (katexUnit.includes('³')) {
-      const base = katexUnit.replace('³', '');
-      katexUnit = `\\text{${base}}^3`;
-    } else {
-      katexUnit = `\\text{${katexUnit}}`;
-    }
-    return `$$ ${math.trim()} \\quad ${katexUnit} $$`;
-  });
 
   // 문장 한복판에 쪼개진 단일 줄바꿈(\n)을 공백으로 자동 병합 (수식 끊김 방지)
   // 단, 마크다운 표 영역은 줄바꿈 병합을 하지 않고 원본 철저히 유지하기 위해 split 처리
@@ -520,10 +451,9 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   }).join('');
 
   // 불필요한 HTML 태그 정제
-  processed = processed.replace(/<br\s*\/?>/gi, '\n\n')
-                       .replace(/<div[^>]*>\s*[•*]?\s*([^<]+?)\s*<\/div>/gi, '\n\n* $1')
-                       .replace(/<\/?(?:div|p|span|li|ul|ol)\b[^>]*>/gi, '')
-                       .replace(/\n{3,}/g, '\n\n');
+  processed = processed.replace(/<br\s*\/?>/gi, '\n')
+                       .replace(/<div[^>]*>\s*[•*]?\s*([^<]+?)\s*<\/div>/gi, '\n* $1')
+                       .replace(/<\/?(?:div|p|span|li|ul|ol)\b[^>]*>/gi, '');
 
   const tokens = tokenizeForHealing(processed);
   processed = tokens.map(token => {
@@ -626,7 +556,7 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   }
 
   // 한국어 조사 결합 어미 공백 규격 조율
-  result = result.replace(/(\$[^\$]+\$)(은|는|이|가|을|를|의|로|으로|에|에서|와|과|도|만|일때|입니다|라하면|값은)/g, '$1 $2');
+
   result = result.trim();
 
   // 2. Restore [INPUT_n] placeholders (remove accidental math formatting)
@@ -858,6 +788,9 @@ export function healQuizQuestionObject(q) {
     }
     if (q.question && typeof q.question === 'string') {
       q.question = cleanQuizQuestion(q.question);
+    }
+    if (typeof q.correctIndex === 'number' && Array.isArray(q.options) && q.correctIndex >= 0 && q.correctIndex < q.options.length) {
+      q.answer = q.options[q.correctIndex];
     }
 
     // Real-time healing for overview questions to ensure both 학술적 정의 & 공학적 작동 메커니즘 are present
@@ -1234,7 +1167,6 @@ export function healQuizQuestionObject(q) {
         if (!Array.isArray(row)) return [];
         const colCount = row.length;
         const targetCIdx = (rIdx % Math.max(1, colCount - 1)) + 1;
-        let placeholderSeq = 1; // Track the sequence of actual placeholders
 
         return row.map((cell, cIdx) => {
           if (cIdx === 0) return cell; // Keep the row label intact
@@ -1272,23 +1204,12 @@ export function healQuizQuestionObject(q) {
 
           // Robust check helper
           const lookup = (key) => {
-            if (key === undefined || key === null || key === '') return undefined;
+            if (key === undefined || key === null) return undefined;
             return oldAnswers[key];
           };
 
-          const isPlaceholder = isCellPlaceholder(trimmedCell);
-          const isEmpty = !trimmedCell;
-          let currentPlaceholderSeq = null;
-          if (isPlaceholder || isEmpty) {
-            currentPlaceholderSeq = placeholderSeq;
-            placeholderSeq++;
-          }
-
           // 1. Try directly with placeholderId (case insensitive)
-          let foundVal = undefined;
-          if (placeholderId) {
-            foundVal = lookup(placeholderId) ?? lookup(placeholderId?.toLowerCase()) ?? lookup(placeholderId?.toUpperCase());
-          }
+          let foundVal = lookup(placeholderId) ?? lookup(placeholderId?.toLowerCase()) ?? lookup(placeholderId?.toUpperCase());
 
           // 2. If matchedNum is available, try corresponding index / letter
           if (foundVal === undefined && matchedNum !== null) {
@@ -1308,17 +1229,17 @@ export function healQuizQuestionObject(q) {
             }
           }
 
-          // 3. Sequential fallback based on actual placeholder sequence (ONLY if it was a placeholder/empty)
-          if (foundVal === undefined && currentPlaceholderSeq !== null) {
-            const seqLetter = String.fromCharCode(64 + currentPlaceholderSeq); // A, B, C...
-            foundVal = lookup(`INPUT_${currentPlaceholderSeq}`) ?? lookup(`input_${currentPlaceholderSeq}`) ?? lookup(currentPlaceholderSeq) ?? lookup(String(currentPlaceholderSeq)) ?? lookup(seqLetter) ?? lookup(seqLetter.toLowerCase());
+          // 3. Sequential fallback based on currentCount
+          if (foundVal === undefined) {
+            const seqLetter = String.fromCharCode(64 + currentCount); // A, B, C...
+            foundVal = lookup(`INPUT_${currentCount}`) ?? lookup(`input_${currentCount}`) ?? lookup(currentCount) ?? lookup(String(currentCount)) ?? lookup(seqLetter) ?? lookup(seqLetter.toLowerCase());
             
-            // Suffix-based recovery for sequential fallback
+            // Suffix-based recovery for sequential fallback (e.g., match INPUT_2_1 for currentCount = 1)
             if (foundVal === undefined) {
               const matchedKey = Object.keys(oldAnswers).find(key => {
                 const parts = key.split('_');
                 const lastPart = parts[parts.length - 1];
-                return parts[0].toLowerCase() === 'input' && parseInt(lastPart, 10) === currentPlaceholderSeq;
+                return parts[0].toLowerCase() === 'input' && parseInt(lastPart, 10) === currentCount;
               });
               if (matchedKey) {
                 foundVal = oldAnswers[matchedKey];
@@ -1351,15 +1272,11 @@ export function healQuizQuestionObject(q) {
             }
           }
 
-          // 5. If it's NOT a placeholder/empty, it's just normal text. Never hijack oldAnswers, just use its own text!
-          if (!isPlaceholder && !isEmpty && foundVal === undefined) {
-            foundVal = cell;
-          }
-
           if (foundVal !== undefined) {
             correctAnswer = foundVal;
           } else {
             // If no placeholder value was found in oldAnswers, keep the cell text if it's not a placeholder
+            const isPlaceholder = isCellPlaceholder(trimmedCell);
             correctAnswer = isPlaceholder ? '' : cell;
           }
 
@@ -1499,11 +1416,11 @@ export const LATEX_PROMPT_INSTRUCTIONS = `
 
 8. 단순 수치나 단위(예: 10m, 20% 등)에는 LaTeX 기호($)를 쓰지 말고 일반 텍스트로 작성하십시오.
 9. 수식 내부에서 특수 기호인 '작다' 기호는 \\\\lt 로, '크다' 기호는 \\\\gt 로 표기하여 마크다운 파싱 에러를 원천 차단하십시오.
-10. 아래첨자('_')나 괄호 기호 앞에 마크다운 렌더링 충돌 방지라는 핑계로 임의의 역슬래시(\\)를 붙여 시스템 깨짐(₩)을 유발하는 거동을 절대 하지 마십시오.
-11. LaTeX 공식 내부 중괄호 내에 한글을 결합하는 \\\\text{한글} 과 같은 행위는 철저히 금지합니다. 한글과 만날 때는 수식을 즉시 닫고 공백을 준 뒤 한글을 배치하십시오. (예: $B$ 가 4배로 증가)
-12. 달러 기호($ 또는 $$)는 반드시 수식 전체를 감싸는 가장 바깥쪽에만 위치해야 하며, 중괄호({}) 내부에 달러 기호가 침투하지 않도록 이중 마킹을 엄격히 금지합니다. 단, 일반 괄호 '()' 안의 수식을 전체 $ 기호 하나로 감싸는 것은 올바른 문법입니다.
-13. 🚨 [마크다운 리스트 및 줄바꿈 수칙]: JSON 응답 내에서 항목을 나열하기 위해 리스트 기호(* 또는 -)를 사용할 때는 반드시 기호 뒤에 스페이스(공백)를 한 칸 띄우고 텍스트를 작성하십시오. (예: "* k: 투수계수" (O) / "*k: 투수계수" (X)). 
-16. 🚨 [HTML 태그 사용 절대 금지]: 어떠한 경우에도 답변 항목 내부에 <div>, <span>, <strong> 등 임의의 HTML 스타일 태그를 직접 작성하여 주입하지 마십시오. 레이아웃 붕괴를 유발하므로 텍스트 강조 시에는 오직 마크다운 문법(예: **강조**)을 사용하십시오.
+11. 🚨 [달러 기호($) 이스케이프 절대 금지]: 일반 텍스트나 수식 내에서 달러 기호 자체를 문자 그대로 출력하기 위해 역슬래시를 붙여 이스케이프(\\$ 또는 \\\\$)하는 행위를 엄격히 금지합니다.
+12. LaTeX 공식 내부 중괄호 내에 한글을 결합하는 \\\\text{한글} 과 같은 행위는 철저히 금지합니다. 한글과 만날 때는 수식을 즉시 닫고 공백을 준 뒤 한글을 배치하십시오. (예: $B$ 가 4배로 증가)
+13. 달러 기호($ 또는 $$)는 반드시 수식 전체를 감싸는 가장 바깥쪽에만 위치해야 하며, 중괄호({}) 내부에 달러 기호가 침투하지 않도록 이중 마킹을 엄격히 금지합니다. 단, 일반 괄호 '()' 안의 수식을 전체 $ 기호 하나로 감싸는 것은 올바른 문법입니다.
+14. 🚨 [마크다운 리스트 및 줄바꿈 수칙]: JSON 응답 내에서 항목을 나열하기 위해 리스트 기호(* 또는 -)를 사용할 때는 반드시 기호 뒤에 스페이스(공백)를 한 칸 띄우고 텍스트를 작성하십시오. (예: "* k: 투수계수" (O) / "*k: 투수계수" (X)). 
+15. 🚨 [HTML 태그 사용 절대 금지]: 어떠한 경우에도 답변 항목 내부에 <div>, <span>, <strong> 등 임의의 HTML 스타일 태그를 직접 작성하여 주입하지 마십시오. 레이아웃 붕괴를 유발하므로 텍스트 강조 시에는 오직 마크다운 문법(예: **강조**)을 사용하십시오.
 17. 🚨 [빈 기호/제목 출력 금지]: 특정 항목(예: '메커니즘', '기본가정' 등)에 해당하는 내용이 없거나 쓸 필요가 없다면, 해당 소제목 기호나 단락 자체를 아예 생략하고 출력하지 마십시오. 빈 글머리 기호(예: "• 메커니즘:")만 덩그러니 남겨두는 행위는 엄격히 금지합니다.
 18. 🚨 [수식 변수 및 아래첨자 결합 유지 규칙]: 수학 기호나 공식 내에서 물리량 변수 기호와 그 아래첨자(예: Nc, Df, kh 등)는 절대로 중간에 달러 기호($ 또는 $$)를 끼워 넣어서 서로 다른 블록으로 쪼개서 출력하지 마십시오. 반드시 수식 전체를 감싸서 하나의 수식 블록 내에 모두 포함시켜야 합니다. (예: $N_c$ (O) / N$_c$ (X), $\\text{N}_c$ (O) / \\text{N}$$_c (X))
 
@@ -1531,12 +1448,12 @@ export const LATEX_CHAT_PROMPT_INSTRUCTIONS = `
 5. 인라인 수식 내 줄바꿈 절대 금지: 문장 중간의 $ 기호 사이 내용에서는 엔터(줄바꿈)를 절대 하지 말고 단일 줄로 이어서 작성하십시오.
 7. 단순 수치나 단위(예: 10m, 20% 등)에는 LaTeX 기호($)를 쓰지 말고 일반 텍스트로 작성하십시오.
 8. 수식 내부에서 특수 기호인 '작다' 기호는 \\lt 로, '크다' 기호는 \\gt 로 표기하여 마크다운 파싱 에러를 원천 차단하십시오.
-9. 아래첨자('_')나 괄호 기호 앞에 임의의 역슬래시(\\)를 붙이지 마십시오.
 10. LaTeX 공식 내부 중괄호 내에 한글을 결합하는 \\text{한글} 과 같은 행위는 철저히 금지합니다. 한글과 만날 때는 수식을 즉시 닫고 공백을 준 뒤 한글을 배치하십시오. (예: $B$ 가 4배로 증가)
-11. 수식 작성 시 중괄호({}) 내부에 달러 기호($)가 침투하지 않도록 이중 마킹을 엄격히 금지합니다. 단, 일반 괄호 '()' 안의 수식을 전체 $ 기호 하나로 감싸는 것은 올바른 문법입니다.
-12. 🚨 [마크다운 리스트 및 줄바꿈 수칙]: 항목을 나열하기 위해 리스트 기호(* 또는 -)를 사용할 때는 반드시 기호 뒤에 스페이스(공백)를 한 칸 띄우고 텍스트를 작성하십시오. (예: "* k: 투수계수" (O) / "*k: 투수계수" (X)). 
-15. 🚨 [HTML 태그 사용 절대 금지]: 어떠한 경우에도 답변에 <div>, <span>, <strong> 등 임의의 HTML 스타일 태그를 직접 작성하여 주입하지 마십시오. 레이아웃 붕괴를 유발하므로 텍스트 강조 시에는 오직 마크다운 문법(예: **강조**)을 사용하십시오.
-19. 🚨 [빈 기호/제목 출력 금지]: 특정 항목(예: '메커니즘', '기본가정' 등)에 해당하는 내용이 없거나 쓸 필요가 없다면, 해당 소제목 기호나 단락 자체를 아예 생략하고 출력하지 마십시오. 빈 글머리 기호(예: "• 메커니즘:")만 덩거리니 남겨두는 행위는 엄격히 금지합니다.
+11. 🚨 [달러 기호($) 이스케이프 절대 금지]: 일반 텍스트나 수식 내에서 달러 기호 자체를 문자 그대로 출력하기 위해 역슬래시를 붙여 이스케이프(\\$ 또는 \\\\$)하는 행위를 엄격히 금지합니다.
+12. 수식 작성 시 중괄호({}) 내부에 달러 기호($)가 침투하지 않도록 이중 마킹을 엄격히 금지합니다. 단, 일반 괄호 '()' 안의 수식을 전체 $ 기호 하나로 감싸는 것은 올바른 문법입니다.
+13. 🚨 [마크다운 리스트 및 줄바꿈 수칙]: 항목을 나열하기 위해 리스트 기호(* 또는 -)를 사용할 때는 반드시 기호 뒤에 스페이스(공백)를 한 칸 띄우고 텍스트를 작성하십시오. (예: "* k: 투수계수" (O) / "*k: 투수계수" (X)). 
+14. 🚨 [HTML 태그 사용 절대 금지]: 어떠한 경우에도 답변에 <div>, <span>, <strong> 등 임의의 HTML 스타일 태그를 직접 작성하여 주입하지 마십시오. 레이아웃 붕괴를 유발하므로 텍스트 강조 시에는 오직 마크다운 문법(예: **강조**)을 사용하십시오.
+15. 🚨 [빈 기호/제목 출력 금지]: 특정 항목(예: '메커니즘', '기본가정' 등)에 해당하는 내용이 없거나 쓸 필요가 없다면, 해당 소제목 기호나 단락 자체를 아예 생략하고 출력하지 마십시오. 빈 글머리 기호(예: "• 메커니즘:")만 덩거리니 남겨두는 행위는 엄격히 금지합니다.
 16. 🚨 [표(Table) 작성 철칙]: 답변 중 지표, 수치 비교, 매개변수 정리 등 표(Table) 형태의 데이터 표현이 필요한 경우, HTML이나 LaTeX tabular/matrix/array 환경을 사용하지 말고 반드시 표준 **마크다운 표(Markdown Table)** 형식(| 열1 | 열2 |과 구분선 | --- | --- |)으로만 작성하십시오.
 17. 🚨 [컨테이너 중첩 절대 금지]: 여러 개의 수식 전개 과정이나 한글 설명 리스트 전체를 하나의 거대한 디스플레이 수식 블록($$...$$)으로 통째로 감싸지 마십시오. 반드시 개별 공식마다 독립된 $ 기호만 사용하십시오.
 18. 🚨 [달러 기호 매칭 오류 및 이탈 방지 규칙]: 리스트 기호나 숫자가 포함된 번호 매기기(예: "1) 연성 벽체...", "2) 고강성...")가 포함된 문단 내에서 공식들을 나열할 때, 각 공식들은 개별적으로 완벽히 수식 기호($)로 열고 닫혀 있어야 합니다. 절대로 여는 수식 기호가 없는 상태에서 닫는 수식 기호만 배치하거나, 혹은 어설프게 매칭되어 한글 제목 전체가 수식 영역 안으로 빨려 들어가지 않도록 극도로 유의하십시오.

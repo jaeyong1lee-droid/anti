@@ -115,7 +115,7 @@ export function reportLlmProgress(options, scenario, modelName) {
     } else if (scenario === 'formula') {
       stageText = `1단계: ${modelUpper} 엔진으로 수식 분석 및 튜터 답변 생성 중...`;
     } else if (scenario === 'source-search' || scenario === 'source') {
-      stageText = `1단계: ${actualModelName.toUpperCase()} 엔진으로 출처 검색 및 국가설계기준 대조 중...`;
+      stageText = `1단계: ${modelUpper} 엔진으로 출처 검색 및 국가설계기준 대조 중...`;
     } else if (scenario === 'option-explanation') {
       stageText = `1단계: ${modelUpper} 엔진으로 보기 오답 원인 분석 중...`;
     } else {
@@ -200,30 +200,19 @@ export async function callLLMWithFailover(systemInstruction, userPrompt, image =
   if (secondaryKey && !secondaryKey.startsWith('gsk_') && secondaryKey !== primaryKey) keys.push({ key: secondaryKey, label: 'Key #2' });
   if (tertiaryKey && !tertiaryKey.startsWith('gsk_') && tertiaryKey !== primaryKey && tertiaryKey !== secondaryKey) keys.push({ key: tertiaryKey, label: 'Key #3' });
 
-  const isSourceSearch = scenario === 'source' || scenario === 'source-search' || options.isSourceSearch;
-
   for (const k of keys) {
     const targetPref = options.preferredModel || globalPreferredModel || 'gemini-3.5-flash-lite';
     if (options.preferredModel && options.preferredModel !== globalPreferredModel) {
       globalPreferredModel = options.preferredModel;
     }
-    const rawFallbacks = isSourceSearch
-      ? [
-          targetPref,
-          'gemini-3.5-flash-lite',
-          'gemini-3.7-flash',
-          'gemini-3.1-flash-lite',
-          'gemini-3.6-flash',
-          'gemini-3.5-flash'
-        ]
-      : [
-          targetPref,
-          'gemini-3.5-flash-lite',
-          'gemini-3.7-flash',
-          'gemini-3.1-flash-lite',
-          'gemini-3.6-flash',
-          'gemini-3.5-flash'
-        ];
+    const rawFallbacks = [
+      targetPref,
+      'gemini-3.5-flash-lite',
+      'gemini-3.7-flash',
+      'gemini-3.1-flash-lite',
+      'gemini-3.6-flash',
+      'gemini-3.5-flash'
+    ];
     const uniqueRaw = [...new Set(rawFallbacks.filter(Boolean))];
     for (const modelName of uniqueRaw) {
       const actual = normalizeGeminiModel(modelName);
@@ -247,91 +236,86 @@ export async function callLLMWithFailover(systemInstruction, userPrompt, image =
     const actualModelName = task.actualModel || normalizeGeminiModel(modelName);
 
     attemptedAny = true;
-    let attempt = 0;
-    const maxAttempts = 2;
-    let delay = 1000;
 
-    while (attempt < maxAttempts) {
-      try {
-        console.log(`[Gemini 시도] ${task.label} (${maskedKey}), 모델: ${modelName} -> ${actualModelName} (시도 #${attempt + 1})`);
-        const genAI = new GoogleGenerativeAI(key);
-        const model = genAI.getGenerativeModel({
-          model: actualModelName,
-          systemInstruction: finalSystemInstruction,
-          generationConfig: {
-            temperature: options.temperature !== undefined ? options.temperature : 0.2,
-            ...(scenario === 'grading' ? { responseMimeType: 'application/json' } : {})
-          }
-        }, { apiVersion: 'v1beta' });
+    try {
+      console.log(`[Gemini 시도] ${task.label} (${maskedKey}), 모델: ${modelName} -> ${actualModelName}`);
+      const genAI = new GoogleGenerativeAI(key);
+      const model = genAI.getGenerativeModel({
+        model: actualModelName,
+        systemInstruction: finalSystemInstruction,
+        generationConfig: {
+          temperature: options.temperature !== undefined ? options.temperature : 0.2,
+          ...(scenario === 'grading' ? { responseMimeType: 'application/json' } : {})
+        }
+      }, { apiVersion: 'v1beta' });
 
-          let generateContentArg = [userPrompt];
-          if (Array.isArray(image)) {
-            image.forEach(img => {
-              if (img && img.data && img.mimeType) {
-                generateContentArg.push({
-                  inlineData: {
-                    mimeType: img.mimeType,
-                    data: img.data
-                  }
-                });
-              }
-            });
-          } else if (image && image.data && image.mimeType) {
+      let generateContentArg = [userPrompt];
+      if (Array.isArray(image)) {
+        image.forEach(img => {
+          if (img && img.data && img.mimeType) {
             generateContentArg.push({
               inlineData: {
-                mimeType: image.mimeType,
-                data: image.data
+                mimeType: img.mimeType,
+                data: img.data
               }
             });
           }
-          if (generateContentArg.length === 1) {
-            generateContentArg = userPrompt;
+        });
+      } else if (image && image.data && image.mimeType) {
+        generateContentArg.push({
+          inlineData: {
+            mimeType: image.mimeType,
+            data: image.data
           }
-
-          reportLlmProgress(options, scenario, modelName);
-          const timeoutMs = 55000;
-          const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error(`Gemini request timeout after ${timeoutMs}ms`)), timeoutMs)
-          );
-          const result = await Promise.race([
-            model.generateContent(generateContentArg),
-            timeoutPromise
-          ]);
-          let text = result.response.text().trim();
-          text = text.replace(/^[ \t]*#[ \t]*$/gm, '');
-          if (text) {
-            console.log(`[Gemini 성공] ${task.label} (${maskedKey}), 모델: ${modelName} (${actualModelName})`);
-            return text;
-          } else {
-            throw new Error('Gemini response empty');
-          }
-      } catch (err) {
-        console.warn(`[API 시도 실패] ${task.label} (${maskedKey}), 모델: ${task.model} (시도 #${attempt + 1}): ${err.message?.substring(0, 120)}`);
-        keyErrors.push(`${task.label} (${task.model}): ${err.message?.substring(0, 120)}`);
-
-        const isQuota = err.status === 429 || err.message?.includes('429') || err.message?.includes('Quota') || err.message?.includes('quota') || err.message?.includes('rate');
-        const isNotFoundModel = err.status === 404 || err.message?.includes('404') || err.message?.includes('is not found') || err.message?.includes('models/');
-        const isAuthError = err.message?.includes('API_KEY_INVALID') || err.message?.includes('API key not valid') || err.status === 401 || err.status === 403;
-
-        if (isAuthError) {
-          failedKeys.add(key);
-          console.log(`[키 장애 감지] ${task.label} 키 유효성 오류(Auth)로 인해 다음 키로 즉시 페일오버합니다.`);
-          break;
-        }
-
-        if (isQuota) {
-          console.log(`[모델 쿼터 초과 감지] ${task.label} (${task.model} -> ${actualModelName}) 쿼터 초과(429). 동일 키의 하위 백업 모델로 즉시 순연합니다.`);
-          await sleep(500);
-          break;
-        }
-
-        if (isNotFoundModel) {
-          console.log(`[모델 미존재] 모델 '${task.model}'이 Gemini API에 존재하지 않으므로 재시도 없이 다음 모델로 건너땁니다.`);
-          break;
-        }
-
-        break;
+        });
       }
+      if (generateContentArg.length === 1) {
+        generateContentArg = userPrompt;
+      }
+
+      reportLlmProgress(options, scenario, modelName);
+      const timeoutMs = 55000;
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error(`Gemini request timeout after ${timeoutMs}ms`)), timeoutMs)
+      );
+      const result = await Promise.race([
+        model.generateContent(generateContentArg),
+        timeoutPromise
+      ]);
+      let text = result.response.text().trim();
+      text = text.replace(/^[ \t]*#[ \t]*$/gm, '');
+      if (text) {
+        console.log(`[Gemini 성공] ${task.label} (${maskedKey}), 모델: ${modelName} (${actualModelName})`);
+        return text;
+      } else {
+        throw new Error('Gemini response empty');
+      }
+    } catch (err) {
+      console.warn(`[API 시도 실패] ${task.label} (${maskedKey}), 모델: ${task.model}: ${err.message?.substring(0, 120)}`);
+      keyErrors.push(`${task.label} (${task.model}): ${err.message?.substring(0, 120)}`);
+
+      const isQuota = err.status === 429 || err.message?.includes('429') || err.message?.includes('Quota') || err.message?.includes('quota') || err.message?.includes('rate');
+      const isNotFoundModel = err.status === 404 || err.message?.includes('404') || err.message?.includes('is not found') || err.message?.includes('models/');
+      const isAuthError = err.message?.includes('API_KEY_INVALID') || err.message?.includes('API key not valid') || err.status === 401 || err.status === 403;
+
+      if (isAuthError) {
+        failedKeys.add(key);
+        console.log(`[키 장애 감지] ${task.label} 키 유효성 오류(Auth)로 인해 다음 키로 즉시 페일오버합니다.`);
+        continue;
+      }
+
+      if (isQuota) {
+        console.log(`[모델 쿼터 초과 감지] ${task.label} (${task.model} -> ${actualModelName}) 쿼터 초과(429). 동일 키의 하위 백업 모델로 즉시 순연합니다.`);
+        await sleep(500);
+        continue;
+      }
+
+      if (isNotFoundModel) {
+        console.log(`[모델 미존재] 모델 '${task.model}'이 Gemini API에 존재하지 않으므로 재시도 없이 다음 모델로 건너땁니다.`);
+        continue;
+      }
+
+      continue;
     }
   }
 
