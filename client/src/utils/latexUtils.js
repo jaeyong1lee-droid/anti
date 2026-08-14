@@ -216,39 +216,7 @@ function healMarkdownTable(tableText, poissonSymbol = null) {
   return healedLines.join('\n');
 }
 
-// Whitelisted LaTeX math commands for safe auto-wrapping
-const MATH_COMMANDS = [
-  'frac', 'dfrac', 'tfrac', 'sqrt', 'cdot', 'times', 'div', 'pm', 'infty', 'partial', 'sum', 'int', 'sim',
-  'le', 'ge', 'lt', 'gt', 'sin', 'cos', 'tan', 'log', 'ln', 'nabla', 'neq', 'ne', 'approx',
-  'sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta', 'nu', 'xi', 'zeta', 'chi', 'upsilon', 'kappa',
-  'Delta', 'Sigma', 'Gamma', 'Phi', 'Theta', 'Omega',
-  'rightarrow', 'leftarrow', 'circ', 'deg', 'dot', 'ddot', 'bar', 'hat', 'tilde',
-  'quad', 'qquad', 'text', 'left', 'right'
-];
-
-// Regex matching math formulas containing at least one whitelisted command
-const formulaRegex = new RegExp(
-  `(?:[a-zA-Z0-9_'\^\\(\\)\\{\\}\\[\\]\\+\\-\\*\\/=.,·][a-zA-Z0-9_'\^\\(\\)\\{\\}\\[\\]\\+\\-\\*\\/= \\t.,·]*)?` +
-  `\\\\(?:${MATH_COMMANDS.join('|')})` +
-  `(?![a-zA-Z])` +
-  `[a-zA-Z0-9_'\^\\(\\)\\{\\}\\[\\]\\+\\-\\*\\/= \\t.,<>%\\\\·]*`,
-  'g'
-);
-
-// Regex matching simple math variables/relations (without backslash commands)
-const simpleVariableRegex = new RegExp(
-  // 1. Relations (most specific, e.g. k_h = 10, y(x) = ax + b, z < z_c)
-  `\\b[a-zA-Z0-9_'\^\\(\\)\\{\\}\\[\\]]+[ \\t]*(?:[+=<>]|[ \\t]+[-/\\*][ \\t]+)[ \\t]*[a-zA-Z0-9_'\^\\(\\)\\{\\}\\[\\]]+(?:[ \\t]*(?:[+=<>]|[ \\t]+[-/\\*][ \\t]+)[ \\t]*[a-zA-Z0-9_'\^\\(\\)\\{\\}\\[\\]]+)*\\b|` +
-  // 2. Function notation (e.g. p(z), w(z))
-  `\\b[a-zA-Z]\\([a-zA-Z0-9_'\\s\\\\]+\\)(?![a-zA-Z0-9_'])|` +
-  // 3. Subscripted variables with braces or underscores (e.g. s_{t-\Delta t}, s_{t- \Delta t}, S_{max}, k_h, z_c)
-  `\\\\?[a-zA-Z0-9_']+_\{\\s*[^{}\\n]+\\s*\\}|` +
-  `\\b[a-zA-Z0-9]+_[a-zA-Z0-9_']+\\b|` +
-  // 4. Constants
-  `\\b(?:EI|EA|FS)\\b|` +
-  `\\bF\\.S\\.(?![a-zA-Z0-9_'])`,
-  'g'
-);
+// [Root Cause Removal] Auto-wrapping logic (formulaRegex, simpleVariableRegex) deleted to prevent catastrophic KaTeX render failures on unescaped Korean text and prevent overriding AI's strict explicit delimiters.
 
 function replaceRoots(str) {
   let processed = str;
@@ -462,60 +430,6 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
     }
     if (token.type === 'text') {
       let t = token.content;
-
-      // [Self-Healing] 리스트 마커 보호 (마크다운 리스트 기호가 수식으로 흡수되는 현상 방지)
-      const listMarkers = [];
-      t = t.replace(/^([ \t]*)([-*•]|\d+\.)([ \t]+)/gm, (match) => {
-        listMarkers.push(match);
-        return '리스트마커임시보호절대치환금지';
-      });
-
-      // Auto-wrap unwrapped LaTeX math formulas
-      t = t.replace(formulaRegex, (match) => {
-        const trailingSpaces = match.match(/\s*$/)[0];
-        const trimmed = match.trim();
-        const trailingPunctuation = trimmed.match(/[.,;:!]+$/);
-        const punc = trailingPunctuation ? trailingPunctuation[0] : '';
-        let formula = trimmed.slice(0, trimmed.length - punc.length).trim();
-        
-        let trailingAsterisks = '';
-        const asteriskMatch = formula.match(/(\*+)$/);
-        if (asteriskMatch) {
-          trailingAsterisks = asteriskMatch[1];
-          formula = formula.slice(0, formula.length - trailingAsterisks.length).trim();
-        }
-        
-        return `$${formula}$${trailingAsterisks}${punc}${trailingSpaces}`;
-      });
-      // Re-tokenize and wrap simple variables in remaining text to prevent double-wrapping
-      const subTokens = tokenizeForHealing(t);
-      t = subTokens.map(subToken => {
-        if (subToken.type === 'text') {
-          return subToken.content.replace(simpleVariableRegex, (match) => {
-            const trailingSpaces = match.match(/\s*$/)[0];
-            const trimmed = match.trim();
-            if (trimmed === 'START_TABLE' || trimmed === 'END_TABLE' || trimmed === '리스트마커임시보호절대치환금지') return match;
-            const trailingPunctuation = trimmed.match(/[.,;:!]+$/);
-            const punc = trailingPunctuation ? trailingPunctuation[0] : '';
-            let formula = trimmed.slice(0, trimmed.length - punc.length).trim();
-            
-            let trailingAsterisks = '';
-            const asteriskMatch = formula.match(/(\*+)$/);
-            if (asteriskMatch) {
-              trailingAsterisks = asteriskMatch[1];
-              formula = formula.slice(0, formula.length - trailingAsterisks.length).trim();
-            }
-            
-            return `$${formula}$${trailingAsterisks}${punc}${trailingSpaces}`;
-          });
-        }
-        return subToken.content;
-      }).join('');
-
-      // 리스트 마커 복원
-      t = t.replace(/리스트마커임시보호절대치환금지/g, () => {
-        return listMarkers.shift();
-      });
 
       // 꺾쇠 기호(<, >)를 무조건 HTML 엔티티(&lt;, &gt;)로 변환하는 불필요한/과도한 이스케이프 로직 제거 (Root Cause Removal)
       // 이로 인해 SVG 태그 등 정상적인 HTML 태그들이 텍스트로 노출되는 부작용이 발생했음.
