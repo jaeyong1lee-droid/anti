@@ -795,7 +795,7 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
       content = content.replace(/^정의\s*:\s*/, '');
       if (!content) continue;
 
-      const isSubItem = indentLen > 0 || (i > 0 && /:$/.test(lines[i - 1].trim()));
+      const isSubItem = indentLen > 0;
 
       if (!isSubItem) {
         if (inInner) { html += '</ul>'; inInner = false; }
