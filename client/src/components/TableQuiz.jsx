@@ -1260,9 +1260,7 @@ export const TableQuiz = React.memo(function TableQuiz({
       <div className={isMainFloated ? "flex-1 overflow-auto w-full" : "w-full overflow-x-auto min-w-0"}>
         <table 
           ref={tableRef} 
-          className={`table-quiz-table w-full table-fixed text-center border-collapse text-[14px] sm:text-[16px] min-w-full ${
-            colCount === 2 ? 'sm:min-w-[600px]' : 'sm:min-w-[700px]'
-          }`}
+          className={`table-quiz-table w-full table-fixed text-center border-collapse text-[14px] sm:text-[16px] min-w-full`}
         style={{
           '--table-width': isMobileView ? (colCount === 2 ? '100%' : `max(100%, ${mobileColWidths.reduce((sum, w) => sum + parseInt(w || '0', 10), 0)}px)`) : '100%',
           minWidth: '0px'

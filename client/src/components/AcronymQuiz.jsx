@@ -113,7 +113,7 @@ export const AcronymQuiz = React.memo(function AcronymQuiz({
   ) : null;
 
   const tableEl = (
-    <table ref={tableRef} className="w-full table-fixed text-center border-collapse text-[14px] sm:text-[16px] min-w-[320px] sm:min-w-[600px]">
+    <table ref={tableRef} className="w-full table-fixed text-center border-collapse text-[14px] sm:text-[16px] min-w-full">
       <colgroup>
         <col style={{ width: '20%' }} />
         <col style={{ width: '80%' }} />

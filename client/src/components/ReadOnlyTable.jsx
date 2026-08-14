@@ -291,9 +291,7 @@ export const ReadOnlyTable = React.memo(function ReadOnlyTable({
     >
       <table 
         ref={tableRef} 
-        className={`table-quiz-table w-full table-fixed text-center border-collapse text-[14px] sm:text-[16px] min-w-full ${
-          colCount === 2 ? 'sm:min-w-[600px]' : 'sm:min-w-[700px]'
-        }`}
+        className={`table-quiz-table w-full table-fixed text-center border-collapse text-[14px] sm:text-[16px] min-w-full`}
         style={isMobileView ? {
           '--table-width': colCount === 2 ? '100%' : `max(100%, ${mobileColWidths.reduce((sum, w) => sum + parseInt(w || '0', 10), 0)}px)`,
           minWidth: '0px'
