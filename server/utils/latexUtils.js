@@ -376,23 +376,13 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   
   
   // [Self-Healing] Remove space between backslash and Greek commands (including trailing alphanumeric characters)
-  const greekSubscriptFullLetters = 'alpha|beta|gamma|sigma|tau|phi|theta|epsilon|pi|delta|omega|mu|lambda|psi|rho|eta|nu|xi|zeta|chi|upsilon|kappa';
-  const spaceRegex = new RegExp(`\\\\\\s+(${greekSubscriptFullLetters})([a-zA-Z0-9]*)\\b`, 'gi');
-  processed = processed.replace(spaceRegex, '\\$1$2');
 
-  // [Self-Healing] Clean up Greek letter variables missing underscores (e.g. \sigmav -> \sigma_v, \sigma'v -> \sigma'_v)
-  const greekSubscriptLetters = 'sigma|gamma|tau|theta|alpha|beta|epsilon|phi|psi|omega|mu|nu';
-  const greekSubscriptRegex = new RegExp(`\\\\(${greekSubscriptLetters})('?)([a-zA-Z0-9])\\b`, 'gi');
-  processed = processed.replace(greekSubscriptRegex, '\\$1$2_$3');
 
-  // [Self-Healing] Remove space between backslash and general math commands
-  processed = processed.replace(/\\\s+(Delta|Sigma|Gamma|Phi|Theta|Omega|frac|dfrac|tfrac|sqrt|cdot|times|div|pm|infty|partial|sum|int|sim|le|ge|lt|gt|sin|cos|tan|log|ln|nabla|neq|ne|approx)\b/g, '\\$1');
 
-  // [Self-Healing] Fix space-corrupted or missing-space Delta variables (e.g. \Deltau, \ Deltau, \Deltasigma)
-  const greekNames = 'alpha|beta|gamma|sigma|tau|phi|theta|epsilon|pi|delta|omega|mu|lambda|psi|rho|eta|nu|xi|zeta|chi|upsilon|kappa|Delta|Sigma|Gamma|Phi|Theta|Omega';
-  const deltaGreekRegex = new RegExp(`\\\\\\s*Delta\\s*(${greekNames})\\b`, 'gi');
-  processed = processed.replace(deltaGreekRegex, '\\Delta \\$1');
-  processed = processed.replace(/\\\s*Delta\s*([a-zA-Z])\b/gi, '\\Delta $1');
+
+
+
+
 
   // [Self-Healing] Strip KaTeX-unsupported MathJax \pu{...} commands (renders red in KaTeX)
   processed = processed.replace(/\\pu\s*\{([^}]+)\}/gi, '$1');
@@ -401,10 +391,7 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   processed = healInvertedDelimiters(processed);
 
   // Convert Greek letters with numbers (e.g. sigma1, sigma_1 -> \sigma_1)
-  const greekLetters = 'alpha|beta|gamma|sigma|tau|phi|theta|epsilon|pi|delta|omega|mu|lambda|psi|rho|eta|nu|xi|zeta|chi|upsilon|kappa';
-  const greekRegex = new RegExp(`(?<!\\\\)\\b(${greekLetters})_?(\\d+)\\b`, 'g');
-  processed = processed.replace(greekRegex, '\\$1_$2');
-
+  
   // Replace Won symbol (₩) with backslash (\) to restore LaTeX commands
   processed = processed.replace(/₩/g, '\\');
 
@@ -412,49 +399,11 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   // This must be done here before math expression detection to prevent malformed regex matches.
 
 
-  // Replace hashtag (#) prefix before LaTeX commands/Greek letters with backslash (\)
-  const hashKeywords = [
-    'alpha', 'beta', 'gamma', 'sigma', 'tau', 'phi', 'theta', 'epsilon', 'pi', 'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta', 'nu', 'xi', 'zeta', 'chi', 'upsilon', 'kappa',
-    'Delta', 'Sigma', 'Gamma', 'Phi', 'Theta', 'Omega',
-    'frac', 'dfrac', 'sqrt', 'cdot', 'times', 'div', 'pm', 'infty', 'partial', 'sum', 'int', 'sim',
-    'le', 'ge', 'lt', 'gt', 'sin', 'cos', 'tan', 'log', 'ln', 'nabla', 'neq', 'ne', 'approx'
-  ];
-  const hashRegex = new RegExp(`#(${hashKeywords.join('|')})(?![a-zA-Z])`, 'g');
-  processed = processed.replace(hashRegex, '\\$1');
+
 
   // Replace Greek unicode letters and standalone words with LaTeX commands
-  processed = processed.replace(/β/g, '\\beta')
-                       .replace(/α/g, '\\alpha')
-                       .replace(/γ/g, '\\gamma')
-                       .replace(/σ/g, '\\sigma')
-                       .replace(/τ/g, '\\tau')
-                       .replace(/φ/g, '\\phi')
-                       .replace(/θ/g, '\\theta')
-                       .replace(/μ/g, '\\mu')
-                       .replace(/λ/g, '\\lambda')
-                       .replace(/η/g, '\\eta')
-                       .replace(/ν/g, '\\nu')
-                       .replace(/π/g, '\\pi')
-                       .replace(/δ/g, '\\delta')
-                       .replace(/ω/g, '\\omega')
-                       .replace(/ε/g, '\\epsilon')
-                       .replace(/ψ/g, '\\psi')
-                       .replace(/ρ/g, '\\rho')
-                       .replace(/ξ/g, '\\xi')
-                       .replace(/ζ/g, '\\zeta')
-                       .replace(/χ/g, '\\chi')
-                       .replace(/υ/g, '\\upsilon')
-                       .replace(/κ/g, '\\kappa')
-                       .replace(/Δ/g, '\\Delta')
-                       .replace(/Σ/g, '\\Sigma')
-                       .replace(/Gamma/g, '\\Gamma')
-                       .replace(/Phi/g, '\\Phi')
-                       .replace(/Theta/g, '\\Theta')
-                       .replace(/Omega/g, '\\Omega');
-
+  
   // Convert English names of Greek letters if written as standalone words (case-insensitive)
-  processed = processed.replace(/(?<!\\)\b(alpha|beta|gamma|sigma|tau|phi|theta|epsilon|pi|delta|omega|mu|lambda|psi|rho|eta|nu|xi|zeta|chi|upsilon|kappa)\b/g, '\\$1');
-  processed = processed.replace(/(?<!\\)\b(Delta|Sigma|Gamma|Phi|Theta|Omega)\b/g, '\\$1');
 
   // Parse root patterns
   processed = replaceRoots(processed);
