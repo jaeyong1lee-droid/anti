@@ -1008,7 +1008,6 @@ foreignObject {
   width: max-content;
   min-width: 100%;
   border-collapse: collapse;
-  text-align: center;
   font-size: 14px; /* Mobile font size */
 }
 @media (min-width: 768px) {
@@ -1078,7 +1077,6 @@ foreignObject {
     white-space: normal !important;
     word-break: keep-all !important;
     overflow-wrap: break-word !important;
-    text-align: left !important;
     padding: 8px 10px !important;
   }
 }
