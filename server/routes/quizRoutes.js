@@ -242,7 +242,8 @@ function shuffleMultipleChoice(q) {
   return {
     ...sanitized,
     options: shuffledOptions,
-    answer: matchedOption
+    answer: matchedOption,
+    correctIndex: shuffledOptions.indexOf(matchedOption) !== -1 ? shuffledOptions.indexOf(matchedOption) : undefined
   };
 }
 

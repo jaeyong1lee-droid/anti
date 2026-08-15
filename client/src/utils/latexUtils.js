@@ -704,7 +704,11 @@ export function healQuizQuestionObject(q) {
       q.question = cleanQuizQuestion(q.question);
     }
     if (typeof q.correctIndex === 'number' && Array.isArray(q.options) && q.correctIndex >= 0 && q.correctIndex < q.options.length) {
-      q.answer = q.options[q.correctIndex];
+      // 만약 answer가 이미 존재하고 options 배열 안에 완벽히 일치하는 값이 있다면, 
+      // 셔플된 이후의 상태일 수 있으므로 과거의 correctIndex로 덮어쓰지 않음.
+      if (!q.answer || !q.options.includes(q.answer)) {
+        q.answer = q.options[q.correctIndex];
+      }
     }
 
     // Real-time healing for overview questions to ensure both 학술적 정의 & 공학적 작동 메커니즘 are present
