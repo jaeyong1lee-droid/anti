@@ -985,7 +985,7 @@ export function ImageTabList({ formulaImages, setFormulaImages, handleSaveFormul
                       >
                         <img
                           src={fullUrl}
-                          className="max-h-[600px] object-contain rounded-lg max-w-full group-hover:scale-[1.02] transition-transform duration-300 cursor-zoom-in"
+                          className="w-full h-full max-h-[600px] object-contain rounded-lg group-hover:scale-[1.02] transition-transform duration-300 cursor-zoom-in"
                           alt={`${img.title} - ${index + 1}`}
                         />
                         <div className="absolute bottom-3 right-3 bg-slate-900/90 text-xs font-bold text-slate-200 px-3 py-1.5 rounded-lg border border-slate-700/80 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1.5 shadow-xl pointer-events-none">
