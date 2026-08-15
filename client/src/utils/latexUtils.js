@@ -367,24 +367,7 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   let result = '';
 
   for (let i = 0; i < finalTokens.length; i++) {
-    const current = finalTokens[i];
-    if (i === 0) {
-      result += current.content;
-      continue;
-    }
-    const prev = finalTokens[i - 1];
-    let needSpace = false;
-
-    if (prev.type === 'text' && current.type !== 'text') {
-      const lastChar = prev.content[prev.content.length - 1];
-      if (lastChar && !/\s/.test(lastChar) && !/[\(\[\{\'\"\*]/.test(lastChar)) needSpace = true;
-    } else if (prev.type !== 'text' && current.type === 'text') {
-      const firstChar = current.content[0];
-      if (firstChar && !/\s/.test(firstChar) && !/[\,\.\?\!\)\]\}\:\;\*]/.test(firstChar)) needSpace = true;
-    } else if (prev.type !== 'text' && current.type !== 'text') {
-      needSpace = true;
-    }
-    result += needSpace ? ' ' + current.content : current.content;
+    result += finalTokens[i].content;
   }
 
   result = result.trim();
