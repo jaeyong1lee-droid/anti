@@ -76,7 +76,7 @@ export function htmlTableToMarkdown(html, poissonSymbol = null) {
       const cellRegex = /<(?:th|td)[^>]*>([\s\S]*?)<\/\s*(?:th|td)>/gi;
       let cellMatch;
       while ((cellMatch = cellRegex.exec(rowContent)) !== null) {
-        cells.push(healLatexFormulas(cellMatch[1].trim(), true, poissonSymbol));
+        cells.push(cellMatch[1].trim().replace(/\|/g, '\\vert '));
       }
       
       if (cells.length > 0) {
@@ -271,7 +271,7 @@ export function healInvertedDelimiters(text) {
       if (isOdd && !isFormula && /[가-힣]/.test(content)) {
         oddPlainCount++;
       }
-      if (!isOdd && isFormula) {
+      if (!isOdd && isFormula && !/[가-힣]/.test(content)) {
         evenFormulaCount++;
       }
     }
@@ -280,7 +280,7 @@ export function healInvertedDelimiters(text) {
       let rebuilt = '';
       for (let i = 0; i < parts.length; i++) {
         const content = parts[i];
-        if (hasFormulaCommands(content)) {
+        if (hasFormulaCommands(content) && !/[가-힣]/.test(content)) {
           rebuilt += `$${content.trim()}$`;
         } else {
           rebuilt += content;
@@ -298,8 +298,11 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
 
   let processed = text.replace(/₩/g, '\\');
   
+  processed = processed.replace(/\$\$([\s\S]*?)\$\$/g, (m, p1) => '$$' + p1.replace(/\|/g, '\\vert ') + '$$');
+  processed = processed.replace(/\$([^\$\n]+)\$/g, (m, p1) => '$' + p1.replace(/\|/g, '\\vert ') + '$');
+  
   processed = processed.replace(/\\\([\s\S]*?\\\)/g, (m, p1) => '$' + p1.trim() + '$');
-  processed = processed.replace(/\\\[([\\s\\S]*?)\\\]/g, (m, p1) => '$$' + p1.trim() + '$$');
+  processed = processed.replace(/\\\[([\s\S]*?)\\\]/g, (m, p1) => '$$' + p1.trim() + '$$');
   processed = processed.replace(/[–—−]/g, '-');
 
   processed = processed.replace(/\\(d?frac)\{([^{}\n]+)\}\s*\{\s*\}\s*(\\?[a-zA-Z0-9_]+)/g, '\\$1{$2}{$3}');
@@ -356,7 +359,7 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
 
     if (prev.type === 'text' && current.type !== 'text') {
       const lastChar = prev.content[prev.content.length - 1];
-      if (lastChar && !/\s/.test(lastChar) && !/[\(\[\{\'\"]/.test(lastChar)) needSpace = true;
+      if (lastChar && !/\s/.test(lastChar) && !/[\(\[\{\'\"\*]/.test(lastChar)) needSpace = true;
     } else if (prev.type !== 'text' && current.type === 'text') {
       const firstChar = current.content[0];
       if (firstChar && !/\s/.test(firstChar) && !/[\,\.\?\!\)\]\}\:\;\*]/.test(firstChar)) needSpace = true;
@@ -1082,10 +1085,10 @@ export function escapeJsonBackslashes(str) {
   let i = 0;
   
   const latexCommands = [
-    'newline', 'nabla', 'nu', 'neq', 'neg', 'ni', 'notin', 'ngeq', 'nleq', 'nsim', 'ncong', 'nparallel', 'noindent',
-    'theta', 'tau', 'tan', 'times', 'tilde', 'text', 'tfrac', 'triangle', 'top', 'to', 'tiny', 'today',
+    'newline', 'nabla', 'nu', 'neq', 'neg', 'ni', 'notin', 'ngeq', 'nleq', 'nsim', 'ncong', 'nparallel', 'noindent', 'not',
+    'theta', 'tau', 'tan', 'times', 'tilde', 'text', 'tfrac', 'triangle', 'top', 'to', 'tiny', 'today', 'tag',
     'rho', 'right', 'rule', 'rangle', 'rightarrow', 'rightleftharpoons', 'rightharpoonup', 'rightharpoondown', 'real', 'ref', 'raise',
-    'beta', 'bar', 'begin', 'bmod', 'boldsymbol', 'bullet', 'box', 'bigcap', 'bigcup', 'backslash',
+    'beta', 'bar', 'begin', 'bmod', 'boldsymbol', 'bullet', 'box', 'bigcap', 'bigcup', 'backslash', 'bf',
     'frac', 'forall', 'flat', 'frown', 'footnotesize', 'fbox',
     'phi', 'varphi', 'mathrm'
   ];
