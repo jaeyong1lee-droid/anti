@@ -2,7 +2,7 @@
  * 주관식 채점 플러그인 (Grading Plugin)
  */
 import { ENGINEERING_STANDARDS } from './engineeringStandards.js';
-import { LATEX_PROMPT_INSTRUCTIONS } from '../utils/latexUtils.js';
+import { LATEX_PROMPT_INSTRUCTIONS, parseLlmJson } from '../utils/latexUtils.js';
 
 export const baseSystemInstruction = `당신은 지반공학 및 토목공학 전문 채점관입니다.
 주어진 문제 맥락(question), 모범 답안(correctAnswer), 그리고 사용자가 입력한 답(userAnswer)을 비교하여 정답 여부(isCorrect) 및 부분점수(score, 0~10점)를 판정하십시오.
@@ -226,32 +226,15 @@ ${((colHeader && colHeader.includes('수치 계산 답안')) || category === '�
 }
 
 export function robustJSONParse(text) {
-  let cleanText = text.trim();
-  if (cleanText.startsWith('```')) {
-    cleanText = cleanText.replace(/^```json/i, '').replace(/^```/, '').replace(/```$/, '').trim();
-  }
-
   try {
-    return JSON.parse(cleanText);
+    return parseLlmJson(text);
   } catch (err) {
-    console.warn('[robustJSONParse] Standard JSON.parse failed, attempting LaTeX backslash healing:', err.message);
+    console.warn('[robustJSONParse] Standard parseLlmJson failed, trying regex field extraction:', err.message);
   }
 
+  let cleanText = text.trim();
   const match = cleanText.match(/\{[\s\S]*\}/);
   const rawObjStr = match ? match[0] : cleanText;
-
-  // Heal LaTeX backslashes inside JSON strings (e.g. \beta, \theta, \nu, \rho, \frac, \sigma)
-  try {
-    // Replace unescaped backslashes before non-standard JSON escape sequences
-    const healed = rawObjStr.replace(/\\([a-zA-Z0-9_#^%+=\-()<>{}[\]|\.\,\$\/]+)/g, (fullMatch, group1) => {
-      // JSON 표준 이스케이프 문자(n, r, t, b, f, 따옴표, 백슬래시, 슬래시)는 이중 이스케이프하지 않고 원형 보존
-      if (['"', '\\', '/', 'n', 'r', 't', 'b', 'f'].includes(group1)) return `\\${group1}`;
-      return `\\\\${group1}`;
-    });
-    return JSON.parse(healed);
-  } catch (e1) {
-    console.warn('[robustJSONParse] First recovery failed, trying regex field extraction:', e1.message);
-  }
 
   // Ultra-robust fallback: Extract fields via Regex
   try {
