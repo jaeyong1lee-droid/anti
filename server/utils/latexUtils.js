@@ -211,7 +211,7 @@ function healMarkdownTable(tableText, poissonSymbol = null) {
 
 function replaceRoots(str) {
   let processed = str;
-  processed = processed.replace(/√(?!\()/g, '\\sqrt ');
+  processed = processed.replace(/(?<![0-9a-zA-Z\$\\])√(?!\()/g, '\\sqrt ');
 
   let regex = /(?:([0-9]+)(?:_|계)?)?(?:루트|√)\(/;
   let match;
@@ -253,7 +253,7 @@ export function healInvertedDelimiters(text) {
   if (!text || typeof text !== 'string') return text;
 
   const hasFormulaCommands = (str) => {
-    const rx = /(?:₩|\\)(?:Delta|sigma|gamma|cdot|tau|pi|theta|alpha|beta|phi|omega|mu|lambda|rho|nu|times|frac|dfrac|le|ge|ne|neq|sqrt|sum|int|partial|sin|cos|tan)\b|[+\-*/=<>_^]|\b[a-zA-Z]_[a-zA-Z0-9]\b/i;
+    const rx = /(?:₩|\\)(?:Delta|sigma|gamma|cdot|tau|pi|theta|alpha|beta|phi|omega|mu|lambda|rho|nu|times|frac|dfrac|le|ge|ne|neq|sqrt|sum|int|partial|sin|cos|tan)\b|\b[a-zA-Z]_[a-zA-Z0-9]\b/i;
     return rx.test(str);
   };
 
@@ -298,7 +298,7 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
 
   let processed = text.replace(/₩/g, '\\');
   
-  processed = processed.replace(/\\\(([\\s\\S]*?)\\\)/g, (m, p1) => '$' + p1.trim() + '$');
+  processed = processed.replace(/\\\([\s\S]*?\\\)/g, (m, p1) => '$' + p1.trim() + '$');
   processed = processed.replace(/\\\[([\\s\\S]*?)\\\]/g, (m, p1) => '$$' + p1.trim() + '$$');
   processed = processed.replace(/[–—−]/g, '-');
 
@@ -314,8 +314,8 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   processed = replaceRoots(processed);
 
   if (!isNested) {
-    processed = htmlTableToMarkdown(processed, null);
     processed = wrapMarkdownTables(processed);
+    processed = htmlTableToMarkdown(processed, null);
   }
 
   processed = processed.replace(/(?<=:[^\n]*)\s+([–—−-]\s*(?:\$[^\$]+\$|[a-zA-Z0-9_\\\{\}]+)\s*:)/g, '\n$1');
@@ -341,22 +341,6 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   processed = processed.replace(/<br\s*\/?>/gi, '\n')
                        .replace(/<div[^>]*>\s*[•*]?\s*([^<]+?)\s*<\/div>/gi, '\n* $1')
                        .replace(/<\/?(?:div|p|span|li|ul|ol)\b[^>]*>/gi, '');
-
-  const tokens = tokenizeForHealing(processed);
-  processed = tokens.map(token => {
-    if (token.type === 'table') {
-      return token.content;
-    }
-    if (token.type === 'text') {
-      return token.content;
-    } else {
-      let math = token.content.replace(/^\$\$?|\$\$?$/g, '').trim();
-      math = healBackslashes(math);
-      math = math.replace(/</g, '\\lt ').replace(/>/g, '\\gt ')
-                 .replace(/_\s+/g, '_').replace(/\^\s+/g, '^');
-      return token.type === 'block-math' ? `$$${math}$$` : `$${math}$`;
-    }
-  }).join('');
 
   const finalTokens = tokenizeForHealing(processed);
   let result = '';
@@ -474,83 +458,7 @@ export function healDeep(obj, parentKey = null, context = null) {
   return obj;
 }
 
-function parseQuestionTableText(questionText) {
-  let tableData = null;
-  if (!questionText) return { questionText, tableData };
 
-  if (questionText.toLowerCase().includes('<table') || questionText.toLowerCase().replace(/\s+/g, '').includes('<table')) {
-    let cleaned = questionText
-      .replace(/<\s*table[^>]*>/gi, '<table>')
-      .replace(/<\s*\/+\s*table[^>]*>/gi, '</table>')
-      .replace(/<\s*tr[^>]*>/gi, '<tr>')
-      .replace(/<\s*\/+\s*tr[^>]*>/gi, '</tr>')
-      .replace(/<\s*th[^>]*>/gi, '<th>')
-      .replace(/<\s*\/+\s*th[^>]*>/gi, '</th>')
-      .replace(/<\s*td[^>]*>/gi, '<td>')
-      .replace(/<\s*\/+\s*td[^>]*>/gi, '</td>');
-
-    const tableRegex = /<table>([\s\S]*?)<\/table>/i;
-    const match = cleaned.match(tableRegex);
-    if (match) {
-      const tableContent = match[1];
-      const trRegex = /<tr>([\s\S]*?)<\/tr>/gi;
-      let trMatch;
-      const headers = [];
-      const rows = [];
-      
-      while ((trMatch = trRegex.exec(tableContent)) !== null) {
-        const rowContent = trMatch[1];
-        const thRegex = /<th>([\s\S]*?)<\/th>/gi;
-        let thMatch;
-        const ths = [];
-        while ((thMatch = thRegex.exec(rowContent)) !== null) {
-          ths.push(thMatch[1].trim());
-        }
-        if (ths.length > 0) {
-          headers.push(...ths);
-          continue;
-        }
-        
-        const tdRegex = /<td>([\s\S]*?)<\/td>/gi;
-        let tdMatch;
-        const tds = [];
-        while ((tdMatch = tdRegex.exec(rowContent)) !== null) {
-          tds.push(tdMatch[1].trim());
-        }
-        if (tds.length > 0) {
-          rows.push(tds);
-        }
-      }
-
-      if (rows.length > 0) {
-        tableData = {
-          headers: headers.length > 0 ? headers : rows[0],
-          rows: headers.length > 0 ? rows : rows.slice(1)
-        };
-        
-        const tableStartIdx = questionText.toLowerCase().search(/<\s*table/i);
-        const tableEndIdx = questionText.toLowerCase().search(/<\s*\/+\s*table/i);
-        if (tableStartIdx !== -1 && tableEndIdx !== -1) {
-          const endBracketIdx = questionText.indexOf('>', tableEndIdx);
-          if (endBracketIdx !== -1) {
-            const originalTableHtml = questionText.substring(tableStartIdx, endBracketIdx + 1);
-            questionText = questionText.replace(originalTableHtml, '').trim();
-          }
-        }
-      }
-    }
-  }
-
-  if (!tableData) {
-    const mdParsed = parseMarkdownTable(questionText);
-    if (mdParsed) {
-      tableData = mdParsed.tableData;
-      questionText = questionText.replace(mdParsed.originalTableText, '').trim();
-    }
-  }
-
-  return { questionText, tableData };
-}
 
 const localParseOverviewContent = (content) => {
   const result = { definition: '', mechanism: '', comparison: '', significance: '', intuitive: '' };
@@ -1184,7 +1092,16 @@ export function escapeJsonBackslashes(str) {
 
   while (i < str.length) {
     const char = str[i];
-    if (char === '"' && (i === 0 || str[i - 1] !== '\\')) {
+    let isEscaped = false;
+    let slashCount = 0;
+    let backtrack = i - 1;
+    while (backtrack >= 0 && str[backtrack] === '\\') {
+      slashCount++;
+      backtrack--;
+    }
+    isEscaped = slashCount % 2 !== 0;
+
+    if (char === '"' && !isEscaped) {
       inString = !inString;
       result += char;
       i++;
