@@ -47,13 +47,7 @@ export let generationStandardsList = [
     "title": "10. 아스키 아트(ASCII Art) 사용 기준",
     "content": "🚨 [아스키 아트 제한 철칙 - 극도로 중요!]: 일반적인 상황에서 아스키 아트(ASCII Art)를 사용하여 조잡하게 그래프나 그림을 그리는 행위는 전면 금지됩니다. 단, 사용자가 지문에서 명시적으로 '복습 7번', '믹스 11번', 또는 '흐름문제'라고 특별히 지정하여 출제를 요청하는 경우에 한해서만 예외적으로 아스키 아트를 사용하여 흐름도나 구조도를 그리는 것이 허용됩니다.",
     "updatedAt": new Date().toISOString()
-  },
-  {
-    "id": "user_generation_markdown_indentation",
-    "title": "11. 마크다운(Markdown) 국제 표준 계층 문법 엄수 철칙",
-    "content": "🚨 [마크다운 국제 표준 계층 문법 엄수 철칙 - 극도로 중요!]: 답변이나 해설(explanation) 필드에 `- ` 기호를 사용하여 불릿(Bullet) 리스트 항목을 출력할 때, 해당 항목이 상위 항목에 속하는 하위 항목(Sub-item)이라면 절대 상위 항목과 동일한 레벨로 평면화하여 나열하지 마십시오. **반드시 마크다운 국제 표준 문법에 따라 스페이스바 2칸 이상을 들여쓰기(Indentation)하여 부모-자식 간의 계층 구조를 명확히 구분하여 데이터의 무결성을 유지**하십시오. (예: `- 상위 항목` 바로 아랫줄에 `  - 하위 항목`)",
-    "updatedAt": new Date().toISOString()
-  }
+
 ];
 
 export let GENERATION_STANDARDS = assembleGenerationStandardsPrompt(generationStandardsList);
