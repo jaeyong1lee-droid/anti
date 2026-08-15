@@ -617,7 +617,8 @@ export function healQuizQuestionObject(q) {
         if ((is100x || is10x) && allLargeOrZero) {
           const factor = is100x ? 100 : 10;
           q.options = q.options.map(opt => {
-            const num = parseFloat(String(opt || '').replace(/[^0-9.-]/g, ''));
+            const stripped = String(opt || '').replace(/^(?:[①-⑳]|\(?\d+\)?[\.\s]*)/, '').replace(/[^0-9.-]/g, '');
+            const num = parseFloat(stripped);
             if (isNaN(num)) return opt;
             return (num / factor).toFixed(2);
           });
