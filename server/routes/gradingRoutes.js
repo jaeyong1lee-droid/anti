@@ -34,9 +34,7 @@ const LATEX_PROMPT_INSTRUCTIONS = `
 
 function cleanQuizQuestion(q) {
   if (!q) return q;
-  const isFlowchart = q.includes('┌──') || q.includes('▼') || q.includes('```') || q.includes('흐름도') || q.includes('플로우차트');
-  if (isFlowchart) return q.trim();
-  return q.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ').trim();
+  return q.trim();
 }
 
 

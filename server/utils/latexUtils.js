@@ -604,8 +604,11 @@ export function healQuizQuestionObject(q) {
         }
       }
 
-      const optNums = q.options.map(o => parseFloat(String(o || '').replace(/[^0-9.-]/g, ''))).filter(n => !isNaN(n));
-      const ansNum = parseFloat(String(q.answer || '').replace(/[^0-9.-]/g, ''));
+      const optNums = q.options.map(o => {
+        const stripped = String(o || '').replace(/^(?:[①-⑳]|\(?\d+\)?[\.\s]*)/, '').replace(/[^0-9.-]/g, '');
+        return parseFloat(stripped);
+      }).filter(n => !isNaN(n));
+      const ansNum = parseFloat(String(q.answer || '').replace(/^(?:[①-⑳]|\(?\d+\)?[\.\s]*)/, '').replace(/[^0-9.-]/g, ''));
       if (optNums.length === q.options.length && !isNaN(ansNum) && ansNum > 0 && ansNum < 1) {
         const is100x = optNums.some(n => Math.abs(n - ansNum * 100) < 1e-5);
         const is10x = optNums.some(n => Math.abs(n - ansNum * 10) < 1e-5);
@@ -644,10 +647,6 @@ export function healQuizQuestionObject(q) {
           if (sOpt.trim().endsWith(sAns.trim())) return 800;
           if (sOpt.trim().startsWith(sAns.trim())) return 700;
           
-          if (cAns && cOpt && (cOpt.includes(cAns) || cAns.includes(cOpt))) {
-            const diff = Math.abs(cOpt.length - cAns.length);
-            return 500 - diff;
-          }
           return 0;
         };
 
@@ -659,7 +658,7 @@ export function healQuizQuestionObject(q) {
           }
         }
 
-        if (bestOpt && maxScore > 0) {
+        if (bestOpt && maxScore >= 700) {
           q.answer = bestOpt;
         }
       }
@@ -838,7 +837,6 @@ export function healQuizQuestionObject(q) {
         return row.map((cell, cIdx) => {
           if (cIdx === 0) return cell;
 
-          const shouldBeInput = true;
           const inputId = `INPUT_${inputCount}`;
           const currentCount = inputCount;
           inputCount++;
@@ -931,39 +929,11 @@ export function healQuizQuestionObject(q) {
           if (foundVal !== undefined) {
             correctAnswer = foundVal;
           } else {
-            const isPlaceholder = isCellPlaceholder(trimmedCell);
-            correctAnswer = isPlaceholder ? '' : cell;
+            correctAnswer = cell;
           }
 
-          const isPlh = /^(?:[\[\(]?\s*[A-Za-z]\s*[\]\)]?|\[?\s*INPUT_\d+(?:_\d+)?\s*\]?|빈칸\s*\(?\d+\)?|\[?\s*[A-Z]_\d+\s*\]?)$/i.test(correctAnswer);
-          if ((!correctAnswer || isPlh) && typeof window !== 'undefined' && window.currentStudyData) {
-            const studyData = window.currentStudyData;
-            const cleanTitle = q.question.replace(/^\[.*?\]\s*/, '').trim();
-            const topicId = q.originalId || q.topic_id;
-            const rowLabel = row[0] || '';
-            
-            if (q.mixedType === 'overview' || q.subtype === '개요' || q.question.includes('[개요 복습]')) {
-              const matchedOverview = (studyData.overviews || []).find(ov => ov.id === topicId || ov.title === cleanTitle)
-                || (studyData.overviews || []).find(ov => ov.title.includes(cleanTitle) || cleanTitle.includes(ov.title));
-              if (matchedOverview && matchedOverview.content) {
-                const parsed = localParseOverviewContent(matchedOverview.content);
-                if (rowLabel && rowLabel.includes('정의') && parsed.definition) {
-                  correctAnswer = parsed.definition;
-                } else if (rowLabel && rowLabel.includes('메커니즘') && parsed.mechanism) {
-                  correctAnswer = parsed.mechanism;
-                }
-              }
-            } else if (q.mixedType === 'table' || q.subtype === '표채우기' || q.question.includes('[표 복습]')) {
-              const matchedTable = (studyData.tables || []).find(t => t.id === topicId || t.title === cleanTitle)
-                || (studyData.tables || []).find(t => t.title.includes(cleanTitle) || cleanTitle.includes(t.title));
-              if (matchedTable && matchedTable.html) {
-                const parsed = localParseHtmlTable(matchedTable.html);
-                if (parsed.rows && parsed.rows[rIdx] && parsed.rows[rIdx][cIdx] !== undefined) {
-                  correctAnswer = parsed.rows[rIdx][cIdx];
-                }
-              }
-            }
-          }
+          const isPlaceholder = isCellPlaceholder(trimmedCell);
+          const shouldBeInput = isPlaceholder;
 
           if (!shouldBeInput) {
             return (correctAnswer && !isCellPlaceholder(correctAnswer)) ? correctAnswer : cell;
@@ -1126,7 +1096,7 @@ export function escapeJsonBackslashes(str) {
           tempIndex++;
         }
         
-        const isLatex = latexCommands.some(cmd => commandWord === cmd || commandWord.startsWith(cmd));
+        const isLatex = latexCommands.includes(commandWord);
         if (isLatex) {
           result += '\\\\';
           i++;
@@ -1169,23 +1139,21 @@ export function parseLlmJson(text) {
 
 export function isCalculationQuestion(q) {
   if (!q) return false;
-  if (q.category !== '계산') return false;
 
   const qText = q.question || '';
   const isExplicitCompOrTheory = /비교하시오|특성을\s*비교|차이점|서술하시오|설명하시오/i.test(qText);
   if (isExplicitCompOrTheory) return false;
+
+  if (q.type === '주관식 (계산)' || q.subtype === '계산') return true;
+  if (q.calcItems && Array.isArray(q.calcItems) && q.calcItems.length > 0) return true;
 
   const hasCalcHeaders = q.tableData && Array.isArray(q.tableData.headers) && (
     q.tableData.headers[0] === '구하는 항목' || q.tableData.headers[1] === '계산 결과 및 답안'
   );
   if (hasCalcHeaders) return true;
 
-  if (q.type === '주관식 (계산)' || q.subtype === '계산') return true;
-  if (q.calcItems && Array.isArray(q.calcItems) && q.calcItems.length > 0) return true;
-
-  if (/Terzaghi|기초|지지력|허용하중|침투유량/i.test(qText) && /산정|계산|구하시오/i.test(qText)) {
-    return true;
-  }
+  const hasCalcKeyword = /산정하시오|계산하시오|구하시오/i.test(qText);
+  if (q.category === '계산' && hasCalcKeyword) return true;
 
   return false;
 }
