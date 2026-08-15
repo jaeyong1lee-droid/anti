@@ -451,7 +451,7 @@ export const TableQuiz = React.memo(function TableQuiz({
       if (isMobile) {
         const newWidth = Math.max(idx === 0 ? 50 : 60, targetColStartWidth + deltaX);
         setCompMobileColWidths(prev => {
-          const next = [...prev];
+          const next = widths.map(w => `${w}px`);
           if (idx === 0) {
             next[0] = `${newWidth}px`;
             const storageKey = `anti_mobile_first_comp_col_width_${compColCount}`;
@@ -466,7 +466,7 @@ export const TableQuiz = React.memo(function TableQuiz({
       } else {
         const deltaPercent = (deltaX / totalWidth) * 100;
         setCompColWidths(prev => {
-          const next = [...prev];
+          const next = [...percentWidths];
           if (idx === 0) {
             const sum = percentWidths[0] + percentWidths[1];
             const minColWidth = 5;
@@ -886,7 +886,7 @@ export const TableQuiz = React.memo(function TableQuiz({
         const remW = Math.max(84, Math.floor((containerW - newW0) / remCount));
 
         setMobileColWidths(prev => {
-          const next = [...prev];
+          const next = widths.map(w => `${w}px`);
           next[0] = `${newW0}px`;
           for (let k = 1; k < colCount; k++) {
             next[k] = `${remW}px`;
@@ -903,7 +903,7 @@ export const TableQuiz = React.memo(function TableQuiz({
         const newWidth = Math.max(idx === 0 ? 60 : 84, targetColStartWidth + deltaX);
         
         setMobileColWidths(prev => {
-          const next = [...prev];
+          const next = widths.map(w => `${w}px`);
           next[idx] = `${newWidth}px`;
           try {
             localStorage.setItem(`anti_global_mobile_col_widths_${colCount}`, JSON.stringify(next));

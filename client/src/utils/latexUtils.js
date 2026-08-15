@@ -45,9 +45,6 @@ export function healBackslashes(str) {
   healed = healed.replace(/(?<!\\)\b(log|ln)\b/g, '\\$1')
                  .replace(/(?<!\\)\b(log|ln)(?=[pt_0-9])/g, '\\$1 ');
 
-  // [Self-Healing] Remove hallucinated backslashes right before Korean words (e.g., \증가 -> 증가)
-
-
   BACKSLASH_REGEXES.forEach(({ kw, regex }) => {
     healed = healed.replace(regex, `\\${kw}`);
   });
@@ -307,11 +304,6 @@ export function healInvertedDelimiters(text) {
   return text;
 }
 
-export function balanceMathBraces(str) {
-  return str;
-}
-
-
 // 3. 메인 레이아웃 및 수식 복구 마스터 함수
 export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = null) {
   if (!text || typeof text !== 'string') return text;
@@ -326,9 +318,6 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   // Normalize dashes (en-dash, em-dash, math minus) to standard hyphens
   processed = processed.replace(/[–—−]/g, '-');
 
-  // [Self-Healing] Fix beta subscript sub-nesting rendering error (\beta_{0,\beta_1} -> \beta_0, \beta_1)
-
-
   // [Self-Healing] Fix empty fraction denominator followed by variable (e.g. \frac{1}{} \beta or \frac{1}{ } \beta -> \frac{1}{\beta})
   processed = processed.replace(/\\(d?frac)\{([^{}\n]+)\}\s*\{\s*\}\s*(\\?[a-zA-Z0-9_]+)/g, '\\$1{$2}{$3}');
 
@@ -341,21 +330,9 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
     return `$${p1}${math}${p3}$`;
   });
 
-  
-  
-  // [Self-Healing] Remove space between backslash and Greek commands (including trailing alphanumeric characters)
-
-
-
-
-
-
-
-
   // [Self-Healing] Strip KaTeX-unsupported MathJax \pu{...} commands (renders red in KaTeX)
   processed = processed.replace(/\\pu\s*\{([^}]+)\}/gi, '$1');
 
-  
   processed = healInvertedDelimiters(processed);
 
   // Convert Greek letters with numbers (e.g. sigma1, sigma_1 -> \sigma_1)
@@ -369,24 +346,13 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
 
 
 
-  // Replace Greek unicode letters and standalone words with LaTeX commands
-  
-  // Convert English names of Greek letters if written as standalone words (case-insensitive)
-
   // Parse root patterns
   processed = replaceRoots(processed);
 
-  
-  // [Self-Healing] (포아송비 강제 u/v -> \nu 오치환 로직 완전 삭제 - 간극수압 u 보존)
-
-  
-  
   if (!isNested) {
     processed = htmlTableToMarkdown(processed, null);
     processed = wrapMarkdownTables(processed);
   }
-
-  // (Poisson's ratio healing logic moved above JSON escape restoration to prevent table breaking)
 
   // [Self-Healing] Restore collapsed newlines for variable list items
   processed = processed.replace(/(?<=:[^\n]*)\s+([–—−-]\s*(?:\$[^\$]+\$|[a-zA-Z0-9_\\\{\}]+)\s*:)/g, '\n$1');
@@ -414,7 +380,6 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
     if (section.startsWith('<!--START_TABLE-->')) {
       return healMarkdownTable(section, null); // 표 영역은 개별 셀 치유 및 원본 구조 유지
     }
-    // 문장 한복판에 쪼개진 단일 줄바꿈(\n)을 공백으로 병합하던 규칙을 비활성화하여 줄바꿈을 보존합니다.
     return section;
   }).join('');
 
@@ -468,8 +433,6 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
     }
     result += needSpace ? ' ' + current.content : current.content;
   }
-
-  // 한국어 조사 결합 어미 공백 규격 조율
 
   result = result.trim();
 
@@ -1261,8 +1224,6 @@ export function healQuizQuestionObject(q) {
         });
       }
       q.answers = newAnswers;
-
-      // Forced replacement of question text with (A), (B), (C) list completely deleted
     }
     
     // [Self-Healing] comparisonTableData의 answers 누락 복구
@@ -1314,8 +1275,6 @@ export function healQuizQuestionObject(q) {
         });
       });
     }
-
-    // Legacy geotechnical domain patch has been removed.
   }
   return healDeep(q);
 }
@@ -1325,53 +1284,36 @@ export function healFormulaQuestionObject(f) { return healDeep(f); }
 export function healAnswersheetQuestionObject(a) { return healQuizQuestionObject(a); }
 
 export const LATEX_PROMPT_INSTRUCTIONS = `
-[🚨 극도로 중요한 LaTeX 수식 및 마크다운 렌더링 절대 준수 수칙]:
-1. 🚨 [수식 달러 기호($) 감싸기 필수 및 역슬래시 유출 엄격 금지]: 모든 수식은 반드시 $나 $$로 감싸서 출력하라. 모든 수학 공식, 변수 기호(예: $t$, \\\\Delta t, \\\\sigma, \\\\gamma_w, $S_t$, \\\\alpha, \\\\beta 등)는 단 하나도 빠짐없이 100% $ 형태의 달러 기호로 감싸서 출력하십시오. 날것의 텍스트 표기(예: \\\\gamma_w)나 마크다운 백틱(\`) 사용은 엄격히 금지합니다. 반드시 $\\\\gamma_w$ 와 같이 감싸십시오. 보기 문항과 해설(explanation, answer 등)에도 수식을 적극적으로 활용하되 반드시 기호로 감싸야 합니다.
-3. 🚨 [대체 기호 사용 절대 금지]: JSON 파싱 에러를 우회한다는 명목으로 역슬래시(\\) 대신 샵(#) 기호나 다른 임의의 기호(예: #sigma_1, #frac, #sigma_3 등)를 LaTeX 명령어 자리에 대입하여 출력하는 행위를 엄격히 금지합니다. 수식 기호는 반드시 \\\\sigma_1, \\\\sigma_3 와 같이 이중 백슬래시로 시작하는 올바른 LaTeX 수식으로만 작성하십시오.
-4. 인라인 수식 작성 시 $ 기호와 수식 내용 사이에 절대 공백(스페이스)을 두지 마십시오. (예: $수식$ (O) / $ 수식 $ (X))
-5. 인라인 수식 내 줄바꿈 절대 금지: 문장 중간의 $ 기호 사이 내용에서는 엔터(줄바꿈)를 절대 하지 말고 단일 줄로 이어서 작성하십시오.
+[LaTeX 수식 및 마크다운 작성 지침]:
+1. 모든 수식, 변수 기호(예: $t$, $\Delta t$, $\sigma$, $\gamma_w$, $S_t$, $\alpha$, $\beta$ 등)는 반드시 $ 또는 $ 기호로 감싸서 출력하십시오. 날것의 텍스트 표기나 백틱(\`) 표기는 금지합니다.
+2. 역슬래시(\\) 대신 샵(#) 등 임의의 기호를 사용하지 말고, 정규 LaTeX 명령어(\\sigma, \\frac 등)를 사용하십시오.
+3. 인라인 수식($...$) 작성 시 기호 안쪽에 공백이나 줄바꿈을 넣지 마십시오. ($수식$ (O) / $ 수식 $ (X))
+4. 단순 수치나 단위(예: 10m, 20%)에는 수식 기호($)를 쓰지 말고 일반 텍스트로 작성하십시오.
+5. 수식 내부에서 부등호는 마크다운 파싱 오류를 방지하기 위해 반드시 \\lt, \\gt 로 표기하십시오.
+6. 달러 기호 자체를 이스케이프(\\$ 또는 \\\\$)하지 마십시오.
+7. 수식 내부에서 \\text{한글}을 사용하지 말고, 수식을 닫은 후 한글을 작성하십시오. (예: $B$ 가 4배 증가)
+8. 변수와 아래첨자(예: $N_c$, $D_f$, $k_h$)는 중간에 달러 기호를 쪼개지 말고 하나의 수식 블록으로 감싸십시오.
+9. 리스트 기호(* 또는 -) 사용 시 기호 뒤에 반드시 공백을 두십시오.
+10. <div>, <span> 등의 HTML 태그 사용을 금지하며 강조는 마크다운(**강조**)을 사용하십시오.
+11. 내용이 없는 빈 소제목/글머리 기호는 출력하지 마십시오.
 
-8. 단순 수치나 단위(예: 10m, 20% 등)에는 LaTeX 기호($)를 쓰지 말고 일반 텍스트로 작성하십시오.
-9. 수식 내부에서 특수 기호인 '작다' 기호는 \\\\lt 로, '크다' 기호는 \\\\gt 로 표기하여 마크다운 파싱 에러를 원천 차단하십시오.
-11. 🚨 [달러 기호($) 이스케이프 절대 금지]: 일반 텍스트나 수식 내에서 달러 기호 자체를 문자 그대로 출력하기 위해 역슬래시를 붙여 이스케이프(\\$ 또는 \\\\$)하는 행위를 엄격히 금지합니다.
-12. LaTeX 공식 내부 중괄호 내에 한글을 결합하는 \\\\text{한글} 과 같은 행위는 철저히 금지합니다. 한글과 만날 때는 수식을 즉시 닫고 공백을 준 뒤 한글을 배치하십시오. (예: $B$ 가 4배로 증가)
-13. 달러 기호($ 또는 $$)는 반드시 수식 전체를 감싸는 가장 바깥쪽에만 위치해야 하며, 중괄호({}) 내부에 달러 기호가 침투하지 않도록 이중 마킹을 엄격히 금지합니다. 단, 일반 괄호 '()' 안의 수식을 전체 $ 기호 하나로 감싸는 것은 올바른 문법입니다.
-14. 🚨 [마크다운 리스트 및 줄바꿈 수칙]: JSON 응답 내에서 항목을 나열하기 위해 리스트 기호(* 또는 -)를 사용할 때는 반드시 기호 뒤에 스페이스(공백)를 한 칸 띄우고 텍스트를 작성하십시오. (예: "* k: 투수계수" (O) / "*k: 투수계수" (X)). 
-15. 🚨 [HTML 태그 사용 절대 금지]: 어떠한 경우에도 답변 항목 내부에 <div>, <span>, <strong> 등 임의의 HTML 스타일 태그를 직접 작성하여 주입하지 마십시오. 레이아웃 붕괴를 유발하므로 텍스트 강조 시에는 오직 마크다운 문법(예: **강조**)을 사용하십시오.
-17. 🚨 [빈 기호/제목 출력 금지]: 특정 항목(예: '메커니즘', '기본가정' 등)에 해당하는 내용이 없거나 쓸 필요가 없다면, 해당 소제목 기호나 단락 자체를 아예 생략하고 출력하지 마십시오. 빈 글머리 기호(예: "• 메커니즘:")만 덩그러니 남겨두는 행위는 엄격히 금지합니다.
-18. 🚨 [수식 변수 및 아래첨자 결합 유지 규칙]: 수학 기호나 공식 내에서 물리량 변수 기호와 그 아래첨자(예: Nc, Df, kh 등)는 절대로 중간에 달러 기호($ 또는 $$)를 끼워 넣어서 서로 다른 블록으로 쪼개서 출력하지 마십시오. 반드시 수식 전체를 감싸서 하나의 수식 블록 내에 모두 포함시켜야 합니다. (예: $N_c$ (O) / N$_c$ (X), $\\text{N}_c$ (O) / \\text{N}$$_c (X))
-
-[원시 JSON 출력 엄격 준수 규칙]
-- 절대로 단일 백슬래시('\\frac') 형태로 가공되지 않은 원시 문자열을 JSON 내부에 주입하여 문법 에러(Cartesian/Escape Syntax Error)를 유발하지 마십시오.
-
-[🚨 수학적/산술적 검증 및 모순 방지 규칙 - 극도로 중요!]:
-- 객관식 문제 출제 시, 정답("answer")으로 지정하는 값은 반드시 해설("explanation")에서 풀이하여 유도한 최종 계산값과 완벽하게 일치해야 합니다.
-- 수식 계산(예: 비례/반비례 관계, 분모 분수 관계, 제곱근 및 지수 연산 등)을 수행할 때는 종이에 적듯 단계별로 산술적 검증을 한 뒤, 최종 정답값의 보기(options) 문자열이 "answer" field에 오타 없이 똑같이 들어가도록 하십시오.
-- 🚨 **[반비례 및 분모 변수 변동 판단 주의]**: 변수가 공식의 분모에 위치하는 반비례 관계(예: $1/\beta \propto B^{-1/4}$)의 경우, 변수($B$)가 증가하면 값($1/\beta$)은 반드시 감소해야 합니다. 분모에 변수가 있어 감소해야 하는 물리적 사실을 무시하고 오히려 증가한다고 결론 내리는 수학적/논리적 모순적 환각(Hallucination)을 절대로 저지르지 마십시오.
-- 예를 들어 해설에서 '1/4배(0.25배)가 된다'고 올바르게 풀이해 놓고, 정답 필드("answer")에 '0.125배' 또는 '2배 증가' 같은 엉뚱한 값을 세팅하는 논리적 모순/환각을 절대 저지르지 마십시오.
+[수학적 정합성 규칙]:
+- 객관식 문제의 정답(answer)은 해설(explanation)의 계산 결과와 반드시 완벽히 일치해야 합니다.
+- 분모에 위치한 변수($1/\\beta \\propto B^{-1/4}$)의 증가/감소 관계 등 반비례 논리 모순이 발생하지 않도록 주의하십시오.
 `;
 
 export const LATEX_CHAT_PROMPT_INSTRUCTIONS = `
-[🚨 극도로 중요한 LaTeX 수식 및 마크다운 렌더링 절대 준수 수칙]:
-0. 🚨 [절대 금지 - JSON 응답 금지]: 당신은 실시간 대화형 챗봇/해설사이므로 절대로 JSON 형식(예: {"concept": "...", "explanation": "..."})으로 응답을 감싸서 출력하지 마십시오. 중괄호({ })나 큰따옴표가 들어간 JSON 키-값 구조는 렌더링 오류를 발생시킵니다. 오직 일반적인 한글 대화 문장 및 마크다운 포맷으로만 직접 답변하십시오.
-1. 🚨 [수식 달러 기호($) 감싸기 필수]: 모든 수식은 반드시 $나 $$로 감싸서 출력하라. 모든 수학 공식 및 개별 물리/공학 변수 기호(예: $K_s$, $k_h$, $e$, $c$, \\phi, \\sigma, \\tau, $z_c$, $F.S.$ 등)는 단독 문장 혹은 보기, 해설 내에 노출될 때도 무조건 인라인 LaTeX 기호 포맷인 $변수명$ 형태로 감싸서 출력하십시오. 날것의 텍스트 표기(예: \\gamma_w)는 엄격히 금지합니다. 반드시 $\\gamma_w$ 와 같이 감싸십시오. 답변에도 수식을 적극적으로 활용하되 반드시 기호로 감싸야 합니다.
-3. 🚨 [대체 기호 사용 절대 금지]: 역슬래시(\\) 대신 샵(#) 기호나 다른 임의의 기호(예: #sigma_1, #frac, #sigma_3 등)를 LaTeX 명령어 자리에 대입하여 출력하는 행위를 엄격히 금지합니다. 수식 기호는 반드시 \\sigma_1, \\sigma_3 와 같이 올바른 백슬래시 기호로만 작성하십시오.
-4. In라인 수식 작성 시 $ 기호와 수식 내용 사이에 절대 공백(스페이스)을 두지 마십시오. (예: $수식$ (O) / $ 수식 $ (X))
-5. 인라인 수식 내 줄바꿈 절대 금지: 문장 중간의 $ 기호 사이 내용에서는 엔터(줄바꿈)를 절대 하지 말고 단일 줄로 이어서 작성하십시오.
-7. 단순 수치나 단위(예: 10m, 20% 등)에는 LaTeX 기호($)를 쓰지 말고 일반 텍스트로 작성하십시오.
-8. 수식 내부에서 특수 기호인 '작다' 기호는 \\lt 로, '크다' 기호는 \\gt 로 표기하여 마크다운 파싱 에러를 원천 차단하십시오.
-10. LaTeX 공식 내부 중괄호 내에 한글을 결합하는 \\text{한글} 과 같은 행위는 철저히 금지합니다. 한글과 만날 때는 수식을 즉시 닫고 공백을 준 뒤 한글을 배치하십시오. (예: $B$ 가 4배로 증가)
-11. 🚨 [달러 기호($) 이스케이프 절대 금지]: 일반 텍스트나 수식 내에서 달러 기호 자체를 문자 그대로 출력하기 위해 역슬래시를 붙여 이스케이프(\\$ 또는 \\\\$)하는 행위를 엄격히 금지합니다.
-12. 수식 작성 시 중괄호({}) 내부에 달러 기호($)가 침투하지 않도록 이중 마킹을 엄격히 금지합니다. 단, 일반 괄호 '()' 안의 수식을 전체 $ 기호 하나로 감싸는 것은 올바른 문법입니다.
-13. 🚨 [마크다운 리스트 및 줄바꿈 수칙]: 항목을 나열하기 위해 리스트 기호(* 또는 -)를 사용할 때는 반드시 기호 뒤에 스페이스(공백)를 한 칸 띄우고 텍스트를 작성하십시오. (예: "* k: 투수계수" (O) / "*k: 투수계수" (X)). 
-14. 🚨 [HTML 태그 사용 절대 금지]: 어떠한 경우에도 답변에 <div>, <span>, <strong> 등 임의의 HTML 스타일 태그를 직접 작성하여 주입하지 마십시오. 레이아웃 붕괴를 유발하므로 텍스트 강조 시에는 오직 마크다운 문법(예: **강조**)을 사용하십시오.
-15. 🚨 [빈 기호/제목 출력 금지]: 특정 항목(예: '메커니즘', '기본가정' 등)에 해당하는 내용이 없거나 쓸 필요가 없다면, 해당 소제목 기호나 단락 자체를 아예 생략하고 출력하지 마십시오. 빈 글머리 기호(예: "• 메커니즘:")만 덩거리니 남겨두는 행위는 엄격히 금지합니다.
-16. 🚨 [표(Table) 작성 철칙]: 답변 중 지표, 수치 비교, 매개변수 정리 등 표(Table) 형태의 데이터 표현이 필요한 경우, HTML이나 LaTeX tabular/matrix/array 환경을 사용하지 말고 반드시 표준 **마크다운 표(Markdown Table)** 형식(| 열1 | 열2 |과 구분선 | --- | --- |)으로만 작성하십시오.
-17. 🚨 [컨테이너 중첩 절대 금지]: 여러 개의 수식 전개 과정이나 한글 설명 리스트 전체를 하나의 거대한 디스플레이 수식 블록($$...$$)으로 통째로 감싸지 마십시오. 반드시 개별 공식마다 독립된 $ 기호만 사용하십시오.
-18. 🚨 [달러 기호 매칭 오류 및 이탈 방지 규칙]: 리스트 기호나 숫자가 포함된 번호 매기기(예: "1) 연성 벽체...", "2) 고강성...")가 포함된 문단 내에서 공식들을 나열할 때, 각 공식들은 개별적으로 완벽히 수식 기호($)로 열고 닫혀 있어야 합니다. 절대로 여는 수식 기호가 없는 상태에서 닫는 수식 기호만 배치하거나, 혹은 어설프게 매칭되어 한글 제목 전체가 수식 영역 안으로 빨려 들어가지 않도록 극도로 유의하십시오.
-    - ❌ [절대 금지 오류 예시]: d_{H,max1} = ... $ 2) CIP 공법 적용 시: $ d_{H,max2} = ... (중간 한글 제목이 달러 기호에 갇히는 형태는 렌더링을 완전히 망가뜨립니다.)
-21. 🚨 [출처 및 원보고서 실측 내용 상세 작성 철칙]: 답변 중 참고자료나 출처(KDS/KCS, 원보고서, Wikipedia 등)를 언급할 때는 단편적인 제목만 딸랑 출력하지 말고, 해당 출처/보고서에서 실제 확인한 구체적인 공학적 수치, 핵심 제어 기준, 원보고서 실측 데이터 및 수리/구조 역학 공식 내용을 정량적이고 상세하게 포함하여 작성하십시오.
-22. 🚨 [조악한 아스키(ASCII) 슬래시(/) 세로 그래프 출력 엄격 금지]: 20줄 이상 세로로 / 나 | 기호를 흉하게 늘어뜨린 조악한 아스키 아트 그래프 출력을 절대 금지합니다. 그래프 묘사가 필요한 경우 텍스트 요약, 마크다운 표(Markdown Table) 또는 공식 수명 문구로 작성하십시오.
+[LaTeX 수식 및 대화 포맷 지침]:
+1. JSON 형식으로 감싸지 말고, 일반 대화 문장 및 마크다운 포맷으로 답변하십시오.
+2. 모든 수식 및 변수 기호($K_s$, $k_h$, $e$, $c$, $\\phi$, $\\sigma$, $\\tau$ 등)는 단독/인라인 여부와 무관하게 반드시 $ 또는 $ 로 감싸십시오.
+3. 인라인 수식($...$) 안쪽의 시작/끝 공백 및 줄바꿈을 금지합니다.
+4. 단순 수치/단위에는 $ 기호를 쓰지 마십시오.
+5. 수식 내 부등호는 \\lt, \\gt 를 사용하십시오.
+6. 수식 내부 \\text{한글} 사용을 금지하며, 한글과 만날 때는 수식을 닫고 공백을 두십시오.
+7. 데이터 정리가 필요한 경우 HTML이나 tabular 대신 마크다운 표(| 열 | 구분선 |)를 사용하십시오.
+8. 설명 리스트 전체를 하나의 거대한 수식 블록($...$)으로 감싸지 말고 개별 수식마다 분리하여 적용하십시오.
+9. 출처나 보고서를 인용할 때는 단순 제목 외에 구체적인 공학적 수치, 기준, 계산 공식을 포함하여 정량적으로 작성하십시오.
+10. 아스키 아트 형태의 세로 그래프 출력을 금지하며, 마크다운 표나 텍스트 수치 요약으로 대체하십시오.
 `;
 // Trigger redeployment with clean UTF-8 BOM-less encoding.
 
@@ -1488,8 +1430,7 @@ export function isCalculationQuestion(q) {
   return false;
 }
 
-export async function validateAndHealQuestion(question, callLLMWithFailover, topicTitle = '', topicKeywords = '', fileText = '') {
+export async function validateAndHealQuestion(question) {
   if (!question) return question;
   return healQuizQuestionObject(question);
 }
-
