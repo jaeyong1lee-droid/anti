@@ -1,7 +1,7 @@
 // ============================================================================
 // Markdown, KaTeX LaTeX, and HTML Iframe Rendering Helper Utilities
 // ============================================================================
-import { healLatexFormulas, balanceMathBraces } from './latexUtils.js';
+import { healLatexFormulas } from './latexUtils.js';
 
 export const getCorrectAnswerForInput = (q, inputId) => {
   if (!q) return '';
