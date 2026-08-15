@@ -3,7 +3,6 @@ export function tokenizeForHealing(text) {
   if (!text) return [];
   const tokens = [];
   let lastIndex = 0;
-  // Match table blocks or inline/display math blocks
   const regex = /(<!--START_TABLE-->[\s\S]*?<!--END_TABLE-->)|(\$\$.*?\$\$)|(\$[^\$\n]{1,200}\$)/gs;
   let match;
 
@@ -54,7 +53,6 @@ export function healBackslashes(str) {
 export function htmlTableToMarkdown(html, poissonSymbol = null) {
   if (!html) return html;
 
-  // 1. 깨진 공백 및 태그 정제 (시작 태그 및 끝 태그)
   let cleanHtml = html
     .replace(/<\s*table[^>]*>/gi, '<table>')
     .replace(/<\s*\/+\s*table[^>]*>/gi, '</table>')
@@ -65,7 +63,6 @@ export function htmlTableToMarkdown(html, poissonSymbol = null) {
     .replace(/<\s*td[^>]*>/gi, '<td>')
     .replace(/<\s*\/+\s*td[^>]*>/gi, '</td>');
 
-  // 2. 정규식을 이용해 <table> 블록 전체 포착 후 마크다운 구조로 빌드
   return cleanHtml.replace(/<table>([\s\S]*?)<\/table>/gi, (match, tableContent) => {
     const rows = [];
     const trRegex = /<tr>([\s\S]*?)<\/tr>/gi;
@@ -79,7 +76,7 @@ export function htmlTableToMarkdown(html, poissonSymbol = null) {
       const cellRegex = /<(?:th|td)[^>]*>([\s\S]*?)<\/\s*(?:th|td)>/gi;
       let cellMatch;
       while ((cellMatch = cellRegex.exec(rowContent)) !== null) {
-        cells.push(healLatexFormulas(cellMatch[1].trim(), true, poissonSymbol));
+        cells.push(cellMatch[1].trim().replace(/\|/g, '\\vert '));
       }
       
       if (cells.length > 0) {
@@ -114,7 +111,6 @@ export function parseMarkdownTable(questionText) {
       const nextLine = lines[i + 1].trim();
       const isSeparator = nextLine.includes('-') && nextLine.includes('|') && /^[\s|:\-]+$/.test(nextLine);
       if (isSeparator) {
-        // We found a table starting at index i
         const startIdx = i;
         let endIdx = i + 1;
         while (endIdx + 1 < lines.length && lines[endIdx + 1].trim().includes('|')) {
@@ -187,7 +183,7 @@ export function wrapMarkdownTables(text) {
 }
 
 function healMarkdownTable(tableText, poissonSymbol = null) {
-  const lines = tableText.split('\n');
+  const lines = tableText.split(/\r?\n/);
   const healedLines = lines.map(line => {
     const trimmed = line.trim();
     if (!trimmed.includes('|')) return line;
@@ -213,11 +209,24 @@ function healMarkdownTable(tableText, poissonSymbol = null) {
   return healedLines.join('\n');
 }
 
-// [Root Cause Removal] Auto-wrapping logic (formulaRegex, simpleVariableRegex) deleted to prevent catastrophic KaTeX render failures on unescaped Korean text and prevent overriding AI's strict explicit delimiters.
-
 function replaceRoots(str) {
   let processed = str;
-  processed = processed.replace(/√(?!\()/g, '\\sqrt ');
+
+  const checkInsideMath = (text, offset) => {
+    const before = text.substring(0, offset);
+    const blockMatches = (before.match(/\$\$/g) || []).length;
+    const isInsideBlock = blockMatches % 2 === 1;
+    
+    const stripped = before.replace(/\$\$/g, '');
+    const isInsideInline = (stripped.match(/\$/g) || []).length % 2 === 1;
+    
+    return isInsideBlock || isInsideInline;
+  };
+
+  processed = processed.replace(/(?<![0-9a-zA-Z\$\\])√([0-9a-zA-Z_]+)(?!\()/g, (match, p1, offset, fullStr) => {
+    const isInside = checkInsideMath(fullStr, offset);
+    return isInside ? `\\sqrt{${p1}}` : `$\\sqrt{${p1}}$`;
+  });
 
   let regex = /(?:([0-9]+)(?:_|계)?)?(?:루트|√)\(/;
   let match;
@@ -237,18 +246,12 @@ function replaceRoots(str) {
     
     if (depth === 0) {
       const content = processed.substring(index + matchLength, scanIdx - 1);
+      const isAlreadyInMath = checkInsideMath(processed, index);
       
-      // Check if the match is already inside an existing math block
-      const beforeText = processed.substring(0, index);
-      const dollarCount = (beforeText.match(/\$/g) || []).length;
-      const isAlreadyInMath = (dollarCount % 2 === 1);
-      
-      let replacement;
-      if (isAlreadyInMath) {
-        replacement = rootNum ? `\\sqrt[${rootNum}]{${content}}` : `\\sqrt{${content}}`;
-      } else {
-        replacement = rootNum ? `$\\sqrt[${rootNum}]{${content}}$` : `$\\sqrt{${content}}$`;
-      }
+      const replacement = isAlreadyInMath 
+        ? (rootNum ? `\\sqrt[${rootNum}]{${content}}` : `\\sqrt{${content}}`)
+        : (rootNum ? `$\\sqrt[${rootNum}]{${content}}$` : `$\\sqrt{${content}}$`);
+        
       processed = processed.substring(0, index) + replacement + processed.substring(scanIdx);
     } else {
       break;
@@ -261,8 +264,7 @@ export function healInvertedDelimiters(text) {
   if (!text || typeof text !== 'string') return text;
 
   const hasFormulaCommands = (str) => {
-    // Check if it has backslash/won commands or common math notations
-    const rx = /(?:₩|\\)(?:Delta|sigma|gamma|cdot|tau|pi|theta|alpha|beta|phi|omega|mu|lambda|rho|nu|times|frac|dfrac|le|ge|ne|neq|sqrt|sum|int|partial|sin|cos|tan)\b|[+\-*/=<>_^]|\b[a-zA-Z]_[a-zA-Z0-9]\b/i;
+    const rx = /(?:₩|\\)(?:Delta|sigma|gamma|cdot|tau|pi|theta|alpha|beta|phi|omega|mu|lambda|rho|nu|times|frac|dfrac|le|ge|ne|neq|sqrt|sum|int|partial|sin|cos|tan)\b|\b[a-zA-Z]_[a-zA-Z0-9]\b/i;
     return rx.test(str);
   };
 
@@ -280,21 +282,19 @@ export function healInvertedDelimiters(text) {
       if (isOdd && !isFormula && /[가-힣]/.test(content)) {
         oddPlainCount++;
       }
-      if (!isOdd && isFormula) {
+      if (!isOdd && isFormula && !/[가-힣]/.test(content)) {
         evenFormulaCount++;
       }
     }
 
     if (oddPlainCount > 0 && evenFormulaCount > 0) {
-      // Rebuild by swapping delimiters
       let rebuilt = '';
       for (let i = 0; i < parts.length; i++) {
         const content = parts[i];
-        if (hasFormulaCommands(content)) {
-          // If it's a formula, make sure it is wrapped in $
+        const isSimpleMath = /^[a-zA-Z0-9\s+\-*/=<>_^().]+$/.test(content) && /[+\-*/=<>_^]/.test(content);
+        if ((hasFormulaCommands(content) || isSimpleMath) && !/[가-힣]/.test(content)) {
           rebuilt += `$${content.trim()}$`;
-        } else {
-          // Otherwise, it's plain text, keep it as-is (without $)
+        } else if (content.trim()) {
           rebuilt += content;
         }
       }
@@ -308,108 +308,61 @@ export function healInvertedDelimiters(text) {
 export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = null) {
   if (!text || typeof text !== 'string') return text;
 
-  text = text.replace(/₩/g, '\\');
+  let processed = text.replace(/₩/g, '\\');
   
-  // [Self-Healing] Convert AI's hallucinated \\( and \\[ LaTeX delimiters strictly to $ and $$
-  text = text.replace(/\\\(([\\s\\S]*?)\\\)/g, (m, p1) => '$' + p1.trim() + '$');
-  text = text.replace(/\\\[([\\s\\S]*?)\\\]/g, (m, p1) => '$$' + p1.trim() + '$$');
-
-  let processed = text;
-  // Normalize dashes (en-dash, em-dash, math minus) to standard hyphens
+  processed = processed.replace(/\$\$([\s\S]*?)\$\$/g, (m, p1) => '$$' + p1.replace(/\|/g, '\\vert ') + '$$');
+  processed = processed.replace(/\$([^\$\n]+)\$/g, (m, p1) => '$' + p1.replace(/\|/g, '\\vert ') + '$');
+  
+  processed = processed.replace(/\\\([\s\S]*?\\\)/g, (m, p1) => '$' + p1.trim() + '$');
+  processed = processed.replace(/\\\[([\s\S]*?)\\\]/g, (m, p1) => '$$' + p1.trim() + '$$');
   processed = processed.replace(/[–—−]/g, '-');
 
-  // [Self-Healing] Fix empty fraction denominator followed by variable (e.g. \frac{1}{} \beta or \frac{1}{ } \beta -> \frac{1}{\beta})
   processed = processed.replace(/\\(d?frac)\{([^{}\n]+)\}\s*\{\s*\}\s*(\\?[a-zA-Z0-9_]+)/g, '\\$1{$2}{$3}');
-
-  // [Self-Healing] Fix duplicated variable right after fraction (e.g. \frac{1}{\beta} \beta -> \frac{1}{\beta})
   processed = processed.replace(/\\(d?frac)\{([^{}\n]+)\}\s*\{\s*([^{}\n]+?)\s*\}\s*\\?\3\b/g, '\\$1{$2}{$3}');
 
-  
-  // [Self-Healing] Fix split dollar signs inside brace subscripts (e.g. s_{t- $\Delta t$} or s_{t- $\Delta$ t} -> $s_{t-\Delta t}$)
   processed = processed.replace(/(\b\\?[a-zA-Z0-9_']+_\{\s*[^{}\$\n]*)\$([^\$\n]+)\$([^{}\$\n]*\})/g, (match, p1, math, p3) => {
     return `$${p1}${math}${p3}$`;
   });
 
-  // [Self-Healing] Strip KaTeX-unsupported MathJax \pu{...} commands (renders red in KaTeX)
-  processed = processed.replace(/\\pu\s*\{([^}]+)\}/gi, '$1');
-
+  processed = processed.replace(/\\pu\s*\{([^}]+)\}/gi, (match, p1) => {
+    return ` ${p1.trim()} `;
+  });
   processed = healInvertedDelimiters(processed);
-
-  // Convert Greek letters with numbers (e.g. sigma1, sigma_1 -> \sigma_1)
-  
-  // Replace Won symbol (₩) with backslash (\) to restore LaTeX commands
-  processed = processed.replace(/₩/g, '\\');
-
-  // [Self-Healing] Remove hallucinated backslashes right before Korean words (e.g., \증가 -> 증가)
-  // This must be done here before math expression detection to prevent malformed regex matches.
-
-
-
-
-  // Parse root patterns
   processed = replaceRoots(processed);
 
   if (!isNested) {
-    processed = htmlTableToMarkdown(processed, null);
     processed = wrapMarkdownTables(processed);
+    processed = htmlTableToMarkdown(processed, null);
   }
 
-  // [Self-Healing] Restore collapsed newlines for variable list items
   processed = processed.replace(/(?<=:[^\n]*)\s+([–—−-]\s*(?:\$[^\$]+\$|[a-zA-Z0-9_\\\{\}]+)\s*:)/g, '\n$1');
 
-  // [Self-Healing] Auto-wrap raw LaTeX symbols/variables in bullet lists with $ if missing
-  // Matches bullet points or numbers followed by a CJK-free math variable/symbol and a colon
   if (typeof processed === 'string') {
+    const EXCLUDE_BULLET_WORDS = /^(?:Note|Step|Case|Type|Point|Result|Summary|Tip|Warning|Notice|Check)\b/i;
     processed = processed.split('\n').map(line => {
       const bulletRegex = /^([ \t]*(?:\*|-|•|▪|▫|·|\d+\.|\d+\)|[a-zA-Z가-힣]\.|\b[a-zA-Z가-힣]\)|[①-⑳]|\[INPUT_\d+(?:_\d+)?\])[ \t]*)(?!\$)([a-zA-Z0-9_\\'\^\(\)\{\}\+\-\*\/=]+)(?!\$)([ \t]*:)/;
-      return line.replace(bulletRegex, (match, p1, p2, p3) => `${p1}$${p2}$${p3}`);
+      return line.replace(bulletRegex, (match, p1, p2, p3) => {
+        if (EXCLUDE_BULLET_WORDS.test(p2.trim())) return match;
+        return `${p1}$${p2}$${p3}`;
+      });
     }).join('\n');
   }
 
-  // [🔥 치명적 버그 해결] AI의 이중 이스케이프 오류(\\phi -> \phi) 최우선 복구
   processed = processed.replace(/\\{2,}([a-zA-Z]+)/g, '\\$1');
-  // Collapse double or multiple backslashes before % to single backslash
   processed = processed.replace(/\\{2,}%/g, '\\%');
 
-
-
-  // 문장 한복판에 쪼개진 단일 줄바꿈(\n)을 공백으로 자동 병합 (수식 끊김 방지)
-  // 단, 마크다운 표 영역은 줄바꿈 병합을 하지 않고 원본 철저히 유지하기 위해 split 처리
   const sections = processed.split(/(<!--START_TABLE-->[\s\S]*?<!--END_TABLE-->)/g);
   processed = sections.map(section => {
     if (section.startsWith('<!--START_TABLE-->')) {
-      return healMarkdownTable(section, null); // 표 영역은 개별 셀 치유 및 원본 구조 유지
+      return healMarkdownTable(section, null);
     }
     return section;
   }).join('');
 
-  // 불필요한 HTML 태그 정제
   processed = processed.replace(/<br\s*\/?>/gi, '\n')
                        .replace(/<div[^>]*>\s*[•*]?\s*([^<]+?)\s*<\/div>/gi, '\n* $1')
                        .replace(/<\/?(?:div|p|span|li|ul|ol)\b[^>]*>/gi, '');
 
-  const tokens = tokenizeForHealing(processed);
-  processed = tokens.map(token => {
-    if (token.type === 'table') {
-      return token.content; // Skip healing on the table structure itself!
-    }
-    if (token.type === 'text') {
-      let t = token.content;
-
-      // 꺾쇠 기호(<, >)를 무조건 HTML 엔티티(&lt;, &gt;)로 변환하는 불필요한/과도한 이스케이프 로직 제거 (Root Cause Removal)
-      // 이로 인해 SVG 태그 등 정상적인 HTML 태그들이 텍스트로 노출되는 부작용이 발생했음.
-      // 렌더링 보안(XSS) 및 < 기호 방어는 LatexRenderer.jsx의 hasHtml 분기에서 자체적으로 안전하게 처리됨.
-      return t;
-    } else {
-      let math = token.content.replace(/^\$\$?|\$\$?$/g, '').trim();
-      math = healBackslashes(math);
-      math = math.replace(/</g, '\\lt ').replace(/>/g, '\\gt ')
-                 .replace(/_\s+/g, '_').replace(/\^\s+/g, '^');
-      return token.type === 'block-math' ? `$$${math}$$` : `$${math}$`;
-    }
-  }).join('');
-
-  // 4. 절대 준수 수칙: 토큰 기반 인터페이스 외부 공백 완벽 마킹
   const finalTokens = tokenizeForHealing(processed);
   let result = '';
 
@@ -424,7 +377,7 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
 
     if (prev.type === 'text' && current.type !== 'text') {
       const lastChar = prev.content[prev.content.length - 1];
-      if (lastChar && !/\s/.test(lastChar) && !/[\(\[\{\'\"]/.test(lastChar)) needSpace = true;
+      if (lastChar && !/\s/.test(lastChar) && !/[\(\[\{\'\"\*]/.test(lastChar)) needSpace = true;
     } else if (prev.type !== 'text' && current.type === 'text') {
       const firstChar = current.content[0];
       if (firstChar && !/\s/.test(firstChar) && !/[\,\.\?\!\)\]\}\:\;\*]/.test(firstChar)) needSpace = true;
@@ -435,8 +388,6 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   }
 
   result = result.trim();
-
-  // 2. Restore [INPUT_n] placeholders (remove accidental math formatting)
   result = result.replace(/\$?\[\s*INPUT_(\d+(?:_\d+)?)\s*\]\$?/gi, '[INPUT_$1]');
 
   if (!isNested) {
@@ -450,7 +401,6 @@ export function cleanQuizQuestion(q) {
   if (!q) return q;
   let cleanText = typeof q === 'string' ? q : String(q || '');
 
-  // 1. Replace (A), (B), (C), (D) list garbage inside flowchart boxes with sequential single placeholders
   let emptyBoxIdx = 0;
   cleanText = cleanText.replace(/\[[^\]]*\([A-F]\)[^\]]*\([A-F]\)[^\]]*\]/gi, () => {
     emptyBoxIdx++;
@@ -464,13 +414,10 @@ export function cleanQuizQuestion(q) {
     return (emptyLineIdx === 1 ? '- (B)' : (emptyLineIdx === 2 ? '- (D)' : '- (F)')) + rightBorder;
   });
 
-  // 2. Strip remaining list garbage outside boxes
   cleanText = cleanText.replace(/,?\s*\([A-Z]\)(?:\s*,\s*\([A-Z]\))+/gi, '');
-
   return cleanText.trim();
 }
 
-// 오브젝트 딥 힐러 트리구조
 export function healDeep(obj, parentKey = null, context = null) {
   if (obj === null || obj === undefined) return obj;
   
@@ -532,85 +479,7 @@ export function healDeep(obj, parentKey = null, context = null) {
   return obj;
 }
 
-function parseQuestionTableText(questionText) {
-  let tableData = null;
-  if (!questionText) return { questionText, tableData };
 
-  // 1. Try parsing HTML table
-  if (questionText.toLowerCase().includes('<table') || questionText.toLowerCase().replace(/\s+/g, '').includes('<table')) {
-    let cleaned = questionText
-      .replace(/<\s*table[^>]*>/gi, '<table>')
-      .replace(/<\s*\/+\s*table[^>]*>/gi, '</table>')
-      .replace(/<\s*tr[^>]*>/gi, '<tr>')
-      .replace(/<\s*\/+\s*tr[^>]*>/gi, '</tr>')
-      .replace(/<\s*th[^>]*>/gi, '<th>')
-      .replace(/<\s*\/+\s*th[^>]*>/gi, '</th>')
-      .replace(/<\s*td[^>]*>/gi, '<td>')
-      .replace(/<\s*\/+\s*td[^>]*>/gi, '</td>');
-
-    const tableRegex = /<table>([\s\S]*?)<\/table>/i;
-    const match = cleaned.match(tableRegex);
-    if (match) {
-      const tableContent = match[1];
-      const trRegex = /<tr>([\s\S]*?)<\/tr>/gi;
-      let trMatch;
-      const headers = [];
-      const rows = [];
-      
-      while ((trMatch = trRegex.exec(tableContent)) !== null) {
-        const rowContent = trMatch[1];
-        const thRegex = /<th>([\s\S]*?)<\/th>/gi;
-        let thMatch;
-        const ths = [];
-        while ((thMatch = thRegex.exec(rowContent)) !== null) {
-          ths.push(thMatch[1].trim());
-        }
-        if (ths.length > 0) {
-          headers.push(...ths);
-          continue;
-        }
-        
-        const tdRegex = /<td>([\s\S]*?)<\/td>/gi;
-        let tdMatch;
-        const tds = [];
-        while ((tdMatch = tdRegex.exec(rowContent)) !== null) {
-          tds.push(tdMatch[1].trim());
-        }
-        if (tds.length > 0) {
-          rows.push(tds);
-        }
-      }
-
-      if (rows.length > 0) {
-        tableData = {
-          headers: headers.length > 0 ? headers : rows[0],
-          rows: headers.length > 0 ? rows : rows.slice(1)
-        };
-        
-        const tableStartIdx = questionText.toLowerCase().search(/<\s*table/i);
-        const tableEndIdx = questionText.toLowerCase().search(/<\s*\/+\s*table/i);
-        if (tableStartIdx !== -1 && tableEndIdx !== -1) {
-          const endBracketIdx = questionText.indexOf('>', tableEndIdx);
-          if (endBracketIdx !== -1) {
-            const originalTableHtml = questionText.substring(tableStartIdx, endBracketIdx + 1);
-            questionText = questionText.replace(originalTableHtml, '').trim();
-          }
-        }
-      }
-    }
-  }
-
-  // 2. Try parsing Markdown table if HTML table parsing wasn't successful/present
-  if (!tableData) {
-    const mdParsed = parseMarkdownTable(questionText);
-    if (mdParsed) {
-      tableData = mdParsed.tableData;
-      questionText = questionText.replace(mdParsed.originalTableText, '').trim();
-    }
-  }
-
-  return { questionText, tableData };
-}
 
 const localParseOverviewContent = (content) => {
   const result = { definition: '', mechanism: '', comparison: '', significance: '', intuitive: '' };
@@ -653,10 +522,8 @@ export function healQuizQuestionObject(q) {
   if (q && typeof q === 'object') {
     if (q.diagram_svg && typeof q.diagram_svg === 'string') {
       let svgStr = q.diagram_svg.trim();
-      // Remove markdown block if exists
       svgStr = svgStr.replace(/^```[a-z]*\s*/im, '').replace(/```\s*$/im, '').trim();
       
-      // Ensure it's wrapped in an <svg> tag if the AI forgot and only returned <foreignObject> or <g>
       if (!svgStr.toLowerCase().includes('<svg')) {
         svgStr = `<svg viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto">\n${svgStr}\n</svg>`;
       }
@@ -667,21 +534,18 @@ export function healQuizQuestionObject(q) {
       q.question = cleanQuizQuestion(q.question);
     }
     if (typeof q.correctIndex === 'number' && Array.isArray(q.options) && q.correctIndex >= 0 && q.correctIndex < q.options.length) {
-      // 만약 answer가 이미 존재하고 options 배열 안에 완벽히 일치하는 값이 있다면, 
-      // 셔플된 이후의 상태일 수 있으므로 과거의 correctIndex로 덮어쓰지 않음.
       if (!q.answer || !q.options.includes(q.answer)) {
         q.answer = q.options[q.correctIndex];
       }
     }
 
-    // Real-time healing for overview questions to ensure both 학술적 정의 & 공학적 작동 메커니즘 are present
     if ((q.mixedType === 'overview' || String(q.question || '').includes('[개요 복습]')) && q.tableData) {
       const mainHeaders = (q.tableData.headers || []).join(',');
       const compHeaders = (q.comparisonTableData?.headers || []).join(',');
       const isDuplicated = q.comparisonTableData && mainHeaders === compHeaders && mainHeaders !== '구분,내용';
 
       if (isDuplicated) {
-        const parsed = parseOverviewContent(q.explanation || q.content || '');
+        const parsed = localParseOverviewContent(q.explanation || q.content || '');
         const answers = { ...(q.answers || {}) };
         const rows = [];
         if (parsed.definition || q.tableData.rows?.[0]?.[1]) {
@@ -737,44 +601,40 @@ export function healQuizQuestionObject(q) {
       }
     }
 
-    // For multiple choice questions, heal mismatched answer field
     if (q.options && Array.isArray(q.options) && q.answer) {
-      // 0. index형태 답안 ("1번", "①" 등) 보정 처리
       let matchedIndex = -1;
       const cleanAns = String(q.answer).trim().toLowerCase();
-      if (cleanAns === '1번' || cleanAns === '①' || cleanAns === '보기1' || cleanAns === '보기 1' || cleanAns === '1') {
+      if (['1번', '①', '보기1', '보기 1'].includes(cleanAns)) {
         matchedIndex = 0;
-      } else if (cleanAns === '2번' || cleanAns === '②' || cleanAns === '보기2' || cleanAns === '보기 2' || cleanAns === '2') {
+      } else if (['2번', '②', '보기2', '보기 2'].includes(cleanAns)) {
         matchedIndex = 1;
-      } else if (cleanAns === '3번' || cleanAns === '③' || cleanAns === '보기3' || cleanAns === '보기 3' || cleanAns === '3') {
+      } else if (['3번', '③', '보기3', '보기 3'].includes(cleanAns)) {
         matchedIndex = 2;
-      } else if (cleanAns === '4번' || cleanAns === '④' || cleanAns === '보기4' || cleanAns === '보기 4' || cleanAns === '4') {
+      } else if (['4번', '④', '보기4', '보기 4'].includes(cleanAns)) {
         matchedIndex = 3;
       }
       
       if (matchedIndex !== -1 && q.options.length > matchedIndex) {
         const exactMatchIndex = q.options.indexOf(q.answer);
         if (exactMatchIndex === -1) {
-          console.log(`[HealMC] Mapping index-based answer "${q.answer}" to option[${matchedIndex}]: "${q.options[matchedIndex]}"`);
           q.answer = q.options[matchedIndex];
         }
       }
 
-      // 1. 배율 왜곡(10배/100배 스케일링 오염) 복원 처리
       const optNums = q.options.map(o => parseFloat(String(o || '').replace(/[^0-9.-]/g, ''))).filter(n => !isNaN(n));
       const ansNum = parseFloat(String(q.answer || '').replace(/[^0-9.-]/g, ''));
       if (optNums.length === q.options.length && !isNaN(ansNum) && ansNum > 0 && ansNum < 1) {
-        const hasScaledMatch = optNums.some(n => Math.abs(n - ansNum * 100) < 1e-5 || Math.abs(n - ansNum * 10) < 1e-5);
+        const is100x = optNums.some(n => Math.abs(n - ansNum * 100) < 1e-5);
+        const is10x = optNums.some(n => Math.abs(n - ansNum * 10) < 1e-5);
         const allLargeOrZero = optNums.every(n => n === 0 || n >= 1);
-        if (hasScaledMatch && allLargeOrZero) {
-          console.log(`[HealMC] Detected scaled options. Restoring options from ${JSON.stringify(q.options)} using answer ${q.answer}`);
+        
+        if ((is100x || is10x) && allLargeOrZero) {
+          const factor = is100x ? 100 : 10;
           q.options = q.options.map(opt => {
             const num = parseFloat(String(opt || '').replace(/[^0-9.-]/g, ''));
             if (isNaN(num)) return opt;
-            const restoredVal = (num / 100).toFixed(2);
-            return restoredVal;
+            return (num / factor).toFixed(2);
           });
-          console.log(`[HealMC] Restored options: ${JSON.stringify(q.options)}`);
         }
       }
 
@@ -817,7 +677,6 @@ export function healQuizQuestionObject(q) {
         }
 
         if (bestOpt && maxScore > 0) {
-          console.log(`[HealMC] Overwriting q.answer from "${q.answer}" to exact option: "${bestOpt}" (score: ${maxScore})`);
           q.answer = bestOpt;
         }
       }
@@ -826,16 +685,13 @@ export function healQuizQuestionObject(q) {
     const hasInputPlaceholder = q.tableData && q.tableData.rows && q.tableData.rows.some(row => 
       Array.isArray(row) && row.some((cell, cIdx) => cIdx > 0 && typeof cell === 'string' && (
         cell.includes('[INPUT_') || 
-        cell.includes('입력') ||
+        cell.includes('입력') || 
         /빈칸\s*\(?\d+\)?/i.test(cell) || 
-        /^\s*[\[\(]?\s*[A-Za-z]\s*[\]\)]?\s*$/i.test(cell) ||
+        /^\s*[\[\(]?\s*[A-Za-z]\s*[\]\)]?\s*$/i.test(cell) || 
         /[A-Za-z]\s*입력/i.test(cell)
       ))
     );
 
-    // ---------------------------------------------------------
-    // [Calculation Question Dynamic Items Healer]
-    // ---------------------------------------------------------
     const qText = q.question || '';
     const isExplicitCompOrTheory = /비교하시오|특성을\s*비교|차이점|서술하시오|설명하시오/i.test(qText);
     const hasCalcHeaders = q.tableData && Array.isArray(q.tableData.headers) && (
@@ -848,8 +704,8 @@ export function healQuizQuestionObject(q) {
     const isCalcQ = (q.category === '계산') && !isExplicitCompOrTheory && (
       q.type === '주관식 (계산)' || 
       q.subtype === '계산' || 
-      hasCalcHeaders ||
-      (/Terzaghi|기초|지지력|허용하중|침투유량|침투수량|간극수압|동수경사|안전율/i.test(qText) && /산정|계산|구하시오/i.test(qText)) ||
+      hasCalcHeaders || 
+      (/Terzaghi|기초|지지력|허용하중|침투유량|침투수량|간극수압|동수경사|안전율/i.test(qText) && /산정|계산|구하시오/i.test(qText)) || 
       (hasMultipleSubItems && hasCalcKeyword)
     );
 
@@ -857,7 +713,6 @@ export function healQuizQuestionObject(q) {
       q.type = '주관식 (계산)';
       q.subtype = '계산';
 
-      // 1. 최우선순위: LLM이 표(tableData)를 명시적으로 생성했다면 그것을 기반으로 calcItems 구성
       if (!q.calcItems || q.calcItems.length === 0) {
         if (q.tableData && Array.isArray(q.tableData.rows)) {
           const validRows = q.tableData.rows.filter(r => Array.isArray(r) && typeof r[0] === 'string' && !/핵심\s*(?:수치\s*)?계산\s*항목/i.test(r[0]));
@@ -870,7 +725,6 @@ export function healQuizQuestionObject(q) {
         }
       }
 
-      // 2. 만약 여전히 calcItems가 없거나, 너무 포괄적/더미(Generic) 텍스트라면 정규식을 통해 본문에서 추출
       const isGeneric = !q.calcItems || q.calcItems.length === 0 || (
         Array.isArray(q.calcItems) && q.calcItems.some(it => /(?:핵심|수치)\s*(?:계산|산출)\s*(?:요구\s*)?항목/i.test(it.label || ''))
       ) || (
@@ -880,7 +734,6 @@ export function healQuizQuestionObject(q) {
       );
 
       if (isGeneric) {
-        // 1. Extract numbered items from question text (e.g. (1) ..., (2) ... or ①, ②...)
         const itemMatches = [...qText.matchAll(/(?:\((\d+)\)|(\d+)\)|①|②|③|④|⑤|⑥)\s*([\s\S]+?(?=(?:\(\d+\)|[2-9]\)|①|②|③|④|⑤|⑥|\n|$)))/g)];
         if (itemMatches.length >= 2) {
           q.calcItems = itemMatches.map((m, i) => ({
@@ -888,7 +741,6 @@ export function healQuizQuestionObject(q) {
             label: `(${i + 1}) ${(m[3] || m[0]).replace(/^[\(\[\d\s\)\]①-⑥]+/, '').replace(/[,.\s]+$/, '').trim()}`
           }));
         } else {
-          // 2. Extract target items before action verbs (구하시오, 나타내시오, 산정하시오, 계산하시오)
           const targetMatch = qText.match(/(?:을|를|값과|값을|항목을|결과를)\s*([^,.\n]+?)(?:를|을|값)?\s*(?:구하시오|나타내시오|산정하시오|계산하시오|평가하시오|작성하시오)/i);
           if (targetMatch && targetMatch[1]) {
             const rawTerms = targetMatch[1].split(/(?:및|와|과|,|\/)/).map(t => t.trim()).filter(Boolean);
@@ -899,7 +751,6 @@ export function healQuizQuestionObject(q) {
               }));
             }
           }
-          // 3. Extract math symbols ($S_i$, $\phi$, etc.) from question text
           if (!q.calcItems || q.calcItems.length === 0 || q.calcItems.some(it => /빈칸에\s*알맞/i.test(it.label || ''))) {
             const latexSymbols = [...qText.matchAll(/\$([A-Za-z0-9_\\\{\}]+)\$/g)].map(m => m[1]);
             if (latexSymbols.length >= 1) {
@@ -910,7 +761,6 @@ export function healQuizQuestionObject(q) {
               }));
             }
           }
-          // 4. Extract step headers from explanation if available
           if ((!q.calcItems || q.calcItems.length === 0 || q.calcItems.some(it => /빈칸에\s*알맞/i.test(it.label || ''))) && q.explanation) {
             const expSteps = [...q.explanation.matchAll(/(?:^|\n)\s*(?:[1-9]\)|[\(\[]\d+[\)\]]|①|②|③|④|⑤)\s*([^=\n:+]{2,30})/g)];
             if (expSteps.length >= 2) {
@@ -931,7 +781,6 @@ export function healQuizQuestionObject(q) {
             q.answers[key] = it.modelAnswer || it.correctAnswer || it.label || `(${idx + 1}) 수치 계산 수치값`;
           }
           
-          // [HEAL] Append context to extremely generic labels like "(A)", "(B)", "(1)" generated by AI for image questions
           const rawLabel = it.label || '';
           const stripped = rawLabel.replace(/[\(\)\[\]A-Z0-9\s]/ig, '');
           if (stripped.length < 2 && q.answers[key]) {
@@ -952,10 +801,15 @@ export function healQuizQuestionObject(q) {
           if (cleanH.includes(':')) cleanH = cleanH.split(':')[0].trim();
           if (cleanH.includes('：')) cleanH = cleanH.split('：')[0].trim();
 
+          const parenMatch = cleanH.match(/^((?:조건|Case|경우)\s*[\(\[]?[A-Za-z0-9가-힣]+[\)\]]?)/i);
+          if (parenMatch) {
+            cleanH = parenMatch[1].trim();
+          }
+
           if (/보고서\s*특성\s*1|특성\s*1/i.test(cleanH)) {
-            cleanH = '주요 핵심 역학/해석 특성';
+            cleanH = '주 공법/이론 (해당 토픽)';
           } else if (/보고서\s*특성\s*2|특성\s*2/i.test(cleanH)) {
-            cleanH = '대조 관련 공법 및 파괴기준';
+            cleanH = '대조 관련 공법/이론';
           }
           return cleanH;
         });
@@ -973,43 +827,8 @@ export function healQuizQuestionObject(q) {
           });
         });
       }
-      if (q.tableData && Array.isArray(q.tableData.headers)) {
-        q.tableData.headers = q.tableData.headers.map((h, hIdx) => {
-          if (hIdx === 0 || typeof h !== 'string') return h;
-          let cleanH = h.trim();
-          if (cleanH.includes(':')) {
-            cleanH = cleanH.split(':')[0].trim();
-          } else if (cleanH.includes('：')) {
-            cleanH = cleanH.split('：')[0].trim();
-          }
-          const parenMatch = cleanH.match(/^((?:조건|Case|경우)\s*[\(\[]?[A-Za-z0-9가-힣]+[\)\]]?)/i);
-          if (parenMatch) {
-            cleanH = parenMatch[1].trim();
-          }
-          if (/특성\s*1/i.test(cleanH)) {
-            cleanH = '주 공법/이론 (해당 토픽)';
-          } else if (/특성\s*2/i.test(cleanH)) {
-            cleanH = '대조 관련 공법/이론';
-          }
-          return cleanH;
-        });
-      }
-      if (q.tableData && Array.isArray(q.tableData.rows)) {
-        q.tableData.rows = q.tableData.rows.map((row) => {
-          if (!Array.isArray(row)) return row;
-          return row.map((cell, cIdx) => {
-            if (cIdx === 0 || typeof cell !== 'string') return cell;
-            if (/^[A-Z]\s*입력$/i.test(cell.trim()) || cell.trim() === 'A 입력' || cell.trim() === 'B 입력') {
-              return `[INPUT_${cIdx}]`;
-            }
-            return cell;
-          });
-        });
-      }
     }
 
-    // For table subjective fill-in questions, empty out all cell contents 
-    // (except headers and row-label column) and turn them into inputs!
     if ((q.type === '주관식 (표채우기)' || q.subtype === '표채우기' || hasInputPlaceholder) && q.tableData && q.tableData.rows) {
       if (!q.subtype || q.subtype !== '표채우기') {
         q.subtype = '표채우기';
@@ -1030,40 +849,20 @@ export function healQuizQuestionObject(q) {
         );
       };
 
-      // Determine if this is a comparison table (3+ columns) vs calculation table (2 columns)
-      const isComparisonTable = Array.isArray(q.tableData.headers) && q.tableData.headers.length >= 3;
-
-      // Count total placeholders in comparison table
-      let placeholderCount = 0;
-      q.tableData.rows.forEach((row) => {
-        if (Array.isArray(row)) {
-          row.forEach((cell, cIdx) => {
-            if (cIdx > 0 && isCellPlaceholder(cell)) placeholderCount++;
-          });
-        }
-      });
-      const isExcessPlaceholders = isComparisonTable && placeholderCount > 4;
-
       const newRows = q.tableData.rows.map((row, rIdx) => {
         if (!Array.isArray(row)) return [];
-        const colCount = row.length;
-        const targetCIdx = (rIdx % Math.max(1, colCount - 1)) + 1;
 
         return row.map((cell, cIdx) => {
-          if (cIdx === 0) return cell; // Keep the row label intact
+          if (cIdx === 0) return cell;
 
-          // [절대 지침 준수]: 표 채우기(Table Quiz)의 모든 내부 셀(cIdx > 0)은 100% 빈칸 입력을 위한 [INPUT_N]으로 전환되어야 함
           const shouldBeInput = true;
-
           const inputId = `INPUT_${inputCount}`;
           const currentCount = inputCount;
           inputCount++;
 
-          // Extract correct answer:
           let correctAnswer = '';
           const trimmedCell = typeof cell === 'string' ? cell.trim() : '';
           
-          // Let's find the placeholder identifier (e.g. A, B, C, INPUT_1, 빈칸(1) 등)
           let placeholderId = '';
           const inputMatch = trimmedCell.match(/INPUT_(\d+(?:_\d+)?)/i);
           const letterMatch = trimmedCell.match(/^[\[\(]?\s*([A-Za-z])\s*[\]\)]?$/);
@@ -1076,28 +875,24 @@ export function healQuizQuestionObject(q) {
               matchedNum = parseInt(inputMatch[1], 10);
             }
           } else if (letterMatch) {
-            placeholderId = letterMatch[1].toUpperCase(); // e.g. "A"
+            placeholderId = letterMatch[1].toUpperCase();
             matchedNum = letterMatch[1].toUpperCase().charCodeAt(0) - 64;
           } else if (binkanMatch) {
             placeholderId = `INPUT_${binkanMatch[1]}`;
             matchedNum = parseInt(binkanMatch[1], 10);
           }
 
-          // Robust check helper
           const lookup = (key) => {
             if (key === undefined || key === null) return undefined;
             return oldAnswers[key];
           };
 
-          // 1. Try directly with placeholderId (case insensitive)
           let foundVal = lookup(placeholderId) ?? lookup(placeholderId?.toLowerCase()) ?? lookup(placeholderId?.toUpperCase());
 
-          // 2. If matchedNum is available, try corresponding index / letter
           if (foundVal === undefined && matchedNum !== null) {
-            const letterKey = String.fromCharCode(64 + matchedNum); // A, B, C...
+            const letterKey = String.fromCharCode(64 + matchedNum);
             foundVal = lookup(letterKey) ?? lookup(letterKey.toLowerCase()) ?? lookup(`INPUT_${matchedNum}`) ?? lookup(`input_${matchedNum}`) ?? lookup(matchedNum) ?? lookup(String(matchedNum));
             
-            // Suffix-based recovery (e.g., match INPUT_2_1 for matchedNum = 1)
             if (foundVal === undefined) {
               const matchedKey = Object.keys(oldAnswers).find(key => {
                 const parts = key.split('_');
@@ -1110,12 +905,10 @@ export function healQuizQuestionObject(q) {
             }
           }
 
-          // 3. Sequential fallback based on currentCount
           if (foundVal === undefined) {
-            const seqLetter = String.fromCharCode(64 + currentCount); // A, B, C...
+            const seqLetter = String.fromCharCode(64 + currentCount);
             foundVal = lookup(`INPUT_${currentCount}`) ?? lookup(`input_${currentCount}`) ?? lookup(currentCount) ?? lookup(String(currentCount)) ?? lookup(seqLetter) ?? lookup(seqLetter.toLowerCase());
             
-            // Suffix-based recovery for sequential fallback (e.g., match INPUT_2_1 for currentCount = 1)
             if (foundVal === undefined) {
               const matchedKey = Object.keys(oldAnswers).find(key => {
                 const parts = key.split('_');
@@ -1128,7 +921,6 @@ export function healQuizQuestionObject(q) {
             }
           }
 
-          // 4. Advanced multidimensional suffix-based recovery (e.g. INPUT_2_1, INPUT_3_1) using rIdx and cIdx
           if (foundVal === undefined) {
             const candidateKeys = Object.keys(oldAnswers).filter(key => {
               const parts = key.split('_');
@@ -1156,12 +948,10 @@ export function healQuizQuestionObject(q) {
           if (foundVal !== undefined) {
             correctAnswer = foundVal;
           } else {
-            // If no placeholder value was found in oldAnswers, keep the cell text if it's not a placeholder
             const isPlaceholder = isCellPlaceholder(trimmedCell);
             correctAnswer = isPlaceholder ? '' : cell;
           }
 
-          // Recover placeholder answers from window.currentStudyData if available
           const isPlh = /^(?:[\[\(]?\s*[A-Za-z]\s*[\]\)]?|\[?\s*INPUT_\d+(?:_\d+)?\s*\]?|빈칸\s*\(?\d+\)?|\[?\s*[A-Z]_\d+\s*\]?)$/i.test(correctAnswer);
           if ((!correctAnswer || isPlh) && typeof window !== 'undefined' && window.currentStudyData) {
             const studyData = window.currentStudyData;
@@ -1201,8 +991,6 @@ export function healQuizQuestionObject(q) {
       });
 
       q.tableData.rows = newRows;
-      // 비교표(comparisonTableData)의 answers는 메인 tableData rows 순회에서 처리되지 않으므로
-      // oldAnswers에서 comparisonTableData.rows에 실제로 존재하는 키만 살려서 병합한다.
       if (q.comparisonTableData && q.comparisonTableData.rows) {
         const activeComparisonKeys = new Set();
         q.comparisonTableData.rows.forEach(row => {
@@ -1226,12 +1014,11 @@ export function healQuizQuestionObject(q) {
       q.answers = newAnswers;
     }
     
-    // [Self-Healing] comparisonTableData의 answers 누락 복구
     if (q.comparisonTableData && q.comparisonTableData.rows && q.answers) {
       const answers = q.answers;
       q.comparisonTableData.rows.forEach((row, rIdx) => {
         row.forEach((cell, cIdx) => {
-          if (cIdx === 0) return; // 첫 번째 열은 구분이므로 건너뜀
+          if (cIdx === 0) return;
           
           if (typeof cell === 'string' && cell.includes('[INPUT_')) {
             const inputId = cell.replace('[', '').replace(']', '').trim();
@@ -1239,7 +1026,6 @@ export function healQuizQuestionObject(q) {
             if (answers[inputId] === undefined || answers[inputId] === null || answers[inputId] === '') {
               const textToParse = q.explanation || '';
               
-              // 1. 만약 HTML 테이블 형태라면?
               if (textToParse.includes('<table') || textToParse.includes('<tr>')) {
                 const trs = textToParse.match(/<tr[^>]*>([\s\S]*?)<\/tr>/gi) || [];
                 const dataTrs = trs.filter(tr => !tr.includes('<th') && tr.includes('<td'));
@@ -1249,12 +1035,10 @@ export function healQuizQuestionObject(q) {
                     const cleanAns = tds[cIdx].replace(/<[^>]+>/g, '').trim();
                     if (cleanAns && !cleanAns.includes('[INPUT_')) {
                       answers[inputId] = cleanAns;
-                      console.log(`[HealComparison] Recovered ${inputId} from HTML explanation: "${cleanAns}"`);
                     }
                   }
                 }
               }
-              // 2. 만약 HTML이 아니라 순수 마크다운 테이블 형태라면?
               if (!answers[inputId]) {
                 const lines = textToParse.split('\n');
                 const tableLines = lines.filter(line => line.trim().startsWith('|') && line.trim().endsWith('|'));
@@ -1265,7 +1049,6 @@ export function healQuizQuestionObject(q) {
                     const cleanAns = cols[cIdx].replace(/\*\*/g, '').trim();
                     if (cleanAns && !cleanAns.includes('[INPUT_')) {
                       answers[inputId] = cleanAns;
-                      console.log(`[HealComparison] Recovered ${inputId} from Markdown explanation: "${cleanAns}"`);
                     }
                   }
                 }
@@ -1285,7 +1068,7 @@ export function healAnswersheetQuestionObject(a) { return healQuizQuestionObject
 
 export const LATEX_PROMPT_INSTRUCTIONS = `
 [LaTeX 수식 및 마크다운 작성 지침]:
-1. 모든 수식, 변수 기호(예: $t$, $\Delta t$, $\sigma$, $\gamma_w$, $S_t$, $\alpha$, $\beta$ 등)는 반드시 $ 또는 $ 기호로 감싸서 출력하십시오. 날것의 텍스트 표기나 백틱(\`) 표기는 금지합니다.
+1. 모든 수식, 변수 기호(예: $t$, $\\Delta t$, $\\sigma$, $\\gamma_w$, $S_t$, $\\alpha$, $\\beta$ 등)는 반드시 $ 또는 $$ 기호로 감싸서 출력하십시오. 날것의 텍스트 표기나 백틱(\`) 표기는 금지합니다.
 2. 역슬래시(\\) 대신 샵(#) 등 임의의 기호를 사용하지 말고, 정규 LaTeX 명령어(\\sigma, \\frac 등)를 사용하십시오.
 3. 인라인 수식($...$) 작성 시 기호 안쪽에 공백이나 줄바꿈을 넣지 마십시오. ($수식$ (O) / $ 수식 $ (X))
 4. 단순 수치나 단위(예: 10m, 20%)에는 수식 기호($)를 쓰지 말고 일반 텍스트로 작성하십시오.
@@ -1305,17 +1088,16 @@ export const LATEX_PROMPT_INSTRUCTIONS = `
 export const LATEX_CHAT_PROMPT_INSTRUCTIONS = `
 [LaTeX 수식 및 대화 포맷 지침]:
 1. JSON 형식으로 감싸지 말고, 일반 대화 문장 및 마크다운 포맷으로 답변하십시오.
-2. 모든 수식 및 변수 기호($K_s$, $k_h$, $e$, $c$, $\\phi$, $\\sigma$, $\\tau$ 등)는 단독/인라인 여부와 무관하게 반드시 $ 또는 $ 로 감싸십시오.
+2. 모든 수식 및 변수 기호($K_s$, $k_h$, $e$, $c$, $\\phi$, $\\sigma$, $\\tau$ 등)는 단독/인라인 여부와 무관하게 반드시 $ 또는 $$ 로 감싸십시오.
 3. 인라인 수식($...$) 안쪽의 시작/끝 공백 및 줄바꿈을 금지합니다.
 4. 단순 수치/단위에는 $ 기호를 쓰지 마십시오.
 5. 수식 내 부등호는 \\lt, \\gt 를 사용하십시오.
 6. 수식 내부 \\text{한글} 사용을 금지하며, 한글과 만날 때는 수식을 닫고 공백을 두십시오.
 7. 데이터 정리가 필요한 경우 HTML이나 tabular 대신 마크다운 표(| 열 | 구분선 |)를 사용하십시오.
-8. 설명 리스트 전체를 하나의 거대한 수식 블록($...$)으로 감싸지 말고 개별 수식마다 분리하여 적용하십시오.
+8. 설명 리스트 전체를 하나의 거대한 수식 블록($$...$$)으로 감싸지 말고 개별 수식마다 분리하여 적용하십시오.
 9. 출처나 보고서를 인용할 때는 단순 제목 외에 구체적인 공학적 수치, 기준, 계산 공식을 포함하여 정량적으로 작성하십시오.
 10. 아스키 아트 형태의 세로 그래프 출력을 금지하며, 마크다운 표나 텍스트 수치 요약으로 대체하십시오.
 `;
-// Trigger redeployment with clean UTF-8 BOM-less encoding.
 
 export function escapeJsonBackslashes(str) {
   if (!str) return str;
@@ -1324,23 +1106,26 @@ export function escapeJsonBackslashes(str) {
   let i = 0;
   
   const latexCommands = [
-    // n
-    'newline', 'nabla', 'nu', 'neq', 'neg', 'ni', 'notin', 'ngeq', 'nleq', 'nsim', 'ncong', 'nparallel', 'noindent',
-    // t
-    'theta', 'tau', 'tan', 'times', 'tilde', 'text', 'tfrac', 'triangle', 'top', 'to', 'tiny', 'today',
-    // r
+    'newline', 'nabla', 'nu', 'neq', 'neg', 'ni', 'notin', 'ngeq', 'nleq', 'nsim', 'ncong', 'nparallel', 'noindent', 'not',
+    'theta', 'tau', 'tan', 'times', 'tilde', 'text', 'tfrac', 'triangle', 'top', 'to', 'tiny', 'today', 'tag',
     'rho', 'right', 'rule', 'rangle', 'rightarrow', 'rightleftharpoons', 'rightharpoonup', 'rightharpoondown', 'real', 'ref', 'raise',
-    // b
-    'beta', 'bar', 'begin', 'bmod', 'boldsymbol', 'bullet', 'box', 'bigcap', 'bigcup', 'backslash',
-    // f
+    'beta', 'bar', 'begin', 'bmod', 'boldsymbol', 'bullet', 'box', 'bigcap', 'bigcup', 'backslash', 'bf',
     'frac', 'forall', 'flat', 'frown', 'footnotesize', 'fbox',
-    // other greek/common commands
     'phi', 'varphi', 'mathrm'
   ];
 
   while (i < str.length) {
     const char = str[i];
-    if (char === '"' && (i === 0 || str[i - 1] !== '\\')) {
+    let isEscaped = false;
+    let slashCount = 0;
+    let backtrack = i - 1;
+    while (backtrack >= 0 && str[backtrack] === '\\') {
+      slashCount++;
+      backtrack--;
+    }
+    isEscaped = slashCount % 2 !== 0;
+
+    if (char === '"' && !isEscaped) {
       inString = !inString;
       result += char;
       i++;
@@ -1350,7 +1135,7 @@ export function escapeJsonBackslashes(str) {
       if (next === '"' || next === '/' || next === '\\') {
         result += char + next;
         i += 2;
-      } else if (next === 'n' || next === 't' || next === 'r' || next === 'b' || next === 'f') {
+      } else if (['n', 't', 'r', 'b', 'f'].includes(next)) {
         let tempIndex = i + 1;
         let commandWord = '';
         while (tempIndex < str.length && /[a-zA-Z]/.test(str[tempIndex])) {
@@ -1358,7 +1143,7 @@ export function escapeJsonBackslashes(str) {
           tempIndex++;
         }
         
-        const isLatex = latexCommands.some(cmd => commandWord.startsWith(cmd));
+        const isLatex = latexCommands.some(cmd => commandWord === cmd || commandWord.startsWith(cmd));
         if (isLatex) {
           result += '\\\\';
           i++;
@@ -1367,7 +1152,6 @@ export function escapeJsonBackslashes(str) {
           i += 2;
         }
       } else if (next === 'u' && /^[0-9a-fA-F]{4}$/.test(str.substring(i + 2, i + 6))) {
-        // Safe unicode sequence bypass
         result += char + next + str.substring(i + 2, i + 6);
         i += 6;
       } else {
@@ -1386,7 +1170,6 @@ export function parseLlmJson(text) {
   if (!text) return null;
   let cleaned = text.trim();
   
-  // 마크다운 코드 블록 제거 복원
   if (cleaned.startsWith('```')) {
     cleaned = cleaned.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
   }
@@ -1403,17 +1186,12 @@ export function parseLlmJson(text) {
 
 export function isCalculationQuestion(q) {
   if (!q) return false;
-
-  // The ultimate root cause fix: subjective calculation UI is ONLY for '계산' category topics.
   if (q.category !== '계산') return false;
 
   const qText = q.question || '';
-
-  // Explicit comparison tables (Q2) and theory questions (Q3) are never calculation questions
   const isExplicitCompOrTheory = /비교하시오|특성을\s*비교|차이점|서술하시오|설명하시오/i.test(qText);
   if (isExplicitCompOrTheory) return false;
 
-  // Has calculation headers (구하는 항목 / 계산 결과 및 답안) -> 100% Calculation Question 1!
   const hasCalcHeaders = q.tableData && Array.isArray(q.tableData.headers) && (
     q.tableData.headers[0] === '구하는 항목' || q.tableData.headers[1] === '계산 결과 및 답안'
   );
@@ -1422,7 +1200,6 @@ export function isCalculationQuestion(q) {
   if (q.type === '주관식 (계산)' || q.subtype === '계산') return true;
   if (q.calcItems && Array.isArray(q.calcItems) && q.calcItems.length > 0) return true;
 
-  // Heuristic for Q1 calculation questions (e.g. Terzaghi 지지력 산정, 허용지지력 산정 등)
   if (/Terzaghi|기초|지지력|허용하중|침투유량/i.test(qText) && /산정|계산|구하시오/i.test(qText)) {
     return true;
   }
