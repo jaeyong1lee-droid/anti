@@ -211,11 +211,21 @@ function healMarkdownTable(tableText, poissonSymbol = null) {
 
 function replaceRoots(str) {
   let processed = str;
+
+  const checkInsideMath = (text, offset) => {
+    const before = text.substring(0, offset);
+    const blockMatches = (before.match(/\$\$/g) || []).length;
+    const isInsideBlock = blockMatches % 2 === 1;
+    
+    const stripped = before.replace(/\$\$/g, '');
+    const isInsideInline = (stripped.match(/\$/g) || []).length % 2 === 1;
+    
+    return isInsideBlock || isInsideInline;
+  };
+
   processed = processed.replace(/(?<![0-9a-zA-Z\$\\])√([0-9a-zA-Z_]+)(?!\()/g, (match, p1, offset, fullStr) => {
-    const before = fullStr.substring(0, offset);
-    const dollarCount = (before.match(/\$/g) || []).length;
-    const isInsideMath = dollarCount % 2 === 1;
-    return isInsideMath ? `\\sqrt{${p1}}` : `$\\sqrt{${p1}}$`;
+    const isInside = checkInsideMath(fullStr, offset);
+    return isInside ? `\\sqrt{${p1}}` : `$\\sqrt{${p1}}$`;
   });
 
   let regex = /(?:([0-9]+)(?:_|계)?)?(?:루트|√)\(/;
@@ -236,9 +246,7 @@ function replaceRoots(str) {
     
     if (depth === 0) {
       const content = processed.substring(index + matchLength, scanIdx - 1);
-      const beforeText = processed.substring(0, index);
-      const dollarCount = (beforeText.match(/\$/g) || []).length;
-      const isAlreadyInMath = (dollarCount % 2 === 1);
+      const isAlreadyInMath = checkInsideMath(processed, index);
       
       const replacement = isAlreadyInMath 
         ? (rootNum ? `\\sqrt[${rootNum}]{${content}}` : `\\sqrt{${content}}`)
@@ -283,7 +291,8 @@ export function healInvertedDelimiters(text) {
       let rebuilt = '';
       for (let i = 0; i < parts.length; i++) {
         const content = parts[i];
-        if (hasFormulaCommands(content) && !/[가-힣]/.test(content)) {
+        const isSimpleMath = /^[a-zA-Z0-9\s+\-*/=<>_^().]+$/.test(content) && /[+\-*/=<>_^]/.test(content);
+        if ((hasFormulaCommands(content) || isSimpleMath) && !/[가-힣]/.test(content)) {
           rebuilt += `$${content.trim()}$`;
         } else if (content.trim()) {
           rebuilt += content;
@@ -316,7 +325,7 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   });
 
   processed = processed.replace(/\\pu\s*\{([^}]+)\}/gi, (match, p1) => {
-    return ` \\text{${p1.trim()}} `;
+    return ` ${p1.trim()} `;
   });
   processed = healInvertedDelimiters(processed);
   processed = replaceRoots(processed);
@@ -1134,7 +1143,7 @@ export function escapeJsonBackslashes(str) {
           tempIndex++;
         }
         
-        const isLatex = commandWord.length > 1 || latexCommands.includes(commandWord);
+        const isLatex = latexCommands.some(cmd => commandWord === cmd || commandWord.startsWith(cmd));
         if (isLatex) {
           result += '\\\\';
           i++;
