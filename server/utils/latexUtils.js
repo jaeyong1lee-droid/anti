@@ -315,8 +315,6 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   text = text.replace(/\\\[([\\s\\S]*?)\\\]/g, (m, p1) => '$$' + p1.trim() + '$$');
 
   let processed = text;
-  // [Self-Healing] 머리기호(bullet) 뒤에 바로 디스플레이 수식($$)이 오거나, 빈 머리기호 다음 줄에 $$가 오는 경우 머리기호 제거 (가운데 정렬 깨짐 방지)
-  processed = processed.replace(/^[ \t]*(?:[-*•▪▫·]|\d+[\.\)])[ \t]*(?:\n[ \t]*)?\$\$/gm, '$$$$');
   // Normalize dashes (en-dash, em-dash, math minus) to standard hyphens
   processed = processed.replace(/[–—−]/g, '-');
 

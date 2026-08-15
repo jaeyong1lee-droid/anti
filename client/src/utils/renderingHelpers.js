@@ -796,15 +796,26 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
       if (!content) continue;
 
       const isSubItem = indentLen > 0;
+      const isOnlyBlockMath = /^___BLOCK_MATH_\d+___$/.test(content);
 
       if (!isSubItem) {
         if (inInner) { html += '</ul>'; inInner = false; }
         if (!inOuter) { html += '<ul style="list-style-type: disc; padding-left: 1.4rem; margin: 0.3rem 0 0.3rem 0;">'; inOuter = true; }
-        html += `<li style="margin-bottom: 0.25rem; line-height: 1.65; font-weight: 600;">${content}</li>`;
+        
+        if (isOnlyBlockMath) {
+          html += `<li style="list-style-type: none; margin-bottom: 0.25rem;">${content}</li>`;
+        } else {
+          html += `<li style="margin-bottom: 0.25rem; line-height: 1.65; font-weight: 600;">${content}</li>`;
+        }
       } else {
         if (!inOuter) { html += '<ul style="list-style-type: disc; padding-left: 1.4rem; margin: 0.3rem 0 0.3rem 0;">'; inOuter = true; }
         if (!inInner) { html += '<ul style="list-style-type: circle; padding-left: 1.3rem; margin: 0.15rem 0;">'; inInner = true; }
-        html += `<li style="margin-bottom: 0.2rem; line-height: 1.6; font-weight: normal; color: #cbd5e1;">${content}</li>`;
+        
+        if (isOnlyBlockMath) {
+          html += `<li style="list-style-type: none; margin-bottom: 0.2rem;">${content}</li>`;
+        } else {
+          html += `<li style="margin-bottom: 0.2rem; line-height: 1.6; font-weight: normal; color: #cbd5e1;">${content}</li>`;
+        }
       }
     }
     if (inInner) html += '</ul>';
