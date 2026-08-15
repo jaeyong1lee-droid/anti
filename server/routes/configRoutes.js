@@ -1,4 +1,4 @@
-﻿import express from 'express';
+import express from 'express';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -1315,7 +1315,7 @@ JSON 포맷 규격:
   "analysis": "해당 그림/그래프에 표현된 다양한 구성 요소, 변수 관계, 공학적 의미 및 거동 메커니즘을 상세히 설명하십시오. LaTeX 수식이 들어갈 경우 $수식$ 형태로 표현하십시오.",
   "intuitive": "이 복잡한 공학 도표나 그림이 궁극적으로 설명하고자 하는 핵심 본질을 일상생활의 비유나 아주 직관적이고 쉬운 비유적 설명으로 풀어내어 작성하십시오. (최대 2~3문장)",
   "formulaTitle": "그림/그래프의 핵심 공식 또는 경험적 관계 제목 (예: RMR 및 무지보 천장폭 대 자립시간 경험적 관계)",
-  "formulaText": "해당 그림의 대표 핵심 수식 또는 경험식 (LaTeX 표기, 예: $W = B + H$ 또는 $\\text{Stand-up Time} = f(RMR, \\text{Span})$)",
+  "formulaText": "해당 그림의 대표 핵심 수식 또는 경험식 (모든 수식은 반드시 $ 기호로 감싸서 표기, 예: $W = B + H$ 또는 $\\text{Stand-up Time} = f(RMR, \\text{Span})$)",
   "params": [
     { "symbol": "$RMR$", "desc": "암질 평가 지수 (Rock Mass Rating)" },
     { "symbol": "$\\text{Span (m)}$", "desc": "터널 무지보 천장폭 (m)" }

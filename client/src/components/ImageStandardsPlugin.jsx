@@ -1013,7 +1013,17 @@ export function ImageTabList({ formulaImages, setFormulaImages, handleSaveFormul
                             <li className="text-[15px] md:text-[16px] leading-relaxed">
                               <span className="font-extrabold text-white">{parsed.formulaTitle}: </span>
                               {LatexRenderer ? (
-                                <LatexRenderer text={parsed.formulaText} katexLoaded={katexLoaded} className="inline font-bold text-indigo-200" />
+                                <LatexRenderer 
+                                  text={
+                                    parsed.formulaText.includes('$') 
+                                      ? parsed.formulaText 
+                                      : (parsed.formulaText.includes('\\') || parsed.formulaText.includes('=')) 
+                                        ? `$${parsed.formulaText}$` 
+                                        : parsed.formulaText
+                                  } 
+                                  katexLoaded={katexLoaded} 
+                                  className="inline font-bold text-indigo-200" 
+                                />
                               ) : (
                                 <span className="font-bold text-indigo-200">{parsed.formulaText}</span>
                               )}
