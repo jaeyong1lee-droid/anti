@@ -32,7 +32,8 @@ export const renderMixedText = (text) => {
     '\\upsilon': 'υ', '\\phi': 'φ', '\\Phi': 'Φ', '\\chi': 'χ',
     '\\psi': 'ψ', '\\Psi': 'Ψ', '\\omega': 'ω', '\\Omega': 'Ω',
     '\\times': '×', '\\cdot': '·', '\\approx': '≈', '\\neq': '≠',
-    '\\leq': '≤', '\\geq': '≥', '\\pm': '±', '\\infty': '∞'
+    '\\leq': '≤', '\\geq': '≥', '\\pm': '±', '\\infty': '∞',
+    '\\circ': '°', '\\degree': '°', '\\prime': '′', '\\rightarrow': '→', '\\leftarrow': '←'
   };
   for (const [tex, uni] of Object.entries(greek)) {
     const regex = new RegExp(tex.replace(/\\/g, '\\\\') + '(?![a-zA-Z])', 'g');
