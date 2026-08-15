@@ -313,7 +313,7 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   processed = processed.replace(/\$\$([\s\S]*?)\$\$/g, (m, p1) => '$$' + p1.replace(/\|/g, '\\vert ') + '$$');
   processed = processed.replace(/\$([^\$\n]+)\$/g, (m, p1) => '$' + p1.replace(/\|/g, '\\vert ') + '$');
   
-  processed = processed.replace(/\\\([\s\S]*?\\\)/g, (m, p1) => '$' + p1.trim() + '$');
+  processed = processed.replace(/\\\(([\s\S]*?)\\\)/g, (m, p1) => '$' + p1.trim() + '$');
   processed = processed.replace(/\\\[([\s\S]*?)\\\]/g, (m, p1) => '$$' + p1.trim() + '$$');
   processed = processed.replace(/[–—−]/g, '-');
 

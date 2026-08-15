@@ -793,7 +793,7 @@ export const LatexRenderer = React.memo(function LatexRenderer({
     .filter((i) => i !== -1);
   const lastMathBlockIdx = mathBlockIndices.length > 0 ? mathBlockIndices[mathBlockIndices.length - 1] : -1;
 
-  const isInline = className.includes('inline');
+  const isInline = forceInline || (typeof className === 'string' && className.includes('inline'));
 
   if (isInline) {
     return (
