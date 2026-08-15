@@ -660,7 +660,7 @@ export function InteractiveQuizModal({
             {showExplanation && (
               <div className="text-xs sm:text-sm text-slate-300 leading-relaxed space-y-2 pt-1 font-medium">
                 <LatexRenderer 
-                  text={typeof item.content === 'string' ? item.content : (q.explanation || '')} 
+                  text={(typeof item.content === 'string' ? item.content : (q.explanation || '')).replace(/(?<!\$)(?<!\b)(\\(?:sqrt|frac|dfrac|sum|int|partial|Delta|sigma|gamma|tau|pi|theta|alpha|beta|phi|omega|mu|lambda|rho|nu|le|ge|ne|neq)\b(?:_\{[^}]*\}|\^\{[^}]*\}|\{[^}]*\})*)(?!\$)/gi, '$$$1$$')} 
                   katexLoaded={katexLoaded} 
                   isMarkdown={true} 
                 />
