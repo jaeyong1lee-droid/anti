@@ -211,7 +211,7 @@ function healMarkdownTable(tableText, poissonSymbol = null) {
 
 function replaceRoots(str) {
   let processed = str;
-  processed = processed.replace(/(?<![0-9a-zA-Z\$\\])√(?!\()/g, '\\sqrt ');
+  processed = processed.replace(/(?<![0-9a-zA-Z\$\\])√([0-9a-zA-Z_]+)(?!\()/g, '$\\sqrt{$1}$');
 
   let regex = /(?:([0-9]+)(?:_|계)?)?(?:루트|√)\(/;
   let match;
@@ -235,12 +235,10 @@ function replaceRoots(str) {
       const dollarCount = (beforeText.match(/\$/g) || []).length;
       const isAlreadyInMath = (dollarCount % 2 === 1);
       
-      let replacement;
-      if (isAlreadyInMath) {
-        replacement = rootNum ? `\\sqrt[${rootNum}]{${content}}` : `\\sqrt{${content}}`;
-      } else {
-        replacement = rootNum ? `$\\sqrt[${rootNum}]{${content}}$` : `$\\sqrt{${content}}$`;
-      }
+      const replacement = isAlreadyInMath 
+        ? (rootNum ? `\\sqrt[${rootNum}]{${content}}` : `\\sqrt{${content}}`)
+        : (rootNum ? `$\\sqrt[${rootNum}]{${content}}$` : `$\\sqrt{${content}}$`);
+        
       processed = processed.substring(0, index) + replacement + processed.substring(scanIdx);
     } else {
       break;
@@ -324,9 +322,13 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   processed = processed.replace(/(?<=:[^\n]*)\s+([–—−-]\s*(?:\$[^\$]+\$|[a-zA-Z0-9_\\\{\}]+)\s*:)/g, '\n$1');
 
   if (typeof processed === 'string') {
+    const EXCLUDE_BULLET_WORDS = /^(?:Note|Step|Case|Type|Point|Result|Summary|Tip|Warning|Notice|Check)\b/i;
     processed = processed.split('\n').map(line => {
       const bulletRegex = /^([ \t]*(?:\*|-|•|▪|▫|·|\d+\.|\d+\)|[a-zA-Z가-힣]\.|\b[a-zA-Z가-힣]\)|[①-⑳]|\[INPUT_\d+(?:_\d+)?\])[ \t]*)(?!\$)([a-zA-Z0-9_\\'\^\(\)\{\}\+\-\*\/=]+)(?!\$)([ \t]*:)/;
-      return line.replace(bulletRegex, (match, p1, p2, p3) => `${p1}$${p2}$${p3}`);
+      return line.replace(bulletRegex, (match, p1, p2, p3) => {
+        if (EXCLUDE_BULLET_WORDS.test(p2.trim())) return match;
+        return `${p1}$${p2}$${p3}`;
+      });
     }).join('\n');
   }
 
@@ -586,13 +588,13 @@ export function healQuizQuestionObject(q) {
     if (q.options && Array.isArray(q.options) && q.answer) {
       let matchedIndex = -1;
       const cleanAns = String(q.answer).trim().toLowerCase();
-      if (['1번', '①', '보기1', '보기 1', '1'].includes(cleanAns)) {
+      if (['1번', '①', '보기1', '보기 1'].includes(cleanAns)) {
         matchedIndex = 0;
-      } else if (['2번', '②', '보기2', '보기 2', '2'].includes(cleanAns)) {
+      } else if (['2번', '②', '보기2', '보기 2'].includes(cleanAns)) {
         matchedIndex = 1;
-      } else if (['3번', '③', '보기3', '보기 3', '3'].includes(cleanAns)) {
+      } else if (['3번', '③', '보기3', '보기 3'].includes(cleanAns)) {
         matchedIndex = 2;
-      } else if (['4번', '④', '보기4', '보기 4', '4'].includes(cleanAns)) {
+      } else if (['4번', '④', '보기4', '보기 4'].includes(cleanAns)) {
         matchedIndex = 3;
       }
       
@@ -606,13 +608,16 @@ export function healQuizQuestionObject(q) {
       const optNums = q.options.map(o => parseFloat(String(o || '').replace(/[^0-9.-]/g, ''))).filter(n => !isNaN(n));
       const ansNum = parseFloat(String(q.answer || '').replace(/[^0-9.-]/g, ''));
       if (optNums.length === q.options.length && !isNaN(ansNum) && ansNum > 0 && ansNum < 1) {
-        const hasScaledMatch = optNums.some(n => Math.abs(n - ansNum * 100) < 1e-5 || Math.abs(n - ansNum * 10) < 1e-5);
+        const is100x = optNums.some(n => Math.abs(n - ansNum * 100) < 1e-5);
+        const is10x = optNums.some(n => Math.abs(n - ansNum * 10) < 1e-5);
         const allLargeOrZero = optNums.every(n => n === 0 || n >= 1);
-        if (hasScaledMatch && allLargeOrZero) {
+        
+        if ((is100x || is10x) && allLargeOrZero) {
+          const factor = is100x ? 100 : 10;
           q.options = q.options.map(opt => {
             const num = parseFloat(String(opt || '').replace(/[^0-9.-]/g, ''));
             if (isNaN(num)) return opt;
-            return (num / 100).toFixed(2);
+            return (num / factor).toFixed(2);
           });
         }
       }
