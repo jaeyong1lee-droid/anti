@@ -47,7 +47,7 @@ export let generationStandardsList = [
     "title": "10. 아스키 아트(ASCII Art) 사용 기준",
     "content": "🚨 [아스키 아트 제한 철칙 - 극도로 중요!]: 일반적인 상황에서 아스키 아트(ASCII Art)를 사용하여 조잡하게 그래프나 그림을 그리는 행위는 전면 금지됩니다. 단, 사용자가 지문에서 명시적으로 '복습 7번', '믹스 11번', 또는 '흐름문제'라고 특별히 지정하여 출제를 요청하는 경우에 한해서만 예외적으로 아스키 아트를 사용하여 흐름도나 구조도를 그리는 것이 허용됩니다.",
     "updatedAt": new Date().toISOString()
-
+  }
 ];
 
 export let GENERATION_STANDARDS = assembleGenerationStandardsPrompt(generationStandardsList);
