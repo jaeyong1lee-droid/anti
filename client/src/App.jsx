@@ -10,6 +10,7 @@ import {
 } from './utils/latexUtils';
 import { convertMarkdownTablesToHtml } from './utils/markdownTableRenderer';
 import { convertMarkdownAcronymsToHtml } from './utils/markdownAcronymRenderer';
+import { compressImage } from './utils/imageUtils';
 import { BufferedTextarea } from './components/BufferedInput';
 import { LatexRenderer } from './components/LatexRenderer';
 import { TableQuiz } from './components/TableQuiz';
@@ -14797,13 +14798,37 @@ ${item.intuitive || ''}
 
   const handleSaveFormulaImages = async (images = formulaImages, showToast = true) => {
     try {
-      setFormulaImages(images);
+      // 압축된 이미지 배열 생성 (413 Payload Too Large 방지)
+      const compressedImages = [];
+      for (const imgObj of images) {
+        let newObj = { ...imgObj };
+        
+        // 단일 이미지 압축
+        if (newObj.base64Image && typeof newObj.base64Image === 'string' && newObj.base64Image.startsWith('data:image')) {
+          newObj.base64Image = await compressImage(newObj.base64Image, 1200, 1200, 0.7);
+        }
+        
+        // 다중 이미지 배열 압축
+        if (newObj.base64Images && Array.isArray(newObj.base64Images)) {
+          newObj.base64Images = await Promise.all(
+            newObj.base64Images.map(async (img) => {
+              if (typeof img === 'string' && img.startsWith('data:image')) {
+                return await compressImage(img, 1200, 1200, 0.7);
+              }
+              return img;
+            })
+          );
+        }
+        compressedImages.push(newObj);
+      }
+
+      setFormulaImages(compressedImages);
       // No local caching of database images
       
       const res = await fetch(`${API_BASE}/api/session/images`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ formulaImages: images })
+        body: JSON.stringify({ formulaImages: compressedImages })
       });
       if (res.ok) {
         if (showToast) {
