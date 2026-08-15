@@ -896,7 +896,7 @@ export const renderKatexString = (math, options = {}) => {
   processedMath = processedMath.replace(/<\/?(?:em|strong|b|i|u|span|div|p)[^>]*>/gi, '');
 
   // Auto-heal brace balancing (open & orphan closing braces) before passing to KaTeX
-  processedMath = balanceMathBraces(processedMath);
+
 
   if (typeof window !== 'undefined' && window.katex) {
     try {
