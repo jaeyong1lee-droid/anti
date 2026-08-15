@@ -51,11 +51,11 @@ export const renderMixedText = (text) => {
 
   // 4. Superscripts
   result = result.replace(/\^\{([^{}]+)\}/g, '<sup style="font-size: 0.75em; margin-left: 1px;">$1</sup>');
-  result = result.replace(/\^([a-zA-Z0-9_]+)/g, '<sup style="font-size: 0.75em; margin-left: 1px;">$1</sup>');
+  result = result.replace(/\^([a-zA-Z0-9_\u0370-\u03FF]+)/g, '<sup style="font-size: 0.75em; margin-left: 1px;">$1</sup>');
 
   // 5. Subscripts
   result = result.replace(/_\{([^{}]+)\}/g, '<sub style="font-size: 0.75em; margin-left: 1px;">$1</sub>');
-  result = result.replace(/_([a-zA-Z0-9])/g, '<sub style="font-size: 0.75em; margin-left: 1px;">$1</sub>');
+  result = result.replace(/_([a-zA-Z0-9\u0370-\u03FF])/g, '<sub style="font-size: 0.75em; margin-left: 1px;">$1</sub>');
 
   // 6. Fix legacy AI hallucinations (e.g., ^t/S -> t/S)
   result = result.replace(/\/_/g, '/');
