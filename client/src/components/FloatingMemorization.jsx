@@ -832,6 +832,7 @@ export function FloatingMemorization({
   const [searchQuery, setSearchQuery] = useState('');
   const [quizPopupItem, setQuizPopupItem] = useState(null);
   const [quizPopupType, setQuizPopupType] = useState(null);
+  const [editingAcronymCell, setEditingAcronymCell] = useState(null); // { id: string, rIdx: number, col: string }
 
   useEffect(() => {
     localStorage.setItem('anti_memorization_sub_tab', subTab);
@@ -1642,40 +1643,63 @@ export function FloatingMemorization({
                                         className="w-full text-center bg-transparent border-0 text-slate-100 font-extrabold focus:outline-none p-0 text-[14px]"
                                       />
                                     </td>
-                                    <td className="p-1 border-r border-slate-850">
-                                      <textarea
-                                        ref={(el) => {
-                                          if (el) {
-                                            el.style.height = 'auto';
-                                            el.style.height = `${el.scrollHeight}px`;
-                                          }
-                                        }}
-                                        value={rowVal.word}
-                                        onChange={(e) => handleUpdateAcronymRowCell(ac.id, rIdx, 'word', e.target.value)}
-                                        onKeyDown={(e) => {
-                                          e.stopPropagation();
-                                          if (e.key === 'Enter') {
-                                            e.preventDefault();
-                                          }
-                                        }}
-                                        rows={1}
-                                        className="w-full bg-transparent border-0 text-slate-200 font-bold focus:outline-none p-0 text-[14px] resize-none overflow-hidden"
-                                      />
+                                    <td className="p-1 border-r border-slate-850 cursor-text" onClick={() => setEditingAcronymCell({ id: ac.id, rIdx, col: 'word' })}>
+                                      {editingAcronymCell?.id === ac.id && editingAcronymCell?.rIdx === rIdx && editingAcronymCell?.col === 'word' ? (
+                                        <textarea
+                                          autoFocus
+                                          ref={(el) => {
+                                            if (el) {
+                                              el.style.height = 'auto';
+                                              el.style.height = `${el.scrollHeight}px`;
+                                            }
+                                          }}
+                                          value={rowVal.word}
+                                          onChange={(e) => handleUpdateAcronymRowCell(ac.id, rIdx, 'word', e.target.value)}
+                                          onBlur={() => setEditingAcronymCell(null)}
+                                          onKeyDown={(e) => {
+                                            e.stopPropagation();
+                                            if (e.key === 'Enter' && !e.shiftKey) {
+                                              e.preventDefault();
+                                              setEditingAcronymCell(null);
+                                            }
+                                          }}
+                                          rows={1}
+                                          className="w-full bg-transparent border-0 text-slate-200 font-bold focus:outline-none p-0 text-[14px] resize-none overflow-hidden"
+                                        />
+                                      ) : (
+                                        <div className="w-full min-h-[24px] text-slate-200 font-bold p-0 text-[14px]">
+                                          <LatexRenderer text={rowVal.word || ' '} katexLoaded={katexLoaded} className="inline" />
+                                        </div>
+                                      )}
                                     </td>
-                                    <td className="p-1 border-r border-slate-850">
-                                      <textarea
-                                        ref={(el) => {
-                                          if (el) {
-                                            el.style.height = 'auto';
-                                            el.style.height = `${el.scrollHeight}px`;
-                                          }
-                                        }}
-                                        value={rowVal.description}
-                                        onChange={(e) => handleUpdateAcronymRowCell(ac.id, rIdx, 'description', e.target.value)}
-                                        onKeyDown={(e) => e.stopPropagation()}
-                                        rows={1}
-                                        className="w-full bg-transparent border-0 text-slate-300 focus:outline-none p-0 text-[14px] resize-none overflow-hidden"
-                                      />
+                                    <td className="p-1 border-r border-slate-850 cursor-text" onClick={() => setEditingAcronymCell({ id: ac.id, rIdx, col: 'description' })}>
+                                      {editingAcronymCell?.id === ac.id && editingAcronymCell?.rIdx === rIdx && editingAcronymCell?.col === 'description' ? (
+                                        <textarea
+                                          autoFocus
+                                          ref={(el) => {
+                                            if (el) {
+                                              el.style.height = 'auto';
+                                              el.style.height = `${el.scrollHeight}px`;
+                                            }
+                                          }}
+                                          value={rowVal.description}
+                                          onChange={(e) => handleUpdateAcronymRowCell(ac.id, rIdx, 'description', e.target.value)}
+                                          onBlur={() => setEditingAcronymCell(null)}
+                                          onKeyDown={(e) => {
+                                            e.stopPropagation();
+                                            if (e.key === 'Enter' && !e.shiftKey) {
+                                              e.preventDefault();
+                                              setEditingAcronymCell(null);
+                                            }
+                                          }}
+                                          rows={1}
+                                          className="w-full bg-transparent border-0 text-slate-300 focus:outline-none p-0 text-[14px] resize-none overflow-hidden"
+                                        />
+                                      ) : (
+                                        <div className="w-full min-h-[24px] text-slate-300 p-0 text-[14px]">
+                                          <LatexRenderer text={rowVal.description || ' '} katexLoaded={katexLoaded} className="inline" />
+                                        </div>
+                                      )}
                                     </td>
                                     <td className="p-1 text-center align-middle select-none">
                                       <div className="flex items-center justify-center gap-1">
