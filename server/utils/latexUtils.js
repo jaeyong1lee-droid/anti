@@ -183,7 +183,7 @@ export function wrapMarkdownTables(text) {
 }
 
 function healMarkdownTable(tableText, poissonSymbol = null) {
-  const lines = tableText.split('\n');
+  const lines = tableText.split(/\r?\n|<br\s*\/?>/i);
   const healedLines = lines.map(line => {
     const trimmed = line.trim();
     if (!trimmed.includes('|')) return line;
@@ -310,7 +310,9 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
     return `$${p1}${math}${p3}$`;
   });
 
-  processed = processed.replace(/\\pu\s*\{([^}]+)\}/gi, '$1');
+  processed = processed.replace(/\\pu\s*\{([^}]+)\}/gi, (match, p1) => {
+    return ` ${p1.trim()} `;
+  });
   processed = healInvertedDelimiters(processed);
   processed = replaceRoots(processed);
 
@@ -1127,7 +1129,7 @@ export function escapeJsonBackslashes(str) {
           tempIndex++;
         }
         
-        const isLatex = latexCommands.some(cmd => commandWord.startsWith(cmd));
+        const isLatex = latexCommands.includes(commandWord);
         if (isLatex) {
           result += '\\\\';
           i++;
