@@ -244,7 +244,8 @@ export function robustJSONParse(text) {
   try {
     // Replace unescaped backslashes before non-standard JSON escape sequences
     const healed = rawObjStr.replace(/\\([a-zA-Z0-9_#^%+=\-()<>{}[\]|\.\,\$\/]+)/g, (fullMatch, group1) => {
-      if (group1 === '"' || group1 === '\\' || group1 === '/') return `\\${group1}`;
+      // JSON 표준 이스케이프 문자(n, r, t, b, f, 따옴표, 백슬래시, 슬래시)는 이중 이스케이프하지 않고 원형 보존
+      if (['"', '\\', '/', 'n', 'r', 't', 'b', 'f'].includes(group1)) return `\\${group1}`;
       return `\\\\${group1}`;
     });
     return JSON.parse(healed);
