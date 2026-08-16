@@ -47,6 +47,12 @@ export let generationStandardsList = [
     "title": "10. 아스키 아트(ASCII Art) 사용 기준",
     "content": "🚨 [아스키 아트 제한 철칙 - 극도로 중요!]: 일반적인 상황에서 아스키 아트(ASCII Art)를 사용하여 조잡하게 그래프나 그림을 그리는 행위는 전면 금지됩니다. 단, 사용자가 지문에서 명시적으로 '복습 7번', '믹스 11번', 또는 '흐름문제'라고 특별히 지정하여 출제를 요청하는 경우에 한해서만 예외적으로 아스키 아트를 사용하여 흐름도나 구조도를 그리는 것이 허용됩니다.",
     "updatedAt": new Date().toISOString()
+  },
+  {
+    "id": "self_correction_and_acronym_translation",
+    "title": "11. 특수 공법 약자(Acronym) 사전 해석 및 환각(Hallucination) 방지 철칙",
+    "content": "🚨 [특수 공법 약자 번역 및 혼동 방지 철칙 - 극도로 중요!]: 건설/토목 특수 공법(예: SGR, JSP, SCW, CIP 등)을 설명하거나 관련 문제를 출제/답변할 때는 **반드시 영문 약자의 풀네임을 먼저 속으로 명확히 해석**하여 해당 공법의 핵심 역학적 원리(예: 고압 분사인지 저압 침투인지, 굴착 치환인지 교반 혼합인지 등)를 정확히 매칭하십시오. 서로 다른 공법의 원리와 특징(예: SGR에 JSP의 초고압 분사를 설명하는 등)을 섞어서 설명하는 환각(Hallucination)을 엄격히 금지합니다. 확신이 없는 지엽적인 제원은 절대 지어내지 마십시오.",
+    "updatedAt": new Date().toISOString()
   }
 ];
 
