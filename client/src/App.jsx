@@ -4767,6 +4767,8 @@ export default function App() {
   const [openSections, setOpenSections] = useState({}); // { 'qIdx-sIdx': bool } for section accordion
   const [questionFeedback, setQuestionFeedback] = useState({}); // Stores upvotes/downvotes of questions { `${topic_id}_${questionText}`: 'upvote' | 'downvote' }
   
+
+
   // Exam mode state
   const [examQuestions, setExamQuestions] = useState([]);
   const [showExam, setShowExam] = useState(() => localStorage.getItem('anti_show_exam') === 'true');
@@ -4966,98 +4968,16 @@ export default function App() {
     };
 
     window.__saveTableColumnWidths = (table) => {
-      // 너비 저장을 더 이상 사용하지 않으므로 아무 작업도 하지 않음 (사용자 요청: "열너비를 기억하는것으로 셋팅되어있는데 그렇게 하지말고")
+      // 너비 저장을 더 이상 사용하지 않으므로 아무 작업도 하지 않음
     };
 
     window.__restoreAllTableColumnWidths = (container = document) => {
-      if (!container) return;
-      const tables = (container.querySelectorAll) ? container.querySelectorAll('.markdown-table-container table') : [];
-      tables.forEach(table => {
-        const tr = table.querySelector('thead tr') || table.querySelector('tr');
-        if (!tr) return;
-        const ths = Array.from(tr.querySelectorAll('th'));
-        if (ths.length <= 1) return;
-
-        // 컨텐츠 기반 자동 배분 로직 (마지막 열 더블클릭 로직과 동일)
-        const colCount = ths.length;
-        const MIN_WIDTH = 84;
-        const tableContainer = table.closest('.markdown-table-container') || table.parentElement;
-        const containerWidth = tableContainer ? tableContainer.clientWidth : table.clientWidth;
-        
-        // 컨테이너가 렌더링되지 않은 상태라면 스킵
-        if (!containerWidth || containerWidth === 0) return;
-
-        const rows = Array.from(table.querySelectorAll('tr'));
-        const isFixedShort = [];
-        const finalWidths = new Array(colCount).fill(0);
-        const textWeights = new Array(colCount).fill(0);
-        let sumFixedShort = 0;
-
-        for (let i = 0; i < colCount; i++) {
-          let maxLen = (ths[i].textContent || '').trim().length;
-          rows.forEach(r => {
-            const cells = Array.from(r.children);
-            if (cells[i]) {
-              const text = (cells[i].textContent || '').trim();
-              if (text.length > maxLen) maxLen = text.length;
-            }
-          });
-
-          // 3글자 이하 짧은 기호/화살표 열은 50px로 콤팩트하게 고정
-          if (maxLen <= 3) {
-            isFixedShort[i] = true;
-            finalWidths[i] = 50;
-            sumFixedShort += 50;
-          } else {
-            isFixedShort[i] = false;
-            textWeights[i] = Math.max(MIN_WIDTH, Math.round(maxLen * 13 + 28));
-          }
-        }
-
-        const remainingContainerWidth = Math.max(100, containerWidth - sumFixedShort);
-        const sumTextWeight = textWeights.reduce((a, b) => a + b, 0);
-
-        const textIndices = [];
-        for (let i = 0; i < colCount; i++) {
-          if (!isFixedShort[i]) textIndices.push(i);
-        }
-
-        let allocatedText = 0;
-        textIndices.forEach((cIdx, idx) => {
-          if (idx === textIndices.length - 1) {
-            finalWidths[cIdx] = Math.max(MIN_WIDTH, remainingContainerWidth - allocatedText - 2);
-          } else {
-            const w = Math.max(MIN_WIDTH, Math.floor(remainingContainerWidth * (textWeights[cIdx] / sumTextWeight)));
-            finalWidths[cIdx] = w;
-            allocatedText += w;
-          }
-        });
-
-        const colEls = Array.from(table.querySelectorAll('colgroup col'));
-        ths.forEach((h, i) => {
-          const w = finalWidths[i];
-          h.style.setProperty('width', w + 'px', 'important');
-          h.style.setProperty('min-width', Math.min(w, MIN_WIDTH) + 'px', 'important');
-          h.style.setProperty('max-width', w + 'px', 'important');
-          if (colEls[i]) {
-            colEls[i].style.setProperty('width', w + 'px', 'important');
-            colEls[i].style.setProperty('min-width', Math.min(w, MIN_WIDTH) + 'px', 'important');
-            colEls[i].style.setProperty('max-width', w + 'px', 'important');
-          }
-        });
-
-        table.style.setProperty('width', '100%', 'important');
-        table.style.setProperty('min-width', '100%', 'important');
-        table.style.setProperty('max-width', '100%', 'important');
-        if (tableContainer) tableContainer.style.overflowX = 'hidden';
-      });
+      // 너비 복원 로직 제거
     };
 
     // Auto trigger table column width restoration on initial load & refresh
     if (window.__restoreAllTableColumnWidths) {
       window.__restoreAllTableColumnWidths(document);
-      setTimeout(() => window.__restoreAllTableColumnWidths(document), 100);
-      setTimeout(() => window.__restoreAllTableColumnWidths(document), 500);
     }
 
     // Global double click handler for column 1 or column 2 headers
@@ -5068,204 +4988,28 @@ export default function App() {
       }
       const th = (handleOrTh && handleOrTh.closest) ? handleOrTh.closest('th') : handleOrTh;
       if (!th) return;
-      const tr = th.closest('tr');
-      if (!tr) return;
       const table = th.closest('table');
       if (!table) return;
 
-      const allThs = Array.from(tr.querySelectorAll('th'));
-      const colCount = allThs.length;
-      const MIN_WIDTH = 84; // 최소 7글자 폭 보장 (84px)
-      const hasRemarks = allThs[colCount - 1] && allThs[colCount - 1].textContent.trim() === '비고';
-      const lastDataColIdx = hasRemarks ? (colCount - 2) : (colCount - 1);
+      const tableContainer = table.closest('.markdown-table-container') || table.parentElement;
 
-      if (colIdx === 0) {
-        // 1열(구분 열) 더블클릭 시: 1열의 현재 너비는 절대로 움직이거나 변경하지 않고 그대로 고정하고, 1열을 제외한 모든 나머지 열(2열, 3열, 4열...)이 남은 화면 공간을 1:1 완벽한 등간격으로 나누어 화면 너비(100%)를 꽉 채움
-        const tableContainer = table.closest('.markdown-table-container') || table.parentElement;
-        const containerWidth = tableContainer ? tableContainer.clientWidth : table.clientWidth;
-
-        // 1열의 현재 너비를 그대로 고정 (움직임 0)
-        const col1Width = allThs[0].offsetWidth || MIN_WIDTH;
-        allThs[0].style.setProperty('width', col1Width + 'px', 'important');
-        allThs[0].style.setProperty('min-width', MIN_WIDTH + 'px', 'important');
-        allThs[0].style.setProperty('max-width', col1Width + 'px', 'important');
-
-        const numRemainingCols = colCount - 1; // 1열을 제외한 나머지 모든 열(2열, 3열, 4열...) 개수
-        const totalRemWidth = Math.max(MIN_WIDTH * numRemainingCols, containerWidth - col1Width - 4);
-        const equalRemColWidth = Math.max(MIN_WIDTH, Math.floor(totalRemWidth / numRemainingCols));
-
-        for (let i = 1; i < colCount; i++) {
-          allThs[i].style.setProperty('width', equalRemColWidth + 'px', 'important');
-          allThs[i].style.setProperty('min-width', MIN_WIDTH + 'px', 'important');
-          allThs[i].style.setProperty('max-width', equalRemColWidth + 'px', 'important');
+      // 더블클릭 시: 브라우저 고유의 table-auto 자동 맞춤으로 리셋!
+      const allThs = Array.from(table.querySelectorAll('th'));
+      const colEls = Array.from(table.querySelectorAll('colgroup col'));
+      allThs.forEach((h, i) => {
+        h.style.removeProperty('width');
+        h.style.removeProperty('max-width');
+        if (colEls[i]) {
+          colEls[i].style.removeProperty('width');
+          colEls[i].style.removeProperty('max-width');
         }
-
-        // 전체 표 너비를 100%로 설정하여 가로 스크롤 없이 화면 전체 채움
-        table.style.setProperty('width', '100%', 'important');
-        table.style.setProperty('min-width', '100%', 'important');
-        table.style.setProperty('max-width', '100%', 'important');
-      } else if (colIdx === 1 && colCount > 1) {
-        // 2열 더블클릭 시: 1열과 2열의 현재 너비(col0Width, col2Width)를 그대로 100% 고정(움직임 0)하고, 3열 이후의 모든 열을 2열 너비에 맞춤!
-        const col0Width = allThs[0].offsetWidth || MIN_WIDTH;
-        const col2Width = allThs[1].offsetWidth || MIN_WIDTH;
-
-        // 1열 너비 엄격 고정 (흔들림 및 줄바꿈 차단)
-        allThs[0].style.setProperty('width', col0Width + 'px', 'important');
-        allThs[0].style.setProperty('min-width', col0Width + 'px', 'important');
-        allThs[0].style.setProperty('max-width', col0Width + 'px', 'important');
-
-        // 2열 너비 엄격 고정 (줄바꿈 차단)
-        allThs[1].style.setProperty('width', col2Width + 'px', 'important');
-        allThs[1].style.setProperty('min-width', col2Width + 'px', 'important');
-        allThs[1].style.setProperty('max-width', col2Width + 'px', 'important');
-
-        // 3열 이후의 모든 나머지 데이터 열(3열, 4열...) 너비를 2열의 현재 너비(col2Width)와 동일하게 1:1 통일
-        let sumAllCols = col0Width + col2Width;
-        for (let i = 2; i <= lastDataColIdx; i++) {
-          allThs[i].style.setProperty('width', col2Width + 'px', 'important');
-          allThs[i].style.setProperty('min-width', col2Width + 'px', 'important');
-          allThs[i].style.setProperty('max-width', col2Width + 'px', 'important');
-          sumAllCols += col2Width;
-        }
-
-        const remarksWidth = hasRemarks ? (allThs[colCount - 1].offsetWidth || 50) : 0;
-        if (hasRemarks && allThs[colCount - 1]) {
-          allThs[colCount - 1].style.setProperty('width', remarksWidth + 'px', 'important');
-          allThs[colCount - 1].style.setProperty('min-width', '50px', 'important');
-          sumAllCols += remarksWidth;
-        }
-
-        // 전체 tr 요소의 td 셀에도 동일하게 1열, 2열 및 3열~ 너비를 엄격 지정하여 브라우저 재배치에 의한 흔들림/줄바꿈 완벽 차단
-        const allTrs = Array.from(table.querySelectorAll('tr'));
-        allTrs.forEach(r => {
-          const cells = Array.from(r.children);
-          if (cells[0]) {
-            cells[0].style.setProperty('width', col0Width + 'px', 'important');
-            cells[0].style.setProperty('min-width', col0Width + 'px', 'important');
-            cells[0].style.setProperty('max-width', col0Width + 'px', 'important');
-          }
-          if (cells[1]) {
-            cells[1].style.setProperty('width', col2Width + 'px', 'important');
-            cells[1].style.setProperty('min-width', col2Width + 'px', 'important');
-            cells[1].style.setProperty('max-width', col2Width + 'px', 'important');
-          }
-          for (let i = 2; i <= lastDataColIdx; i++) {
-            if (cells[i]) {
-              cells[i].style.setProperty('width', col2Width + 'px', 'important');
-              cells[i].style.setProperty('min-width', col2Width + 'px', 'important');
-              cells[i].style.setProperty('max-width', col2Width + 'px', 'important');
-            }
-          }
-        });
-
-        const tableContainer = table.closest('.markdown-table-container, .table-quiz-container') || table.parentElement;
-        // 1열 및 2열은 현재 상태 그대로 유지되도록 전체 표 너비를 sumAllCols로 명시 설정
-        table.style.setProperty('width', sumAllCols + 'px', 'important');
-        table.style.setProperty('min-width', sumAllCols + 'px', 'important');
-        table.style.setProperty('max-width', 'none', 'important');
-        if (tableContainer) tableContainer.style.overflowX = 'auto';
-      } else if ((colIdx === lastDataColIdx || colIdx === colCount - 1) && colCount > 1 && colIdx > 0) {
-        // 제일 오른쪽(마지막 열) 헤더/핸들 더블클릭 시: 화살표(→) 등 짧은 기호 열은 50px로 콤팩트 축소하고, 나머지 가로 공간(100%)을 글자 수 비율로 정밀 배분하여 가로 스크롤 없이 칼같이 맞춤!
-        const tableContainer = table.closest('.markdown-table-container') || table.parentElement;
-        const containerWidth = tableContainer ? tableContainer.clientWidth : table.clientWidth;
-        const rows = Array.from(table.querySelectorAll('tr'));
-
-        const isFixedShort = [];
-        const finalWidths = new Array(colCount).fill(0);
-        const textWeights = new Array(colCount).fill(0);
-
-        let sumFixedShort = 0;
-
-        for (let i = 0; i < colCount; i++) {
-          let maxLen = (allThs[i].textContent || '').trim().length;
-          rows.forEach(r => {
-            const cells = Array.from(r.children);
-            if (cells[i]) {
-              const text = (cells[i].textContent || '').trim();
-              if (text.length > maxLen) maxLen = text.length;
-            }
-          });
-
-          // 3글자 이하의 짧은 기호/화살표 열은 50px로 고정 콤팩트 축소
-          if (maxLen <= 3) {
-            isFixedShort[i] = true;
-            finalWidths[i] = 50;
-            sumFixedShort += 50;
-          } else {
-            isFixedShort[i] = false;
-            textWeights[i] = Math.max(MIN_WIDTH, Math.round(maxLen * 13 + 28));
-          }
-        }
-
-        const remainingContainerWidth = Math.max(100, containerWidth - sumFixedShort);
-        const sumTextWeight = textWeights.reduce((a, b) => a + b, 0);
-
-        const textIndices = [];
-        for (let i = 0; i < colCount; i++) {
-          if (!isFixedShort[i]) textIndices.push(i);
-        }
-
-        let allocatedText = 0;
-        textIndices.forEach((cIdx, idx) => {
-          if (idx === textIndices.length - 1) {
-            finalWidths[cIdx] = Math.max(MIN_WIDTH, remainingContainerWidth - allocatedText - 2);
-          } else {
-            const w = Math.max(MIN_WIDTH, Math.floor(remainingContainerWidth * (textWeights[cIdx] / sumTextWeight)));
-            finalWidths[cIdx] = w;
-            allocatedText += w;
-          }
-        });
-
-        const colEls = Array.from(table.querySelectorAll('colgroup col'));
-        allThs.forEach((h, i) => {
-          const w = finalWidths[i];
-          h.style.setProperty('width', w + 'px', 'important');
-          h.style.setProperty('min-width', Math.min(w, MIN_WIDTH) + 'px', 'important');
-          h.style.setProperty('max-width', w + 'px', 'important');
-          if (colEls[i]) {
-            colEls[i].style.setProperty('width', w + 'px', 'important');
-            colEls[i].style.setProperty('min-width', Math.min(w, MIN_WIDTH) + 'px', 'important');
-            colEls[i].style.setProperty('max-width', w + 'px', 'important');
-          }
-        });
-
-        table.style.setProperty('width', '100%', 'important');
-        table.style.setProperty('min-width', '100%', 'important');
-        table.style.setProperty('max-width', '100%', 'important');
-        if (tableContainer) tableContainer.style.overflowX = 'hidden';
-      } else {
-        // 더블클릭 시: 선택한 열의 텍스트 길이를 계산하여 해당 열을 내용에 딱 맞추어 자동 너비 조절 (자동 텍스트 줄바꿈 방지)
-        const tableContainer = table.closest('.markdown-table-container') || table.parentElement;
-        const targetTh = allThs[colIdx];
-        if (targetTh) {
-          // 해당 열의 모든 셀(헤더 포함) 텍스트 길이 측정
-          const rows = Array.from(table.querySelectorAll('tr'));
-          let maxLen = (targetTh.textContent || '').trim().length;
-          rows.forEach(r => {
-            const cells = Array.from(r.children);
-            if (cells[colIdx]) {
-              const text = (cells[colIdx].textContent || '').trim();
-              if (text.length > maxLen) maxLen = text.length;
-            }
-          });
-
-          const autoPx = Math.min(500, Math.max(MIN_WIDTH, maxLen * 14 + 32));
-          let totalTableWidth = 0;
-
-          allThs.forEach((h, i) => {
-            const w = (i === colIdx) ? autoPx : (h.offsetWidth || MIN_WIDTH);
-            h.style.setProperty('width', w + 'px', 'important');
-            h.style.setProperty('min-width', w + 'px', 'important');
-            h.style.setProperty('max-width', w + 'px', 'important');
-            totalTableWidth += w;
-          });
-
-          table.style.setProperty('width', totalTableWidth + 'px', 'important');
-          table.style.setProperty('min-width', totalTableWidth + 'px', 'important');
-          table.style.setProperty('max-width', 'none', 'important');
-          if (tableContainer) tableContainer.style.overflowX = 'auto';
-        }
-      }
+      });
+      table.style.removeProperty('width');
+      table.style.removeProperty('min-width');
+      table.style.removeProperty('max-width');
+      table.classList.remove('table-fixed');
+      table.classList.add('table-auto');
+      if (tableContainer) tableContainer.style.overflowX = 'auto';
 
       if (window.__saveTableColumnWidths) window.__saveTableColumnWidths(table);
     };
@@ -5328,6 +5072,21 @@ export default function App() {
         ownerDoc.body.style.touchAction = 'none';
         ownerDoc.body.style.userSelect = 'none';
         ownerDoc.body.style.webkitUserSelect = 'none';
+      }
+
+      // 만약 표가 아직 브라우저 자동 맞춤(table-auto) 상태라면 현재 브라우저가 산출한 너비를 픽셀로 고정(table-fixed)하여 수동 드래그가 정상 작동하도록 함
+      if (table.classList.contains('table-auto')) {
+        const currentWidths = allThs.map(h => h.offsetWidth);
+        allThs.forEach((h, i) => {
+          const cw = currentWidths[i] || MIN_WIDTH;
+          h.style.setProperty('width', cw + 'px', 'important');
+          h.style.setProperty('min-width', Math.min(cw, MIN_WIDTH) + 'px', 'important');
+          h.style.setProperty('max-width', 'none', 'important');
+        });
+        table.style.setProperty('width', table.offsetWidth + 'px', 'important');
+        table.style.setProperty('min-width', table.offsetWidth + 'px', 'important');
+        table.classList.remove('table-auto');
+        table.classList.add('table-fixed');
       }
 
       const doResize = (ev) => {

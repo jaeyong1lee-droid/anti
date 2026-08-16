@@ -163,7 +163,7 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false,
   
   const is2Col = colCount === 2;
   const is3Col = colCount === 3;
-  const tableLayoutClass = "table-fixed custom-col-widths min-w-full";
+  const tableLayoutClass = "table-auto custom-col-widths min-w-full";
   const tableClass = is2Col ? `markdown-table markdown-table-2col ${tableLayoutClass}` : `markdown-table ${tableLayoutClass}`;
 
   // Check saved table column widths from localStorage
@@ -184,13 +184,8 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false,
     headers.forEach((h, hIdx) => {
       const renderedH = renderCellMath(h);
       let colStyle = "position: relative !important; user-select: none;";
-      if (savedWidths && savedWidths[hIdx]) {
-        const w = savedWidths[hIdx];
-        colStyle += ` width: ${w}px !important; min-width: ${w}px !important; max-width: ${w}px !important;`;
-      } else {
-        const defaultSmartW = getDefaultSmartColWidth(hIdx, headers.length);
-        colStyle += ` width: ${defaultSmartW} !important; min-width: 60px;`;
-      }
+      // JS 강제 픽셀 너비를 제거하고 브라우저 고유의 table-auto에 맡김
+      colStyle += ` min-width: 60px;`;
       const dblClickAttr = `ondblclick="if(window.__handleTableColumnDoubleClick) { window.__handleTableColumnDoubleClick(event, this, ${hIdx}) }"`;
 
       const cleanH = cleanHeaderTitle(h);
