@@ -135,11 +135,18 @@ export function cleanHeaderTitle(h) {
 
 export function getTableStorageKey(headers) {
   if (!headers || !Array.isArray(headers) || headers.length === 0) return null;
-  return `anti_tbl_widths_colcount_${headers.length}`;
+  // 각 표의 고유성을 보장하기 위해 첫 3개 헤더의 텍스트를 조합하여 키 생성
+  const keyBase = headers.slice(0, 3).map(h => cleanHeaderTitle(h).replace(/[^a-zA-Z0-9가-힣]/g, '')).join('_');
+  return `anti_tbl_widths_${headers.length}_${keyBase}`;
 }
 
 export function getSavedTableWidths(headers) {
-  // 사용자 요청으로 로컬 스토리지에 저장된 너비를 불러오지 않도록 무효화
+  const key = getTableStorageKey(headers);
+  if (!key) return null;
+  try {
+    const val = localStorage.getItem(key);
+    if (val) return JSON.parse(val);
+  } catch (e) {}
   return null;
 }
 
@@ -161,16 +168,19 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false,
     return row.slice(0, colCount);
   });
   
-  const is2Col = colCount === 2;
-  const is3Col = colCount === 3;
-  const tableLayoutClass = "table-auto custom-col-widths min-w-full";
-  const tableClass = is2Col ? `markdown-table markdown-table-2col ${tableLayoutClass}` : `markdown-table ${tableLayoutClass}`;
-
   // Check saved table column widths from localStorage
   const fullHeaders = !hideRemarks ? [...headers, '비고'] : headers;
   const savedData = getSavedTableWidths(fullHeaders) || getSavedTableWidths(headers);
   const savedWidths = savedData ? savedData.widths : null;
   const savedTableWidth = savedData ? savedData.tableWidth : null;
+
+  let tableLayoutClass = "table-auto custom-col-widths min-w-full";
+  // 저장된 너비가 있다면 강제 픽셀 고정을 위해 table-fixed 사용
+  if (savedTableWidth) {
+    tableLayoutClass = "table-fixed custom-col-widths min-w-full";
+  }
+  const tableClass = is2Col ? `markdown-table markdown-table-2col ${tableLayoutClass}` : `markdown-table ${tableLayoutClass}`;
+
   const tableAttrStyle = savedTableWidth ? `style="width: ${savedTableWidth} !important; min-width: ${savedTableWidth} !important; max-width: ${savedTableWidth === '100%' ? '100%' : 'none'} !important;"` : '';
 
   let html = '';
@@ -184,8 +194,12 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false,
     headers.forEach((h, hIdx) => {
       const renderedH = renderCellMath(h);
       let colStyle = "position: relative !important; user-select: none;";
-      // JS 강제 픽셀 너비를 제거하고 브라우저 고유의 table-auto에 맡김
-      colStyle += ` min-width: 60px;`;
+      if (savedWidths && savedWidths[hIdx]) {
+        const w = savedWidths[hIdx];
+        colStyle += ` width: ${w}px !important; min-width: ${w}px !important; max-width: ${w}px !important;`;
+      } else {
+        colStyle += ` min-width: 60px;`;
+      }
       const dblClickAttr = `ondblclick="if(window.__handleTableColumnDoubleClick) { window.__handleTableColumnDoubleClick(event, this, ${hIdx}) }"`;
 
       const cleanH = cleanHeaderTitle(h);

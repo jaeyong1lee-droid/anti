@@ -4968,7 +4968,22 @@ export default function App() {
     };
 
     window.__saveTableColumnWidths = (table) => {
-      // 너비 저장을 더 이상 사용하지 않으므로 아무 작업도 하지 않음
+      if (!table) return;
+      const ths = Array.from(table.querySelectorAll('th'));
+      if (ths.length === 0) return;
+      
+      const getCleanText = (h) => {
+        return (h.getAttribute('data-header-clean') || h.textContent || '').replace(/[^a-zA-Z0-9가-힣]/g, '');
+      };
+      
+      const keyBase = ths.slice(0, 3).map(getCleanText).join('_');
+      const key = `anti_tbl_widths_${ths.length}_${keyBase}`;
+      
+      const widths = ths.map(th => th.offsetWidth);
+      const tableWidth = table.style.width || '100%';
+      try {
+        localStorage.setItem(key, JSON.stringify({ widths, tableWidth }));
+      } catch (e) {}
     };
 
     window.__restoreAllTableColumnWidths = (container = document) => {
@@ -4991,7 +5006,7 @@ export default function App() {
         if (table.offsetWidth > containerWidth) {
           const allThs = Array.from(table.querySelectorAll('th'));
           const MIN_WIDTH = 84;
-          let maxCharPx = 250; // 15글자 기준
+          let maxCharPx = 200; // 12글자 기준 대략 200px
           let needsFixed = false;
           
           const currentWidths = allThs.map(h => h.offsetWidth);
@@ -5091,7 +5106,7 @@ export default function App() {
           if (!tableContainer) return;
           const containerWidth = tableContainer.clientWidth;
           if (table.offsetWidth > containerWidth) {
-            let maxCharPx = 250; // 15글자 기준 대략 250px
+            let maxCharPx = 200; // 12글자 기준 대략 200px
             let needsFixed = false;
             
             const currentWidths = allThs.map(h => h.offsetWidth);
