@@ -4971,7 +4971,11 @@ export default function App() {
       if (!tr) return;
       const ths = Array.from(tr.querySelectorAll('th'));
       if (ths.length === 0) return;
-      const sig = 'colcount_' + ths.length;
+      
+      const sig = ths.map(th => {
+        const clean = th.getAttribute('data-header-clean');
+        return clean ? clean : extractCleanThTitle(th);
+      }).filter(Boolean).join('|');
 
       const widths = ths.map(th => th.offsetWidth);
       const tableWidth = table.style.width || '100%';
@@ -4991,7 +4995,11 @@ export default function App() {
         if (!tr) return;
         const ths = Array.from(tr.querySelectorAll('th'));
         if (ths.length === 0) return;
-        const sig = 'colcount_' + ths.length;
+        
+        const sig = ths.map(th => {
+          const clean = th.getAttribute('data-header-clean');
+          return clean ? clean : extractCleanThTitle(th);
+        }).filter(Boolean).join('|');
 
         try {
           const saved = localStorage.getItem(`anti_tbl_widths_${sig}`);
