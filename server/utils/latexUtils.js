@@ -384,20 +384,8 @@ export function cleanQuizQuestion(q) {
   if (!q) return q;
   let cleanText = typeof q === 'string' ? q : String(q || '');
 
-  let emptyBoxIdx = 0;
-  cleanText = cleanText.replace(/\[[^\]]*\([A-F]\)[^\]]*\([A-F]\)[^\]]*\]/gi, () => {
-    emptyBoxIdx++;
-    return emptyBoxIdx === 1 ? '[ (A) ]' : (emptyBoxIdx === 2 ? '[ (C) ]' : '[ (E) ]');
-  });
-
-  let emptyLineIdx = 0;
-  cleanText = cleanText.replace(/-\s*[^\n]*\([A-F]\)[^\n]*\([A-F]\)[^\n]*(?=\r?\n|$)/gi, (match) => {
-    emptyLineIdx++;
-    const rightBorder = match.includes('│') ? '                        │' : '';
-    return (emptyLineIdx === 1 ? '- (B)' : (emptyLineIdx === 2 ? '- (D)' : '- (F)')) + rightBorder;
-  });
-
-  cleanText = cleanText.replace(/,?\s*\([A-Z]\)(?:\s*,\s*\([A-Z]\))+/gi, '');
+  // Removed destructive A, B, C regex logic that corrupts valid text
+  // Removed list garbage regex that corrupts valid text
   return cleanText.trim();
 }
 

@@ -9278,7 +9278,7 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
 
   // 특정 완료 복습 회차 클릭 시, 이전 풀이 기록(풀었던 문제, 마크한 정답, 유도과정 열람)을 기기 간 복구하여 조회 전용으로 시각화
   const handleOpenCompletedReview = async (scheduleId, topicId, topicTitle, round, keywords = '', pdfName = '') => {
-    await forceSaveActiveSessions();
+    forceSaveActiveSessions();
     const topicObj = allTopics.find(t => String(t.id) === String(topicId));
     const topicCategory = topicObj ? topicObj.category : '일반';
 
@@ -9636,7 +9636,7 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
       const updated = [...newItems, ...currentQs];
       latestAnswersheetQuestionsRef.current = updated;
       setAnswersheetQuestions(updated);
-      await handleSaveAnswersheetQuestions(updated, false);
+      handleSaveAnswersheetQuestions(updated, false);
 
       showNotification(`[${topicTitle}] 원보고서가 성공적으로 연동되어 답안지 탭에 추가되었습니다!`, 'success');
     } catch (err) {
@@ -9694,7 +9694,7 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
       return;
     }
     // Save current active session progress before starting the new one!
-    await forceSaveActiveSessions();
+    forceSaveActiveSessions();
     loadingTopicLockRef.current = true;
 
     setShowAnswerSheet(false);
@@ -16230,7 +16230,7 @@ ${itemsStr}
           updated[idx] = { ...updated[idx], memorizationTip: body.memorizationTip };
           latestFormulaQuestionsRef.current = updated;
           setFormulaQuestions(updated);
-          await handleSaveFormulaQuestions(updated, true); // true로 변경하여 서버 저장 토스트 표출 및 동기화 인지
+          handleSaveFormulaQuestions(updated, true); // true로 변경하여 서버 저장 토스트 표출 및 동기화 인지
           showNotification('공식 암기법이 생성되어 서버 및 핸드폰과 동기화되었습니다!', 'success');
         } else {
           console.warn('[GenerateTip] Empty response body:', body);
@@ -16413,7 +16413,7 @@ ${itemsStr}
       const updated = [...newItems, ...currentQs];
       latestAnswersheetQuestionsRef.current = updated;
       setAnswersheetQuestions(updated);
-      await handleSaveAnswersheetQuestions(updated, false);
+      handleSaveAnswersheetQuestions(updated, false);
 
       showNotification(`[${file.name}] 보고서가 성공적으로 답안지 탭에 연동 추가되었습니다!`, 'success');
     } finally {
@@ -18444,7 +18444,7 @@ ${itemsStr}
             {/* 첫 번째 줄: 오늘의 복습, 복습토픽, 종합평가, 답 */}
             <div className="flex gap-1.5 w-full">
               <button
-                onClick={async () => { await forceSaveActiveSessions(); setViewMode('dashboard'); setSelectedTopic(null); setShowExam(false); setShowFormulaExam(false); setShowTheoryExam(false); setShowAnswerSheet(false); }}
+                onClick={async () => { forceSaveActiveSessions(); setViewMode('dashboard'); setSelectedTopic(null); setShowExam(false); setShowFormulaExam(false); setShowTheoryExam(false); setShowAnswerSheet(false); }}
                 className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-xl transition-all duration-200 border border-slate-800/80 cursor-pointer ${
                   viewMode === 'dashboard' && !selectedTopic && !showExam && !showFormulaExam && !showTheoryExam && !showAnswerSheet
                     ? 'bg-brand-600 text-white shadow-md'
@@ -18455,7 +18455,7 @@ ${itemsStr}
                 <span className="text-[10px] font-bold whitespace-nowrap">오늘 복습</span>
               </button>
               <button
-                onClick={async () => { await forceSaveActiveSessions(); setViewMode('all_topics'); setSelectedTopic(null); setShowExam(false); setShowFormulaExam(false); setShowTheoryExam(false); setShowAnswerSheet(false); }}
+                onClick={async () => { forceSaveActiveSessions(); setViewMode('all_topics'); setSelectedTopic(null); setShowExam(false); setShowFormulaExam(false); setShowTheoryExam(false); setShowAnswerSheet(false); }}
                 className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-xl transition-all duration-200 border border-slate-800/80 cursor-pointer ${
                   viewMode === 'all_topics' && !selectedTopic && !showExam && !showFormulaExam && !showTheoryExam && !showAnswerSheet
                     ? 'bg-brand-600 text-white shadow-md'
@@ -18466,7 +18466,7 @@ ${itemsStr}
                 <span className="text-[10px] font-bold whitespace-nowrap">복습토픽</span>
               </button>
               <button
-                onClick={async () => { await forceSaveActiveSessions(); setSelectedTopic(null); setShowFormulaExam(false); setShowTheoryExam(false); setShowAnswerSheet(false); handleOpenExam(); }}
+                onClick={async () => { forceSaveActiveSessions(); setSelectedTopic(null); setShowFormulaExam(false); setShowTheoryExam(false); setShowAnswerSheet(false); handleOpenExam(); }}
                 className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-xl transition-all duration-200 border border-slate-800/80 cursor-pointer ${
                   showExam
                     ? 'bg-gradient-to-tr from-amber-600 to-yellow-500 text-white border-amber-500 shadow-md'
@@ -18477,7 +18477,7 @@ ${itemsStr}
                 <span className="text-[10px] font-bold whitespace-nowrap">종합평가</span>
               </button>
               <button
-                onClick={async () => { await forceSaveActiveSessions(); setSelectedTopic(null); setShowExam(false); setShowFormulaExam(false); setShowTheoryExam(false); handleOpenAnswerSheet(); }}
+                onClick={async () => { forceSaveActiveSessions(); setSelectedTopic(null); setShowExam(false); setShowFormulaExam(false); setShowTheoryExam(false); handleOpenAnswerSheet(); }}
                 className={`flex-1 flex items-center justify-center py-2 border border-slate-800/80 rounded-xl transition-all duration-200 cursor-pointer ${
                   showAnswerSheet
                     ? 'bg-gradient-to-tr from-emerald-600 to-teal-500 text-white shadow-lg'
@@ -18500,7 +18500,7 @@ ${itemsStr}
                 <button
                   key={b.tab}
                   onClick={async () => {
-                    await forceSaveActiveSessions();
+                    forceSaveActiveSessions();
                     setSelectedTopic(null);
                     setShowExam(false);
                     setShowTheoryExam(false);
@@ -18583,7 +18583,7 @@ ${itemsStr}
                 {/* 오늘의 복습 */}
                 <button
                   onClick={async () => {
-                    await forceSaveActiveSessions();
+                    forceSaveActiveSessions();
                     setViewMode('dashboard');
                     setSelectedTopic(null);
                     setShowExam(false);
@@ -18604,7 +18604,7 @@ ${itemsStr}
                 {/* 복습토픽 */}
                 <button
                   onClick={async () => {
-                    await forceSaveActiveSessions();
+                    forceSaveActiveSessions();
                     setViewMode('all_topics');
                     setSelectedTopic(null);
                     setShowExam(false);
@@ -18626,7 +18626,7 @@ ${itemsStr}
                 {/* 종합평가 */}
                 <button
                   onClick={async () => {
-                    await forceSaveActiveSessions();
+                    forceSaveActiveSessions();
                     setSelectedTopic(null);
                     setShowFormulaExam(false);
                     setShowTheoryExam(false);
@@ -18646,7 +18646,7 @@ ${itemsStr}
                 {/* 필수공식 */}
                 <button
                   onClick={async () => {
-                    await forceSaveActiveSessions();
+                    forceSaveActiveSessions();
                     setSelectedTopic(null);
                     setShowExam(false);
                     setShowTheoryExam(false);
@@ -18667,7 +18667,7 @@ ${itemsStr}
                                 {/* 답안지 */}
                 <button
                   onClick={async () => {
-                    await forceSaveActiveSessions();
+                    forceSaveActiveSessions();
                     setSelectedTopic(null);
                     setShowExam(false);
                     setShowFormulaExam(false);
@@ -19824,7 +19824,7 @@ ${itemsStr}
 
               <button
                 onClick={async () => {
-                  await forceSaveActiveSessions();
+                  forceSaveActiveSessions();
                   setSelectedTopic(null);
                   setViewMode('dashboard');
                 }}
@@ -19836,7 +19836,7 @@ ${itemsStr}
 
               <button
                 onClick={async () => {
-                  await forceSaveActiveSessions();
+                  forceSaveActiveSessions();
                   setSelectedTopic(null);
                   setViewMode('all_topics');
                 }}
@@ -19848,7 +19848,7 @@ ${itemsStr}
 
               <button
                 onClick={async () => {
-                  await forceSaveActiveSessions();
+                  forceSaveActiveSessions();
                   setSelectedTopic(null);
                   handleOpenExam();
                 }}
@@ -19860,7 +19860,7 @@ ${itemsStr}
 
               <button
                 onClick={async () => {
-                  await forceSaveActiveSessions();
+                  forceSaveActiveSessions();
                   setSelectedTopic(null);
                   handleOpenFormulaExam();
                 }}
@@ -19873,7 +19873,7 @@ ${itemsStr}
 
                             <button
                 onClick={async () => {
-                  await forceSaveActiveSessions();
+                  forceSaveActiveSessions();
                   setSelectedTopic(null);
                   handleOpenAnswerSheet();
                 }}
@@ -21710,7 +21710,7 @@ ${itemsStr}
                         if (selectedTopic?.isReadOnly) {
                           setSelectedTopic(null);
                         } else {
-                          await forceSaveActiveSessions();
+                          forceSaveActiveSessions();
                           setSelectedTopic(null);
                         }
                       }}
@@ -25360,7 +25360,7 @@ ${itemsStr}
                         if (selectedTopic?.isReadOnly) {
                           setSelectedTopic(null);
                         } else {
-                          await forceSaveActiveSessions();
+                          forceSaveActiveSessions();
                           setSelectedTopic(null);
                         }
                       }}
@@ -25791,7 +25791,7 @@ ${itemsStr}
                             if (selectedTopic?.isReadOnly) {
                               setSelectedTopic(null); 
                             } else {
-                              await forceSaveActiveSessions();
+                              forceSaveActiveSessions();
                               setSelectedTopic(null); 
                             }
                           }}
@@ -28535,7 +28535,7 @@ ${itemsStr}
                 <div className="flex gap-1.5 w-full">
                   <button
                     onClick={async () => {
-                      await handleSaveAnswersheetQuestions(latestAnswersheetQuestionsRef.current, false);
+                      handleSaveAnswersheetQuestions(latestAnswersheetQuestionsRef.current, false);
                       setShowAnswerSheet(false);
                       setViewMode('dashboard');
                       setSelectedTopic(null);
@@ -28550,7 +28550,7 @@ ${itemsStr}
                   </button>
                   <button
                     onClick={async () => {
-                      await handleSaveAnswersheetQuestions(latestAnswersheetQuestionsRef.current, false);
+                      handleSaveAnswersheetQuestions(latestAnswersheetQuestionsRef.current, false);
                       setShowAnswerSheet(false);
                       setViewMode('all_topics');
                       setSelectedTopic(null);
@@ -28565,7 +28565,7 @@ ${itemsStr}
                   </button>
                   <button
                     onClick={async () => {
-                      await handleSaveAnswersheetQuestions(latestAnswersheetQuestionsRef.current, false);
+                      handleSaveAnswersheetQuestions(latestAnswersheetQuestionsRef.current, false);
                       setShowAnswerSheet(false);
                       setSelectedTopic(null);
                       setShowFormulaExam(false);
@@ -28596,7 +28596,7 @@ ${itemsStr}
                     <button
                       key={b.tab}
                       onClick={async () => {
-                        await handleSaveAnswersheetQuestions(latestAnswersheetQuestionsRef.current, false);
+                        handleSaveAnswersheetQuestions(latestAnswersheetQuestionsRef.current, false);
                         setShowAnswerSheet(false);
                         setSelectedTopic(null);
                         setShowExam(false);
@@ -28724,7 +28724,7 @@ ${itemsStr}
                 </button>
                 <button
                   onClick={async () => {
-                    await handleSaveAnswersheetQuestions(latestAnswersheetQuestionsRef.current, false);
+                    handleSaveAnswersheetQuestions(latestAnswersheetQuestionsRef.current, false);
                     savedAnswersheetScroll.current = answersheetBodyRef.current?.scrollTop || 0;
                     setAnswersheetSearchQuery('');
                     setShowAnswerSheet(false);
@@ -28736,7 +28736,7 @@ ${itemsStr}
                 </button>
                 <button
                   onClick={async () => {
-                    await handleSaveAnswersheetQuestions(latestAnswersheetQuestionsRef.current, true);
+                    handleSaveAnswersheetQuestions(latestAnswersheetQuestionsRef.current, true);
                   }}
                   className="px-4 py-2 bg-emerald-950/60 hover:bg-emerald-900/60 text-emerald-300 hover:text-white border border-emerald-500/20 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center flex items-center justify-center"
                   title="답안 변경사항 실시간 저장"
@@ -29439,7 +29439,7 @@ ${itemsStr}
           >
             <button
               onClick={async () => {
-                await forceSaveActiveSessions();
+                forceSaveActiveSessions();
                 setViewMode('dashboard');
                 setSelectedTopic(null);
                 setShowExam(false);
@@ -29461,7 +29461,7 @@ ${itemsStr}
             </button>
             <button
               onClick={async () => {
-                await forceSaveActiveSessions();
+                forceSaveActiveSessions();
                 setViewMode('all_topics');
                 setSelectedTopic(null);
                 setShowExam(false);
@@ -29484,7 +29484,7 @@ ${itemsStr}
             {/* 종합평가 버튼 */}
             <button
               onClick={async () => {
-                await forceSaveActiveSessions();
+                forceSaveActiveSessions();
                 setSelectedTopic(null);
                 setShowFormulaExam(false);
                 setShowTheoryExam(false);
@@ -29522,7 +29522,7 @@ ${itemsStr}
                   <button
                     key={b.tab}
                     onClick={async () => {
-                      await forceSaveActiveSessions();
+                      forceSaveActiveSessions();
                       setSelectedTopic(null);
                       setShowExam(false);
                       setShowTheoryExam(false);
@@ -29545,7 +29545,7 @@ ${itemsStr}
               {/* 그림 단독 버튼 */}
               <button
                 onClick={async () => {
-                  await forceSaveActiveSessions();
+                  forceSaveActiveSessions();
                   setSelectedTopic(null);
                   setShowExam(false);
                   setShowTheoryExam(false);
@@ -29597,7 +29597,7 @@ ${itemsStr}
                         {/* 답안지 버튼 */}
             <button
               onClick={async () => {
-                await forceSaveActiveSessions();
+                forceSaveActiveSessions();
                 setSelectedTopic(null);
                 setShowExam(false);
                 setShowFormulaExam(false);

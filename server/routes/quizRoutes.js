@@ -99,21 +99,8 @@ function cleanQuizQuestion(q) {
   if (!q) return q;
   let cleanText = typeof q === 'string' ? q : String(q || '');
 
-  // 1. Replace (A), (B), (C), (D) list garbage inside flowchart boxes with sequential single placeholders
-  let emptyBoxIdx = 0;
-  cleanText = cleanText.replace(/\[\s*\([^\]]*\)\s*,\s*\([^\]]*\)[\s\S]*?\]/gi, () => {
-    emptyBoxIdx++;
-    return emptyBoxIdx === 1 ? '[ (A) ]' : (emptyBoxIdx === 2 ? '[ (C) ]' : '[ (E) ]');
-  });
-
-  let emptyLineIdx = 0;
-  cleanText = cleanText.replace(/-\s*\([^)]*\)\s*,\s*\([^)]*\)[\s\S]*?(?=\r?\n|$)/gi, () => {
-    emptyLineIdx++;
-    return emptyLineIdx === 1 ? '- (B)' : (emptyLineIdx === 2 ? '- (D)' : '- (F)');
-  });
-
-  // 2. Strip remaining list garbage outside boxes
-  cleanText = cleanText.replace(/,?\s*\([A-Z]\)(?:\s*,\s*\([A-Z]\))+/gi, '');
+  // 1. Removed destructive A, B, C regex logic that corrupts valid text
+  // 2. Removed list garbage regex that corrupts valid text
 
   const isFlowchart = cleanText.includes('┌──') || cleanText.includes('▼') || cleanText.includes('```') || cleanText.includes('흐름도') || cleanText.includes('플로우차트');
   if (isFlowchart) return cleanText.trim();
@@ -614,58 +601,47 @@ router.post('/topics/:id/ai-questions', async (req, res) => {
     }
 
     const sId = req.query.sessionId || 'legacy_default';
-    const key = resolvedScheduleId
+    const isValidScheduleId = resolvedScheduleId && resolvedScheduleId !== '9999' && resolvedScheduleId !== 'null' && resolvedScheduleId !== 'undefined';
+    
+    const primaryKey = isValidScheduleId
       ? `review_questions_schedule_${resolvedScheduleId}_sess_${sId}`
       : `review_questions_topic_${topicId}_sess_${sId}`;
 
-    let cached = await dbQuery.get('SELECT value FROM app_session WHERE key = ?', [key]);
+    // 1. Direct Lookup (Fast O(1) Path)
+    let cached = await dbQuery.get('SELECT key, value FROM app_session WHERE key = ?', [primaryKey]);
 
-    let newestSessionRow = null;
-    const patterns = [];
-    if (resolvedScheduleId && resolvedScheduleId !== '9999' && resolvedScheduleId !== 'null' && resolvedScheduleId !== 'undefined') {
-      patterns.push(`review_questions_schedule_${resolvedScheduleId}_sess_%`);
-    }
-    patterns.push(`review_questions_topic_${topicId}_sess_%`);
-
-    if (!resolvedScheduleId || resolvedScheduleId === '9999' || resolvedScheduleId === 'null' || resolvedScheduleId === 'undefined') {
+    // 2. Direct Pending Schedule Lookup Fallback
+    if (!cached && !isValidScheduleId) {
       const existingPending = await dbQuery.get(
         `SELECT id FROM schedules WHERE topic_id = ? AND (status = 'pending' OR status = 'practice') ORDER BY id DESC LIMIT 1`,
         [topicId]
       );
       if (existingPending) {
-        patterns.push(`review_questions_schedule_${existingPending.id}_sess_%`);
+        const pendingKey = `review_questions_schedule_${existingPending.id}_sess_${sId}`;
+        cached = await dbQuery.get('SELECT key, value FROM app_session WHERE key = ?', [pendingKey]);
       }
     }
 
-    for (const pattern of patterns) {
-      const row = await dbQuery.get(
-        'SELECT key, value FROM app_session WHERE key LIKE ? ORDER BY updated_at DESC LIMIT 1',
-        [pattern]
-      );
-      if (row && !newestSessionRow) newestSessionRow = row;
-    }
-
-    if (!cached && newestSessionRow) {
-      cached = newestSessionRow;
-      try {
-        const parsedVal = JSON.parse(cached.value);
-        let extractedSid = '';
-        if (newestSessionRow.key.includes('_sess_')) {
-          const parts = newestSessionRow.key.split('_sess_');
-          extractedSid = parts[parts.length - 1];
-        }
-        if (parsedVal && extractedSid) {
-          parsedVal.sessionId = extractedSid;
-          cached.value = JSON.stringify(parsedVal);
-        }
-      } catch (e) {}
-    }
-
+    // 3. Legacy Key Fallback
     if (!cached) {
-      const legacyKey = resolvedScheduleId
+      const legacyKey = isValidScheduleId
         ? `review_questions_schedule_${resolvedScheduleId}`
         : `review_questions_topic_${topicId}`;
-      cached = await dbQuery.get('SELECT value FROM app_session WHERE key = ?', [legacyKey]);
+      cached = await dbQuery.get('SELECT key, value FROM app_session WHERE key = ?', [legacyKey]);
+    }
+
+    if (cached && cached.value) {
+      try {
+        const parsedVal = JSON.parse(cached.value);
+        if (cached.key && cached.key.includes('_sess_')) {
+          const parts = cached.key.split('_sess_');
+          const extractedSid = parts[parts.length - 1];
+          if (extractedSid && parsedVal) {
+            parsedVal.sessionId = extractedSid;
+            cached.value = JSON.stringify(parsedVal);
+          }
+        }
+      } catch (e) {}
     }
 
     if (cached && cached.value) {
