@@ -179,6 +179,7 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false,
   if (savedTableWidth) {
     tableLayoutClass = "table-fixed custom-col-widths min-w-full";
   }
+  const is2Col = colCount === 2;
   const tableClass = is2Col ? `markdown-table markdown-table-2col ${tableLayoutClass}` : `markdown-table ${tableLayoutClass}`;
 
   const tableAttrStyle = savedTableWidth ? `style="width: ${savedTableWidth} !important; min-width: ${savedTableWidth} !important; max-width: ${savedTableWidth === '100%' ? '100%' : 'none'} !important;"` : '';

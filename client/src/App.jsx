@@ -4992,8 +4992,6 @@ export default function App() {
       tables.forEach(table => {
         // 이미 사용자가 커스텀하게 고정(fixed)한 표라면 덮어쓰지 않음
         if (table.classList.contains('table-fixed')) {
-          // 단, 저장된 값이 적용된 경우는 무시하지만, 그렇지 않다면 자동 조절 수행
-          // 현재는 커스텀 크기 유지를 위해 table-fixed인 경우 초기화 패스
           return;
         }
 
@@ -5002,34 +5000,37 @@ export default function App() {
         const containerWidth = tableContainer.clientWidth;
         if (!containerWidth) return;
 
-        // 테이블이 table-auto 상태일 때 초과 여부 검사
-        if (table.offsetWidth > containerWidth) {
-          const allThs = Array.from(table.querySelectorAll('th'));
-          const MIN_WIDTH = 84;
-          let maxCharPx = 200; // 12글자 기준 대략 200px
-          let needsFixed = false;
-          
-          const currentWidths = allThs.map(h => h.offsetWidth);
-          currentWidths.forEach((cw, i) => {
-            if (cw > maxCharPx) {
-              needsFixed = true;
-              const limitedWidth = maxCharPx;
-              allThs[i].style.setProperty('width', limitedWidth + 'px', 'important');
-              allThs[i].style.setProperty('max-width', limitedWidth + 'px', 'important');
-              allThs[i].style.setProperty('min-width', MIN_WIDTH + 'px', 'important');
-            } else {
-              allThs[i].style.setProperty('width', cw + 'px', 'important');
-              allThs[i].style.setProperty('min-width', MIN_WIDTH + 'px', 'important');
-            }
-          });
+        // 새로운 표를 만들면 기본적으로 "1열 헤더 오른쪽 더블클릭" 효과를 적용!
+        // (1열은 내용에 맞게 콤팩트하게, 나머지 열은 균등 분배하여 화면에 100% 꽉 채움)
+        const allThs = Array.from(table.querySelectorAll('th'));
+        const colCount = allThs.length;
+        if (colCount <= 1) return;
 
-          if (needsFixed) {
-            table.classList.remove('table-auto');
-            table.classList.add('table-fixed');
-            table.style.setProperty('min-width', '100%', 'important');
-            table.style.setProperty('max-width', 'none', 'important');
+        const MIN_WIDTH = 84;
+        const col1Width = allThs[0].offsetWidth || MIN_WIDTH;
+        
+        allThs[0].style.setProperty('width', col1Width + 'px', 'important');
+        allThs[0].style.setProperty('min-width', col1Width + 'px', 'important');
+        allThs[0].style.setProperty('max-width', col1Width + 'px', 'important');
+
+        const numRemainingCols = colCount - 1;
+        if (numRemainingCols > 0) {
+          const totalRemWidth = Math.max(MIN_WIDTH * numRemainingCols, containerWidth - col1Width - 4);
+          const equalRemColWidth = Math.max(MIN_WIDTH, Math.floor(totalRemWidth / numRemainingCols));
+
+          for (let i = 1; i < colCount; i++) {
+            allThs[i].style.setProperty('width', equalRemColWidth + 'px', 'important');
+            allThs[i].style.setProperty('min-width', MIN_WIDTH + 'px', 'important');
+            allThs[i].style.setProperty('max-width', equalRemColWidth + 'px', 'important');
           }
         }
+
+        table.style.setProperty('width', '100%', 'important');
+        table.style.setProperty('min-width', '100%', 'important');
+        table.style.setProperty('max-width', '100%', 'important');
+        table.classList.remove('table-auto');
+        table.classList.add('table-fixed');
+        if (tableContainer) tableContainer.style.overflowX = 'hidden';
       });
     };
 
