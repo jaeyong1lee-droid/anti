@@ -4991,25 +4991,59 @@ export default function App() {
       const table = th.closest('table');
       if (!table) return;
 
+      const allThs = Array.from(table.querySelectorAll('th'));
+      const colCount = allThs.length;
+      const MIN_WIDTH = 84;
+      const colEls = Array.from(table.querySelectorAll('colgroup col'));
       const tableContainer = table.closest('.markdown-table-container') || table.parentElement;
 
-      // 더블클릭 시: 브라우저 고유의 table-auto 자동 맞춤으로 리셋!
-      const allThs = Array.from(table.querySelectorAll('th'));
-      const colEls = Array.from(table.querySelectorAll('colgroup col'));
-      allThs.forEach((h, i) => {
-        h.style.removeProperty('width');
-        h.style.removeProperty('max-width');
-        if (colEls[i]) {
-          colEls[i].style.removeProperty('width');
-          colEls[i].style.removeProperty('max-width');
+      if (colIdx === 0) {
+        // 1열(구분 열) 더블클릭 시: 1열의 현재 너비는 그대로 고정하고, 
+        // 1열을 제외한 모든 나머지 열이 남은 화면 공간을 1:1로 완벽히 나누어 화면 너비(100%)를 가로 스크롤 없이 꽉 채움
+        const containerWidth = tableContainer ? tableContainer.clientWidth : table.clientWidth;
+        const col1Width = allThs[0].offsetWidth || MIN_WIDTH;
+        
+        allThs[0].style.setProperty('width', col1Width + 'px', 'important');
+        allThs[0].style.setProperty('min-width', col1Width + 'px', 'important');
+        allThs[0].style.setProperty('max-width', col1Width + 'px', 'important');
+
+        const numRemainingCols = colCount - 1;
+        if (numRemainingCols > 0) {
+          const totalRemWidth = Math.max(MIN_WIDTH * numRemainingCols, containerWidth - col1Width - 4);
+          const equalRemColWidth = Math.max(MIN_WIDTH, Math.floor(totalRemWidth / numRemainingCols));
+
+          for (let i = 1; i < colCount; i++) {
+            allThs[i].style.setProperty('width', equalRemColWidth + 'px', 'important');
+            allThs[i].style.setProperty('min-width', MIN_WIDTH + 'px', 'important');
+            allThs[i].style.setProperty('max-width', equalRemColWidth + 'px', 'important');
+          }
         }
-      });
-      table.style.removeProperty('width');
-      table.style.removeProperty('min-width');
-      table.style.removeProperty('max-width');
-      table.classList.remove('table-fixed');
-      table.classList.add('table-auto');
-      if (tableContainer) tableContainer.style.overflowX = 'auto';
+
+        table.style.setProperty('width', '100%', 'important');
+        table.style.setProperty('min-width', '100%', 'important');
+        table.style.setProperty('max-width', '100%', 'important');
+        table.classList.remove('table-auto');
+        table.classList.add('table-fixed');
+        if (tableContainer) tableContainer.style.overflowX = 'hidden';
+        
+      } else {
+        // 다른 열 더블클릭 시: 브라우저 고유의 table-auto 자동 맞춤으로 리셋!
+        allThs.forEach((h, i) => {
+          h.style.removeProperty('width');
+          h.style.removeProperty('max-width');
+          h.style.removeProperty('min-width');
+          if (colEls[i]) {
+            colEls[i].style.removeProperty('width');
+            colEls[i].style.removeProperty('max-width');
+          }
+        });
+        table.style.removeProperty('width');
+        table.style.removeProperty('min-width');
+        table.style.removeProperty('max-width');
+        table.classList.remove('table-fixed');
+        table.classList.add('table-auto');
+        if (tableContainer) tableContainer.style.overflowX = 'auto';
+      }
 
       if (window.__saveTableColumnWidths) window.__saveTableColumnWidths(table);
     };
