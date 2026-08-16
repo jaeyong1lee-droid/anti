@@ -135,8 +135,7 @@ export function cleanHeaderTitle(h) {
 
 export function getTableStorageKey(headers) {
   if (!headers || !Array.isArray(headers) || headers.length === 0) return null;
-  const sig = headers.map(cleanHeaderTitle).filter(Boolean).join('|');
-  return sig ? `anti_tbl_widths_${sig}` : null;
+  return `anti_tbl_widths_colcount_${headers.length}`;
 }
 
 export function getSavedTableWidths(headers) {
