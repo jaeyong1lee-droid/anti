@@ -373,79 +373,60 @@ export function convertMarkdownTablesToHtml(text, hideWrapper = false, hideRemar
       if (isNextSeparator) {
         // Collect all consecutive lines that belong to the table, auto-healing multi-line cells
         const tableLines = [];
+        
+        // ── 파이프 숫자 기반 행 수집 (절대 오차 없음) ─────────────────────────
+        // 구분선(|---|---|---|)의 파이프 수 = 완전한 한 행의 파이프 수 (targetPipes)
+        // 이후 줄들을 누적하면서 누적 파이프 수 >= targetPipes 이 되는 순간 행 완성
+        const separatorLine = lines[i + 1];
+        const targetPipes = (separatorLine.match(/\|/g) || []).length;
+
         let j = i;
-        let currentRowStr = "";
+        let currentRowStr = '';
+        let currentPipesCount = 0;
 
         while (j < lines.length) {
           const l = lines[j].trim();
-          
-          let k = j + 1;
-          let nextContainsPipe = false;
-          let lookaheadCount = 0;
-          while (k < lines.length && lookaheadCount < 8) {
-            if (lines[k].includes('|')) {
-              nextContainsPipe = true;
-              break;
-            }
-            if (lines[k].trim().match(/^#+\s/) || lines[k].trim().startsWith('```')) {
-              break; // Definitive end of table
-            }
-            k++;
-            lookaheadCount++;
+
+          // 테이블 확실히 종료 (헤딩 또는 코드블록 시작)
+          if (l.match(/^#+\s/) || l.startsWith('```')) {
+            break;
           }
 
+          // 빈 줄 처리
           if (l === '') {
-             if (nextContainsPipe && tableLines.length > 0) {
-                 // Blank line inside a broken table cell!
-                 if (currentRowStr) currentRowStr += '\n';
-             } else {
-                 if (currentRowStr) {
-                     tableLines.push(currentRowStr);
-                     currentRowStr = "";
-                 }
-                 break;
-             }
+            if (currentRowStr === '') {
+              break; // 누적 중인 행이 없으면 테이블 종료
+            }
+            // 멀티라인 셀 중간의 빈 줄은 조용히 무시
+            j++;
+            continue;
           }
-          else if (l.includes('|')) {
-             if (currentRowStr === "") {
-                currentRowStr = lines[j];
-             } else {
-                const prevEndsWithPipe = currentRowStr.trim().endsWith('|');
-                const currStartsWithPipe = l.startsWith('|');
-                
-                if (!prevEndsWithPipe && !currStartsWithPipe) {
-                   currentRowStr += '\n' + lines[j];
-                } else if (!currStartsWithPipe && prevEndsWithPipe) {
-                   tableLines.push(currentRowStr);
-                   currentRowStr = lines[j];
-                } else if (currStartsWithPipe && !prevEndsWithPipe) {
-                   tableLines.push(currentRowStr);
-                   currentRowStr = lines[j];
-                } else {
-                   tableLines.push(currentRowStr);
-                   currentRowStr = lines[j];
-                }
-             }
+
+          const linePipes = (lines[j].match(/\|/g) || []).length;
+
+          if (currentRowStr === '') {
+            // 새 행 시작
+            currentRowStr = lines[j];
+            currentPipesCount = linePipes;
           } else {
-             // Line doesn't contain '|'.
-             if (nextContainsPipe) {
-                if (currentRowStr !== "") {
-                   currentRowStr += '\n' + lines[j];
-                } else {
-                   currentRowStr = lines[j]; // weird case
-                }
-             } else {
-                if (currentRowStr) {
-                   tableLines.push(currentRowStr);
-                   currentRowStr = "";
-                }
-                break;
-             }
+            // 멀티라인 셀 연속 — <br>로 이어 붙임
+            currentRowStr += '<br>' + lines[j];
+            currentPipesCount += linePipes;
           }
+
+          // 파이프 수가 목표에 도달하면 행 완성 → flush
+          if (currentPipesCount >= targetPipes) {
+            tableLines.push(currentRowStr);
+            currentRowStr = '';
+            currentPipesCount = 0;
+          }
+
           j++;
         }
-        if (currentRowStr) {
-           tableLines.push(currentRowStr);
+
+        // 마지막으로 남은 미완성 행 처리
+        if (currentRowStr.trim() !== '') {
+          tableLines.push(currentRowStr);
         }
         
         // Parse the collected lines
