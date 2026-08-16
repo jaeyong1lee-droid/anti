@@ -139,14 +139,8 @@ export function getTableStorageKey(headers) {
 }
 
 export function getSavedTableWidths(headers) {
-  const storageKey = getTableStorageKey(headers);
-  if (!storageKey || typeof window === 'undefined' || !window.localStorage) return null;
-  try {
-    const saved = window.localStorage.getItem(storageKey);
-    return saved ? JSON.parse(saved) : null;
-  } catch (e) {
-    return null;
-  }
+  // 사용자 요청으로 로컬 스토리지에 저장된 너비를 불러오지 않도록 무효화
+  return null;
 }
 
 function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false, hideRemarks = false) {

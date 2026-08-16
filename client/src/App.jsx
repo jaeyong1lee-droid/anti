@@ -4966,22 +4966,7 @@ export default function App() {
     };
 
     window.__saveTableColumnWidths = (table) => {
-      if (!table) return;
-      const tr = table.querySelector('thead tr') || table.querySelector('tr');
-      if (!tr) return;
-      const ths = Array.from(tr.querySelectorAll('th'));
-      if (ths.length === 0) return;
-      
-      const sig = 'colcount_' + ths.length;
-
-      const widths = ths.map(th => th.offsetWidth);
-      const tableWidth = table.style.width || '100%';
-
-      try {
-        localStorage.setItem(`anti_tbl_widths_${sig}`, JSON.stringify({ widths, tableWidth }));
-      } catch (e) {
-        console.warn('[TableResize] Failed to save table widths:', e);
-      }
+      // 너비 저장을 더 이상 사용하지 않으므로 아무 작업도 하지 않음 (사용자 요청: "열너비를 기억하는것으로 셋팅되어있는데 그렇게 하지말고")
     };
 
     window.__restoreAllTableColumnWidths = (container = document) => {
@@ -4991,30 +4976,80 @@ export default function App() {
         const tr = table.querySelector('thead tr') || table.querySelector('tr');
         if (!tr) return;
         const ths = Array.from(tr.querySelectorAll('th'));
-        if (ths.length === 0) return;
-        
-        const sig = 'colcount_' + ths.length;
+        if (ths.length <= 1) return;
 
-        try {
-          const saved = localStorage.getItem(`anti_tbl_widths_${sig}`);
-          if (saved) {
-            const data = JSON.parse(saved);
-            if (data && Array.isArray(data.widths)) {
-              data.widths.forEach((w, idx) => {
-                if (ths[idx] && w > 0) {
-                  ths[idx].style.setProperty('width', w + 'px', 'important');
-                  ths[idx].style.setProperty('min-width', w + 'px', 'important');
-                  ths[idx].style.setProperty('max-width', w + 'px', 'important');
-                }
-              });
-              if (data.tableWidth) {
-                table.style.setProperty('width', data.tableWidth, 'important');
-                table.style.setProperty('min-width', data.tableWidth, 'important');
-                table.style.setProperty('max-width', data.tableWidth === '100%' ? '100%' : 'none', 'important');
-              }
+        // 컨텐츠 기반 자동 배분 로직 (마지막 열 더블클릭 로직과 동일)
+        const colCount = ths.length;
+        const MIN_WIDTH = 84;
+        const tableContainer = table.closest('.markdown-table-container') || table.parentElement;
+        const containerWidth = tableContainer ? tableContainer.clientWidth : table.clientWidth;
+        
+        // 컨테이너가 렌더링되지 않은 상태라면 스킵
+        if (!containerWidth || containerWidth === 0) return;
+
+        const rows = Array.from(table.querySelectorAll('tr'));
+        const isFixedShort = [];
+        const finalWidths = new Array(colCount).fill(0);
+        const textWeights = new Array(colCount).fill(0);
+        let sumFixedShort = 0;
+
+        for (let i = 0; i < colCount; i++) {
+          let maxLen = (ths[i].textContent || '').trim().length;
+          rows.forEach(r => {
+            const cells = Array.from(r.children);
+            if (cells[i]) {
+              const text = (cells[i].textContent || '').trim();
+              if (text.length > maxLen) maxLen = text.length;
             }
+          });
+
+          // 3글자 이하 짧은 기호/화살표 열은 50px로 콤팩트하게 고정
+          if (maxLen <= 3) {
+            isFixedShort[i] = true;
+            finalWidths[i] = 50;
+            sumFixedShort += 50;
+          } else {
+            isFixedShort[i] = false;
+            textWeights[i] = Math.max(MIN_WIDTH, Math.round(maxLen * 13 + 28));
           }
-        } catch (e) {}
+        }
+
+        const remainingContainerWidth = Math.max(100, containerWidth - sumFixedShort);
+        const sumTextWeight = textWeights.reduce((a, b) => a + b, 0);
+
+        const textIndices = [];
+        for (let i = 0; i < colCount; i++) {
+          if (!isFixedShort[i]) textIndices.push(i);
+        }
+
+        let allocatedText = 0;
+        textIndices.forEach((cIdx, idx) => {
+          if (idx === textIndices.length - 1) {
+            finalWidths[cIdx] = Math.max(MIN_WIDTH, remainingContainerWidth - allocatedText - 2);
+          } else {
+            const w = Math.max(MIN_WIDTH, Math.floor(remainingContainerWidth * (textWeights[cIdx] / sumTextWeight)));
+            finalWidths[cIdx] = w;
+            allocatedText += w;
+          }
+        });
+
+        const colEls = Array.from(table.querySelectorAll('colgroup col'));
+        ths.forEach((h, i) => {
+          const w = finalWidths[i];
+          h.style.setProperty('width', w + 'px', 'important');
+          h.style.setProperty('min-width', Math.min(w, MIN_WIDTH) + 'px', 'important');
+          h.style.setProperty('max-width', w + 'px', 'important');
+          if (colEls[i]) {
+            colEls[i].style.setProperty('width', w + 'px', 'important');
+            colEls[i].style.setProperty('min-width', Math.min(w, MIN_WIDTH) + 'px', 'important');
+            colEls[i].style.setProperty('max-width', w + 'px', 'important');
+          }
+        });
+
+        table.style.setProperty('width', '100%', 'important');
+        table.style.setProperty('min-width', '100%', 'important');
+        table.style.setProperty('max-width', '100%', 'important');
+        if (tableContainer) tableContainer.style.overflowX = 'hidden';
       });
     };
 
