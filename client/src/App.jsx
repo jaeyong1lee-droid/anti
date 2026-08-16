@@ -4972,7 +4972,50 @@ export default function App() {
     };
 
     window.__restoreAllTableColumnWidths = (container = document) => {
-      // 너비 복원 로직 제거
+      if (!container) return;
+      const tables = container.querySelectorAll ? container.querySelectorAll('.markdown-table-container table') : [];
+      tables.forEach(table => {
+        // 이미 사용자가 커스텀하게 고정(fixed)한 표라면 덮어쓰지 않음
+        if (table.classList.contains('table-fixed')) {
+          // 단, 저장된 값이 적용된 경우는 무시하지만, 그렇지 않다면 자동 조절 수행
+          // 현재는 커스텀 크기 유지를 위해 table-fixed인 경우 초기화 패스
+          return;
+        }
+
+        const tableContainer = table.closest('.markdown-table-container') || table.parentElement;
+        if (!tableContainer) return;
+        const containerWidth = tableContainer.clientWidth;
+        if (!containerWidth) return;
+
+        // 테이블이 table-auto 상태일 때 초과 여부 검사
+        if (table.offsetWidth > containerWidth) {
+          const allThs = Array.from(table.querySelectorAll('th'));
+          const MIN_WIDTH = 84;
+          let maxCharPx = 250; // 15글자 기준
+          let needsFixed = false;
+          
+          const currentWidths = allThs.map(h => h.offsetWidth);
+          currentWidths.forEach((cw, i) => {
+            if (cw > maxCharPx) {
+              needsFixed = true;
+              const limitedWidth = maxCharPx;
+              allThs[i].style.setProperty('width', limitedWidth + 'px', 'important');
+              allThs[i].style.setProperty('max-width', limitedWidth + 'px', 'important');
+              allThs[i].style.setProperty('min-width', MIN_WIDTH + 'px', 'important');
+            } else {
+              allThs[i].style.setProperty('width', cw + 'px', 'important');
+              allThs[i].style.setProperty('min-width', MIN_WIDTH + 'px', 'important');
+            }
+          });
+
+          if (needsFixed) {
+            table.classList.remove('table-auto');
+            table.classList.add('table-fixed');
+            table.style.setProperty('min-width', '100%', 'important');
+            table.style.setProperty('max-width', 'none', 'important');
+          }
+        }
+      });
     };
 
     // Auto trigger table column width restoration on initial load & refresh
@@ -5042,6 +5085,39 @@ export default function App() {
         table.style.removeProperty('max-width');
         table.classList.remove('table-fixed');
         table.classList.add('table-auto');
+        
+        // 브라우저가 자동 배분한 후, 창 너비를 초과하는지 검사하여 너무 넓은 열을 15글자 제한
+        requestAnimationFrame(() => {
+          if (!tableContainer) return;
+          const containerWidth = tableContainer.clientWidth;
+          if (table.offsetWidth > containerWidth) {
+            let maxCharPx = 250; // 15글자 기준 대략 250px
+            let needsFixed = false;
+            
+            const currentWidths = allThs.map(h => h.offsetWidth);
+            currentWidths.forEach((cw, i) => {
+              if (cw > maxCharPx) {
+                needsFixed = true;
+                const limitedWidth = maxCharPx;
+                allThs[i].style.setProperty('width', limitedWidth + 'px', 'important');
+                allThs[i].style.setProperty('max-width', limitedWidth + 'px', 'important');
+                allThs[i].style.setProperty('min-width', MIN_WIDTH + 'px', 'important');
+              } else {
+                allThs[i].style.setProperty('width', cw + 'px', 'important');
+                allThs[i].style.setProperty('min-width', MIN_WIDTH + 'px', 'important');
+              }
+            });
+
+            // 하나라도 초과한 열이 있어서 제한을 걸었다면 table-fixed로 고정하여 레이아웃을 엄격하게 적용
+            if (needsFixed) {
+              table.classList.remove('table-auto');
+              table.classList.add('table-fixed');
+              table.style.setProperty('min-width', '100%', 'important');
+              table.style.setProperty('max-width', 'none', 'important');
+            }
+          }
+        });
+
         if (tableContainer) tableContainer.style.overflowX = 'auto';
       }
 
