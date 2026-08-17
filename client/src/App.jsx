@@ -5119,35 +5119,58 @@ export default function App() {
         table.classList.remove('table-fixed');
         table.classList.add('table-auto');
         
-        // 브라우저가 자동 배분한 후, 창 너비를 초과하는지 검사하여 너무 넓은 열을 15글자 제한
+        // 브라우저가 자동 배분한 후, 창 너비를 초과하는지 검사하여 너무 넓은 열을 비율에 맞춰 분배
         requestAnimationFrame(() => {
           if (!tableContainer) return;
           const containerWidth = tableContainer.clientWidth;
-          if (table.offsetWidth > containerWidth) {
-            let needsFixed = false;
+          
+          let needsFixed = false;
+          const naturalWidths = allThs.map(h => h.offsetWidth);
+          const sumNatural = naturalWidths.reduce((a, b) => a + b, 0);
+
+          // 1열 기준 5글자(약 90px), 나머지 열 10글자(약 170px) 기준 초과 여부 검사
+          if (sumNatural > containerWidth || naturalWidths[0] > 90 || naturalWidths.some((w, i) => i > 0 && w > 170)) {
+            needsFixed = true;
             
-            const currentWidths = allThs.map(h => h.offsetWidth);
-            currentWidths.forEach((cw, i) => {
-              let maxCharPx = (i === 0) ? 90 : 170; // 1열은 5글자(약 90px), 그 외는 10글자(약 170px)
-              if (cw > maxCharPx) {
-                needsFixed = true;
-                const limitedWidth = maxCharPx;
-                allThs[i].style.setProperty('width', limitedWidth + 'px', 'important');
-                allThs[i].style.setProperty('max-width', limitedWidth + 'px', 'important');
-                allThs[i].style.setProperty('min-width', MIN_WIDTH + 'px', 'important');
-              } else {
-                allThs[i].style.setProperty('width', cw + 'px', 'important');
+            // 1. 1열(구분 열) 처리: 최대 5글자(90px) 제한, 그 미만이면 타이트하게 유지
+            const col0MaxPx = 90;
+            const finalCol0Width = Math.min(naturalWidths[0], col0MaxPx);
+            
+            allThs[0].style.setProperty('width', finalCol0Width + 'px', 'important');
+            allThs[0].style.setProperty('max-width', finalCol0Width + 'px', 'important');
+            allThs[0].style.setProperty('min-width', finalCol0Width + 'px', 'important');
+
+            // 2. 1열 이후 나머지 열들 비례 배분
+            const numRemCols = colCount - 1;
+            if (numRemCols > 0) {
+              const maxRemBudgetPx = numRemCols * 170; // 열 개수 * 10글자 너비 한도
+              const availableRemWidth = containerWidth - finalCol0Width;
+              
+              // 컨테이너 가용 너비와 10글자 한도 중 더 작은 값을 전체 예산으로 설정
+              const targetRemTotalPx = Math.min(maxRemBudgetPx, availableRemWidth);
+              const sumRemNaturalWidths = naturalWidths.slice(1).reduce((sum, w) => sum + w, 0);
+              
+              for (let i = 1; i < colCount; i++) {
+                let finalW = naturalWidths[i];
+                if (sumRemNaturalWidths > targetRemTotalPx) {
+                  // 비율에 맞춰 예산 분배
+                  finalW = (naturalWidths[i] / sumRemNaturalWidths) * targetRemTotalPx;
+                }
+                
+                // 너무 작아지지 않도록 최소 너비 보장
+                finalW = Math.max(MIN_WIDTH, finalW);
+
+                allThs[i].style.setProperty('width', finalW + 'px', 'important');
+                allThs[i].style.setProperty('max-width', finalW + 'px', 'important');
                 allThs[i].style.setProperty('min-width', MIN_WIDTH + 'px', 'important');
               }
-            });
+            }
 
             // 하나라도 초과한 열이 있어서 제한을 걸었다면 table-fixed로 고정하여 레이아웃을 엄격하게 적용
-            if (needsFixed) {
-              table.classList.remove('table-auto');
-              table.classList.add('table-fixed');
-              table.style.setProperty('min-width', '100%', 'important');
-              table.style.setProperty('max-width', 'none', 'important');
-            }
+            table.classList.remove('table-auto');
+            table.classList.add('table-fixed');
+            table.style.setProperty('min-width', '100%', 'important');
+            table.style.setProperty('max-width', 'none', 'important');
           }
         });
 
