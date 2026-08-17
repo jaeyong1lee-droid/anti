@@ -1284,7 +1284,7 @@ export const TableQuiz = React.memo(function TableQuiz({
               return (
                 <th 
                   key={hIdx} 
-                  className={`relative p-1 sm:p-1.5 font-extrabold border-r border-slate-800 last:border-r-0 select-text whitespace-normal break-words ${
+                  className={`relative py-1 px-[2px] sm:py-1.5 sm:px-[5px] font-extrabold border-r border-slate-800 last:border-r-0 select-text whitespace-normal break-words ${
                     isFirstCol ? 'text-left break-all' : ''
                   }`}
                   onDoubleClick={(e) => handleHeaderDoubleClick(e, hIdx)}
@@ -1342,7 +1342,7 @@ export const TableQuiz = React.memo(function TableQuiz({
                           if (textarea) textarea.focus();
                         }}
                       >
-                        <div className="w-full h-full flex flex-col sm:flex-row justify-between items-stretch sm:items-start gap-1 p-1 sm:p-1.5 text-[14px] sm:text-[15px]">
+                        <div className="w-full h-full flex flex-col sm:flex-row justify-between items-stretch sm:items-start gap-1 py-1 px-[2px] sm:py-1.5 sm:px-[5px] text-[14px] sm:text-[15px]">
                           <div className="flex-grow text-left font-medium min-w-0 w-full">
                             <BufferedTextarea
                               value={value}
@@ -1436,7 +1436,7 @@ export const TableQuiz = React.memo(function TableQuiz({
                       <td 
                         key={cIdx} 
                         colSpan={cellColSpan}
-                        className={`p-1 sm:p-1.5 border-r border-slate-800 last:border-r-0 text-slate-355 text-[14px] sm:text-[16px] select-text whitespace-pre-line break-words ${
+                        className={`py-1 px-[2px] sm:py-1.5 sm:px-[5px] border-r border-slate-800 last:border-r-0 text-slate-355 text-[14px] sm:text-[16px] select-text whitespace-pre-line break-words ${
                           isFirstCol ? 'text-center font-extrabold break-all' : 'text-left'
                         }`}
                       >
@@ -1625,7 +1625,7 @@ export const TableQuiz = React.memo(function TableQuiz({
                 return (
                   <th 
                     key={hIdx} 
-                    className={`relative p-1 sm:p-1.5 font-extrabold border-r border-slate-800 last:border-r-0 select-text whitespace-normal break-words ${
+                    className={`relative py-1 px-[2px] sm:py-1.5 sm:px-[5px] font-extrabold border-r border-slate-800 last:border-r-0 select-text whitespace-normal break-words ${
                       isFirstCol ? 'text-left break-all' : ''
                     }`}
                     onDoubleClick={(e) => handleHeaderDoubleClick(e, hIdx)}
@@ -1674,7 +1674,7 @@ export const TableQuiz = React.memo(function TableQuiz({
                             if (textarea) textarea.focus();
                           }}
                         >
-                          <div className="w-full h-full flex flex-col sm:flex-row justify-between items-stretch sm:items-start gap-1 p-1 sm:p-1.5 text-[14px] sm:text-[15px]">
+                          <div className="w-full h-full flex flex-col sm:flex-row justify-between items-stretch sm:items-start gap-1 py-1 px-[2px] sm:py-1.5 sm:px-[5px] text-[14px] sm:text-[15px]">
                             <div className="flex-grow text-left font-medium min-w-0 w-full">
                               <BufferedTextarea
                                 value={value}

@@ -1021,7 +1021,7 @@ foreignObject {
 .table-quiz-container td,
 .custom-col-widths th,
 .custom-col-widths td {
-  padding: 5px 4px !important; /* Minimize padding on mobile */
+  padding: 5px 2px !important; /* Minimize padding on mobile (L/R 2px) */
   border: 1px solid rgba(255, 255, 255, 0.22) !important; /* Bright light grey border */
   word-break: keep-all !important;
   overflow-wrap: break-word !important;
@@ -1029,8 +1029,12 @@ foreignObject {
 }
 @media (min-width: 768px) {
   .markdown-table th,
-  .markdown-table td {
-    padding: 8px 10px !important; /* Standard padding on desktop */
+  .markdown-table td,
+  .table-quiz-container th,
+  .table-quiz-container td,
+  .custom-col-widths th,
+  .custom-col-widths td {
+    padding: 8px 5px !important; /* Standard padding on desktop (L/R 5px) */
   }
 }
 .markdown-table th {
