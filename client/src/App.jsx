@@ -5143,7 +5143,11 @@ export default function App() {
             // 2. 1열 이후 나머지 열들 비례 배분
             const numRemCols = colCount - 1;
             if (numRemCols > 0) {
-              const targetRemTotalPx = numRemCols * 170; // 사용자 지정 룰: 열 개수 * 10글자 한도
+              const maxRemBudgetPx = numRemCols * 170; // 열 개수 * 10글자 한도
+              const availableRemWidth = containerWidth - finalCol0Width;
+              
+              // 모바일처럼 좁을 때는 한도(스크롤 허용)를 따르고, PC처럼 넓을 때는 화면을 꽉 채우도록 둘 중 큰 값을 예산으로 잡음
+              const targetRemTotalPx = Math.max(maxRemBudgetPx, availableRemWidth);
               const sumRemNaturalWidths = naturalWidths.slice(1).reduce((sum, w) => sum + w, 0);
               
               for (let i = 1; i < colCount; i++) {
