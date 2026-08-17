@@ -1,4 +1,4 @@
-// Force deploy: 2026-07-07T23:16
+﻿// Force deploy: 2026-07-07T23:16
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { 
   healLatexFormulas, 
@@ -5030,7 +5030,7 @@ export default function App() {
         const sumNatural = naturalWidths.reduce((a, b) => a + b, 0);
 
         // 1열 기준 5글자(약 90px), 나머지 열 10글자(약 170px) 기준 초과 여부 검사
-        if (sumNatural > containerWidth || naturalWidths[0] > 90 || naturalWidths.some((w, i) => i > 0 && w > 170)) {
+        if (true) {
           needsFixed = true;
           
           // 1. 1열(구분 열) 처리: 최대 5글자(90px) 제한, 그 미만이면 타이트하게 유지
@@ -5153,7 +5153,7 @@ export default function App() {
           const sumNatural = naturalWidths.reduce((a, b) => a + b, 0);
 
           // 1열 기준 5글자(약 90px), 나머지 열 10글자(약 170px) 기준 초과 여부 검사
-          if (sumNatural > containerWidth || naturalWidths[0] > 90 || naturalWidths.some((w, i) => i > 0 && w > 170)) {
+          if (true) {
             needsFixed = true;
             
             // 1. 1열(구분 열) 처리: 최대 5글자(90px) 제한, 그 미만이면 타이트하게 유지

@@ -1,4 +1,4 @@
-export let standardsList = [
+﻿export let standardsList = [
   {
     "id": "source_report_review_first",
     "title": "1단계: 출처 사전 학습 및 출처 기반 질문/답변 연계 문제 출제/답변 철칙",
@@ -33,6 +33,11 @@ export let standardsList = [
     "id": "original_report_text_analysis_first",
     "title": "원보고서 및 본문 해설 텍스트 기반 수치/답안 정밀 도출 철칙",
     "content": "\n[🚨 원보고서 및 본문 해설 텍스트 기반 수치/답안 정밀 도출 철칙 — 극도로 중요!]:\n- AI는 주관식 수치 계산 문제를 채점하거나 모범 답안 및 해설을 도출할 때, 그림/이미지 시각적 짐작에 의존하지 말고 오직 원보고서 본문 텍스트, 문제 지문(question), 행/열 제목(rowHeader/colHeader), 전체 해설(explanation), 국가기준(KDS/KCS) 수식에 명시된 정밀 수치 데이터를 최우선으로 직접 정밀하게 분석해야 합니다.\n- 사용자가 제출한 수치(userAnswer)가 원보고서 해설의 정밀 계산 수치값(Real Calculated Value)과 일치하는지를 정밀 수치 오차 범위(±5% 이내 10점 만점, ±5%~15% 부분 점수, 15% 초과 오답)로 정확하게 대조 판단하고, 절대로 사용자의 오답 수치를 모범 답안으로 환각(Hallucination) 받아 적지 마십시오.\n"
+  },
+  {
+    "id": "mandatory_source_reference_output",
+    "title": "출처 강제 표기 철칙",
+    "content": "\n[🚨 출처(문헌) 강제 표기 철칙 — 극도로 중요!]:\n- AI 튜터는 문제 해설, 토픽 상세 본문(새로 생성), 공식/개념 설명 등 어떠한 종류의 답변 텍스트를 출력하더라도, **생성하는 답변의 가장 마지막 줄(최하단)에 반드시 '📚 참조 문헌(Standards & Literature)' 항목을 추가하고, 참조한 출처를 명시**해야 합니다.\n- 이 규칙은 모든 형태의 AI 답변 생성 시 최우선으로 강제되는 서식 규칙입니다. 어떠한 경우에도 출처 생략을 허용하지 않습니다.\n"
   }
 ];
 
@@ -44,3 +49,4 @@ export function updateLiveEngineeringStandards(newList) {
     ENGINEERING_STANDARDS = newList.map(s => s.content).join('\n\n');
   }
 }
+
