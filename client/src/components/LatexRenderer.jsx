@@ -182,6 +182,14 @@ export const LatexRenderer = React.memo(function LatexRenderer({
   forceInline = false,
   isExplanation = false
 }) {
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    if (window.__restoreAllTableColumnWidths && containerRef.current) {
+      window.__restoreAllTableColumnWidths(containerRef.current);
+    }
+  }, [text]);
+
   if (!text) return null;
 
   let parsedText = typeof text === 'string' ? text : text;
@@ -840,6 +848,7 @@ export const LatexRenderer = React.memo(function LatexRenderer({
 
   return (
     <div 
+      ref={containerRef}
       className={`${className} space-y-1.5 select-text ${enableAddFormula ? 'enable-add-formula' : ''}`}
       {...eventHandlers}
     >

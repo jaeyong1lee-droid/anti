@@ -1098,17 +1098,13 @@ const isNATMFlowchart = (idx, q, isExam = false) => {
   if (isNATMText) {
     return true;
   }
-  if (isExam) {
-    if (idx === 10 && (text.includes('┌──') || text.includes('▼') || text.includes('흐름도') || text.includes('플로우차트'))) return true;
-  } else {
-    if ((idx === 6 || idx === 7) && (text.includes('┌──') || text.includes('▼') || text.includes('흐름도') || text.includes('플로우차트'))) return true;
-  }
+  return false;
 };
 
 const isFlowchartQuestion = (idx, q, isExam = false) => {
   if (isNATMFlowchart(idx, q, isExam)) return true;
   const qText = q?.question || q?.question_text || '';
-  const hasFlowchartSymbols = qText.includes('┌') || qText.includes('▼') || qText.includes('─') || qText.includes('│') || qText.includes('┃') || qText.includes('흐름도') || qText.includes('플로우차트');
+  const hasFlowchartSymbols = qText.includes('┌') || qText.includes('▼') || qText.includes('─') || qText.includes('│') || qText.includes('┃');
   const hasLetters = /\(([A-F])\)/.test(qText);
   return hasFlowchartSymbols && hasLetters;
 };
