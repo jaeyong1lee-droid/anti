@@ -5008,7 +5008,7 @@ export default function App() {
           
           const currentWidths = allThs.map(h => h.offsetWidth);
           currentWidths.forEach((cw, i) => {
-            let maxCharPx = (i === 0) ? 120 : 200; // 1열은 7글자(약 120px), 그 외는 12글자(약 200px)
+            let maxCharPx = (i === 0) ? 90 : 170; // 1열은 5글자(약 90px), 그 외는 10글자(약 170px)
             if (cw > maxCharPx) {
               needsFixed = true;
               const limitedWidth = maxCharPx;
@@ -5108,7 +5108,7 @@ export default function App() {
             
             const currentWidths = allThs.map(h => h.offsetWidth);
             currentWidths.forEach((cw, i) => {
-              let maxCharPx = (i === 0) ? 120 : 200; // 1열은 7글자(약 120px), 그 외는 12글자(약 200px)
+              let maxCharPx = (i === 0) ? 90 : 170; // 1열은 5글자(약 90px), 그 외는 10글자(약 170px)
               if (cw > maxCharPx) {
                 needsFixed = true;
                 const limitedWidth = maxCharPx;
