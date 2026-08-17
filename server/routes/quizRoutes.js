@@ -245,115 +245,6 @@ function shuffleArray(arr) {
   return result;
 }
 
-/**
- * 소스 텍스트(OCR)에서 (1), (2), (3)... 형식으로 명시된 하위 질문을 추출하여
- * 어떤 토픽이든 동적으로 수치 계산 표채우기 폼을 생성한다.
- * 추출 실패 시 범용 fallback rows를 사용한다.
- */
-function extractCalculationRowsFromText(fileText) {
-  if (!fileText) return null;
-
-  const subQuestionPattern = /[（(](\d+)[)）]\s*([^\n(（]+?)(?=\s*[（(]\d+[)）]|\n\n|$)/g;
-  const matches = [];
-  let match;
-  while ((match = subQuestionPattern.exec(fileText)) !== null) {
-    const num = parseInt(match[1]);
-    const text = match[2].trim().replace(/[,，]\s*$/, '').replace(/\s+/g, ' ');
-    if (text.length >= 3 && text.length <= 80 && num >= 1 && num <= 10) {
-      matches.push({ num, text });
-    }
-  }
-
-  if (matches.length < 2) return null;
-
-  let bestGroup = [];
-  for (let i = 0; i < matches.length; i++) {
-    if (matches[i].num === 1) {
-      const group = [matches[i]];
-      for (let j = i + 1; j < matches.length; j++) {
-        if (matches[j].num === group[group.length - 1].num + 1) {
-          group.push(matches[j]);
-        } else if (matches[j].num > group[group.length - 1].num + 1) {
-          break;
-        }
-      }
-      if (group.length > bestGroup.length) bestGroup = group;
-    }
-  }
-
-  if (bestGroup.length < 2) return null;
-
-  const rows = bestGroup.map(({ num, text }) => [
-    `(${num}) ${text}`,
-    `[INPUT_${num}]`
-  ]);
-  const answers = {};
-  bestGroup.forEach(({ num, text }) => {
-    answers[`INPUT_${num}`] = `(${num}) ${text} 공식 및 수치 풀이`;
-  });
-
-  return { rows, answers };
-}
-
-function generateCalculationFallbackQuestions(title, keywords, fileText) {
-  const extracted = extractCalculationRowsFromText(fileText);
-
-  const rows = extracted ? extracted.rows : [
-    ["(1) 단위폭당 침투유량 q (m³/s/m)", "[INPUT_1]"],
-    ["(2) 지정 위치 간극수압 u (kN/m²)", "[INPUT_2]"],
-    ["(3) 출구 유출 동수경사 i_exit", "[INPUT_3]"]
-  ];
-  const answers = extracted ? extracted.answers : {
-    INPUT_1: "침투유량 q 공식 및 수치 풀이",
-    INPUT_2: "간극수압 u 공식 및 수치 풀이",
-    INPUT_3: "동수경사 i 공식 및 수치 풀이"
-  };
-
-  return [
-    {
-      type: "주관식 (표채우기)",
-      subtype: "표채우기",
-      question: `[${title} 계산 문제] 첨부 그림 및 원보고서 조건에 따른 수치 계산 항목의 정답을 구하여 아래 표의 빈칸을 완성하시오.`,
-      tableData: {
-        headers: ["구하는 항목", "계산 결과 및 답안"],
-        rows: rows
-      },
-      answers: answers,
-      explanation: "원보고서 및 제공된 스크린샷 이미지의 공학적 설계 조건을 대입하여 계산하는 전개 과정입니다."
-    },
-    {
-      type: "주관식 (단답형)",
-      question: `[${title} 공학적 의미] 이 계산 과정 및 결과가 설계와 시공 실무에 주는 교훈 또는 공학적 의미(지반 거동 해석, 안전성 평가 등)를 설명하십시오.`,
-      answer: "설계 및 시공 조건의 안전 여유도 확보와 지반 거동 분석의 기초 자료 제공",
-      explanation: "계산 결과를 통해 한계 상태를 판단하고, 실제 지반의 거동 특징과 불확실성을 고려한 설계 마진 및 공학적 교훈을 이해하는 것이 핵심입니다."
-    },
-    {
-      type: "주관식 (단답형)",
-      question: `[${title} 공학적 대책] 이 문제의 계산 결과와 관련하여 현장에서 공학적 문제가 발생했을 때의 실무적 해결책 및 대책을 서술하십시오.`,
-      answer: "지반 개량 공법 적용, 하중 분산 대책 수립, 계측 관리 강화 및 차수/배수 공법 설계",
-      explanation: "계산치 초과 또는 지반 붕괴 위험 등 불안정성 발생 시 현장에서 취할 수 있는 구체적인 지반 개량 및 공법 변경 대책을 제시하는 문항입니다."
-    }
-  ];
-}
-
-function assembleFinalCalculationQuestions(questions, topic, fileText) {
-  // 1. LLM이 생성한 표채우기는 계산문제 맥락을 모르고 임의 생성하므로 전량 폐기
-  let finalQuestions = (questions || []).filter(q =>
-    q.type !== '주관식 (표채우기)'
-  );
-
-  // 2. 소스 텍스트에서 원문 하위 질문을 자동 추출하여 계산 폼 생성 (실패시 범용 fallback)
-  const fb = generateCalculationFallbackQuestions(topic.title, topic.keywords, fileText);
-  
-  // 3. 무조건 첫 번째 문제(Q1)는 우리가 동적 추출한 계산 표채우기 문제를 강제 삽입
-  finalQuestions.unshift(fb[0]);
-
-  // 4. 모자란 문제는 단답형 fallback으로 채움
-  while (finalQuestions.length < 4) {
-    finalQuestions.push(fb[finalQuestions.length]);
-  }
-  return finalQuestions.slice(0, 4);
-}
 
 function mergeSplitFlowchartQuestions(questions) {
   if (!Array.isArray(questions)) return [];
@@ -786,9 +677,7 @@ router.post('/topics/:id/ai-questions', async (req, res) => {
     if (isCoreTopic && (forceLocal || !hasAnyAiKey)) {
       console.log(`[AI Route Interceptor - Local Fallback] Precision routed core topic "${topic.title}"`);
       const coreQuestions = [];
-      const finalQuestions = topic.category === '계산'
-        ? assembleFinalCalculationQuestions(coreQuestions, topic, fileText)
-        : assembleFinalQuestions(coreQuestions, topic, carryOverQuestions, fileText);
+      const finalQuestions = assembleFinalQuestions(coreQuestions, topic, carryOverQuestions, fileText);
       
       const cleanedCore = finalQuestions.map(q => healQuizQuestionObject({
         ...q,
@@ -823,9 +712,7 @@ router.post('/topics/:id/ai-questions', async (req, res) => {
 
     if (forceLocal || !hasAnyAiKey) {
       const fallbackQuestions = [];
-      const finalQuestions = topic.category === '계산'
-        ? assembleFinalCalculationQuestions(fallbackQuestions, topic, fileText)
-        : assembleFinalQuestions(fallbackQuestions, topic, carryOverQuestions, fileText);
+      const finalQuestions = assembleFinalQuestions(fallbackQuestions, topic, carryOverQuestions, fileText);
       
       const cleanedFallback = finalQuestions.map(q => healQuizQuestionObject({
         ...q,
@@ -1443,9 +1330,7 @@ let parsedArray = null;
       };
     });
 
-    const finalQuestions = topic.category === '계산'
-      ? assembleFinalCalculationQuestions(normalizedParsedArray, topic, fileText)
-      : assembleFinalQuestions(normalizedParsedArray, topic, carryOverQuestions, fileText);
+    const finalQuestions = assembleFinalQuestions(normalizedParsedArray, topic, carryOverQuestions, fileText);
 
     const cleanedQuestions = finalQuestions.map(q => healQuizQuestionObject({
       ...q,
@@ -1475,9 +1360,7 @@ let parsedArray = null;
     try {
       const safeFileText = typeof topicText !== 'undefined' ? topicText : (topic ? (topic.extracted_text || '') : '');
       const fallbackQuestions = [];
-      const finalQuestions = topic.category === '계산'
-        ? assembleFinalCalculationQuestions(fallbackQuestions, topic, fileText)
-        : assembleFinalQuestions(fallbackQuestions, topic, carryOverQuestions, safeFileText);
+      const finalQuestions = assembleFinalQuestions(fallbackQuestions, topic, carryOverQuestions, safeFileText);
 
       const cleanedFallback = finalQuestions.map(q => healQuizQuestionObject({
         ...q,
@@ -4423,4 +4306,5 @@ router.post('/search-source', async (req, res) => {
 });
 
 export default router;
+
 
