@@ -697,15 +697,16 @@ router.post('/topics/:id/ai-questions', async (req, res) => {
   let progressTimer = null;
   try {
     const progressId = req.query.progressId || req.body.progressId;
+    const targetModel = (req.body && req.body.preferredModel) || req.query.preferredModel || 'gemini-3.5-flash-lite';
     let standardsAnalysis = '';
     const localCallLLM = (sys, prompt, img, scenario, opts) => {
       const enrichedPrompt = standardsAnalysis ? `${standardsAnalysis}\n\n${prompt}` : prompt;
-      return callLLMWithFailover(sys, enrichedPrompt, img, scenario, { ...opts, progressId });
+      return callLLMWithFailover(sys, enrichedPrompt, img, scenario, { preferredModel: targetModel, ...opts, progressId });
     };
 
     if (progressId) {
       progressTimer = startBackendProgressTimer(progressId, 1, '1단계: AI 예상 문제 생성 시작...', 50, 1500, 5);
-      standardsAnalysis = await analyzeStandardsBeforeTask(progressId, topic.title, GENERATION_STANDARDS, 'generation');
+      standardsAnalysis = await analyzeStandardsBeforeTask(progressId, topic.title, GENERATION_STANDARDS, 'generation', targetModel);
     }
 
     let carryOverQuestions = [];
@@ -2610,11 +2611,12 @@ async function validateAndHealQuestion(question, callLLMWithFailover, topicTitle
 // POST /api/exam/all
 router.post('/exam/all', async (req, res) => {
   const progressId = req.query.progressId || req.body.progressId;
+  const targetModel = (req.body && req.body.preferredModel) || req.query.preferredModel || 'gemini-3.5-flash-lite';
   let progressTimer = null;
   let standardsAnalysis = '';
   if (progressId) {
     updateProgress(progressId, 1, '1단계: 데이터 분석 및 평가 지침 로드 중...', 15);
-    standardsAnalysis = await analyzeStandardsBeforeTask(progressId, '종합평가 시험 출제', GENERATION_STANDARDS, 'generation');
+    standardsAnalysis = await analyzeStandardsBeforeTask(progressId, '종합평가 시험 출제', GENERATION_STANDARDS, 'generation', targetModel);
   }
   try {
     let count = parseInt(req.query.count || req.body.count || 40, 10);

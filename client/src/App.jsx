@@ -3647,8 +3647,35 @@ export default function App() {
     localStorage.setItem('anti_realtime_chat_history', JSON.stringify(realTimeChatHistory));
   }, [realTimeChatHistory]);
 
+  const [isInitialChatMount, setIsInitialChatMount] = useState(true);
+
+  const handleRealTimeChatScroll = (e) => {
+    if (e.target) {
+      localStorage.setItem('anti_realtime_chat_scroll', e.target.scrollTop);
+    }
+  };
+
   useEffect(() => {
     if (realTimeChatBodyRef.current) {
+      if (isInitialChatMount) {
+        const saved = localStorage.getItem('anti_realtime_chat_scroll');
+        if (saved !== null) {
+          setTimeout(() => {
+            if (realTimeChatBodyRef.current) {
+              realTimeChatBodyRef.current.scrollTop = parseFloat(saved);
+            }
+          }, 100);
+        } else {
+          setTimeout(() => {
+            if (realTimeChatBodyRef.current) {
+              realTimeChatBodyRef.current.scrollTop = realTimeChatBodyRef.current.scrollHeight;
+            }
+          }, 100);
+        }
+        setIsInitialChatMount(false);
+        return;
+      }
+
       const history = realTimeChatHistory || [];
       if (history.length > 0 && history[history.length - 1].role === 'model') {
         scrollToLastTutorResponse(realTimeChatBodyRef.current);
@@ -3656,7 +3683,7 @@ export default function App() {
         realTimeChatBodyRef.current.scrollTop = realTimeChatBodyRef.current.scrollHeight;
       }
     }
-  }, [realTimeChatHistory, isRealTimeChatLoading]);
+  }, [realTimeChatHistory, isRealTimeChatLoading, isInitialChatMount]);
 
   // AI History Tracking States
   const [aiHistory, setAiHistory] = useState(() => {
@@ -21099,7 +21126,7 @@ ${itemsStr}
                                 )}
                               </div>
                             </div>
-                          ) : (!isCalculationQuestion(q, selectedTopic?.category || examTopic?.category) && (!!(q.tableData || q.comparisonTableData) || ((q.type === '주관식 (표채우기)' || q.subtype === '표채우기') && !isFlowchartQuestion(idx, q, false)))) ? (
+                          ) : (!isCalculationQuestion(q, selectedTopic?.category || examTopic?.category) && !!(q.tableData || q.comparisonTableData)) ? (
                             <div className="space-y-3 w-full">
                               {(() => {
                                 const scoredIndices = [];
@@ -21190,7 +21217,7 @@ ${itemsStr}
                                 );
                               })()}
                             </div>
-                          ) : (q.type !== '주관식 (표채우기)' && q.subtype !== '표채우기' && !q.tableData && !q.comparisonTableData && !isFlowchartQuestion(idx, q, false)) ? (
+                          ) : (!q.tableData && !q.comparisonTableData && !isFlowchartQuestion(idx, q, false)) ? (
                             <div className="space-y-3 w-full animate-fade-in">
                               <div className={`p-0 sm:p-4 rounded-none sm:rounded-xl border-0 sm:border space-y-3 text-left transition-all ${getSubjectiveContainerClasses(idx, isRevd)}`}>
                                 <div className="space-y-1">
@@ -24788,7 +24815,7 @@ ${itemsStr}
                                 )}
                               </div>
                             </div>
-                          ) : (!isCalculationQuestion(q, selectedTopic?.category || examTopic?.category) && (q.type === '주관식 (표채우기)' || q.subtype === '표채우기' || !!(q.tableData || q.comparisonTableData))) ? (
+                          ) : (!isCalculationQuestion(q, selectedTopic?.category || examTopic?.category) && !!(q.tableData || q.comparisonTableData)) ? (
                             <div className="space-y-3 w-full">
                               {(() => {
                                 const scoredIndices = [];
@@ -24879,7 +24906,7 @@ ${itemsStr}
                                 );
                               })()}
                             </div>
-                          ) : (q.type !== '주관식 (표채우기)' && q.subtype !== '표채우기' && !q.tableData && !q.comparisonTableData && !isNATMFlowchart(idx, q, true)) ? (
+                          ) : (!q.tableData && !q.comparisonTableData && !isNATMFlowchart(idx, q, true)) ? (
                             <div className="space-y-3 w-full animate-fade-in">
                               <div className={`p-0 sm:p-4 rounded-none sm:rounded-xl border-0 sm:border space-y-3 text-left transition-all ${getSubjectiveContainerClasses(idx, !!examRevealed[idx])}`}>
                                 <div className="space-y-1">
@@ -29903,6 +29930,7 @@ ${itemsStr}
             ref={realTimeChatBodyRef}
             className="flex-grow overflow-y-auto overflow-x-hidden p-4 flex flex-col gap-3.5 select-text scrollbar-thin w-full max-w-full min-w-0"
             style={{ scrollbarWidth: 'thin' }}
+            onScroll={handleRealTimeChatScroll}
           >
             {realTimeChatHistory.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center p-6 gap-3 select-none">
