@@ -1,9 +1,10 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { X, ZoomIn, ZoomOut, Maximize } from 'lucide-react';
 import { sanitizeSvgDarkBackground } from '../utils/renderingHelpers';
+import { transformSvgWithKatex } from './DiagramSvgRenderer';
 
 const SvgZoomModal = ({ svgContent, onClose }) => {
-  const cleanSvgContent = sanitizeSvgDarkBackground(svgContent);
+  const cleanSvgContent = transformSvgWithKatex(sanitizeSvgDarkBackground(svgContent));
   const containerRef = useRef(null);
   
   const [scale, setScale] = useState(1);

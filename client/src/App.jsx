@@ -20,6 +20,7 @@ import { PopoutWindow } from './components/PopoutWindow';
 import { InteractiveQuizModal } from './components/InteractiveQuizModal';
 import SvgZoomModal from './components/SvgZoomModal';
 import ChartRenderer from './components/ChartRenderer';
+import DiagramSvgRenderer from './components/DiagramSvgRenderer';
 import { 
   buildHtmlDocument, 
   handleOpenHtmlAnswerPopup, 
@@ -1899,10 +1900,7 @@ const renderQuestionContent = (
             DIAGRAM
           </span>
         </div>
-        <div 
-          className="p-4 w-full flex justify-center items-center overflow-x-auto overflow-y-hidden custom-scrollbar [&>svg]:max-w-full [&>svg]:h-auto" 
-          dangerouslySetInnerHTML={{ __html: q.diagram_svg }} 
-        />
+        <DiagramSvgRenderer svgStr={q.diagram_svg} />
       </div>
     );
   };
