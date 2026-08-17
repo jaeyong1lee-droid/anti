@@ -5004,11 +5004,11 @@ export default function App() {
         if (table.offsetWidth > containerWidth) {
           const allThs = Array.from(table.querySelectorAll('th'));
           const MIN_WIDTH = 84;
-          let maxCharPx = 200; // 12글자 기준 대략 200px
           let needsFixed = false;
           
           const currentWidths = allThs.map(h => h.offsetWidth);
           currentWidths.forEach((cw, i) => {
+            let maxCharPx = (i === 0) ? 120 : 200; // 1열은 7글자(약 120px), 그 외는 12글자(약 200px)
             if (cw > maxCharPx) {
               needsFixed = true;
               const limitedWidth = maxCharPx;
@@ -5104,11 +5104,11 @@ export default function App() {
           if (!tableContainer) return;
           const containerWidth = tableContainer.clientWidth;
           if (table.offsetWidth > containerWidth) {
-            let maxCharPx = 200; // 12글자 기준 대략 200px
             let needsFixed = false;
             
             const currentWidths = allThs.map(h => h.offsetWidth);
             currentWidths.forEach((cw, i) => {
+              let maxCharPx = (i === 0) ? 120 : 200; // 1열은 7글자(약 120px), 그 외는 12글자(약 200px)
               if (cw > maxCharPx) {
                 needsFixed = true;
                 const limitedWidth = maxCharPx;
