@@ -3,6 +3,7 @@ import { LatexRenderer } from './LatexRenderer';
 import { BufferedTextarea } from './BufferedInput';
 import { PopoutWindow } from './PopoutWindow';
 import { getTableScoreColorTheme, areCellsEqual, isOverviewReview as isOverviewReviewHelper, getAnswerValue, getGradingResult, getCorrectAnswerForInput } from '../utils/renderingHelpers';
+import { getTableStorageKey, getDefaultColumnWidths } from '../utils/markdownTableRenderer';
 
 const normalize = (s) => (s || '').trim().toLowerCase().replace(/\s+/g, '');
 const cleanCellText = (cell) => {
@@ -300,8 +301,21 @@ export const TableQuiz = React.memo(function TableQuiz({
   // Comparison table resize states & methods
   const compColCount = q.comparisonTableData?.headers?.length || 0;
   const compTableRef = useRef(null);
+  const compTableKey = getTableStorageKey(q.comparisonTableData?.headers);
 
   const [compColWidths, setCompColWidths] = useState(() => {
+    if (compTableKey && typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem(compTableKey);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          const widths = parsed.widths || parsed;
+          if (Array.isArray(widths) && widths.length === compColCount) {
+            return widths;
+          }
+        }
+      } catch (e) {}
+    }
     try {
       const saved = localStorage.getItem(`anti_desktop_col_widths_comp_${compColCount}`);
       if (saved) {
@@ -312,35 +326,25 @@ export const TableQuiz = React.memo(function TableQuiz({
       }
     } catch (e) {}
 
-    const isMobilePortrait = window.innerWidth < 768 && window.innerHeight > window.innerWidth;
-    const isMixedTableOrOverview = q.mixedType === 'overview' || q.mixedType === 'table';
-
-    if (isMobilePortrait && isMixedTableOrOverview) {
-      if (compColCount <= 1) return ['100%'];
-      const remainingPercent = 100 / (compColCount - 1);
-      return ['85px', ...Array(compColCount - 1).fill(`${remainingPercent}%`)];
-    }
-
-    if (compColCount <= 1) return ['100%'];
-    if (compColCount === 2) return [60, 40];
-    if (compColCount === 3) return [40, 30, 30];
-    const first = 30;
-    const others = (100 - first) / (compColCount - 1);
-    return [first, ...Array(compColCount - 1).fill(others)];
+    const isMobilePortrait = typeof window !== 'undefined' && window.innerWidth < 768 && window.innerHeight > window.innerWidth;
+    return getDefaultColumnWidths(compColCount, isMobilePortrait);
   });
 
   const [compMobileColWidths, setCompMobileColWidths] = useState(() => {
-    const widths = [];
-    const storageKeyFirst = `anti_mobile_first_comp_col_width_${compColCount}`;
-    const savedFirst = typeof window !== 'undefined' ? localStorage.getItem(storageKeyFirst) : null;
-    widths.push(savedFirst || '120px');
-    
-    for (let i = 1; i < compColCount; i++) {
-      const storageKeyOther = `anti_mobile_comp_col_width_${compColCount}_${i}`;
-      const savedOther = typeof window !== 'undefined' ? localStorage.getItem(storageKeyOther) : null;
-      widths.push(savedOther || '140px');
+    if (compTableKey && typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem(compTableKey);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          const widths = parsed.widths || parsed;
+          if (Array.isArray(widths) && widths.length === compColCount) {
+            return widths.map(w => typeof w === 'number' ? `${w}%` : String(w));
+          }
+        }
+      } catch (e) {}
     }
-    return widths;
+    const isMobilePortrait = typeof window !== 'undefined' && window.innerWidth < 768 && window.innerHeight > window.innerWidth;
+    return getDefaultColumnWidths(compColCount, isMobilePortrait);
   });
 
   useEffect(() => {
@@ -492,6 +496,11 @@ export const TableQuiz = React.memo(function TableQuiz({
             }
           }
           
+          if (compTableKey) {
+            try {
+              localStorage.setItem(compTableKey, JSON.stringify({ widths: next, tableWidth: '100%' }));
+            } catch(e) {}
+          }
           try {
             localStorage.setItem(`anti_desktop_col_widths_comp_${compColCount}`, JSON.stringify(next));
           } catch(e) {}
@@ -504,6 +513,9 @@ export const TableQuiz = React.memo(function TableQuiz({
     const stopResize = () => {
       if (isTouch && container) {
         container.style.overflowX = 'auto';
+      }
+      if (compTableRef.current && window.__saveTableColumnWidths) {
+        window.__saveTableColumnWidths(compTableRef.current);
       }
       if (isTouch) {
         targetWindow.removeEventListener('touchmove', doResize);
@@ -612,8 +624,21 @@ export const TableQuiz = React.memo(function TableQuiz({
   };
 
   const colCount = headers.length;
+  const tableKey = getTableStorageKey(headers);
 
   const [colWidths, setColWidths] = useState(() => {
+    if (tableKey && typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem(tableKey);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          const widths = parsed.widths || parsed;
+          if (Array.isArray(widths) && widths.length === colCount) {
+            return widths;
+          }
+        }
+      } catch (e) {}
+    }
     try {
       const saved = localStorage.getItem(`anti_global_desktop_col_widths_${colCount}`);
       if (saved) {
@@ -624,21 +649,8 @@ export const TableQuiz = React.memo(function TableQuiz({
       }
     } catch(e) {}
 
-    const isMobilePortrait = window.innerWidth < 768 && window.innerHeight > window.innerWidth;
-    const isMixedTableOrOverview = q.mixedType === 'overview' || q.mixedType === 'table';
-
-    if (isMobilePortrait && isMixedTableOrOverview) {
-      if (colCount <= 1) return ['100%'];
-      const remainingPercent = 100 / (colCount - 1);
-      return ['85px', ...Array(colCount - 1).fill(`${remainingPercent}%`)];
-    }
-
-    if (colCount <= 1) return ['100%'];
-    if (colCount === 2) return [60, 40];
-    if (colCount === 3) return [40, 30, 30];
-    const first = 30;
-    const others = (100 - first) / (colCount - 1);
-    return [first, ...Array(colCount - 1).fill(others)];
+    const isMobilePortrait = typeof window !== 'undefined' && window.innerWidth < 768 && window.innerHeight > window.innerWidth;
+    return getDefaultColumnWidths(colCount, isMobilePortrait);
   });
 
   const [isMobileView, setIsMobileView] = useState(() => window.innerWidth < 768);
@@ -1260,6 +1272,7 @@ export const TableQuiz = React.memo(function TableQuiz({
       <div className={isMainFloated ? "flex-1 overflow-auto w-full min-w-0" : "w-full overflow-x-auto min-w-0"}>
         <table 
           ref={tableRef} 
+          data-table-key={tableKey}
           className={`table-quiz-table w-full table-fixed text-center border-collapse text-[14px] sm:text-[16px] min-w-full`}
         style={{
           '--table-width': (isMobileView && colCount === 2) ? '100%' : `max(100%, ${(mobileColWidths && mobileColWidths.length > 0) ? mobileColWidths.reduce((sum, w) => sum + parseInt(w || '0', 10), 0) : (150 + (colCount - 1) * 160)}px)`,
@@ -1601,6 +1614,7 @@ export const TableQuiz = React.memo(function TableQuiz({
         <div className={isCompFloated ? "flex-1 overflow-auto w-full min-w-0" : "w-full overflow-x-auto min-w-0"}>
           <table 
             ref={compTableRef}
+            data-table-key={compTableKey}
             className={`table-quiz-table w-full table-fixed text-center border-collapse text-[14px] sm:text-[15px] min-w-full`}
             style={{
               '--table-width': (isMobileView && compColCount === 2) ? '100%' : `max(100%, ${(compMobileColWidths && compMobileColWidths.length > 0) ? compMobileColWidths.reduce((sum, w) => sum + parseInt(w || '0', 10), 0) : (150 + (compColCount - 1) * 160)}px)`,

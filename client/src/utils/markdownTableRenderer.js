@@ -150,6 +150,27 @@ export function getSavedTableWidths(headers) {
   return null;
 }
 
+export function getDefaultColumnWidths(colCount, isMobilePortrait = false) {
+  if (colCount <= 1) return ['100%'];
+  if (isMobilePortrait) {
+    const remainingPercent = 100 / (colCount - 1);
+    return ['85px', ...Array(colCount - 1).fill(`${remainingPercent}%`)];
+  }
+  // Desktop: 2열 더블클릭 상태와 동일하게 1열(구분)을 컴팩트(20~25%)하게 두고 나머지 비교 열들을 넓게 균등 배분
+  if (colCount === 2) {
+    return [25, 75];
+  }
+  if (colCount === 3) {
+    return [20, 40, 40];
+  }
+  if (colCount === 4) {
+    return [16, 28, 28, 28];
+  }
+  const first = 15;
+  const others = (100 - first) / (colCount - 1);
+  return [first, ...Array(colCount - 1).fill(others)];
+}
+
 function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false, hideRemarks = false) {
   if (tableLines.length < 2) return tableLines.join('\n');
 

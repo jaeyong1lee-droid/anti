@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { LatexRenderer } from './LatexRenderer';
 import { areCellsEqual } from '../utils/renderingHelpers';
+import { getTableStorageKey, getDefaultColumnWidths } from '../utils/markdownTableRenderer';
 
 export const ReadOnlyTable = React.memo(function ReadOnlyTable({ 
   tableData, 
@@ -10,8 +11,19 @@ export const ReadOnlyTable = React.memo(function ReadOnlyTable({
   if (!tableData || !tableData.headers || !tableData.rows) return null;
   const { headers, rows } = tableData;
   const colCount = headers.length;
+  const tableKey = getTableStorageKey(headers);
 
   const [colWidths, setColWidths] = useState(() => {
+    if (tableKey && typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem(tableKey);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          const widths = parsed.widths || parsed;
+          if (Array.isArray(widths) && widths.length === colCount) return widths;
+        }
+      } catch (e) {}
+    }
     const saved = typeof window !== 'undefined' ? localStorage.getItem(`anti_global_desktop_col_widths_${colCount}`) : null;
     if (saved) {
       try {
@@ -19,12 +31,8 @@ export const ReadOnlyTable = React.memo(function ReadOnlyTable({
         if (Array.isArray(parsed) && parsed.length === colCount) return parsed;
       } catch (e) {}
     }
-    if (colCount <= 1) return ['100%'];
-    if (colCount === 2) return [60, 40];
-    if (colCount === 3) return [40, 30, 30];
-    const first = 30;
-    const others = (100 - first) / (colCount - 1);
-    return [first, ...Array(colCount - 1).fill(others)];
+    const isMobilePortrait = typeof window !== 'undefined' && window.innerWidth < 768 && window.innerHeight > window.innerWidth;
+    return getDefaultColumnWidths(colCount, isMobilePortrait);
   });
 
   const [isMobileView, setIsMobileView] = useState(() => window.innerWidth < 768);
@@ -37,6 +45,24 @@ export const ReadOnlyTable = React.memo(function ReadOnlyTable({
 
   const [mobileColWidths, setMobileColWidths] = useState(() => {
     const isPopout = typeof window !== 'undefined' && (window.name === 'anti_popout_window' || window.name?.includes('popout') || window.opener !== null);
+    if (tableKey && typeof window !== 'undefined' && !isPopout) {
+      try {
+        const saved = localStorage.getItem(tableKey);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          const widths = parsed.widths || parsed;
+          if (Array.isArray(widths) && widths.length === colCount) {
+            const hasPx = widths.some(w => typeof w === 'string' && w.includes('px'));
+            if (hasPx) {
+              const nums = widths.map(w => parseFloat(w) || (100 / colCount));
+              const sum = nums.reduce((a, b) => a + b, 0);
+              if (sum > 0) return nums.map(n => `${((n / sum) * 100).toFixed(1)}%`);
+            }
+            return widths;
+          }
+        }
+      } catch (e) {}
+    }
     const saved = typeof window !== 'undefined' ? localStorage.getItem(`anti_global_mobile_col_widths_${colCount}`) : null;
     if (saved && !isPopout) {
       try {
@@ -52,22 +78,8 @@ export const ReadOnlyTable = React.memo(function ReadOnlyTable({
         }
       } catch (e) {}
     }
-    const widths = [];
-    if (colCount <= 1) {
-      widths.push('100%');
-    } else if (colCount === 2) {
-      widths.push('45%', '55%');
-    } else if (colCount === 3) {
-      widths.push('40%', '30%', '30%');
-    } else {
-      const first = 30;
-      const others = (100 - first) / (colCount - 1);
-      widths.push(`${first}%`);
-      for (let i = 1; i < colCount; i++) {
-        widths.push(`${others.toFixed(1)}%`);
-      }
-    }
-    return widths;
+    const isMobilePortrait = typeof window !== 'undefined' && window.innerWidth < 768 && window.innerHeight > window.innerWidth;
+    return getDefaultColumnWidths(colCount, isMobilePortrait);
   });
 
   useEffect(() => {
@@ -244,6 +256,12 @@ export const ReadOnlyTable = React.memo(function ReadOnlyTable({
             next[idx + 1] = actualRight;
           }
 
+          if (tableKey) {
+            try {
+              localStorage.setItem(tableKey, JSON.stringify({ widths: next, tableWidth: '100%' }));
+            } catch(e) {}
+          }
+
           try {
             localStorage.setItem(`anti_global_desktop_col_widths_${colCount}`, JSON.stringify(next));
           } catch(e) {}
@@ -263,6 +281,9 @@ export const ReadOnlyTable = React.memo(function ReadOnlyTable({
         container.style.touchAction = '';
         document.body.style.touchAction = '';
       }
+      if (tableRef.current && window.__saveTableColumnWidths) {
+        window.__saveTableColumnWidths(tableRef.current);
+      }
       if (isTouch) {
         window.removeEventListener('touchmove', doResize);
         window.removeEventListener('touchend', stopResize);
@@ -279,7 +300,7 @@ export const ReadOnlyTable = React.memo(function ReadOnlyTable({
       window.addEventListener('mousemove', doResize);
       window.addEventListener('mouseup', stopResize);
     }
-  }, [questionIdx, colCount]);
+  }, [questionIdx, colCount, tableKey]);
 
   return (
     <div 
@@ -291,6 +312,7 @@ export const ReadOnlyTable = React.memo(function ReadOnlyTable({
     >
       <table 
         ref={tableRef} 
+        data-table-key={tableKey}
         className={`table-quiz-table w-full table-fixed text-center border-collapse text-[14px] sm:text-[16px] min-w-full`}
         style={isMobileView ? {
           '--table-width': colCount === 2 ? '100%' : `max(100%, ${mobileColWidths.reduce((sum, w) => sum + parseInt(w || '0', 10), 0)}px)`,

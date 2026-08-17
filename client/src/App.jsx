@@ -5034,8 +5034,37 @@ export default function App() {
 
     window.__restoreAllTableColumnWidths = (container = document) => {
       if (!container) return;
-      const tables = container.querySelectorAll ? container.querySelectorAll('.markdown-table-container table') : [];
+      const tables = container.querySelectorAll ? container.querySelectorAll('.markdown-table-container table, .table-quiz-container table') : [];
       tables.forEach(table => {
+        const key = table.getAttribute('data-table-key');
+        if (key) {
+          try {
+            const savedStr = localStorage.getItem(key);
+            if (savedStr) {
+              const saved = JSON.parse(savedStr);
+              const widths = saved.widths || saved;
+              if (Array.isArray(widths) && widths.length > 0) {
+                const allThs = Array.from(table.querySelectorAll('th'));
+                widths.forEach((w, i) => {
+                  if (allThs[i] && w) {
+                    const widthVal = typeof w === 'number' ? `${w}px` : (String(w).includes('px') || String(w).includes('%') ? w : `${w}px`);
+                    allThs[i].style.setProperty('width', widthVal, 'important');
+                    allThs[i].style.setProperty('min-width', widthVal, 'important');
+                    allThs[i].style.setProperty('max-width', widthVal, 'important');
+                  }
+                });
+                if (saved.tableWidth) {
+                  table.style.setProperty('width', saved.tableWidth, 'important');
+                  table.style.setProperty('min-width', saved.tableWidth, 'important');
+                }
+                table.classList.remove('table-auto');
+                table.classList.add('table-fixed');
+                return;
+              }
+            }
+          } catch(e) {}
+        }
+
         // 이미 사용자가 커스텀하게 고정(fixed)한 표라면 덮어쓰지 않음
         if (table.classList.contains('table-fixed')) {
           return;
