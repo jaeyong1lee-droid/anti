@@ -7349,23 +7349,30 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
           let popupX = 0;
           let popupY = 0;
 
+          // If the selection height is suspiciously large (multi-line or browser bug with KaTeX),
+          // fallback to the pointer's Y position so the popup appears near the user's cursor.
+          const isTall = rect.height > 50;
+
           if (isTouch) {
             // On mobile, horizontally span with 16px margins
             popupX = 16;
             
-            // For Y position, try to use selection bottom, fallback to pointer position if rect is invalid
-            const selectionBottom = useFallbackPos 
-              ? (lastPointerPos?.y || startSelectionPos?.y || 100) 
+            // For Y position, try to use selection bottom, fallback to pointer position if rect is invalid or too tall
+            const selectionBottom = (useFallbackPos || isTall) 
+              ? ((lastPointerPos?.y || startSelectionPos?.y || 100) + 15) 
               : rect.bottom;
             popupY = Math.max(16, Math.min(window.innerHeight - 220, selectionBottom + 8));
           } else {
             // On desktop, center relative to the selection rect
             const selectionLeft = useFallbackPos ? (lastPointerPos?.x || startSelectionPos?.x || 160) : rect.left;
             const selectionWidth = useFallbackPos ? 0 : rect.width;
-            const selectionBottom = useFallbackPos ? (lastPointerPos?.y || startSelectionPos?.y || 100) : rect.bottom;
+            
+            const selectionBottom = (useFallbackPos || isTall) 
+              ? ((lastPointerPos?.y || startSelectionPos?.y || 100) + 15) 
+              : rect.bottom;
 
             popupX = Math.max(16, Math.min(window.innerWidth - 340, selectionLeft + selectionWidth / 2 - 160));
-            popupY = Math.max(16, Math.min(window.innerHeight - 200, selectionBottom + 8));
+            popupY = Math.max(16, Math.min(window.innerHeight - 220, selectionBottom + 8));
           }
 
           // Extract table cell context (Column Header & Row Header & Table Title) if inside a table
