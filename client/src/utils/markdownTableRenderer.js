@@ -181,6 +181,8 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false,
   }
   const is2Col = colCount === 2;
   const tableClass = is2Col ? `markdown-table markdown-table-2col ${tableLayoutClass}` : `markdown-table ${tableLayoutClass}`;
+  
+  const tableKey = getTableStorageKey(fullHeaders) || getTableStorageKey(headers) || 'fallback_key';
 
   const tableAttrStyle = savedTableWidth ? `style="width: ${savedTableWidth} !important; min-width: ${savedTableWidth} !important; max-width: ${savedTableWidth === '100%' ? '100%' : 'none'} !important;"` : '';
 
@@ -189,7 +191,7 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false,
   if (hideWrapper) {
     // Render clean table container without Comparison Table card, buttons, or extra headers
     html += `<div class="markdown-table-container floating-table-container custom-col-widths w-full min-w-0 max-w-full my-2 overflow-x-auto rounded-xl border border-slate-600 bg-slate-950/20">`;
-    html += `<table class="${tableClass} border-collapse text-[14px] sm:text-[15px] min-w-full" ${tableAttrStyle}>`;
+    html += `<table data-table-key="${tableKey}" class="${tableClass} border-collapse text-[14px] sm:text-[15px] min-w-full" ${tableAttrStyle}>`;
     html += `<thead>`;
     html += `<tr class="bg-slate-900/80 text-slate-355 border-b border-slate-600">`;
     headers.forEach((h, hIdx) => {
@@ -268,7 +270,7 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false,
   html += `</div>`;
 
   html += `<div class="markdown-table-container floating-table-container custom-col-widths w-full min-w-0 max-w-full overflow-x-auto rounded-xl border border-slate-600 bg-slate-950/40">`;
-  html += `<table class="${tableClass} border-collapse text-[14px] sm:text-[15px] min-w-full" ${tableAttrStyle}>`;
+  html += `<table data-table-key="${tableKey}" class="${tableClass} border-collapse text-[14px] sm:text-[15px] min-w-full" ${tableAttrStyle}>`;
   html += `<thead>`;
   html += `<tr class="bg-slate-900/80 text-slate-350 border-b border-slate-600">`;
   headers.forEach((h, hIdx) => {

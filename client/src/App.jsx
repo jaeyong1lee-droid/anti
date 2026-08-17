@@ -4969,15 +4969,12 @@ export default function App() {
 
     window.__saveTableColumnWidths = (table) => {
       if (!table) return;
+      
+      const key = table.getAttribute('data-table-key');
+      if (!key) return; // 렌더러에서 키를 주입받지 못한 표는 저장하지 않음
+
       const ths = Array.from(table.querySelectorAll('th'));
       if (ths.length === 0) return;
-      
-      const getCleanText = (h) => {
-        return (h.getAttribute('data-header-clean') || h.textContent || '').replace(/[^a-zA-Z0-9가-힣]/g, '');
-      };
-      
-      const keyBase = ths.slice(0, 3).map(getCleanText).join('_');
-      const key = `anti_tbl_widths_${ths.length}_${keyBase}`;
       
       const widths = ths.map(th => th.offsetWidth);
       const tableWidth = table.style.width || '100%';
