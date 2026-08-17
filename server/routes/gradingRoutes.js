@@ -400,7 +400,7 @@ router.post('/question/regenerate', async (req, res) => {
     let isCalcQ1 = false;
     if (isNumericId) {
       const topic = await dbQuery.get(
-        `SELECT id, title, keywords, pdf_name, category, pdf_url, extracted_text FROM topics WHERE id = ?`, 
+        `SELECT id, title, keywords, pdf_name, category, pdf_url, extracted_text, pdf_data FROM topics WHERE id = ?`, 
         [Number(finalTopicId)]
       );
       if (topic) {
@@ -719,7 +719,7 @@ ${otherQs.map((q, i) => `기존 문제 ${i + 1}: ${q.question || '없음'}`).joi
       if (!finalTopicId) {
         return res.status(400).json({ error: '토픽 ID가 제공되지 않았습니다.' });
       }
-      const topic = await dbQuery.get(`SELECT id, title, keywords, pdf_name, category, pdf_url, extracted_text FROM topics WHERE id = ?`, [finalTopicId]);
+      const topic = await dbQuery.get(`SELECT id, title, keywords, pdf_name, category, pdf_url, extracted_text, pdf_data FROM topics WHERE id = ?`, [finalTopicId]);
       if (!topic) {
         return res.status(404).json({ error: '토픽을 찾을 수 없습니다.' });
       }
@@ -907,16 +907,56 @@ ${isFlowchartQ ? FLOWCHART_QUIZ_GENERATION_PROMPT : ''}
 ${formatRequirement}`;
 
       let imagePayload = null;
-      if (topic?.category === '계산' && Number(questionIdx) === 0 && topic.pdf_url) {
-        try {
-          const imgRes = await fetch(topic.pdf_url);
-          if (imgRes.ok) {
-            let mime = imgRes.headers.get('content-type') || 'image/jpeg';
-            const buf = Buffer.from(await imgRes.arrayBuffer());
-            imagePayload = { data: buf.toString('base64'), mimeType: mime };
+      if (topic?.category === '계산' && Number(questionIdx) === 0) {
+        let calcImageBase64 = null;
+        let calcImageMime = 'image/jpeg';
+        let rawBuffer = null;
+
+        if (topic.pdf_url) {
+          try {
+            const headers = {};
+            if (process.env.BLOB_READ_WRITE_TOKEN) {
+              headers['Authorization'] = `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}`;
+            }
+            const imgRes = await fetch(topic.pdf_url, { headers });
+            if (imgRes.ok) {
+              const ct = imgRes.headers.get('content-type') || '';
+              const buf = Buffer.from(await imgRes.arrayBuffer());
+              if (ct.startsWith('image/')) {
+                calcImageMime = ct;
+                calcImageBase64 = buf.toString('base64');
+              } else {
+                rawBuffer = buf;
+              }
+            }
+          } catch (e) {
+            console.warn('[Regen] Could not fetch pdf_url:', e.message);
           }
-        } catch (e) {
-          console.warn('[Regen] Could not fetch pdf_url image:', e.message);
+        }
+
+        if (!calcImageBase64 && (topic.pdf_data || rawBuffer)) {
+          const targetBuf = rawBuffer || topic.pdf_data;
+          let pdfDataStr = Buffer.isBuffer(targetBuf) ? targetBuf.toString('utf8') : String(targetBuf || '');
+          const imgMatch = pdfDataStr.match(/<img[^>]+src="data:(image\/[^;]+);base64,([^"]+)"/i);
+          if (imgMatch && imgMatch[2]) {
+            calcImageMime = imgMatch[1];
+            calcImageBase64 = imgMatch[2];
+          } else {
+            const srcMatch = pdfDataStr.match(/<img[^>]+src="([^">]+)"/i);
+            if (srcMatch && srcMatch[1] && srcMatch[1].startsWith('http')) {
+              try {
+                const nestedRes = await fetch(srcMatch[1]);
+                if (nestedRes.ok) {
+                  calcImageMime = nestedRes.headers.get('content-type') || 'image/jpeg';
+                  calcImageBase64 = Buffer.from(await nestedRes.arrayBuffer()).toString('base64');
+                }
+              } catch (err) {}
+            }
+          }
+        }
+
+        if (calcImageBase64) {
+          imagePayload = { data: calcImageBase64, mimeType: calcImageMime };
         }
       }
 

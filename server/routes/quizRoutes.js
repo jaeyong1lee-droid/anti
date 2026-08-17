@@ -1,4 +1,4 @@
-﻿import express from 'express';
+import express from 'express';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -455,7 +455,7 @@ router.post('/topics/:id/ai-questions', async (req, res) => {
   let topic = null;
 
   try {
-    const topicSql = `SELECT id, title, keywords, pdf_name, category, pdf_url, extracted_text FROM topics WHERE id = ?`;
+    const topicSql = `SELECT id, title, keywords, pdf_name, category, pdf_url, extracted_text, pdf_data FROM topics WHERE id = ?`;
     topic = await dbQuery.get(topicSql, [topicId]);
     if (!topic) {
       return res.status(404).json({ error: '토픽을 찾을 수 없습니다.' });

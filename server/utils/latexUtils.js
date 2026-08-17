@@ -751,15 +751,6 @@ export function healQuizQuestionObject(q) {
           if (!q.answers[key]) {
             q.answers[key] = it.modelAnswer || it.correctAnswer || it.label || `(${idx + 1}) 수치 계산 수치값`;
           }
-          
-          const rawLabel = it.label || '';
-          const stripped = rawLabel.replace(/[\(\)\[\]A-Z0-9\s]/ig, '');
-          if (stripped.length < 2 && q.answers[key]) {
-             const ansText = String(q.answers[key]).replace(/<[^>]+>/g, '').trim();
-             if (ansText.length > 0) {
-                 it.label = `${rawLabel} 💡힌트: ${ansText}`;
-             }
-          }
         });
       }
     }

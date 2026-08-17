@@ -271,29 +271,54 @@ export async function generateCalcTopicQuiz(
   topicInstructionsPrompt,
   callLLM
 ) {
-  // --- 1. Load image if pdf_url exists ---
+  // --- 1. Load image from pdf_url or pdf_data ---
   let calcImageBase64 = null;
   let calcImageMime = 'image/jpeg';
+  let rawBuffer = null;
+
   if (topic.pdf_url) {
     try {
-      const imgRes = await fetch(topic.pdf_url);
+      const headers = {};
+      if (process.env.BLOB_READ_WRITE_TOKEN) {
+        headers['Authorization'] = `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}`;
+      }
+      const imgRes = await fetch(topic.pdf_url, { headers });
       if (imgRes.ok) {
-        const ct = imgRes.headers.get('content-type');
-        if (ct && ct.startsWith('image/')) calcImageMime = ct;
+        const ct = imgRes.headers.get('content-type') || '';
         const buf = Buffer.from(await imgRes.arrayBuffer());
-        calcImageBase64 = buf.toString('base64');
-        console.log(`[CalcPlugin] Loaded ${buf.length} bytes image (${calcImageMime}) from ${topic.pdf_url}`);
+        if (ct.startsWith('image/')) {
+          calcImageMime = ct;
+          calcImageBase64 = buf.toString('base64');
+          console.log(`[CalcPlugin] Loaded direct image (${calcImageMime}, ${buf.length} bytes) from ${topic.pdf_url}`);
+        } else {
+          rawBuffer = buf;
+        }
       }
     } catch (e) {
-      console.warn('[CalcPlugin] Could not fetch pdf_url image:', e.message);
+      console.warn('[CalcPlugin] Could not fetch pdf_url:', e.message);
     }
-  } else if (topic.pdf_data) {
-    let pdfDataStr = Buffer.isBuffer(topic.pdf_data) ? topic.pdf_data.toString('utf8') : topic.pdf_data;
-    const imgMatch = pdfDataStr.match(/<img[^>]+src="data:(image\/[^;]+);base64,([^"]+)"/);
+  }
+
+  if (!calcImageBase64 && (topic.pdf_data || rawBuffer)) {
+    const targetBuf = rawBuffer || topic.pdf_data;
+    let pdfDataStr = Buffer.isBuffer(targetBuf) ? targetBuf.toString('utf8') : String(targetBuf || '');
+    const imgMatch = pdfDataStr.match(/<img[^>]+src="data:(image\/[^;]+);base64,([^"]+)"/i);
     if (imgMatch && imgMatch[2]) {
       calcImageMime = imgMatch[1];
       calcImageBase64 = imgMatch[2];
-      console.log(`[CalcPlugin] Extracted image (${calcImageMime}) from pdf_data HTML (length: ${calcImageBase64.length})`);
+      console.log(`[CalcPlugin] Extracted image (${calcImageMime}) from HTML data (length: ${calcImageBase64.length})`);
+    } else {
+      const srcMatch = pdfDataStr.match(/<img[^>]+src="([^">]+)"/i);
+      if (srcMatch && srcMatch[1] && srcMatch[1].startsWith('http')) {
+        try {
+          const nestedRes = await fetch(srcMatch[1]);
+          if (nestedRes.ok) {
+            calcImageMime = nestedRes.headers.get('content-type') || 'image/jpeg';
+            calcImageBase64 = Buffer.from(await nestedRes.arrayBuffer()).toString('base64');
+            console.log(`[CalcPlugin] Fetched nested img src (${calcImageMime}) from HTML`);
+          }
+        } catch (err) {}
+      }
     }
   }
 
