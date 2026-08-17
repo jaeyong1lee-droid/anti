@@ -581,7 +581,7 @@ ${FLOWCHART_QUIZ_GENERATION_PROMPT}
 
 오직 순수 JSON 데이터만 반환하십시오.
 [응답 포맷]:
-{"type": "주관식 (표채우기)", "question": "다음 [사질토 전단강도 정수 결정 절차] 흐름도를 보고 빈칸 (A), (B)에 들어갈 올바른 단계를 입력하시오 (마크다운 고정폭 코드블록으로 감싼 아스키 흐름도 포함)", "tableData": {"headers": ["빈칸 구분", "입력 답안"], "rows": [["(A)", "[INPUT_R1_C2]"], ["(B)", "[INPUT_R2_C2]"], ["(C)", "[INPUT_R3_C2]"], ["(D)", "[INPUT_R4_C2]"]]}, "answers": {"INPUT_R1_C2": "(A)정답", "INPUT_R2_C2": "(B)정답", "INPUT_R3_C2": "(C)정답", "INPUT_R4_C2": "(D)정답"}, "explanation": "해설"}`;
+{"type": "주관식 (표채우기)", "question": "다음 [사질토 전단강도 정수 결정 절차] 흐름도를 보고 빈칸 (A), (B)에 들어갈 올바른 단계를 입력하시오 (마크다운 고정폭 코드블록으로 감싼 아스키 흐름도 포함)", "tableData": {"headers": ["빈칸 구분", "입력 답안"], "rows": [["(A)", "[INPUT_R1_C2]"], ["(B)", "[INPUT_R2_C2]"], ["(C)", "[INPUT_R3_C2]"], ["(D)", "[INPUT_R4_C2]"]]}, "answers": {"INPUT_R1_C2": "(A)정답", "INPUT_R2_C2": "(B)정답", "INPUT_R3_C2": "(C)정답", "INPUT_R4_C2": "(D)정답"}, "explanation": "해설 (🚨 반드시 마지막에 📚 참조 문헌(Standards & Literature) 출처 2~3개 명시)"}`;
 
         userPrompt = `[토픽 원본 학습자료]:
 ${fileText || '없음'}
@@ -810,7 +810,7 @@ ${otherQs.map((q, i) => `기존 문제 ${i + 1}: ${q.question || '없음'}`).joi
       let formatRequirement = '';
       if (isFlowchartQ) {
         typeRequirement = `[주관식 (표채우기) 유형으로 아스키 흐름도 문제를 생성하십시오]`;
-        formatRequirement = `{"type": "주관식 (표채우기)", "question": "질문(마크다운 고정폭 코드블록으로 감싼 아스키 흐름도 포함)", "tableData": {"headers": ["빈칸 구분", "입력 답안"], "rows": [["(A)", "[INPUT_R1_C2]"], ["(B)", "[INPUT_R2_C2]"], ["(C)", "[INPUT_R3_C2]"], ["(D)", "[INPUT_R4_C2]"]]}, "answers": {"INPUT_R1_C2": "(A)정답", "INPUT_R2_C2": "(B)정답", "INPUT_R3_C2": "(C)정답", "INPUT_R4_C2": "(D)정답"}, "explanation": "해설"}`;
+        formatRequirement = `{"type": "주관식 (표채우기)", "question": "질문(마크다운 고정폭 코드블록으로 감싼 아스키 흐름도 포함)", "tableData": {"headers": ["빈칸 구분", "입력 답안"], "rows": [["(A)", "[INPUT_R1_C2]"], ["(B)", "[INPUT_R2_C2]"], ["(C)", "[INPUT_R3_C2]"], ["(D)", "[INPUT_R4_C2]"]]}, "answers": {"INPUT_R1_C2": "(A)정답", "INPUT_R2_C2": "(B)정답", "INPUT_R3_C2": "(C)정답", "INPUT_R4_C2": "(D)정답"}, "explanation": "해설 (🚨 반드시 마지막에 📚 참조 문헌(Standards & Literature) 출처 2~3개 명시)"}`;
       } else if (targetType === '주관식 (개요)') {
         typeRequirement = `[주관식 (개요) 유형으로 생성하십시오]`;
         formatRequirement = `{"type": "주관식 (개요)", "question": "질문", "concept": "개요", "formula": "", "structure": ""}`;
@@ -825,11 +825,11 @@ ${otherQs.map((q, i) => `기존 문제 ${i + 1}: ${q.question || '없음'}`).joi
           typeRequirement = `[수치 계산용 2열 표채우기 유형으로 생성하십시오]
 - 🚨 **[절대 지침]**: Q1은 오직 "수치 계산용 표"입니다! AI 임의로 이론적인 "특성 비교표"나 3열 이상의 표를 절대 만들지 마십시오.
 - [입력칸(INPUT) 규칙]: 지문이 묻는 "(1) 침투수량", "(2) X점, Y점" 등을 분석하여 구해야 하는 각 정답 수치마다 동적으로 별도의 행과 \`[INPUT_N]\`을 배정하십시오.`;
-          formatRequirement = `{"type": "주관식 (표채우기)", "question": "실제 문제 지문 그대로 유지", "tableData": {"headers": ["구하는 항목", "계산 결과 및 답안"], "rows": [["(1) 분할된 세부 항목명 1", "[INPUT_1]"], ["(2) 분할된 세부 항목명 2 - X점", "[INPUT_2]"], ["(2) 분할된 세부 항목명 2 - Y점", "[INPUT_3]"], ["(3) 분할된 세부 항목명 3", "[INPUT_4]"]]}, "answers": {"INPUT_1": "정답 풀이 1", "INPUT_2": "X점 정답", "INPUT_3": "Y점 정답", "INPUT_4": "정답 3"}, "explanation": "해설"}`;
+          formatRequirement = `{"type": "주관식 (표채우기)", "question": "실제 문제 지문 그대로 유지", "tableData": {"headers": ["구하는 항목", "계산 결과 및 답안"], "rows": [["(1) 분할된 세부 항목명 1", "[INPUT_1]"], ["(2) 분할된 세부 항목명 2 - X점", "[INPUT_2]"], ["(2) 분할된 세부 항목명 2 - Y점", "[INPUT_3]"], ["(3) 분할된 세부 항목명 3", "[INPUT_4]"]]}, "answers": {"INPUT_1": "정답 풀이 1", "INPUT_2": "X점 정답", "INPUT_3": "Y점 정답", "INPUT_4": "정답 3"}, "explanation": "해설 (🚨 반드시 마지막에 📚 참조 문헌(Standards & Literature) 출처 2~3개 명시)"}`;
         } else {
           typeRequirement = `[주관식 (표채우기) 비교용 다열 표 유형으로 생성하십시오]
 - 🚨 [데이터 셀 100% 빈칸 강제 철칙]: 행 제목(첫 번째 열)을 제외한 모든 데이터 셀을 100% 전부 빈칸([INPUT_1], [INPUT_2]...)으로 뚫어내야 합니다. 비교 대상이 3개 이상이어서 열이 늘어나더라도 예외 없이 모든 칸을 비우십시오. 일부 칸만 비우고 나머지를 텍스트로 채우는 행위는 절대 금지합니다.`;
-          formatRequirement = `{"type": "주관식 (표채우기)", "question": "질문", "tableData": {"headers": ["구분 항목", "비교대상 1", "비교대상 2", "(비교 대상 3이 있다면 추가)"], "rows": [["항목 1", "[INPUT_1]", "[INPUT_2]", "[INPUT_3]"], ["항목 2", "[INPUT_4]", "[INPUT_5]", "[INPUT_6]"]]}, "answers": {"INPUT_1": "답1", "INPUT_2": "답2", "INPUT_3": "답3", "INPUT_4": "답4", "INPUT_5": "답5", "INPUT_6": "답6"}, "explanation": "해설"}`;
+          formatRequirement = `{"type": "주관식 (표채우기)", "question": "질문", "tableData": {"headers": ["구분 항목", "비교대상 1", "비교대상 2", "(비교 대상 3이 있다면 추가)"], "rows": [["항목 1", "[INPUT_1]", "[INPUT_2]", "[INPUT_3]"], ["항목 2", "[INPUT_4]", "[INPUT_5]", "[INPUT_6]"]]}, "answers": {"INPUT_1": "답1", "INPUT_2": "답2", "INPUT_3": "답3", "INPUT_4": "답4", "INPUT_5": "답5", "INPUT_6": "답6"}, "explanation": "해설 (🚨 반드시 마지막에 📚 참조 문헌(Standards & Literature) 출처 2~3개 명시)"}`;
         }
       } else if (targetType === '주관식 (단답형)') {
         let subtypeInstruction = '';
@@ -849,10 +849,10 @@ ${otherQs.map((q, i) => `기존 문제 ${i + 1}: ${q.question || '없음'}`).joi
   * 🚨 [정답(answer) 서술형 작성 필수 규칙 - 극도로 중요!]: 정답(answer)은 단답형 단어가 아닌, 현장 대책과 공학적 원리가 포함된 50자~120자 내외의 완성된 서술형 문장이어야 합니다.`;
         }
         typeRequirement = `[주관식 (단답형) ${targetSubtype} 유형으로 생성하십시오]${subtypeInstruction}`;
-        formatRequirement = `{"type": "주관식 (단답형)", "question": "질문", "answer": "답안", "explanation": "해설"}`;
+        formatRequirement = `{"type": "주관식 (단답형)", "question": "질문", "answer": "답안", "explanation": "해설 (🚨 반드시 마지막에 📚 참조 문헌(Standards & Literature) 출처 2~3개 명시)"}`;
       } else {
         typeRequirement = `[객관식 4지선다 유형으로 생성하십시오]`;
-        formatRequirement = `{"type": "객관식 (4지선다)", "question": "질문", "tableData": null, "options": ["보기1", "보기2", "보기3", "보기4"], "correctIndex": 0, "explanation": "해설"}`;
+        formatRequirement = `{"type": "객관식 (4지선다)", "question": "질문", "tableData": null, "options": ["보기1", "보기2", "보기3", "보기4"], "correctIndex": 0, "explanation": "해설 (🚨 반드시 마지막에 📚 참조 문헌(Standards & Literature) 출처 2~3개 명시)"}`;
       }
 
       let flowchartDuplicationPrompt = '';

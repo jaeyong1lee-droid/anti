@@ -981,7 +981,7 @@ ${adjustments.map((a, idx) => `
     "question": "1번 문항: 수치 계산 결과 분석...",
     "tableData": { "headers": ["구하는 항목", "계산 결과"], "rows": [["항목1", "[INPUT_1]"]] },
     "answers": { "INPUT_1": "정답" },
-    "explanation": "해설"
+    "explanation": "해설 (🚨 반드시 마지막에 📚 참조 문헌(Standards & Literature) 출처 2~3개 명시)"
   },
   {
     "type": "주관식 (표채우기)",
@@ -1001,19 +1001,19 @@ ${adjustments.map((a, idx) => `
       "INPUT_5": "비교대상 2 두번째 서술",
       "INPUT_6": "비교대상 3 두번째 서술"
     },
-    "explanation": "해설"
+    "explanation": "해설 (🚨 반드시 마지막에 📚 참조 문헌(Standards & Literature) 출처 2~3개 명시)"
   },
   {
     "type": "주관식 (단답형)",
     "question": "3번 문항: 공학적 의미 질문...",
     "answer": "정답 서술",
-    "explanation": "해설"
+    "explanation": "해설 (🚨 반드시 마지막에 📚 참조 문헌(Standards & Literature) 출처 2~3개 명시)"
   },
   {
     "type": "주관식 (단답형)",
     "question": "4번 문항: 대책 질문...",
     "answer": "정답 서술",
-    "explanation": "해설"
+    "explanation": "해설 (🚨 반드시 마지막에 📚 참조 문헌(Standards & Literature) 출처 2~3개 명시)"
   }
 ]
 \`\`\`
@@ -1146,31 +1146,31 @@ ${LATEX_PROMPT_INSTRUCTIONS}
     "type": "주관식 (단답형)",
     "question": "토픽의 가장 중요하고 핵심적인 공학적 정의, 기본 가정, 또는 주요 공학적 의미를 묻는 서술형 질문 1",
     "answer": "핵심 개념이나 거동 특성을 요약한 1줄 서술형 답안 문구 1",
-    "explanation": "해당 개념의 학술적/공학적 의미에 대한 상세 설명 1"
+    "explanation": "해당 개념의 학술적/공학적 의미에 대한 상세 설명 1 (🚨 반드시 마지막에 📚 참조 문헌(Standards & Literature) 출처 2~3개 명시)"
   },
   {
     "type": "주관식 (단답형)",
     "question": "토픽의 가장 중요하고 핵심적인 공학적 정의, 기본 가정, 또는 주요 공학적 의미를 묻는 서술형 질문 2",
     "answer": "핵심 개념이나 거동 특성을 요약한 1줄 서술형 답안 문구 2",
-    "explanation": "해당 개념의 학술적/공학적 의미에 대한 상세 설명 2"
+    "explanation": "해당 개념의 학술적/공학적 의미에 대한 상세 설명 2 (🚨 반드시 마지막에 📚 참조 문헌(Standards & Literature) 출처 2~3개 명시)"
   },
   {
     "type": "주관식 (단답형)",
     "question": "토픽의 또 다른 중요 세부 개념, 원리 또는 장단점을 묻는 서술형 질문 3",
     "answer": "세부 개념이나 거동 특성을 요약한 1줄 서술형 답안 문구 3",
-    "explanation": "해당 개념의 학술적/공학적 의미에 대한 상세 설명 3"
+    "explanation": "해당 개념의 학술적/공학적 의미에 대한 상세 설명 3 (🚨 반드시 마지막에 📚 참조 문헌(Standards & Literature) 출처 2~3개 명시)"
   },
   {
     "type": "주관식 (단답형)",
     "question": "실무 적용 시 주요 단점, 대책, 또는 현장 한계점을 묻는 서술형 질문 4",
     "answer": "해당 대책이나 한계점을 명료하게 제시한 1줄 서술형 답안 문구 4",
-    "explanation": "해당 대책의 학술적/공학적 근거에 대한 상세 설명 4"
+    "explanation": "해당 대책의 학술적/공학적 근거에 대한 상세 설명 4 (🚨 반드시 마지막에 📚 참조 문헌(Standards & Literature) 출처 2~3개 명시)"
   },
   {
     "type": "주관식 (그래프해석)",
     "question": "공학적 현상 분석 질문 텍스트\\n\\n\`\`\`chart\\n{ \\\"type\\\": \\\"line\\\", ... }\\n\`\`\`",
     "answer": "그래프에 대한 기술사급 분석 및 공학적 의미 서술 모범답안",
-    "explanation": "관련 메커니즘, 상세 해설 등"
+    "explanation": "관련 메커니즘, 상세 해설 등 (🚨 반드시 마지막에 📚 참조 문헌(Standards & Literature) 출처 2~3개 명시)"
   },
   {
     "type": "주관식 (표채우기)",
@@ -1251,7 +1251,7 @@ ${LATEX_PROMPT_INSTRUCTIONS}
       "INPUT_5": "비교대상 2 두번째 서술",
       "INPUT_6": "비교대상 3 두번째 서술"
     },
-    "explanation": "표 내용 및 빈칸에 대한 공학적 상세 해설"
+    "explanation": "표 내용 및 빈칸에 대한 공학적 상세 해설 (🚨 반드시 마지막에 📚 참조 문헌(Standards & Literature) 출처 2~3개 명시)"
   },
   {
     "type": "주관식 (표채우기)",
@@ -1267,7 +1267,7 @@ ${LATEX_PROMPT_INSTRUCTIONS}
       "INPUT_1": "비교대상 1의 공학적 메커니즘을 설명하는 40~80자 서술형 문장",
       "INPUT_2": "비교대상 2의 공학적 메커니즘을 설명하는 40~80자 서술형 문장"
     },
-    "explanation": "표 내용 및 빈칸에 대한 공학적 상세 해설"
+    "explanation": "표 내용 및 빈칸에 대한 공학적 상세 해설 (🚨 반드시 마지막에 📚 참조 문헌(Standards & Literature) 출처 2~3개 명시)"
   }
 ]
 `;
@@ -1323,7 +1323,7 @@ ${LATEX_PROMPT_INSTRUCTIONS}
     "question": "질문 내용",
     "options": ["보기 1", "보기 2", "보기 3", "보기 4"],
     "correctIndex": 0,
-    "explanation": "상세한 해설"
+    "explanation": "상세한 해설 (🚨 반드시 마지막에 📚 참조 문헌(Standards & Literature) 출처 2~3개 명시)"
   }
 ]
 `;
@@ -2931,7 +2931,7 @@ ${ENGINEERING_STANDARDS}
     "tableData": null,
     "options": [],
     "answer": "그래프에 대한 기술사급 분석 및 공학적 의미 서술 모범답안",
-    "explanation": "관련 메커니즘, 상세 해설 등"
+    "explanation": "관련 메커니즘, 상세 해설 등 (🚨 반드시 마지막에 📚 참조 문헌(Standards & Literature) 출처 2~3개 명시)"
   }
 ] (※ 만약 표가 필요한 질문이라면 "tableData": {"headers": ["구분", "지반 X", "지반 Y"], "rows": [["퇴적 환경", "해수", "담수"]]} 처럼 구조화된 표 객체를 작성하고, 그렇지 않은 일반 질문이면 "tableData": null 로 설정하십시오.)
 `;
@@ -3454,7 +3454,7 @@ ${ENGINEERING_STANDARDS}
     "tableData": null,
     "options": ["보기1", "보기2", "보기3", "보기4"],
     "correctIndex": 0,
-    "explanation": "이유와 오답 정밀 해설"
+    "explanation": "이유와 오답 정밀 해설 (🚨 반드시 마지막에 📚 참조 문헌(Standards & Literature) 출처 2~3개 명시)"
   }
 ] (※ 만약 표가 필요한 질문이라면 "tableData": {"headers": ["구분", "지반 X", "지반 Y"], "rows": [["퇴적 환경", "해수", "담수"]]} 처럼 구조화된 표 객체를 작성하고, 그렇지 않은 일반 질문이면 "tableData": null 로 설정하십시오.)
 `;
