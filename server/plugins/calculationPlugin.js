@@ -1,4 +1,4 @@
-import { LATEX_PROMPT_INSTRUCTIONS, healQuizQuestionObject, validateAndHealQuestion } from '../utils/latexUtils.js';
+﻿import { LATEX_PROMPT_INSTRUCTIONS, healQuizQuestionObject, validateAndHealQuestion } from '../utils/latexUtils.js';
 import { ENGINEERING_STANDARDS } from './engineeringStandards.js';
 import { GENERATION_STANDARDS } from './generationStandards.js';
 
@@ -16,7 +16,7 @@ export async function extractTextFromCalculationImage(base64Data, mimeType, call
   console.log(`[Plugin OCR Image Extraction] Running Gemini OCR`);
   const ocrText = await callLLMWithFailover(systemInstruction, userPrompt, { data: base64Data, mimeType }, 'ocr');
   console.log(`[Plugin OCR Image Extraction] Success! Length = ${ocrText ? ocrText.length : 0}`);
-  return ocrText || '이미지에서 추출된 텍스트가 없습니다.';
+  return ocrText || '?대?吏?먯꽌 異붿텧???띿뒪?멸? ?놁뒿?덈떎.';
 }
 
 /**
@@ -29,7 +29,7 @@ export async function extractTextFromCalculationImage(base64Data, mimeType, call
 export async function suggestTitleFromCalculation(image, mimeType, htmlText, callLLMWithFailover) {
   if (image) {
     const systemInstruction = "You are an expert civil and geotechnical engineering assistant that suggests extremely concise study topic titles for technical exam preparation based on calculation problems or formulas.";
-    const userPrompt = "Analyze this engineering calculation problem image and suggest a concise, professional study topic title in Korean (under 25 characters, e.g. '테르자기 극한지지력 유도' or '수압파쇄시험 이론'). Output ONLY the title text itself without any prefix, quotation marks, or explanations.";
+    const userPrompt = "Analyze this engineering calculation problem image and suggest a concise, professional study topic title in Korean (under 25 characters, e.g. '?뚮Ⅴ?먭린 洹뱁븳吏吏???좊룄' or '?섏븬?뚯뇙?쒗뿕 ?대줎'). Output ONLY the title text itself without any prefix, quotation marks, or explanations.";
     
     console.log(`[Plugin Suggest Title Image] Running Gemini multimodal for image suggestion`);
     const suggested = await callLLMWithFailover(systemInstruction, userPrompt, { data: image, mimeType: mimeType || 'image/png' }, 'ocr');
@@ -61,40 +61,40 @@ export async function suggestTitleFromCalculation(image, mimeType, htmlText, cal
  * @param {string} fileText Context document text
  */
 export async function generateCalculationQuizQuestion(formulaTitle, formula, concept, assumptions, callLLMWithFailover, topicTitle = '', topicKeywords = '', fileText = '') {
-  const systemInstruction = `당신은 대한민국 토목공학 및 지반공학 기술사 시험 출제위원입니다.
-제시된 필수공식을 활용하여, 수험생의 정량적 계산 능력을 평가할 수 있는 고난도 4지선다형 객관식 계산 문제를 만드십시오.
-반드시 아래 지정된 JSON 규격으로만 응답해야 하며, 다른 부가 설명이나 백슬래시 에러가 있어서는 안 됩니다.
+  const systemInstruction = `?뱀떊? ??쒕?援??좊ぉ怨듯븰 諛?吏諛섍났??湲곗닠???쒗뿕 異쒖젣?꾩썝?낅땲??
+?쒖떆???꾩닔怨듭떇???쒖슜?섏뿬, ?섑뿕?앹쓽 ?뺣웾??怨꾩궛 ?λ젰???됯??????덈뒗 怨좊궃??4吏?좊떎??媛앷???怨꾩궛 臾몄젣瑜?留뚮뱶??떆??
+諛섎뱶???꾨옒 吏?뺣맂 JSON 洹쒓꺽?쇰줈留??묐떟?댁빞 ?섎ŉ, ?ㅻⅨ 遺媛 ?ㅻ챸?대굹 諛깆뒳?섏떆 ?먮윭媛 ?덉뼱?쒕뒗 ???⑸땲??
 
-[🚨 절대적 외부 지침 준수체계 (Strict External Standards Enforcement Clause) - 극도로 중요!]:
-당신은 이 시스템 지시어 내부의 그 어떤 설명이나 규칙보다, 아래 제공되는 [문제생성 지침 기준 (Generation Standards)]에 명시된 지침들을 **최우선 순위(우선순위 #1)의 철칙**으로 삼아 100% 완벽하게 준수해야 합니다.
-[문제생성 지침 기준 (Generation Standards)]에 적혀 있는 금지 조항이나 규칙은 하드코딩된 강력한 법률과 같으며, 이를 위반하여 생성된 문제는 즉시 불합격 처리됩니다. 한 치의 오차도 없이 무조건 따르십시오.`;
+[?슚 ?덈????몃? 吏移?以?섏껜怨?(Strict External Standards Enforcement Clause) - 洹밸룄濡?以묒슂!]:
+?뱀떊? ???쒖뒪??吏?쒖뼱 ?대???洹??대뼡 ?ㅻ챸?대굹 洹쒖튃蹂대떎, ?꾨옒 ?쒓났?섎뒗 [臾몄젣?앹꽦 吏移?湲곗? (Generation Standards)]??紐낆떆??吏移⑤뱾??**理쒖슦???쒖쐞(?곗꽑?쒖쐞 #1)??泥좎튃**?쇰줈 ?쇱븘 100% ?꾨꼍?섍쾶 以?섑빐???⑸땲??
+[臾몄젣?앹꽦 吏移?湲곗? (Generation Standards)]???곹? ?덈뒗 湲덉? 議고빆?대굹 洹쒖튃? ?섎뱶肄붾뵫??媛뺣젰??踰뺣쪧怨?媛숈쑝硫? ?대? ?꾨컲?섏뿬 ?앹꽦??臾몄젣??利됱떆 遺덊빀寃?泥섎━?⑸땲?? ??移섏쓽 ?ㅼ감???놁씠 臾댁“嫄??곕Ⅴ??떆??`;
 
   const userPrompt = `
-[대상 공식]:
-- 공식명: ${formulaTitle}
-- 수식: ${formula}
-- 개념 및 설명: ${concept || ''}
-- 기본 가정: ${assumptions || ''}
+[???怨듭떇]:
+- 怨듭떇紐? ${formulaTitle}
+- ?섏떇: ${formula}
+- 媛쒕뀗 諛??ㅻ챸: ${concept || ''}
+- 湲곕낯 媛?? ${assumptions || ''}
 
-[문제생성 지침 기준 (Generation Standards)]:
+[臾몄젣?앹꽦 吏移?湲곗? (Generation Standards)]:
 ${GENERATION_STANDARDS}
 
-[출제 요구사항]:
-1. **실제 공학적 수치 대입 계산 문제**: 공식에 포함된 변수들에 합리적이고 타당성 있는 토목/지반공학적 설계 조건 수치(예: 수평 저항력, 부착 강도, 압밀계수, 또는 토압 조건 등)를 제시하고, 최종 계산 결과를 묻는 정량 계산 문제를 출제하십시오.
-2. **보기(options) 구성**: 4개의 보기를 제공하며, 그 중 정확히 1개만 정답이어야 합니다. 나머지 3개의 오답 보기는 단순 임의 날조 숫자가 아닌, 계산 과정에서 흔히 범할 수 있는 전형적인 오차/착오(예: 단위 변환 누락, 특정 분모/분자 위치 오류 등)를 반영한 그럴듯한 오답 수치(distractors)로 설계하십시오.
-3. **가독성 높은 LaTeX 적용**: 문제 질문(question), 보기(options), 해설(explanation)에 포함되는 모든 물리량 기호와 수식은 반드시 LaTeX 기호($)로 감싸십시오.
-4. **한글 출력**: 문제, 보기, 해설은 모두 한국어로 친절하게 작성하십시오.
+[異쒖젣 ?붽뎄?ы빆]:
+1. **?ㅼ젣 怨듯븰???섏튂 ???怨꾩궛 臾몄젣**: 怨듭떇???ы븿??蹂?섎뱾???⑸━?곸씠怨???뱀꽦 ?덈뒗 ?좊ぉ/吏諛섍났?숈쟻 ?ㅺ퀎 議곌굔 ?섏튂(?? ?섑룊 ???젰, 遺李?媛뺣룄, ?뺣?怨꾩닔, ?먮뒗 ?좎븬 議곌굔 ??瑜??쒖떆?섍퀬, 理쒖쥌 怨꾩궛 寃곌낵瑜?臾삳뒗 ?뺣웾 怨꾩궛 臾몄젣瑜?異쒖젣?섏떗?쒖삤.
+2. **蹂닿린(options) 援ъ꽦**: 4媛쒖쓽 蹂닿린瑜??쒓났?섎ŉ, 洹?以??뺥솗??1媛쒕쭔 ?뺣떟?댁뼱???⑸땲?? ?섎㉧吏 3媛쒖쓽 ?ㅻ떟 蹂닿린???⑥닚 ?꾩쓽 ?좎“ ?レ옄媛 ?꾨땶, 怨꾩궛 怨쇱젙?먯꽌 ?뷀엳 踰뷀븷 ???덈뒗 ?꾪삎?곸씤 ?ㅼ감/李⑹삤(?? ?⑥쐞 蹂???꾨씫, ?뱀젙 遺꾨え/遺꾩옄 ?꾩튂 ?ㅻ쪟 ??瑜?諛섏쁺??洹몃윺??븳 ?ㅻ떟 ?섏튂(distractors)濡??ㅺ퀎?섏떗?쒖삤.
+3. **媛?낆꽦 ?믪? LaTeX ?곸슜**: 臾몄젣 吏덈Ц(question), 蹂닿린(options), ?댁꽕(explanation)???ы븿?섎뒗 紐⑤뱺 臾쇰━??湲고샇? ?섏떇? 諛섎뱶??LaTeX 湲고샇($)濡?媛먯떥??떆??
+4. **?쒓? 異쒕젰**: 臾몄젣, 蹂닿린, ?댁꽕? 紐⑤몢 ?쒓뎅?대줈 移쒖젅?섍쾶 ?묒꽦?섏떗?쒖삤.
 
 ${LATEX_PROMPT_INSTRUCTIONS}
 ${ENGINEERING_STANDARDS}
 
-[JSON 반환 규격]:
+[JSON 諛섑솚 洹쒓꺽]:
 {
   "formulaTitle": "${formulaTitle}",
-  "question": "문제 질문 내용 (구체적인 설계 조건 수치 포함)",
-  "options": ["보기 1", "보기 2", "보기 3", "보기 4"],
+  "question": "臾몄젣 吏덈Ц ?댁슜 (援ъ껜?곸씤 ?ㅺ퀎 議곌굔 ?섏튂 ?ы븿)",
+  "options": ["蹂닿린 1", "蹂닿린 2", "蹂닿린 3", "蹂닿린 4"],
   "correctIndex": 0,
-  "explanation": "해설 내용 (공식 유도 및 각 조건 대입을 통한 구체적인 계산 전개 과정 포함)"
+  "explanation": "?댁꽕 ?댁슜 (怨듭떇 ?좊룄 諛?媛?議곌굔 ??낆쓣 ?듯븳 援ъ껜?곸씤 怨꾩궛 ?꾧컻 怨쇱젙 ?ы븿)"
 }
 `;
 
@@ -298,23 +298,23 @@ export async function generateCalcTopicQuiz(
   }
 
   // --- 2. Build the generation prompt ---
-  const systemInstruction = `당신은 대한민국 국가건설기준설계코드(KDS) 및 지반공학 기술사 시험 출제위원입니다.
-JSON 배열 형식으로만 문제를 출력하십시오.`;
+  const systemInstruction = `?뱀떊? ??쒕?援?援??嫄댁꽕湲곗??ㅺ퀎肄붾뱶(KDS) 諛?吏諛섍났??湲곗닠???쒗뿕 異쒖젣?꾩썝?낅땲??
+JSON 諛곗뿴 ?뺤떇?쇰줈留?臾몄젣瑜?異쒕젰?섏떗?쒖삤.`;
 
   const commonInfoPrompt = `
-[토픽 핵심 주제]: ${coreSubject}
-[토픽 원본 제목]: ${topic.title}
-[핵심 키워드]: ${topic.keywords || '제공되지 않음'}
+[?좏뵿 ?듭떖 二쇱젣]: ${coreSubject}
+[?좏뵿 ?먮낯 ?쒕ぉ]: ${topic.title}
+[?듭떖 ?ㅼ썙??: ${topic.keywords || '?쒓났?섏? ?딆쓬'}
 
 <solution_reference>
-[정답 추출용 HTML 해설 본문 (문제 지문 추출용 아님!)]:
-${fileText || '제공되지 않음'}
+[?뺣떟 異붿텧??HTML ?댁꽕 蹂몃Ц (臾몄젣 吏臾?異붿텧???꾨떂!)]:
+${fileText || '?쒓났?섏? ?딆쓬'}
 </solution_reference>
 
-[출제 기준 절대 지침]:
+[異쒖젣 湲곗? ?덈? 吏移?:
 ${activeGenerationStandards}
 
-[공학 기준 절대 지침]:
+[怨듯븰 湲곗? ?덈? 吏移?:
 ${activeEngineeringStandards}
 
 ${topicInstructionsPrompt}
@@ -323,74 +323,74 @@ ${LATEX_PROMPT_INSTRUCTIONS}
 `;
 
   const generationPromptQ1 = `
-[태스크]: 첨부된 이미지 스크린샷 안의 문제 지문을 눈으로 직접 읽고, 질문에서 구하라고 명시한 요구사항들에 대해 1:1로 입력폼 [INPUT_N]을 가진 2열 표채우기 계산 문제 1개를 생성하십시오.
+[?쒖뒪??: 泥⑤????대?吏 ?ㅽ겕由곗꺑 ?덉쓽 臾몄젣 吏臾몄쓣 ?덉쑝濡?吏곸젒 ?쎄퀬, 吏덈Ц?먯꽌 援ы븯?쇨퀬 紐낆떆???붽뎄?ы빆?ㅼ뿉 ???1:1濡??낅젰??[INPUT_N]??媛吏?2???쒖콈?곌린 怨꾩궛 臾몄젣 1媛쒕? ?앹꽦?섏떗?쒖삤.
 
-[절대 지침 - 원문 1:1 복사 및 임의 수정 금지]:
-1. 오직 첨부된 이미지 스크린샷에 적힌 문제 지문 본문만 최우선으로 읽으십시오.
-2. 구하는 항목 명칭(tableData.rows[i][0])에는 오직 이미지 지문의 항목 이름만 순수하게 기재하십시오! '[단, ...]'과 같은 조건 텍스트나 변수 기호 등의 주석을 항목 이름 뒤에 임의로 덧붙이는 행위를 엄격히 금지합니다.
-3. 지문에서 "항목 X, Y 및 Z에 대하여"처럼 여러 대상을 동시에 묶어서 물어보는 경우, 반드시 "항목 X", "항목 Y", "항목 Z"와 같이 모든 대상을 하나도 빠짐없이 개별 행으로 분할하여 각각 입력칸([INPUT_N])을 배정하십시오.
-4. 이미지 지문에 적히지 않은 다른 용어를 절대로 지어내거나 변경하여 출제하지 마십시오.
-5. answers 객체에는 각 INPUT_N마다 대응되는 정답 풀이 과정과 수치를 기재하십시오.
-6. [경고] 아래 예시에 적힌 텍스트를 절대 그대로 복사하거나 출제에 참고하지 마십시오. 반드시 첨부된 이미지의 실제 텍스트를 바탕으로 작성하십시오.
+[?덈? 吏移?- ?먮Ц 1:1 蹂듭궗 諛??꾩쓽 ?섏젙 湲덉?]:
+1. ?ㅼ쭅 泥⑤????대?吏 ?ㅽ겕由곗꺑???곹엺 臾몄젣 吏臾?蹂몃Ц留?理쒖슦?좎쑝濡??쎌쑝??떆??
+2. 援ы븯????ぉ 紐낆묶(tableData.rows[i][0])?먮뒗 ?ㅼ쭅 ?대?吏 吏臾몄쓽 ??ぉ ?대쫫留??쒖닔?섍쾶 湲곗옱?섏떗?쒖삤! '[?? ...]'怨?媛숈? 議곌굔 ?띿뒪?몃굹 蹂??湲고샇 ?깆쓽 二쇱꽍????ぉ ?대쫫 ?ㅼ뿉 ?꾩쓽濡??㏓텤?대뒗 ?됱쐞瑜??꾧꺽??湲덉??⑸땲??
+3. 吏臾몄뿉??"??ぉ X, Y 諛?Z????섏뿬"泥섎읆 ?щ윭 ??곸쓣 ?숈떆??臾띠뼱??臾쇱뼱蹂대뒗 寃쎌슦, 諛섎뱶??"??ぉ X", "??ぉ Y", "??ぉ Z"? 媛숈씠 紐⑤뱺 ??곸쓣 ?섎굹??鍮좎쭚?놁씠 媛쒕퀎 ?됱쑝濡?遺꾪븷?섏뿬 媛곴컖 ?낅젰移?[INPUT_N])??諛곗젙?섏떗?쒖삤.
+4. ?대?吏 吏臾몄뿉 ?곹엳吏 ?딆? ?ㅻⅨ ?⑹뼱瑜??덈?濡?吏?대궡嫄곕굹 蹂寃쏀븯??異쒖젣?섏? 留덉떗?쒖삤.
+5. answers 媛앹껜?먮뒗 媛?INPUT_N留덈떎 ??묐릺???뺣떟 ???怨쇱젙怨??섏튂瑜?湲곗옱?섏떗?쒖삤.
+6. [寃쎄퀬] ?꾨옒 ?덉떆???곹엺 ?띿뒪?몃? ?덈? 洹몃?濡?蹂듭궗?섍굅??異쒖젣??李멸퀬?섏? 留덉떗?쒖삤. 諛섎뱶??泥⑤????대?吏???ㅼ젣 ?띿뒪?몃? 諛뷀깢?쇰줈 ?묒꽦?섏떗?쒖삤.
 
 <solution_reference>
-[정답 및 해설 참조용 본문]:
-${fileText || '제공되지 않음'}
+[?뺣떟 諛??댁꽕 李몄“??蹂몃Ц]:
+${fileText || '?쒓났?섏? ?딆쓬'}
 </solution_reference>
 
-[응답 JSON 포맷]:
+[?묐떟 JSON ?щ㎎]:
 [
   {
-    "type": "주관식 (표채우기)",
-    "question": "첨부된 이미지의 실제 문제 지문 전체 텍스트 (예: 1. ~~~ 구하시오. 단, ~~~)",
+    "type": "二쇨???(?쒖콈?곌린)",
+    "question": "泥⑤????대?吏???ㅼ젣 臾몄젣 吏臾??꾩껜 ?띿뒪??(?? 1. ~~~ 援ы븯?쒖삤. ?? ~~~)",
     "tableData": {
-      "headers": ["구하는 항목", "계산 결과 및 답안"],
+      "headers": ["援ы븯????ぉ", "怨꾩궛 寃곌낵 諛??듭븞"],
       "rows": [
-        ["(1) 실제 지문에서 요구한 첫번째 항목 명칭", "[INPUT_1]"],
-        ["(2) 실제 지문에서 요구한 두번째 항목 명칭", "[INPUT_2]"],
-        ["(3) 실제 지문에서 요구한 세번째 항목 명칭", "[INPUT_3]"]
+        ["(1) ?ㅼ젣 吏臾몄뿉???붽뎄??泥ル쾲吏???ぉ 紐낆묶", "[INPUT_1]"],
+        ["(2) ?ㅼ젣 吏臾몄뿉???붽뎄???먮쾲吏???ぉ 紐낆묶", "[INPUT_2]"],
+        ["(3) ?ㅼ젣 吏臾몄뿉???붽뎄???몃쾲吏???ぉ 紐낆묶", "[INPUT_3]"]
       ]
     },
     "answers": {
-      "INPUT_1": "정답 및 풀이 1",
-      "INPUT_2": "정답 및 풀이 2",
-      "INPUT_3": "정답 및 풀이 3"
+      "INPUT_1": "?뺣떟 諛????1",
+      "INPUT_2": "?뺣떟 諛????2",
+      "INPUT_3": "?뺣떟 諛????3"
     }
   }
 ]
 `;
 
   const generationPromptQ234 = `
-[문제 생성 태스크 시작]:
-아래 제공되는 정보를 분석하여 정확히 3개의 예상문제(2, 3, 4번 문항)를 생성해 주십시오.
+[臾몄젣 ?앹꽦 ?쒖뒪???쒖옉]:
+?꾨옒 ?쒓났?섎뒗 ?뺣낫瑜?遺꾩꽍?섏뿬 ?뺥솗??3媛쒖쓽 ?덉긽臾몄젣(2, 3, 4踰?臾명빆)瑜??앹꽦??二쇱떗?쒖삤.
 ${commonInfoPrompt}
 
-[출제 요구사항]:
-2. 2번 문항 (이론/공법/기법 비교 표채우기 문제 - AI 동적 출제 철칙) - type: "주관식 (표채우기)"
-   - [AI 동적 문제 생성 철칙]: 고정된 템플릿 텍스트를 금지하며, AI가 해당 토픽의 주 핵심 공법/이론(예: 유선망 수리해석 토픽인 경우 '유선망 도해법(Flow Net)')과 관련된 타 공법/이론(예: '수치해석법 (FEM/FDM)', 'Darcy 1차원 해석법' 등)을 원보고서/공학기준에 기초하여 직접 동적으로 대조 분석하는 질문과 표를 설계하십시오.
-   - headers 예시: ["구분 항목", "주 핵심 공법/이론 (예: 유선망 도해법)", "비교 공법/이론 1 (예: 수치해석법 FEM/FDM)", "비교 공법/이론 2 (예: Darcy 1차원 해석법)"]
-   - rows: 핵심 메커니즘, 적용성/한계성, 산출 물리량 등의 행(Row)을 설계하고, 절반 이상은 풍부한 전문 지식으로 미리 채운 후 총 2~3개의 핵심 빈칸만 [INPUT_1], [INPUT_2]로 설정하십시오.
+[異쒖젣 ?붽뎄?ы빆]:
+2. 2踰?臾명빆 (?대줎/怨듬쾿/湲곕쾿 鍮꾧탳 ?쒖콈?곌린 臾몄젣 - AI ?숈쟻 異쒖젣 泥좎튃) - type: "二쇨???(?쒖콈?곌린)"
+   - [AI ?숈쟻 臾몄젣 ?앹꽦 泥좎튃]: 怨좎젙???쒗뵆由??띿뒪?몃? 湲덉??섎ŉ, AI媛 ?대떦 ?좏뵿??二??듭떖 怨듬쾿/?대줎(?? ?좎꽑留??섎━?댁꽍 ?좏뵿??寃쎌슦 '?좎꽑留??꾪빐踰?Flow Net)')怨?愿?⑤맂 ? 怨듬쾿/?대줎(?? '?섏튂?댁꽍踰?(FEM/FDM)', 'Darcy 1李⑥썝 ?댁꽍踰? ?????먮낫怨좎꽌/怨듯븰湲곗???湲곗큹?섏뿬 吏곸젒 ?숈쟻?쇰줈 ?議?遺꾩꽍?섎뒗 吏덈Ц怨??쒕? ?ㅺ퀎?섏떗?쒖삤.
+   - headers ?덉떆: ["援щ텇 ??ぉ", "二??듭떖 怨듬쾿/?대줎 (?? ?좎꽑留??꾪빐踰?", "鍮꾧탳 怨듬쾿/?대줎 1 (?? ?섏튂?댁꽍踰?FEM/FDM)", "鍮꾧탳 怨듬쾿/?대줎 2 (?? Darcy 1李⑥썝 ?댁꽍踰?"]
+   - rows: ?듭떖 硫붿빱?덉쬁, ?곸슜???쒓퀎?? ?곗텧 臾쇰━???깆쓽 ??Row)???ㅺ퀎?섍퀬, ?덈컲 ?댁긽? ?띾????꾨Ц 吏?앹쑝濡?誘몃━ 梨꾩슫 ??珥?2~3媛쒖쓽 ?듭떖 鍮덉뭏留?[INPUT_1], [INPUT_2]濡??ㅼ젙?섏떗?쒖삤.
 
-3. 3번 문항 (공학적 의미/교훈 주관식 문제) - type: "주관식 (단답형)"
-4. 4번 문항 (관련 공학적 문제 발생 시 대책 주관식 문제) - type: "주관식 (다답형)"
+3. 3踰?臾명빆 (怨듯븰???섎?/援먰썕 二쇨???臾몄젣) - type: "二쇨???(?⑤떟??"
+4. 4踰?臾명빆 (愿??怨듯븰??臾몄젣 諛쒖깮 ???梨?二쇨???臾몄젣) - type: "二쇨???(?ㅻ떟??"
 
-[응답 JSON 포맷]:
+[?묐떟 JSON ?щ㎎]:
 [
   {
-    "type": "주관식 (표채우기)",
-    "question": "비교 문제 질문",
-    "tableData": { "headers": ["구분 항목", "공법/이론 A", "공법/이론 B"], "rows": [["항목", "[INPUT_1]", "내용"]] },
-    "answers": { "INPUT_1": "정답" }
+    "type": "二쇨???(?쒖콈?곌린)",
+    "question": "鍮꾧탳 臾몄젣 吏덈Ц",
+    "tableData": { "headers": ["援щ텇 ??ぉ", "怨듬쾿/?대줎 A", "怨듬쾿/?대줎 B"], "rows": [["??ぉ", "[INPUT_1]", "?댁슜"]] },
+    "answers": { "INPUT_1": "?뺣떟" }
   },
   {
-    "type": "주관식 (단답형)",
-    "question": "주관식 질문 3",
-    "answer": "정답 3"
+    "type": "二쇨???(?⑤떟??",
+    "question": "二쇨???吏덈Ц 3",
+    "answer": "?뺣떟 3"
   },
   {
-    "type": "주관식 (단답형)",
-    "question": "주관식 질문 4",
-    "answer": "정답 4"
+    "type": "二쇨???(?⑤떟??",
+    "question": "二쇨???吏덈Ц 4",
+    "answer": "?뺣떟 4"
   }
 ]
 `;
@@ -425,12 +425,12 @@ ${commonInfoPrompt}
   const parsedQ234 = parseChunk(rawTextQ234);
 
   // --- 4. Heal and assemble 4 questions ---
-  const tableQ = parsedQ1.find(q => q.type === '주관식 (표채우기)' || q.type === '주관식 (계산)') || parsedQ1[0];
+  const tableQ = parsedQ1.find(q => q.type === '二쇨???(?쒖콈?곌린)' || q.type === '二쇨???(怨꾩궛)') || parsedQ1[0];
   
   // Q234: Look for comparison table and short answers in the response from Q234 LLM
-  const compQ  = parsedQ234.find(q => q.type === '주관식 (표채우기)' &&
+  const compQ  = parsedQ234.find(q => q.type === '二쇨???(?쒖콈?곌린)' &&
     Array.isArray(q.tableData?.headers) && q.tableData.headers.length >= 3);
-  const shorts = parsedQ234.filter(q => q.type === '주관식 (다답형)' || q.type === '주관식 (단답형)');
+  const shorts = parsedQ234.filter(q => q.type === '二쇨???(?ㅻ떟??' || q.type === '二쇨???(?⑤떟??');
 
   const fb = calcFallbackQuestions(topic.title, topic.keywords);
 
@@ -441,74 +441,36 @@ ${commonInfoPrompt}
     shorts[1] || fb[3],
   ];
 
-  return final.map(q => healCalcQuestion(healQuizQuestionObject({ ...q, category: '계산' })));
-}
-
-/**
- * Calc-specific table healer: replaces generic/empty calc tableData rows
- * with Terzaghi/dam/generic specific rows.
- * Only called from within this plugin.
- */
-export function healCalcQuestion(q) {
-  if (q.type !== '주관식 (표채우기)' && q.subtype !== '표채우기') return q;
-
-  const headers = q.tableData?.headers || [];
-  const rows = q.tableData?.rows || [];
-  const isCalcTable = headers.length === 2; // 2-col = calculation table
-  if (!isCalcTable) return q; // comparison tables: leave as-is
-
-  const hasGenericRows = rows.length > 0 && rows.every(row =>
-    Array.isArray(row) && typeof row[0] === 'string' &&
-    /^\(?\d+\)?\s*(?:핵심\s*(?:수치\s*)?계산\s*항목|계산\s*항목|핵심\s*항목)\s*\d+/i.test(row[0].trim())
-  );
-  const isEmpty = rows.length === 0;
-  if (!isEmpty && !hasGenericRows) return q;
-
-  if (isEmpty || hasGenericRows) {
-    q.calcItems = [
-      { id: 'INPUT_1', label: '(1) 수치 산출 항목 1' },
-      { id: 'INPUT_2', label: '(2) 수치 산출 항목 2' }
-    ];
-    q.tableData = {
-      headers: ["구하는 항목", "계산 결과 및 답안"],
-      rows: [
-        ["(1) 수치 산출 항목 1", "[INPUT_1]"],
-        ["(2) 수치 산출 항목 2", "[INPUT_2]"]
-      ]
-    };
-    q.answers = q.answers?.INPUT_1 ? q.answers : {
-      INPUT_1: "조건(1) 항목 풀이 및 최종 계산 수치값",
-      INPUT_2: "조건(2) 항목 풀이 및 최종 계산 수치값"
-    };
-  }
-  return q;
+  return final.map(q => healQuizQuestionObject({ ...q, category: '怨꾩궛' }));
 }
 
 function calcFallbackQuestions(title, keywords) {
-  const cleanTitle = title || '공학 토픽';
+  const cleanTitle = title || '怨듯븰 ?좏뵿';
   return [
     {
-      type: '주관식 (계산)',
-      question: cleanTitle + ' 계산 문제의 요구 항목에 대한 답안을 작성하시오.',
+      type: '二쇨???(怨꾩궛)',
+      question: cleanTitle + ' 怨꾩궛 臾몄젣???붽뎄 ??ぉ??????듭븞???묒꽦?섏떆??',
       calcItems: [
-        { id: 'INPUT_1', label: '(1) 수치 계산 항목 1' },
-        { id: 'INPUT_2', label: '(2) 수치 계산 항목 2' }
+        { id: 'INPUT_1', label: '(1) ?섏튂 怨꾩궛 ??ぉ 1' },
+        { id: 'INPUT_2', label: '(2) ?섏튂 怨꾩궛 ??ぉ 2' }
       ],
-      answers: { INPUT_1: "항목 1 수치 풀이 및 정답", INPUT_2: "항목 2 수치 풀이 및 정답" }
+      answers: { INPUT_1: "??ぉ 1 ?섏튂 ???諛??뺣떟", INPUT_2: "??ぉ 2 ?섏튂 ???諛??뺣떟" }
     },
     {
-      type: '주관식 (표채우기)',
-      question: cleanTitle + ' 관련 공법/이론 메커니즘 및 특성 비교표를 완성하시오.',
+      type: '二쇨???(?쒖콈?곌린)',
+      question: cleanTitle + ' 愿??怨듬쾿/?대줎 硫붿빱?덉쬁 諛??뱀꽦 鍮꾧탳?쒕? ?꾩꽦?섏떆??',
       tableData: {
-        headers: ["구분 항목", cleanTitle + ' (주 공법)', "대조 공법/이론 A", "대조 공법/이론 B"],
+        headers: ["援щ텇 ??ぉ", cleanTitle + ' (二?怨듬쾿)', "?議?怨듬쾿/?대줎 A", "?議?怨듬쾿/?대줎 B"],
         rows: [
-          ["핵심 메커니즘", "[INPUT_1]", "대조 공법 A 특성 서술", "대조 공법 B 특성 서술"],
-          ["적용 지반/한계", "기초 지반 적합성 평가", "[INPUT_2]", "대조 한계 조건 서술"]
+          ["?듭떖 硫붿빱?덉쬁", "[INPUT_1]", "?議?怨듬쾿 A ?뱀꽦 ?쒖닠", "?議?怨듬쾿 B ?뱀꽦 ?쒖닠"],
+          ["?곸슜 吏諛??쒓퀎", "湲곗큹 吏諛??곹빀???됯?", "[INPUT_2]", "?議??쒓퀎 議곌굔 ?쒖닠"]
         ]
       },
-      answers: { INPUT_1: "주 공법 메커니즘 서술", INPUT_2: "대조 공법 A 적합 지반 서술" }
+      answers: { INPUT_1: "二?怨듬쾿 硫붿빱?덉쬁 ?쒖닠", INPUT_2: "?議?怨듬쾿 A ?곹빀 吏諛??쒖닠" }
     },
-    { type: '주관식 (단답형)', question: cleanTitle + '의 공학적 의미는?', answer: '공학적 의미 서술' },
-    { type: '주관식 (다답형)', question: cleanTitle + ' 시공 시 주의사항은?', answer: '주의사항 서술' }
+    { type: '二쇨???(?⑤떟??', question: cleanTitle + '??怨듯븰???섎???', answer: '怨듯븰???섎? ?쒖닠' },
+    { type: '二쇨???(?ㅻ떟??', question: cleanTitle + ' ?쒓났 ??二쇱쓽?ы빆??', answer: '二쇱쓽?ы빆 ?쒖닠' }
   ];
 }
+
+
