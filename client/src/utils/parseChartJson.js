@@ -18,8 +18,10 @@ export function parseChartJson(rawJsonStr) {
   // 2. 후행 쉼표(Trailing Comma) 제거: JSON 배열이나 객체 마지막에 쉼표가 붙는 환각 방어
   jsonStr = jsonStr.replace(/,\s*([\]}])/g, '$1');
   
-  // 3. 누락된 쉼표 복구 (Missing Comma Healing) 로직 제거됨:
-  // LaTeX 수식 내부의 }{ (예: \frac{t}{S_t})를 JSON 객체 경계로 오인하여 }, { 로 강제 치환하는 치명적 버그가 발견되어 삭제함.
+  // 3. 배열 내부에 키(Key) 값을 선언하는 환각(예: "이론적 압밀곡선": { ... }) 방어
+  // 차트 JSON 구조상 중첩 객체를 값으로 가지는 속성은 존재하지 않으므로, "문자열": { 패턴은 100% 배열 내 환각임.
+  jsonStr = jsonStr.replace(/['"][^'"]+['"]\s*:\s*\{/g, '{');
+
   try {
     return JSON.parse(jsonStr);
   } catch (e) {
