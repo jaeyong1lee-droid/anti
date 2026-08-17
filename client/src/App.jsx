@@ -1,4 +1,4 @@
-﻿// Force deploy: 2026-07-07T23:16
+// Force deploy: 2026-07-07T23:16
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { 
   healLatexFormulas, 
@@ -3646,8 +3646,21 @@ export default function App() {
     localStorage.setItem('anti_realtime_tutor_open', isRealTimeTutorOpen ? 'true' : 'false');
   }, [isRealTimeTutorOpen]);
 
+  const isFirstRenderRealTimeRef = useRef(true);
   useEffect(() => {
-    localStorage.setItem('anti_realtime_chat_history', JSON.stringify(realTimeChatHistory));
+    const stringified = JSON.stringify(realTimeChatHistory);
+    localStorage.setItem('anti_realtime_chat_history', stringified);
+    
+    if (isFirstRenderRealTimeRef.current) {
+      isFirstRenderRealTimeRef.current = false;
+      return;
+    }
+    
+    fetch(`${API_BASE}/api/options/realtime_chat_history`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ value: stringified })
+    }).catch(err => console.warn('Failed to sync realtime_chat_history to db:', err));
   }, [realTimeChatHistory]);
 
   const [isInitialChatMount, setIsInitialChatMount] = useState(true);
@@ -4870,7 +4883,7 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [rightSidebarWidth]);
 
-  // Load rightSidebarWidth from server database on mount
+  // Load rightSidebarWidth and realtime_chat_history from server database on mount
   useEffect(() => {
     fetch(`${API_BASE}/api/options/right_sidebar_width`)
       .then(res => res.json())
@@ -4884,6 +4897,21 @@ export default function App() {
         }
       })
       .catch(err => console.warn('Failed to load right_sidebar_width from database:', err));
+
+    fetch(`${API_BASE}/api/options/realtime_chat_history`)
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.value) {
+          try {
+            const parsed = JSON.parse(data.value);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              setRealTimeChatHistory(parsed);
+              localStorage.setItem('anti_realtime_chat_history', data.value);
+            }
+          } catch (e) {}
+        }
+      })
+      .catch(err => console.warn('Failed to load realtime_chat_history from database:', err));
   }, []);
 
   // Load preferred AI model on mount
