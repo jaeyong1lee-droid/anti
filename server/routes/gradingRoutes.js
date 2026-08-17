@@ -762,7 +762,9 @@ ${otherQs.map((q, i) => `기존 문제 ${i + 1}: ${q.question || '없음'}`).joi
       } else if (targetTypeSelection === 'table') {
         targetType = '주관식 (표채우기)';
       } else {
-        if (isFlowchartQ) {
+        if (topic?.category === '계산' && Number(questionIdx) === 0) {
+          targetType = '주관식 (표채우기)';
+        } else if (isFlowchartQ) {
           targetType = '주관식 (표채우기)';
         } else if (currentType.includes('개요')) targetType = '주관식 (개요)';
         else if (currentType.includes('공식')) targetType = '주관식 (공식)';
@@ -818,14 +820,13 @@ ${otherQs.map((q, i) => `기존 문제 ${i + 1}: ${q.question || '없음'}`).joi
         typeRequirement = `[주관식 (공식) 유형으로 생성하십시오]`;
         formatRequirement = `{"type": "주관식 (공식)", "question": "질문", "concept": "요약", "formula": "$공식$", "structure": "- $기호$: 설명"}`;
       } else if (targetType === '주관식 (표채우기)') {
-        const isCalcTable = (topic.category === '계산' && Number(questionIdx) === 0) || 
+        const isCalcTable = (topic?.category === '계산' && Number(questionIdx) === 0) || 
                             (currentQuestion?.tableData?.headers && currentQuestion.tableData.headers[0] === '구하는 항목');
                             
         if (isCalcTable) {
           typeRequirement = `[수치 계산용 2열 표채우기 유형으로 생성하십시오]
-- 🚨 **[절대 지침]**: Q1은 오직 "수치 계산용 표"입니다! AI 임의로 이론적인 "특성 비교표"나 3열 이상의 표를 절대 만들지 마십시오.
-- [입력칸(INPUT) 규칙]: 지문이 묻는 "(1) 침투수량", "(2) X점, Y점" 등을 분석하여 구해야 하는 각 정답 수치마다 동적으로 별도의 행과 \`[INPUT_N]\`을 배정하십시오.`;
-          formatRequirement = `{"type": "주관식 (표채우기)", "question": "실제 문제 지문 그대로 유지", "tableData": {"headers": ["구하는 항목", "계산 결과 및 답안"], "rows": [["(1) 분할된 세부 항목명 1", "[INPUT_1]"], ["(2) 분할된 세부 항목명 2 - X점", "[INPUT_2]"], ["(2) 분할된 세부 항목명 2 - Y점", "[INPUT_3]"], ["(3) 분할된 세부 항목명 3", "[INPUT_4]"]]}, "answers": {"INPUT_1": "정답 풀이 1", "INPUT_2": "X점 정답", "INPUT_3": "Y점 정답", "INPUT_4": "정답 3"}, "explanation": "해설 (🚨 반드시 마지막에 📚 참조 문헌(Standards & Literature) 출처 2~3개 명시)"}`;
+- 🚨 **[기계적 파서 철칙]**: AI는 임의로 공학적 분석이나 새로운 지문을 창작하지 마십시오. 오직 첨부된 이미지/지문에서 "구하시오" 또는 "나타내시오"로 요구한 항목들만 있는 그대로 각각의 행과 \`[INPUT_N]\`으로 분리하십시오. 지문에 없는 용어(간극비, 포화도, 유효응력, 침투수량 등)를 절대로 지어내지 마십시오.`;
+          formatRequirement = `{"type": "주관식 (표채우기)", "question": "실제 문제 지문 그대로 복사", "tableData": {"headers": ["구하는 항목", "계산 결과 및 답안"], "rows": [["(1) 지문에서 요구한 첫번째 항목명", "[INPUT_1]"], ["(2) 지문에서 요구한 두번째 항목명", "[INPUT_2]"]]}, "answers": {"INPUT_1": "정답 풀이 1", "INPUT_2": "정답 풀이 2"}, "explanation": "해설 (🚨 반드시 마지막에 📚 참조 문헌(Standards & Literature) 출처 2~3개 명시)"}`;
         } else {
           typeRequirement = `[주관식 (표채우기) 비교용 다열 표 유형으로 생성하십시오]
 - 🚨 [데이터 셀 100% 빈칸 강제 철칙]: 행 제목(첫 번째 열)을 제외한 모든 데이터 셀을 100% 전부 빈칸([INPUT_1], [INPUT_2]...)으로 뚫어내야 합니다. 비교 대상이 3개 이상이어서 열이 늘어나더라도 예외 없이 모든 칸을 비우십시오. 일부 칸만 비우고 나머지를 텍스트로 채우는 행위는 절대 금지합니다.`;
@@ -905,7 +906,21 @@ ${isFlowchartQ ? FLOWCHART_QUIZ_GENERATION_PROMPT : ''}
 [응답 포맷]:
 ${formatRequirement}`;
 
-      const responseText = await localCallLLM(null, prompt, null, 'question', { temperature: 1.0 });
+      let imagePayload = null;
+      if (topic?.category === '계산' && Number(questionIdx) === 0 && topic.pdf_url) {
+        try {
+          const imgRes = await fetch(topic.pdf_url);
+          if (imgRes.ok) {
+            let mime = imgRes.headers.get('content-type') || 'image/jpeg';
+            const buf = Buffer.from(await imgRes.arrayBuffer());
+            imagePayload = { data: buf.toString('base64'), mimeType: mime };
+          }
+        } catch (e) {
+          console.warn('[Regen] Could not fetch pdf_url image:', e.message);
+        }
+      }
+
+      const responseText = await localCallLLM(null, prompt, imagePayload, 'question', { temperature: (topic?.category === '계산' && Number(questionIdx) === 0) ? 0.1 : 1.0 });
       let text = responseText.trim();
       if (text.startsWith('```')) {
         text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
