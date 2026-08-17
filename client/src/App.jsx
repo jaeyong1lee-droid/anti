@@ -5143,17 +5143,13 @@ export default function App() {
             // 2. 1열 이후 나머지 열들 비례 배분
             const numRemCols = colCount - 1;
             if (numRemCols > 0) {
-              const maxRemBudgetPx = numRemCols * 170; // 열 개수 * 10글자 너비 한도
-              const availableRemWidth = containerWidth - finalCol0Width;
-              
-              // 컨테이너 가용 너비와 10글자 한도 중 더 작은 값을 전체 예산으로 설정
-              const targetRemTotalPx = Math.min(maxRemBudgetPx, availableRemWidth);
+              const targetRemTotalPx = numRemCols * 170; // 사용자 지정 룰: 열 개수 * 10글자 한도
               const sumRemNaturalWidths = naturalWidths.slice(1).reduce((sum, w) => sum + w, 0);
               
               for (let i = 1; i < colCount; i++) {
                 let finalW = naturalWidths[i];
                 if (sumRemNaturalWidths > targetRemTotalPx) {
-                  // 비율에 맞춰 예산 분배
+                  // 한도(예: 40글자)를 초과할 경우에만 비율에 맞춰 예산 분배
                   finalW = (naturalWidths[i] / sumRemNaturalWidths) * targetRemTotalPx;
                 }
                 
