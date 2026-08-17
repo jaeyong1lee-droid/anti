@@ -1090,9 +1090,6 @@ const cleanAttachmentText = (str) => {
 
 
 const isNATMFlowchart = (idx, q, isExam = false) => {
-  if (q?.id === 'mixed_q_10') {
-    return true;
-  }
   const text = q?.question_text || q?.question || q?.content || '';
   const isNATMText = text.includes('NATM') && (text.includes('흐름도') || text.includes('플로우차트') || text.includes('┌──'));
   if (isNATMText) {
