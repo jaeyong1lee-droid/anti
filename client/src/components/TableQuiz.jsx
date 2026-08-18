@@ -257,12 +257,12 @@ export const TableQuiz = React.memo(function TableQuiz({
       const saved = localStorage.getItem('anti_floated_table_size');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (typeof parsed.width === 'number' && typeof parsed.height === 'number') {
-          return { width: Math.max(parsed.width, 760), height: Math.max(parsed.height, 880) };
+        if (parsed.width === 'fit-content' || (typeof parsed.width === 'number' && typeof parsed.height === 'number')) {
+          return parsed;
         }
       }
     } catch (e) {}
-    return { width: 760, height: 880 };
+    return { width: 'fit-content', height: 'fit-content' };
   });
 
   const floatedSizeRef = useRef(floatedSize);
@@ -987,8 +987,9 @@ export const TableQuiz = React.memo(function TableQuiz({
     const startX = isTouch ? e.touches[0].clientX : e.clientX;
     const startY = isTouch ? e.touches[0].clientY : e.clientY;
     
-    const startWidth = floatedSizeRef.current.width;
-    const startHeight = floatedSizeRef.current.height;
+    const popupEl = e.target.closest('.floated-table-quiz');
+    const startWidth = popupEl ? popupEl.offsetWidth : (typeof floatedSizeRef.current.width === 'number' ? floatedSizeRef.current.width : 760);
+    const startHeight = popupEl ? popupEl.offsetHeight : (typeof floatedSizeRef.current.height === 'number' ? floatedSizeRef.current.height : 500);
     const startLeft = floatedPosRef.current.x;
     
     document.body.style.userSelect = 'none';
@@ -1044,8 +1045,9 @@ export const TableQuiz = React.memo(function TableQuiz({
     const startX = isTouch ? e.touches[0].clientX : e.clientX;
     const startY = isTouch ? e.touches[0].clientY : e.clientY;
     
-    const startWidth = floatedSizeRef.current.width;
-    const startHeight = floatedSizeRef.current.height;
+    const popupEl = e.target.closest('.floated-table-quiz');
+    const startWidth = popupEl ? popupEl.offsetWidth : (typeof floatedSizeRef.current.width === 'number' ? floatedSizeRef.current.width : 760);
+    const startHeight = popupEl ? popupEl.offsetHeight : (typeof floatedSizeRef.current.height === 'number' ? floatedSizeRef.current.height : 500);
     
     document.body.style.userSelect = 'none';
     document.body.style.cursor = 'se-resize';
@@ -1186,8 +1188,9 @@ export const TableQuiz = React.memo(function TableQuiz({
     if (isMainFloated) {
       setFloatedTableId(null);
     } else {
-      const w = floatedSizeRef.current?.width || 760;
-      const h = floatedSizeRef.current?.height || 500;
+      setFloatedSize({ width: 'fit-content', height: 'fit-content' });
+      const w = typeof floatedSizeRef.current?.width === 'number' ? floatedSizeRef.current.width : 760;
+      const h = typeof floatedSizeRef.current?.height === 'number' ? floatedSizeRef.current.height : 500;
       const maxX = Math.max(20, window.innerWidth - w - 24);
       const maxY = Math.max(20, window.innerHeight - h - 24);
       const curX = floatedPosRef.current ? floatedPosRef.current.x : maxX;
@@ -1204,8 +1207,9 @@ export const TableQuiz = React.memo(function TableQuiz({
     if (isCompFloated) {
       setFloatedTableId(null);
     } else {
-      const w = floatedSizeRef.current?.width || 760;
-      const h = floatedSizeRef.current?.height || 500;
+      setFloatedSize({ width: 'fit-content', height: 'fit-content' });
+      const w = typeof floatedSizeRef.current?.width === 'number' ? floatedSizeRef.current.width : 760;
+      const h = typeof floatedSizeRef.current?.height === 'number' ? floatedSizeRef.current.height : 500;
       const maxX = Math.max(20, window.innerWidth - w - 24);
       const maxY = Math.max(20, window.innerHeight - h - 24);
       const curX = floatedPosRef.current ? floatedPosRef.current.x : maxX;
@@ -1445,6 +1449,10 @@ export const TableQuiz = React.memo(function TableQuiz({
                       </td>
                     );
                   } else {
+                    const cleanedText = cleanCellText(cell);
+                    const displayText = (cIdx > 0 && typeof cleanedText === 'string' && cleanedText.length > 15)
+                      ? cleanedText.substring(0, 15) + '...'
+                      : cleanedText;
                     return (
                       <td 
                         key={cIdx} 
@@ -1453,7 +1461,7 @@ export const TableQuiz = React.memo(function TableQuiz({
                           isFirstCol ? 'text-center font-extrabold break-all' : 'text-left'
                         }`}
                       >
-                        <LatexRenderer text={cleanCellText(cell)} katexLoaded={katexLoaded} className="inline" />
+                        <LatexRenderer text={displayText} katexLoaded={katexLoaded} className="inline" />
                       </td>
                     );
                   }
@@ -1472,8 +1480,8 @@ export const TableQuiz = React.memo(function TableQuiz({
           <PopoutWindow
             title="📌 표 채우기"
             onClose={() => setFloatedTableId(null)}
-            initWidth={floatedSize.width}
-            initHeight={Math.max(floatedSize.height, 880)}
+            initWidth={typeof floatedSize.width === 'number' ? floatedSize.width : 760}
+            initHeight={typeof floatedSize.height === 'number' ? Math.max(floatedSize.height, 880) : 880}
             storageKey={"anti_popout_table_main_" + mainTableUniqueId}
           >
             <div className="w-full h-full flex flex-col overflow-auto text-slate-100 p-2 sm:p-2.5 bg-[#020617]">
@@ -1491,8 +1499,8 @@ export const TableQuiz = React.memo(function TableQuiz({
           key="floated"
           className="fixed z-[9991] bg-slate-900/95 border border-slate-700 rounded-2xl shadow-2xl p-3 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150 backdrop-blur-md floated-table-quiz"
           style={{
-            width: `${floatedSize.width}px`,
-            height: `${floatedSize.height}px`,
+            width: typeof floatedSize.width === 'number' ? `${floatedSize.width}px` : floatedSize.width,
+            height: typeof floatedSize.height === 'number' ? `${floatedSize.height}px` : floatedSize.height,
             left: `${floatedPos.x}px`,
             top: `${floatedPos.y}px`,
             maxWidth: '90vw',
@@ -1775,12 +1783,17 @@ export const TableQuiz = React.memo(function TableQuiz({
                       );
                     }
                     
+                    const cleanedText = cleanCellText(cell);
+                    const displayText = (cIdx > 0 && typeof cleanedText === 'string' && cleanedText.length > 15)
+                      ? cleanedText.substring(0, 15) + '...'
+                      : cleanedText;
+                      
                     return (
                       <td 
                         key={cIdx} 
                         className="p-2 sm:p-2.5 border-r border-slate-800 last:border-r-0 text-slate-355 text-[14px] sm:text-[16px] whitespace-pre-line break-words text-center align-middle font-extrabold select-text"
                       >
-                        <LatexRenderer text={cleanCellText(cell)} katexLoaded={katexLoaded} className="inline" />
+                        <LatexRenderer text={displayText} katexLoaded={katexLoaded} className="inline" />
                       </td>
                     );
                   })}
@@ -1798,8 +1811,8 @@ export const TableQuiz = React.memo(function TableQuiz({
           <PopoutWindow
             title="⚖️ 비교표"
             onClose={() => setFloatedTableId(null)}
-            initWidth={floatedSize.width}
-            initHeight={Math.max(floatedSize.height, 880)}
+            initWidth={typeof floatedSize.width === 'number' ? floatedSize.width : 760}
+            initHeight={typeof floatedSize.height === 'number' ? Math.max(floatedSize.height, 880) : 880}
             storageKey={"anti_popout_table_comp_" + compTableUniqueId}
           >
             <div className="w-full h-full flex flex-col overflow-auto text-slate-100 p-2 sm:p-2.5 bg-[#020617]">
@@ -1817,8 +1830,8 @@ export const TableQuiz = React.memo(function TableQuiz({
           key="floated"
           className="fixed z-[9991] bg-slate-900/95 border border-slate-700 rounded-2xl shadow-2xl p-3 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150 backdrop-blur-md floated-table-quiz"
           style={{
-            width: `${floatedSize.width}px`,
-            height: `${floatedSize.height}px`,
+            width: typeof floatedSize.width === 'number' ? `${floatedSize.width}px` : floatedSize.width,
+            height: typeof floatedSize.height === 'number' ? `${floatedSize.height}px` : floatedSize.height,
             left: `${floatedPos.x}px`,
             top: `${floatedPos.y}px`,
             maxWidth: '90vw',
