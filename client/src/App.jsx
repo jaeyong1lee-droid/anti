@@ -18126,7 +18126,8 @@ ${itemsStr}
               <div className="grid grid-cols-1 gap-3">
                 {currentQuestion.options.map((option, idx) => {
                   const isSelected = lockscreenSelectedOption === option;
-                  const isCorrect = option === currentQuestion.answer;
+                  const targetAns = getSanitizedMcAnswer(currentQuestion);
+                  const isCorrect = option === targetAns || option === currentQuestion.answer;
                   
                   let optionClass = 'bg-slate-950/50 border-slate-800 hover:bg-slate-800/60 text-slate-300';
                   if (lockscreenSelectedOption) {
