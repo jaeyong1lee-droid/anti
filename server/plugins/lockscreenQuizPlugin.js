@@ -104,6 +104,7 @@ ${LATEX_PROMPT_INSTRUCTIONS}
     if (Array.isArray(parsed) && parsed.length > 0) {
       return parsed.map((q, idx) => {
         let options = Array.isArray(q.options) ? [...q.options] : [];
+        let originalAnswer = options[q.correctIndex !== undefined ? q.correctIndex : 0];
         
         // Shuffle the options to ensure the correct answer is randomly positioned
         for (let i = options.length - 1; i > 0; i--) {
@@ -114,6 +115,7 @@ ${LATEX_PROMPT_INSTRUCTIONS}
         return {
           ...q,
           options,
+          answer: originalAnswer,
           id: `ls_${idx + 1}`
         };
       });
