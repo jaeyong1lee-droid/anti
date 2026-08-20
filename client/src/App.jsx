@@ -16099,10 +16099,10 @@ ${itemsStr}
         {
           title: "바톤 암반 Q분류(Barton Q-system, $Q$)",
           question: "바톤 암반 Q분류(Barton Q-system, $Q$)",
-          concept: "암반의 공학적 특성을 6가지 독립된 변수를 통해 정량화하여 터널 1차 지보 설계를 설계하는 지수 공식",
+          concept: "암반의 공학적 특성을 6가지 독립된 변수를 통해 정량화하여 터널 1차 지보 설계를 위한 지수 공식",
           memorizationTip: "💡 **직관적 의미**: 첫 번째 항($RQD/J_n$)은 암반 블록의 크기를, 두 번째 항($J_r/J_a$)은 절리면 전단강도(거칠기와 변질)를, 세 번째 항($J_w/SRF$)은 가해지는 유효 응력 환경을 나타내며, 이들의 물리적 결합으로 암반 등급을 평가합니다.",
-          formula: "$$Q = \\frac{RQD}{J_n} \\times \\frac{J_r}{J_a} \\times \\frac{J_w}{SRF}$$\n\n- $Q$: 암반 등급 지수\n- $RQD$: 암질지수 (Rock Quality Designation)\n- $J_n$: 절리군 수 (Joint set number)\n- $J_r$: 절리면 거칠기 계수 (Joint roughness number)\n- $J_a$: 절리면 변질 계수 (Joint alteration number)\n- $J_w$: 절리수 보정 계수 (Joint water reduction factor)\n- $SRF$: 응력 감소 계수 (Stress Reduction Factor)",
-          structure: "1. RQD/Jn: 블록의 크기\n2. Jr/Ja: 블록 전단강도\n3. Jw/SRF: 지반 유효응력 분포 상태"
+          formula: "$$Q = \\left( \\frac{\\text{RQD}}{J_n} \\right) \\times \\left( \\frac{J_r}{J_a} \\right) \\times \\left( \\frac{J_w}{\\text{SRF}} \\right)$$\n\n- $Q$: 암반 등급 지수\n- $RQD$: 암질지수 (Rock Quality Designation)\n- $J_n$: 절리군 수 (Joint set number)\n- $J_r$: 절리면 거칠기 계수 (Joint roughness number)\n- $J_a$: 절리면 변질 계수 (Joint alteration number)\n- $J_w$: 절리수 보정 계수 (Joint water reduction factor)\n- $SRF$: 응력 감소 계수 (Stress Reduction Factor)",
+          structure: "1. $RQD/J_n$: 블록의 크기\n2. $J_r/J_a$: 블록 전단강도\n3. $J_w/SRF$: 지반 유효응력 분포 상태"
         },
         {
           title: "테르자기 극한지지력(Terzaghi Ultimate Bearing Capacity, $q_{ult}$)",

@@ -821,7 +821,9 @@ export const LatexRenderer = React.memo(function LatexRenderer({
             );
           } else {
             let htmlContent = part.content;
-            htmlContent = htmlContent.replace(/<([a-zA-Z가-힣])/g, '&lt;$1');
+            if (!isMarkdown) {
+              htmlContent = htmlContent.replace(/<([a-zA-Z가-힣])/g, '&lt;$1');
+            }
             try {
               htmlContent = htmlContent.replace(/\$((?:[^\$\n<]|<(?![a-zA-Z/!]))+?)\$/g, (m, math) => {
                 if (/[\uAC00-\uD7A3]/.test(math)) {
@@ -873,7 +875,9 @@ export const LatexRenderer = React.memo(function LatexRenderer({
           );
         } else {
           let htmlContent = part.content;
-          htmlContent = htmlContent.replace(/<([a-zA-Z가-힣])/g, '&lt;$1');
+          if (!isMarkdown) {
+            htmlContent = htmlContent.replace(/<([a-zA-Z가-힣])/g, '&lt;$1');
+          }
           try {
             htmlContent = htmlContent.replace(/\$((?:[^\$\n<]|<(?![a-zA-Z/!]))+?)\$/g, (m, math) => {
               if (/[\uAC00-\uD7A3]/.test(math) && !/\\/.test(math) && !/_/.test(math) && !/\^/.test(math) && !/[=+\-\*\/]/.test(math) && !/\\cdot/.test(math)) {
