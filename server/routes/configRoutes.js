@@ -614,7 +614,7 @@ router.get('/session/images', async (req, res) => {
     const rows = await dbQuery.all('SELECT value FROM app_session WHERE key = ?', ['formula_images']);
     if (rows.length > 0 && rows[0].value) {
       const parsed = JSON.parse(rows[0].value);
-      const formulaImages = parsed.formulaImages || [];
+      const formulaImages = Array.isArray(parsed) ? parsed : (parsed.formulaImages || []);
 
       // Check if migration is needed (has raw base64 data)
       const needsMigration = formulaImages.some(item => 

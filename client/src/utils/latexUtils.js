@@ -313,7 +313,7 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   processed = processed.replace(/\$\$([\s\S]*?)\$\$/g, (m, p1) => '$$' + p1.replace(/\|/g, '\\vert ') + '$$');
   processed = processed.replace(/\$([^\$\n]+)\$/g, (m, p1) => '$' + p1.replace(/\|/g, '\\vert ') + '$');
   
-  processed = processed.replace(/\\\(([\s\S]*?)\\\)/g, (m, p1) => '$' + p1.trim() + '$');
+  processed = processed.replace(/\\\([\s\S]*?\\\)/g, (m, p1) => '$' + p1.trim() + '$');
   processed = processed.replace(/\\\[([\s\S]*?)\\\]/g, (m, p1) => '$$' + p1.trim() + '$$');
   processed = processed.replace(/[–—−]/g, '-');
 
@@ -384,20 +384,8 @@ export function cleanQuizQuestion(q) {
   if (!q) return q;
   let cleanText = typeof q === 'string' ? q : String(q || '');
 
-  let emptyBoxIdx = 0;
-  cleanText = cleanText.replace(/\[[^\]]*\([A-F]\)[^\]]*\([A-F]\)[^\]]*\]/gi, () => {
-    emptyBoxIdx++;
-    return emptyBoxIdx === 1 ? '[ (A) ]' : (emptyBoxIdx === 2 ? '[ (C) ]' : '[ (E) ]');
-  });
-
-  let emptyLineIdx = 0;
-  cleanText = cleanText.replace(/-\s*[^\n]*\([A-F]\)[^\n]*\([A-F]\)[^\n]*(?=\r?\n|$)/gi, (match) => {
-    emptyLineIdx++;
-    const rightBorder = match.includes('│') ? '                        │' : '';
-    return (emptyLineIdx === 1 ? '- (B)' : (emptyLineIdx === 2 ? '- (D)' : '- (F)')) + rightBorder;
-  });
-
-  cleanText = cleanText.replace(/,?\s*\([A-Z]\)(?:\s*,\s*\([A-Z]\))+/gi, '');
+  // Removed destructive A, B, C regex logic that corrupts valid text
+  // Removed list garbage regex that corrupts valid text
   return cleanText.trim();
 }
 
@@ -617,7 +605,8 @@ export function healQuizQuestionObject(q) {
         if ((is100x || is10x) && allLargeOrZero) {
           const factor = is100x ? 100 : 10;
           q.options = q.options.map(opt => {
-            const num = parseFloat(String(opt || '').replace(/[^0-9.-]/g, ''));
+            const stripped = String(opt || '').replace(/^(?:[①-⑳]|\(?\d+\)?[\.\s]*)/, '').replace(/[^0-9.-]/g, '');
+            const num = parseFloat(stripped);
             if (isNaN(num)) return opt;
             return (num / factor).toFixed(2);
           });
@@ -1015,7 +1004,6 @@ export const LATEX_PROMPT_INSTRUCTIONS = `
 1. 모든 수식, 변수 기호(예: $t$, $\\Delta t$, $\\sigma$, $\\gamma_w$, $S_t$, $\\alpha$, $\\beta$ 등)는 반드시 $ 또는 $$ 기호로 감싸서 출력하십시오. 날것의 텍스트 표기나 백틱(\`) 표기는 금지합니다.
 2. 역슬래시(\\) 대신 샵(#) 등 임의의 기호를 사용하지 말고, 정규 LaTeX 명령어(\\sigma, \\frac 등)를 사용하십시오.
 3. 인라인 수식($...$) 작성 시 기호 안쪽에 공백이나 줄바꿈을 넣지 마십시오. ($수식$ (O) / $ 수식 $ (X))
-4. 단순 수치나 단위(예: 10m, 20%)에는 수식 기호($)를 쓰지 말고 일반 텍스트로 작성하십시오.
 5. 수식 내부에서 부등호는 마크다운 파싱 오류를 방지하기 위해 반드시 \\lt, \\gt 로 표기하십시오.
 6. 달러 기호 자체를 이스케이프(\\$ 또는 \\\\$)하지 마십시오.
 7. 수식 내부에서 \\text{한글}을 사용하지 말고, 수식을 닫은 후 한글을 작성하십시오. (예: $B$ 가 4배 증가)
@@ -1034,7 +1022,6 @@ export const LATEX_CHAT_PROMPT_INSTRUCTIONS = `
 1. JSON 형식으로 감싸지 말고, 일반 대화 문장 및 마크다운 포맷으로 답변하십시오.
 2. 모든 수식 및 변수 기호($K_s$, $k_h$, $e$, $c$, $\\phi$, $\\sigma$, $\\tau$ 등)는 단독/인라인 여부와 무관하게 반드시 $ 또는 $$ 로 감싸십시오.
 3. 인라인 수식($...$) 안쪽의 시작/끝 공백 및 줄바꿈을 금지합니다.
-4. 단순 수치/단위에는 $ 기호를 쓰지 마십시오.
 5. 수식 내 부등호는 \\lt, \\gt 를 사용하십시오.
 6. 수식 내부 \\text{한글} 사용을 금지하며, 한글과 만날 때는 수식을 닫고 공백을 두십시오.
 7. 데이터 정리가 필요한 경우 HTML이나 tabular 대신 마크다운 표(| 열 | 구분선 |)를 사용하십시오.

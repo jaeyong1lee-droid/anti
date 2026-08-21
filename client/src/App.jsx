@@ -16679,6 +16679,7 @@ ${itemsStr}
     
     // Always load the latest synced data from database to ensure multi-device sync
     const latest = await loadFormulaQuestions();
+    loadFormulaImages().catch(e => console.warn('서버 필수암기 그림 로딩 실패:', e));
     
     requestAnimationFrame(() => {
       if (formulaBodyRef.current) formulaBodyRef.current.scrollTop = savedFormulaScroll.current;

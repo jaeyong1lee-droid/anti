@@ -46,7 +46,7 @@ async function getLockscreenCandidates() {
   if (formulaRow && formulaRow.value) {
     try {
       const parsed = JSON.parse(formulaRow.value);
-      formulaList = parsed.formulaImages || [];
+      formulaList = Array.isArray(parsed) ? parsed : (parsed.formulaImages || []);
     } catch (e) {
       console.warn('Failed to parse formula list for lockscreen:', e);
     }

@@ -181,7 +181,7 @@ export function ImageUploadPanel({ formulaImages, setFormulaImages, handleSaveFo
           params: Array.isArray(result.params) ? result.params : []
         };
 
-        const updated = [newCard, ...formulaImages];
+        const updated = [newCard, ...(Array.isArray(formulaImages) ? formulaImages : [])];
         setFormulaImages(updated);
         await handleSaveFormulaImages(updated, false);
 
@@ -639,14 +639,17 @@ function parseFormulaAndParams(analysisText, titleText = '', img = null) {
   let formulaText = '';
   const params = [];
 
-  const mathRegex = /\$([^\$]+)\$/g;
-  let match;
   const extractedMath = [];
-  while ((match = mathRegex.exec(analysisText)) !== null) {
-    const mStr = match[1].trim();
-    if (mStr && !extractedMath.includes(mStr)) {
-      extractedMath.push(mStr);
+  try {
+    const mathMatches = (analysisText || '').matchAll(/\$([^\$]+)\$/g);
+    for (const m of mathMatches) {
+      const mStr = (m[1] || '').trim();
+      if (mStr && !extractedMath.includes(mStr)) {
+        extractedMath.push(mStr);
+      }
     }
+  } catch (e) {
+    // fallback
   }
 
   const eq = extractedMath.find(m => m.includes('=') || m.includes('\\frac') || m.includes('+'));
@@ -816,10 +819,13 @@ export function ImageTabList({ formulaImages, setFormulaImages, handleSaveFormul
     }
   };
 
-  const filteredImages = formulaImages.filter(img => {
+  const imageList = Array.isArray(formulaImages) ? formulaImages : [];
+
+  const filteredImages = imageList.filter(img => {
+    if (!img) return false;
     const query = formulaSearchQuery.toLowerCase().trim();
     if (!query) return true;
-    const idMatch = String(img.id).toLowerCase() === query;
+    const idMatch = String(img.id || '').toLowerCase() === query;
     const textMatch = (img.title || '').toLowerCase().includes(query) ||
            (img.analysis || '').toLowerCase().includes(query) ||
            (img.intuitive || '').toLowerCase().includes(query) ||
@@ -827,7 +833,7 @@ export function ImageTabList({ formulaImages, setFormulaImages, handleSaveFormul
     return idMatch || textMatch;
   });
 
-  if (!formulaImages || formulaImages.length === 0) {
+  if (imageList.length === 0) {
     return (
       <div className="w-full bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 md:p-6 space-y-4">
         <div className="border-b border-slate-800/80 pb-3 text-left">
@@ -985,6 +991,8 @@ export function ImageTabList({ formulaImages, setFormulaImages, handleSaveFormul
                       >
                         <img
                           src={fullUrl}
+                          loading="lazy"
+                          decoding="async"
                           className="w-full h-full max-h-[600px] object-contain rounded-lg group-hover:scale-[1.02] transition-transform duration-300 cursor-zoom-in"
                           alt={`${img.title} - ${index + 1}`}
                         />
@@ -1022,6 +1030,7 @@ export function ImageTabList({ formulaImages, setFormulaImages, handleSaveFormul
                                         : parsed.formulaText
                                   } 
                                   katexLoaded={katexLoaded} 
+                                  formulaSource="image"
                                   className="inline font-bold text-indigo-200" 
                                 />
                               ) : (
@@ -1035,26 +1044,24 @@ export function ImageTabList({ formulaImages, setFormulaImages, handleSaveFormul
                             <li className="text-[15px] md:text-[16px] leading-relaxed">
                               <span className="font-extrabold text-white">인자 정의:</span>
                               <ul className="list-[circle] pl-5 space-y-2 mt-2 border-l-2 border-indigo-500/30 ml-1">
-                                {parsed.params.map((param, pIdx) => (
-                                  <li key={pIdx} className="text-[15px] md:text-[16px] leading-relaxed">
-                                    {LatexRenderer ? (
-                                      <>
-                                        {param.symbol.includes('$') ? (
-                                          <LatexRenderer text={param.symbol} katexLoaded={katexLoaded} className="inline font-extrabold text-indigo-300" />
-                                        ) : (
-                                          <span className="font-extrabold text-indigo-300">{param.symbol}</span>
-                                        )}
-                                        <span className="text-slate-300 font-semibold">: </span>
-                                        <LatexRenderer text={param.desc} katexLoaded={katexLoaded} className="inline text-slate-300 font-semibold" />
-                                      </>
-                                    ) : (
-                                      <>
+                                {parsed.params.map((param, pIdx) => {
+                                  const hasMathDesc = param.desc && (param.desc.includes('$') || param.desc.includes('\\'));
+                                  return (
+                                    <li key={pIdx} className="text-[15px] md:text-[16px] leading-relaxed">
+                                      {LatexRenderer && param.symbol.includes('$') ? (
+                                        <LatexRenderer text={param.symbol} katexLoaded={katexLoaded} formulaSource="image" className="inline font-extrabold text-indigo-300" />
+                                      ) : (
                                         <span className="font-extrabold text-indigo-300">{param.symbol}</span>
-                                        <span className="text-slate-300 font-semibold">: {param.desc}</span>
-                                      </>
-                                    )}
-                                  </li>
-                                ))}
+                                      )}
+                                      <span className="text-slate-300 font-semibold">: </span>
+                                      {LatexRenderer && hasMathDesc ? (
+                                        <LatexRenderer text={param.desc} katexLoaded={katexLoaded} formulaSource="image" className="inline text-slate-300 font-semibold" />
+                                      ) : (
+                                        <span className="text-slate-300 font-semibold">{param.desc}</span>
+                                      )}
+                                    </li>
+                                  );
+                                })}
                               </ul>
                             </li>
                           )}
@@ -1071,7 +1078,7 @@ export function ImageTabList({ formulaImages, setFormulaImages, handleSaveFormul
                     <span className="text-xs text-slate-400 font-black block mb-1.5 uppercase tracking-wider select-none">📊 그림/그래프 공학적 분석</span>
                     {LatexRenderer ? (
                       <div className="text-white text-[15px] md:text-[16px] leading-relaxed select-text font-semibold [&_p]:text-[15px] [&_p]:md:text-[16px] [&_p]:leading-relaxed">
-                        <LatexRenderer text={img.analysis} katexLoaded={katexLoaded} isMarkdown={true} formulaSource="tutor" hideTableWrapper={true} />
+                        <LatexRenderer text={img.analysis} katexLoaded={katexLoaded} isMarkdown={true} formulaSource="image" hideTableWrapper={true} />
                       </div>
                     ) : (
                       <p className="font-bold text-white text-[15px] md:text-[16px] leading-relaxed whitespace-pre-line select-text">{img.analysis}</p>
@@ -1083,7 +1090,7 @@ export function ImageTabList({ formulaImages, setFormulaImages, handleSaveFormul
                     <span className="text-xs text-violet-400 font-extrabold block mb-1.5 uppercase tracking-wider select-none">💡 직관적 본질 (비유)</span>
                     {LatexRenderer ? (
                       <div className="text-slate-300 text-[15px] md:text-[16px] leading-relaxed select-text [&_p]:text-[15px] [&_p]:md:text-[16px] [&_p]:leading-relaxed">
-                        <LatexRenderer text={img.intuitive} katexLoaded={katexLoaded} isMarkdown={true} formulaSource="tutor" hideTableWrapper={true} />
+                        <LatexRenderer text={img.intuitive} katexLoaded={katexLoaded} isMarkdown={true} formulaSource="image" hideTableWrapper={true} />
                       </div>
                     ) : (
                       <p className="text-slate-300 text-[15px] md:text-[16px] leading-relaxed select-text">{img.intuitive}</p>
