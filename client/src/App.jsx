@@ -22932,7 +22932,7 @@ ${itemsStr}
                   value={editingOtherTitle}
                   onChange={(e) => setEditingOtherTitle(e.target.value)}
                   onFocus={(e) => e.target.select()}
-                  placeholder="예: 불릿 포인트 서식 지침"
+                  placeholder="예: 수식 및 서식 지침"
                   className="w-full bg-slate-950/60 border border-slate-800 focus:border-teal-500/80 rounded-xl px-3 py-2.5 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-teal-500 transition-all font-semibold"
                   disabled={isSavingOtherStandardsList}
                 />
@@ -22944,7 +22944,7 @@ ${itemsStr}
                   value={editingOtherContent}
                   onChange={(e) => setEditingOtherContent(e.target.value)}
                   onFocus={(e) => e.target.select()}
-                  placeholder="예: 항목 구분 시 가독성을 고려하여 표준 불릿 포인트를 사용하십시오."
+                  placeholder="예: 답변 서식 및 구성은 가독성을 고려하여 최적의 형태로 작성하십시오."
                   className="w-full h-80 bg-slate-950/60 border border-slate-800 focus:border-teal-500/80 rounded-xl p-3 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-teal-500 transition-all font-mono leading-relaxed resize-none"
                   disabled={isSavingOtherStandardsList}
                 />

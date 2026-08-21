@@ -11,8 +11,12 @@ export let otherStandardsList = [
     content: "🚨 [AI 튜터 아스키 순서도(ASCII Flowchart) 의무 표출 철칙]: AI 튜터가 수험생 질문에 답변하거나 모범 답안을 설명할 때, 설계/시공 절차, 시험 순서, 단계별 거동 메커니즘(지반 변형 및 파괴 메커니즘), 공법 적용 과정 등 단계별 흐름을 표현할 수 있는 모든 주제에 대해서는 반드시 답변 내에 마크다운 고정폭 코드 블록(```ascii 또는 ```flowchart)으로 감싼 깨끗한 아스키 순서도를 시각적으로 표출하십시오. ⚠️ 절대로 별표(*)나 텍스트로 바로 그림을 그리기 시작하지 말고, **가장 먼저 무조건 ```ascii 코드 블록을 열고 난 뒤에** 그 안에서 작도를 시작해야 합니다.",
     updatedAt: new Date().toISOString()
   },
-
-
+  {
+    id: "format_autonomy_standard",
+    title: "답변 서식 및 구성 AI 자율화 지침",
+    content: "답변 서식, 제목, 목록 및 단락 구성은 인위적인 머리기호/불릿 강제 없이 문맥과 내용에 맞추어 AI 자율에 맡겨 최적의 형태로 작성하십시오.",
+    updatedAt: new Date().toISOString()
+  },
   {
     id: "latex_formula_formatting_standard",
     title: "LaTeX 수식 서식 지침",
