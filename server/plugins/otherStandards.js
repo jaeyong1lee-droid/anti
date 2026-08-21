@@ -14,7 +14,7 @@ export let otherStandardsList = [
   {
     id: "format_autonomy_standard",
     title: "답변 서식 및 구성 AI 자율화 지침",
-    content: "답변 서식, 제목, 목록 및 단락 구성은 인위적인 머리기호/불릿 강제 없이 문맥과 내용에 맞추어 AI 자율에 맡겨 최적의 형태로 작성하십시오.",
+    content: "답변 서식, 제목, 목록 및 단락 구성은 설명 내용과 문맥에 맞추어 AI의 자율적 판단에 따라 가장 자연스럽고 명확한 구조로 작성하십시오.",
     updatedAt: new Date().toISOString()
   },
   {
