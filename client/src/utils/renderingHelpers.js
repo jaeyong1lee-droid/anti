@@ -533,13 +533,13 @@ export const buildSingleButtonHtml = (itemStr, fallbackBody = '') => {
     if (fallbackBody) {
       mainContent = fallbackBody;
     } else if (/KDS|KCS|국가설계기준|설계기준|시방서/i.test(firstLine)) {
-      mainContent = `• <strong>${mainTitle}</strong>:<br/>국토교통부 KDS/KCS 국가건설기준에 수록된 해당 공법/토픽의 표준 설계 지침, 품질 관리 기준 및 시공 안전 규정.`;
+      mainContent = `<strong>${mainTitle}</strong>:<br/>국토교통부 KDS/KCS 국가건설기준에 수록된 해당 공법/토픽의 표준 설계 지침, 품질 관리 기준 및 시공 안전 규정.`;
     } else if (/원보고서/i.test(firstLine)) {
-      mainContent = `• <strong>${mainTitle}</strong>:<br/>현장 공사 계측치 데이터 분석, 공학적 변위/응력 검토 결과 및 실무 기술 수록 본문.`;
+      mainContent = `<strong>${mainTitle}</strong>:<br/>현장 공사 계측치 데이터 분석, 공학적 변위/응력 검토 결과 및 실무 기술 수록 본문.`;
     } else if (/Wikipedia|위키|Soil Mechanics/i.test(firstLine)) {
-      mainContent = `• <strong>${mainTitle}</strong>:<br/>지반공학 및 학술 문헌에 근거한 공학적 변량 규정, 거동 메커니즘 및 역학적 파라미터 표준.`;
+      mainContent = `<strong>${mainTitle}</strong>:<br/>지반공학 및 학술 문헌에 근거한 공학적 변량 규정, 거동 메커니즘 및 역학적 파라미터 표준.`;
     } else {
-      mainContent = `• <strong>${mainTitle}</strong>:<br/>해당 기술 기준 및 학술 문헌의 설계 파라미터 수치와 핵심 공학적 메커니즘 규정.`;
+      mainContent = `<strong>${mainTitle}</strong>:<br/>해당 기술 기준 및 학술 문헌의 설계 파라미터 수치와 핵심 공학적 메커니즘 규정.`;
     }
   }
 
@@ -778,7 +778,7 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
       return `<h1 style="margin-top: 1.2rem; margin-bottom: 0.6rem; font-weight: 950; color: #f8fafc; font-size: 1.2rem; border-bottom: 1px solid rgba(71, 85, 105, 0.3); padding-bottom: 0.35rem;">${title}</h1>`;
     }
   });
-  // Convert markdown list items (*, -, •, or 1., 2.) including multi-level indentation into nested <ul>/<ol>
+  // Convert markdown list items (*, -, •, or 1., 2.) including multi-level indentation into clean bullet-free blocks
   tempText = tempText.replace(/((?:^[ \t]*(?:(?:>|&gt;)\s*)?(?:[-*•▪▫·]|\d+[\.\)](?!\d))\s*.+(?:\n|$))+)/gm, (block) => {
     const lines = block.split('\n');
     let html = '';
@@ -791,35 +791,37 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
       if (!match) continue;
       
       const indentLen = match[1].replace(/\t/g, '  ').length;
+      const numPrefix = match[3] ? `${match[3]}. ` : '';
       let content = match[4].replace(/^[ \t]*(?:[•\-*▪▫·]|\d+[\.\)](?!\d))[ \t]*/g, '').trim();
       content = content.replace(/^정의\s*:\s*/, '');
       if (!content) continue;
 
       const isSubItem = indentLen > 0;
       const isOnlyBlockMath = /^___BLOCK_MATH_\d+___$/.test(content);
+      const displayContent = numPrefix ? `<span style="font-weight: 700; color: #38bdf8; margin-right: 0.35rem;">${numPrefix}</span>${content}` : content;
 
       if (!isSubItem) {
-        if (inInner) { html += '</ul>'; inInner = false; }
-        if (!inOuter) { html += '<ul style="list-style-type: disc; padding-left: 1.4rem; margin: 0.3rem 0 0.3rem 0;">'; inOuter = true; }
+        if (inInner) { html += '</div>'; inInner = false; }
+        if (!inOuter) { html += '<div style="margin: 0.3rem 0 0.3rem 0.2rem;">'; inOuter = true; }
         
         if (isOnlyBlockMath) {
-          html += `<li style="list-style-type: none; margin-bottom: 0.25rem;">${content}</li>`;
+          html += `<div style="margin-bottom: 0.25rem;">${displayContent}</div>`;
         } else {
-          html += `<li style="margin-bottom: 0.25rem; line-height: 1.65; font-weight: 600;">${content}</li>`;
+          html += `<div style="margin-bottom: 0.25rem; line-height: 1.65; font-weight: 600;">${displayContent}</div>`;
         }
       } else {
-        if (!inOuter) { html += '<ul style="list-style-type: disc; padding-left: 1.4rem; margin: 0.3rem 0 0.3rem 0;">'; inOuter = true; }
-        if (!inInner) { html += '<ul style="list-style-type: circle; padding-left: 1.3rem; margin: 0.15rem 0;">'; inInner = true; }
+        if (!inOuter) { html += '<div style="margin: 0.3rem 0 0.3rem 0.2rem;">'; inOuter = true; }
+        if (!inInner) { html += '<div style="padding-left: 1rem; margin: 0.15rem 0;">'; inInner = true; }
         
         if (isOnlyBlockMath) {
-          html += `<li style="list-style-type: none; margin-bottom: 0.2rem;">${content}</li>`;
+          html += `<div style="margin-bottom: 0.2rem;">${displayContent}</div>`;
         } else {
-          html += `<li style="margin-bottom: 0.2rem; line-height: 1.6; font-weight: normal; color: #cbd5e1;">${content}</li>`;
+          html += `<div style="margin-bottom: 0.2rem; line-height: 1.6; font-weight: normal; color: #cbd5e1;">${displayContent}</div>`;
         }
       }
     }
-    if (inInner) html += '</ul>';
-    if (inOuter) html += '</ul>';
+    if (inInner) html += '</div>';
+    if (inOuter) html += '</div>';
     return html;
   });
 

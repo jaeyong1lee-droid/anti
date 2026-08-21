@@ -75,8 +75,7 @@ function renderCellMath(text) {
   temp = temp.replace(/(?:<b\b[^>]*>|&lt;b&gt;|<strong\b[^>]*>|&lt;strong&gt;)([\s\S]*?)(?:<\/b>|&lt;\/b&gt;|<\/strong>|&lt;\/strong&gt;)/gi, '<strong style="color: #fbbf24; font-weight:700;">$1</strong>');
   temp = temp.replace(/\*\*([^*]+?)\*\*/g, '<strong style="color: #fbbf24; font-weight:700;">$1</strong>');
 
-  // Convert markdown list items (*, -, or •) inside table cells into styled <ul><li> blocks
-  // Top-level: disc •, Sub-level / hyphen lines: open circle ◦ with indentation
+  // Convert markdown list items (*, -, or •) inside table cells into clean bullet-free blocks
   temp = temp.replace(/((?:^[ \t]*[-*•▪▫·]\s*.+(?:\n|<br\s*\/?>|$))+)/gm, (block) => {
     const lines = block.split(/\n|<br\s*\/?>/i);
     let html = '';
@@ -96,19 +95,17 @@ function renderCellMath(text) {
       const isSubItem = indentLen > 0 || (i > 0 && /:$/.test(lines[i - 1].trim())) || (i > 0 && lines[i - 1].includes('</strong>'));
 
       if (!isSubItem) {
-        // Outer top-level item (solid disc •)
-        if (inInner) { html += '</ul>'; inInner = false; }
-        if (!inOuter) { html += '<ul style="list-style-type: disc; padding-left: 1.2rem; margin: 0.2rem 0; text-align: left;">'; inOuter = true; }
-        html += `<li style="margin-bottom: 0.15rem; line-height: 1.5;">${content}</li>`;
+        if (inInner) { html += '</div>'; inInner = false; }
+        if (!inOuter) { html += '<div style="margin: 0.2rem 0; text-align: left;">'; inOuter = true; }
+        html += `<div style="margin-bottom: 0.15rem; line-height: 1.5;">${content}</div>`;
       } else {
-        // Nested sub-item (open circle ◦ with indentation)
-        if (!inOuter) { html += '<ul style="list-style-type: disc; padding-left: 1.2rem; margin: 0.2rem 0; text-align: left;">'; inOuter = true; }
-        if (!inInner) { html += '<ul style="list-style-type: circle; padding-left: 1.2rem; margin: 0.1rem 0; text-align: left;">'; inInner = true; }
-        html += `<li style="margin-bottom: 0.15rem; line-height: 1.5;">${content}</li>`;
+        if (!inOuter) { html += '<div style="margin: 0.2rem 0; text-align: left;">'; inOuter = true; }
+        if (!inInner) { html += '<div style="padding-left: 0.8rem; margin: 0.1rem 0; text-align: left;">'; inInner = true; }
+        html += `<div style="margin-bottom: 0.15rem; line-height: 1.5;">${content}</div>`;
       }
     }
-    if (inInner) html += '</ul>';
-    if (inOuter) html += '</ul>';
+    if (inInner) html += '</div>';
+    if (inOuter) html += '</div>';
     return html;
   });
 

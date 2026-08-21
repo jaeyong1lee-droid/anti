@@ -22,6 +22,9 @@ export function parseChartJson(rawJsonStr) {
   // 차트 JSON 구조상 중첩 객체를 값으로 가지는 속성은 존재하지 않으므로, "문자열": { 패턴은 100% 배열 내 환각임.
   jsonStr = jsonStr.replace(/['"][^'"]+['"]\s*:\s*\{/g, '{');
 
+  // 4. 숫자 뒤에 붙은 괄호 주석 제거 (예: 70.0 (Peak) -> 70.0, 50.0 (Critical State) -> 50.0)
+  jsonStr = jsonStr.replace(/(:\s*-?\d+(?:\.\d+)?)\s*\([^)]*\)/g, '$1');
+
   try {
     return JSON.parse(jsonStr);
   } catch (e) {
