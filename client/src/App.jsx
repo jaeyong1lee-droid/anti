@@ -3331,10 +3331,7 @@ export default function App() {
     localStorage.setItem('anti_lockscreen_quiz_enabled', String(newVal));
 
     if (newVal) {
-      const cached = localStorage.getItem('anti_lockscreen_questions');
-      if (!cached) {
-        generateNewLockscreenQuestion();
-      }
+      fetchLockscreenQuestion();
     }
 
     try {
@@ -3355,8 +3352,6 @@ export default function App() {
   const [lockscreenPool, setLockscreenPool] = useState([]);
   const [isLoadingPool, setIsLoadingPool] = useState(false);
   const [selectedPoolQuestion, setSelectedPoolQuestion] = useState(null);
-  const [previewSelectedOption, setPreviewSelectedOption] = useState(null);
-  const [previewAnswerResult, setPreviewAnswerResult] = useState(null);
 
   const fetchLockscreenPool = async () => {
     setIsLoadingPool(true);
@@ -3381,32 +3376,89 @@ export default function App() {
   };
 
   const handleOpenQuestionPreview = (question) => {
-    setPreviewSelectedOption(null);
-    setPreviewAnswerResult(null);
     setSelectedPoolQuestion(question);
   };
 
+  // Lockscreen Subjective Quiz States
   const [showLockscreenQuiz, setShowLockscreenQuiz] = useState(false);
-  const [lockscreenQuestions, setLockscreenQuestions] = useState([]);
-  const [currentLockscreenIndex, setCurrentLockscreenIndex] = useState(0);
-  const [lockscreenSelectedOption, setLockscreenSelectedOption] = useState(null);
-  const [lockscreenAnswerResult, setLockscreenAnswerResult] = useState(null);
+  const [lockscreenQuestion, setLockscreenQuestion] = useState(null);
+  const [lockscreenUserAnswer, setLockscreenUserAnswer] = useState('');
+  const [lockscreenGradingLoading, setLockscreenGradingLoading] = useState(false);
+  const [lockscreenGradingResult, setLockscreenGradingResult] = useState(null);
   const [lockscreenLoading, setLockscreenLoading] = useState(false);
 
-  const generateNewLockscreenQuestion = async () => {
+  const fetchLockscreenQuestion = async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/lockscreen/sync?count=3&t=${Date.now()}`);
+      const res = await fetch(`${API_BASE}/api/lockscreen/random?t=${Date.now()}`);
       if (res.ok) {
         const data = await res.json();
-        if (data && data.success && data.questions) {
-          localStorage.setItem('anti_lockscreen_questions', JSON.stringify(data.questions));
-          return data.questions;
+        if (data && data.success && data.question) {
+          setLockscreenQuestion(data.question);
+          setLockscreenUserAnswer('');
+          setLockscreenGradingResult(null);
+          return data.question;
         }
       }
     } catch (err) {
-      console.warn('Failed to generate lockscreen question:', err);
+      console.warn('Failed to fetch lockscreen exam question:', err);
     }
     return null;
+  };
+
+  const handleGradeLockscreenAnswer = async () => {
+    if (!lockscreenQuestion || !lockscreenUserAnswer.trim() || lockscreenGradingLoading) return;
+    setLockscreenGradingLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/lockscreen/grade`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question: lockscreenQuestion,
+          userAnswer: lockscreenUserAnswer.trim(),
+          questionId: lockscreenQuestion.id,
+          preferredModel: preferredModelRef.current || preferredModel
+        })
+      });
+      const data = await res.json();
+      if (data && data.success && data.result) {
+        setLockscreenGradingResult(data.result);
+        localStorage.setItem('anti_last_lockscreen_submit_time', String(Date.now()));
+      } else {
+        showNotification(data.error || 'AI 채점 중 오류가 발생했습니다.', 'error');
+      }
+    } catch (err) {
+      console.error('Lockscreen grading error:', err);
+      showNotification('채점 서버 통신 오류가 발생했습니다.', 'error');
+    } finally {
+      setLockscreenGradingLoading(false);
+    }
+  };
+
+  const handleUnlockLockscreen = async () => {
+    const qId = lockscreenQuestion?.id;
+    localStorage.setItem('anti_last_lockscreen_submit_time', String(Date.now()));
+    setShowLockscreenQuiz(false);
+    setLockscreenQuestion(null);
+    setLockscreenUserAnswer('');
+    setLockscreenGradingResult(null);
+    if (qId) {
+      try {
+        await fetch(`${API_BASE}/api/lockscreen/solve`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: qId })
+        });
+      } catch (e) {
+        console.warn('Failed to record lockscreen solved:', e);
+      }
+    }
+  };
+
+  const handleNextLockscreenQuestion = () => {
+    setLockscreenLoading(true);
+    fetchLockscreenQuestion().then(() => {
+      setLockscreenLoading(false);
+    });
   };
 
   const triggerLockscreenQuiz = () => {
@@ -3424,42 +3476,18 @@ export default function App() {
       }
     }
 
-    // 웹에서 актив하게 문제를 풀고 있는 중 방해하지 않음 (10분 비활성화 후 표시)
+    // 웹에서 액티브하게 문제를 풀고 있는 중 방해하지 않음 (10분 비활성화 후 표시)
     if (lastActivityTimeRef.current && (now - lastActivityTimeRef.current < 10 * 60 * 1000)) {
       return;
     }
 
-    const cached = localStorage.getItem('anti_lockscreen_questions');
-    if (cached) {
-      try {
-        const questions = JSON.parse(cached);
-        if (Array.isArray(questions) && questions.length > 0) {
-          setLockscreenQuestions(questions);
-          setCurrentLockscreenIndex(0);
-          setLockscreenSelectedOption(null);
-          setLockscreenAnswerResult(null);
-          setShowLockscreenQuiz(true);
-          setLockscreenLoading(false);
-          return;
-        }
-      } catch (e) {
-        console.error('Failed to parse cached lockscreen questions:', e);
-      }
-    }
-    
     setShowLockscreenQuiz(true);
-    setLockscreenQuestions([]);
+    setLockscreenQuestion(null);
     setLockscreenLoading(true);
-    setLockscreenSelectedOption(null);
-    setLockscreenAnswerResult(null);
+    setLockscreenUserAnswer('');
+    setLockscreenGradingResult(null);
 
-    generateNewLockscreenQuestion().then(questions => {
-      if (questions && Array.isArray(questions) && questions.length > 0) {
-        setLockscreenQuestions(questions);
-        setCurrentLockscreenIndex(0);
-      } else {
-        setLockscreenQuestions([]);
-      }
+    fetchLockscreenQuestion().then(() => {
       setLockscreenLoading(false);
     });
   };
@@ -17832,7 +17860,7 @@ ${itemsStr}
   return (
     <div className="min-h-screen bg-slateCustom-950 pb-16 flex flex-col justify-start w-full max-w-full overflow-x-hidden">
 
-      {/* ===== 대기 중인 잠금퀴즈 목록 팝업 (PC 전용) ===== */}
+      {/* ===== 대기 중인 기술사 1교시 기출문제 목록 팝업 (PC 전용) ===== */}
       {isLockscreenPoolModalOpen && (
         <div className="fixed inset-0 z-[99999] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 select-none">
           <div className="bg-slate-900 border border-white/20 rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl animate-fade-in-up flex flex-col max-h-[85vh]">
@@ -17843,8 +17871,8 @@ ${itemsStr}
                   <Lock size={18} />
                 </div>
                 <div>
-                  <h3 className="text-base font-black text-white">대기 중인 잠금퀴즈 풀 (Pool)</h3>
-                  <p className="text-xs text-slate-400 font-semibold mt-0.5">평상시 자동 생성된 락스크린 문제 목록입니다. (총 {lockscreenPool.length}개)</p>
+                  <h3 className="text-base font-black text-white">기술사 1교시 기출문제 풀 (총 {lockscreenPool.length}문항)</h3>
+                  <p className="text-xs text-slate-400 font-semibold mt-0.5">기출문제 폴더에서 추출된 1교시 단답/서술형 문제 목록입니다.</p>
                 </div>
               </div>
               <button 
@@ -17860,13 +17888,12 @@ ${itemsStr}
               {isLoadingPool ? (
                 <div className="flex flex-col items-center justify-center py-12 space-y-4">
                   <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
-                  <p className="text-sm font-semibold text-slate-400">문제 풀을 불러오는 중입니다...</p>
+                  <p className="text-sm font-semibold text-slate-400">기출문제 목록을 불러오는 중입니다...</p>
                 </div>
               ) : lockscreenPool.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center space-y-3">
                   <Info className="text-slate-500" size={32} />
-                  <p className="text-sm font-semibold text-slate-400">현재 생성된 문제가 없습니다.</p>
-                  <p className="text-xs text-slate-500 max-w-sm">백그라운드에서 AI가 새로운 문제를 생성하고 있습니다. 잠시 후 다시 열어주세요.</p>
+                  <p className="text-sm font-semibold text-slate-400">불러온 기출문제가 없습니다.</p>
                   <button 
                     onClick={fetchLockscreenPool}
                     className="mt-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer border border-solid border-slate-700"
@@ -17882,8 +17909,8 @@ ${itemsStr}
                       onClick={() => handleOpenQuestionPreview(q)}
                       className="w-full text-left p-4 bg-slate-950/40 hover:bg-slate-800/40 border border-slate-800 rounded-2xl transition-all cursor-pointer group flex items-start gap-4"
                     >
-                      <span className="shrink-0 flex items-center justify-center w-6 h-6 rounded-lg bg-slate-800 text-xs font-black text-slate-400 group-hover:bg-emerald-500/20 group-hover:text-emerald-400 transition-all">
-                        {idx + 1}
+                      <span className="shrink-0 flex items-center justify-center px-2 py-1 rounded-lg bg-indigo-950 text-indigo-300 border border-indigo-500/30 text-xs font-black">
+                        {q.sessionName} {q.number}번
                       </span>
                       <div className="flex-1 min-w-0 text-sm font-bold text-slate-200 group-hover:text-white transition-all leading-relaxed">
                         <LatexRenderer text={q.question} katexLoaded={katexLoaded} />
@@ -17924,12 +17951,12 @@ ${itemsStr}
               {/* Header */}
               <div className="flex items-center justify-between px-6 py-5 border-b border-slate-800">
                 <div className="flex items-center gap-2.5">
-                  <div className="p-2 bg-emerald-500/10 text-emerald-400 rounded-xl border border-emerald-500/20">
+                  <div className="p-2 bg-indigo-500/10 text-indigo-400 rounded-xl border border-indigo-500/20">
                     <HelpCircle size={18} />
                   </div>
                   <div>
-                    <h3 className="text-base font-black text-white">락스크린 문제 미리보기</h3>
-                    <p className="text-xs text-slate-400 font-semibold mt-0.5">실제 잠금화면에 표출되는 퀴즈 형태 그대로 보여집니다.</p>
+                    <h3 className="text-base font-black text-white">{q.sessionName} 제1교시 {q.number}번</h3>
+                    <p className="text-xs text-slate-400 font-semibold mt-0.5">기출문제 단답/서술형 상세 내용</p>
                   </div>
                 </div>
                 <button 
@@ -17942,89 +17969,11 @@ ${itemsStr}
 
               {/* Content */}
               <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                {/* Question */}
-                <div className="bg-slate-950/40 border border-slate-800/80 rounded-2xl p-5 min-h-[100px] flex items-center justify-center text-center text-sm font-bold text-slate-100 leading-relaxed">
+                <div className="bg-slate-950/60 border border-slate-800 rounded-2xl p-5 min-h-[100px] flex items-center justify-center text-center text-base font-bold text-slate-100 leading-relaxed">
                   <div className="w-full">
                     <LatexRenderer text={q.question} katexLoaded={katexLoaded} />
                   </div>
                 </div>
-
-                {/* Options */}
-                <div className="grid grid-cols-1 gap-3">
-                  {q.options && q.options.map((option, idx) => {
-                    const isSelected = previewSelectedOption === option;
-                    const targetAns = getSanitizedMcAnswer(q);
-                    const isCorrect = option === targetAns || option === q.answer;
-                    
-                    let optionClass = 'bg-slate-950/50 border-slate-800 hover:bg-slate-800/60 text-slate-300';
-                    if (previewSelectedOption) {
-                      if (isCorrect) {
-                        optionClass = 'bg-emerald-950/80 border-emerald-500 text-emerald-200 font-black';
-                      } else if (isSelected) {
-                        optionClass = 'bg-rose-950/80 border-rose-500 text-rose-200 font-black';
-                      } else {
-                        optionClass = 'bg-slate-950/20 border-slate-800/40 text-slate-600 opacity-60';
-                      }
-                    }
-
-                    return (
-                      <button
-                        key={idx}
-                        disabled={previewSelectedOption !== null}
-                        onClick={async () => {
-                          setPreviewSelectedOption(option);
-                          if (isCorrect) {
-                            setPreviewAnswerResult('correct');
-                            try {
-                              const res = await fetch(`${API_BASE}/api/lockscreen/solve`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ id: q.id })
-                              });
-                              const data = await res.json();
-                              if (data.success) {
-                                setLockscreenPool(data.pool || []);
-                              }
-                            } catch (err) {
-                              console.error('Failed to notify server of solved lockscreen question:', err);
-                            }
-                          } else {
-                            setPreviewAnswerResult('incorrect');
-                          }
-                        }}
-                        className={`w-full py-3 px-4 rounded-xl border text-sm font-bold text-left transition-all duration-200 cursor-pointer flex items-center justify-between gap-3 ${optionClass}`}
-                      >
-                        <div className="flex-1 min-w-0">
-                          <span className="flex gap-2 items-center select-text w-full">
-                            <span className="font-bold text-[15px] flex-shrink-0 select-none text-slate-350">{['①','②','③','④'][idx]}</span>
-                            <LatexRenderer text={cleanOptionText(option)} katexLoaded={katexLoaded} className="inline select-text" />
-                          </span>
-                        </div>
-                        {previewSelectedOption && (
-                          <span className="shrink-0 text-xs">
-                            {isCorrect ? '⭕ 정답' : isSelected ? '❌ 오답' : ''}
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Explanation */}
-                {previewAnswerResult && (
-                  <div className={`rounded-xl p-4 border text-xs leading-relaxed animate-fade-in ${
-                    previewAnswerResult === 'correct'
-                      ? 'bg-emerald-950/40 border-emerald-500/30 text-emerald-300'
-                      : 'bg-rose-950/40 border-rose-500/30 text-rose-300'
-                  }`}>
-                    <p className="font-extrabold flex items-center gap-1.5 mb-1">
-                      {previewAnswerResult === 'correct' ? '🎉 정답입니다!' : '😢 오답입니다.'}
-                    </p>
-                    <p className="text-slate-400 font-medium">
-                      <strong>해설:</strong> <LatexRenderer text={q.explanation} katexLoaded={katexLoaded} />
-                    </p>
-                  </div>
-                )}
               </div>
 
               {/* Footer */}
@@ -18041,7 +17990,7 @@ ${itemsStr}
         );
       })()}
 
-      {/* ===== 잠금화면 퀴즈 오버레이 ===== */}
+      {/* ===== 잠금화면 실전 기출문제 주관식 채점 오버레이 ===== */}
       {showLockscreenQuiz && (() => {
         if (lockscreenLoading) {
           return (
@@ -18051,29 +18000,25 @@ ${itemsStr}
                   <Lock className="text-indigo-400 animate-pulse" size={28} />
                 </div>
                 <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-                <p className="text-sm font-semibold text-slate-400">잠금해제 퀴즈를 생성하고 있습니다...</p>
+                <p className="text-sm font-semibold text-slate-400">1주일 미출제 기술사 기출문제를 불러오고 있습니다...</p>
               </div>
             </div>
           );
         }
 
-        if (lockscreenQuestions.length === 0) {
+        if (!lockscreenQuestion) {
           return (
             <div className="fixed inset-0 z-[9999999] bg-slate-950 md:bg-slate-950/98 backdrop-blur-none md:backdrop-blur-2xl flex flex-col justify-center items-center px-4 py-8 text-slate-100 font-sans select-none overflow-y-auto">
               <div className="w-full max-w-lg flex flex-col space-y-6 my-auto items-center text-center">
                 <div className="p-3 bg-rose-500/10 text-rose-400 rounded-full border border-rose-500/20">
                   <Lock size={28} />
                 </div>
-                <p className="text-sm font-semibold text-slate-400">잠금해제 퀴즈를 불러오지 못했습니다.</p>
+                <p className="text-sm font-semibold text-slate-400">기출문제를 불러오지 못했습니다.</p>
                 <div className="flex gap-3 w-full max-w-xs mt-2">
                   <button
                     onClick={() => {
                       setLockscreenLoading(true);
-                      generateNewLockscreenQuestion().then(questions => {
-                        if (questions && questions.length > 0) {
-                          setLockscreenQuestions(questions);
-                          setCurrentLockscreenIndex(0);
-                        }
+                      fetchLockscreenQuestion().then(() => {
                         setLockscreenLoading(false);
                       });
                     }}
@@ -18084,8 +18029,8 @@ ${itemsStr}
                   <button
                     onClick={() => {
                       setShowLockscreenQuiz(false);
-                      setLockscreenSelectedOption(null);
-                      setLockscreenAnswerResult(null);
+                      setLockscreenUserAnswer('');
+                      setLockscreenGradingResult(null);
                     }}
                     className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
                   >
@@ -18097,157 +18042,161 @@ ${itemsStr}
           );
         }
 
-        const currentQuestion = lockscreenQuestions[currentLockscreenIndex];
-        if (!currentQuestion || !Array.isArray(currentQuestion.options)) return null;
-
         return (
-          <div className="fixed inset-0 z-[9999999] bg-slate-950 md:bg-slate-950/98 backdrop-blur-none md:backdrop-blur-2xl flex flex-col justify-center items-center px-4 py-8 text-slate-100 font-sans select-none overflow-y-auto">
-            <div className="w-full max-w-lg flex flex-col space-y-6 my-auto">
+          <div className="fixed inset-0 z-[9999999] bg-slate-950 md:bg-slate-950/98 backdrop-blur-none md:backdrop-blur-2xl flex flex-col justify-center items-center px-4 py-6 text-slate-100 font-sans select-none overflow-y-auto">
+            <div className="w-full max-w-lg flex flex-col space-y-5 my-auto">
               {/* Header */}
-              <div className="flex flex-col items-center text-center space-y-2 pb-4 border-b border-slate-800/60">
-                <div className="p-3 bg-indigo-500/10 text-indigo-400 rounded-full border border-indigo-500/20">
-                  <Lock className="text-indigo-400 animate-pulse" size={28} />
+              <div className="flex flex-col items-center text-center space-y-2 pb-3 border-b border-slate-800/60">
+                <div className="p-2.5 bg-indigo-500/10 text-indigo-400 rounded-full border border-indigo-500/20 flex items-center justify-center">
+                  <Lock className="text-indigo-400 animate-pulse" size={24} />
                 </div>
-                <h2 className="text-lg font-black text-white flex items-center gap-1.5 justify-center">
-                  <span>필수공식 잠금해제 퀴즈</span>
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-0.5 bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 rounded-full text-xs font-extrabold">
+                    {lockscreenQuestion.sessionName} 제1교시 {lockscreenQuestion.number}번
+                  </span>
+                  <span className="px-2 py-0.5 bg-slate-800 text-slate-300 rounded-full text-[11px] font-bold">
+                    기술사 기출문제
+                  </span>
+                </div>
+                <h2 className="text-base font-black text-white flex items-center gap-1.5 justify-center">
+                  <span>실전 1교시 잠금해제 주관식 문제</span>
                 </h2>
-                <p className="text-xs text-slate-400 font-semibold">
-                  화면 잠금을 해제하기 위해 아래 문제의 올바른 답을 선택하십시오.
+                <p className="text-xs text-slate-400 font-medium">
+                  핵심 메커니즘과 기준을 서술하고 AI 채점을 받아 잠금을 해제하십시오.
                 </p>
               </div>
 
-              {/* Question */}
-              <div className="bg-slate-950/40 border border-slate-800/80 rounded-2xl p-5 md:p-6 min-h-[120px] flex items-center justify-center text-center text-[15px] font-bold text-slate-100 leading-relaxed">
+              {/* Question Box */}
+              <div className="bg-slate-900/80 border border-indigo-500/30 shadow-lg rounded-2xl p-4 md:p-5 min-h-[90px] flex items-center justify-center text-center text-[16px] font-extrabold text-white leading-relaxed">
                 <div className="w-full">
-                  <LatexRenderer text={currentQuestion.question} katexLoaded={katexLoaded} />
+                  <LatexRenderer text={lockscreenQuestion.question} katexLoaded={katexLoaded} />
                 </div>
               </div>
 
-              {/* Options */}
-              <div className="grid grid-cols-1 gap-3">
-                {currentQuestion.options.map((option, idx) => {
-                  const isSelected = lockscreenSelectedOption === option;
-                  const targetAns = getSanitizedMcAnswer(currentQuestion);
-                  const isCorrect = option === targetAns || option === currentQuestion.answer;
-                  
-                  let optionClass = 'bg-slate-950/50 border-slate-800 hover:bg-slate-800/60 text-slate-300';
-                  if (lockscreenSelectedOption) {
-                    if (isCorrect) {
-                      optionClass = 'bg-emerald-950/80 border-emerald-500 text-emerald-200 font-black';
-                    } else if (isSelected) {
-                      optionClass = 'bg-rose-950/80 border-rose-500 text-rose-200 font-black';
-                    } else {
-                      optionClass = 'bg-slate-950/20 border-slate-800/40 text-slate-600 opacity-60';
-                    }
-                  }
-
-                  return (
-                    <button
-                      key={idx}
-                      disabled={lockscreenSelectedOption !== null}
-                      onClick={() => {
-                        setLockscreenSelectedOption(option);
-                        localStorage.setItem('anti_last_lockscreen_submit_time', String(Date.now()));
-                        localStorage.removeItem('anti_lockscreen_questions');
-                        generateNewLockscreenQuestion();
-                        if (isCorrect) {
-                          setLockscreenAnswerResult('correct');
-                        } else {
-                          setLockscreenAnswerResult('incorrect');
-                        }
-                      }}
-                      className={`w-full py-3.5 px-5 rounded-2xl border text-[15px] font-bold text-left transition-all duration-200 cursor-pointer flex items-center justify-between gap-3 ${optionClass}`}
-                    >
-                      <div className="flex-1 min-w-0">
-                        <span className="flex gap-2 items-center select-text w-full">
-                          <span className="font-bold text-[15px] flex-shrink-0 select-none text-slate-350">{['①','②','③','④'][idx]}</span>
-                          <LatexRenderer text={cleanOptionText(option)} katexLoaded={katexLoaded} className="inline select-text" />
-                        </span>
-                      </div>
-                      {lockscreenSelectedOption && (
-                        <span className="shrink-0 text-[15px]">
-                          {isCorrect ? '⭕ 정답' : isSelected ? '❌ 오답' : ''}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
+              {/* Subjective Input Box */}
+              <div className="flex flex-col space-y-2">
+                <div className="flex justify-between items-center px-1">
+                  <label className="text-xs font-bold text-slate-300">
+                    ✍️ 답안 작성
+                  </label>
+                  <span className="text-[11px] text-slate-500 font-mono">
+                    {lockscreenUserAnswer.length}자
+                  </span>
+                </div>
+                <textarea
+                  value={lockscreenUserAnswer}
+                  onChange={(e) => setLockscreenUserAnswer(e.target.value)}
+                  disabled={lockscreenGradingLoading || lockscreenGradingResult !== null}
+                  placeholder="핵심 정의, 공학 메커니즘, 관련 공식(LaTeX), 시공/설계 유의사항 등을 자유롭게 서술하십시오..."
+                  rows={4}
+                  className="w-full p-4 bg-slate-900/90 border border-slate-700/80 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-2xl text-[14px] text-slate-100 placeholder:text-slate-500 font-normal outline-none transition-all resize-none disabled:opacity-75 disabled:bg-slate-950/60"
+                />
               </div>
 
-              {/* Answer Result & Explanation / Unlock Action */}
-              {lockscreenAnswerResult && (
-                <div className="space-y-4 pt-2">
-                  <div className="flex gap-3">
-                    {lockscreenAnswerResult === 'correct' ? (
-                      <button
-                        onClick={async () => {
-                          const solvedId = currentQuestion.id;
-                          localStorage.setItem('anti_last_lockscreen_submit_time', String(Date.now()));
-                          setShowLockscreenQuiz(false);
-                          setLockscreenSelectedOption(null);
-                          setLockscreenAnswerResult(null);
-
-                          // Clear cached question and pre-generate the next one immediately
-                          localStorage.removeItem('anti_lockscreen_questions');
-                          generateNewLockscreenQuestion();
-
-                          if (solvedId) {
-                            try {
-                              await fetch(`${API_BASE}/api/lockscreen/solve`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ id: solvedId })
-                              });
-                            } catch (e) {
-                              console.warn('Failed to notify server of solved lockscreen question:', e);
-                            }
-                          }
-                        }}
-                        className="w-full py-3.5 text-white rounded-2xl text-[15px] font-black transition-all cursor-pointer shadow-lg active:scale-95 text-center flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-500"
-                      >
-                        <Unlock size={15} />
-                        <span>진입하기 🔓</span>
-                      </button>
+              {/* Grading Button (when not yet graded) */}
+              {!lockscreenGradingResult && (
+                <div className="flex flex-col space-y-2 pt-1">
+                  <button
+                    onClick={handleGradeLockscreenAnswer}
+                    disabled={!lockscreenUserAnswer.trim() || lockscreenGradingLoading}
+                    className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 disabled:text-slate-500 text-white rounded-2xl text-[14px] font-black transition-all cursor-pointer shadow-lg shadow-indigo-950/50 flex items-center justify-center gap-2 active:scale-95 duration-150"
+                  >
+                    {lockscreenGradingLoading ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        <span>AI 채점관이 답안을 분석하고 있습니다...</span>
+                      </>
                     ) : (
-                      <button
-                        onClick={() => {
-                          const hasNext = currentLockscreenIndex < lockscreenQuestions.length - 1;
-                          if (hasNext) {
-                            setCurrentLockscreenIndex(prev => prev + 1);
-                            setLockscreenSelectedOption(null);
-                            setLockscreenAnswerResult(null);
-                          } else {
-                            // No more questions left, generate fresh ones
-                            setLockscreenLoading(true);
-                            generateNewLockscreenQuestion().then(questions => {
-                              if (questions && Array.isArray(questions) && questions.length > 0) {
-                                setLockscreenQuestions(questions);
-                                setCurrentLockscreenIndex(0);
-                              }
-                              setLockscreenSelectedOption(null);
-                              setLockscreenAnswerResult(null);
-                              setLockscreenLoading(false);
-                            });
-                          }
-                        }}
-                        className="w-full py-3.5 text-white rounded-2xl text-[15px] font-black transition-all cursor-pointer shadow-lg active:scale-95 text-center flex items-center justify-center gap-1.5 bg-indigo-600 hover:bg-indigo-500"
-                      >
-                        <span>다음문제 풀기 ➡️</span>
-                      </button>
+                      <>
+                        <span>제출 및 AI 실전 채점하기 ✨</span>
+                      </>
                     )}
+                  </button>
+                  <div className="flex justify-between items-center px-2">
+                    <button
+                      onClick={handleNextLockscreenQuestion}
+                      disabled={lockscreenGradingLoading}
+                      className="text-xs text-slate-400 hover:text-slate-200 transition-colors bg-transparent border-0 cursor-pointer p-1"
+                    >
+                      다른 문제 보기 ➡️
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowLockscreenQuiz(false);
+                        setLockscreenUserAnswer('');
+                        setLockscreenGradingResult(null);
+                      }}
+                      className="text-xs text-slate-500 hover:text-slate-400 transition-colors bg-transparent border-0 cursor-pointer p-1"
+                    >
+                      다음에 풀기 (진입)
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Grading Result Section */}
+              {lockscreenGradingResult && (
+                <div className="space-y-4 pt-1 animate-fade-in">
+                  {/* Score & Verdict Card */}
+                  <div className={`rounded-2xl p-4 border text-[14px] leading-relaxed shadow-lg ${
+                    lockscreenGradingResult.score >= 8
+                      ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300'
+                      : lockscreenGradingResult.score >= 5
+                      ? 'bg-amber-950/40 border-amber-500/40 text-amber-300'
+                      : 'bg-rose-950/40 border-rose-500/40 text-rose-300'
+                  }`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2.5 py-1 rounded-xl text-xs font-black ${
+                          lockscreenGradingResult.score >= 8 ? 'bg-emerald-600 text-white' :
+                          lockscreenGradingResult.score >= 5 ? 'bg-amber-600 text-white' :
+                          'bg-rose-600 text-white'
+                        }`}>
+                          {lockscreenGradingResult.score >= 8 ? '⭕ 우수 (정답)' :
+                           lockscreenGradingResult.score >= 5 ? '⚠️ 보통 (부분점수)' :
+                           '❌ 보완 필요'}
+                        </span>
+                        <span className="font-extrabold text-white text-base">
+                          {lockscreenGradingResult.score}점 / 10점
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Reason / Feedback */}
+                    <div className="text-slate-300 font-medium text-[13px] mt-2 pt-2 border-t border-slate-700/50">
+                      <strong className="text-slate-200">채점 사유:</strong>{' '}
+                      <LatexRenderer text={lockscreenGradingResult.reason} katexLoaded={katexLoaded} />
+                    </div>
                   </div>
 
-                  <div className={`rounded-2xl p-4 border text-[15px] leading-relaxed ${
-                    lockscreenAnswerResult === 'correct'
-                      ? 'bg-emerald-950/40 border-emerald-500/30 text-emerald-300'
-                      : 'bg-rose-950/40 border-rose-500/30 text-rose-300'
-                  }`}>
-                    <p className="font-extrabold flex items-center gap-1.5 mb-1 text-[15px]">
-                      {lockscreenAnswerResult === 'correct' ? '🎉 정답입니다!' : '😢 오답입니다.'}
-                    </p>
-                    <p className="text-slate-400 font-medium text-[15px]">
-                      <strong>해설:</strong> <LatexRenderer text={currentQuestion.explanation} katexLoaded={katexLoaded} />
-                    </p>
+                  {/* AI Suggested Model Answer */}
+                  {lockscreenGradingResult.suggestedModelAnswer && (
+                    <div className="rounded-2xl p-4 bg-slate-900/90 border border-slate-700/80 text-slate-200 space-y-2">
+                      <div className="flex items-center gap-1.5 text-xs font-extrabold text-indigo-400">
+                        <Sparkles size={14} />
+                        <span>AI 전문 모범 답안</span>
+                      </div>
+                      <div className="text-[13px] font-normal leading-relaxed text-slate-300">
+                        <LatexRenderer text={lockscreenGradingResult.suggestedModelAnswer} katexLoaded={katexLoaded} isMarkdown={true} />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Unlock & Next Buttons */}
+                  <div className="flex gap-3 pt-1">
+                    <button
+                      onClick={handleUnlockLockscreen}
+                      className="flex-1 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl text-[14px] font-black transition-all cursor-pointer shadow-lg shadow-emerald-950/50 flex items-center justify-center gap-1.5 active:scale-95 duration-150"
+                    >
+                      <Unlock size={16} />
+                      <span>진입하기 🔓</span>
+                    </button>
+                    <button
+                      onClick={handleNextLockscreenQuestion}
+                      className="px-5 py-3.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-2xl text-[13px] font-bold transition-all cursor-pointer border border-solid border-slate-700 active:scale-95 duration-150"
+                    >
+                      다른 문제 풀기 ➡️
+                    </button>
                   </div>
                 </div>
               )}
