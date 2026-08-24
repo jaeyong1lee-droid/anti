@@ -99,7 +99,8 @@ export async function loadAllPastExamQuestions(forceReload = false) {
       }
 
       if (localScannedQuestions.length > 0) {
-        allQuestions = localScannedQuestions;
+        const cleanMap = new Map((defaultPastExamQuestions || []).map(q => [q.id, q]));
+        allQuestions = localScannedQuestions.map(q => cleanMap.get(q.id) || q);
       }
     } catch (importErr) {
       console.warn('[pastExamService] Dynamic pdf-parse load skipped, using pre-extracted dataset:', importErr.message);

@@ -3478,25 +3478,6 @@ export default function App() {
     if (showLockscreenQuizRef.current || lockscreenLoadingRef.current) return;
     if (!force && !isLockscreenQuizEnabled) return;
 
-    const now = Date.now();
-    
-    if (!force) {
-      // 락스크린 주기: 마지막 락스크린 문제 제출 후 10분이 경과되었을 경우에만 문제 제공
-      const lastSubmitStr = localStorage.getItem('anti_last_lockscreen_submit_time');
-      if (lastSubmitStr) {
-        const lastSubmitTime = parseInt(lastSubmitStr, 10);
-        if (!isNaN(lastSubmitTime) && now - lastSubmitTime < 10 * 60 * 1000) {
-          // 마지막 문제 제출 후 10분이 미경과된 경우 퀴즈 미제공
-          return;
-        }
-      }
-
-      // 웹에서 액티브하게 문제를 풀고 있는 중 방해하지 않음 (10분 비활성화 후 표시)
-      if (lastActivityTimeRef.current && (now - lastActivityTimeRef.current < 10 * 60 * 1000)) {
-        return;
-      }
-    }
-
     setShowLockscreenQuiz(true);
     showLockscreenQuizRef.current = true;
     setLockscreenQuestion(null);
@@ -6592,107 +6573,7 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
 
 
 
-  const lastTickRef = useRef(Date.now());
-  const tickCountRef = useRef(0);
-  const wasInBackgroundRef = useRef(false);
-  const lastActivityTimeRef = useRef(Date.now());
 
-  // Track global user activity to prevent lockscreen popup while actively using the web app
-  useEffect(() => {
-    const updateActivity = () => {
-      lastActivityTimeRef.current = Date.now();
-    };
-
-    window.addEventListener('touchstart', updateActivity, { passive: true });
-    window.addEventListener('mousedown', updateActivity, { passive: true });
-    window.addEventListener('keydown', updateActivity, { passive: true });
-    window.addEventListener('scroll', updateActivity, { passive: true });
-
-    return () => {
-      window.removeEventListener('touchstart', updateActivity);
-      window.removeEventListener('mousedown', updateActivity);
-      window.removeEventListener('keydown', updateActivity);
-      window.removeEventListener('scroll', updateActivity);
-    };
-  }, []);
-
-  // Interval to update the tick timestamp while visible
-  useEffect(() => {
-    if (!isPinVerified) return;
-    
-    // Check if the user just verified the PIN and logged in
-    const justLoggedIn = sessionStorage.getItem('just_logged_in') === 'true';
-    if (justLoggedIn) {
-      sessionStorage.removeItem('just_logged_in');
-      tickCountRef.current = 0;
-      lastTickRef.current = Date.now();
-      localStorage.setItem('anti_last_tick_time', String(Date.now()));
-    } else {
-      // Re-initialize from localStorage to handle fresh tab reloads/suspensions
-      const lastTickStr = localStorage.getItem('anti_last_tick_time');
-      const lastTickVal = lastTickStr ? parseInt(lastTickStr, 10) : Date.now();
-      lastTickRef.current = lastTickVal;
-      tickCountRef.current = 10; // Keep it outside the grace period
-    }
-
-    const interval = setInterval(() => {
-      // Only tick when the tab is visible to keep lastTickRef fresh
-      if (document.visibilityState === 'visible') {
-        const now = Date.now();
-        lastTickRef.current = now;
-        localStorage.setItem('anti_last_tick_time', String(now));
-        tickCountRef.current += 1;
-
-        // 접속 10분 경과 시 락스크린 퀴즈 자동 감지 및 트리거
-        if (isLockscreenQuizEnabled) {
-          triggerLockscreenQuiz();
-        }
-      }
-    }, 1000);
-    
-    return () => clearInterval(interval);
-  }, [isPinVerified, isLockscreenQuizEnabled]);
-
-
-
-  // Listener to trigger the quiz immediately on visibility change (wake up / app return)
-  useEffect(() => {
-    if (!isPinVerified) return;
-
-    const handleWakeup = () => {
-      const isVisible = document.visibilityState === 'visible' || document.hasFocus?.();
-      if (isVisible) {
-        if (wasInBackgroundRef.current && isLockscreenQuizEnabled) {
-          wasInBackgroundRef.current = false;
-          triggerLockscreenQuiz(true);
-        }
-      }
-    };
-
-    const handleBlur = () => {
-      wasInBackgroundRef.current = true;
-    };
-
-    const handleVisibility = () => {
-      if (document.visibilityState === 'hidden') {
-        wasInBackgroundRef.current = true;
-      } else if (document.visibilityState === 'visible') {
-        handleWakeup();
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibility);
-    window.addEventListener('blur', handleBlur);
-    window.addEventListener('focus', handleWakeup);
-    window.addEventListener('pageshow', handleWakeup);
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibility);
-      window.removeEventListener('blur', handleBlur);
-      window.removeEventListener('focus', handleWakeup);
-      window.removeEventListener('pageshow', handleWakeup);
-    };
-  }, [isPinVerified, isLockscreenQuizEnabled]);
 
   // Proactive trigger of lockscreen quiz on app startup, mount, and refresh when enabled
   useEffect(() => {
@@ -12090,6 +11971,12 @@ ${item.intuitive || ''}
             }
             userAttemptInfo += `\n`;
           });
+        }
+      } else if (q.userAnswer) {
+        userAttemptInfo += `■ 사용자가 입력한 답안: "${q.userAnswer}"\n`;
+        if (q.gradingResult) {
+          userAttemptInfo += `■ 채점 점수: ${q.gradingResult.score}/10점\n`;
+          userAttemptInfo += `■ 채점 사유: ${q.gradingResult.reason || ''}\n`;
         }
       } else {
         // 일반 주관식 문항
@@ -18092,8 +17979,16 @@ ${itemsStr}
                 <textarea
                   value={lockscreenUserAnswer}
                   onChange={(e) => setLockscreenUserAnswer(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+                      e.preventDefault();
+                      if (lockscreenUserAnswer.trim() && !lockscreenGradingLoading && !lockscreenGradingResult) {
+                        handleGradeLockscreenAnswer();
+                      }
+                    }
+                  }}
                   disabled={lockscreenGradingLoading || lockscreenGradingResult !== null}
-                  placeholder="핵심 정의, 공학 메커니즘, 관련 공식(LaTeX), 시공/설계 유의사항 등을 자유롭게 서술하십시오..."
+                  placeholder="핵심 정의, 공학 메커니즘, 관련 공식(LaTeX), 시공/설계 유의사항 등을 자유롭게 서술하십시오... (Enter: 제출, Shift+Enter: 줄바꿈)"
                   rows={4}
                   className="w-full p-4 bg-slate-900/90 border border-slate-700/80 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-2xl text-[14px] text-slate-100 placeholder:text-slate-500 font-normal outline-none transition-all resize-none disabled:opacity-75 disabled:bg-slate-950/60"
                 />
@@ -18186,6 +18081,19 @@ ${itemsStr}
                         <LatexRenderer text={lockscreenGradingResult.suggestedModelAnswer} katexLoaded={katexLoaded} isMarkdown={true} />
                       </div>
                     </div>
+                  )}
+
+                  {/* AI Tutor Question Box (Same as Review Mode) */}
+                  {renderCardTutorChat(
+                    `lockscreen_${lockscreenQuestion.id || 'current'}`,
+                    {
+                      id: lockscreenQuestion.id || 'lockscreen_current',
+                      question: lockscreenQuestion.question,
+                      fullTitle: lockscreenQuestion.fullTitle,
+                      explanation: lockscreenGradingResult.suggestedModelAnswer || '',
+                      userAnswer: lockscreenUserAnswer,
+                      gradingResult: lockscreenGradingResult
+                    }
                   )}
 
                   {/* Unlock & Next Buttons */}
