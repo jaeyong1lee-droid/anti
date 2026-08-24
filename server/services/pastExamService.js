@@ -1,8 +1,8 @@
 import fs from 'fs';
 import path from 'path';
-import pdf from 'pdf-parse';
 import { dbQuery } from '../database.js';
 import { saveSessionValue } from './aiService.js';
+import { defaultPastExamQuestions } from '../data/pastExamQuestions.js';
 
 const DEFAULT_EXAMS_DIR = 'D:/OneDrive - 대우건설/05.기술사/기출문제';
 
@@ -22,6 +22,7 @@ function extractExamSession(filename) {
 
 /**
  * Parses all 1st period (제1교시) questions from PDF files in the past exams folder.
+ * Uses default pre-extracted dataset as fallback and baseline for cloud/Vercel environments.
  */
 export async function loadAllPastExamQuestions(forceReload = false) {
   const now = Date.now();
@@ -29,74 +30,84 @@ export async function loadAllPastExamQuestions(forceReload = false) {
     return cachedExamQuestions;
   }
 
+  // Base list from pre-extracted dataset (works in both local and Vercel cloud environments)
+  let allQuestions = Array.isArray(defaultPastExamQuestions) ? [...defaultPastExamQuestions] : [];
+
   const examsDir = process.env.PAST_EXAMS_DIR || DEFAULT_EXAMS_DIR;
-  if (!fs.existsSync(examsDir)) {
-    console.warn(`[pastExamService] Exams directory not found: ${examsDir}`);
-    return cachedExamQuestions || [];
-  }
-
-  const files = fs.readdirSync(examsDir).filter(f => f.toLowerCase().endsWith('.pdf'));
-  const allQuestions = [];
-
-  for (const filename of files) {
-    const fullPath = path.join(examsDir, filename);
+  
+  // If running locally where the exams folder exists, scan for any newly added PDFs dynamically
+  if (fs.existsSync(examsDir)) {
     try {
-      const dataBuffer = fs.readFileSync(fullPath);
-      const pdfData = await pdf(dataBuffer, { max: 1 });
-      const text = pdfData.text || '';
+      const pdfModule = await import('pdf-parse');
+      const pdf = pdfModule.default || pdfModule;
+      const files = fs.readdirSync(examsDir).filter(f => f.toLowerCase().endsWith('.pdf'));
+      const localScannedQuestions = [];
 
-      // Skip DRM protected files
-      if (text.includes('Azure Information Protection') || text.includes('protected document')) {
-        continue;
-      }
+      for (const filename of files) {
+        const fullPath = path.join(examsDir, filename);
+        try {
+          const dataBuffer = fs.readFileSync(fullPath);
+          const pdfData = await pdf(dataBuffer, { max: 1 });
+          const text = pdfData.text || '';
 
-      const sessionName = extractExamSession(filename);
-      const sessionNumMatch = sessionName.match(/\d+/);
-      const sessionNumStr = sessionNumMatch ? sessionNumMatch[0].padStart(3, '0') : '000';
-
-      const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
-      let currentQ = null;
-      let currentNum = 0;
-
-      for (const line of lines) {
-        const match = line.match(/^([0-9]{1,2})\s*[\.\,\)]\s*(.*)/);
-        if (match) {
-          const num = parseInt(match[1], 10);
-          if (num === currentNum + 1 && num <= 13) {
-            if (currentQ) {
-              allQuestions.push(currentQ);
-            }
-            currentNum = num;
-            currentQ = {
-              id: `exam_${sessionNumStr}_${num}`,
-              sessionName,
-              period: '제1교시',
-              number: num,
-              question: match[2].trim(),
-              fullTitle: `[${sessionName} 제1교시 ${num}번] ${match[2].trim()}`,
-              file: filename
-            };
+          if (text.includes('Azure Information Protection') || text.includes('protected document')) {
             continue;
           }
-        }
-        if (currentQ && currentNum <= 13) {
-          if (!line.includes('1-1') && !line.includes('청렴') && !line.includes('선택하여') && !line.includes('시험시간') && !line.includes('기술사제') && !line.includes('채점기준') && !line.includes('공공기관')) {
-            currentQ.question += ' ' + line;
-            currentQ.fullTitle = `[${currentQ.sessionName} 제1교시 ${currentQ.number}번] ${currentQ.question}`;
+
+          const sessionName = extractExamSession(filename);
+          const sessionNumMatch = sessionName.match(/\d+/);
+          const sessionNumStr = sessionNumMatch ? sessionNumMatch[0].padStart(3, '0') : '000';
+
+          const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+          let currentQ = null;
+          let currentNum = 0;
+
+          for (const line of lines) {
+            const match = line.match(/^([0-9]{1,2})\s*[\.\,\)]\s*(.*)/);
+            if (match) {
+              const num = parseInt(match[1], 10);
+              if (num === currentNum + 1 && num <= 13) {
+                if (currentQ) {
+                  localScannedQuestions.push(currentQ);
+                }
+                currentNum = num;
+                currentQ = {
+                  id: `exam_${sessionNumStr}_${num}`,
+                  sessionName,
+                  period: '제1교시',
+                  number: num,
+                  question: match[2].trim(),
+                  fullTitle: `[${sessionName} 제1교시 ${num}번] ${match[2].trim()}`,
+                  file: filename
+                };
+                continue;
+              }
+            }
+            if (currentQ && currentNum <= 13) {
+              if (!line.includes('1-1') && !line.includes('청렴') && !line.includes('선택하여') && !line.includes('시험시간') && !line.includes('기술사제') && !line.includes('채점기준') && !line.includes('공공기관')) {
+                currentQ.question += ' ' + line;
+                currentQ.fullTitle = `[${currentQ.sessionName} 제1교시 ${currentQ.number}번] ${currentQ.question}`;
+              }
+            }
           }
+          if (currentQ && currentNum <= 13) {
+            localScannedQuestions.push(currentQ);
+          }
+        } catch (fileErr) {
+          console.warn(`[pastExamService] Failed to dynamically parse ${filename}:`, fileErr.message);
         }
       }
-      if (currentQ && currentNum <= 13) {
-        allQuestions.push(currentQ);
+
+      if (localScannedQuestions.length > 0) {
+        allQuestions = localScannedQuestions;
       }
-    } catch (err) {
-      console.warn(`[pastExamService] Failed to parse ${filename}:`, err.message);
+    } catch (importErr) {
+      console.warn('[pastExamService] Dynamic pdf-parse load skipped, using pre-extracted dataset:', importErr.message);
     }
   }
 
   cachedExamQuestions = allQuestions;
   lastScanTime = now;
-  console.log(`[pastExamService] Loaded ${allQuestions.length} past exam questions from ${files.length} PDFs.`);
   return allQuestions;
 }
 
@@ -133,11 +144,9 @@ export async function getRandomLockscreenExamQuestion() {
   let selectedQuestion = null;
 
   if (availableCandidates.length > 0) {
-    // Pick randomly from eligible candidates
     const randomIndex = Math.floor(Math.random() * availableCandidates.length);
     selectedQuestion = availableCandidates[randomIndex];
   } else {
-    // If all questions were served within 7 days, pick the one served longest ago
     const sortedByOldest = [...allQuestions].sort((a, b) => {
       const timeA = history[a.id] || 0;
       const timeB = history[b.id] || 0;
