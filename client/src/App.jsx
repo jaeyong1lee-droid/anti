@@ -3322,7 +3322,7 @@ export default function App() {
     preferredModelRef.current = preferredModel;
   }, [preferredModel]);
   const [isLockscreenQuizEnabled, setIsLockscreenQuizEnabled] = useState(() => {
-    return localStorage.getItem('anti_lockscreen_quiz_enabled') === 'true';
+    return localStorage.getItem('anti_lockscreen_quiz_enabled') !== 'false';
   });
 
   const toggleLockscreenQuiz = async () => {
@@ -3331,7 +3331,9 @@ export default function App() {
     localStorage.setItem('anti_lockscreen_quiz_enabled', String(newVal));
 
     if (newVal) {
-      fetchLockscreenQuestion();
+      triggerLockscreenQuiz(true);
+    } else {
+      setShowLockscreenQuiz(false);
     }
 
     try {
@@ -3461,24 +3463,26 @@ export default function App() {
     });
   };
 
-  const triggerLockscreenQuiz = () => {
-    if (!isLockscreenQuizEnabled) return;
+  const triggerLockscreenQuiz = (force = false) => {
+    if (!force && !isLockscreenQuizEnabled) return;
 
     const now = Date.now();
     
-    // 락스크린 주기: 마지막 락스크린 문제 제출 후 10분이 경과되었을 경우에만 문제 제공
-    const lastSubmitStr = localStorage.getItem('anti_last_lockscreen_submit_time');
-    if (lastSubmitStr) {
-      const lastSubmitTime = parseInt(lastSubmitStr, 10);
-      if (!isNaN(lastSubmitTime) && now - lastSubmitTime < 10 * 60 * 1000) {
-        // 마지막 문제 제출 후 10분이 미경과된 경우 퀴즈 미제공
+    if (!force) {
+      // 락스크린 주기: 마지막 락스크린 문제 제출 후 10분이 경과되었을 경우에만 문제 제공
+      const lastSubmitStr = localStorage.getItem('anti_last_lockscreen_submit_time');
+      if (lastSubmitStr) {
+        const lastSubmitTime = parseInt(lastSubmitStr, 10);
+        if (!isNaN(lastSubmitTime) && now - lastSubmitTime < 10 * 60 * 1000) {
+          // 마지막 문제 제출 후 10분이 미경과된 경우 퀴즈 미제공
+          return;
+        }
+      }
+
+      // 웹에서 액티브하게 문제를 풀고 있는 중 방해하지 않음 (10분 비활성화 후 표시)
+      if (lastActivityTimeRef.current && (now - lastActivityTimeRef.current < 10 * 60 * 1000)) {
         return;
       }
-    }
-
-    // 웹에서 액티브하게 문제를 풀고 있는 중 방해하지 않음 (10분 비활성화 후 표시)
-    if (lastActivityTimeRef.current && (now - lastActivityTimeRef.current < 10 * 60 * 1000)) {
-      return;
     }
 
     setShowLockscreenQuiz(true);
@@ -6643,16 +6647,11 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
     if (!isPinVerified) return;
 
     const handleWakeup = () => {
-      // Bypass during the first 5 ticks (grace period) of a fresh login session
-      if (tickCountRef.current <= 5) {
-        return;
-      }
-
       const isVisible = document.visibilityState === 'visible' || document.hasFocus?.();
       if (isVisible) {
         if (wasInBackgroundRef.current && isLockscreenQuizEnabled) {
           wasInBackgroundRef.current = false;
-          triggerLockscreenQuiz();
+          triggerLockscreenQuiz(true);
         }
       }
     };
@@ -6685,11 +6684,7 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
   // Proactive trigger of lockscreen quiz on app startup, mount, and refresh when enabled
   useEffect(() => {
     if (isPinVerified && isLockscreenQuizEnabled) {
-      if (wasPinVerifiedOnMount.current) {
-        wasPinVerifiedOnMount.current = false;
-        return;
-      }
-      triggerLockscreenQuiz();
+      triggerLockscreenQuiz(false);
     }
   }, [isPinVerified, isLockscreenQuizEnabled]);
 
@@ -18352,9 +18347,16 @@ ${itemsStr}
             </div>
           </div>
 
-          {/* AI Tutor Button on Mobile */}
+          {/* AI Tutor & Lockscreen Buttons on Mobile */}
           {(!isDesktop && !isMobileLandscape) && (viewMode === 'dashboard' || viewMode === 'all_topics') && !selectedTopic && !showExam && !showFormulaExam && !showTheoryExam && !showAnswerSheet && (
             <div className="flex items-center gap-1.5">
+              <button 
+                onClick={() => triggerLockscreenQuiz(true)}
+                className="flex items-center gap-1 bg-gradient-to-tr from-indigo-700 to-violet-600 active:scale-95 text-white font-bold text-xs px-2.5 py-1.5 rounded-xl transition-all shadow-md select-none cursor-pointer border-none"
+                title="기출문제 1교시 락스크린 퀴즈 즉시 풀기"
+              >
+                <span>🔒 락스크린</span>
+              </button>
               <button 
                 onClick={() => setIsRealTimeTutorOpen(true)}
                 className="flex items-center gap-1.5 bg-gradient-to-tr from-brand-600 to-indigo-500 text-white font-bold text-xs px-3 py-1.5 rounded-xl transition-all shadow-md select-none cursor-pointer border-none"
@@ -18370,9 +18372,16 @@ ${itemsStr}
         <div className="flex flex-wrap items-center gap-4 w-full md:w-auto">
           {(!isDesktop && !isMobileLandscape) ? null : (
             <>
-              {/* AI Tutor Button on PC */}
+              {/* AI Tutor & Lockscreen Buttons on PC */}
               {(viewMode === 'dashboard' || viewMode === 'all_topics') && !selectedTopic && !showExam && !showFormulaExam && !showTheoryExam && !showAnswerSheet && (
                 <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => triggerLockscreenQuiz(true)}
+                    className="flex items-center gap-1.5 bg-gradient-to-tr from-indigo-700 to-violet-600 hover:from-indigo-600 hover:to-violet-500 text-white font-bold text-sm px-3.5 py-2 rounded-xl transition-all shadow-md hover:shadow-lg cursor-pointer select-none border-none active:scale-95"
+                    title="기출문제 제1교시 주관식 락스크린 퀴즈 즉시 풀기"
+                  >
+                    <span>🔒 락스크린</span>
+                  </button>
                   <div className="relative flex items-center">
                     <button
                       onClick={() => setShowMainMemoryTypePopup(prev => !prev)}
