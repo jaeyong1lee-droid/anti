@@ -3462,7 +3462,7 @@ export default function App() {
   };
 
   const triggerLockscreenQuiz = () => {
-    if (!isLockscreenQuizEnabled || isDesktop) return;
+    if (!isLockscreenQuizEnabled) return;
 
     const now = Date.now();
     
@@ -4974,10 +4974,7 @@ export default function App() {
           localStorage.setItem('anti_lockscreen_quiz_enabled', String(serverVal));
           
           if (serverVal) {
-            const cached = localStorage.getItem('anti_lockscreen_questions');
-            if (!cached) {
-              generateNewLockscreenQuestion();
-            }
+            fetchLockscreenQuestion();
           }
         }
       })
@@ -6585,8 +6582,6 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
 
   // Track global user activity to prevent lockscreen popup while actively using the web app
   useEffect(() => {
-    if (isDesktop) return;
-    
     const updateActivity = () => {
       lastActivityTimeRef.current = Date.now();
     };
@@ -6602,11 +6597,11 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
       window.removeEventListener('keydown', updateActivity);
       window.removeEventListener('scroll', updateActivity);
     };
-  }, [isDesktop]);
+  }, []);
 
   // Interval to update the tick timestamp while visible
   useEffect(() => {
-    if (!isPinVerified || isDesktop) return;
+    if (!isPinVerified) return;
     
     // Check if the user just verified the PIN and logged in
     const justLoggedIn = sessionStorage.getItem('just_logged_in') === 'true';
@@ -6639,13 +6634,13 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
     }, 1000);
     
     return () => clearInterval(interval);
-  }, [isPinVerified, isDesktop]);
+  }, [isPinVerified, isLockscreenQuizEnabled]);
 
 
 
   // Listener to trigger the quiz immediately on visibility change (wake up / app return)
   useEffect(() => {
-    if (!isPinVerified || isDesktop) return;
+    if (!isPinVerified) return;
 
     const handleWakeup = () => {
       // Bypass during the first 5 ticks (grace period) of a fresh login session
@@ -6685,18 +6680,18 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
       window.removeEventListener('focus', handleWakeup);
       window.removeEventListener('pageshow', handleWakeup);
     };
-  }, [isPinVerified, isDesktop, isLockscreenQuizEnabled]);
+  }, [isPinVerified, isLockscreenQuizEnabled]);
 
   // Proactive trigger of lockscreen quiz on app startup, mount, and refresh when enabled
   useEffect(() => {
-    if (isPinVerified && !isDesktop && isLockscreenQuizEnabled) {
+    if (isPinVerified && isLockscreenQuizEnabled) {
       if (wasPinVerifiedOnMount.current) {
         wasPinVerifiedOnMount.current = false;
         return;
       }
       triggerLockscreenQuiz();
     }
-  }, [isPinVerified, isDesktop, isLockscreenQuizEnabled]);
+  }, [isPinVerified, isLockscreenQuizEnabled]);
 
   // [모바일 세로 수평 드래그 차단 및 가로 스크롤 구역 예외 적용]
   // 표/수식 영역 안의 가로 터치 스크롤은 부드럽게 허용하고, 그 외 영역의 좌우 드래그 및 화면 쏠림만 완벽하게 차단한다.
