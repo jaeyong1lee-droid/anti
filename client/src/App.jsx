@@ -3383,13 +3383,20 @@ export default function App() {
 
   // Lockscreen Subjective Quiz States
   const [showLockscreenQuiz, setShowLockscreenQuiz] = useState(false);
+  const showLockscreenQuizRef = useRef(false);
+  useEffect(() => {
+    showLockscreenQuizRef.current = showLockscreenQuiz;
+  }, [showLockscreenQuiz]);
+
   const [lockscreenQuestion, setLockscreenQuestion] = useState(null);
   const [lockscreenUserAnswer, setLockscreenUserAnswer] = useState('');
   const [lockscreenGradingLoading, setLockscreenGradingLoading] = useState(false);
   const [lockscreenGradingResult, setLockscreenGradingResult] = useState(null);
   const [lockscreenLoading, setLockscreenLoading] = useState(false);
+  const lockscreenLoadingRef = useRef(false);
 
   const fetchLockscreenQuestion = async () => {
+    lockscreenLoadingRef.current = true;
     try {
       const res = await fetch(`${API_BASE}/api/lockscreen/random?t=${Date.now()}`);
       if (res.ok) {
@@ -3403,6 +3410,8 @@ export default function App() {
       }
     } catch (err) {
       console.warn('Failed to fetch lockscreen exam question:', err);
+    } finally {
+      lockscreenLoadingRef.current = false;
     }
     return null;
   };
@@ -3440,6 +3449,7 @@ export default function App() {
     const qId = lockscreenQuestion?.id;
     localStorage.setItem('anti_last_lockscreen_submit_time', String(Date.now()));
     setShowLockscreenQuiz(false);
+    showLockscreenQuizRef.current = false;
     setLockscreenQuestion(null);
     setLockscreenUserAnswer('');
     setLockscreenGradingResult(null);
@@ -3464,6 +3474,8 @@ export default function App() {
   };
 
   const triggerLockscreenQuiz = (force = false) => {
+    // If already showing lockscreen quiz or currently loading, DO NOT switch questions
+    if (showLockscreenQuizRef.current || lockscreenLoadingRef.current) return;
     if (!force && !isLockscreenQuizEnabled) return;
 
     const now = Date.now();
@@ -3486,6 +3498,7 @@ export default function App() {
     }
 
     setShowLockscreenQuiz(true);
+    showLockscreenQuizRef.current = true;
     setLockscreenQuestion(null);
     setLockscreenLoading(true);
     setLockscreenUserAnswer('');
@@ -18034,26 +18047,29 @@ ${itemsStr}
 
         return (
           <div className="fixed inset-0 z-[9999999] bg-slate-950 md:bg-slate-950/98 backdrop-blur-none md:backdrop-blur-2xl flex flex-col justify-center items-center px-4 py-6 text-slate-100 font-sans select-none overflow-y-auto">
-            <div className="w-full max-w-lg flex flex-col space-y-5 my-auto">
-              {/* Header */}
-              <div className="flex flex-col items-center text-center space-y-2 pb-3 border-b border-slate-800/60">
-                <div className="p-2.5 bg-indigo-500/10 text-indigo-400 rounded-full border border-indigo-500/20 flex items-center justify-center">
-                  <Lock className="text-indigo-400 animate-pulse" size={24} />
-                </div>
+            <div className="w-full max-w-lg flex flex-col space-y-4 my-auto">
+              {/* Streamlined Header: Badges & Close Button */}
+              <div className="flex items-center justify-between pb-2 border-b border-slate-800/80">
                 <div className="flex items-center gap-2">
-                  <span className="px-2.5 py-0.5 bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 rounded-full text-xs font-extrabold">
+                  <span className="px-3 py-1 bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 rounded-xl text-xs font-black">
                     {lockscreenQuestion.sessionName} 제1교시 {lockscreenQuestion.number}번
                   </span>
-                  <span className="px-2 py-0.5 bg-slate-800 text-slate-300 rounded-full text-[11px] font-bold">
+                  <span className="px-2.5 py-1 bg-slate-800/90 text-slate-300 rounded-xl text-xs font-bold">
                     기술사 기출문제
                   </span>
                 </div>
-                <h2 className="text-base font-black text-white flex items-center gap-1.5 justify-center">
-                  <span>실전 1교시 잠금해제 주관식 문제</span>
-                </h2>
-                <p className="text-xs text-slate-400 font-medium">
-                  핵심 메커니즘과 기준을 서술하고 AI 채점을 받아 잠금을 해제하십시오.
-                </p>
+                <button
+                  onClick={() => {
+                    setShowLockscreenQuiz(false);
+                    showLockscreenQuizRef.current = false;
+                    setLockscreenUserAnswer('');
+                    setLockscreenGradingResult(null);
+                  }}
+                  className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors cursor-pointer border-0 bg-transparent"
+                  title="닫기"
+                >
+                  <X size={18} />
+                </button>
               </div>
 
               {/* Question Box */}
