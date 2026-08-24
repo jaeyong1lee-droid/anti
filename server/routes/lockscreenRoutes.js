@@ -101,8 +101,13 @@ router.post('/grade', async (req, res) => {
       correctAnswer: '',
       userAnswer: userAnswer.trim(),
       rowHeader: sessionInfo || '기술사 기출문제',
-      colHeader: '제1교시 단답/서술형',
-      explanation: `토질및기초기술사 기출문제 (${sessionInfo} 제1교시 ${numberInfo}) "${questionText}"에 대한 주관식 단답/서술형 답안 채점입니다. 지반공학적 핵심 메커니즘, 역학적 원리, 관련 공식(LaTeX), 설계/시공 기준에 부합하는지 전문적으로 평가하고, 고도화된 모범 답안을 도출하십시오.`,
+      colHeader: '기술사 제1교시 단답/서술형 (10점 만점)',
+      explanation: `본 문제는 대한민국 토질및기초기술사 제1교시 10점 만점 단답/서술형 문항입니다.
+문항: "${questionText}"
+채점관 평가 수칙:
+1. 사용자가 문제 제목이나 제시된 단어를 단순히 되묻거나(예: '?'), 문제 단어만 앵무새처럼 반복한 경우 반드시 0점~1점으로 엄격히 오답 처리하십시오.
+2. 1교시 기술사 문제에 걸맞게 해당 토픽의 정의(개념), 발생 메커니즘(원인 및 지반 거동 특성), 핵심 공식(수식), 판정 기준/설계 고려사항 중 유효한 공학적 설명이 실질적으로 포함되어 있는지를 엄격하게 평가하십시오.
+3. 고도화된 완성형 모범 답안(suggestedModelAnswer)에는 개념의 정의, 수식/공식(LaTeX), 그리고 실무/판정 기준을 체계적으로 서술하십시오.`,
       category: '일반',
       callLLMWithFailover: callLLM,
       gradingStandards: dynamicGradingStandards,
