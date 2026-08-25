@@ -85,6 +85,7 @@ import {
   Image,
   Lock,
   Unlock,
+  Lightbulb,
   Cpu,
   Type,
   ChevronLeft,
@@ -3394,6 +3395,9 @@ export default function App() {
   const [lockscreenGradingResult, setLockscreenGradingResult] = useState(null);
   const [lockscreenLoading, setLockscreenLoading] = useState(false);
   const lockscreenLoadingRef = useRef(false);
+  const [showLockscreenHint, setShowLockscreenHint] = useState(false);
+  const [lockscreenHint, setLockscreenHint] = useState('');
+  const [lockscreenHintLoading, setLockscreenHintLoading] = useState(false);
 
   const fetchLockscreenQuestion = async () => {
     lockscreenLoadingRef.current = true;
@@ -3405,6 +3409,8 @@ export default function App() {
           setLockscreenQuestion(data.question);
           setLockscreenUserAnswer('');
           setLockscreenGradingResult(null);
+          setLockscreenHint('');
+          setShowLockscreenHint(false);
           return data.question;
         }
       }
@@ -3414,6 +3420,36 @@ export default function App() {
       lockscreenLoadingRef.current = false;
     }
     return null;
+  };
+
+  const handleOpenLockscreenHint = async () => {
+    if (!lockscreenQuestion) return;
+    setShowLockscreenHint(true);
+    if (lockscreenHint && lockscreenHint.trim()) return; // Already fetched for this question
+
+    setLockscreenHintLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/lockscreen/hint`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question: lockscreenQuestion,
+          questionText: lockscreenQuestion.question,
+          preferredModel: preferredModelRef.current || preferredModel
+        })
+      });
+      const data = await res.json();
+      if (data && data.success && data.hint) {
+        setLockscreenHint(data.hint);
+      } else {
+        setLockscreenHint(data.error || '힌트를 생성하지 못했습니다.');
+      }
+    } catch (err) {
+      console.error('Lockscreen hint fetch error:', err);
+      setLockscreenHint('힌트를 불러오는 중 통신 오류가 발생했습니다.');
+    } finally {
+      setLockscreenHintLoading(false);
+    }
   };
 
   const handleGradeLockscreenAnswer = async () => {
@@ -3453,6 +3489,8 @@ export default function App() {
     setLockscreenQuestion(null);
     setLockscreenUserAnswer('');
     setLockscreenGradingResult(null);
+    setLockscreenHint('');
+    setShowLockscreenHint(false);
     if (qId) {
       try {
         await fetch(`${API_BASE}/api/lockscreen/solve`, {
@@ -3468,6 +3506,8 @@ export default function App() {
 
   const handleNextLockscreenQuestion = () => {
     setLockscreenLoading(true);
+    setLockscreenHint('');
+    setShowLockscreenHint(false);
     fetchLockscreenQuestion().then(() => {
       setLockscreenLoading(false);
     });
@@ -3484,6 +3524,8 @@ export default function App() {
     setLockscreenLoading(true);
     setLockscreenUserAnswer('');
     setLockscreenGradingResult(null);
+    setLockscreenHint('');
+    setShowLockscreenHint(false);
 
     fetchLockscreenQuestion().then(() => {
       setLockscreenLoading(false);
@@ -17921,6 +17963,8 @@ ${itemsStr}
                       setShowLockscreenQuiz(false);
                       setLockscreenUserAnswer('');
                       setLockscreenGradingResult(null);
+                      setShowLockscreenHint(false);
+                      setLockscreenHint('');
                     }}
                     className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
                   >
@@ -17945,18 +17989,30 @@ ${itemsStr}
                     기술사 기출문제
                   </span>
                 </div>
-                <button
-                  onClick={() => {
-                    setShowLockscreenQuiz(false);
-                    showLockscreenQuizRef.current = false;
-                    setLockscreenUserAnswer('');
-                    setLockscreenGradingResult(null);
-                  }}
-                  className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors cursor-pointer border-0 bg-transparent"
-                  title="닫기"
-                >
-                  <X size={18} />
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleOpenLockscreenHint}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/40 hover:border-amber-400/60 rounded-xl text-xs font-black transition-all cursor-pointer shadow-sm active:scale-95 duration-150"
+                    title="AI 초간단 쉬운 힌트 보기"
+                  >
+                    <Lightbulb size={14} className="text-amber-400" />
+                    <span>힌트</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowLockscreenQuiz(false);
+                      showLockscreenQuizRef.current = false;
+                      setLockscreenUserAnswer('');
+                      setLockscreenGradingResult(null);
+                      setShowLockscreenHint(false);
+                      setLockscreenHint('');
+                    }}
+                    className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors cursor-pointer border-0 bg-transparent"
+                    title="닫기"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
               </div>
 
               {/* Question Box */}
@@ -18026,6 +18082,8 @@ ${itemsStr}
                         setShowLockscreenQuiz(false);
                         setLockscreenUserAnswer('');
                         setLockscreenGradingResult(null);
+                        setShowLockscreenHint(false);
+                        setLockscreenHint('');
                       }}
                       className="text-xs text-slate-500 hover:text-slate-400 transition-colors bg-transparent border-0 cursor-pointer p-1"
                     >
@@ -18111,6 +18169,73 @@ ${itemsStr}
                     >
                       다른 문제 풀기 ➡️
                     </button>
+                  </div>
+                </div>
+              )}
+
+              {/* 💡 AI 초간단 쉬운 힌트 팝업 (Lockscreen Easy Hint Modal) */}
+              {showLockscreenHint && (
+                <div 
+                  className="fixed inset-0 z-[10000000] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in"
+                  onClick={() => setShowLockscreenHint(false)}
+                >
+                  <div 
+                    className="w-full max-w-md bg-slate-900 border border-amber-500/40 rounded-2xl shadow-2xl overflow-hidden p-5 space-y-4 animate-scale-up text-left"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {/* Modal Header */}
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+                      <div className="flex items-center gap-2">
+                        <div className="p-2 bg-amber-500/20 text-amber-400 rounded-xl border border-amber-500/30">
+                          <Lightbulb size={20} className="text-amber-400 animate-pulse" />
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-black text-white flex items-center gap-1.5">
+                            💡 AI 초간단 쉬운 힌트
+                          </h3>
+                          <p className="text-[11px] text-amber-300/80 font-medium">
+                            비전공자도 1초 만에 이해하는 직관적 개념 &amp; 풀이 착안점
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setShowLockscreenHint(false)}
+                        className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-200 flex items-center justify-center transition-all cursor-pointer border-0 bg-transparent"
+                        title="닫기"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+
+                    {/* Modal Content */}
+                    <div className="py-2 text-slate-200 leading-relaxed text-[13px] max-h-[50vh] overflow-y-auto min-h-[90px] flex flex-col justify-center select-text">
+                      {lockscreenHintLoading ? (
+                        <div className="flex flex-col items-center justify-center py-6 gap-3 w-full text-center">
+                          <div className="w-6 h-6 border-2 border-amber-400 border-t-transparent rounded-full animate-spin"></div>
+                          <span className="text-xs text-amber-300 font-bold animate-pulse">
+                            AI 튜터가 누구나 이해하기 쉬운 직관적 힌트를 작성 중입니다...
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="p-3.5 bg-amber-950/20 border border-amber-500/20 rounded-xl whitespace-pre-wrap leading-relaxed text-slate-200">
+                          {lockscreenHint ? (
+                            <LatexRenderer text={lockscreenHint} katexLoaded={katexLoaded} isMarkdown={true} />
+                          ) : (
+                            <span className="text-slate-400 text-xs">생성된 힌트가 없습니다.</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Modal Footer */}
+                    <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">
+                      <button
+                        onClick={() => setShowLockscreenHint(false)}
+                        className="w-full py-2.5 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-extrabold transition-all active:scale-95 cursor-pointer shadow-md shadow-amber-950/40"
+                      >
+                        이해했어요! 답안 작성하기 ✍️
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
