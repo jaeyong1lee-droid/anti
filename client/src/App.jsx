@@ -3389,11 +3389,47 @@ export default function App() {
     showLockscreenQuizRef.current = showLockscreenQuiz;
   }, [showLockscreenQuiz]);
 
-  const [lockscreenQuestion, setLockscreenQuestion] = useState(null);
-  const [lockscreenHistory, setLockscreenHistory] = useState([]);
-  const [lockscreenHistoryIndex, setLockscreenHistoryIndex] = useState(-1);
-  const lockscreenHistoryRef = useRef([]);
-  const lockscreenHistoryIndexRef = useRef(-1);
+  // Load existing unsolved lockscreen question and history from localStorage if present
+  const [lockscreenQuestion, setLockscreenQuestion] = useState(() => {
+    try {
+      const saved = localStorage.getItem('anti_current_unsolved_lockscreen_question');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return null;
+  });
+
+  const [lockscreenHistory, setLockscreenHistory] = useState(() => {
+    try {
+      const saved = localStorage.getItem('anti_current_lockscreen_history');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return [];
+  });
+
+  const [lockscreenHistoryIndex, setLockscreenHistoryIndex] = useState(() => {
+    try {
+      const saved = localStorage.getItem('anti_current_lockscreen_history_idx');
+      if (saved !== null) return parseInt(saved, 10);
+    } catch (e) {}
+    return -1;
+  });
+
+  const lockscreenHistoryRef = useRef(lockscreenHistory);
+  const lockscreenHistoryIndexRef = useRef(lockscreenHistoryIndex);
+
+  useEffect(() => {
+    lockscreenHistoryRef.current = lockscreenHistory;
+    try {
+      localStorage.setItem('anti_current_lockscreen_history', JSON.stringify(lockscreenHistory));
+    } catch (e) {}
+  }, [lockscreenHistory]);
+
+  useEffect(() => {
+    lockscreenHistoryIndexRef.current = lockscreenHistoryIndex;
+    try {
+      localStorage.setItem('anti_current_lockscreen_history_idx', String(lockscreenHistoryIndex));
+    } catch (e) {}
+  }, [lockscreenHistoryIndex]);
 
   const [lockscreenUserAnswer, setLockscreenUserAnswer] = useState('');
   const [lockscreenGradingLoading, setLockscreenGradingLoading] = useState(false);
@@ -3404,7 +3440,28 @@ export default function App() {
   const [lockscreenHint, setLockscreenHint] = useState('');
   const [lockscreenHintLoading, setLockscreenHintLoading] = useState(false);
 
-  const fetchLockscreenQuestion = async (addToHistory = true) => {
+  const fetchLockscreenQuestion = async (addToHistory = true, forceNew = false) => {
+    // 1) If not forceNew, check if we already have an unsolved question in localStorage or memory
+    if (!forceNew) {
+      try {
+        const saved = localStorage.getItem('anti_current_unsolved_lockscreen_question');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed && (parsed.question || parsed.fullTitle)) {
+            setLockscreenQuestion(parsed);
+            if (addToHistory && lockscreenHistoryRef.current.length === 0) {
+              const initHist = [parsed];
+              lockscreenHistoryRef.current = initHist;
+              lockscreenHistoryIndexRef.current = 0;
+              setLockscreenHistory(initHist);
+              setLockscreenHistoryIndex(0);
+            }
+            return parsed;
+          }
+        }
+      } catch (e) {}
+    }
+
     lockscreenLoadingRef.current = true;
     try {
       const res = await fetch(`${API_BASE}/api/lockscreen/random?t=${Date.now()}`);
@@ -3416,6 +3473,10 @@ export default function App() {
           setLockscreenGradingResult(null);
           setLockscreenHint('');
           setShowLockscreenHint(false);
+
+          try {
+            localStorage.setItem('anti_current_unsolved_lockscreen_question', JSON.stringify(data.question));
+          } catch (e) {}
 
           if (addToHistory) {
             const nextHistory = [
@@ -3501,6 +3562,7 @@ export default function App() {
   const handleUnlockLockscreen = async () => {
     const qId = lockscreenQuestion?.id;
     localStorage.setItem('anti_last_lockscreen_submit_time', String(Date.now()));
+    localStorage.removeItem('anti_current_unsolved_lockscreen_question');
     setShowLockscreenQuiz(false);
     showLockscreenQuizRef.current = false;
     setLockscreenQuestion(null);
@@ -3529,6 +3591,9 @@ export default function App() {
       setLockscreenHistoryIndex(nextIdx);
       const q = lockscreenHistoryRef.current[nextIdx];
       setLockscreenQuestion(q);
+      try {
+        localStorage.setItem('anti_current_unsolved_lockscreen_question', JSON.stringify(q));
+      } catch (e) {}
       setLockscreenUserAnswer('');
       setLockscreenGradingResult(null);
       setLockscreenHint('');
@@ -3539,7 +3604,7 @@ export default function App() {
     setLockscreenLoading(true);
     setLockscreenHint('');
     setShowLockscreenHint(false);
-    fetchLockscreenQuestion(true).then(() => {
+    fetchLockscreenQuestion(true, true).then(() => {
       setLockscreenLoading(false);
     });
   };
@@ -3551,6 +3616,9 @@ export default function App() {
       setLockscreenHistoryIndex(prevIdx);
       const q = lockscreenHistoryRef.current[prevIdx];
       setLockscreenQuestion(q);
+      try {
+        localStorage.setItem('anti_current_unsolved_lockscreen_question', JSON.stringify(q));
+      } catch (e) {}
       setLockscreenUserAnswer('');
       setLockscreenGradingResult(null);
       setLockscreenHint('');
@@ -3565,6 +3633,34 @@ export default function App() {
 
     setShowLockscreenQuiz(true);
     showLockscreenQuizRef.current = true;
+
+    // Check if we already have an unsolved question in memory or in localStorage
+    let existingQuestion = lockscreenQuestion;
+    if (!existingQuestion) {
+      try {
+        const saved = localStorage.getItem('anti_current_unsolved_lockscreen_question');
+        if (saved) {
+          existingQuestion = JSON.parse(saved);
+        }
+      } catch (e) {}
+    }
+
+    if (existingQuestion) {
+      setLockscreenQuestion(existingQuestion);
+      setLockscreenLoading(false);
+      setLockscreenUserAnswer('');
+      setLockscreenGradingResult(null);
+      setLockscreenHint('');
+      setShowLockscreenHint(false);
+      if (lockscreenHistoryRef.current.length === 0) {
+        lockscreenHistoryRef.current = [existingQuestion];
+        lockscreenHistoryIndexRef.current = 0;
+        setLockscreenHistory([existingQuestion]);
+        setLockscreenHistoryIndex(0);
+      }
+      return;
+    }
+
     setLockscreenQuestion(null);
     setLockscreenLoading(true);
     setLockscreenUserAnswer('');
@@ -3572,7 +3668,7 @@ export default function App() {
     setLockscreenHint('');
     setShowLockscreenHint(false);
 
-    fetchLockscreenQuestion(true).then(() => {
+    fetchLockscreenQuestion(true, false).then(() => {
       setLockscreenLoading(false);
     });
   };
