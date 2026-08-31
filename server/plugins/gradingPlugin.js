@@ -82,7 +82,7 @@ export const baseSystemInstruction = `당신은 지반공학 및 토목공학 �
 
 - 🚨 **[사용자 오답 추종 절대 금지 - sycophancy 방지]**: 사용자의 답안(userAnswer)에 틀린 수식, 잘못된 부호나 지수, 부정확한 매개변수가 포함되어 있다면 이를 복사하거나 동조하여 suggestedModelAnswer에 반영하는 행동을 **극도로 엄격히 금지**합니다. 사용자가 틀린 공식을 적은 경우, suggestedModelAnswer는 오직 해당 문제에 부합하는 정확한 공식만을 기술해야 하며 피드백 또한 사용자의 공식이 어디가 틀렸는지 명확히 짚어주어야 합니다.
 
-- 제공된 모범 답안(correctAnswer)을 기본 토대로 삼되, 설명이 부족하거나 수식이 생략된 경우에 한해 AI 본연의 지반공학 전문 지식을 활용하여 인과관계와 정확한 LaTeX 수식을 가미해 '고도화된 모범 답안'을 작성하십시오.
+- suggestedModelAnswer는 제공된 '채점 키포인트' 텍스트를 글자 그대로 기계적으로 복사하는 것을 극도로 엄격히 금지합니다. 반드시 문제 맥락(행/열 헤더, 해설)과 AI 본연의 지반공학 전문 지식을 바탕으로 매 채점 시마다 새롭고 유려한 완성형 모범 답안 문장을 독립적으로 작성하여 반환하십시오.
 - 만약 1단계 데이터 정합성 검사에서 모범 답안의 매칭 오류(출제 오류)를 발견한 경우에는, 잘못된 모범 답안을 완전히 무시하고 **헤더 맥락에 완전히 부합하는 최적의 진짜 공학적 답안(예: 'C, 파이' 등)을 이 필드에 적어 반환**하십시오.
 - 🚨 **[공학 변수 및 기호 표기 철칙 - 극도로 중요!]**: 채점 피드백(reason)이나 모범 답안(suggestedModelAnswer) 작성 시, 지반공학 공인 표준 기호를 엄격하게 구분하여 쓰십시오. 특히 **부피탄성계수는 대문자 $K$**, **포아송비는 그리스 문자 $\nu$ (또는 $v$)**, **탄성계수는 대문자 $E$**로 명확히 분리하여 사용해야 하며, 부피탄성계수 자리에 소문자 $v$나 $u$로 오용하거나 탄성계수 $E$를 $t$ 등으로 오기하는 변수 오개념/오염을 절대 금지합니다.
 - 🚨 **[수식 줄바꿈 및 수식 레이아웃 철칙 - 극도로 중요!]**:
@@ -135,9 +135,9 @@ export async function gradeSubjective({ question, correctAnswer, userAnswer, row
     return { isCorrect: true, score: 10, reason: '텍스트가 모범 답안과 정확히 일치합니다.' };
   }
 
-  let targetCorrectAnswer = correctAnswer || '';
+  let internalGradingKey = correctAnswer || '';
   if (!correctAnswer) {
-    targetCorrectAnswer = `[자가 진단 모드: 모범 답안이 유실되었거나 세부 항목에 명시되지 않았습니다. 문제(${question || '없음'})와 전체 해설(${explanation || '없음'})을 기반으로 해당 표/수치 항목(행 제목: ${rowHeader || '없음'}, 열 제목: ${colHeader || '없음'})에 들어갈 진짜 수치/공학 정답을 채점관 스스로 공학 공식을 적용하여 직접 계산/도출한 뒤 사용자의 답안(${userAnswer})을 평가하십시오.]`;
+    internalGradingKey = `[자가 진단 모드: 모범 답안이 유실되었거나 세부 항목에 명시되지 않았습니다. 문제(${question || '없음'})와 전체 해설(${explanation || '없음'})을 기반으로 해당 표/수치 항목(행 제목: ${rowHeader || '없음'}, 열 제목: ${colHeader || '없음'})에 들어갈 진짜 수치/공학 정답을 채점관 스스로 공학 공식을 적용하여 직접 계산/도출한 뒤 사용자의 답안(${userAnswer})을 평가하십시오.]`;
   }
 
   const userPrompt = `
@@ -145,7 +145,7 @@ export async function gradeSubjective({ question, correctAnswer, userAnswer, row
 ${rowHeader ? `- 표 행 제목 (Row Header): ${rowHeader}` : ''}
 ${colHeader ? `- 표/빈칸 구분 제목 (Column Header): ${colHeader}` : ''}
 ${explanation ? `- 전체 해설 (Explanation): ${explanation}` : ''}
-- 모범 답안: ${targetCorrectAnswer}
+- 채점 키포인트 (내부 채점 기준 참고 전용 - 이 텍스트를 suggestedModelAnswer에 그대로 복사하는 행위 절대 엄격히 금지): ${internalGradingKey}
 - 사용자의 답안: ${userAnswer}
 
 🚨 **[경고 - 사용자 실제 답변 자구의 엄격한 식별 및 오인 금지 규칙 - 극도로 중요!]**:
