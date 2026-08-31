@@ -4302,9 +4302,6 @@ export default function App() {
           reason: data.reason,
           suggestedModelAnswer
         };
-        if (suggestedModelAnswer && q && q.answers && data.isCorrect && data.score >= 8) {
-          q.answers[inputId] = suggestedModelAnswer;
-        }
       } catch (err) {
         console.warn('AI cell grading fallback:', inputId, err.message);
         const isMatch = normalize(cleanUser) === normalize(cleanCorrect);
@@ -4595,9 +4592,6 @@ export default function App() {
         reason: data.reason,
         suggestedModelAnswer
       };
-      if (suggestedModelAnswer && q && q.answers && inputId) {
-        q.answers[inputId] = suggestedModelAnswer;
-      }
     } catch (err) {
       console.error('Single cell grading error:', err);
       const normalize = (s) => (s || '').trim().toLowerCase().replace(/\s+/g, '');
