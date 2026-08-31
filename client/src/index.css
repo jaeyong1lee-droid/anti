@@ -204,278 +204,8 @@ div[class*="overflow-y-auto"] {
 
 
 
-/* 📱 Mobile Landscape Layout Optimizations (height <= 600px in landscape orientation) */
-.landscape-mobile-only {
-  display: none;
-}
-
-/* Ensure SVG foreignObject text is always visible and never clipped */
-foreignObject {
-  overflow: visible !important;
-}
-
-@media (orientation: landscape) and (min-width: 768px) and (max-height: 600px) {
-  .landscape-hide {
-    display: none !important;
-  }
-  .landscape-w-55 {
-    width: 55% !important;
-    max-width: 55% !important;
-    flex-shrink: 0 !important;
-  }
-  .landscape-w-45 {
-    width: 45% !important;
-    max-width: 45% !important;
-    flex-shrink: 0 !important;
-    display: flex !important;
-  }
-  .landscape-pl-0 {
-    padding-left: 0 !important;
-  }
-  .landscape-mobile-only {
-    display: flex !important;
-  }
-  .landscape-split-container {
-    overflow-x: hidden !important;
-    scrollbar-width: none !important;
-  }
-  .landscape-quiz-body {
-    padding-left: 8px !important;
-    padding-right: 8px !important;
-    padding-top: 8px !important;
-  }
-  .quiz-card-item, .exam-card-item {
-    background: transparent !important;
-    border: none !important;
-    padding-left: 4px !important;
-    padding-right: 4px !important;
-    border-radius: 0 !important;
-    box-shadow: none !important;
-    border-bottom: 1px dashed rgba(255, 255, 255, 0.08) !important;
-    margin-bottom: 16px !important;
-  }
-  /* Revert font size enlargement in mobile landscape to match mobile portrait */
-  .pc-enlarged-text .text-\[10px\] { font-size: 10px !important; }
-  .pc-enlarged-text .text-\[11px\] { font-size: 11px !important; }
-  .pc-enlarged-text .text-\[12px\] { font-size: 12px !important; }
-  .pc-enlarged-text .text-xs { font-size: 0.75rem !important; }
-  .pc-enlarged-text .text-sm { font-size: 0.875rem !important; }
-  .pc-enlarged-text .text-base { font-size: 1rem !important; }
-  .pc-enlarged-text .text-lg { font-size: 1.125rem !important; }
-  .pc-enlarged-text .text-xl { font-size: 1.25rem !important; }
-  .pc-enlarged-text .text-2xl { font-size: 1.5rem !important; }
-  .pc-enlarged-text .text-\[17px\] { font-size: 17px !important; }
-  .pc-enlarged-text {
-    font-size: 1rem !important;
-  }
-  .landscape-overflow-x-auto {
-    overflow-x: auto !important;
-  }
-  .landscape-dashboard-row {
-    display: flex !important;
-    flex-direction: row !important;
-    align-items: flex-start !important;
-    gap: 20px !important;
-    width: 100% !important;
-    transition: gap 0.3s ease !important;
-  }
-  .landscape-dashboard-row.sidebar-collapsed {
-    gap: 0 !important;
-  }
-  .landscape-dashboard-left {
-    width: 160px !important;
-    min-width: 160px !important;
-    flex-shrink: 0 !important;
-    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease, padding 0.3s ease !important;
-  }
-  .landscape-dashboard-left.collapsed {
-    width: 0 !important;
-    min-width: 0 !important;
-    opacity: 0 !important;
-    padding: 0 !important;
-    pointer-events: none !important;
-    overflow: hidden !important;
-  }
-  .landscape-dashboard-left > section {
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 12px !important;
-    width: 100% !important;
-    margin-bottom: 0 !important;
-  }
-  .landscape-dashboard-left button {
-    padding: 8px 10px !important;
-    border-radius: 12px !important;
-    gap: 8px !important;
-  }
-  .landscape-dashboard-left h3 {
-    font-size: 16px !important;
-  }
-  .landscape-dashboard-left p {
-    font-size: 10px !important;
-  }
-  .landscape-dashboard-left svg {
-    width: 18px !important;
-    height: 18px !important;
-  }
-  .landscape-dashboard-left .p-3 {
-    padding: 6px !important;
-    border-radius: 8px !important;
-  }
-  .landscape-dashboard-right {
-    flex-grow: 1 !important;
-    min-width: 0 !important;
-  }
-  header {
-    padding-top: 8px !important;
-    padding-bottom: 8px !important;
-  }
-  .landscape-flex-important {
-    display: flex !important;
-  }
-  /* Solid slate background for question list wrapper to prevent underlying bleed */
-  .landscape-bg-slate-900 {
-    background-color: #0f172a !important;
-  }
-  
-  /* Flatten the Gemini tutor input panel wrapper and remove border */
-  .landscape-tutor-input-wrapper {
-    background-color: transparent !important;
-    border-top: none !important;
-    padding: 6px 8px !important;
-    margin-top: -4px !important;
-    margin-bottom: 4px !important;
-  }
-
-  /* Independent scroll for dashboard columns in landscape with hidden scrollbars */
-  body, html {
-    overflow: hidden !important;
-  }
-  main {
-    margin-top: 0 !important;
-    height: 100vh !important;
-    overflow: hidden !important;
-    padding-top: 0 !important;
-    padding-bottom: 0 !important;
-    padding-left: 8px !important;
-    padding-right: 4px !important;
-    max-width: 100% !important;
-    width: 100% !important;
-    margin-left: 0 !important;
-    margin-right: 0 !important;
-  }
-  .landscape-dashboard-row {
-    height: 100vh !important;
-    overflow: hidden !important;
-  }
-  .landscape-dashboard-left {
-    height: 100vh !important;
-    overflow-y: auto !important;
-    scrollbar-width: none !important;
-    position: sticky !important;
-    top: 0 !important;
-    padding-top: 12px !important;
-    padding-bottom: 48px !important;
-  }
-  .landscape-dashboard-left::-webkit-scrollbar {
-    display: none !important;
-  }
-  .landscape-dashboard-right {
-    height: 100vh !important;
-    overflow-y: auto !important;
-    scrollbar-width: none !important;
-    padding-top: 12px !important;
-    padding-bottom: 80px !important;
-  }
-  .landscape-dashboard-right::-webkit-scrollbar {
-    display: none !important;
-  }
-  .landscape-overflow-x-auto {
-    overflow-x: auto !important;
-    scrollbar-width: none !important;
-  }
-  .landscape-overflow-x-auto::-webkit-scrollbar {
-    display: none !important;
-  }
-
-  /* Hide scrollbars inside modals for clean landscape look */
-  .landscape-quiz-body,
-  .landscape-split-container,
-  div[class*="overflow-y-auto"] {
-    scrollbar-width: none !important;
-  }
-  .landscape-quiz-body::-webkit-scrollbar,
-  .landscape-split-container::-webkit-scrollbar,
-  div[class*="overflow-y-auto"]::-webkit-scrollbar {
-    display: none !important;
-  }
-
-  /* Compact landscape row styling for formula/theory/answersheet cards */
-  .formula-card-item {
-    background: transparent !important;
-    border: none !important;
-    padding: 6px 0 !important;
-    border-radius: 0 !important;
-    box-shadow: none !important;
-    border-bottom: 1px dashed rgba(255, 255, 255, 0.08) !important;
-    margin-bottom: 8px !important;
-  }
-  .formula-card-item > :not([hidden]) ~ :not([hidden]) {
-    --tw-space-y-reverse: 0 !important;
-    margin-top: 0 !important;
-  }
-  .formula-card-item > div:first-child {
-    border-bottom: none !important;
-    padding-bottom: 0 !important;
-    flex-direction: row !important;
-    flex-wrap: nowrap !important;
-    align-items: center !important;
-    justify-content: space-between !important;
-    width: 100% !important;
-    gap: 8px !important;
-  }
-  /* Ensure title container is horizontal and doesn't wrap unnecessarily */
-  .formula-card-item > div:first-child > div:first-child {
-    flex-direction: row !important;
-    align-items: center !important;
-    flex-grow: 1 !important;
-    min-width: 0 !important;
-  }
-  /* Ensure button container is single-line flex-row without wrap */
-  .formula-card-item > div:first-child > div:last-child {
-    flex-direction: row !important;
-    flex-wrap: nowrap !important;
-    align-items: center !important;
-    gap: 6px !important;
-    margin-top: 0 !important;
-    flex-shrink: 0 !important;
-  }
-  /* Scale buttons down slightly for compact landscape row */
-  .formula-card-item button {
-    padding-top: 2px !important;
-    padding-bottom: 2px !important;
-    padding-left: 6px !important;
-    padding-right: 6px !important;
-    font-size: 10px !important;
-    border-radius: 6px !important;
-  }
-  /* Condense collapsible inputs/outputs */
-  .formula-card-item .space-y-3,
-  .formula-card-item .space-y-2,
-  .formula-card-item .space-y-1 {
-    margin-top: 4px !important;
-    padding: 8px !important;
-    background-color: rgba(15, 23, 42, 0.6) !important;
-    border: 1px solid rgba(255, 255, 255, 0.05) !important;
-    border-radius: 8px !important;
-  }
-  .formula-card-item textarea {
-    height: 60px !important;
-  }
-}
-
 /* PC version font size enlargement (1.2x) for modals */
-@media (min-width: 768px) and (min-height: 601px) {
+@media (min-width: 768px), (orientation: landscape) {
   .pc-enlarged-text .text-\[10px\] { font-size: calc(10px * 1.2) !important; }
   .pc-enlarged-text .text-\[11px\] { font-size: calc(11px * 1.2) !important; }
   .pc-enlarged-text .text-\[12px\] { font-size: calc(12px * 1.2) !important; }
@@ -814,9 +544,7 @@ foreignObject {
   }
 
   /* Disable split containers from hiding scroll overflow or restricting height */
-  div.fixed.inset-y-0.flex.flex-col .flex-1,
-  div.fixed.inset-y-0.flex.flex-col .landscape-split-container,
-  div.fixed.inset-y-0.flex.flex-col [class*="landscape-split-container"] {
+  div.fixed.inset-y-0.flex.flex-col .flex-1 {
     height: auto !important;
     min-height: initial !important;
     overflow: visible !important;
@@ -1345,4 +1073,21 @@ svg text:not([fill]) {
 /* Fix KaTeX fraction line disappearing in very small fonts (e.g. text-[10px]) */
 .katex .frac-line {
     border-bottom-width: max(1px, 0.04em) !important;
+}
+
+/* 📱 Hide floating left navigation sidebar on phone landscape (height <= 600px) */
+@media (max-height: 600px) {
+  .floating-left-sidebar,
+  .floating-left-sidebar-swipe-zone {
+    display: none !important;
+  }
+
+  main {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+
+  .fixed.inset-y-0.right-0.left-0 {
+    padding-left: 0 !important;
+  }
 }
