@@ -133,35 +133,9 @@ function normalizeMcText(text) {
 }
 
 function isQuestionMismatched(q, topicTitle, topicKeywords, topicCategory = '일반') {
-  if (!q) return true;
-  const qStr = typeof q === 'string' ? q : JSON.stringify(q);
-  const title = (topicTitle || '').toLowerCase();
-  const keywords = (topicKeywords || '').toLowerCase();
-  const category = topicCategory || '일반';
-
-  const isCalcQuestion = 
-    q.type === '주관식 (계산)' ||
-    qStr.includes('수치 계산 답안 작성') ||
-    qStr.includes('Terzaghi') ||
-    qStr.includes('허용지지력 q_all') ||
-    qStr.includes('허용하중 P_all') ||
-    (q.tableData && Array.isArray(q.tableData.headers) && q.tableData.headers[1] === '계산 결과 및 답안');
-
-  // Category mismatch check
-  if (category === '일반' && isCalcQuestion) {
-    console.log(`[Quiz Mismatch Check] Invalid calculation question found in '일반' category topic "${topicTitle}"!`);
-    return true;
-  }
-  // 계산 카테고리는 4문항 중 1~2개만 계산 관련이고 나머지는 이론 단답형이므로, 
-  // 단일 문항 단위로 !isCalcQuestion이라고 무조건 삭제하면 세션 유지 불가 버그(문제 재생성) 발생. 
-  // 따라서 단일 문항 단위의 엄격한 계산 검증은 제거.
-
-  // Cross-topic title check for known anomalies (e.g. Terzaghi bearing capacity vs Tunnel topic)
-  if (!title.includes('지지력') && !keywords.includes('지지력') && qStr.includes('Terzaghi')) {
-    console.log(`[Quiz Mismatch Check] Anomaly: Terzaghi question found in non-bearing capacity topic "${topicTitle}"!`);
-    return true;
-  }
-
+  // Disable aggressive mismatch checking. 
+  // It was incorrectly auto-purging valid engineering topics (like soil mechanics) 
+  // just because they contained math keywords in a general category.
   return false;
 }
 

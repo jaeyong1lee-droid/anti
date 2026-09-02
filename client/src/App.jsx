@@ -10424,7 +10424,7 @@ ${item.intuitive || ''}
             localStorage.setItem(`anti_session_id_${topicId}_${data.scheduleId}`, activeSid);
           }
           setSelectedTopic(prev => {
-            if (prev && prev.id === topicId) {
+            if (prev && String(prev.id) === String(topicId)) {
               const updated = { ...prev, schedule_id: data.scheduleId };
               selectedTopicRef.current = updated;
               return updated;
