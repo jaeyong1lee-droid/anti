@@ -132,13 +132,6 @@ function normalizeMcText(text) {
     .toLowerCase();
 }
 
-function isQuestionMismatched(q, topicTitle, topicKeywords, topicCategory = '일반') {
-  // Disable aggressive mismatch checking. 
-  // It was incorrectly auto-purging valid engineering topics (like soil mechanics) 
-  // just because they contained math keywords in a general category.
-  return false;
-}
-
 
 function sanitizeMultipleChoiceAnswer(q) {
   if (!q || !q.options || q.options.length === 0 || !q.explanation) return q;
@@ -531,22 +524,19 @@ router.post('/topics/:id/ai-questions', async (req, res) => {
 
       if (cachedQuestions && cachedQuestions.length > 0) {
         if (!(topic.category === '계산' && cachedQuestions.length !== 4)) {
-          const mismatchedCount = cachedQuestions.filter(q => isQuestionMismatched(q, topic.title, topic.keywords, topic.category)).length;
-          if (mismatchedCount === 0) {
-            const healed = cachedQuestions.map(q => healQuizQuestionObject({ ...q, category: topic.category }));
-            isCacheHit = true;
-            cachedResponseData = {
-              questions: healed,
-              ...cachedMeta,
-              sessionId: parsed.sessionId || sId,
-              isFallback: false,
-              isCached: true,
-              scheduleId: resolvedScheduleId
-            };
-          } else {
-            await dbQuery.run('DELETE FROM app_session WHERE key = ?', [key]);
-          }
+          const healed = cachedQuestions.map(q => healQuizQuestionObject({ ...q, category: topic.category }));
+          isCacheHit = true;
+          cachedResponseData = {
+            questions: healed,
+            ...cachedMeta,
+            sessionId: parsed.sessionId || sId,
+            isFallback: false,
+            isCached: true,
+            scheduleId: resolvedScheduleId
+          };
         } else {
+          // Calculation topic must have exactly 4 questions, otherwise discard cache
+          await dbQuery.run('DELETE FROM app_session WHERE key = ?', [key]);
           await dbQuery.run('DELETE FROM app_session WHERE key = ?', [key]);
         }
       }
@@ -592,9 +582,7 @@ router.post('/topics/:id/ai-questions', async (req, res) => {
                 const selected = parsed.selectedAnswers?.[qIdx];
                 const normalizeAns = (s) => (s || '').replace(/^\d+\.(?!\d)\s*/, '').trim();
                 if (normalizeAns(selected) !== normalizeAns(q.answer)) {
-                  if (!isQuestionMismatched(q, topic.title, topic.keywords)) {
-                    incorrectQuestions.push(q);
-                  }
+                  incorrectQuestions.push(q);
                 }
               }
             });
@@ -1659,21 +1647,8 @@ router.get('/session/review', async (req, res) => {
           };
         }
 
-        // Cross-verify with topic category & subject to prevent serving corrupted calculation session
-        const numericTopicId = Number(targetTopicId);
-        if (numericTopicId) {
-          const tInfo = await dbQuery.get('SELECT id, title, keywords, category FROM topics WHERE id = ?', [numericTopicId]);
-          if (tInfo && Array.isArray(data.questions) && data.questions.length > 0) {
-            const isLengthCorrupted = tInfo.category === '계산' && data.questions.length !== 4;
-            const hasMismatch = data.questions.some(q => isQuestionMismatched(q, tInfo.title, tInfo.keywords, tInfo.category));
-            if (hasMismatch || isLengthCorrupted) {
-              console.warn(`[Session Auto-Purge] Purging corrupted session key '${actualKey}' for topic #${numericTopicId} (${tInfo.category}) due to category/topic/length mismatch!`);
-              await dbQuery.run('DELETE FROM app_session WHERE key = ? OR key = ?', [actualKey, `${actualKey}_q`]);
-              return res.json({ success: false, data: null, error: '카테고리/주제/길이 불일치 세션 자동 정제' });
-            }
-          }
-        }
-
+        // [삭제 완료]: 과거 AI 환각 방어용 땜질 코드(isQuestionMismatched 및 강제 삭제 로직)를 완전히 제거하여 과잉 방어(False Positive) 버그 원천 차단.
+        
         if (Array.isArray(data.questions)) {
           data.questions = data.questions.map(q => sanitizeMultipleChoiceAnswer(healQuizQuestionObject(q)));
         }
