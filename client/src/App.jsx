@@ -7942,7 +7942,7 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
     // 1) Save active review session immediately to localStorage (synchronously)
     if (currentTopic && currentTopic.id && finalQuestions.length > 0) {
       console.log('[forceSaveActiveSessions] Immediately saving active review session, sessionId:', reviewSessionId);
-      const activeSid = reviewSessionId || 'legacy_default';
+      const activeSid = (overrideData && overrideData._sessionIdOverride) || reviewSessionId || 'legacy_default';
       const key = currentTopic.schedule_id 
         ? `anti_review_progress_sched_${currentTopic.schedule_id}_${activeSid}`
         : `anti_review_progress_${currentTopic.id}_${activeSid}`;
@@ -8094,10 +8094,13 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
     }, 5000);
   };
 
-  const syncReviewSessionImmediately = (questionsOverride = null, extraOverrideData = null) => {
+  const syncReviewSessionImmediately = (questionsOverride = null, extraOverrideData = null, sessionIdOverride = null) => {
     const overrideObj = extraOverrideData ? { ...extraOverrideData } : {};
     if (questionsOverride) {
       overrideObj.questions = questionsOverride;
+    }
+    if (sessionIdOverride) {
+      overrideObj._sessionIdOverride = sessionIdOverride;
     }
     return forceSaveActiveSessions(false, false, overrideObj);
   };
@@ -10432,7 +10435,7 @@ ${item.intuitive || ''}
 
         if (questionsList.length > 0) {
           console.log('[handleOpenAIQuestions] Questions generated. Saving initial set to server immediately...');
-          await syncReviewSessionImmediately(questionsList, { selectedAnswers: {}, revealedQuestions: {}, tableAnswers: {}, tableGradingResults: {} });
+          await syncReviewSessionImmediately(questionsList, { selectedAnswers: {}, revealedQuestions: {}, tableAnswers: {}, tableGradingResults: {} }, activeSid);
         }
 
         
