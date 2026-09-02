@@ -7936,13 +7936,16 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
   const forceSaveActiveSessions = async (isUnloading = false, isResetAction = false, overrideData = null) => {
     const promises = [];
 
+    const finalQuestions = (overrideData && overrideData.questions !== undefined) ? overrideData.questions : aiQuestions;
+    const currentTopic = selectedTopicRef.current;
+
     // 1) Save active review session immediately to localStorage (synchronously)
-    if (selectedTopic && selectedTopic.id && aiQuestions.length > 0) {
+    if (currentTopic && currentTopic.id && finalQuestions.length > 0) {
       console.log('[forceSaveActiveSessions] Immediately saving active review session, sessionId:', reviewSessionId);
       const activeSid = reviewSessionId || 'legacy_default';
-      const key = selectedTopic.schedule_id 
-        ? `anti_review_progress_sched_${selectedTopic.schedule_id}_${activeSid}`
-        : `anti_review_progress_${selectedTopic.id}_${activeSid}`;
+      const key = currentTopic.schedule_id 
+        ? `anti_review_progress_sched_${currentTopic.schedule_id}_${activeSid}`
+        : `anti_review_progress_${currentTopic.id}_${activeSid}`;
 
       // [🚨 닫기 시 즉시 동기화 가드] DOM에서 최신 input/textarea 데이터 직접 수집하여 React state 지연 극복
       const latestTableAnswers = { ...tableAnswers };
@@ -7957,7 +7960,6 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
         console.warn('[forceSaveActiveSessions] DOM scrape failed:', err);
       }
 
-      const finalQuestions = (overrideData && overrideData.questions !== undefined) ? overrideData.questions : aiQuestions;
       const finalSelectedAnswers = (overrideData && overrideData.selectedAnswers !== undefined) ? overrideData.selectedAnswers : selectedAnswersRef.current;
       const finalRevealedQuestions = (overrideData && overrideData.revealedQuestions !== undefined) ? overrideData.revealedQuestions : revealedQuestionsRef.current;
       const finalTableAnswers = (overrideData && overrideData.tableAnswers !== undefined) ? overrideData.tableAnswers : latestTableAnswers;
@@ -7972,8 +7974,8 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
       const chatHistoryStr = JSON.stringify(finalChatHistory);
 
       const requestPayload = {
-        topicId: selectedTopic.id,
-        scheduleId: selectedTopic.schedule_id,
+        topicId: currentTopic.id,
+        scheduleId: currentTopic.schedule_id,
         sessionId: activeSid,
         selectedAnswers: finalSelectedAnswers,
         revealedQuestions: finalRevealedQuestions,
@@ -10412,11 +10414,6 @@ ${item.intuitive || ''}
           localStorage.setItem(`anti_session_id_${topicId}_${finalScheduleId || '9999'}`, activeSid);
         }
 
-        if (questionsList.length > 0) {
-          console.log('[handleOpenAIQuestions] Questions generated. Saving initial set to server immediately...');
-          await syncReviewSessionImmediately(questionsList, { selectedAnswers: {}, revealedQuestions: {}, tableAnswers: {}, tableGradingResults: {} });
-        }
-
         if (data.scheduleId) {
           finalScheduleId = data.scheduleId;
           lastQuizScheduleId.current = data.scheduleId;
@@ -10432,6 +10429,12 @@ ${item.intuitive || ''}
             return prev;
           });
         }
+
+        if (questionsList.length > 0) {
+          console.log('[handleOpenAIQuestions] Questions generated. Saving initial set to server immediately...');
+          await syncReviewSessionImmediately(questionsList, { selectedAnswers: {}, revealedQuestions: {}, tableAnswers: {}, tableGradingResults: {} });
+        }
+
         
         setSelectedAnswers(data.selectedAnswers || {});
         setRevealedQuestions(data.revealedQuestions || {});
