@@ -26,30 +26,6 @@ export function tokenizeForHealing(text) {
   return tokens;
 }
 
-const BACKSLASH_KEYWORDS = [
-  'sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta', 'Delta', 'Sigma', 'Gamma', 'Phi', 'Theta', 'Omega', 'nu',
-  'frac', 'dfrac', 'sqrt', 'cdot', 'times', 'div', 'pm', 'infty', 'partial', 'sum', 'int', 'sim',
-  'le', 'ge', 'lt', 'gt', 'sin', 'cos', 'tan', 'rightarrow', 'leftarrow', 'circ'
-];
-
-const BACKSLASH_REGEXES = BACKSLASH_KEYWORDS.map(kw => ({
-  kw,
-  regex: new RegExp(`(?<!\\\\)\\b${kw}\\b`, 'g')
-}));
-
-// 2. 누락된 백슬래시 일괄 복구
-export function healBackslashes(str) {
-  if (!str) return str;
-  let healed = str;
-  healed = healed.replace(/(?<!\\)\b(log|ln)\b/g, '\\$1')
-                 .replace(/(?<!\\)\b(log|ln)(?=[pt_0-9])/g, '\\$1 ');
-
-  BACKSLASH_REGEXES.forEach(({ kw, regex }) => {
-    healed = healed.replace(regex, `\\${kw}`);
-  });
-  return healed;
-}
-
 export function htmlTableToMarkdown(html, poissonSymbol = null) {
   if (!html) return html;
 
@@ -259,51 +235,6 @@ function replaceRoots(str) {
   }
   return processed;
 }
-
-export function healInvertedDelimiters(text) {
-  if (!text || typeof text !== 'string') return text;
-
-  const hasFormulaCommands = (str) => {
-    const rx = /(?:₩|\\)(?:Delta|sigma|gamma|cdot|tau|pi|theta|alpha|beta|phi|omega|mu|lambda|rho|nu|times|frac|dfrac|le|ge|ne|neq|sqrt|sum|int|partial|sin|cos|tan)\b|\b[a-zA-Z]_[a-zA-Z0-9]\b/i;
-    return rx.test(str);
-  };
-
-  const parts = text.split('$');
-  if (parts.length > 2) {
-    let oddPlainCount = 0;
-    let evenFormulaCount = 0;
-
-    for (let i = 0; i < parts.length; i++) {
-      const isOdd = i % 2 !== 0;
-      const content = parts[i].trim();
-      if (!content) continue;
-
-      const isFormula = hasFormulaCommands(content);
-      if (isOdd && !isFormula && /[가-힣]/.test(content)) {
-        oddPlainCount++;
-      }
-      if (!isOdd && isFormula && !/[가-힣]/.test(content)) {
-        evenFormulaCount++;
-      }
-    }
-
-    if (oddPlainCount > 0 && evenFormulaCount > 0) {
-      let rebuilt = '';
-      for (let i = 0; i < parts.length; i++) {
-        const content = parts[i];
-        const isSimpleMath = /^[a-zA-Z0-9\s+\-*/=<>_^().]+$/.test(content) && /[+\-*/=<>_^]/.test(content);
-        if ((hasFormulaCommands(content) || isSimpleMath) && !/[가-힣]/.test(content)) {
-          rebuilt += `$${content.trim()}$`;
-        } else if (content.trim()) {
-          rebuilt += content;
-        }
-      }
-      return rebuilt;
-    }
-  }
-  return text;
-}
-
 // 3. 메인 레이아웃 및 수식 복구 마스터 함수
 export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = null) {
   if (!text || typeof text !== 'string') return text;
@@ -317,17 +248,10 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   processed = processed.replace(/\\\[([\s\S]*?)\\\]/g, (m, p1) => '$$' + p1.trim() + '$$');
   processed = processed.replace(/[–—−]/g, '-');
 
-  processed = processed.replace(/\\(d?frac)\{([^{}\n]+)\}\s*\{\s*\}\s*(\\?[a-zA-Z0-9_]+)/g, '\\$1{$2}{$3}');
-  processed = processed.replace(/\\(d?frac)\{([^{}\n]+)\}\s*\{\s*([^{}\n]+?)\s*\}\s*\\?\3\b/g, '\\$1{$2}{$3}');
-
-  processed = processed.replace(/(\b\\?[a-zA-Z0-9_']+_\{\s*[^{}\$\n]*)\$([^\$\n]+)\$([^{}\$\n]*\})/g, (match, p1, math, p3) => {
-    return `$${p1}${math}${p3}$`;
-  });
-
   processed = processed.replace(/\\pu\s*\{([^}]+)\}/gi, (match, p1) => {
     return ` ${p1.trim()} `;
   });
-  processed = healInvertedDelimiters(processed);
+
   processed = replaceRoots(processed);
 
   if (!isNested) {
@@ -335,21 +259,7 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
     processed = htmlTableToMarkdown(processed, null);
   }
 
-  processed = processed.replace(/(?<=:[^\n]*)\s+([–—−-]\s*(?:\$[^\$]+\$|[a-zA-Z0-9_\\\{\}]+)\s*:)/g, '\n$1');
 
-  if (typeof processed === 'string') {
-    const EXCLUDE_BULLET_WORDS = /^(?:Note|Step|Case|Type|Point|Result|Summary|Tip|Warning|Notice|Check)\b/i;
-    processed = processed.split('\n').map(line => {
-      const bulletRegex = /^([ \t]*(?:\*|-|•|▪|▫|·|\d+\.|\d+\)|[a-zA-Z가-힣]\.|\b[a-zA-Z가-힣]\)|[①-⑳]|\[INPUT_\d+(?:_\d+)?\])[ \t]*)(?!\$)([a-zA-Z0-9_\\'\^\(\)\{\}\+\-\*\/=]+)(?!\$)([ \t]*:)/;
-      return line.replace(bulletRegex, (match, p1, p2, p3) => {
-        if (EXCLUDE_BULLET_WORDS.test(p2.trim())) return match;
-        return `${p1}$${p2}$${p3}`;
-      });
-    }).join('\n');
-  }
-
-  processed = processed.replace(/\\{2,}([a-zA-Z]+)/g, '\\$1');
-  processed = processed.replace(/\\{2,}%/g, '\\%');
 
   const sections = processed.split(/(<!--START_TABLE-->[\s\S]*?<!--END_TABLE-->)/g);
   processed = sections.map(section => {
