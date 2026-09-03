@@ -87,7 +87,7 @@ export const baseSystemInstruction = `당신은 지반공학 및 토목공학 �
 - 🚨 **[공학 변수 및 기호 표기 철칙 - 극도로 중요!]**: 채점 피드백(reason)이나 모범 답안(suggestedModelAnswer) 작성 시, 지반공학 공인 표준 기호를 엄격하게 구분하여 쓰십시오. 특히 **부피탄성계수는 대문자 $K$**, **포아송비는 그리스 문자 $\nu$ (또는 $v$)**, **탄성계수는 대문자 $E$**로 명확히 분리하여 사용해야 하며, 부피탄성계수 자리에 소문자 $v$나 $u$로 오용하거나 탄성계수 $E$를 $t$ 등으로 오기하는 변수 오개념/오염을 절대 금지합니다.
 - 🚨 **[수식 줄바꿈 및 수식 레이아웃 철칙 - 극도로 중요!]**:
   * **한글이 이어지는 흐름 도중의 수식**: 설명문 한글 텍스트 중간에 나오는 수식이나 단순 변수(예: $e_h$, $\sigma_h'$, $\epsilon_h = 1/E[\sigma_h' - \nu(\sigma_v' + \sigma_h')] = 0$ 등)는 줄바꿈 없이 자연스럽게 인라인 수식(단일 달러 \`\$ ... \$\` 사용)으로 작성하십시오.
-  * **최종 결론 공식의 단독 배치**: 최종 유도되거나 도출되는 핵심 공식(예: $K_0 = \frac{\nu}{1-\nu}$ 등)은 반드시 앞에 나오는 설명 문장(예: "...도출됩니다.") 뒤에서 **강제로 줄을 바꾼 뒤**, 단독 줄에 **가운데 정렬 블록 수식(이중 달러 \`\$\$\n...\n\$\$\` 사용)**으로 작성하여 격리 및 돋보이게 배치하십시오.
+  * **최종 결론 공식의 단독 배치**: 최종 유도되거나 도출되는 핵심 공식(예: $K_0 = \frac{\nu}{1-\nu}$ 등)은 반드시 앞의 설명 문장 뒤에서 엔터로 줄을 바꾼 뒤, 단독 줄에 **가운데 정렬 블록 수식(이중 달러 \`\$\$ ... \$\$\` 사용)**으로 작성하여 격리 및 돋보이게 배치하십시오. ⚠️ 문단 구분이나 수식 분리 시 리터럴 텍스트('\\n\\n')를 직접 출력하지 말고 실제 엔터(줄바꿈)를 입력하십시오.
 
 `;
 
@@ -242,10 +242,20 @@ export function robustJSONParse(text) {
     const reasonMatch = rawObjStr.match(/"reason"\s*:\s*"([\s\S]*?)"\s*,\s*"/i) || rawObjStr.match(/"reason"\s*:\s*"([\s\S]*?)"\s*\}/i);
     const modelAnsMatch = rawObjStr.match(/"suggestedModelAnswer"\s*:\s*"([\s\S]*?)"\s*\}/i);
 
+    const decodeJsonEscapes = (str) => {
+      if (!str) return str;
+      return str
+        .replace(/\\"/g, '"')
+        .replace(/\\\\/g, '\\')
+        .replace(/\\n/g, '\n')
+        .replace(/\\r/g, '\r')
+        .replace(/\\t/g, '\t');
+    };
+
     const isCorrect = isCorrectMatch ? isCorrectMatch[1].toLowerCase() === 'true' : true;
     const score = scoreMatch ? parseInt(scoreMatch[1], 10) : (isCorrect ? 10 : 0);
-    const reason = reasonMatch ? reasonMatch[1].replace(/\\"/g, '"').replace(/\\\\/g, '\\') : 'AI 채점 완료';
-    const suggestedModelAnswer = modelAnsMatch ? modelAnsMatch[1].replace(/\\"/g, '"').replace(/\\\\/g, '\\') : null;
+    const reason = reasonMatch ? decodeJsonEscapes(reasonMatch[1]) : 'AI 채점 완료';
+    const suggestedModelAnswer = modelAnsMatch ? decodeJsonEscapes(modelAnsMatch[1]) : null;
 
     return {
       isCorrect,
