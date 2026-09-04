@@ -10,7 +10,7 @@ global.progressTracker = global.progressTracker || new Map();
 export let globalPreferredModel = 'gemini-3.5-flash-lite';
 export const FALLBACK_MODELS = [
   'gemini-3.5-flash-lite',
-  'gemini-3.89-flash',
+  'gemini-3.8-flash',
   'gemini-3.7-flash',
   'gemini-3.1-flash-lite',
   'gemini-3.6-flash',
@@ -21,7 +21,10 @@ export async function loadPreferredModel() {
   try {
     const row = await dbQuery.get("SELECT value FROM app_session WHERE key = 'preferred_model'");
     if (row && row.value) {
-      if (row.value.includes('2.5') || row.value.includes('2.0') || row.value.includes('gemini-2')) {
+      if (row.value === 'gemini-3.89-flash') {
+        globalPreferredModel = 'gemini-3.8-flash';
+        await saveSessionValue('preferred_model', 'gemini-3.8-flash');
+      } else if (row.value.includes('2.5') || row.value.includes('2.0') || row.value.includes('gemini-2')) {
         console.log(`[Setting Cleanup] Legacy preferred model '${row.value}' detected in DB. Resetting to gemini-3.5-flash-lite.`);
         globalPreferredModel = 'gemini-3.5-flash-lite';
         await saveSessionValue('preferred_model', 'gemini-3.5-flash-lite');
@@ -210,7 +213,7 @@ export async function callLLMWithFailover(systemInstruction, userPrompt, image =
     const rawFallbacks = [
       targetPref,
       'gemini-3.5-flash-lite',
-      'gemini-3.89-flash',
+      'gemini-3.8-flash',
       'gemini-3.7-flash',
       'gemini-3.1-flash-lite',
       'gemini-3.6-flash',
