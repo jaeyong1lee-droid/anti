@@ -10,6 +10,8 @@ global.progressTracker = global.progressTracker || new Map();
 export let globalPreferredModel = 'gemini-3.5-flash-lite';
 export const FALLBACK_MODELS = [
   'gemini-3.5-flash-lite',
+  'gemini-3.89-flash',
+  'gemini-3.7-flash',
   'gemini-3.1-flash-lite',
   'gemini-3.6-flash',
   'gemini-3.5-flash'
@@ -208,6 +210,7 @@ export async function callLLMWithFailover(systemInstruction, userPrompt, image =
     const rawFallbacks = [
       targetPref,
       'gemini-3.5-flash-lite',
+      'gemini-3.89-flash',
       'gemini-3.7-flash',
       'gemini-3.1-flash-lite',
       'gemini-3.6-flash',
