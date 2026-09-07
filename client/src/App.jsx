@@ -18195,6 +18195,19 @@ ${itemsStr}
                     </button>
                     <div className="flex items-center gap-3">
                       <button
+                        type="button"
+                        onClick={() => {
+                          setIsRealTimeTutorOpen(true);
+                          setTimeout(() => {
+                            realTimeTutorInputRef.current?.focus();
+                          }, 100);
+                        }}
+                        className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors bg-transparent border-0 cursor-pointer p-1 flex items-center gap-1 font-medium active:scale-95"
+                        title="실시간 AI 튜터 팝업 열기"
+                      >
+                        💬 AI 튜터
+                      </button>
+                      <button
                         onClick={handlePrevLockscreenQuestion}
                         disabled={lockscreenGradingLoading || lockscreenHistoryIndex <= 0}
                         className={`text-xs transition-colors bg-transparent border-0 p-1 ${
@@ -29978,7 +29991,7 @@ ${itemsStr}
             right: 0,
             top: 0,
             bottom: 0,
-            zIndex: 99999,
+            zIndex: showLockscreenQuiz ? 10000002 : 99999,
             display: 'flex',
             flexDirection: 'column',
           } : {
@@ -29987,7 +30000,7 @@ ${itemsStr}
             top: 'var(--realtime-tutor-y)',
             width: 'var(--realtime-tutor-w)',
             height: 'var(--realtime-tutor-h)',
-            zIndex: 99999,
+            zIndex: showLockscreenQuiz ? 10000002 : 99999,
             display: 'flex',
             flexDirection: 'column',
           }}
