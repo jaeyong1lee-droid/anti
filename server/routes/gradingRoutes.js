@@ -61,8 +61,9 @@ async function getFormattedTopicInstructions(topicId) {
 
 // POST /api/grade-subjective -> AI Subjective Grading
 router.post('/grade-subjective', async (req, res) => {
-  const { question, correctAnswer, userAnswer, rowHeader, colHeader, explanation, category, temperature } = req.body;
+  const { question, correctAnswer, userAnswer, rowHeader, colHeader, explanation, category, temperature, isReevaluation } = req.body;
   const progressId = req.body.progressId || req.query.progressId;
+  const isReeval = !!isReevaluation || (typeof temperature === 'number' && temperature > 0.75);
 
   const dynamicGradingStandards = gradingStandardsList && gradingStandardsList.length > 0
     ? gradingStandardsList.map(s => s.content).join('\n\n')
@@ -85,7 +86,7 @@ router.post('/grade-subjective', async (req, res) => {
       : prompt;
     const targetTemp = typeof temperature === 'number' ? temperature : 0.7;
     const prefModel = req.body.preferredModel || globalPreferredModel;
-    const finalTemp = (opts && opts.temperature === 0.1) ? 0.1 : targetTemp;
+    const finalTemp = (opts && typeof opts.temperature === 'number') ? opts.temperature : targetTemp;
     return callLLMWithFailover(sys, enrichedPrompt, img, scenario, { preferredModel: prefModel, ...opts, temperature: finalTemp, progressId });
   };
 
@@ -129,7 +130,8 @@ router.post('/grade-subjective', async (req, res) => {
           category,
           callLLMWithFailover: localCallLLM,
           gradingStandards: dynamicGradingStandards,
-          engineeringStandards: dynamicEngineeringStandards
+          engineeringStandards: dynamicEngineeringStandards,
+          isReevaluation: isReeval
         });
         if (progressId) {
           stopBackendProgressTimer(progressId, 90, '1단계: 제출 답안 AI 정밀 분석 완료', true, progressTimer);

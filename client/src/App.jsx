@@ -3081,6 +3081,7 @@ export default function App() {
             explanation: correctAnswer,
             category: '앞글자',
             temperature: isReevaluation ? 0.85 : 0.7,
+            isReevaluation: !!isReevaluation,
             preferredModel: preferredModelRef.current || preferredModel,
             progressId
           })
@@ -4437,6 +4438,7 @@ export default function App() {
             explanation: q.explanation || q.extracted_text || (showExam ? (examTopic?.explanation || examTopic?.extracted_text) : (selectedTopic?.explanation || selectedTopic?.extracted_text)) || q.answer || '',
             category: showExam ? examTopic?.category : selectedTopic?.category,
             temperature: isReevaluation ? 0.85 : 0.7,
+            isReevaluation: !!isReevaluation,
             preferredModel: preferredModelRef.current || preferredModel,
             progressId
           })
@@ -4569,6 +4571,7 @@ export default function App() {
           explanation: correctAnswer,
           category: '앞글자',
           temperature: isReevaluation ? 0.85 : 0.7,
+          isReevaluation: !!isReevaluation,
           preferredModel: preferredModelRef.current || preferredModel,
           progressId
         })
@@ -4727,6 +4730,7 @@ export default function App() {
           explanation: q.explanation || q.extracted_text || (showExam ? (examTopic?.explanation || examTopic?.extracted_text) : (selectedTopic?.explanation || selectedTopic?.extracted_text)) || q.answer || '',
           category: showExam ? examTopic?.category : selectedTopic?.category,
           temperature: isReevaluation ? 0.85 : 0.7,
+          isReevaluation: !!isReevaluation,
           preferredModel: preferredModelRef.current || preferredModel,
           progressId
         })
@@ -4955,6 +4959,7 @@ export default function App() {
           explanation: q.explanation || q.extracted_text || (showExam ? (examTopic?.explanation || examTopic?.extracted_text) : (selectedTopic?.explanation || selectedTopic?.extracted_text)) || q.answer || '',
           category: showExam ? examTopic?.category : selectedTopic?.category,
           temperature: isReevaluation ? 0.85 : 0.7,
+          isReevaluation: !!isReevaluation,
           preferredModel: preferredModelRef.current || preferredModel,
           progressId
         })

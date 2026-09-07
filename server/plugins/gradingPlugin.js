@@ -122,7 +122,82 @@ export function isNumericAnswer(str) {
   return numericRegex.test(cleanStr);
 }
 
-export async function gradeSubjective({ question, correctAnswer, userAnswer, rowHeader, colHeader, explanation, category, callLLMWithFailover, gradingStandards, engineeringStandards }) {
+export async function generateAuthoritativeModelAnswer({
+  question,
+  correctAnswer,
+  rowHeader,
+  colHeader,
+  explanation,
+  category,
+  callLLMWithFailover,
+  gradingStandards,
+  engineeringStandards,
+  isReevaluation = false
+}) {
+  const isCalcQuestion = ((colHeader && colHeader.includes('수치 계산 답안')) || category === '계산');
+
+  if (isCalcQuestion && correctAnswer && isNumericAnswer(correctAnswer) && !isReevaluation) {
+    return correctAnswer;
+  }
+
+  const modelAnswerTemperature = isCalcQuestion ? 0.1 : (isReevaluation ? 0.85 : 0.7);
+
+  const answerGenPrompt = `당신은 지반공학 및 토목공학 최고 권위의 기술사 시험 출제위원입니다.
+제시된 문제 맥락, 표의 행/열 구분, 원보고서 및 전공 교재 본문 해설, 그리고 기존 기준을 바탕으로, 해당 항목에 들어갈 가장 학술적이고 정확한 권위 있는 단독 표준 모범 답안을 도출하십시오.
+
+[문항 정보]
+- 문제/맥락: ${question || '주관식 빈칸 채우기'}
+${rowHeader ? `- 표 행 제목 (Row Header): ${rowHeader}` : ''}
+${colHeader ? `- 표/빈칸 구분 제목 (Column Header): ${colHeader}` : ''}
+${correctAnswer ? `- 기존 기준 요약: ${correctAnswer}` : ''}
+${explanation ? `- 원보고서 및 전공 본문 해설 (Source Context):\n${explanation.substring(0, 4000)}` : ''}
+
+${isReevaluation ? `🚨 **[원점 재작성 철칙 (Re-evaluation Directive)]**:
+- 기존 요약 문장에 안주하거나 그대로 답습하지 마십시오.
+- 문제의 행/열 제목과 원보고서 본문 해설의 공학적 메커니즘을 원점에서 심층 재분석하여, 한 차원 높은 완성형 표준 모범 답안을 새롭게 도출하십시오.` : ''}
+
+🚨 **[모범 답안 작성 철칙 - 극도로 중요!]**:
+1. **[범위 제한]**: 표 채우기(Table Quiz) 문항인 경우, 오직 해당 셀(행: ${rowHeader || '해당 행'}, 열: ${colHeader || '해당 열'}) 한 칸에 들어갈 '그 칸만의 고유하고 구체적인 정답 내용'으로만 작성하십시오. 전체 표의 해설이나 다른 행/열 항목까지 합친 전체 비교 리스트를 출력하는 것을 엄격히 금지합니다.
+2. **[공학적 메커니즘 및 표준 공식]**: 단순 단답 나열에 그치지 말고, 해당 개념의 공학적 메커니즘과 핵심 표준 공식(표준 LaTeX 수식 표기)을 충실히 포함하십시오.
+   - 포아송비 $\\nu$, 부피탄성계수 $K$, 탄성계수 $E$, 수평지반반력계수 $k_h$ 등 공인된 표준 학술 기호를 정확히 사용하십시오.
+   - 인라인 수식은 $...$, 최종 결론 공식은 $$...$$ 블록 수식으로 작성하십시오.
+3. **[포맷팅 규칙]**: 마크다운 헤더 기호('#', '##')나 수평선('---')을 단독 구분선 대용으로 사용하지 마십시오. 문단 구분은 순수한 줄바꿈(엔터)으로만 처리하십시오.
+4. **[순수 정답 텍스트 출력]**: "모범 답안:", "정답은 다음과 같습니다" 등의 불필요한 메타 서론이나 따옴표 없이, 학생에게 보여줄 순수 모범 답안 내용만을 직접 출력하십시오.
+`;
+
+  try {
+    const sysInst = `당신은 지반공학 및 토목공학 최고 권위의 기술사 시험 출제위원입니다. 주어진 공학적 사실과 원보고서에 근거하여 가장 완벽하고 신뢰할 수 있는 단독 표준 모범 답안 텍스트만을 출력하십시오.\n${LATEX_PROMPT_INSTRUCTIONS}`;
+    const rawRes = await callLLMWithFailover(sysInst, answerGenPrompt, null, 'question', { temperature: modelAnswerTemperature });
+    let cleanAnswer = (rawRes || '').trim();
+    cleanAnswer = cleanAnswer.replace(/^```[a-zA-Z]*\n?/, '').replace(/\n?```$/, '').trim();
+    if ((cleanAnswer.startsWith('"') && cleanAnswer.endsWith('"')) || (cleanAnswer.startsWith("'") && cleanAnswer.endsWith("'"))) {
+      cleanAnswer = cleanAnswer.substring(1, cleanAnswer.length - 1).trim();
+    }
+    if (cleanAnswer.startsWith('{')) {
+      try {
+        const parsed = parseLlmJson(cleanAnswer);
+        if (parsed && typeof parsed === 'object') {
+          const unwrapped = parsed.answer || parsed.suggestedModelAnswer || parsed.modelAnswer || parsed.response || Object.values(parsed)[0];
+          if (typeof unwrapped === 'string' && unwrapped.trim().length > 0) {
+            cleanAnswer = unwrapped.trim();
+          }
+        }
+      } catch (e) {
+        // keep cleanAnswer as is
+      }
+    }
+    cleanAnswer = cleanAnswer.replace(/^(모범\s*답안|정답|표준\s*답안)\s*[:：]\s*/i, '').trim();
+    if (cleanAnswer.length > 0) {
+      return cleanAnswer;
+    }
+  } catch (err) {
+    console.warn('[generateAuthoritativeModelAnswer] Phase 1 model answer derivation failed, falling back to correctAnswer:', err.message);
+  }
+
+  return correctAnswer || '공학적 기준에 부합하는 표준 답안';
+}
+
+export async function gradeSubjective({ question, correctAnswer, userAnswer, rowHeader, colHeader, explanation, category, callLLMWithFailover, gradingStandards, engineeringStandards, isReevaluation = false }) {
   if (!userAnswer) {
     return { isCorrect: false, score: 0, reason: '답안이 비어 있습니다.', suggestedModelAnswer: correctAnswer };
   }
@@ -131,35 +206,51 @@ export async function gradeSubjective({ question, correctAnswer, userAnswer, row
     return { isCorrect: false, score: 0, reason: '출제 및 해설 정보가 부족하여 AI 채점을 진행할 수 없습니다.' };
   }
 
-  if (correctAnswer && normalize(userAnswer) === normalize(correctAnswer)) {
-    return { isCorrect: true, score: 10, reason: '텍스트가 모범 답안과 정확히 일치합니다.' };
+  if (!isReevaluation && correctAnswer && normalize(userAnswer) === normalize(correctAnswer)) {
+    return { isCorrect: true, score: 10, reason: '텍스트가 모범 답안과 정확히 일치합니다.', suggestedModelAnswer: correctAnswer };
   }
 
-  let internalGradingKey = correctAnswer || '';
-  if (!correctAnswer) {
-    internalGradingKey = `[자가 진단 모드: 모범 답안이 유실되었거나 세부 항목에 명시되지 않았습니다. 문제(${question || '없음'})와 전체 해설(${explanation || '없음'})을 기반으로 해당 표/수치 항목(행 제목: ${rowHeader || '없음'}, 열 제목: ${colHeader || '없음'})에 들어갈 진짜 수치/공학 정답을 채점관 스스로 공학 공식을 적용하여 직접 계산/도출한 뒤 사용자의 답안(${userAnswer})을 평가하십시오.]`;
-  }
+  // 1. Generate Authoritative Model Answer (userAnswer is COMPLETELY ISOLATED from prompt)
+  const authoritativeModelAnswer = await generateAuthoritativeModelAnswer({
+    question,
+    correctAnswer,
+    rowHeader,
+    colHeader,
+    explanation,
+    category,
+    callLLMWithFailover,
+    gradingStandards,
+    engineeringStandards,
+    isReevaluation
+  });
 
+  // 2. Grade User Answer against the Authoritative Model Answer
   const userPrompt = `
 - 문제/맥락: ${question || '주관식 빈칸 채우기'}
 ${rowHeader ? `- 표 행 제목 (Row Header): ${rowHeader}` : ''}
 ${colHeader ? `- 표/빈칸 구분 제목 (Column Header): ${colHeader}` : ''}
 ${explanation ? `- 전체 해설 (Explanation): ${explanation}` : ''}
-- 채점 키포인트 (내부 채점 기준 참고 전용 - 이 텍스트를 suggestedModelAnswer에 그대로 복사하는 행위 절대 엄격히 금지): ${internalGradingKey}
-- 사용자의 답안: ${userAnswer}
+- 기준 모범 답안 (Canonical Model Answer): ${authoritativeModelAnswer}
+- 사용자의 답안 (Student Answer): ${userAnswer}
 
 🚨 **[경고 - 사용자 실제 답변 자구의 엄격한 식별 및 오인 금지 규칙 - 극도로 중요!]**:
 - 채점관은 사용자가 입력한 답안인 \`사용자의 답안: ${userAnswer}\`의 구체적인 자구를 머릿속에 확실히 각인하십시오.
-- 절대로 모범 답안(correctAnswer)이나 전체 해설(explanation)에 포함된 공학적 명칭(예: '지반조사', '기본가정 설정' 등)을 사용자가 적은 답변으로 혼동하거나 뒤바꿔 착각하지 마십시오.
+- 절대로 기준 모범 답안이나 전체 해설에 포함된 공학적 명칭(예: '지반조사', '기본가정 설정' 등)을 사용자가 적은 답변으로 혼동하거나 뒤바꿔 착각하지 마십시오.
 - 채점 피드백(reason)을 적을 때, "사용자가 적은 OOO은..." 이라고 서술할 경우, OOO 자리는 **반드시 사용자가 실제로 제출한 "${userAnswer}" 문자열과 글자 그대로 100% 동일한 글자**여야 합니다. 사용자가 입력하지 않은 다른 텍스트를 사용자가 썼다고 거짓 서술하는 행위는 채점 무효 사유이므로 절대 금지합니다.
 ${((colHeader && colHeader.includes('수치 계산 답안')) || category === '계산') ? `
 🚨 **[계산문제 1번 채점 특례 지침 - 극도로 중요!]**:
 - 본 문항은 수치 계산 문항입니다. 채점 시 **계산 과정(풀이식)의 유무는 채점 기준에서 완전히 배제**하십시오.
-- 오직 **최종 답안(숫자 수치)과 단위(해당되는 경우)**가 모범 답안의 최종 수치와 일치하는지만을 엄격히 평가하며, 숫자 답이 맞다면 만점(10점)을 부여하십시오.
+- 오직 **최종 답안(숫자 수치)과 단위(해당되는 경우)**가 모범 답안의 최종 수치와 일치(±5% 이내 공학적 오차 허용)하는지만을 엄격히 평가하며, 숫자 답이 맞다면 만점(10점)을 부여하십시오.
 - 사용자가 계산식 없이 숫자만 덩그러니 적었더라도 절대 감점하지 마십시오.` : ''}
 
-🚨 **[경고 - sycophancy 방지 및 기호 모방 절대 금지]**: suggestedModelAnswer 작성 시 절대 사용자의 답안(userAnswer)에 작성된 임의 수식 기호나 표기법(예: kh', KH, b 등)을 그대로 복사하거나 동조하여 출력하지 마십시오!
-반드시 지반공학/토목공학 전공 서적에 나오는 공인된 표준 학술 기호(예: $k_h$, $k_{h0}$, $k_{v0}$, $B$ 등)를 포함한 완전하고 정교한 표준 공식을 작성해야 합니다.
+🚨 **[채점 및 응답 포맷]**:
+- 사용자의 답안(userAnswer)이 기준 모범 답안(Canonical Model Answer)의 공학적 본질 및 메커니즘에 부합하는지 비교 평가하여 판정하십시오.
+- 응답은 마크다운 코드블록 없이 순수 JSON 객체로 반환하십시오:
+{
+  "isCorrect": true 또는 false,
+  "score": 0에서 10 사이의 정수,
+  "reason": "구체적인 채점 사유 한 줄 요약"
+}
 `;
 
   const isCalcQuestion = ((colHeader && colHeader.includes('수치 계산 답안')) || category === '계산');
@@ -202,12 +293,6 @@ ${((colHeader && colHeader.includes('수치 계산 답안')) || category === '�
 
     const reason = findKey(result, 'reason') || result.reason || 'AI 채점 완료';
 
-    const suggestedModelAnswer = findKey(result, 'suggestedmodelanswer') || 
-                                 findKey(result, 'suggestedanswer') || 
-                                 findKey(result, 'modelanswer') || 
-                                 result.suggestedModelAnswer || 
-                                 null;
-
     let finalIsCorrect = isCorrect;
     let finalScore = score;
     let finalReason = reason;
@@ -216,7 +301,7 @@ ${((colHeader && colHeader.includes('수치 계산 답안')) || category === '�
       isCorrect: finalIsCorrect,
       score: finalScore,
       reason: finalReason,
-      suggestedModelAnswer
+      suggestedModelAnswer: authoritativeModelAnswer
     };
   } catch (parseErr) {
     console.error('All JSON parsing attempts failed in AI grading. Raw text:', text, parseErr);
