@@ -755,24 +755,6 @@ const generateRandomQuizQuestion = (allFormulas) => {
 };
 
 
-const clientExtractVariables = (mathContent) => {
-  if (!mathContent) return '';
-  const cleanMath = mathContent
-    .replace(/\\[a-zA-Z]+/g, ' ')
-    .replace(/[0-9]+/g, ' ')
-    .replace(/[\{\}\[\]\(\)\+\-\*\/\=\_\^]/g, ' ');
-  
-  const words = cleanMath.split(/\s+/);
-  const uniqueVars = Array.from(new Set(words))
-    .map(w => w.trim())
-    .filter(w => /^[a-zA-Z]$|^[a-zA-Z]_[a-zA-Z0-9]+$/.test(w));
-  
-  if (uniqueVars.length === 0) return '';
-  return uniqueVars.map(v => `* $${v}$: (이 기호의 공학적 정의를 입력해 보세요)`).join('\n\n');
-};
-
-
-
 function parseMarkdownTable(questionText) {
   if (!questionText) return null;
   const cleanStr = typeof questionText === 'string' ? questionText : String(questionText);
@@ -14379,60 +14361,6 @@ ${item.intuitive || ''}
     }
   };
 
-  const filterStructureLinesClient = (mathContent, structure) => {
-    if (!structure) return '';
-    
-    const layoutCommands = [
-      '\\frac', '\\sqrt', '\\left', '\\right', '\\times', '\\cdot',
-      '\\partial', '\\sin', '\\cos', '\\tan', '\\log', '\\ln',
-      '\\text', '\\operatorname', '\\mathrm', '\\mathbf', '\\over', '\\choose',
-      '\\quad', '\\qquad', '\\;', '\\:', '\\,', '\\!', '\\begin', '\\end', '\\array'
-    ];
-    let cleanedFormula = mathContent;
-    for (const cmd of layoutCommands) {
-      cleanedFormula = cleanedFormula.split(cmd).join(' ');
-    }
-
-    const tokenRegex = /[a-zA-Z0-9_]+/g;
-    const formulaTokens = cleanedFormula.match(tokenRegex) || [];
-    
-    const normalize = (v) => {
-      if (!v) return '';
-      return v
-        .replace(/[\$\s\{\}\[\]\(\)]/g, '')
-        .replace(/\\/g, '')
-        .replace(/_/g, '');
-    };
-
-    const formulaTokenSet = new Set(formulaTokens.map(t => normalize(t)).filter(Boolean));
-
-    const lines = structure.split('\n');
-    const filteredLines = lines.filter(line => {
-      const trimmed = line.trim();
-      if (!trimmed) return true;
-      
-      if (/^\s*[\-\*\d\.]/.test(trimmed)) {
-        const colonIdx = trimmed.indexOf(':');
-        const dashIdx = trimmed.indexOf('-', 1);
-        const sepIdx = colonIdx !== -1 ? colonIdx : dashIdx;
-        
-        if (sepIdx !== -1) {
-          const symbolPortion = trimmed.substring(0, sepIdx);
-          const symbolTokens = symbolPortion.match(tokenRegex) || [];
-          const normalizedSymbols = symbolTokens.map(s => normalize(s)).filter(Boolean);
-          
-          if (normalizedSymbols.length === 0) return true;
-          
-          const hasMatch = normalizedSymbols.some(s => formulaTokenSet.has(s));
-          return hasMatch;
-        }
-      }
-      return true;
-    });
-
-    return filteredLines.join('\n').trim();
-  };
-
   // 필수공식 타이틀/지문 정화 및 콤팩트 규격화 함수
   const normalizeAndCompactifyFormulas = (formulas) => {
     if (!Array.isArray(formulas)) return [];
@@ -14473,28 +14401,8 @@ ${item.intuitive || ''}
 
       // 사족 전면 완전 삭제: 질문을 그냥 콤팩트한 공식 타이틀명 자체로 정돈!
       const newQuestion = newTitle;
-
-      // 3. [보상기초 보상도 공식] 기호 정의 자가 치유 (Self-Healing)
-      // 만약 타이틀이 보상도 공식이면 디폴트 기본 스펙으로 100% 무조건 강제 정화 및 자가 치유!
       let newFormula = f.formula || "";
       let newConcept = f.concept;
-      if (newTitle.includes("보상도") || newTitle.includes("보상기초")) {
-        newFormula = "$$C = \\frac{\\gamma D_f}{q}$$\n\n- $C$: 보상도 (Compensational ratio, $C = 1.0$이면 완전 보상)\n- $\\gamma$: 굴착하여 배출한 흙의 단위중량\n- $D_f$: 기초의 굴착 깊이\n- $q$: 상부 구조물 총 자중 및 하중 합산값";
-        newConcept = "구조물 자중을 굴착한 흙의 총 중량으로 완벽히 치환 상쇄하여 순 침하 하중을 Zero로 수렴시키는 평가 공식";
-      }
-
-      // 4. 모든 공식 대상 기호정의 자동 정화 (수식에 있는 기호만 표시하도록 강제 필터링!)
-      if (newFormula && newFormula.includes('$$')) {
-        const mathMatch = newFormula.match(/\$\$(.*?)\$\$/s);
-        if (mathMatch) {
-          const mathContent = mathMatch[1].trim();
-          const structureContent = newFormula.replace(/\$\$(.*?)\$\$/s, '').trim();
-          if (structureContent) {
-            const filteredStructure = filterStructureLinesClient(mathContent, structureContent);
-            newFormula = `$$${mathContent}$$\n\n${filteredStructure}`;
-          }
-        }
-      }
 
       return {
         ...f,
@@ -17094,11 +17002,10 @@ ${itemsStr}
         setFormulaQuestions(prev => {
           const updated = prev.map(f => {
             if (f.id === newFormula.id) {
-              const localStructure = clientExtractVariables(mathContent);
               return {
                 ...f,
-                formula: `$$${mathContent}$$` + (localStructure ? "\n\n" + localStructure : ""),
-                structure: localStructure
+                formula: `$$${mathContent}$$`,
+                structure: ''
               };
             }
             return f;
@@ -21528,13 +21435,7 @@ ${itemsStr}
                                     <div className="text-sm text-slate-200 leading-relaxed bg-slate-900/40 p-4 rounded-xl border border-slate-800/40 my-1 text-left w-full"><LatexRenderer text={q.formula} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
                                   </div>
                                 )}
-                                {subjIdx === 1 && q.structure && !q.formula?.includes('\n-') && !q.formula?.includes('\n*') && (
-                                  <div className="space-y-1 pt-2 border-t border-amber-500/10">
-                                    <span className="text-[10px] font-black text-rose-455">📋 기호 정의: </span>
-                                    <div className="text-sm text-slate-200 leading-relaxed bg-slate-900/40 p-4 rounded-xl border border-slate-800/40 my-1 text-left w-full"><LatexRenderer text={q.structure} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
-                                  </div>
-                                )}
-                                {!q.concept && !q.formula && (subjIdx !== 1 || !q.structure) && (
+                                {!q.concept && !q.formula && (
                                   <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.answer || '답안 없음'} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
                                 )}
                               </div>
@@ -28013,11 +27914,6 @@ ${itemsStr}
                                       <div className="text-sm text-slate-200 leading-relaxed text-left w-full py-1 px-0.5">
                                         <LatexRenderer text={q.formula} katexLoaded={katexLoaded} isMarkdown={true} placeholderIfHeavy={true} popupTitle={q.title || `Q${idx + 1}`} />
                                       </div>
-                                      {q.structure && !q.formula?.includes('\n-') && !q.formula?.includes('\n*') && (
-                                        <div className="pt-2 border-t border-slate-800/40 text-sm text-slate-300 leading-relaxed text-left w-full">
-                                          <LatexRenderer text={q.structure} katexLoaded={katexLoaded} isMarkdown={true} placeholderIfHeavy={true} popupTitle={(q.title || `Q${idx + 1}`) + " - 기호 정의"} />
-                                        </div>
-                                      )}
                                     </div>
                                   ) : !q.concept && (
                                     <div className="text-xs text-slate-500 italic select-none">아래 입력창에 LaTeX 수식을 입력하면 여기에 실시간으로 렌더링되어 보여집니다.</div>
