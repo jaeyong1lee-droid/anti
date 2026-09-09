@@ -723,8 +723,6 @@ export const LatexRenderer = React.memo(function LatexRenderer({
         if (!trimmed) return m;
         return renderKatexString(trimmed, { displayMode: false, throwOnError: false });
       });
-      // [Self-Healing] Clean up remnant $$ symbols appearing before plain text
-      htmlContent = htmlContent.replace(/(?:^|\n)\s*\$\$\s*(?=\n|[가-힣a-zA-Z])/g, '\n');
     }
 
     const isInlineMode = className.includes('inline') && !htmlContent.includes('<table') && !htmlContent.includes('<div');
