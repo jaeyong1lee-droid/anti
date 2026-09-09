@@ -10,20 +10,27 @@ import {
   ResponsiveContainer
 } from 'recharts';
 
-import { renderKatexString } from '../utils/renderingHelpers';
+import { renderKatexString, cleanAndSanitizeMathText } from '../utils/renderingHelpers';
+import { healLatexFormulas } from '../utils/latexUtils';
 
-// Replaces text wrapped in $ or $$ using the external KaTeX renderer
+// Renders mixed text with math using the main LaTeX rendering & sanitization pipeline
 export const renderMixedText = (text) => {
-  if (!text || typeof text !== 'string') return text;
+  if (!text || typeof text !== 'string') return text || '';
   
-  let result = text;
+  // 1. 단일 백슬래시 탈락 및 Tab 기호로 변형된 \text / S_{extmax} 등 자동 복원
+  let sanitized = text.replace(/([A-Za-z0-9_\^\-]+)\s*[\t ]+ext\b/g, '$1\\text');
+  sanitized = sanitized.replace(/\b([A-Za-z0-9_]+)_{ext([A-Za-z0-9]+)}/g, '$1_{\\text{$2}}');
+  sanitized = sanitized.replace(/\b([A-Za-z0-9_]+)ext([A-Za-z0-9]+)\b/g, '$1_{\\text{$2}}');
 
-  // Process block math
+  // 2. 메인 렌더링 파이프라인의 수식 정제 및 자동 치유 적용
+  sanitized = cleanAndSanitizeMathText(sanitized);
+  sanitized = healLatexFormulas(sanitized, false, null, true);
+
+  // 3. 인라인/블록 수식을 메인 KaTeX 엔진으로 렌더링
+  let result = sanitized;
   result = result.replace(/\$\$([\s\S]*?)\$\$/g, (m, math) => {
     return renderKatexString(math.trim(), { displayMode: true, throwOnError: false });
   });
-  
-  // Process inline math
   result = result.replace(/\$([^\$\n]+)\$/g, (m, math) => {
     return renderKatexString(math.trim(), { displayMode: false, throwOnError: false });
   });

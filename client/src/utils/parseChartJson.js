@@ -25,15 +25,36 @@ export function parseChartJson(rawJsonStr) {
   // 4. 숫자 뒤에 붙은 괄호 주석 제거 (예: 70.0 (Peak) -> 70.0, 50.0 (Critical State) -> 50.0)
   jsonStr = jsonStr.replace(/(:\s*-?\d+(?:\.\d+)?)\s*\([^)]*\)/g, '$1');
 
+  let result;
   try {
-    return JSON.parse(jsonStr);
+    result = JSON.parse(jsonStr);
   } catch (e) {
     try {
       // Forgiving fallback for AI-generated malformed JSON (missing commas, unquoted keys, trailing commas)
-      return (new Function('return ' + jsonStr))();
+      result = (new Function('return ' + jsonStr))();
     } catch (e2) {
       console.error("[parseChartJson] Failed to parse JSON even with Function fallback. Original string:", rawJsonStr);
       throw e2;
     }
   }
+
+  // 5. LaTeX 이스케이프 복원: JSON 파싱 과정에서 \t(Tab)로 흡수된 \text, \tau, \theta 등을 정규 LaTeX 표기로 복원
+  const normalizeLatexStr = (str) => {
+    if (!str || typeof str !== 'string') return str;
+    return str.replace(/\t(ext|au|heta|an|imes|ilde)\b/g, '\\t$1');
+  };
+
+  if (result && typeof result === 'object') {
+    if (result.description) result.description = normalizeLatexStr(result.description);
+    if (result.title) result.title = normalizeLatexStr(result.title);
+    if (result.xAxisLabel) result.xAxisLabel = normalizeLatexStr(result.xAxisLabel);
+    if (result.yAxisLabel) result.yAxisLabel = normalizeLatexStr(result.yAxisLabel);
+    if (Array.isArray(result.lines)) {
+      result.lines.forEach(l => {
+        if (l && l.name) l.name = normalizeLatexStr(l.name);
+      });
+    }
+  }
+
+  return result;
 }
