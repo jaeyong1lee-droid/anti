@@ -18465,8 +18465,8 @@ ${itemsStr}
               <span className="px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-300 border border-emerald-500/30" title="채점 온도는 0.7 (유연하고 공정한 판정)">
                 채점 0.7
               </span>
-              <span className="px-2 py-0.5 rounded-md bg-indigo-500/15 text-indigo-300 border border-indigo-500/30" title="AI 튜터 온도는 0.2 (정확하고 일관된 답변)">
-                튜터 0.2
+              <span className="px-2 py-0.5 rounded-md bg-indigo-500/15 text-indigo-300 border border-indigo-500/30" title="AI 튜터 온도는 0.7 (자연스럽고 풍부한 답변)">
+                튜터 0.7
               </span>
             </div>
           </div>

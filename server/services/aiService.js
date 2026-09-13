@@ -250,7 +250,7 @@ export async function callLLMWithFailover(systemInstruction, userPrompt, image =
         model: actualModelName,
         systemInstruction: finalSystemInstruction,
         generationConfig: {
-          temperature: options.temperature !== undefined ? options.temperature : 0.2,
+          temperature: options.temperature !== undefined ? options.temperature : (scenario === 'tutor' ? 0.7 : 0.2),
           ...((scenario === 'grading' || scenario === 'question') ? { responseMimeType: 'application/json' } : {})
         }
       }, { apiVersion: 'v1beta' });

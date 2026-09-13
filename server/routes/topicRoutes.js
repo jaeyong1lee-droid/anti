@@ -1228,7 +1228,7 @@ router.post('/table/regenerate', async (req, res) => {
 - 행 헤더(첫 번째 열의 목록): ${JSON.stringify(rowHeaders)}
 `;
 
-    const responseText = await callLLMWithFailover(systemInstruction, userPrompt, null, 'tutor', { temperature: 0.2 });
+    const responseText = await callLLMWithFailover(systemInstruction, userPrompt, null, 'tutor', { temperature: 0.7 });
     
     let cleanJsonText = responseText.trim();
     const startIdx = cleanJsonText.indexOf('{');
