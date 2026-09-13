@@ -2805,7 +2805,8 @@ export default function App() {
           {filteredInputIds.map((inputId) => {
             const value = getAnswerValue(activeAnswers, idx, inputId, isOverview);
             const gradingResult = getGradingResult(activeGradingResults, idx, inputId, isOverview);
-            const correctAnswer = gradingResult?.suggestedModelAnswer || q.answers?.[inputId] || '';
+            const canonicalAns = getCorrectAnswerForInput(q, inputId) || q.answers?.[inputId] || '';
+            const correctAnswer = canonicalAns || gradingResult?.suggestedModelAnswer || '';
             
             const inputIdx = inputIds.indexOf(inputId);
             const inputLetter = String.fromCharCode(65 + (inputIdx !== -1 ? inputIdx : 0));
@@ -21414,7 +21415,7 @@ ${itemsStr}
                                               const isPl = !trimmed || /^(?:\[?\s*[A-Za-z]\s*\]?|\(?\s*[A-Za-z]\s*\)?|\[?\s*INPUT_\d+\s*\]?)$/i.test(trimmed);
                                               const grading = tableGradingResults[`${idx}_INPUT`];
                                               let baseAns = ans;
-                                              if (grading?.suggestedModelAnswer) {
+                                              if (isPl && grading?.suggestedModelAnswer) {
                                                 baseAns = grading.suggestedModelAnswer;
                                               }
                                               baseAns = stripHtmlTagsFromRawData(baseAns);
@@ -25096,7 +25097,7 @@ ${itemsStr}
                                               const isPl = !trimmed || /^(?:\[?\s*[A-Za-z]\s*\]?|\(?\s*[A-Za-z]\s*\)?|\[?\s*INPUT_\d+\s*\]?)$/i.test(trimmed);
                                               const grading = examTableGradingResults[`${idx}_INPUT`];
                                               let baseAns = ans;
-                                              if (grading?.suggestedModelAnswer) {
+                                              if (isPl && grading?.suggestedModelAnswer) {
                                                 baseAns = grading.suggestedModelAnswer;
                                               }
                                               baseAns = stripHtmlTagsFromRawData(baseAns);

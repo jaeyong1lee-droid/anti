@@ -236,7 +236,7 @@ export const TableQuiz = React.memo(function TableQuiz({
                   <span className="text-slate-100 mr-1.5 font-bold">정답:</span>
                   <div className="text-slate-100 font-semibold mt-1">
                     <LatexRenderer 
-                      text={gradingResult?.suggestedModelAnswer || correctAnswer} 
+                      text={correctAnswer || gradingResult?.suggestedModelAnswer} 
                       katexLoaded={katexLoaded} 
                       isMarkdown={true} 
                       highlightBold={true}
