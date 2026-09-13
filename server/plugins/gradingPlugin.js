@@ -136,14 +136,11 @@ export async function generateAuthoritativeModelAnswer({
 }) {
   const isCalcQuestion = ((colHeader && colHeader.includes('수치 계산 답안')) || category === '계산');
 
-  if (isCalcQuestion && correctAnswer && isNumericAnswer(correctAnswer) && !isReevaluation) {
-    return correctAnswer;
-  }
-
-  // 🚨 [단일 빈칸/흐름도 정답 원천 보존]: 표나 흐름도의 단일 빈칸 채점 시 명시된 모범 답안(correctAnswer)이 이미 존재한다면,
-  // 불필요하게 AI를 다시 호출하여 (A)~(D) 다중 문자열을 환각/생성하는 낭비를 원천 삭제하고 원래 정답을 그대로 반환합니다.
-  const isSingleCellQuestion = !!(rowHeader || (colHeader && colHeader !== '주관식 단독 답변'));
-  if (isSingleCellQuestion && correctAnswer && typeof correctAnswer === 'string' && correctAnswer.trim().length > 0 && !isReevaluation) {
+  // 🚨 [모범 답안 원천 보존 및 2중 LLM 낭비 차단]: DB에 유효한 모범 답안(correctAnswer)이 이미 온전히 존재한다면,
+  // 불필요하게 AI를 다시 호출하여 단문 제목으로 왜곡하거나 채점 지연(2중 LLM 호출)을 유발하는 낭비를 원천 차단하고 원래 정답을 즉시 반환합니다.
+  const trimmedAns = (typeof correctAnswer === 'string') ? correctAnswer.trim().replace(/\$/g, '').trim() : '';
+  const isPlaceholder = !trimmedAns || /^(?:\[?\s*[A-Za-z]\s*\]?|\(?\s*[A-Za-z]\s*\)?|\[?\s*INPUT_\d+\s*\]?)$/i.test(trimmedAns);
+  if (!isPlaceholder) {
     return correctAnswer.trim();
   }
 
