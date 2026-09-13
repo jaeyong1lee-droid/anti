@@ -5,7 +5,13 @@ import { healLatexFormulas } from './latexUtils.js';
 
 export const getCorrectAnswerForInput = (q, inputId) => {
   if (!q) return '';
-  if (q.answers && q.answers[inputId]) return q.answers[inputId];
+  if (q.answers && q.answers[inputId]) {
+    const rawVal = q.answers[inputId];
+    if (typeof rawVal === 'string' && /^\[INPUT_.*\]$/i.test(rawVal.trim())) {
+      return '';
+    }
+    return rawVal;
+  }
 
   const resolveCalcItem = (items, targetId) => {
     if (!Array.isArray(items) || items.length === 0 || !targetId) return null;
