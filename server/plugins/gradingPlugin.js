@@ -177,7 +177,20 @@ ${isReevaluation ? `🚨 **[원점 재작성 철칙 (Re-evaluation Directive)]**
       try {
         const parsed = parseLlmJson(cleanAnswer);
         if (parsed && typeof parsed === 'object') {
-          const unwrapped = parsed.answer || parsed.suggestedModelAnswer || parsed.modelAnswer || parsed.response || Object.values(parsed)[0];
+          const candidates = [
+            parsed.answer,
+            parsed.suggestedModelAnswer,
+            parsed.modelAnswer,
+            parsed.response,
+            parsed.model_answer,
+            parsed.content,
+            parsed.text
+          ];
+          let unwrapped = candidates.find(c => typeof c === 'string' && c.trim().length > 0 && !/^(success|ok|true|false)$/i.test(c.trim()));
+          if (!unwrapped) {
+            const firstValidStr = Object.values(parsed).find(v => typeof v === 'string' && v.trim().length > 2 && !/^(success|ok|true|false)$/i.test(v.trim()));
+            if (firstValidStr) unwrapped = firstValidStr;
+          }
           if (typeof unwrapped === 'string' && unwrapped.trim().length > 0) {
             cleanAnswer = unwrapped.trim();
           }
@@ -187,7 +200,7 @@ ${isReevaluation ? `🚨 **[원점 재작성 철칙 (Re-evaluation Directive)]**
       }
     }
     cleanAnswer = cleanAnswer.replace(/^(모범\s*답안|정답|표준\s*답안)\s*[:：]\s*/i, '').trim();
-    if (cleanAnswer.length > 0) {
+    if (cleanAnswer.length > 0 && !/^(success|ok|true|false)$/i.test(cleanAnswer)) {
       return cleanAnswer;
     }
   } catch (err) {

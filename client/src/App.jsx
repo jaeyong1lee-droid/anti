@@ -1052,20 +1052,6 @@ function parseQuestionTable(q, topicTitle) {
 }
 
 
-const getActualLettersMap = (text) => {
-  const map = {};
-  if (typeof text !== 'string') return map;
-  const regex = /[\(\[]([A-F])[\)\]]/g;
-  let match;
-  let idx = 1;
-  while ((match = regex.exec(text)) !== null) {
-    map[`INPUT_${idx}`] = match[1].toUpperCase();
-    idx++;
-  }
-  return map;
-};
-
-
 const cleanAttachmentText = (str) => {
   if (typeof str !== 'string') return str;
   return str
@@ -1098,20 +1084,49 @@ const isFlowchartQuestion = (idx, q, isExam = false) => {
 
 const cleanFlowchartCorrectAnswer = (correctAnswer, letter) => {
   if (typeof correctAnswer !== 'string' || !correctAnswer) return correctAnswer;
-  const lines = correctAnswer.split('\n').map(l => l.trim()).filter(Boolean);
-  const markerRegex = new RegExp('\\(' + letter + '\\)', 'i');
-  const targetLine = lines.find(line => markerRegex.test(line));
-  if (targetLine) {
-    let clean = targetLine.replace(markerRegex, '');
-    clean = clean.replace(/^[#\s\-*\+\d\.\:\[\]]+/, '').trim();
-    clean = clean.replace(/[\[\]]+$/, '').trim();
-    return cleanAttachmentText(clean);
+
+  // 1) "success", "ok" 등 API 상태 찌꺼기 문자열 필터링
+  const lower = correctAnswer.trim().toLowerCase();
+  if (lower === 'success' || lower === 'ok' || lower === 'true' || lower === 'false') {
+    return '';
   }
+
+  // 2) (A) ..., (B) ..., [C] ... 형태의 다중 정답 문자열에서 해당 letter 구간만 정밀 추출
+  if (letter) {
+    const letterPattern = new RegExp('(?:\\(|\\[)\\s*' + letter + '\\s*(?:\\)|\\])\\s*([\\s\\S]*?)(?=(?:\\(|\\[)\\s*[A-Z]\\s*(?:\\)|\\])|$)', 'i');
+    const match = correctAnswer.match(letterPattern);
+    if (match && match[1]) {
+      let clean = match[1].trim();
+      clean = clean.replace(/^[:,\-\s]+/, '').replace(/[,;\-\s]+$/, '').trim();
+      clean = clean.replace(/^[#\s\-*\+\d\.\:\[\]]+/, '').trim();
+      clean = clean.replace(/[\[\]]+$/, '').trim();
+      if (clean.length > 0) {
+        return cleanAttachmentText(clean);
+      }
+    }
+  }
+
+  // 3) 줄바꿈 단위로 해당 letter가 있는 줄 찾기
+  const lines = correctAnswer.split('\n').map(l => l.trim()).filter(Boolean);
+  if (letter) {
+    const markerRegex = new RegExp('(?:\\(|\\[)\\s*' + letter + '\\s*(?:\\)|\\])', 'i');
+    const targetLine = lines.find(line => markerRegex.test(line));
+    if (targetLine) {
+      let clean = targetLine.replace(markerRegex, '');
+      clean = clean.replace(/^[:,\-\s]+/, '').replace(/[,;\-\s]+$/, '').trim();
+      clean = clean.replace(/^[#\s\-*\+\d\.\:\[\]]+/, '').trim();
+      clean = clean.replace(/[\[\]]+$/, '').trim();
+      return cleanAttachmentText(clean);
+    }
+  }
+
+  // 4) 단독 정답 줄인 경우 (영문 전문용어 보존: a-zA-Z 제거 금지)
   if (lines.length > 0) {
     let firstLine = lines[0];
-    let clean = firstLine.replace(/^[#\s\-*\+\d\.\:\[\]\(a-zA-Z\)]+/, '').trim();
+    let clean = firstLine.replace(/^[#\s\-*\+\d\.\:\[\]]+/, '').trim();
     return cleanAttachmentText(clean);
   }
+
   return cleanAttachmentText(correctAnswer);
 };
 
@@ -1500,7 +1515,6 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
       {/* 📝 각 동적 상자 칸 채점 피드백 누적 출력 영역 */}
       {(() => {
         const feedbackList = [];
-        const actualLettersMap = getActualLettersMap(flowchartText);
 
         if (tableGradingResults) {
           Object.keys(tableGradingResults).forEach(key => {
@@ -1508,16 +1522,20 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
             if (parts.length === 3 && parts[0] === String(questionIdx) && parts[1] === 'INPUT') {
               const letterIdx = parseInt(parts[2]) - 1;
               const inputId = `INPUT_${letterIdx + 1}`;
-              const letter = actualLettersMap[inputId] || String.fromCharCode(65 + letterIdx);
+              const letter = String.fromCharCode(65 + letterIdx);
               const result = tableGradingResults[key];
               if (result) {
-                const rawAns = result?.suggestedModelAnswer || result?.correctAnswer || getCorrectAnswerForInput(q, inputId);
-                const cleanedAns = cleanFlowchartCorrectAnswer(rawAns, letter);
+                const fallbackAns = getCorrectAnswerForInput(q, inputId);
+                const rawAns = result?.suggestedModelAnswer || result?.correctAnswer || fallbackAns;
+                let cleanedAns = cleanFlowchartCorrectAnswer(rawAns, letter);
+                if (!cleanedAns || /^(success|ok|true|false)$/i.test(cleanedAns)) {
+                  cleanedAns = cleanFlowchartCorrectAnswer(fallbackAns, letter) || fallbackAns;
+                }
                 feedbackList.push({
                   ...result,
                   letter,
                   userVal: tableAnswers?.[key] || '',
-                  correctAnswer: cleanedAns || result?.correctAnswer || result?.suggestedModelAnswer || ''
+                  correctAnswer: cleanedAns || fallbackAns || ''
                 });
               }
             }
