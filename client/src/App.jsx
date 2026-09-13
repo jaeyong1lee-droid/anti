@@ -1435,7 +1435,7 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
             {/* 오른쪽: 아주 쉬운 직관적 의미 영역 */}
             <div className="flex-1 flex items-center justify-start bg-amber-500/5 rounded-lg p-2.5 border border-amber-500/10 min-w-0">
               <span className="leading-relaxed select-text font-semibold break-words text-[13px] sm:text-[15px] text-amber-300/90">
-                {intuitiveText}
+                <LatexRenderer text={intuitiveText} katexLoaded={katexLoaded} forceInline={true} />
               </span>
             </div>
           </div>
