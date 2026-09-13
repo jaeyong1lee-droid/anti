@@ -1196,16 +1196,35 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
   });
 
 
-  const renderLineContent = (rawContent) => {
-    let content = rawContent;
-    const firstLetter = content.search(/\([A-F]\)/);
-    if (firstLetter !== -1) {
-      content = content.replace(/\([A-F]\)/g, (m, o) => o === firstLetter ? m : '');
-      content = content.replace(/입력\s*_*/g, '').replace(/[,\s]+\]$/, ' ]').replace(/^\[\s*[,\s]+/, '[ ').replace(/[,\s]+$/, '');
+  // Extract real valid letters strictly from question schema (tableData or answers)
+  const validLetters = (() => {
+    const letters = new Set();
+    if (q && q.tableData && Array.isArray(q.tableData.rows)) {
+      q.tableData.rows.forEach(r => {
+        const m = String(r[0] || '').match(/\(([A-F])\)/i);
+        if (m) letters.add(m[1].toUpperCase());
+      });
     }
+    if (letters.size === 0 && q && q.answers) {
+      Object.keys(q.answers).forEach(k => {
+        const m = k.match(/INPUT_(\d+)/i);
+        if (m) {
+          const num = parseInt(m[1], 10);
+          if (num >= 1 && num <= 26) {
+            letters.add(String.fromCharCode(64 + num));
+          }
+        }
+      });
+    }
+    return letters.size > 0 ? Array.from(letters) : ['A', 'B', 'C', 'D'];
+  })();
+
+  const renderLineContent = (rawContent) => {
+    const content = rawContent;
     const letterMatch = content.match(/\(([A-F])\)/);
-    if (letterMatch && tableAnswers && setTableAnswers) {
-      const letter = letterMatch[1];
+    const letter = letterMatch ? letterMatch[1].toUpperCase() : null;
+
+    if (letter && validLetters.includes(letter) && tableAnswers && setTableAnswers) {
       const letterIdx = letter.charCodeAt(0) - 65;
       const inputId = `INPUT_${letterIdx + 1}`;
       const inputKey = `${questionIdx}_${inputId}`;
@@ -1293,16 +1312,18 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
     const title = box.content[0] || '';
     const bodyLines = box.content.slice(1);
 
-    // 1) 이 상자 내부에 존재하는 모든 빈칸 수집
+    // 1) 이 상자 내부에 존재하는 모든 빈칸 수집 (실제 문제의 validLetters에 속한 알파벳만 수집)
     const boxInputs = [];
     box.content.forEach(line => {
       const match = line.match(/\(([A-F])\)/);
       if (match) {
-        const letter = match[1];
-        const letterIdx = letter.charCodeAt(0) - 65;
-        const inputId = `INPUT_${letterIdx + 1}`;
-        const inputKey = `${questionIdx}_${inputId}`;
-        boxInputs.push({ letter, inputId, inputKey });
+        const letter = match[1].toUpperCase();
+        if (validLetters.includes(letter)) {
+          const letterIdx = letter.charCodeAt(0) - 65;
+          const inputId = `INPUT_${letterIdx + 1}`;
+          const inputKey = `${questionIdx}_${inputId}`;
+          boxInputs.push({ letter, inputId, inputKey });
+        }
       }
     });
 
@@ -1645,13 +1666,31 @@ const renderCompleteFlowchart = (flowchartText, katexLoaded, q) => {
     }
   });
 
-  const renderLineContent = (rawContent) => {
-    let content = rawContent;
-    const firstLetter = content.search(/\([A-F]\)/);
-    if (firstLetter !== -1) {
-      content = content.replace(/\([A-F]\)/g, (m, o) => o === firstLetter ? m : '');
-      content = content.replace(/입력\s*_*/g, '').replace(/[,\s]+\]$/, ' ]').replace(/^\[\s*[,\s]+/, '[ ').replace(/[,\s]+$/, '');
+  // Extract real valid letters strictly from question schema (tableData or answers)
+  const validLetters = (() => {
+    const letters = new Set();
+    if (q && q.tableData && Array.isArray(q.tableData.rows)) {
+      q.tableData.rows.forEach(r => {
+        const m = String(r[0] || '').match(/\(([A-F])\)/i);
+        if (m) letters.add(m[1].toUpperCase());
+      });
     }
+    if (letters.size === 0 && q && q.answers) {
+      Object.keys(q.answers).forEach(k => {
+        const m = k.match(/INPUT_(\d+)/i);
+        if (m) {
+          const num = parseInt(m[1], 10);
+          if (num >= 1 && num <= 26) {
+            letters.add(String.fromCharCode(64 + num));
+          }
+        }
+      });
+    }
+    return letters.size > 0 ? Array.from(letters) : ['A', 'B', 'C', 'D'];
+  })();
+
+  const renderLineContent = (rawContent) => {
+    const content = rawContent;
     const targetRegex = /\(([A-F])\)/g;
     if (!targetRegex.test(content)) {
       return <LatexRenderer text={content} katexLoaded={katexLoaded} enableAddFormula={true} forceInline={true} />;
@@ -1663,17 +1702,19 @@ const renderCompleteFlowchart = (flowchartText, katexLoaded, q) => {
     let match;
 
     while ((match = targetRegex.exec(content)) !== null) {
-      const beforeText = content.substring(lastIndex, match.index);
-      if (beforeText) {
-        parts.push({ type: 'text', text: beforeText });
+      const letter = match[1].toUpperCase();
+      if (validLetters.includes(letter)) {
+        const beforeText = content.substring(lastIndex, match.index);
+        if (beforeText) {
+          parts.push({ type: 'text', text: beforeText });
+        }
+        const letterIdx = letter.charCodeAt(0) - 65;
+        const inputId = `INPUT_${letterIdx + 1}`;
+        const rawAnswerVal = q.answers?.[inputId] || '';
+        const answerVal = cleanAttachmentText(rawAnswerVal);
+        parts.push({ type: 'answer', letter, text: answerVal });
+        lastIndex = targetRegex.lastIndex;
       }
-      const letter = match[1];
-      const letterIdx = letter.charCodeAt(0) - 65;
-      const inputId = `INPUT_${letterIdx + 1}`;
-      const rawAnswerVal = q.answers?.[inputId] || '';
-      const answerVal = cleanAttachmentText(rawAnswerVal);
-      parts.push({ type: 'answer', letter, text: answerVal });
-      lastIndex = targetRegex.lastIndex;
     }
     const afterText = content.substring(lastIndex);
     if (afterText) {
