@@ -1097,7 +1097,7 @@ const cleanFlowchartCorrectAnswer = (correctAnswer, letter) => {
     const match = correctAnswer.match(letterPattern);
     if (match && match[1]) {
       let clean = match[1].trim();
-      clean = clean.replace(/^[:,\-\s]+/, '').replace(/[,;\-\s]+$/, '').trim();
+      clean = clean.replace(/^[:,\-\s]+/, '').replace(/(\\[nr]|[,;\-\s])+$/, '').trim();
       clean = clean.replace(/^[#\s\-*\+\d\.\:\[\]]+/, '').trim();
       clean = clean.replace(/[\[\]]+$/, '').trim();
       if (clean.length > 0) {
@@ -1113,7 +1113,7 @@ const cleanFlowchartCorrectAnswer = (correctAnswer, letter) => {
     const targetLine = lines.find(line => markerRegex.test(line));
     if (targetLine) {
       let clean = targetLine.replace(markerRegex, '');
-      clean = clean.replace(/^[:,\-\s]+/, '').replace(/[,;\-\s]+$/, '').trim();
+      clean = clean.replace(/^[:,\-\s]+/, '').replace(/(\\[nr]|[,;\-\s])+$/, '').trim();
       clean = clean.replace(/^[#\s\-*\+\d\.\:\[\]]+/, '').trim();
       clean = clean.replace(/[\[\]]+$/, '').trim();
       return cleanAttachmentText(clean);
@@ -1123,11 +1123,11 @@ const cleanFlowchartCorrectAnswer = (correctAnswer, letter) => {
   // 4) 단독 정답 줄인 경우 (영문 전문용어 보존: a-zA-Z 제거 금지)
   if (lines.length > 0) {
     let firstLine = lines[0];
-    let clean = firstLine.replace(/^[#\s\-*\+\d\.\:\[\]]+/, '').trim();
+    let clean = firstLine.replace(/^[#\s\-*\+\d\.\:\[\]]+/, '').replace(/(\\[nr]|[,;\-\s])+$/, '').trim();
     return cleanAttachmentText(clean);
   }
 
-  return cleanAttachmentText(correctAnswer);
+  return cleanAttachmentText(correctAnswer.replace(/(\\[nr]|[,;\-\s])+$/, '').trim());
 };
 
 
@@ -1525,17 +1525,16 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
               const letter = String.fromCharCode(65 + letterIdx);
               const result = tableGradingResults[key];
               if (result) {
-                const fallbackAns = getCorrectAnswerForInput(q, inputId);
-                const rawAns = result?.suggestedModelAnswer || result?.correctAnswer || fallbackAns;
-                let cleanedAns = cleanFlowchartCorrectAnswer(rawAns, letter);
+                const canonicalAns = getCorrectAnswerForInput(q, inputId);
+                let cleanedAns = canonicalAns || cleanFlowchartCorrectAnswer(result?.suggestedModelAnswer || result?.correctAnswer, letter) || '';
                 if (!cleanedAns || /^(success|ok|true|false)$/i.test(cleanedAns)) {
-                  cleanedAns = cleanFlowchartCorrectAnswer(fallbackAns, letter) || fallbackAns;
+                  cleanedAns = canonicalAns || '';
                 }
                 feedbackList.push({
                   ...result,
                   letter,
                   userVal: tableAnswers?.[key] || '',
-                  correctAnswer: cleanedAns || fallbackAns || ''
+                  correctAnswer: cleanedAns
                 });
               }
             }
