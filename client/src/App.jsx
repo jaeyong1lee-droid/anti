@@ -18054,7 +18054,7 @@ ${itemsStr}
               <div className="flex flex-col space-y-2">
                 <div className="flex justify-between items-center px-1">
                   <label className="text-xs font-bold text-slate-300">
-                    ✍️ 답안 작성
+                    ✍️ 답안 작성 {lockscreenGradingResult && <span className="text-indigo-400 font-semibold">(수정 가능)</span>}
                   </label>
                   <span className="text-[11px] text-slate-500 font-mono">
                     {lockscreenUserAnswer.length}자
@@ -18066,20 +18066,20 @@ ${itemsStr}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
                       e.preventDefault();
-                      if (lockscreenUserAnswer.trim() && !lockscreenGradingLoading && !lockscreenGradingResult) {
+                      if (lockscreenUserAnswer.trim() && !lockscreenGradingLoading) {
                         handleGradeLockscreenAnswer();
                       }
                     }
                   }}
-                  disabled={lockscreenGradingLoading || lockscreenGradingResult !== null}
-                  placeholder="핵심 정의, 공학 메커니즘, 관련 공식(LaTeX), 시공/설계 유의사항 등을 자유롭게 서술하십시오... (Enter: 제출, Shift+Enter: 줄바꿈)"
+                  disabled={lockscreenGradingLoading}
+                  placeholder="핵심 정의, 공학 메커니즘, 관련 공식(LaTeX), 시공/설계 유의사항 등을 자유롭게 서술하십시오... (Enter: 제출/재제출, Shift+Enter: 줄바꿈)"
                   rows={4}
                   className="w-full p-4 bg-slate-900/90 border border-slate-700/80 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-2xl text-[14px] text-slate-100 placeholder:text-slate-500 font-normal outline-none transition-all resize-none disabled:opacity-75 disabled:bg-slate-950/60"
                 />
               </div>
 
-              {/* Grading Button (when not yet graded) */}
-              {!lockscreenGradingResult && (
+              {/* Grading Button: Submit or Re-submit */}
+              {!lockscreenGradingResult ? (
                 <div className="flex flex-col space-y-2 pt-1">
                   <button
                     onClick={handleGradeLockscreenAnswer}
@@ -18145,6 +18145,26 @@ ${itemsStr}
                       </button>
                     </div>
                   </div>
+                </div>
+              ) : (
+                <div className="flex flex-col space-y-2 pt-1">
+                  <button
+                    onClick={handleGradeLockscreenAnswer}
+                    disabled={!lockscreenUserAnswer.trim() || lockscreenGradingLoading}
+                    className="w-full py-3.5 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 disabled:bg-slate-800 disabled:text-slate-500 text-white rounded-2xl text-[14px] font-black transition-all cursor-pointer shadow-lg shadow-indigo-950/50 flex items-center justify-center gap-2 active:scale-95 duration-150"
+                  >
+                    {lockscreenGradingLoading ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        <span>AI 채점관이 수정된 답안을 재채점하고 있습니다...</span>
+                      </>
+                    ) : (
+                      <>
+                        <RotateCcw size={16} />
+                        <span>답안 수정 후 재제출 (AI 재채점) 🔄</span>
+                      </>
+                    )}
+                  </button>
                 </div>
               )}
 
