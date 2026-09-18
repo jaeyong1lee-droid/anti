@@ -36,7 +36,8 @@ import {
   isOverviewReview,
   getAnswerValue,
   getGradingResult,
-  getCorrectAnswerForInput
+  getCorrectAnswerForInput,
+  getCanonicalModelAnswer
 } from './utils/renderingHelpers';
 import { 
   Brain, 
@@ -4979,7 +4980,7 @@ export default function App() {
     const activeSetGradingResults = showExam ? setExamTableGradingResults : setTableGradingResults;
 
     const userAnswer = activeAnswers[`${qIdx}_INPUT`] || '';
-    const correctAnswer = q.answer || q.concept || '';
+    const correctAnswer = getCanonicalModelAnswer(q);
     
     const progressId = 'grade_' + Math.random().toString(36).substring(2, 9);
     startProgressPolling(progressId);
@@ -12141,7 +12142,7 @@ ${item.intuitive || ''}
       if (q.answers && typeof q.answers === 'object') {
         contextPrompt += `■ 정답/모범 답안 (표 빈칸):\n${Object.entries(q.answers).map(([k, v]) => `- ${k.replace('INPUT_', '')}: ${v}`).join('\n')}\n`;
       } else {
-        contextPrompt += `■ 정답/모범 답안: ${q.answer || ''}\n`;
+        contextPrompt += `■ 정답/모범 답안: ${getCanonicalModelAnswer(q)}\n`;
       }
       if (q.explanation) contextPrompt += `■ 기존 해설: ${q.explanation}\n`;
       if (q.concept) contextPrompt += `■ 핵심 개념: ${q.concept}\n`;
@@ -21410,7 +21411,7 @@ ${itemsStr}
                                         <LatexRenderer 
                                           text={
                                             (() => {
-                                              const ans = q.answer || q.concept || '';
+                                              const ans = getCanonicalModelAnswer(q);
                                               const trimmed = ans.trim().replace(/\$/g, '').trim();
                                               const isPl = !trimmed || /^(?:\[?\s*[A-Za-z]\s*\]?|\(?\s*[A-Za-z]\s*\)?|\[?\s*INPUT_\d+\s*\]?)$/i.test(trimmed);
                                               const grading = tableGradingResults[`${idx}_INPUT`];
@@ -21429,7 +21430,7 @@ ${itemsStr}
                                         />
                                       </div>
                                     </div>
-                                    {q.concept && (
+                                    {q.concept && (!q.formula || q.concept !== getCanonicalModelAnswer(q)) && (
                                       <div className="mt-2 pt-2 border-t border-current/10 text-[14px] sm:text-[16px] select-text">
                                         <span className="font-extrabold text-indigo-400">💡 핵심 개념:</span>
                                         <div className="mt-1 text-[14px] sm:text-[16px] text-slate-200 leading-relaxed">
@@ -25092,7 +25093,7 @@ ${itemsStr}
                                         <LatexRenderer 
                                           text={
                                             (() => {
-                                              const ans = q.answer || q.concept || '';
+                                              const ans = getCanonicalModelAnswer(q);
                                               const trimmed = ans.trim().replace(/\$/g, '').trim();
                                               const isPl = !trimmed || /^(?:\[?\s*[A-Za-z]\s*\]?|\(?\s*[A-Za-z]\s*\)?|\[?\s*INPUT_\d+\s*\]?)$/i.test(trimmed);
                                               const grading = examTableGradingResults[`${idx}_INPUT`];
@@ -25111,7 +25112,7 @@ ${itemsStr}
                                         />
                                       </div>
                                     </div>
-                                    {q.concept && (
+                                    {q.concept && (!q.formula || q.concept !== getCanonicalModelAnswer(q)) && (
                                       <div className="mt-2 pt-2 border-t border-current/10 text-[14px] sm:text-[16px] select-text">
                                         <span className="font-extrabold text-indigo-400">💡 핵심 개념:</span>
                                         <div className="mt-1 text-[14px] sm:text-[16px] text-slate-200 leading-relaxed">

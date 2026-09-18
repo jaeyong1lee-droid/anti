@@ -140,7 +140,8 @@ export async function generateAuthoritativeModelAnswer({
   // 불필요하게 AI를 다시 호출하여 단문 제목으로 왜곡하거나 채점 지연(2중 LLM 호출)을 유발하는 낭비를 원천 차단하고 원래 정답을 즉시 반환합니다.
   const trimmedAns = (typeof correctAnswer === 'string') ? correctAnswer.trim().replace(/\$/g, '').trim() : '';
   const isPlaceholder = !trimmedAns || /^(?:\[?\s*[A-Za-z]\s*\]?|\(?\s*[A-Za-z]\s*\)?|\[?\s*INPUT_\d+\s*\]?)$/i.test(trimmedAns);
-  if (!isPlaceholder) {
+  const hasFormula = typeof correctAnswer === 'string' && (correctAnswer.includes('$') || correctAnswer.includes('\\'));
+  if (!isPlaceholder && (!isReevaluation || hasFormula)) {
     return correctAnswer.trim();
   }
 

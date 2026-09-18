@@ -98,6 +98,22 @@ export const getCorrectAnswerForInput = (q, inputId) => {
   return '';
 };
 
+export const getCanonicalModelAnswer = (q) => {
+  if (!q) return '';
+  if (typeof q.answer === 'string' && q.answer.trim().length > 0) {
+    return q.answer.trim();
+  }
+  if (q.formula && typeof q.formula === 'string' && q.formula.trim().length > 0) {
+    return q.structure && typeof q.structure === 'string' && q.structure.trim().length > 0
+      ? `${q.formula.trim()}\n\n${q.structure.trim()}`
+      : q.formula.trim();
+  }
+  if (typeof q.concept === 'string' && q.concept.trim().length > 0) {
+    return q.concept.trim();
+  }
+  return '';
+};
+
 
 export const getAnswerValue = (tableAnswers, questionIdx, inputId, isComparisonTable = false) => {
   if (!tableAnswers) return '';
