@@ -600,39 +600,10 @@ router.post('/topics/:id/ai-questions', async (req, res) => {
       process.env.ANTHROPIC_API_KEY ||
       process.env.OPENAI_API_KEY
     );
-    const forceLocal = req.query.local === 'true';
-
-    if (forceLocal || !hasAnyAiKey) {
-      const fallbackQuestions = [];
-      const finalQuestions = assembleFinalQuestions(fallbackQuestions, topic, carryOverQuestions, fileText);
-      
-      const cleanedFallback = finalQuestions.map(q => healQuizQuestionObject({
-        ...q,
-        topic_id: Number(topicId),
-        category: topic.category,
-        question: cleanQuizQuestion(q.question)
-      }));
-
-      const deduplicatedFallback = deduplicateQuestions(cleanedFallback);
-      const sId = req.query.sessionId || 'legacy_default';
-      const key = resolvedScheduleId
-        ? `review_questions_schedule_${resolvedScheduleId}_sess_${sId}`
-        : `review_questions_topic_${topicId}_sess_${sId}`;
-
-      try {
-        await dbQuery.run('DELETE FROM app_session WHERE key = ?', [key]);
-        await dbQuery.run(
-          'INSERT INTO app_session (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)',
-          [key, JSON.stringify(deduplicatedFallback)]
-        );
-      } catch (e) {}
-
+    if (!hasAnyAiKey) {
       if (progressTimer) clearInterval(progressTimer);
-      return res.json({ 
-        questions: deduplicatedFallback, 
-        isFallback: true,
-        mode: 'local',
-        scheduleId: resolvedScheduleId
+      return res.status(400).json({
+        error: 'AI API 키가 설정되지 않아 문제를 출제할 수 없습니다. 모든 문제는 100% 실시간 AI(API)를 통해 출제되어야 합니다 (로컬 폴백/백업 출제 비활성화).'
       });
     }
 
@@ -1239,49 +1210,11 @@ let parsedArray = null;
 
   } catch (err) {
     if (progressTimer) clearInterval(progressTimer);
-    console.error('Error generating AI questions, falling back to local questions:', err);
-    try {
-      const safeFileText = typeof topicText !== 'undefined' ? topicText : (topic ? (topic.extracted_text || '') : '');
-      const fallbackQuestions = [];
-      const finalQuestions = assembleFinalQuestions(fallbackQuestions, topic, carryOverQuestions, safeFileText);
-
-      const cleanedFallback = finalQuestions.map(q => healQuizQuestionObject({
-        ...q,
-        topic_id: Number(topicId),
-        category: topic.category,
-        question: cleanQuizQuestion(q.question)
-      }));
-
-      const deduplicatedFallback = deduplicateQuestions(cleanedFallback);
-      const sId = req.query.sessionId || 'legacy_default';
-      const key = resolvedScheduleId
-        ? `review_questions_schedule_${resolvedScheduleId}_sess_${sId}`
-        : `review_questions_topic_${topicId}_sess_${sId}`;
-
-      try {
-        await dbQuery.run('DELETE FROM app_session WHERE key = ?', [key]);
-        await dbQuery.run(
-          'INSERT INTO app_session (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)',
-          [key, JSON.stringify(deduplicatedFallback)]
-        );
-      } catch (e) {}
-
-      return res.json({
-        questions: deduplicatedFallback,
-        isFallback: true,
-        mode: 'local-fallback',
-        scheduleId: resolvedScheduleId
-      });
-    } catch (fallbackErr) {
-      console.error('Local fallback generation also failed:', fallbackErr);
-      return res.json({
-        questions: [],
-        isFallback: true,
-        mode: 'local-fallback',
-        scheduleId: resolvedScheduleId,
-        error: err.message
-      });
-    }
+    console.error('Error generating AI questions:', err);
+    return res.status(500).json({
+      error: `AI 문제 출제 실패: ${err.message || 'API 서버 응답 오류'}. (로컬 폴백/백업 출제 금지 - 100% 실시간 AI 출제 의무)`,
+      scheduleId: resolvedScheduleId
+    });
   }
 });
 
@@ -1394,59 +1327,7 @@ router.get('/mixed/random-flow-question', async (req, res) => {
       const randIdx = Math.floor(Math.random() * flowQuestions.length);
       return res.json({ success: true, question: flowQuestions[randIdx] });
     }
-    
-    // 6. Absolute Fallback: Hardcoded high-quality geotechnical flow question
-    const fallbackQuestion = {
-      id: "mixed_fallback_flow",
-      type: "주관식 (표채우기)",
-      subtype: "표채우기",
-      question: `[평사투영 암반사면안정 해석 절차]
-아래 흐름도 빈칸에 들어갈 올바른 분석 단계를 서술하시오.
-
-\`\`\`
-┌──────────────────────────────────────────────┐
-│           1단계: 불연속면 조사 및 분석         │
-└──────────────────────┬───────────────────────┘
-                       ▼
-┌──────────────────────────────────────────────┐
-│       2단계: 평사투영망 상에 불연속면 투영     │
-└──────────────────────┬───────────────────────┘
-                       ▼
-┌──────────────────────────────────────────────┐
-│           3단계: [INPUT_1] 영역 설정          │
-└──────────────────────┬───────────────────────┘
-                       ▼
-┌──────────────────────────────────────────────┐
-│       4단계: 사면의 경사면 평사투영 투영        │
-└──────────────────────┬───────────────────────┘
-                       ▼
-┌──────────────────────────────────────────────┐
-│       5단계: 위험 영역 내 교점 분석          │
-│          - [INPUT_2] 파괴: 교점이 위험선 내  │
-│          - 전도 파괴: 극점이 전도 영역 내    │
-└──────────────────────┬───────────────────────┘
-\`\`\``,
-      tableData: {
-        headers: ["구분", "내용"],
-        rows: [
-          ["3단계 분석 영역", "[INPUT_1]"],
-          ["5단계 위험 분석", "[INPUT_2]"]
-        ]
-      },
-      answers: {
-        INPUT_1: "위험",
-        INPUT_2: "평면"
-      },
-      explanation: `평사투영법을 이용한 암반 사면의 안정성 해석 절차:
-1단계: 불연속면(절리, 단층 등)의 방향성(주향/경사)을 현장 조사하여 통계 분석합니다.
-2단계: 조사된 불연속면의 극점(Pole) 또는 대원(Great Circle)을 평사투영망(Stereonet) 상에 투영합니다.
-3단계: 사면의 방향과 경사각을 기준으로 파괴가 발생할 수 있는 '위험 영역(Daylight Envelope 및 마찰각 원)'을 설정합니다.
-4단계: 사면의 실제 경사면을 투영하여 안정성 검토 기준선이 형성됩니다.
-5단계: 위험 영역 내에 불연속면의 교점 또는 극점이 위치하는지 분석하여 평면파괴(교점이 위험선 내에 위치) 또는 전도파괴(극점이 전도 영역에 위치) 가능성을 판정합니다.`,
-      mixedType: "overview"
-    };
-    
-    return res.json({ success: true, question: fallbackQuestion });
+    return res.status(404).json({ success: false, error: '저장된 흐름도 문제를 찾을 수 없습니다.' });
   } catch (err) {
     console.error('GET /api/mixed/random-flow-question error:', err);
     res.status(500).json({ error: err.message });
@@ -2565,38 +2446,7 @@ ${adjustments.map((a, idx) => `
     const uniquePastQuestions = Array.from(uniqueQuestionsMap.values());
     console.log(`[종합평가] 중복 제거 후 고유 기존 복습 문항 수: ${uniquePastQuestions.length}개`);
 
-    // Collect local fallback questions for all topics
-    let fallbackQuestionsPool = [];
-    try {
-      for (const t of topics) {
-        let topicText = '';
-        if (t.pdf_data) {
-          try {
-            const isHtml = t.pdf_name && (
-              t.pdf_name.toLowerCase().endsWith('.html') ||
-              t.pdf_name.toLowerCase().endsWith('.htm') ||
-              fileUtils.isBufferHtml(t.pdf_data)
-            );
-            if (isHtml) {
-              topicText = fileUtils.htmlToPlainText(fileUtils.decodeHtmlBuffer(t.pdf_data));
-            } else {
-              const parsed = await pdfParse(t.pdf_data);
-              topicText = parsed.text || '';
-            }
-          } catch (e) {
-            // Ignore parse errors
-          }
-          topicText = fileUtils.mergeVerticalText(topicText);
-        }
-        const fallbackQs = [];
-        if (Array.isArray(fallbackQs)) {
-          fallbackQuestionsPool.push(...fallbackQs);
-        }
-      }
-      console.log(`[종합평가] 로컬 생성 예비 문항 수: ${fallbackQuestionsPool.length}개`);
-    } catch (fallbackErr) {
-      console.warn('[종합평가] 로컬 예비 문항 생성 실패:', fallbackErr);
-    }
+
 
     // Generate new AI questions dynamically based on count (4 batches of 5 max)
     let aggregatedAiQuestions = [];
@@ -2723,15 +2573,7 @@ ${ENGINEERING_STANDARDS}
         }
       }
     }
-    // Priority 3: Local fallback questions
-    for (const q of fallbackQuestionsPool) {
-      if (q && q.question) {
-        const cleanedText = q.question.replace(/\s+/g, ' ').trim();
-        if (!uniquePoolMap.has(cleanedText)) {
-          uniquePoolMap.set(cleanedText, q);
-        }
-      }
-    }
+
 
     const finalQuestionPool = Array.from(uniquePoolMap.values());
     console.log(`[종합평가 풀 구축 완료] 전체 후보 풀 문항 수: ${finalQuestionPool.length}개`);

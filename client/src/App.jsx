@@ -4110,9 +4110,6 @@ export default function App() {
               if (data.isCached) {
                 timeline.push(`[캐시 복원] 이전 세션의 문제 세트(${data.questions ? data.questions.length : 0}문항)와 사용자 상태를 즉시 복원했습니다. (API 호출 건너뜀)`);
                 timeline.push(`[완료] 데이터 로드가 성공적으로 완료되었습니다.`);
-              } else if (data.isFallback) {
-                timeline.push(`[로컬 대체] 로컬 백업 문항 데이터베이스에서 예상 문제를 대체 출제했습니다. (API 사용 불가)`);
-                timeline.push(`[완료] 로컬 출제 처리가 정상 종료되었습니다.`);
               } else {
                 // Real AI call
                 const count = data.questions ? data.questions.length : (data.question ? 1 : 0);
@@ -20419,24 +20416,7 @@ ${itemsStr}
                 </div>
               ) : (
                 <div className="w-full space-y-5 pb-32">
-                  {isFallback && (
-                    <div className="p-5 rounded-2xl bg-amber-950/40 border border-amber-500/20 text-amber-200 flex items-start gap-3 animate-fade-in mb-6 shadow-xl">
-                      <div className="p-2.5 bg-amber-900/50 text-amber-400 rounded-xl">
-                        <Info size={16} />
-                      </div>
-                      <div>
-                        <h4 className="text-xs font-black uppercase tracking-wider text-amber-400 mb-0.5">로컬 오프라인 엔진 출제 완료</h4>
-                        <p className="text-xs text-amber-300/90 leading-relaxed">
-                          구글 Gemini API의 일일 사용 한도 초과(또는 일시적인 네트워크 제한)로 인해, 시스템에 내장된 <b>고품질 오프라인 백업 출제 엔진</b>이 소스 문서를 기반으로 기출문제를 대체 생성하였습니다. 중단 없이 복습을 계속 진행하실 수 있습니다!
-                        </p>
-                        {aiError && (
-                          <p className="text-[10px] text-amber-500/50 mt-1.5 font-mono">
-                            * 상세 오류: {aiError}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  )}
+
 
                   {(selectedTopic?.isReadOnly && aiQuestions.length === 0) ? (
                     <div className="p-8 rounded-2xl bg-slate-900/60 border border-slate-800/80 text-center space-y-5 max-w-lg mx-auto shadow-2xl backdrop-blur-md animate-fade-in my-10 w-full select-none">

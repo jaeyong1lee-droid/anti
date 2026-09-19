@@ -774,24 +774,9 @@ ${otherQs.map((q, i) => `기존 문제 ${i + 1}: ${q.question || '없음'}`).joi
       }
 
       if (!hasAnyAiKey) {
-        const fallbackList = [];
-        const candidates = fallbackList.filter(q => {
-          if (targetType === '주관식 (개요)') return q.type?.includes('개요');
-          if (targetType === '주관식 (공식)') return q.type?.includes('공식');
-          if (targetType === '주관식 (표채우기)') return q.type?.includes('표채우기') || q.subtype?.includes('표채우기');
-          if (targetType === '주관식 (단답형)') return q.type?.includes('단답') || q.subtype?.includes('단답');
-          return q.type?.includes('객관식');
-        });
-        let selectedQ = candidates.find(c => c.question !== currentQuestion?.question);
-        if (!selectedQ) selectedQ = candidates[Math.floor(Math.random() * candidates.length)] || fallbackList[0];
-
         if (progressTimer) clearInterval(progressTimer);
-        return res.json({
-          question: healQuizQuestionObject({
-            ...selectedQ,
-            question: cleanQuizQuestion(selectedQ.question)
-          }),
-          isFallback: true
+        return res.status(400).json({
+          error: 'AI API 키가 설정되지 않아 문제를 출제할 수 없습니다. 모든 문제는 100% 실시간 AI(API)를 통해 출제되어야 합니다.'
         });
       }
 
