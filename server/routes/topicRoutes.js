@@ -1032,19 +1032,7 @@ router.get('/dashboard/weak-points', async (req, res) => {
 });
 
 // Helper database schema check functions
-async function ensureSessionTable() {
-  try {
-    await dbQuery.run(`
-      CREATE TABLE IF NOT EXISTS app_session (
-        key TEXT PRIMARY KEY,
-        value TEXT,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-  } catch (e) {
-    console.warn('ensureSessionTable warning:', e.message);
-  }
-}
+
 
 async function ensureAnswersheetReportsTable() {
   try {

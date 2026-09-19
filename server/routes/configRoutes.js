@@ -439,19 +439,7 @@ router.post('/lockscreen-standards', async (req, res) => {
   }
 });
 
-async function ensureSessionTable() {
-  try {
-    await dbQuery.run(`
-      CREATE TABLE IF NOT EXISTS app_session (
-        key TEXT PRIMARY KEY,
-        value TEXT,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-  } catch (e) {
-    console.warn('ensureSessionTable warning:', e.message);
-  }
-}
+
 
 const LATEX_PROMPT_INSTRUCTIONS = `
 [수학 공식/특수문자 표기 규칙 - 극도로 중요]:
@@ -464,7 +452,6 @@ const LATEX_PROMPT_INSTRUCTIONS = `
 router.get('/session/formula', async (req, res) => {
   try {
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-    await ensureSessionTable();
     const rows = await dbQuery.all('SELECT value FROM app_session WHERE key = ?', ['formula_questions']);
     if (rows.length > 0 && rows[0].value) {
       const parsed = JSON.parse(rows[0].value);
@@ -484,7 +471,6 @@ router.get('/session/formula', async (req, res) => {
 // POST /api/session/formula
 router.post('/session/formula', async (req, res) => {
   try {
-    await ensureSessionTable();
     const { formulaQuestions } = req.body;
     const healedQuestions = Array.isArray(formulaQuestions)
       ? formulaQuestions.map(healFormulaQuestionObject)
@@ -502,7 +488,6 @@ router.post('/session/formula', async (req, res) => {
 router.get('/session/tables', async (req, res) => {
   try {
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-    await ensureSessionTable();
     const rows = await dbQuery.all('SELECT value FROM app_session WHERE key = ?', ['formula_tables']);
     if (rows.length > 0 && rows[0].value) {
       const parsed = JSON.parse(rows[0].value);
@@ -519,7 +504,6 @@ router.get('/session/tables', async (req, res) => {
 // POST /api/session/tables
 router.post('/session/tables', async (req, res) => {
   try {
-    await ensureSessionTable();
     const { formulaTables } = req.body;
     const value = JSON.stringify({ formulaTables });
     await saveSessionValue('formula_tables', value);
@@ -534,7 +518,6 @@ router.post('/session/tables', async (req, res) => {
 router.get('/session/acronyms', async (req, res) => {
   try {
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-    await ensureSessionTable();
     const rows = await dbQuery.all('SELECT value FROM app_session WHERE key = ?', ['formula_acronyms']);
     if (rows.length > 0 && rows[0].value) {
       const parsed = JSON.parse(rows[0].value);
@@ -551,7 +534,6 @@ router.get('/session/acronyms', async (req, res) => {
 // POST /api/session/acronyms
 router.post('/session/acronyms', async (req, res) => {
   try {
-    await ensureSessionTable();
     const { formulaAcronyms } = req.body;
     const value = JSON.stringify({ formulaAcronyms });
     await saveSessionValue('formula_acronyms', value);
@@ -566,7 +548,6 @@ router.post('/session/acronyms', async (req, res) => {
 router.get('/session/overviews', async (req, res) => {
   try {
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-    await ensureSessionTable();
     const rows = await dbQuery.all('SELECT value FROM app_session WHERE key = ?', ['formula_overviews']);
     if (rows.length > 0 && rows[0].value) {
       const parsed = JSON.parse(rows[0].value);
@@ -583,7 +564,6 @@ router.get('/session/overviews', async (req, res) => {
 // POST /api/session/overviews
 router.post('/session/overviews', async (req, res) => {
   try {
-    await ensureSessionTable();
     const { formulaOverviews } = req.body;
     const value = JSON.stringify({ formulaOverviews });
     await saveSessionValue('formula_overviews', value);
@@ -610,7 +590,6 @@ const getFormulaBlobFileName = (item, idx, extension) => {
 router.get('/session/images', async (req, res) => {
   try {
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-    await ensureSessionTable();
     const rows = await dbQuery.all('SELECT value FROM app_session WHERE key = ?', ['formula_images']);
     if (rows.length > 0 && rows[0].value) {
       const parsed = JSON.parse(rows[0].value);
@@ -796,7 +775,6 @@ router.get('/session/images/proxy', async (req, res) => {
 // POST /api/session/images
 router.post('/session/images', async (req, res) => {
   try {
-    await ensureSessionTable();
     const { formulaImages } = req.body;
 
     const processedImages = await Promise.all((formulaImages || []).map(async (item) => {
@@ -854,7 +832,6 @@ router.post('/session/images', async (req, res) => {
 router.get('/session/mixed-completed', async (req, res) => {
   try {
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-    await ensureSessionTable();
     const rows = await dbQuery.all('SELECT value FROM app_session WHERE key = ?', ['mixed_completed_dates']);
     if (rows.length > 0 && rows[0].value) {
       const parsed = JSON.parse(rows[0].value);
@@ -872,7 +849,6 @@ router.get('/session/mixed-completed', async (req, res) => {
 // POST /api/session/mixed-completed
 router.post('/session/mixed-completed', async (req, res) => {
   try {
-    await ensureSessionTable();
     const { completedDates } = req.body;
     const value = JSON.stringify({ completedDates });
     await saveSessionValue('mixed_completed_dates', value);
@@ -886,7 +862,6 @@ router.post('/session/mixed-completed', async (req, res) => {
 // GET /api/options/:key
 router.get('/options/:key', async (req, res) => {
   try {
-    await ensureSessionTable();
     const key = `option_${req.params.key}`;
     const row = await dbQuery.get('SELECT value FROM app_session WHERE key = ?', [key]);
     res.json({ value: row ? row.value : null });
@@ -899,7 +874,6 @@ router.get('/options/:key', async (req, res) => {
 // POST /api/options/:key
 router.post('/options/:key', async (req, res) => {
   try {
-    await ensureSessionTable();
     const key = `option_${req.params.key}`;
     const { value } = req.body;
     await dbQuery.run(
@@ -1350,18 +1324,10 @@ ${analysis}
 router.get('/session/exam', async (req, res) => {
   try {
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-    await ensureSessionTable();
     const rows = await dbQuery.all('SELECT value FROM app_session WHERE key = ?', ['exam_session']);
     if (rows.length > 0 && rows[0].value) {
       const data = JSON.parse(rows[0].value);
-      if (data) {
-        if (Array.isArray(data.questions)) {
-          data.questions = data.questions.map(q => healQuizQuestionObject(q));
-        }
-        if (Array.isArray(data.examQuestions)) {
-          data.examQuestions = data.examQuestions.map(q => healQuizQuestionObject(q));
-        }
-      }
+      
       res.json({ data });
     } else {
       res.json({ data: null });
@@ -1375,7 +1341,6 @@ router.get('/session/exam', async (req, res) => {
 // POST /api/session/exam
 router.post('/session/exam', async (req, res) => {
   try {
-    await ensureSessionTable();
     const { examQuestions, examRevealed, examAnswers, examTopic, tableAnswers, tableGradingResults, tutorAnswers, tutorInputText, chatHistory, savedExamScroll } = req.body;
     const value = JSON.stringify({
       examQuestions,

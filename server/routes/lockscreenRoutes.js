@@ -15,25 +15,12 @@ function getCallLLM(req) {
     callLLMWithFailover(sys, prompt, img, scenario, { ...opts, preferredModel, progressId });
 }
 
-async function ensureSessionTable() {
-  try {
-    await dbQuery.run(`
-      CREATE TABLE IF NOT EXISTS app_session (
-        key TEXT PRIMARY KEY,
-        value TEXT,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-  } catch (e) {
-    console.warn('ensureSessionTable warning:', e.message);
-  }
-}
+
 
 // GET /api/lockscreen/random -> Retrieve a random 1st-period exam question (excluding questions served within 7 days)
 router.get('/random', async (req, res) => {
   try {
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-    await ensureSessionTable();
 
     const question = await getRandomLockscreenExamQuestion();
     return res.json({ success: true, question });
@@ -47,7 +34,6 @@ router.get('/random', async (req, res) => {
 router.get('/sync', async (req, res) => {
   try {
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-    await ensureSessionTable();
 
     const question = await getRandomLockscreenExamQuestion();
     return res.json({ success: true, question, questions: [question] });
@@ -176,7 +162,6 @@ router.post('/grade', async (req, res) => {
 router.post('/solve', async (req, res) => {
   try {
     const { id } = req.body;
-    await ensureSessionTable();
 
     if (id) {
       let history = {};

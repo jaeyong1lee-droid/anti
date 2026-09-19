@@ -369,19 +369,7 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
     finalShorts4[3]             // 13번 주관식 (index 12) -> Short Subjective 4 (Field/Countermeasure)
   ].filter(Boolean);
 }
-async function ensureSessionTable() {
-  try {
-    await dbQuery.run(`
-      CREATE TABLE IF NOT EXISTS app_session (
-        key TEXT PRIMARY KEY,
-        value TEXT,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-  } catch (e) {
-    console.warn('ensureSessionTable warning:', e.message);
-  }
-}
+
 
 async function ensureAnswersheetReportsTable() {
   try {
@@ -435,7 +423,6 @@ router.post('/topics/:id/ai-questions', async (req, res) => {
   let cachedResponseData = null;
 
   try {
-    await ensureSessionTable();
     const scheduleId = req.query.scheduleId;
     const isPractice = req.query.isPractice === 'true';
     resolvedScheduleId = scheduleId;
@@ -524,7 +511,7 @@ router.post('/topics/:id/ai-questions', async (req, res) => {
 
       if (cachedQuestions && cachedQuestions.length > 0) {
         if (!(topic.category === '계산' && cachedQuestions.length !== 4)) {
-          const healed = cachedQuestions.map(q => healQuizQuestionObject({ ...q, category: topic.category }));
+          const healed = cachedQuestions.map(q => ({ ...q, category: topic.category }));
           isCacheHit = true;
           cachedResponseData = {
             questions: healed,
@@ -606,27 +593,6 @@ router.post('/topics/:id/ai-questions', async (req, res) => {
     const cleanKeywords = (topic.keywords || '').toLowerCase();
     const searchTarget = `${cleanTitle} ${cleanKeywords}`;
 
-    const isCoreTopic = 
-      searchTarget.includes('활성도') || searchTarget.includes('activity') ||
-      searchTarget.includes('이중층') || searchTarget.includes('double layer') || searchTarget.includes('ddl') ||
-      searchTarget.includes('압밀') || searchTarget.includes('consolidation') || searchTarget.includes('침하') || searchTarget.includes('settlement') ||
-      searchTarget.includes('샌드매트') || searchTarget.includes('sand mat') ||
-      searchTarget.includes('평사투영') || searchTarget.includes('stereographic') ||
-      searchTarget.includes('인발') || searchTarget.includes('pullout') ||
-      searchTarget.includes('q 분류') || searchTarget.includes('q-system') ||
-      searchTarget.includes('싱글쉘') || searchTarget.includes('single shell') ||
-      searchTarget.includes('소일내일') || searchTarget.includes('soil nail') ||
-      searchTarget.includes('프란틀') || searchTarget.includes('prandtl') ||
-      searchTarget.includes('여굴') || searchTarget.includes('overbreak') ||
-      searchTarget.includes('사면안정') || searchTarget.includes('slope stability') ||
-      searchTarget.includes('토압') || searchTarget.includes('earth pressure') ||
-      searchTarget.includes('전단강도') || searchTarget.includes('shear strength') ||
-      searchTarget.includes('투수') || searchTarget.includes('침투') ||
-      searchTarget.includes('흙막이') || searchTarget.includes('탄소성') ||
-      searchTarget.includes('액상화') || searchTarget.includes('liquefaction') ||
-      searchTarget.includes('보상기초') || searchTarget.includes('compensated foundation') ||
-      searchTarget.includes('수압파쇄') || searchTarget.includes('hydraulic fracturing');
-
     const hasAnyAiKey = !!(
       process.env.GEMINI_API_KEY ||
       process.env.GEMINI_API_KEY_SECONDARY ||
@@ -635,42 +601,6 @@ router.post('/topics/:id/ai-questions', async (req, res) => {
       process.env.OPENAI_API_KEY
     );
     const forceLocal = req.query.local === 'true';
-
-    if (isCoreTopic && (forceLocal || !hasAnyAiKey)) {
-      console.log(`[AI Route Interceptor - Local Fallback] Precision routed core topic "${topic.title}"`);
-      const coreQuestions = [];
-      const finalQuestions = assembleFinalQuestions(coreQuestions, topic, carryOverQuestions, fileText);
-      
-      const cleanedCore = finalQuestions.map(q => healQuizQuestionObject({
-        ...q,
-        topic_id: Number(topicId),
-        category: topic.category,
-        question: cleanQuizQuestion(q.question)
-      }));
-
-      const deduplicatedCore = deduplicateQuestions(cleanedCore);
-      const sId = req.query.sessionId || 'legacy_default';
-      const key = resolvedScheduleId
-        ? `review_questions_schedule_${resolvedScheduleId}_sess_${sId}`
-        : `review_questions_topic_${topicId}_sess_${sId}`;
-
-      try {
-        await dbQuery.run('DELETE FROM app_session WHERE key = ?', [key]);
-        await dbQuery.run(
-          'INSERT INTO app_session (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)',
-          [key, JSON.stringify(deduplicatedCore)]
-        );
-      } catch (e) {}
-
-      if (progressTimer) clearInterval(progressTimer);
-      return res.json({
-        questions: deduplicatedCore,
-        isFallback: true,
-        mode: 'ai-optimized',
-        info: 'Handcrafted premium routing bypass',
-        scheduleId: resolvedScheduleId
-      });
-    }
 
     if (forceLocal || !hasAnyAiKey) {
       const fallbackQuestions = [];
@@ -707,15 +637,6 @@ router.post('/topics/:id/ai-questions', async (req, res) => {
     }
 
     let specialInstructions = '';
-    if (cleanTitle.includes('확대기초') && cleanTitle.includes('거동') && cleanTitle.includes('파괴')) {
-      specialInstructions = `
-[특별 출제 지침 - 매우 중요]:
-이 토픽은 '프란틀 지지력 공식'이나 '테르자기 극한지지력 공식' 자체의 상세한 유도나 공식 정의를 단독으로 묻는 토픽이 아닙니다.
-1. 기초 아래 지반의 3대 파괴 형태: 전반전단파괴, 국부전단파괴, 관입전단파괴의 구체적 발생 조건 및 기전.
-2. Vesic(1973)이 제안한 예측 도표의 특징.
-3. 접지압 분포 패턴 및 침하 형상 비교.
-`;
-    }
 
     let weaknessPrompt = '';
     if (carryOverQuestions.length > 0) {
@@ -1367,7 +1288,6 @@ let parsedArray = null;
 // GET /api/mixed/random-flow-question -> Get a random flowchart question from active review topics
 router.get('/mixed/random-flow-question', async (req, res) => {
   try {
-    await ensureSessionTable();
     
     // 1. Get active review schedules (status = 'pending')
     const pendingSchedules = await dbQuery.all(
@@ -1537,7 +1457,6 @@ router.get('/mixed/random-flow-question', async (req, res) => {
 router.get('/session/review', async (req, res) => {
   try {
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-    await ensureSessionTable();
     const rawTopicId = req.query.topicId;
     let targetTopicId = String(rawTopicId || '');
     if (targetTopicId.startsWith('mixed_') && targetTopicId.includes('_sess_')) {
@@ -1583,7 +1502,7 @@ router.get('/session/review', async (req, res) => {
           if (qRow && qRow.value) data.questions = JSON.parse(qRow.value);
         }
         if (Array.isArray(data.questions)) {
-          data.questions = data.questions.map(q => healQuizQuestionObject(q));
+          
         }
         return res.json({ success: true, data });
       }
@@ -1650,7 +1569,7 @@ router.get('/session/review', async (req, res) => {
         // [삭제 완료]: 과거 AI 환각 방어용 땜질 코드(isQuestionMismatched 및 강제 삭제 로직)를 완전히 제거하여 과잉 방어(False Positive) 버그 원천 차단.
         
         if (Array.isArray(data.questions)) {
-          data.questions = data.questions.map(q => sanitizeMultipleChoiceAnswer(healQuizQuestionObject(q)));
+          data.questions = data.questions.map(q => sanitizeMultipleChoiceAnswer(q));
         }
       }
       res.json({ success: true, data });
@@ -1666,7 +1585,6 @@ router.get('/session/review', async (req, res) => {
 // POST /api/session/review -> Save review session state
 router.post('/session/review', async (req, res) => {
   try {
-    await ensureSessionTable();
     const { topicId, sessionId, questions, selectedAnswers, revealedQuestions, tableAnswers, tableGradingResults, tutorAnswers, tutorInputText, chatHistory, savedQuizScroll } = req.body;
     let targetTopicId = String(topicId || '');
     if (targetTopicId.startsWith('mixed_') && targetTopicId.includes('_sess_')) {
@@ -1697,8 +1615,7 @@ router.post('/session/review', async (req, res) => {
 
       // Save questions separately — saveSessionValue skips write if unchanged (same-value optimization)
       if (questions && Array.isArray(questions) && questions.length > 0) {
-        const healedQuestions = questions.map(healQuizQuestionObject);
-        await saveSessionValue(questionsKey, JSON.stringify(healedQuestions));
+                await saveSessionValue(questionsKey, JSON.stringify(questions));
       }
 
       const mergeStateField = (inc, ext) => {
@@ -1752,8 +1669,7 @@ router.post('/session/review', async (req, res) => {
     // Save questions separately — saveSessionValue skips write if unchanged (same-value optimization)
     // This is the key optimization: questions (~40-100KB) are only written when they actually change
     if (questions && Array.isArray(questions) && questions.length > 0) {
-      const healedQuestions = questions.map(healQuizQuestionObject);
-      await saveSessionValue(questionsKey, JSON.stringify(healedQuestions));
+            await saveSessionValue(questionsKey, JSON.stringify(questions));
     }
 
     const mergeStateField2 = (inc, ext) => {
@@ -1799,7 +1715,6 @@ router.post('/session/review', async (req, res) => {
 // DELETE /api/session/review/topic/:id -> Delete a review session
 router.delete('/session/review/topic/:id', async (req, res) => {
   try {
-    await ensureSessionTable();
     const topicId = req.params.id;
     const targetTopicId = String(topicId || '');
 
@@ -1860,7 +1775,6 @@ router.get('/session/completed-review/:scheduleId', async (req, res) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   const scheduleId = req.params.scheduleId;
   try {
-    await ensureSessionTable();
     const row = await dbQuery.get(
       'SELECT value FROM app_session WHERE key = ?',
       [`completed_review_schedule_${scheduleId}`]
@@ -1868,7 +1782,7 @@ router.get('/session/completed-review/:scheduleId', async (req, res) => {
     if (row && row.value) {
       const data = JSON.parse(row.value);
       if (data && Array.isArray(data.questions)) {
-        data.questions = data.questions.map(q => healQuizQuestionObject(q));
+        
       }
       res.json({ success: true, data });
     } else {
@@ -1888,7 +1802,6 @@ router.get('/session/completed-review/by-topic/:topicId', async (req, res) => {
     return res.status(400).json({ error: '유효한 topicId가 아닙니다.' });
   }
   try {
-    await ensureSessionTable();
     const schedule = await dbQuery.get(
       `SELECT id FROM schedules WHERE topic_id = ? AND (status = 'completed' OR status = 'failed') ORDER BY completed_at DESC LIMIT 1`,
       [topicId]
@@ -1901,7 +1814,7 @@ router.get('/session/completed-review/by-topic/:topicId', async (req, res) => {
       if (row && row.value) {
         const data = JSON.parse(row.value);
         if (data && Array.isArray(data.questions)) {
-          data.questions = data.questions.map(q => healQuizQuestionObject(q));
+          
         }
         return res.json({ success: true, scheduleId: schedule.id, data });
       }
@@ -1917,7 +1830,6 @@ router.get('/session/completed-review/by-topic/:topicId', async (req, res) => {
 router.get('/session/last-active-review', async (req, res) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   try {
-    await ensureSessionTable();
     const rows = await dbQuery.all(
       `SELECT key FROM app_session 
        WHERE (key LIKE 'review_questions_schedule_%' 
@@ -2035,7 +1947,6 @@ router.get('/session/last-active-review', async (req, res) => {
 router.get('/session/answersheet', async (req, res) => {
   try {
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-    await ensureSessionTable();
     const rows = await dbQuery.all(
       'SELECT value FROM app_session WHERE key = ?',
       ['answersheet_questions']
@@ -2058,7 +1969,6 @@ router.get('/session/answersheet', async (req, res) => {
 // POST /api/session/answersheet -> Save answersheet session state
 router.post('/session/answersheet', async (req, res) => {
   try {
-    await ensureSessionTable();
     const { answersheetQuestions } = req.body;
     const healedQuestions = Array.isArray(answersheetQuestions)
       ? answersheetQuestions.map(healAnswersheetQuestionObject)
@@ -2617,7 +2527,6 @@ ${adjustments.map((a, idx) => `
     // Collect past questions from app_session
     let pastQuestionsPool = [];
     try {
-      await ensureSessionTable();
       const sessionRows = await dbQuery.all(
         `SELECT value FROM app_session 
          WHERE key LIKE 'review_questions_schedule_%' 
@@ -2925,7 +2834,6 @@ ${ENGINEERING_STANDARDS}
     // Retrieve custom formula questions from database
     let customFormulas = [];
     try {
-      await ensureSessionTable();
       const formulaRows = await dbQuery.all('SELECT value FROM app_session WHERE key = ?', ['formula_questions']);
       if (formulaRows.length > 0 && formulaRows[0].value) {
         const parsed = JSON.parse(formulaRows[0].value);
@@ -3106,7 +3014,6 @@ router.post('/exam/additional', async (req, res) => {
     // Retrieve custom formula questions from database
     let customFormulas = [];
     try {
-      await ensureSessionTable();
       const formulaRows = await dbQuery.all('SELECT value FROM app_session WHERE key = ?', ['formula_questions']);
       if (formulaRows.length > 0 && formulaRows[0].value) {
         const parsed = JSON.parse(formulaRows[0].value);
@@ -3655,7 +3562,6 @@ router.post('/quiz/submit', async (req, res) => {
         tutorInputText: tutorInputText || {},
         chatHistory: chatHistory || []
       });
-      await ensureSessionTable();
       await dbQuery.run(
         `INSERT INTO app_session (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)
          ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=CURRENT_TIMESTAMP`,
@@ -4220,7 +4126,6 @@ ${questions.map((q, i) => `문제 ${i + 1}: ${q.question}
 // DELETE /api/session/exam
 router.delete('/session/exam', async (req, res) => {
   try {
-    await ensureSessionTable();
     await dbQuery.run('DELETE FROM app_session WHERE key = ?', ['exam_session']);
     res.json({ ok: true });
   } catch (err) {
