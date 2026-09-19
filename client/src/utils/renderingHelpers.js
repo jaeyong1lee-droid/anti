@@ -101,12 +101,25 @@ export const getCorrectAnswerForInput = (q, inputId) => {
 export const getCanonicalModelAnswer = (q) => {
   if (!q) return '';
   if (typeof q.answer === 'string' && q.answer.trim().length > 0) {
-    return q.answer.trim();
+    let ansText = q.answer.trim();
+    if (ansText.startsWith('$') && !ansText.startsWith('$$') && ansText.endsWith('$') && !ansText.endsWith('$$')) {
+      const inner = ansText.substring(1, ansText.length - 1).trim();
+      if (!/[\uAC00-\uD7A3]/.test(inner) && (inner.includes('=') || inner.includes('\\frac') || inner.includes('\\times'))) {
+        ansText = `$$${inner}$$`;
+      }
+    }
+    return ansText;
   }
   if (q.formula && typeof q.formula === 'string' && q.formula.trim().length > 0) {
+    let formulaText = q.formula.trim();
+    if (formulaText.startsWith('$') && !formulaText.startsWith('$$') && formulaText.endsWith('$') && !formulaText.endsWith('$$')) {
+      formulaText = `$$${formulaText.substring(1, formulaText.length - 1).trim()}$$`;
+    } else if (!formulaText.startsWith('$$')) {
+      formulaText = `$$${formulaText}$$`;
+    }
     return q.structure && typeof q.structure === 'string' && q.structure.trim().length > 0
-      ? `${q.formula.trim()}\n\n${q.structure.trim()}`
-      : q.formula.trim();
+      ? `${formulaText}\n\n${q.structure.trim()}`
+      : formulaText;
   }
   if (typeof q.concept === 'string' && q.concept.trim().length > 0) {
     return q.concept.trim();
