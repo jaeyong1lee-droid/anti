@@ -38,10 +38,13 @@ export function parseChartJson(rawJsonStr) {
     }
   }
 
-  // 5. LaTeX 이스케이프 복원: JSON 파싱 과정에서 \t(Tab)로 흡수된 \text, \tau, \theta 등을 정규 LaTeX 표기로 복원
+  // 5. LaTeX 이스케이프 복원: JSON 파싱 과정에서 \t(Tab), \f(FormFeed), \v(VerticalTab)로 흡수된 \text, \tau, \theta, \frac 등을 정규 LaTeX 표기로 복원
   const normalizeLatexStr = (str) => {
     if (!str || typeof str !== 'string') return str;
-    return str.replace(/\t(ext|au|heta|an|imes|ilde)\b/g, '\\t$1');
+    return str
+      .replace(/\t(ext|au|heta|an|imes|ilde)\b/g, '\\t$1')
+      .replace(/\x0c(rac)\b/g, '\\f$1')
+      .replace(/\x0b(ert)\b/g, '\\v$1');
   };
 
   if (result && typeof result === 'object') {

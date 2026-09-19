@@ -1,16 +1,8 @@
 import React, { useMemo } from 'react';
-import { renderKatexString } from '../utils/renderingHelpers';
+import { renderMixedText } from './ChartRenderer';
 
 export const renderMixedTextInSvg = (text) => {
-  if (!text || typeof text !== 'string') return text;
-  let result = text;
-  result = result.replace(/\$\$([\s\S]*?)\$\$/g, (m, math) => {
-    return renderKatexString(math.trim(), { displayMode: true, throwOnError: false });
-  });
-  result = result.replace(/\$([^\$\n]+)\$/g, (m, math) => {
-    return renderKatexString(math.trim(), { displayMode: false, throwOnError: false });
-  });
-  return result;
+  return renderMixedText(text, false);
 };
 
 export const transformSvgWithKatex = (svgStr) => {

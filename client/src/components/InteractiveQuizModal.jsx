@@ -534,7 +534,7 @@ export function InteractiveQuizModal({
                 {badge.name}
               </span>
               <h3 className="font-black text-xl sm:text-2xl text-white tracking-tight leading-snug">
-                {item?.title || '항목 맞춤 퀴즈'}
+                <LatexRenderer text={item?.title || '항목 맞춤 퀴즈'} katexLoaded={katexLoaded} forceInline={true} />
               </h3>
             </div>
             <p className="text-[11px] text-slate-400 mt-0.5">
@@ -620,7 +620,7 @@ export function InteractiveQuizModal({
                   <tr className="bg-slate-800/80 text-slate-200 border-b border-slate-700">
                     {q.rawHeaders.map((h, idx) => (
                       <th key={idx} className="p-2.5 border-r border-slate-700 last:border-r-0 font-bold">
-                        {h}
+                        <LatexRenderer text={h} katexLoaded={katexLoaded} forceInline={true} />
                       </th>
                     ))}
                   </tr>
