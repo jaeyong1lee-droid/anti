@@ -1652,6 +1652,32 @@ router.delete('/session/review/topic/:id', async (req, res) => {
 });
 
 // GET /api/session/completed-review/:scheduleId -> Get completed review state
+// POST /api/session/completed-review/:scheduleId -> Update completed review state after re-evaluation
+router.post('/session/completed-review/:scheduleId', async (req, res) => {
+  const scheduleId = req.params.scheduleId;
+  const { questions, tableGradingResults } = req.body;
+  try {
+    const key = `completed_review_schedule_${scheduleId}`;
+    const row = await dbQuery.get('SELECT value FROM app_session WHERE key = ?', [key]);
+    if (row && row.value) {
+      const data = JSON.parse(row.value);
+      if (questions && Array.isArray(questions)) {
+        data.questions = questions;
+      }
+      if (tableGradingResults) {
+        data.tableGradingResults = { ...(data.tableGradingResults || {}), ...tableGradingResults };
+      }
+      await saveSessionValue(key, JSON.stringify(data));
+      res.json({ success: true });
+    } else {
+      res.status(404).json({ success: false, error: '세션을 찾을 수 없습니다.' });
+    }
+  } catch (err) {
+    console.error('POST /api/session/completed-review error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.get('/session/completed-review/:scheduleId', async (req, res) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   const scheduleId = req.params.scheduleId;

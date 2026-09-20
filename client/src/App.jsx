@@ -1527,10 +1527,10 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
               const result = tableGradingResults[key];
               if (result) {
                 const canonicalAns = getCorrectAnswerForInput(q, inputId);
-                let cleanedAns = canonicalAns || cleanFlowchartCorrectAnswer(result?.suggestedModelAnswer || result?.correctAnswer, letter) || '';
-                if (!cleanedAns || /^(success|ok|true|false)$/i.test(cleanedAns)) {
-                  cleanedAns = canonicalAns || '';
-                }
+                const reevalAns = cleanFlowchartCorrectAnswer(result?.suggestedModelAnswer || result?.correctAnswer, letter);
+                let cleanedAns = (reevalAns && !/^(success|ok|true|false)$/i.test(reevalAns.trim()))
+                  ? reevalAns
+                  : (canonicalAns || '');
                 feedbackList.push({
                   ...result,
                   letter,
@@ -2807,7 +2807,9 @@ export default function App() {
             const value = getAnswerValue(activeAnswers, idx, inputId, isOverview);
             const gradingResult = getGradingResult(activeGradingResults, idx, inputId, isOverview);
             const canonicalAns = getCorrectAnswerForInput(q, inputId) || q.answers?.[inputId] || '';
-            const correctAnswer = canonicalAns || gradingResult?.suggestedModelAnswer || '';
+            const correctAnswer = (gradingResult?.suggestedModelAnswer && !/^(success|ok|true|false)$/i.test(gradingResult.suggestedModelAnswer.trim()))
+              ? gradingResult.suggestedModelAnswer
+              : (canonicalAns || '');
             
             const inputIdx = inputIds.indexOf(inputId);
             const inputLetter = String.fromCharCode(65 + (inputIdx !== -1 ? inputIdx : 0));
@@ -4490,6 +4492,10 @@ export default function App() {
           reason: data.reason,
           suggestedModelAnswer
         };
+        if (suggestedModelAnswer && !/^(success|ok|true|false)$/i.test(suggestedModelAnswer.trim())) {
+          if (!q.answers) q.answers = {};
+          q.answers[inputId] = suggestedModelAnswer;
+        }
       } catch (err) {
         console.warn('AI cell grading fallback:', inputId, err.message);
         const isMatch = normalize(cleanUser) === normalize(cleanCorrect);
@@ -4525,14 +4531,28 @@ export default function App() {
       activeSetGradingResults(nextGrading);
       if (showExam) {
         examTableGradingResultsRef.current = nextGrading;
+        setExamQuestions(prev => (Array.isArray(prev) ? [...prev] : prev));
       } else {
         tableGradingResultsRef.current = nextGrading;
+        setAiQuestions(prev => (Array.isArray(prev) ? [...prev] : prev));
       }
 
       // DB 저장 (제출/채점 시 즉시 저장)
       if (!showExam && selectedTopic && selectedTopic.id && aiQuestions.length > 0 && !selectedTopic.isReadOnly) {
         lastSyncStateRef.current.tableGradingResults = nextGrading;
         forceSaveActiveSessions(false, false, { tableGradingResults: nextGrading });
+      }
+
+      // 완료된 복습 세션(isReadOnly)에서도 재평가 결과 DB 즉시 저장
+      if (!showExam && selectedTopic && selectedTopic.isReadOnly && selectedTopic.schedule_id) {
+        fetch(`${API_BASE}/api/session/completed-review/${selectedTopic.schedule_id}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            questions: aiQuestions,
+            tableGradingResults: nextGrading
+          })
+        }).catch(err => console.warn('Failed to save re-evaluated completed review:', err.message));
       }
 
       if (showExam && examQuestions.length > 0 && !loadingExam) {
@@ -5011,6 +5031,9 @@ export default function App() {
         reason: data.reason,
         suggestedModelAnswer: data.suggestedModelAnswer
       };
+      if (data.suggestedModelAnswer && !/^(success|ok|true|false)$/i.test(data.suggestedModelAnswer.trim())) {
+        q.answer = data.suggestedModelAnswer;
+      }
       stopProgressPolling('채점 완료!', 100);
     } catch (err) {
       console.error('Grading error:', err);
@@ -5035,6 +5058,18 @@ export default function App() {
         if (!showExam && selectedTopic && selectedTopic.id && aiQuestions.length > 0 && !selectedTopic.isReadOnly) {
           lastSyncStateRef.current.tableGradingResults = nextResults;
           forceSaveActiveSessions(false, false, { tableGradingResults: nextResults });
+        }
+
+        // 완료된 복습 세션(isReadOnly)에서도 재평가 결과 DB 즉시 저장
+        if (!showExam && selectedTopic && selectedTopic.isReadOnly && selectedTopic.schedule_id) {
+          fetch(`${API_BASE}/api/session/completed-review/${selectedTopic.schedule_id}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              questions: aiQuestions,
+              tableGradingResults: nextResults
+            })
+          }).catch(err => console.warn('Failed to save re-evaluated completed review:', err.message));
         }
 
         if (showExam && examQuestions.length > 0 && !loadingExam) {
@@ -21392,13 +21427,10 @@ ${itemsStr}
                                           text={
                                             (() => {
                                               const ans = getCanonicalModelAnswer(q);
-                                              const trimmed = ans.trim().replace(/\$/g, '').trim();
-                                              const isPl = !trimmed || /^(?:\[?\s*[A-Za-z]\s*\]?|\(?\s*[A-Za-z]\s*\)?|\[?\s*INPUT_\d+\s*\]?)$/i.test(trimmed);
                                               const grading = tableGradingResults[`${idx}_INPUT`];
-                                              let baseAns = ans;
-                                              if (isPl && grading?.suggestedModelAnswer) {
-                                                baseAns = grading.suggestedModelAnswer;
-                                              }
+                                              let baseAns = (grading?.suggestedModelAnswer && !/^(success|ok|true|false)$/i.test(grading.suggestedModelAnswer.trim()))
+                                                ? grading.suggestedModelAnswer
+                                                : ans;
                                               baseAns = stripHtmlTagsFromRawData(baseAns);
                                               return baseAns;
                                             })()
@@ -25074,13 +25106,10 @@ ${itemsStr}
                                           text={
                                             (() => {
                                               const ans = getCanonicalModelAnswer(q);
-                                              const trimmed = ans.trim().replace(/\$/g, '').trim();
-                                              const isPl = !trimmed || /^(?:\[?\s*[A-Za-z]\s*\]?|\(?\s*[A-Za-z]\s*\)?|\[?\s*INPUT_\d+\s*\]?)$/i.test(trimmed);
                                               const grading = examTableGradingResults[`${idx}_INPUT`];
-                                              let baseAns = ans;
-                                              if (isPl && grading?.suggestedModelAnswer) {
-                                                baseAns = grading.suggestedModelAnswer;
-                                              }
+                                              let baseAns = (grading?.suggestedModelAnswer && !/^(success|ok|true|false)$/i.test(grading.suggestedModelAnswer.trim()))
+                                                ? grading.suggestedModelAnswer
+                                                : ans;
                                               baseAns = stripHtmlTagsFromRawData(baseAns);
                                               return baseAns;
                                             })()
