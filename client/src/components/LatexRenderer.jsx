@@ -489,6 +489,8 @@ export const LatexRenderer = React.memo(function LatexRenderer({
         if (parsed.assumptions) parts.push(`**기본 가정:**\n${parsed.assumptions}`);
         if (parsed.explanation) parts.push(`**상세 설명:**\n${parsed.explanation}`);
         if (parsed.answer) parts.push(`**유도 및 해설:**\n${parsed.answer}`);
+        if (parsed.description) parts.push(`${parsed.description}`);
+        if (parsed.suggestedModelAnswer) parts.push(`${parsed.suggestedModelAnswer}`);
         if (parts.length > 0) {
           renderText = parts.join('\n\n');
         }
