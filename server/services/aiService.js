@@ -188,7 +188,8 @@ export function stopBackendProgressTimer(progressId, percentage, message, isSucc
 }
 
 export async function callLLMWithFailover(systemInstruction, userPrompt, image = null, scenario = 'default', options = {}) {
-  const finalSystemInstruction = (systemInstruction || '') + '\n\n' + SVG_DIAGRAM_PROMPT + '\n\n' + CHART_DIAGRAM_PROMPT;
+  const diagramInstructions = (scenario === 'question' || scenario === 'grading') ? '' : ('\n\n' + SVG_DIAGRAM_PROMPT + '\n\n' + CHART_DIAGRAM_PROMPT);
+  const finalSystemInstruction = (systemInstruction || '') + diagramInstructions;
   const primaryKey = process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY.trim().replace(/^['"]|['"]$/g, '') : null;
   const secondaryKey = process.env.GEMINI_API_KEY_SECONDARY ? process.env.GEMINI_API_KEY_SECONDARY.trim().replace(/^['"]|['"]$/g, '') : null;
   const tertiaryKey = process.env.GEMINI_API_KEY_TERTIARY ? process.env.GEMINI_API_KEY_TERTIARY.trim().replace(/^['"]|['"]$/g, '') : null;
