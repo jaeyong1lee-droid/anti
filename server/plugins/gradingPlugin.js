@@ -192,10 +192,6 @@ ${isReevaluation ? `🚨 **[원점 재작성 철칙 (Re-evaluation Directive)]**
             parsed.text
           ];
           let unwrapped = candidates.find(c => typeof c === 'string' && c.trim().length > 0 && !/^(success|ok|true|false)$/i.test(c.trim()));
-          if (!unwrapped) {
-            const firstValidStr = Object.values(parsed).find(v => typeof v === 'string' && v.trim().length > 2 && !/^(success|ok|true|false)$/i.test(v.trim()));
-            if (firstValidStr) unwrapped = firstValidStr;
-          }
           if (typeof unwrapped === 'string' && unwrapped.trim().length > 0) {
             cleanAnswer = unwrapped.trim();
           }
