@@ -188,7 +188,9 @@ export function stopBackendProgressTimer(progressId, percentage, message, isSucc
 }
 
 export async function callLLMWithFailover(systemInstruction, userPrompt, image = null, scenario = 'default', options = {}) {
-  const diagramInstructions = (scenario === 'question' || scenario === 'grading') ? '' : ('\n\n' + SVG_DIAGRAM_PROMPT + '\n\n' + CHART_DIAGRAM_PROMPT);
+  // SVG_DIAGRAM_PROMPT는 어설픈 그림 강제 방지를 위해 문제 출제에서 제외.
+  // CHART_DIAGRAM_PROMPT는 5번 인터랙티브 그래프해석 문제의 Recharts 규격 유지를 위해 문제 출제 시 필수 포함.
+  const diagramInstructions = (scenario === 'grading') ? '' : ('\n\n' + CHART_DIAGRAM_PROMPT);
   const finalSystemInstruction = (systemInstruction || '') + diagramInstructions;
   const primaryKey = process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY.trim().replace(/^['"]|['"]$/g, '') : null;
   const secondaryKey = process.env.GEMINI_API_KEY_SECONDARY ? process.env.GEMINI_API_KEY_SECONDARY.trim().replace(/^['"]|['"]$/g, '') : null;

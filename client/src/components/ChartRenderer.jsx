@@ -141,7 +141,74 @@ const CustomLegend = (props) => {
   );
 };
 
-const ChartRenderer = ({ data }) => {
+// Recharts 표준 규격 및 Chart.js ({ type, data: { labels, datasets } }) 규격을 상호 호환 정규화하는 헬퍼
+export const normalizeChartData = (raw) => {
+  if (!raw || typeof raw !== 'object') return null;
+
+  // Case 1: 이미 Recharts 배열 형식인 경우 (x 속성 보정)
+  if (Array.isArray(raw.data)) {
+    const fixedData = raw.data.map(item => {
+      if (item && typeof item === 'object' && item.x === undefined) {
+        return { ...item, x: item.label || item.name || '' };
+      }
+      return item;
+    });
+    return { ...raw, data: fixedData };
+  }
+
+  // Case 2: Chart.js 형식 ({ type, data: { labels: [...], datasets: [...] } }) 지원
+  if (raw.data && typeof raw.data === 'object' && Array.isArray(raw.data.datasets)) {
+    const labels = Array.isArray(raw.data.labels) ? raw.data.labels : [];
+    const datasets = raw.data.datasets;
+    const palette = ['#38bdf8', '#f43f5e', '#34d399', '#fbbf24', '#a855f7', '#fb923c', '#06b6d4'];
+    const colorMap = {
+      blue: '#38bdf8',
+      red: '#f43f5e',
+      green: '#34d399',
+      yellow: '#fbbf24',
+      purple: '#a855f7',
+      orange: '#fb923c',
+      cyan: '#06b6d4'
+    };
+
+    const lines = datasets.map((ds, idx) => {
+      const rawColor = (ds.borderColor || ds.backgroundColor || '').toLowerCase();
+      const strokeColor = colorMap[rawColor] || ds.borderColor || ds.backgroundColor || palette[idx % palette.length];
+      return {
+        name: ds.label || `시리즈 ${idx + 1}`,
+        dataKey: `y${idx}`,
+        stroke: strokeColor
+      };
+    });
+
+    const convertedData = labels.map((label, lIdx) => {
+      const item = { x: String(label) };
+      datasets.forEach((ds, dIdx) => {
+        item[`y${dIdx}`] = (Array.isArray(ds.data) && ds.data[lIdx] !== undefined) ? ds.data[lIdx] : null;
+      });
+      return item;
+    });
+
+    let yLabel = raw.yAxisLabel || (raw.options?.scales?.y?.title?.text);
+    if (!yLabel && datasets[0]?.label) {
+      yLabel = datasets[0].label;
+    }
+
+    return {
+      title: raw.title || (raw.options?.plugins?.title?.text) || '공학 차트그래프',
+      xAxisLabel: raw.xAxisLabel || (raw.options?.scales?.x?.title?.text) || '심도 (X축)',
+      yAxisLabel: yLabel || '측정값 (Y축)',
+      description: raw.description || '',
+      lines,
+      data: convertedData
+    };
+  }
+
+  return raw;
+};
+
+const ChartRenderer = ({ data: rawData }) => {
+  const data = normalizeChartData(rawData);
   if (!data || !data.data || !Array.isArray(data.data) || data.data.length === 0) {
     return <div className="text-rose-400 p-4 bg-rose-900/20 border border-rose-500/30 rounded-xl my-4 text-sm font-bold">⚠️ 유효하지 않은 차트 데이터입니다 (JSON 형식이 올바르지 않습니다).</div>;
   }

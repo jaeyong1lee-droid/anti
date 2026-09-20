@@ -7,6 +7,8 @@
  * @returns {object} 파싱 완료된 차트 객체
  * @throws {Error} 파싱 실패 시 에러 던짐
  */
+import { normalizeChartData } from '../components/ChartRenderer.jsx';
+
 export function parseChartJson(rawJsonStr) {
   if (!rawJsonStr) return null;
 
@@ -59,5 +61,5 @@ export function parseChartJson(rawJsonStr) {
     }
   }
 
-  return result;
+  return normalizeChartData(result);
 }
