@@ -10474,6 +10474,8 @@ ${item.intuitive || ''}
       if (finalScheduleId) queryParams.push(`scheduleId=${finalScheduleId}`);
       if (isPractice) queryParams.push('isPractice=true');
       if (newSid) queryParams.push(`sessionId=${newSid}`);
+      const curModel = preferredModelRef.current || preferredModel;
+      if (curModel) queryParams.push(`preferredModel=${encodeURIComponent(curModel)}`);
       url += '?' + queryParams.join('&');
       
       console.log(`[handleOpenAIQuestions] Fetching questions: URL=${url}`);
@@ -11276,6 +11278,8 @@ ${item.intuitive || ''}
       if (currentRefreshScheduleId) {
         queryParams.push(`scheduleId=${currentRefreshScheduleId}`);
       }
+      const curModel = preferredModelRef.current || preferredModel;
+      if (curModel) queryParams.push(`preferredModel=${encodeURIComponent(curModel)}`);
       url += '?' + queryParams.join('&');
       
       const res = await fetch(url, { method: 'POST' });

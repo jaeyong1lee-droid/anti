@@ -539,7 +539,7 @@ router.post('/topics/:id/ai-questions', async (req, res) => {
   let progressTimer = null;
   try {
     const progressId = req.query.progressId || req.body.progressId;
-    const targetModel = (req.body && req.body.preferredModel) || req.query.preferredModel || 'gemini-3.5-flash-lite';
+    const targetModel = (req.body && req.body.preferredModel) || req.query.preferredModel || globalPreferredModel || 'gemini-3.5-flash-lite';
     let standardsAnalysis = '';
     const localCallLLM = (sys, prompt, img, scenario, opts) => {
       const enrichedPrompt = standardsAnalysis ? `${standardsAnalysis}\n\n${prompt}` : prompt;
@@ -2314,7 +2314,7 @@ async function validateAndHealQuestion(question, callLLMWithFailover, topicTitle
 // POST /api/exam/all
 router.post('/exam/all', async (req, res) => {
   const progressId = req.query.progressId || req.body.progressId;
-  const targetModel = (req.body && req.body.preferredModel) || req.query.preferredModel || 'gemini-3.5-flash-lite';
+  const targetModel = (req.body && req.body.preferredModel) || req.query.preferredModel || globalPreferredModel || 'gemini-3.5-flash-lite';
   let progressTimer = null;
   let standardsAnalysis = '';
   if (progressId) {
