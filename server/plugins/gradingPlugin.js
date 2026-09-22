@@ -2,7 +2,7 @@
  * 주관식 채점 플러그인 (Grading Plugin)
  */
 import { ENGINEERING_STANDARDS } from './engineeringStandards.js';
-import { LATEX_PROMPT_INSTRUCTIONS, parseLlmJson } from '../utils/latexUtils.js';
+import { LATEX_PROMPT_INSTRUCTIONS, parseLlmJson, healLatexFormulas } from '../utils/latexUtils.js';
 
 export const baseSystemInstruction = `당신은 지반공학 및 토목공학 전문 채점관입니다.
 주어진 문제 맥락(question), 모범 답안(correctAnswer), 그리고 사용자가 입력한 답(userAnswer)을 비교하여 정답 여부(isCorrect) 및 부분점수(score, 0~10점)를 판정하십시오.
@@ -166,17 +166,27 @@ ${isReevaluation ? `🚨 **[원점 재작성 철칙 (Re-evaluation Directive)]**
 🚨 **[모범 답안 작성 철칙 - 극도로 중요!]**:
 1. **[범위 제한]**: 표 채우기(Table Quiz) 문항인 경우, 오직 해당 셀(행: ${rowHeader || '해당 행'}, 열: ${colHeader || '해당 열'}) 한 칸에 들어갈 '그 칸만의 고유하고 구체적인 정답 내용'으로만 작성하십시오. 전체 표의 해설이나 다른 행/열 항목까지 합친 전체 비교 리스트를 출력하는 것을 엄격히 금지합니다.
 2. **[공학적 메커니즘 및 표준 공식]**: 단순 단답 나열에 그치지 말고, 해당 개념의 공학적 메커니즘과 핵심 표준 공식(표준 LaTeX 수식 표기)을 충실히 포함하십시오.
-   - 포아송비 $\\nu$, 부피탄성계수 $K$, 탄성계수 $E$, 수평지반반력계수 $k_h$ 등 공인된 표준 학술 기호를 정확히 사용하십시오.
-   - 인라인 수식은 $...$, 최종 결론 공식은 $$...$$ 블록 수식으로 작성하십시오.
-3. **[포맷팅 규칙]**: 마크다운 헤더 기호('#', '##')나 수평선('---')을 단독 구분선 대용으로 사용하지 마십시오. 문단 구분은 순수한 줄바꿈(엔터)으로만 처리하십시오.
-4. **[순수 정답 텍스트 출력]**: "모범 답안:", "정답은 다음과 같습니다" 등의 불필요한 메타 서론이나 따옴표 없이, 학생에게 보여줄 순수 모범 답안 내용만을 직접 출력하십시오.
-5. 🚨 **[출력 포맷 철칙]**: 문제에 차트나 표가 포함되어 있더라도, 절대로 JSON 포맷(\`{ "title": "..." }\`)이나 차트(Chart) 구조로 답안을 출력하지 마십시오. 오직 순수 줄글(Markdown 텍스트) 형태의 서술형 정답만 작성하십시오.
-6. 💡 **[정답 하단 직관적 의미 필수 추가 철칙 - 극도로 중요!]**: 모범 답안 맨 마지막 줄(공학적 설명 및 수식 하단)에 반드시 줄을 바꾼 뒤 다음 형식으로 직관적 의미를 1~2문장으로 명시하십시오:
-   💡 **직관적 의미**: [공학적 공식이나 원리의 물리적 본질, 핵심 변수의 상호작용 또는 실무적 의미를 한눈에 직관적으로 단번에 이해할 수 있는 명쾌하고 쉬운 비유나 설명 1~2문장]
+   - 포아송비 $\nu$, 부피탄성계수 $K$, 탄성계수 $E$, 수평지반반력계수 $k_h$, 전단강도 $\tau$, 점착력 $c$, 마찰각 $\phi$ 등 공인된 표준 학술 기호를 정확히 사용하십시오.
+   - 인라인 수식은 $...$, 핵심 결론 공식이나 파괴기준식 등은 앞뒤 줄바꿈 후 $$...$$ 블록 수식으로 작성하십시오.
+3. **[문단 구분 및 가독성]**: 문단 구분은 반드시 **엔터 2번(빈 줄)**으로 명확히 분리하여, 전체 글이 줄바꿈 없이 하나의 거대한 통문장으로 뭉개지지 않도록 하십시오. 단, 마크다운 헤더 기호('#', '##')나 수평선('---')은 사용하지 마십시오.
+4. **[순수 정답 텍스트 출력]**: "모범 답안:", "정답은 다음과 같습니다" 등의 불필요한 메타 서론, 따옴표, 또는 JSON 래핑 없이, 학생에게 보여줄 순수 모범 답안 내용만을 직접 출력하십시오.
+5. 💡 **[정답 하단 직관적 의미 필수 추가 철칙 - 극도로 중요!]**: 모범 답안 맨 마지막 줄(공학적 설명 및 수식 하단)에 **반드시 빈 줄(엔터 2번)을 띄운 뒤** 다음 형식으로 직관적 의미를 1~2문장으로 명시하십시오:
+
+💡 **직관적 의미**: [공학적 공식이나 원리의 물리적 본질, 핵심 변수의 상호작용 또는 실무적 의미를 한눈에 직관적으로 단번에 이해할 수 있는 명쾌하고 쉬운 비유나 설명 1~2문장]
 `;
 
   try {
-    const sysInst = `당신은 지반공학 및 토목공학 최고 권위의 기술사 시험 출제위원입니다. 주어진 공학적 사실과 원보고서에 근거하여 가장 완벽하고 신뢰할 수 있는 단독 표준 모범 답안 텍스트만을 출력하십시오.\n${LATEX_PROMPT_INSTRUCTIONS}`;
+    const gStandards = gradingStandards || GRADING_STANDARDS;
+    const eStandards = engineeringStandards || ENGINEERING_STANDARDS;
+    const sysInst = `당신은 지반공학 및 토목공학 최고 권위의 기술사 시험 출제위원입니다. 주어진 공학적 사실과 원보고서에 근거하여 가장 완벽하고 신뢰할 수 있는 단독 표준 모범 답안 텍스트만을 출력하십시오.
+
+[📋 채점 및 모범 답안 작성 지침]:
+${gStandards}
+
+[🔬 공학 기준 절대 지침]:
+${eStandards}
+
+${LATEX_PROMPT_INSTRUCTIONS}`;
     const rawRes = await callLLMWithFailover(sysInst, answerGenPrompt, null, 'question', { temperature: modelAnswerTemperature });
     let cleanAnswer = (rawRes || '').trim();
     cleanAnswer = cleanAnswer.replace(/^```[a-zA-Z]*\n?/, '').replace(/\n?```$/, '').trim();
@@ -206,6 +216,25 @@ ${isReevaluation ? `🚨 **[원점 재작성 철칙 (Re-evaluation Directive)]**
       }
     }
     cleanAnswer = cleanAnswer.replace(/^(모범\s*답안|정답|표준\s*답안)\s*[:：]\s*/i, '').trim();
+
+    // 1) bare LaTeX 수식 방어 치유 (달러 기호 누락된 \tau = c + \sigma_n \tan \phi 등 자동 $...$ 감싸기)
+    const bareFormulaRegex = /(?<!\$)\\(?:tau|sigma|gamma|epsilon|alpha|beta|phi|theta|nu|mu|omega|rho|lambda|Delta)\b(?:[a-zA-Z0-9_\\^+=*/()\-.,\s]|\\(?:tan|sin|cos|frac|sqrt|cdot|times|pm|le|ge|neq|approx|partial)\b)*(?:\w|\))(?![\w\\])(?!\$)/g;
+    cleanAnswer = cleanAnswer.replace(bareFormulaRegex, (match) => {
+      const trimmed = match.trim();
+      if (trimmed.includes('=') || trimmed.includes('+') || trimmed.includes('-') || trimmed.includes('/') || trimmed.includes('\\tan') || trimmed.includes('\\sin') || trimmed.includes('\\cos') || trimmed.includes('_')) {
+        return `$${trimmed}$`;
+      }
+      return match;
+    });
+
+    // 2) 💡 직관적 의미 앞에 빈 줄이 없으면 반드시 \n\n 으로 분리
+    cleanAnswer = cleanAnswer.replace(/([^\n])\s*(💡\s*(?:\*\*)?직관적\s*의미(?:\*\*)?\s*[:：])/g, '$1\n\n$2');
+
+    // 3) 표준 수식 치유 함수 적용
+    if (typeof healLatexFormulas === 'function') {
+      cleanAnswer = healLatexFormulas(cleanAnswer);
+    }
+
     if (cleanAnswer.length > 0 && !/^(success|ok|true|false)$/i.test(cleanAnswer)) {
       return cleanAnswer;
     }

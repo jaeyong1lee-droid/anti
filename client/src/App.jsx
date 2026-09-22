@@ -18306,8 +18306,13 @@ ${itemsStr}
                         <Sparkles size={14} />
                         <span>AI 전문 모범 답안</span>
                       </div>
-                      <div className="text-[13px] font-normal leading-relaxed text-slate-300">
-                        <LatexRenderer text={lockscreenGradingResult.suggestedModelAnswer} katexLoaded={katexLoaded} isMarkdown={true} />
+                      <div className="text-[13px] font-normal leading-relaxed text-slate-300 whitespace-pre-wrap">
+                        <LatexRenderer 
+                          text={(lockscreenGradingResult.suggestedModelAnswer || '').replace(/([^\n])\s*(💡\s*(?:\*\*)?직관적\s*의미(?:\*\*)?\s*[:：])/g, '$1\n\n$2')} 
+                          katexLoaded={katexLoaded} 
+                          isMarkdown={true} 
+                          highlightBold={true}
+                        />
                       </div>
                     </div>
                   )}
