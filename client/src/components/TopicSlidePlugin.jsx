@@ -635,8 +635,8 @@ export default function TopicSlidePlugin({
                 {isGeneratingDeck
                   ? '작성 중...'
                   : hasAiDeck
-                  ? 'AI 덱 재생성'
-                  : 'AI 덱 생성'}
+                  ? '5장 덱 재생성'
+                  : '5장 덱 생성'}
               </span>
             </button>
 
