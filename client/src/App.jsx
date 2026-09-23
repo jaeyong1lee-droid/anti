@@ -18260,9 +18260,6 @@ ${itemsStr}
                   <span className="px-3 py-1 bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 rounded-xl text-xs font-black">
                     {lockscreenQuestion.sessionName} 제1교시 {lockscreenQuestion.number}번
                   </span>
-                  <span className="px-2.5 py-1 bg-slate-800/90 text-slate-300 rounded-xl text-xs font-bold">
-                    기술사 기출문제
-                  </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <button
