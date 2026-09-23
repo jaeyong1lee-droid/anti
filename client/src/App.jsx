@@ -3444,42 +3444,56 @@ export default function App() {
 
   const handleStartSlideGeneration = async (topicId, topicTitle) => {
     if (!topicId) return;
-    const topicKey = String(topicId);
-    if (generatingSlideTopicIds[topicKey]) {
-      showNotification(`[${topicTitle}] 이미 백그라운드에서 슬라이드 덱을 작성 중입니다.`, 'warning');
+    let finalTopicId = topicId;
+    let finalTitle = topicTitle || '';
+
+    if (typeof finalTopicId !== 'number' && typeof allTopics !== 'undefined' && Array.isArray(allTopics)) {
+      const match = allTopics.find(t => String(t.id) === String(finalTopicId) || (t.title && (t.title === finalTopicId || t.title.includes(finalTopicId))));
+      if (match) {
+        finalTopicId = match.id;
+        if (!finalTitle) finalTitle = match.title;
+      }
+    }
+
+    const topicKey = String(finalTopicId);
+    const titleKey = String(finalTitle || topicTitle || finalTopicId);
+
+    if (generatingSlideTopicIds[topicKey] || generatingSlideTopicIds[titleKey]) {
+      showNotification(`[${finalTitle || topicTitle}] 이미 백그라운드에서 슬라이드 덱을 작성 중입니다.`, 'warning');
       return;
     }
 
-    setGeneratingSlideTopicIds(prev => ({ ...prev, [topicKey]: true }));
-    showNotification(`⚡ [${topicTitle}] 5장 슬라이드 작성을 백그라운드에서 시작했습니다. 창을 닫고 다른 작업을 계속하실 수 있습니다.`, 'info');
+    setGeneratingSlideTopicIds(prev => ({ ...prev, [topicKey]: true, [titleKey]: true }));
+    showNotification(`⚡ [${finalTitle || topicTitle}] 5장 슬라이드 작성을 백그라운드에서 시작했습니다. 창을 닫고 다른 작업을 계속하실 수 있습니다.`, 'info');
 
     try {
-      const res = await fetch(`${API_BASE}/api/topics/${encodeURIComponent(topicId)}/slides/generate`, {
+      const res = await fetch(`${API_BASE}/api/topics/${encodeURIComponent(finalTopicId)}/slides/generate`, {
         method: 'POST'
       });
       if (res.ok) {
-        showNotification(`🎉 [${topicTitle}] 5장 프레젠테이션 슬라이드(PPT) 완성이 완료되었습니다!`, 'success');
+        showNotification(`🎉 [${finalTitle || topicTitle}] 5장 프레젠테이션 슬라이드(PPT) 완성이 완료되었습니다!`, 'success');
         setSlideRefreshTick(t => t + 1);
       } else if (res.status === 409) {
-        showNotification(`[${topicTitle}] 이미 슬라이드 덱이 작성 중입니다.`, 'info');
+        showNotification(`[${finalTitle || topicTitle}] 이미 슬라이드 덱이 작성 중입니다.`, 'info');
       } else {
         const err = await res.json().catch(() => ({}));
-        showNotification(`[${topicTitle}] 슬라이드 생성 중 오류: ${err.error || ''}`, 'error');
+        showNotification(`[${finalTitle || topicTitle}] 슬라이드 생성 중 오류: ${err.error || ''}`, 'error');
       }
     } catch (err) {
       console.error('[Background Slide Generation Error]:', err);
-      showNotification(`[${topicTitle}] 슬라이드 덱 통신 오류가 발생했습니다.`, 'error');
+      showNotification(`[${finalTitle || topicTitle}] 슬라이드 덱 통신 오류가 발생했습니다.`, 'error');
     } finally {
       setGeneratingSlideTopicIds(prev => {
         const copy = { ...prev };
         delete copy[topicKey];
+        delete copy[titleKey];
         return copy;
       });
       setSlideRefreshTick(t => t + 1);
     }
   };
 
-  const handleOpenTopicSlides = (topicIdOrQuestion, fallbackTitle = '') => {
+  const resolveTopicInfo = (topicIdOrQuestion, fallbackTitle = '') => {
     let resolvedId = null;
     let resolvedTitle = fallbackTitle || '';
 
@@ -3489,14 +3503,14 @@ export default function App() {
       if (q.topic_id || q.topicId) {
         resolvedId = q.topic_id || q.topicId;
       } else {
-        const qText = (q.question || q.fullTitle || '').trim();
-        if (qText && Array.isArray(topics) && topics.length > 0) {
-          const match = topics.find(t => t.title && (qText.includes(t.title) || t.title.includes(qText)));
+        const qText = (q.question || q.fullTitle || q.sessionName || '').trim();
+        if (qText && typeof allTopics !== 'undefined' && Array.isArray(allTopics) && allTopics.length > 0) {
+          const match = allTopics.find(t => t.title && (qText.includes(t.title) || t.title.includes(qText)));
           if (match) {
             resolvedId = match.id;
             resolvedTitle = match.title;
           } else {
-            const kwMatch = topics.find(t => {
+            const kwMatch = allTopics.find(t => {
               if (!t.keywords) return false;
               const kws = t.keywords.split(/[,;\s]+/).map(k => k.trim()).filter(Boolean);
               return kws.some(k => k.length >= 2 && qText.includes(k));
@@ -3510,11 +3524,33 @@ export default function App() {
       }
     } else if (topicIdOrQuestion !== undefined && topicIdOrQuestion !== null) {
       resolvedId = topicIdOrQuestion;
+      if (!resolvedTitle && typeof allTopics !== 'undefined' && Array.isArray(allTopics)) {
+        const found = allTopics.find(t => String(t.id) === String(resolvedId));
+        if (found) resolvedTitle = found.title;
+      }
     }
 
-    setTopicSlideModalId(resolvedId || resolvedTitle);
-    setTopicSlideModalTitle(resolvedTitle || '토픽 슬라이드 자료');
-    setShowTopicSlideModal(true);
+    return {
+      topicId: resolvedId,
+      topicTitle: resolvedTitle || '토픽 슬라이드 자료'
+    };
+  };
+
+  const handleOpenTopicSlides = (topicIdOrQuestion, fallbackTitle = '') => {
+    try {
+      const { topicId, topicTitle } = resolveTopicInfo(topicIdOrQuestion, fallbackTitle);
+      const finalId = topicId || topicTitle;
+      const finalTitle = topicTitle || '토픽 슬라이드 자료';
+
+      setTopicSlideModalId(finalId);
+      setTopicSlideModalTitle(finalTitle);
+      setShowTopicSlideModal(true);
+    } catch (err) {
+      console.error('[handleOpenTopicSlides Error]:', err);
+      setTopicSlideModalId(fallbackTitle || 'slide_modal');
+      setTopicSlideModalTitle(fallbackTitle || '토픽 슬라이드 자료');
+      setShowTopicSlideModal(true);
+    }
   };
 
   // Lockscreen Subjective Quiz States
@@ -18207,11 +18243,12 @@ ${itemsStr}
                     <span>힌트</span>
                   </button>
                   {(() => {
-                    const lockTopicKey = String(lockscreenQuestion.topic_id || lockscreenQuestion.topicId || lockscreenQuestion.question || lockscreenQuestion.sessionName);
-                    const isSlideGen = !!generatingSlideTopicIds[lockTopicKey];
+                    const resolved = resolveTopicInfo(lockscreenQuestion, lockscreenQuestion?.question || lockscreenQuestion?.sessionName);
+                    const lockTopicKey = String(resolved.topicId || resolved.topicTitle || '');
+                    const isSlideGen = !!generatingSlideTopicIds[lockTopicKey] || !!generatingSlideTopicIds[String(lockscreenQuestion?.topic_id || '')];
                     return (
                       <button
-                        onClick={() => handleOpenTopicSlides(lockscreenQuestion, lockscreenQuestion.question || lockscreenQuestion.sessionName)}
+                        onClick={() => handleOpenTopicSlides(lockscreenQuestion, lockscreenQuestion?.question || lockscreenQuestion?.sessionName)}
                         className={`flex items-center gap-1.5 px-3 py-1.5 ${
                           isSlideGen
                             ? 'bg-amber-500/30 text-amber-200 border-amber-400 animate-pulse'
@@ -30969,7 +31006,7 @@ ${itemsStr}
         topicTitle={topicSlideModalTitle}
         onClose={() => setShowTopicSlideModal(false)}
         apiBase={API_BASE}
-        isGenerating={!!generatingSlideTopicIds[String(topicSlideModalId)]}
+        isGenerating={!!generatingSlideTopicIds[String(topicSlideModalId)] || !!generatingSlideTopicIds[String(topicSlideModalTitle)]}
         onStartSlideGeneration={handleStartSlideGeneration}
         slideRefreshTick={slideRefreshTick}
         showNotification={showNotification}
