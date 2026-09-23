@@ -1432,6 +1432,32 @@ router.get('/session/review', async (req, res) => {
         row = await dbQuery.get('SELECT key, value FROM app_session WHERE key = ?', [`review_questions_topic_${targetTopicId}`]);
         if (row) actualKey = row.key;
       }
+
+      // 4. Fallback to existing questions key (_q) to prevent redundant AI regeneration
+      if (!row) {
+        const qRow = await dbQuery.get('SELECT key, value FROM app_session WHERE key = ? OR key = ?', [
+          `review_questions_schedule_${schedId}_q`,
+          `review_questions_schedule_${schedId}_sess_${cleanSid}_q`
+        ]);
+        if (qRow && qRow.value) {
+          row = {
+            key: `review_questions_schedule_${schedId}`,
+            value: JSON.stringify({
+              sessionId: cleanSid ? `sess_${cleanSid}` : '',
+              questions: JSON.parse(qRow.value),
+              selectedAnswers: {},
+              revealedQuestions: {},
+              tableAnswers: {},
+              tableGradingResults: {},
+              tutorAnswers: {},
+              tutorInputText: {},
+              chatHistory: [],
+              savedQuizScroll: 0
+            })
+          };
+          actualKey = row.key;
+        }
+      }
     } else {
       // Free practice or no schedule
       if (cleanSid) {
@@ -1647,41 +1673,46 @@ router.delete('/session/review/topic/:id', async (req, res) => {
       return res.json({ ok: true });
     }
 
-    // Delete ALL session keys containing topic_targetTopicId (catches review_questions_topic_50%, review_questions_schedule_*_topic_50%, review_progress_*, etc.)
-    await dbQuery.run(
-      "DELETE FROM app_session WHERE key LIKE ? OR key LIKE ? OR key LIKE ? OR key LIKE ?",
-      [
-        `%topic_${targetTopicId}%`,
-        `review_questions_topic_${targetTopicId}%`,
-        `review_progress_topic_${targetTopicId}%`,
-        `completed_review_%`
-      ]
+    // Delete session keys strictly belonging to this targetTopicId
+    const allSessions = await dbQuery.all(
+      "SELECT key, value FROM app_session WHERE key LIKE '%topic_%' OR key LIKE '%schedule_%'"
     );
 
+    // Find all schedules belonging to this topic
+    let schedIds = new Set();
     if (!isNaN(Number(targetTopicId))) {
       const schedules = await dbQuery.all('SELECT id FROM schedules WHERE topic_id = ?', [Number(targetTopicId)]);
       if (schedules && schedules.length > 0) {
-        for (const s of schedules) {
-          await dbQuery.run(
-            "DELETE FROM app_session WHERE key LIKE ? OR key LIKE ?",
-            [`%schedule_${s.id}%`, `%schedule_${s.id}%`]
-          );
-        }
+        schedIds = new Set(schedules.map(s => Number(s.id)));
       }
     }
 
-    const allSchedSessions = await dbQuery.all(
-      `SELECT key, value FROM app_session WHERE key LIKE 'review_questions_schedule_%'`
-    );
-    if (allSchedSessions && allSchedSessions.length > 0) {
-      for (const sRow of allSchedSessions) {
-        try {
-          const parsedVal = JSON.parse(sRow.value);
-          if (parsedVal && String(parsedVal.topicId || '') === targetTopicId) {
-            await dbQuery.run('DELETE FROM app_session WHERE key = ?', [sRow.key]);
-          }
-        } catch (err) {}
+    const topicNum = Number(targetTopicId);
+    const toDelete = allSessions.filter(r => {
+      // 1. Strict topic ID match (e.g. topic_11 not topic_110)
+      const topicMatch = r.key.match(/topic_(\d+)/);
+      if (topicMatch && Number(topicMatch[1]) === topicNum) {
+        return true;
       }
+      // 2. Strict schedule ID match
+      const schedMatch = r.key.match(/schedule_(\d+)/);
+      if (schedMatch && schedIds.has(Number(schedMatch[1]))) {
+        return true;
+      }
+      // 3. Payload topicId match if available
+      try {
+        if (r.value && r.key.startsWith('review_questions_schedule_')) {
+          const parsedVal = JSON.parse(r.value);
+          if (parsedVal && String(parsedVal.topicId || '') === targetTopicId) {
+            return true;
+          }
+        }
+      } catch (e) {}
+      return false;
+    });
+
+    for (const item of toDelete) {
+      await dbQuery.run("DELETE FROM app_session WHERE key = ?", [item.key]);
     }
 
     res.json({ ok: true });
