@@ -12,21 +12,104 @@ import {
   RefreshCw,
   FileText,
   Monitor,
-  ExternalLink,
   Presentation,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Download,
+  Image as ImageIcon
 } from 'lucide-react';
 import { LatexRenderer } from './LatexRenderer';
 
 /**
- * 📊 TopicSlidePlugin (NotebookLM 스타일 5장 프레젠테이션 슬라이드 덱 뷰어 & 관리 플러그인)
- *
- * @param {number|string} topicId - 토픽 ID
- * @param {string} topicTitle - 토픽 제목
- * @param {boolean} isOpen - 모달 열림 여부
- * @param {function} onClose - 모달 닫기 콜백
- * @param {string} apiBase - API 베이스 URL (기본값 '')
+ * 📦 PDF.js CDN 동적 로더
+ */
+const loadPdfJs = () => {
+  return new Promise((resolve, reject) => {
+    if (window.pdfjsLib) {
+      resolve(window.pdfjsLib);
+      return;
+    }
+    const existing = document.getElementById('pdfjs-cdn-script');
+    if (existing) {
+      existing.addEventListener('load', () => resolve(window.pdfjsLib));
+      existing.addEventListener('error', reject);
+      return;
+    }
+    const script = document.createElement('script');
+    script.id = 'pdfjs-cdn-script';
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js';
+    script.onload = () => {
+      if (window.pdfjsLib) {
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+          'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+        resolve(window.pdfjsLib);
+      } else {
+        reject(new Error('PDF.js 로드 실패'));
+      }
+    };
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+};
+
+/**
+ * 🖼️ PDF 소스(URL/File/Buffer)를 초경량 고화질 JPG 이미지 슬라이드 배열로 변환하는 함수
+ */
+const convertPdfToJpgSlides = async (pdfSource, onProgress) => {
+  const pdfjs = await loadPdfJs();
+  let loadingTask;
+  if (pdfSource instanceof ArrayBuffer || pdfSource instanceof Uint8Array) {
+    loadingTask = pdfjs.getDocument({ data: pdfSource });
+  } else if (typeof pdfSource === 'string') {
+    loadingTask = pdfjs.getDocument(pdfSource);
+  } else if (pdfSource instanceof File || pdfSource instanceof Blob) {
+    const arrayBuffer = await pdfSource.arrayBuffer();
+    loadingTask = pdfjs.getDocument({ data: arrayBuffer });
+  } else {
+    throw new Error('지원되지 않는 PDF 형식입니다.');
+  }
+
+  const pdf = await loadingTask.promise;
+  const numPages = pdf.numPages;
+  const slides = [];
+
+  for (let pageNum = 1; pageNum <= numPages; pageNum++) {
+    if (onProgress) {
+      onProgress(pageNum, numPages);
+    }
+    const page = await pdf.getPage(pageNum);
+    // 16:9 슬라이드 기준 1.6 스케일 (~1536x864 해상도로 선명한 텍스트 보장)
+    const viewport = page.getViewport({ scale: 1.6 });
+    const canvas = document.createElement('canvas');
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    const ctx = canvas.getContext('2d', { alpha: false });
+
+    // 흰색 배경 채우기 (투명도 검은색 왜곡 방지)
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    await page.render({
+      canvasContext: ctx,
+      viewport: viewport
+    }).promise;
+
+    // 압축률 0.82의 최적화된 경량 JPEG 생성 (~80KB~120KB/장)
+    const jpgDataUrl = canvas.toDataURL('image/jpeg', 0.82);
+    slides.push({
+      slide_no: pageNum,
+      title: `Slide 0${pageNum}`,
+      imgUrl: jpgDataUrl
+    });
+  }
+
+  return slides;
+};
+
+/**
+ * 📊 TopicSlidePlugin
+ * NotebookLM 스타일 프레젠테이션 슬라이드 덱 뷰어 & 관리 플러그인
+ * (PDF iframe 대신 용량이 가벼운 JPG 형식 변환 뷰어 탑재)
  */
 export default function TopicSlidePlugin({
   topicId,
@@ -38,8 +121,12 @@ export default function TopicSlidePlugin({
   const [slideMeta, setSlideMeta] = useState(null);
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [isConvertingPdf, setIsConvertingPdf] = useState(false);
+  const [convertProgress, setConvertProgress] = useState({ current: 0, total: 0 });
+
+  const [jpgSlides, setJpgSlides] = useState([]);
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
-  const [viewMode, setViewMode] = useState('auto'); // 'file' | 'ai' | 'auto'
+  const [viewMode, setViewMode] = useState('auto'); // 'jpg' | 'ai' | 'web' | 'empty'
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploadUrlInput, setUploadUrlInput] = useState('');
@@ -49,7 +136,7 @@ export default function TopicSlidePlugin({
   const containerRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  // 1. 슬라이드 메타데이터 조회
+  // 1. 슬라이드 메타데이터 조회 및 JPG 변환 처리
   const fetchSlideMeta = async () => {
     if (!topicId) return;
     setLoading(true);
@@ -59,15 +146,73 @@ export default function TopicSlidePlugin({
       if (res.ok) {
         const data = await res.json();
         setSlideMeta(data);
-        if (data.has_file || data.slide_url) {
-          setViewMode('file');
-        } else if (data.slide_deck?.slides?.length > 0) {
+
+        // A. 이미 저장된 경량 JPG 덱이 있는 경우
+        if (data.slide_deck?.type === 'jpg_deck' && Array.isArray(data.slide_deck.slides) && data.slide_deck.slides.length > 0) {
+          setJpgSlides(data.slide_deck.slides);
+          setViewMode('jpg');
+        }
+        // B. 단일 이미지 파일(JPG, PNG 등)이 등록된 경우
+        else if (data.has_file && data.slide_name && /\.(jpe?g|png|webp)$/i.test(data.slide_name)) {
+          const singleImageSlide = [{
+            slide_no: 1,
+            title: data.slide_name,
+            imgUrl: `${apiBase}/api/topics/${topicId}/slides/file`
+          }];
+          setJpgSlides(singleImageSlide);
+          setViewMode('jpg');
+        }
+        // C. PDF 파일이 등록되어 있으나 아직 JPG로 변환되지 않은 경우 -> 즉시 자동 경량 JPG 변환 수행
+        else if (data.has_file) {
+          try {
+            setIsConvertingPdf(true);
+            setConvertProgress({ current: 0, total: 0 });
+            const fileRes = await fetch(`${apiBase}/api/topics/${topicId}/slides/file`);
+            if (fileRes.ok) {
+              const buffer = await fileRes.arrayBuffer();
+              const converted = await convertPdfToJpgSlides(buffer, (cur, tot) => {
+                setConvertProgress({ current: cur, total: tot });
+              });
+              setJpgSlides(converted);
+              setViewMode('jpg');
+
+              // 향후 재방문 시 즉각 로딩을 위해 서버에 JPG 덱 캐시 저장
+              try {
+                await fetch(`${apiBase}/api/topics/${topicId}/slides`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    slide_deck_json: {
+                      type: 'jpg_deck',
+                      total_slides: converted.length,
+                      slides: converted
+                    }
+                  })
+                });
+              } catch (saveErr) {
+                console.warn('Failed to background-cache converted JPG slides:', saveErr);
+              }
+            }
+          } catch (pdfErr) {
+            console.error('PDF to JPG on-the-fly conversion error:', pdfErr);
+            setErrorMsg('PDF를 JPG로 변환하는 중 오류가 발생했습니다.');
+          } finally {
+            setIsConvertingPdf(false);
+          }
+        }
+        // D. 구글 슬라이드 임베드 URL이 있는 경우
+        else if (data.slide_url?.includes('google.com')) {
+          setViewMode('web');
+        }
+        // E. AI 5장 브리핑 덱이 있는 경우
+        else if (data.slide_deck?.slides?.length > 0) {
           setViewMode('ai');
         } else {
-          setViewMode('auto');
+          setViewMode('empty');
         }
       } else {
         setSlideMeta(null);
+        setViewMode('empty');
       }
     } catch (err) {
       console.error('[TopicSlidePlugin Fetch Error]:', err);
@@ -79,13 +224,18 @@ export default function TopicSlidePlugin({
 
   useEffect(() => {
     if (isOpen && topicId) {
-      fetchSlideMeta();
+      setJpgSlides([]);
       setCurrentSlideIndex(0);
+      setIsConvertingPdf(false);
+      setErrorMsg(null);
+      fetchSlideMeta();
     } else {
       setSlideMeta(null);
+      setJpgSlides([]);
       setCurrentSlideIndex(0);
       setIsFullscreen(false);
       setShowUploadModal(false);
+      setIsConvertingPdf(false);
       setErrorMsg(null);
     }
   }, [isOpen, topicId]);
@@ -109,11 +259,13 @@ export default function TopicSlidePlugin({
         }
       } else if (e.key.toLowerCase() === 'f') {
         setIsFullscreen(prev => !prev);
+      } else if (e.key.toLowerCase() === 'd') {
+        handleDownloadCurrentJpg();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, showUploadModal, isFullscreen, slideMeta, currentSlideIndex]);
+  }, [isOpen, showUploadModal, isFullscreen, slideMeta, currentSlideIndex, jpgSlides, viewMode]);
 
   // 3. AI 5-Slide Visual Deck 생성
   const handleGenerateAiDeck = async () => {
@@ -144,62 +296,119 @@ export default function TopicSlidePlugin({
     }
   };
 
-  // 4. 슬라이드 파일 직접 업로드 (PDF / PPTX / 이미지)
+  // 4. 슬라이드 파일 직접 업로드 (PDF / 이미지 -> 즉시 경량 JPG 슬라이드 덱 변환)
   const handleFileUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file || !topicId) return;
-
-    const formData = new FormData();
-    formData.append('slide_file', file);
+    const files = e.target.files;
+    if (!files || files.length === 0 || !topicId) return;
 
     setIsUploading(true);
     setErrorMsg(null);
+
     try {
-      const res = await fetch(`${apiBase}/api/topics/${topicId}/slides`, {
-        method: 'POST',
-        body: formData
-      });
-      if (res.ok) {
-        await fetchSlideMeta();
-        setViewMode('file');
-        setShowUploadModal(false);
+      const firstFile = files[0];
+      const isPdf = firstFile.name.toLowerCase().endsWith('.pdf') || firstFile.type === 'application/pdf';
+
+      if (isPdf) {
+        // PDF인 경우: 브라우저에서 직접 경량 JPG 덱으로 변환
+        setIsConvertingPdf(true);
+        setConvertProgress({ current: 0, total: 0 });
+
+        const convertedSlides = await convertPdfToJpgSlides(firstFile, (cur, tot) => {
+          setConvertProgress({ current: cur, total: tot });
+        });
+
+        // 1) 서버에 파일 업로드 및 JPG 덱 JSON 동시 등록
+        const formData = new FormData();
+        formData.append('slide_file', firstFile);
+        formData.append('slide_deck_json', JSON.stringify({
+          type: 'jpg_deck',
+          total_slides: convertedSlides.length,
+          slides: convertedSlides
+        }));
+
+        const res = await fetch(`${apiBase}/api/topics/${topicId}/slides`, {
+          method: 'POST',
+          body: formData
+        });
+
+        if (res.ok) {
+          setJpgSlides(convertedSlides);
+          setViewMode('jpg');
+          setCurrentSlideIndex(0);
+          setShowUploadModal(false);
+          await fetchSlideMeta();
+        } else {
+          const err = await res.json();
+          setErrorMsg(err.error || '업로드 및 변환 저장에 실패했습니다.');
+        }
       } else {
-        const err = await res.json();
-        setErrorMsg(err.error || '파일 업로드에 실패했습니다.');
+        // 이미지 파일들인 경우 (JPG/PNG 등)
+        const imageSlides = [];
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          const dataUrl = await new Promise((res, rej) => {
+            const reader = new FileReader();
+            reader.onload = () => res(reader.result);
+            reader.onerror = rej;
+            reader.readAsDataURL(file);
+          });
+          imageSlides.push({
+            slide_no: i + 1,
+            title: file.name,
+            imgUrl: dataUrl
+          });
+        }
+
+        const formData = new FormData();
+        formData.append('slide_file', firstFile);
+        formData.append('slide_deck_json', JSON.stringify({
+          type: 'jpg_deck',
+          total_slides: imageSlides.length,
+          slides: imageSlides
+        }));
+
+        const res = await fetch(`${apiBase}/api/topics/${topicId}/slides`, {
+          method: 'POST',
+          body: formData
+        });
+
+        if (res.ok) {
+          setJpgSlides(imageSlides);
+          setViewMode('jpg');
+          setCurrentSlideIndex(0);
+          setShowUploadModal(false);
+          await fetchSlideMeta();
+        } else {
+          const err = await res.json();
+          setErrorMsg(err.error || '이미지 슬라이드 등록에 실패했습니다.');
+        }
       }
     } catch (err) {
-      console.error('[Upload Slide Error]:', err);
-      setErrorMsg('파일 업로드 중 오류가 발생했습니다.');
+      console.error('[Upload/Convert Error]:', err);
+      setErrorMsg(err.message || '파일 처리 중 오류가 발생했습니다.');
     } finally {
       setIsUploading(false);
+      setIsConvertingPdf(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
-  // 5. 구글 슬라이드/웹 링크 등록
+  // 5. 구글 슬라이드 임베드 URL 연결
   const handleSaveUrl = async () => {
     if (!uploadUrlInput.trim() || !topicId) return;
-    let url = uploadUrlInput.trim();
-
-    // 구글 슬라이드 링크인 경우 /embed 형식으로 스마트 변환
-    if (url.includes('docs.google.com/presentation') && !url.includes('/embed')) {
-      const match = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
-      if (match && match[1]) {
-        url = `https://docs.google.com/presentation/d/${match[1]}/embed?start=false&loop=false&delayms=3000`;
-      }
-    }
-
     setIsUploading(true);
     setErrorMsg(null);
     try {
       const res = await fetch(`${apiBase}/api/topics/${topicId}/slides`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ slide_url: url })
+        body: JSON.stringify({
+          slide_url: uploadUrlInput.trim()
+        })
       });
       if (res.ok) {
         await fetchSlideMeta();
-        setViewMode('file');
+        setViewMode('web');
         setShowUploadModal(false);
         setUploadUrlInput('');
       } else {
@@ -216,14 +425,15 @@ export default function TopicSlidePlugin({
 
   // 6. 슬라이드 삭제 / 초기화
   const handleDeleteSlides = async () => {
-    if (!window.confirm('등록된 슬라이드 자료(파일 및 링크)를 완전히 삭제하시겠습니까?')) return;
+    if (!window.confirm('등록된 슬라이드 자료(JPG 파일 및 덱)를 완전히 삭제하시겠습니까?')) return;
     try {
       const res = await fetch(`${apiBase}/api/topics/${topicId}/slides`, {
         method: 'DELETE'
       });
       if (res.ok) {
+        setJpgSlides([]);
         await fetchSlideMeta();
-        setViewMode('auto');
+        setViewMode('empty');
         setShowUploadModal(false);
       }
     } catch (err) {
@@ -231,11 +441,30 @@ export default function TopicSlidePlugin({
     }
   };
 
-  const slides = slideMeta?.slide_deck?.slides || [];
-  const totalSlides = slides.length || 5;
+  // 7. 현재 슬라이드 JPG 다운로드
+  const handleDownloadCurrentJpg = () => {
+    const currentJpg = jpgSlides[currentSlideIndex];
+    if (!currentJpg?.imgUrl) return;
+    const a = document.createElement('a');
+    a.href = currentJpg.imgUrl;
+    const cleanTitle = (topicTitle || 'topic').replace(/[/\\?%*:|"<>]/g, '_');
+    a.download = `${cleanTitle}_slide_0${currentSlideIndex + 1}.jpg`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
+  const aiSlides = slideMeta?.slide_deck?.type !== 'jpg_deck' ? (slideMeta?.slide_deck?.slides || []) : [];
+  const currentAiSlide = aiSlides[currentSlideIndex] || null;
+
+  const totalSlideCount = viewMode === 'jpg'
+    ? jpgSlides.length
+    : viewMode === 'ai'
+    ? aiSlides.length
+    : 0;
 
   const handleNextSlide = () => {
-    if (currentSlideIndex < totalSlides - 1) {
+    if (currentSlideIndex < totalSlideCount - 1) {
       setCurrentSlideIndex(prev => prev + 1);
     }
   };
@@ -248,19 +477,23 @@ export default function TopicSlidePlugin({
 
   if (!isOpen) return null;
 
-  const currentSlide = slides[currentSlideIndex] || null;
-  const hasFileOrUrl = !!(slideMeta?.has_file || slideMeta?.slide_url);
-  const hasAiDeck = slides.length > 0;
+  const hasJpgSlides = jpgSlides.length > 0;
+  const hasAiDeck = aiSlides.length > 0;
+  const hasWebUrl = !!slideMeta?.slide_url?.includes('google.com');
 
-  // 실제 렌더링할 뷰 결정
-  const activeView = viewMode === 'file' && hasFileOrUrl
-    ? 'file'
-    : viewMode === 'ai' && hasAiDeck
+  // 실제 활성 뷰 모드 산출
+  const activeView = (viewMode === 'jpg' && hasJpgSlides)
+    ? 'jpg'
+    : (viewMode === 'ai' && hasAiDeck)
     ? 'ai'
-    : hasFileOrUrl
-    ? 'file'
+    : (viewMode === 'web' && hasWebUrl)
+    ? 'web'
+    : hasJpgSlides
+    ? 'jpg'
     : hasAiDeck
     ? 'ai'
+    : hasWebUrl
+    ? 'web'
     : 'empty';
 
   return (
@@ -273,7 +506,7 @@ export default function TopicSlidePlugin({
       <div
         ref={containerRef}
         className={`relative w-full ${
-          isFullscreen ? 'w-screen h-screen max-w-none rounded-none' : 'max-w-6xl max-h-[92vh] rounded-2xl'
+          isFullscreen ? 'w-screen h-screen max-w-none rounded-none' : 'max-w-6xl max-h-[94vh] rounded-2xl'
         } bg-[#0A0F1D] border border-amber-500/30 shadow-2xl flex flex-col overflow-hidden transition-all duration-300`}
         onClick={(e) => e.stopPropagation()}
       >
@@ -292,7 +525,11 @@ export default function TopicSlidePlugin({
                   NotebookLM Slide Deck
                 </span>
                 <span className="text-[11px] text-slate-400 font-mono hidden sm:inline">
-                  {activeView === 'ai' ? `Slide ${currentSlideIndex + 1} / ${totalSlides}` : (slideMeta?.slide_name || '원본 프레젠테이션')}
+                  {activeView === 'jpg'
+                    ? `Slide ${currentSlideIndex + 1} / ${jpgSlides.length} (경량 JPG)`
+                    : activeView === 'ai'
+                    ? `Slide ${currentSlideIndex + 1} / ${aiSlides.length} (AI 브리핑)`
+                    : '프레젠테이션'}
                 </span>
               </div>
               <h2 className="text-xs sm:text-sm font-black text-white truncate max-w-md" title={topicTitle}>
@@ -301,45 +538,70 @@ export default function TopicSlidePlugin({
             </div>
           </div>
 
-          {/* 중앙: 뷰 모드 토글 (파일 vs AI) */}
+          {/* 중앙: 뷰 모드 탭 (경량 JPG 슬라이드 vs AI 카드 덱 vs 웹) */}
           <div className="hidden md:flex items-center gap-1 bg-[#162138] p-1 rounded-xl border border-slate-700/60">
-            {hasFileOrUrl && (
+            {hasJpgSlides && (
               <button
                 type="button"
-                onClick={() => setViewMode('file')}
-                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  activeView === 'file' ? 'bg-amber-600 text-white shadow-md' : 'text-slate-400 hover:text-white'
+                onClick={() => { setViewMode('jpg'); setCurrentSlideIndex(0); }}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  activeView === 'jpg' ? 'bg-amber-600 text-white shadow-md' : 'text-slate-400 hover:text-white'
                 }`}
               >
-                <Monitor size={12} />
-                <span>원본 파일 뷰어</span>
+                <ImageIcon size={13} />
+                <span>JPG 슬라이드 ({jpgSlides.length}장)</span>
               </button>
             )}
             {hasAiDeck && (
               <button
                 type="button"
-                onClick={() => setViewMode('ai')}
-                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                onClick={() => { setViewMode('ai'); setCurrentSlideIndex(0); }}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                   activeView === 'ai' ? 'bg-amber-600 text-white shadow-md' : 'text-slate-400 hover:text-white'
                 }`}
               >
-                <Sparkles size={12} />
-                <span>AI 5장 브리핑</span>
+                <Sparkles size={13} />
+                <span>AI 카드 덱</span>
+              </button>
+            )}
+            {hasWebUrl && (
+              <button
+                type="button"
+                onClick={() => setViewMode('web')}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  activeView === 'web' ? 'bg-amber-600 text-white shadow-md' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Monitor size={13} />
+                <span>구글 슬라이드</span>
               </button>
             )}
           </div>
 
           {/* 우측 컨트롤 버튼 그룹 */}
           <div className="flex items-center gap-1.5 shrink-0">
+            {/* JPG 다운로드 버튼 (JPG 모드일 때) */}
+            {activeView === 'jpg' && (
+              <button
+                type="button"
+                onClick={handleDownloadCurrentJpg}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 hover:text-white border border-amber-500/30 text-xs font-bold transition-all cursor-pointer active:scale-95"
+                title="현재 슬라이드를 고화질 JPG 이미지로 다운로드 (단축키: D)"
+              >
+                <Download size={13} />
+                <span className="hidden sm:inline">JPG 저장</span>
+              </button>
+            )}
+
             {/* 파일 등록/변경 버튼 */}
             <button
               type="button"
               onClick={() => setShowUploadModal(true)}
               className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 text-xs font-bold transition-all cursor-pointer active:scale-95"
-              title="NotebookLM PDF/PPTX 파일 등록 또는 구글 슬라이드 링크 연결"
+              title="NotebookLM PDF/PPTX/이미지 등록 또는 구글 슬라이드 링크 연결"
             >
               <Upload size={13} className="text-amber-400" />
-              <span className="hidden sm:inline">{hasFileOrUrl ? '파일/링크 변경' : '슬라이드 등록'}</span>
+              <span className="hidden sm:inline">{hasJpgSlides || hasWebUrl ? '자료 관리' : '슬라이드 등록'}</span>
             </button>
 
             {/* AI 덱 새로고침 / 생성 */}
@@ -393,54 +655,126 @@ export default function TopicSlidePlugin({
         {/* 2. 본체 프레젠테이션 스테이지 (16:9 비율 영역) */}
         {/* ================================================================= */}
         <div className="flex-1 min-h-0 bg-[#060913] relative overflow-hidden flex flex-col justify-center items-center">
-          {loading || generating ? (
+          {loading || generating || isConvertingPdf ? (
             <div className="flex flex-col items-center justify-center p-12 text-center space-y-4">
               <div className="relative">
                 <div className="w-16 h-16 rounded-full border-4 border-amber-500/20 border-t-amber-400 animate-spin"></div>
-                <Presentation className="w-6 h-6 text-amber-400 absolute inset-0 m-auto" />
+                {isConvertingPdf ? (
+                  <ImageIcon className="w-6 h-6 text-amber-400 absolute inset-0 m-auto" />
+                ) : (
+                  <Presentation className="w-6 h-6 text-amber-400 absolute inset-0 m-auto" />
+                )}
               </div>
               <div>
                 <h3 className="text-sm font-bold text-white mb-1">
-                  {generating ? 'NotebookLM 스타일 5장 프레젠테이션 덱 생성 중...' : '슬라이드 데이터를 불러오는 중...'}
+                  {isConvertingPdf
+                    ? `PDF 슬라이드를 가벼운 JPG 형식으로 변환 중... (${convertProgress.current}/${convertProgress.total || '?'})`
+                    : generating
+                    ? 'NotebookLM 스타일 5장 프레젠테이션 덱 생성 중...'
+                    : '슬라이드 데이터를 불러오는 중...'}
                 </h3>
-                <p className="text-xs text-slate-400 max-w-sm">
-                  {generating ? '토픽의 핵심 원문, 역학 메커니즘, KDS 설계기준, 현장 시공 포인트를 16:9 비주얼 슬라이드로 구성하고 있습니다.' : '잠시만 기다려 주십시오.'}
+                <p className="text-xs text-slate-400 max-w-sm leading-relaxed">
+                  {isConvertingPdf
+                    ? '무거운 PDF 대신 고화질/저용량 경량 JPG 이미지 슬라이드로 변환하여 즉각적인 고속 브라우징을 준비합니다.'
+                    : generating
+                    ? '토픽의 핵심 원문, 역학 메커니즘, KDS 설계기준, 현장 시공 포인트를 16:9 비주얼 슬라이드로 구성하고 있습니다.'
+                    : '잠시만 기다려 주십시오.'}
                 </p>
               </div>
             </div>
-          ) : activeView === 'file' ? (
-            /* 모드 A: 원본 파일 / 구글 슬라이드 뷰어 */
-            <div className="w-full h-full p-2 flex flex-col">
-              {slideMeta.slide_url?.includes('google.com') ? (
-                <iframe
-                  src={slideMeta.slide_url}
-                  title="Google Slides"
-                  className="w-full h-full rounded-xl border border-slate-800 shadow-2xl"
-                  allowFullScreen
-                />
-              ) : (
-                <iframe
-                  src={`${apiBase}/api/topics/${topicId}/slides/file#toolbar=0&navpanes=0&view=FitH`}
-                  title="Slide Presentation"
-                  className="w-full h-full rounded-xl border border-slate-800 shadow-2xl bg-slate-900"
-                />
-              )}
+          ) : activeView === 'jpg' && jpgSlides.length > 0 ? (
+            /* 모드 1: 초경량 고화질 JPG 이미지 슬라이드 뷰어 (NO PDF iframe) */
+            <div className="w-full h-full flex flex-col justify-between">
+              {/* 메인 16:9 슬라이드 이미지 스테이지 */}
+              <div className="relative flex-1 min-h-0 flex items-center justify-center p-3 sm:p-5">
+                <div className="relative max-h-full max-w-full flex items-center justify-center">
+                  <img
+                    key={currentSlideIndex}
+                    src={jpgSlides[currentSlideIndex]?.imgUrl}
+                    alt={jpgSlides[currentSlideIndex]?.title || `Slide ${currentSlideIndex + 1}`}
+                    className="max-h-[64vh] sm:max-h-[70vh] max-w-full object-contain rounded-xl shadow-2xl border border-slate-800/80 select-none animate-fade-in pointer-events-none"
+                  />
+
+                  {/* 슬라이드 번호 뱃지 */}
+                  <div className="absolute top-3 right-3 px-2.5 py-1 rounded-lg bg-black/80 backdrop-blur-md border border-white/20 text-white text-[11px] font-mono font-bold shadow-lg flex items-center gap-1.5">
+                    <span className="text-amber-400">0{currentSlideIndex + 1}</span>
+                    <span className="text-slate-400">/</span>
+                    <span className="text-slate-300">0{jpgSlides.length}</span>
+                  </div>
+                </div>
+
+                {/* 좌우 이동 플로팅 버튼 */}
+                <button
+                  type="button"
+                  onClick={handlePrevSlide}
+                  disabled={currentSlideIndex === 0}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-slate-900/85 hover:bg-amber-600 disabled:opacity-20 disabled:hover:bg-slate-900/85 border border-slate-700 text-white flex items-center justify-center transition-all cursor-pointer shadow-2xl backdrop-blur-sm z-20 active:scale-95"
+                  title="이전 슬라이드 (◀)"
+                >
+                  <ChevronLeft size={24} />
+                </button>
+                <button
+                  type="button"
+                  onClick={handleNextSlide}
+                  disabled={currentSlideIndex >= jpgSlides.length - 1}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-slate-900/85 hover:bg-amber-600 disabled:opacity-20 disabled:hover:bg-slate-900/85 border border-slate-700 text-white flex items-center justify-center transition-all cursor-pointer shadow-2xl backdrop-blur-sm z-20 active:scale-95"
+                  title="다음 슬라이드 (▶)"
+                >
+                  <ChevronRight size={24} />
+                </button>
+              </div>
+
+              {/* 하단 썸네일 스트립 네비게이션 */}
+              <div className="w-full bg-[#0B101D] border-t border-slate-800/90 px-4 py-2 flex items-center justify-between gap-3 shrink-0">
+                <div className="flex items-center gap-2 overflow-x-auto scrollbar-none py-0.5 max-w-full">
+                  {jpgSlides.map((slide, sIdx) => (
+                    <button
+                      key={sIdx}
+                      type="button"
+                      onClick={() => setCurrentSlideIndex(sIdx)}
+                      className={`relative flex flex-col items-center gap-1 p-1 rounded-xl transition-all cursor-pointer group shrink-0 ${
+                        sIdx === currentSlideIndex
+                          ? 'ring-2 ring-amber-400 bg-amber-500/15'
+                          : 'opacity-50 hover:opacity-100 hover:bg-slate-800/60'
+                      }`}
+                      title={`Slide ${sIdx + 1}로 이동`}
+                    >
+                      <div className="w-16 sm:w-20 aspect-video rounded-lg overflow-hidden border border-slate-700 bg-black flex items-center justify-center">
+                        <img src={slide.imgUrl} alt="" className="w-full h-full object-cover" />
+                      </div>
+                      <span className={`text-[10px] font-mono font-bold ${sIdx === currentSlideIndex ? 'text-amber-400' : 'text-slate-400'}`}>
+                        0{sIdx + 1}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+
+                {/* 우측 상태 뱃지 및 단축키 안내 */}
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-[10px] font-bold text-emerald-400 hidden sm:flex items-center gap-1 bg-emerald-950/40 border border-emerald-500/30 px-2.5 py-1 rounded-lg">
+                    ⚡ 경량 JPG 모드
+                  </span>
+                  <span className="text-[10px] text-slate-500 font-mono hidden md:inline">
+                    방향키(◀ ▶) 또는 Spacebar 슬라이드 넘김
+                  </span>
+                </div>
+              </div>
             </div>
-          ) : activeView === 'ai' && currentSlide ? (
-            /* 모드 B: AI 5-Slide Visual Presentation Deck */
+          ) : activeView === 'ai' && currentAiSlide ? (
+            /* 모드 2: AI 5-Slide Visual Presentation Deck */
             <div className="w-full h-full max-w-5xl aspect-video p-4 sm:p-6 md:p-8 flex flex-col justify-between overflow-y-auto scrollbar-none animate-fade-in">
               {/* 슬라이드 상단 진행 바 */}
               <div className="w-full flex items-center justify-between gap-3 mb-2 shrink-0">
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] font-extrabold uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40">
-                    {currentSlide.category_tag || `SLIDE 0${currentSlideIndex + 1}`}
+                    {currentAiSlide.category_tag || `SLIDE 0${currentSlideIndex + 1}`}
                   </span>
                   <span className="text-[10px] text-slate-400 font-mono">
-                    PART {currentSlideIndex + 1} OF {totalSlides}
+                    PART {currentSlideIndex + 1} OF {aiSlides.length}
                   </span>
                 </div>
                 <div className="flex items-center gap-1">
-                  {slides.map((_, idx) => (
+                  {aiSlides.map((_, idx) => (
                     <button
                       key={idx}
                       type="button"
@@ -458,20 +792,20 @@ export default function TopicSlidePlugin({
               <div className="border-b border-slate-800 pb-3 mb-3 shrink-0">
                 <h1 className="text-lg sm:text-xl md:text-2xl font-black text-white tracking-tight flex items-center gap-2">
                   <span className="text-amber-400 font-mono text-base sm:text-lg">0{currentSlideIndex + 1}.</span>
-                  <span>{currentSlide.title}</span>
+                  <span>{currentAiSlide.title}</span>
                 </h1>
-                {currentSlide.key_takeaway && (
+                {currentAiSlide.key_takeaway && (
                   <p className="text-xs sm:text-sm text-amber-300/90 font-medium mt-1 pl-6 border-l-2 border-amber-500/60 leading-relaxed">
-                    💡 {currentSlide.key_takeaway}
+                    💡 {currentAiSlide.key_takeaway}
                   </p>
                 )}
               </div>
 
-              {/* 슬라이드 본문: 2컬럼 레이아웃 (핵심 요점 + 비주얼 컴포넌트) */}
+              {/* 슬라이드 본문: 2컬럼 레이아웃 */}
               <div className="grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-4 flex-1 min-h-0 items-stretch">
                 {/* 좌측 6컬럼: 핵심 불릿 카드 */}
                 <div className="md:col-span-6 space-y-2 flex flex-col justify-center">
-                  {(currentSlide.bullet_points || []).map((b, bIdx) => (
+                  {(currentAiSlide.bullet_points || []).map((b, bIdx) => (
                     <div
                       key={bIdx}
                       className="p-3 bg-[#111827]/80 hover:bg-[#152033] border border-slate-800 hover:border-amber-500/40 rounded-xl transition-all shadow-sm group"
@@ -493,7 +827,7 @@ export default function TopicSlidePlugin({
                   ))}
                 </div>
 
-                {/* 우측 6컬럼: 비주얼 컴포넌트 (요약 카드 / 매트릭스 / KDS 공식 박스) */}
+                {/* 우측 6컬럼: 비주얼 컴포넌트 */}
                 <div className="md:col-span-6 flex flex-col justify-center">
                   <div className="p-3 sm:p-4 bg-gradient-to-br from-[#121B2F] to-[#0A101D] border border-blue-500/30 rounded-2xl shadow-lg h-full flex flex-col justify-between">
                     <div className="flex items-center justify-between pb-2 border-b border-slate-800">
@@ -505,9 +839,9 @@ export default function TopicSlidePlugin({
                     </div>
 
                     {/* 카드 매트릭스 렌더링 */}
-                    {currentSlide.visual_component?.cards && (
+                    {currentAiSlide.visual_component?.cards && (
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 my-2">
-                        {currentSlide.visual_component.cards.map((card, cIdx) => (
+                        {currentAiSlide.visual_component.cards.map((card, cIdx) => (
                           <div
                             key={cIdx}
                             className={`p-2.5 rounded-xl border flex flex-col justify-between ${
@@ -526,13 +860,13 @@ export default function TopicSlidePlugin({
                     )}
 
                     {/* 기술사 착안점 & 엔지니어 노트 */}
-                    {currentSlide.engineer_note && (
+                    {currentAiSlide.engineer_note && (
                       <div className="mt-2 p-2.5 bg-indigo-950/50 border border-indigo-500/40 rounded-xl">
                         <div className="text-[9.5px] font-bold text-indigo-300 flex items-center gap-1 mb-0.5">
                           <span>🎯 기술사 답안 차별화 & 실무 착안점</span>
                         </div>
                         <p className="text-[11px] text-indigo-100 font-medium leading-relaxed">
-                          <LatexRenderer text={currentSlide.engineer_note} />
+                          <LatexRenderer text={currentAiSlide.engineer_note} />
                         </p>
                       </div>
                     )}
@@ -546,8 +880,18 @@ export default function TopicSlidePlugin({
                 <span className="font-mono">키보드 방향키(◀ ▶)로 슬라이드를 넘길 수 있습니다</span>
               </div>
             </div>
+          ) : activeView === 'web' && slideMeta?.slide_url ? (
+            /* 모드 3: 구글 슬라이드 임베드 */
+            <div className="w-full h-full p-2 flex flex-col">
+              <iframe
+                src={slideMeta.slide_url}
+                title="Google Slides"
+                className="w-full h-full rounded-xl border border-slate-800 shadow-2xl"
+                allowFullScreen
+              />
+            </div>
           ) : (
-            /* 모드 C: 슬라이드가 아직 등록되지 않은 경우 안내 화면 */
+            /* 모드 4: 미등록 안내 화면 */
             <div className="flex flex-col items-center justify-center p-8 text-center space-y-4 max-w-md">
               <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
                 <Presentation className="w-8 h-8" />
@@ -555,7 +899,7 @@ export default function TopicSlidePlugin({
               <div>
                 <h3 className="text-base font-black text-white mb-1.5">등록된 슬라이드 자료가 없습니다</h3>
                 <p className="text-xs text-slate-400 leading-relaxed">
-                  NotebookLM 스튜디오에서 내보낸 <span className="text-amber-300 font-bold">PDF/PPTX 파일</span>을 업로드하시거나, AI 버튼을 눌러 <span className="text-amber-300 font-bold">5장 프레젠테이션 슬라이드 덱</span>을 즉시 자동 생성해 보세요!
+                  NotebookLM 스튜디오에서 내보낸 <span className="text-amber-300 font-bold">PDF 파일</span>을 업로드하시면, <span className="text-emerald-400 font-bold">초경량 고화질 JPG 슬라이드</span>로 자동 변환되어 초고속 브라우징이 가능합니다!
                 </p>
               </div>
               <div className="flex items-center gap-2 pt-2">
@@ -574,13 +918,13 @@ export default function TopicSlidePlugin({
                   className="flex items-center gap-1.5 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition-all border border-slate-700 cursor-pointer"
                 >
                   <Upload size={14} className="text-amber-400" />
-                  <span>내 파일 등록</span>
+                  <span>내 파일 등록 (JPG 자동 변환)</span>
                 </button>
               </div>
             </div>
           )}
 
-          {/* 좌우 슬라이드 이동 플로팅 버튼 (AI 모드일 때 표출) */}
+          {/* AI 모드일 때 좌우 플로팅 버튼 */}
           {activeView === 'ai' && (
             <>
               <button
@@ -595,7 +939,7 @@ export default function TopicSlidePlugin({
               <button
                 type="button"
                 onClick={handleNextSlide}
-                disabled={currentSlideIndex >= totalSlides - 1}
+                disabled={currentSlideIndex >= aiSlides.length - 1}
                 className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-slate-900/80 hover:bg-amber-600 disabled:opacity-20 disabled:hover:bg-slate-900/80 border border-slate-700 text-white flex items-center justify-center transition-all cursor-pointer shadow-xl backdrop-blur-sm"
                 title="다음 슬라이드 (▶)"
               >
@@ -625,10 +969,11 @@ export default function TopicSlidePlugin({
                 </button>
               </div>
 
-              {/* 1. 파일 직접 업로드 (PDF / PPTX / 이미지) */}
+              {/* 1. 파일 직접 업로드 (PDF / 이미지 -> 경량 JPG 변환) */}
               <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1.5">
-                  1. NotebookLM 슬라이드 파일 직접 업로드 (PDF / PPTX / 이미지)
+                <label className="block text-xs font-bold text-slate-300 mb-1.5 flex items-center gap-1.5">
+                  <ImageIcon size={13} className="text-amber-400" />
+                  <span>1. 슬라이드 파일 직접 등록 (PDF / JPG / PNG)</span>
                 </label>
                 <div
                   onClick={() => fileInputRef.current?.click()}
@@ -636,16 +981,19 @@ export default function TopicSlidePlugin({
                 >
                   <FileText className="w-8 h-8 text-amber-400 mx-auto mb-2 opacity-80" />
                   <span className="text-xs font-bold text-white block">
-                    {isUploading ? '업로드 중입니다...' : '클릭하여 PDF 또는 PPTX 파일 선택'}
+                    {isUploading || isConvertingPdf
+                      ? '경량 JPG 슬라이드로 변환 및 업로드 중...'
+                      : '클릭하여 NotebookLM PDF 또는 JPG 이미지 파일 선택'}
                   </span>
-                  <span className="text-[10px] text-slate-400 mt-1 block">
-                    NotebookLM에서 [내보내기 ➔ PDF 또는 PowerPoint]로 저장한 파일을 선택하세요
+                  <span className="text-[10px] text-amber-300/80 mt-1 block font-medium">
+                    ⚡ PDF를 선택하면 무거운 PDF 뷰어 대신 고화질 경량 JPG 슬라이드로 자동 변환됩니다
                   </span>
                 </div>
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept=".pdf,.pptx,.ppt,.png,.jpg,.jpeg,.webp"
+                  accept=".pdf,.jpg,.jpeg,.png,.webp"
+                  multiple
                   onChange={handleFileUpload}
                   className="hidden"
                 />
@@ -678,7 +1026,7 @@ export default function TopicSlidePlugin({
 
               {/* 하단 관리 버튼 */}
               <div className="flex items-center justify-between pt-3 border-t border-slate-800">
-                {hasFileOrUrl ? (
+                {hasJpgSlides || hasWebUrl ? (
                   <button
                     type="button"
                     onClick={handleDeleteSlides}
