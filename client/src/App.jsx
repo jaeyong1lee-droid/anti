@@ -3585,11 +3585,95 @@ export default function App() {
   };
 
   // Lockscreen Subjective Quiz States
-  const [showLockscreenQuiz, setShowLockscreenQuiz] = useState(false);
+  const [showLockscreenQuiz, setShowLockscreenQuiz] = useState(() => {
+    try {
+      return sessionStorage.getItem('anti_lockscreen_modal_open') === 'true';
+    } catch (e) {
+      return false;
+    }
+  });
   const showLockscreenQuizRef = useRef(false);
   useEffect(() => {
     showLockscreenQuizRef.current = showLockscreenQuiz;
+    try {
+      if (showLockscreenQuiz) {
+        sessionStorage.setItem('anti_lockscreen_modal_open', 'true');
+      } else {
+        sessionStorage.removeItem('anti_lockscreen_modal_open');
+      }
+    } catch (e) {}
   }, [showLockscreenQuiz]);
+
+  const lockscreenScrollRef = useRef(null);
+
+  const getLockscreenQuestionKey = (q) => {
+    if (!q) return '';
+    if (q.id) return String(q.id);
+    if (q.sessionName && q.number) return `${q.sessionName}_${q.number}`;
+    if (q.question) return q.question.trim().slice(0, 50);
+    return 'default';
+  };
+
+  const getLockscreenAnswersMap = () => {
+    try {
+      const raw = localStorage.getItem('anti_lockscreen_answers_map');
+      return raw ? JSON.parse(raw) : {};
+    } catch (e) {
+      return {};
+    }
+  };
+
+  const saveLockscreenAnswerForQuestion = (q, userAnswer, gradingResult, hint) => {
+    if (!q) return;
+    try {
+      const key = getLockscreenQuestionKey(q);
+      if (!key) return;
+      const map = getLockscreenAnswersMap();
+      const existing = map[key] || {};
+      map[key] = {
+        userAnswer: typeof userAnswer === 'string' ? userAnswer : (existing.userAnswer || ''),
+        gradingResult: gradingResult !== undefined ? gradingResult : (existing.gradingResult || null),
+        hint: hint !== undefined ? hint : (existing.hint || ''),
+        updatedAt: Date.now()
+      };
+      localStorage.setItem('anti_lockscreen_answers_map', JSON.stringify(map));
+      localStorage.setItem('anti_current_lockscreen_user_answer', map[key].userAnswer);
+      if (map[key].gradingResult) {
+        localStorage.setItem('anti_current_lockscreen_grading_result', JSON.stringify(map[key].gradingResult));
+      } else {
+        localStorage.removeItem('anti_current_lockscreen_grading_result');
+      }
+      localStorage.setItem('anti_current_lockscreen_qkey', key);
+    } catch (e) {
+      console.warn('Failed to save lockscreen answer to localStorage:', e);
+    }
+  };
+
+  const clearLockscreenAnswerForQuestion = (q) => {
+    try {
+      const key = getLockscreenQuestionKey(q);
+      if (key) {
+        const map = getLockscreenAnswersMap();
+        delete map[key];
+        localStorage.setItem('anti_lockscreen_answers_map', JSON.stringify(map));
+      }
+      localStorage.removeItem('anti_current_lockscreen_user_answer');
+      localStorage.removeItem('anti_current_lockscreen_grading_result');
+      localStorage.removeItem('anti_current_lockscreen_qkey');
+    } catch (e) {}
+  };
+
+  const scrollToLockscreenTop = (smooth = true) => {
+    setTimeout(() => {
+      if (lockscreenScrollRef.current) {
+        lockscreenScrollRef.current.scrollTo({ top: 0, behavior: smooth ? 'smooth' : 'auto' });
+      }
+      const headerEl = document.getElementById('lockscreen-header');
+      if (headerEl) {
+        headerEl.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'start' });
+      }
+    }, 40);
+  };
 
   // Load existing unsolved lockscreen question and history from localStorage if present
   const [lockscreenQuestion, setLockscreenQuestion] = useState(() => {
@@ -3633,14 +3717,77 @@ export default function App() {
     } catch (e) {}
   }, [lockscreenHistoryIndex]);
 
-  const [lockscreenUserAnswer, setLockscreenUserAnswer] = useState('');
+  const [lockscreenUserAnswer, setLockscreenUserAnswer] = useState(() => {
+    try {
+      const savedQ = localStorage.getItem('anti_current_unsolved_lockscreen_question');
+      if (savedQ) {
+        const q = JSON.parse(savedQ);
+        const key = getLockscreenQuestionKey(q);
+        const map = getLockscreenAnswersMap();
+        if (map[key]?.userAnswer !== undefined) return map[key].userAnswer;
+      }
+      return localStorage.getItem('anti_current_lockscreen_user_answer') || '';
+    } catch (e) {}
+    return '';
+  });
+
+  const [lockscreenGradingResult, setLockscreenGradingResult] = useState(() => {
+    try {
+      const savedQ = localStorage.getItem('anti_current_unsolved_lockscreen_question');
+      if (savedQ) {
+        const q = JSON.parse(savedQ);
+        const key = getLockscreenQuestionKey(q);
+        const map = getLockscreenAnswersMap();
+        if (map[key]?.gradingResult !== undefined) return map[key].gradingResult;
+      }
+      const rawRes = localStorage.getItem('anti_current_lockscreen_grading_result');
+      if (rawRes) return JSON.parse(rawRes);
+    } catch (e) {}
+    return null;
+  });
+
   const [lockscreenGradingLoading, setLockscreenGradingLoading] = useState(false);
-  const [lockscreenGradingResult, setLockscreenGradingResult] = useState(null);
   const [lockscreenLoading, setLockscreenLoading] = useState(false);
   const lockscreenLoadingRef = useRef(false);
   const [showLockscreenHint, setShowLockscreenHint] = useState(false);
   const [lockscreenHint, setLockscreenHint] = useState('');
   const [lockscreenHintLoading, setLockscreenHintLoading] = useState(false);
+
+  const loadQuestionAnswerState = (q) => {
+    if (!q) {
+      setLockscreenUserAnswer('');
+      setLockscreenGradingResult(null);
+      setLockscreenHint('');
+      setShowLockscreenHint(false);
+      return;
+    }
+    const key = getLockscreenQuestionKey(q);
+    const map = getLockscreenAnswersMap();
+    const savedEntry = key ? map[key] : null;
+    if (savedEntry) {
+      setLockscreenUserAnswer(savedEntry.userAnswer || '');
+      setLockscreenGradingResult(savedEntry.gradingResult || null);
+      setLockscreenHint(savedEntry.hint || '');
+    } else {
+      const quickAns = localStorage.getItem('anti_current_lockscreen_user_answer') || '';
+      let quickRes = null;
+      try {
+        const raw = localStorage.getItem('anti_current_lockscreen_grading_result');
+        if (raw) quickRes = JSON.parse(raw);
+      } catch (e) {}
+      setLockscreenUserAnswer(quickAns);
+      setLockscreenGradingResult(quickRes);
+      setLockscreenHint('');
+    }
+    setShowLockscreenHint(false);
+    scrollToLockscreenTop(false);
+  };
+
+  useEffect(() => {
+    if (showLockscreenQuiz && lockscreenQuestion) {
+      scrollToLockscreenTop(false);
+    }
+  }, [showLockscreenQuiz]);
 
   const fetchLockscreenQuestion = async (addToHistory = true, forceNew = false) => {
     // 1) If not forceNew, check if we already have an unsolved question in localStorage or memory
@@ -3651,6 +3798,7 @@ export default function App() {
           const parsed = JSON.parse(saved);
           if (parsed && (parsed.question || parsed.fullTitle)) {
             setLockscreenQuestion(parsed);
+            loadQuestionAnswerState(parsed);
             if (addToHistory && lockscreenHistoryRef.current.length === 0) {
               const initHist = [parsed];
               lockscreenHistoryRef.current = initHist;
@@ -3671,10 +3819,7 @@ export default function App() {
         const data = await res.json();
         if (data && data.success && data.question) {
           setLockscreenQuestion(data.question);
-          setLockscreenUserAnswer('');
-          setLockscreenGradingResult(null);
-          setLockscreenHint('');
-          setShowLockscreenHint(false);
+          loadQuestionAnswerState(data.question);
 
           try {
             localStorage.setItem('anti_current_unsolved_lockscreen_question', JSON.stringify(data.question));
@@ -3721,6 +3866,7 @@ export default function App() {
       const data = await res.json();
       if (data && data.success && data.hint) {
         setLockscreenHint(data.hint);
+        saveLockscreenAnswerForQuestion(lockscreenQuestion, lockscreenUserAnswer, lockscreenGradingResult, data.hint);
       } else {
         setLockscreenHint(data.error || '힌트를 생성하지 못했습니다.');
       }
@@ -3749,7 +3895,9 @@ export default function App() {
       const data = await res.json();
       if (data && data.success && data.result) {
         setLockscreenGradingResult(data.result);
+        saveLockscreenAnswerForQuestion(lockscreenQuestion, lockscreenUserAnswer.trim(), data.result, lockscreenHint);
         localStorage.setItem('anti_last_lockscreen_submit_time', String(Date.now()));
+        scrollToLockscreenTop(true);
       } else {
         showNotification(data.error || 'AI 채점 중 오류가 발생했습니다.', 'error');
       }
@@ -3765,6 +3913,8 @@ export default function App() {
     const qId = lockscreenQuestion?.id;
     localStorage.setItem('anti_last_lockscreen_submit_time', String(Date.now()));
     localStorage.removeItem('anti_current_unsolved_lockscreen_question');
+    clearLockscreenAnswerForQuestion(lockscreenQuestion);
+    sessionStorage.removeItem('anti_lockscreen_modal_open');
     setShowLockscreenQuiz(false);
     showLockscreenQuizRef.current = false;
     setLockscreenQuestion(null);
@@ -3796,10 +3946,7 @@ export default function App() {
       try {
         localStorage.setItem('anti_current_unsolved_lockscreen_question', JSON.stringify(q));
       } catch (e) {}
-      setLockscreenUserAnswer('');
-      setLockscreenGradingResult(null);
-      setLockscreenHint('');
-      setShowLockscreenHint(false);
+      loadQuestionAnswerState(q);
       return;
     }
 
@@ -3821,10 +3968,7 @@ export default function App() {
       try {
         localStorage.setItem('anti_current_unsolved_lockscreen_question', JSON.stringify(q));
       } catch (e) {}
-      setLockscreenUserAnswer('');
-      setLockscreenGradingResult(null);
-      setLockscreenHint('');
-      setShowLockscreenHint(false);
+      loadQuestionAnswerState(q);
     }
   };
 
@@ -3835,6 +3979,7 @@ export default function App() {
 
     setShowLockscreenQuiz(true);
     showLockscreenQuizRef.current = true;
+    sessionStorage.setItem('anti_lockscreen_modal_open', 'true');
 
     // Check if we already have an unsolved question in memory or in localStorage
     let existingQuestion = lockscreenQuestion;
@@ -3850,10 +3995,7 @@ export default function App() {
     if (existingQuestion) {
       setLockscreenQuestion(existingQuestion);
       setLockscreenLoading(false);
-      setLockscreenUserAnswer('');
-      setLockscreenGradingResult(null);
-      setLockscreenHint('');
-      setShowLockscreenHint(false);
+      loadQuestionAnswerState(existingQuestion);
       if (lockscreenHistoryRef.current.length === 0) {
         lockscreenHistoryRef.current = [existingQuestion];
         lockscreenHistoryIndexRef.current = 0;
@@ -18252,63 +18394,64 @@ ${itemsStr}
         }
 
         return (
-          <div className="fixed inset-0 z-[9999999] bg-slate-950 md:bg-slate-950/98 backdrop-blur-none md:backdrop-blur-2xl flex flex-col justify-center items-center px-4 py-6 text-slate-100 font-sans select-none overflow-y-auto">
-            <div className="w-full max-w-lg flex flex-col space-y-4 my-auto">
-              {/* Streamlined Header: Badges & Close Button */}
-              <div className="flex items-center justify-between pb-2 border-b border-slate-800/80">
-                <div className="flex items-center gap-2">
-                  <span className="px-3 py-1 bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 rounded-xl text-xs font-black">
-                    {lockscreenQuestion.sessionName} 제1교시 {lockscreenQuestion.number}번
-                  </span>
+          <div 
+            ref={lockscreenScrollRef}
+            className="fixed inset-0 z-[9999999] bg-slate-950 md:bg-slate-950/98 backdrop-blur-none md:backdrop-blur-2xl overflow-y-auto text-slate-100 font-sans select-none scroll-smooth"
+          >
+            <div className="min-h-full w-full flex flex-col items-center justify-start px-4 py-6 md:py-8">
+              <div className="w-full max-w-lg flex flex-col space-y-4 my-auto">
+                {/* Streamlined Header: Badges & Close Button */}
+                <div id="lockscreen-header" className="flex items-center justify-between pb-2 border-b border-slate-800/80">
+                  <div className="flex items-center gap-2">
+                    <span className="px-3 py-1 bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 rounded-xl text-xs font-black shadow-sm">
+                      {lockscreenQuestion.sessionName} 제1교시 {lockscreenQuestion.number}번
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleOpenLockscreenHint}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/40 hover:border-amber-400/60 rounded-xl text-xs font-black transition-all cursor-pointer shadow-sm active:scale-95 duration-150"
+                      title="AI 초간단 쉬운 힌트 보기"
+                    >
+                      <Lightbulb size={14} className="text-amber-400" />
+                      <span>힌트</span>
+                    </button>
+                    {(() => {
+                      const resolved = resolveTopicInfo(lockscreenQuestion, lockscreenQuestion?.question || lockscreenQuestion?.sessionName);
+                      const lockTopicKey = String(resolved.topicId || resolved.topicTitle || '');
+                      const isSlideGen = !!generatingSlideTopicIds[lockTopicKey] || !!generatingSlideTopicIds[String(lockscreenQuestion?.topic_id || '')];
+                      return (
+                        <button
+                          onClick={() => handleOpenTopicSlides(lockscreenQuestion, lockscreenQuestion?.question || lockscreenQuestion?.sessionName)}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 ${
+                            isSlideGen
+                              ? 'bg-amber-500/30 text-amber-200 border-amber-400 animate-pulse'
+                              : 'bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 text-amber-300 border-amber-500/40 hover:border-amber-400/60'
+                          } border rounded-xl text-xs font-black transition-all cursor-pointer shadow-sm active:scale-95 duration-150`}
+                          title={isSlideGen ? "백그라운드에서 5장 슬라이드 작성 중... (클릭하여 현황 확인)" : "관련 토픽 5장 슬라이드 자료(PPT) 보기"}
+                        >
+                          {isSlideGen ? (
+                            <RefreshCw size={14} className="text-amber-400 animate-spin" />
+                          ) : (
+                            <Presentation size={14} className="text-amber-400" />
+                          )}
+                          <span>{isSlideGen ? 'PPT ⏳작성중' : 'PPT'}</span>
+                        </button>
+                      );
+                    })()}
+                    <button
+                      onClick={() => {
+                        setShowLockscreenQuiz(false);
+                        showLockscreenQuizRef.current = false;
+                        sessionStorage.removeItem('anti_lockscreen_modal_open');
+                      }}
+                      className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors cursor-pointer border-0 bg-transparent"
+                      title="닫기"
+                    >
+                      <X size={18} />
+                    </button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={handleOpenLockscreenHint}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/40 hover:border-amber-400/60 rounded-xl text-xs font-black transition-all cursor-pointer shadow-sm active:scale-95 duration-150"
-                    title="AI 초간단 쉬운 힌트 보기"
-                  >
-                    <Lightbulb size={14} className="text-amber-400" />
-                    <span>힌트</span>
-                  </button>
-                  {(() => {
-                    const resolved = resolveTopicInfo(lockscreenQuestion, lockscreenQuestion?.question || lockscreenQuestion?.sessionName);
-                    const lockTopicKey = String(resolved.topicId || resolved.topicTitle || '');
-                    const isSlideGen = !!generatingSlideTopicIds[lockTopicKey] || !!generatingSlideTopicIds[String(lockscreenQuestion?.topic_id || '')];
-                    return (
-                      <button
-                        onClick={() => handleOpenTopicSlides(lockscreenQuestion, lockscreenQuestion?.question || lockscreenQuestion?.sessionName)}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 ${
-                          isSlideGen
-                            ? 'bg-amber-500/30 text-amber-200 border-amber-400 animate-pulse'
-                            : 'bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 text-amber-300 border-amber-500/40 hover:border-amber-400/60'
-                        } border rounded-xl text-xs font-black transition-all cursor-pointer shadow-sm active:scale-95 duration-150`}
-                        title={isSlideGen ? "백그라운드에서 5장 슬라이드 작성 중... (클릭하여 현황 확인)" : "관련 토픽 5장 슬라이드 자료(PPT) 보기"}
-                      >
-                        {isSlideGen ? (
-                          <RefreshCw size={14} className="text-amber-400 animate-spin" />
-                        ) : (
-                          <Presentation size={14} className="text-amber-400" />
-                        )}
-                        <span>{isSlideGen ? 'PPT ⏳작성중' : 'PPT'}</span>
-                      </button>
-                    );
-                  })()}
-                  <button
-                    onClick={() => {
-                      setShowLockscreenQuiz(false);
-                      showLockscreenQuizRef.current = false;
-                      setLockscreenUserAnswer('');
-                      setLockscreenGradingResult(null);
-                      setShowLockscreenHint(false);
-                      setLockscreenHint('');
-                    }}
-                    className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors cursor-pointer border-0 bg-transparent"
-                    title="닫기"
-                  >
-                    <X size={18} />
-                  </button>
-                </div>
-              </div>
 
               {/* Question Box */}
               <div className="bg-slate-900/80 border border-indigo-500/30 shadow-lg rounded-2xl p-4 md:p-5 min-h-[90px] flex items-center justify-center text-center text-[16px] font-extrabold text-white leading-relaxed">
@@ -18329,7 +18472,11 @@ ${itemsStr}
                 </div>
                 <textarea
                   value={lockscreenUserAnswer}
-                  onChange={(e) => setLockscreenUserAnswer(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setLockscreenUserAnswer(val);
+                    saveLockscreenAnswerForQuestion(lockscreenQuestion, val, lockscreenGradingResult, lockscreenHint);
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
                       e.preventDefault();
@@ -18401,10 +18548,8 @@ ${itemsStr}
                       <button
                         onClick={() => {
                           setShowLockscreenQuiz(false);
-                          setLockscreenUserAnswer('');
-                          setLockscreenGradingResult(null);
-                          setShowLockscreenHint(false);
-                          setLockscreenHint('');
+                          showLockscreenQuizRef.current = false;
+                          sessionStorage.removeItem('anti_lockscreen_modal_open');
                         }}
                         className="text-xs text-slate-500 hover:text-slate-400 transition-colors bg-transparent border-0 cursor-pointer p-1"
                       >
@@ -18586,6 +18731,7 @@ ${itemsStr}
                   </div>
                 </div>
               )}
+              </div>
             </div>
           </div>
         );
