@@ -445,34 +445,38 @@ router.post('/topics/:id/ai-questions', async (req, res) => {
       }
     }
 
-    const sId = req.query.sessionId || 'legacy_default';
+    const rawSid = String(req.query.sessionId || '').trim();
+    let cleanSid = rawSid;
+    if (cleanSid.startsWith('sess_')) cleanSid = cleanSid.substring(5);
     const isValidScheduleId = resolvedScheduleId && resolvedScheduleId !== '9999' && resolvedScheduleId !== 'null' && resolvedScheduleId !== 'undefined';
     
+    // Canonical key lookup
     const primaryKey = isValidScheduleId
-      ? `review_questions_schedule_${resolvedScheduleId}_sess_${sId}`
-      : `review_questions_topic_${topicId}_sess_${sId}`;
+      ? `review_questions_schedule_${resolvedScheduleId}`
+      : (cleanSid ? `review_questions_topic_${topicId}_sess_${cleanSid}` : `review_questions_topic_${topicId}`);
 
-    // 1. Direct Lookup (Fast O(1) Path)
+    // 1. Direct Lookup (Canonical O(1) Path)
     let cached = await dbQuery.get('SELECT key, value FROM app_session WHERE key = ?', [primaryKey]);
 
-    // 2. Direct Pending Schedule Lookup Fallback
+    // 2. Exact match with cleanSid if provided
+    if (!cached && isValidScheduleId && cleanSid) {
+      cached = await dbQuery.get('SELECT key, value FROM app_session WHERE key = ? OR key = ?', [
+        `review_questions_schedule_${resolvedScheduleId}_sess_${cleanSid}`,
+        `review_questions_schedule_${resolvedScheduleId}_sess_${rawSid}`
+      ]);
+    }
+
+    // 3. Fallback to pending schedule canonical key if no valid schedule was resolved
     if (!cached && !isValidScheduleId) {
       const existingPending = await dbQuery.get(
         `SELECT id FROM schedules WHERE topic_id = ? AND (status = 'pending' OR status = 'practice') ORDER BY id DESC LIMIT 1`,
         [topicId]
       );
       if (existingPending) {
-        const pendingKey = `review_questions_schedule_${existingPending.id}_sess_${sId}`;
-        cached = await dbQuery.get('SELECT key, value FROM app_session WHERE key = ?', [pendingKey]);
+        cached = await dbQuery.get('SELECT key, value FROM app_session WHERE key = ?', [
+          `review_questions_schedule_${existingPending.id}`
+        ]);
       }
-    }
-
-    // 3. Legacy Key Fallback
-    if (!cached) {
-      const legacyKey = isValidScheduleId
-        ? `review_questions_schedule_${resolvedScheduleId}`
-        : `review_questions_topic_${topicId}`;
-      cached = await dbQuery.get('SELECT key, value FROM app_session WHERE key = ?', [legacyKey]);
     }
 
     if (cached && cached.value) {
@@ -1198,12 +1202,18 @@ let parsedArray = null;
     }));
 
     const deduplicated = deduplicateQuestions(cleanedQuestions);
-    const sId = req.query.sessionId || 'legacy_default';
+    const rawSid = String(req.query.sessionId || '').trim();
+    let cleanSid = rawSid;
+    if (cleanSid.startsWith('sess_')) cleanSid = cleanSid.substring(5);
+
     const key = resolvedScheduleId
-      ? `review_questions_schedule_${resolvedScheduleId}_sess_${sId}`
-      : `review_questions_topic_${topicId}_sess_${sId}`;
+      ? `review_questions_schedule_${resolvedScheduleId}`
+      : (cleanSid ? `review_questions_topic_${topicId}_sess_${cleanSid}` : `review_questions_topic_${topicId}`);
 
     await saveSessionValue(key, JSON.stringify(deduplicated));
+    if (resolvedScheduleId && cleanSid) {
+      await saveSessionValue(`review_questions_schedule_${resolvedScheduleId}_sess_${cleanSid}`, JSON.stringify(deduplicated));
+    }
     if (progressTimer) clearInterval(progressTimer);
 
     res.json({
@@ -1353,7 +1363,7 @@ router.get('/session/review', async (req, res) => {
     }
 
     if (targetTopicId && targetTopicId.startsWith('mixed_')) {
-      let rawSid = String(req.query.sessionId || 'legacy_default');
+      let rawSid = String(req.query.sessionId || `sess_${targetTopicId}`);
       let cleanSid = rawSid;
       if (cleanSid.startsWith('sess_')) cleanSid = cleanSid.substring(5);
 
@@ -1394,35 +1404,46 @@ router.get('/session/review', async (req, res) => {
       return res.json({ success: true, data: null });
     }
 
-    const sId = req.query.sessionId || 'legacy_default';
-    const key = req.query.scheduleId 
-      ? `review_questions_schedule_${req.query.scheduleId}_sess_${sId}`
-      : `review_questions_topic_${targetTopicId}_sess_${sId}`;
-    let row = await dbQuery.get('SELECT value FROM app_session WHERE key = ?', [key]);
-    let actualKey = key;
+    const rawSid = String(req.query.sessionId || '').trim();
+    let cleanSid = rawSid;
+    if (cleanSid.startsWith('sess_')) cleanSid = cleanSid.substring(5);
 
-    if (!row && req.query.scheduleId) {
-      const schedulePattern = `review_questions_schedule_${req.query.scheduleId}_sess_%`;
-      const scheduleSessionRow = await dbQuery.get(
-        'SELECT key, value FROM app_session WHERE key LIKE ? AND key NOT LIKE ? ORDER BY updated_at DESC LIMIT 1',
-        [schedulePattern, '%_q']
-      );
-      if (scheduleSessionRow) {
-        row = scheduleSessionRow;
-        actualKey = scheduleSessionRow.key;
+    const hasValidSchedule = req.query.scheduleId && String(req.query.scheduleId) !== '9999' && String(req.query.scheduleId) !== 'null';
+    let row = null;
+    let actualKey = null;
+
+    if (hasValidSchedule) {
+      const schedId = req.query.scheduleId;
+      // 1. Exact canonical schedule key: review_questions_schedule_{schedId}
+      row = await dbQuery.get('SELECT key, value FROM app_session WHERE key = ?', [`review_questions_schedule_${schedId}`]);
+      if (row) actualKey = row.key;
+
+      // 2. Exact match with cleanSid if provided: review_questions_schedule_{schedId}_sess_{cleanSid}
+      if (!row && cleanSid) {
+        row = await dbQuery.get('SELECT key, value FROM app_session WHERE key = ? OR key = ?', [
+          `review_questions_schedule_${schedId}_sess_${cleanSid}`,
+          `review_questions_schedule_${schedId}_sess_${rawSid}`
+        ]);
+        if (row) actualKey = row.key;
       }
-    }
 
-    if (!row) {
-      const topicPattern = `review_questions_topic_${targetTopicId}_sess_%`;
-      // Exclude _q (questions-only) keys so we only fetch state rows
-      const topicSessionRow = await dbQuery.get(
-        'SELECT key, value FROM app_session WHERE key LIKE ? AND key NOT LIKE ? ORDER BY updated_at DESC LIMIT 1',
-        [topicPattern, '%_q']
-      );
-      if (topicSessionRow) {
-        row = topicSessionRow;
-        actualKey = topicSessionRow.key;
+      // 3. Fallback to topic canonical key if schedule row not present
+      if (!row && targetTopicId) {
+        row = await dbQuery.get('SELECT key, value FROM app_session WHERE key = ?', [`review_questions_topic_${targetTopicId}`]);
+        if (row) actualKey = row.key;
+      }
+    } else {
+      // Free practice or no schedule
+      if (cleanSid) {
+        row = await dbQuery.get('SELECT key, value FROM app_session WHERE key = ? OR key = ?', [
+          `review_questions_topic_${targetTopicId}_sess_${cleanSid}`,
+          `review_questions_topic_${targetTopicId}_sess_${rawSid}`
+        ]);
+        if (row) actualKey = row.key;
+      }
+      if (!row) {
+        row = await dbQuery.get('SELECT key, value FROM app_session WHERE key = ?', [`review_questions_topic_${targetTopicId}`]);
+        if (row) actualKey = row.key;
       }
     }
 
@@ -1438,7 +1459,7 @@ router.get('/session/review', async (req, res) => {
         // Backward compat: very old format stored just a bare questions array
         if (Array.isArray(data)) {
           data = {
-            sessionId: 'legacy_default',
+            sessionId: cleanSid ? `sess_${cleanSid}` : '',
             questions: data,
             selectedAnswers: {},
             revealedQuestions: {},
@@ -1481,7 +1502,7 @@ router.post('/session/review', async (req, res) => {
     }
 
     if (targetTopicId && targetTopicId.startsWith('mixed_')) {
-      let rawSid = String(sessionId || 'legacy_default');
+      let rawSid = String(sessionId || `sess_${targetTopicId}`);
       let cleanSid = rawSid;
       if (cleanSid.startsWith('sess_')) cleanSid = cleanSid.substring(5);
 
@@ -1538,23 +1559,35 @@ router.post('/session/review', async (req, res) => {
       return res.json({ success: true, message: 'Mixed session stored.' });
     }
 
-    const sId = sessionId || 'legacy_default';
-    const key = req.body.scheduleId 
-      ? `review_questions_schedule_${req.body.scheduleId}_sess_${sId}`
-      : `review_questions_topic_${targetTopicId}_sess_${sId}`;
+    const rawSid = String(sessionId || '').trim();
+    let cleanSid = rawSid;
+    if (cleanSid.startsWith('sess_')) cleanSid = cleanSid.substring(5);
+
+    const hasValidSchedule = req.body.scheduleId && String(req.body.scheduleId) !== '9999' && String(req.body.scheduleId) !== 'null';
+    
+    // Canonical key
+    const key = hasValidSchedule
+      ? `review_questions_schedule_${req.body.scheduleId}`
+      : (cleanSid ? `review_questions_topic_${targetTopicId}_sess_${cleanSid}` : `review_questions_topic_${targetTopicId}`);
     const questionsKey = `${key}_q`;
 
     // Merge with existing state for missing fields
     let existingData2 = {};
     try {
-      const existingRow2 = await dbQuery.get('SELECT value FROM app_session WHERE key = ?', [key]);
+      let existingRow2 = await dbQuery.get('SELECT value FROM app_session WHERE key = ?', [key]);
+      if (!existingRow2 && hasValidSchedule && cleanSid) {
+        existingRow2 = await dbQuery.get('SELECT value FROM app_session WHERE key = ?', [`review_questions_schedule_${req.body.scheduleId}_sess_${cleanSid}`]);
+      }
       if (existingRow2 && existingRow2.value) existingData2 = JSON.parse(existingRow2.value);
     } catch (e) {}
 
     // Save questions separately — saveSessionValue skips write if unchanged (same-value optimization)
     // This is the key optimization: questions (~40-100KB) are only written when they actually change
     if (questions && Array.isArray(questions) && questions.length > 0) {
-            await saveSessionValue(questionsKey, JSON.stringify(questions));
+      await saveSessionValue(questionsKey, JSON.stringify(questions));
+      if (hasValidSchedule && cleanSid) {
+        await saveSessionValue(`review_questions_schedule_${req.body.scheduleId}_sess_${cleanSid}_q`, JSON.stringify(questions));
+      }
     }
 
     const mergeStateField2 = (inc, ext) => {
@@ -1578,7 +1611,7 @@ router.post('/session/review', async (req, res) => {
 
     // Save lightweight state object (no questions array — reduces autosave payload by ~80%)
     const value = JSON.stringify({
-      sessionId: sessionId || existingData2.sessionId || '',
+      sessionId: cleanSid ? `sess_${cleanSid}` : (existingData2.sessionId || ''),
       selectedAnswers: mergeStateField2(selectedAnswers, existingData2.selectedAnswers),
       revealedQuestions: mergeStateField2(revealedQuestions, existingData2.revealedQuestions),
       tableAnswers: mergeStateField2(tableAnswers, existingData2.tableAnswers),
@@ -1590,6 +1623,9 @@ router.post('/session/review', async (req, res) => {
     });
 
     await saveSessionValue(key, value);
+    if (hasValidSchedule && cleanSid) {
+      await saveSessionValue(`review_questions_schedule_${req.body.scheduleId}_sess_${cleanSid}`, value);
+    }
     res.json({ success: true, ok: true });
   } catch (err) {
     console.error('POST /api/session/review error:', err);
@@ -3546,11 +3582,12 @@ router.post('/schedules/:id/reset', async (req, res) => {
       );
       if (completedSession && completedSession.value) {
         const data = JSON.parse(completedSession.value);
-        const activeStateKey = `review_questions_topic_${schedule.topic_id}`;
+        const canonicalSid = `sess_topic_${schedule.topic_id}_round_${schedule.review_round}`;
+        const activeStateKey = `review_questions_schedule_${schedule.id}`;
         const activeQuestionsKey = `${activeStateKey}_q`;
 
         const activeStateValue = JSON.stringify({
-          sessionId: 'legacy_default',
+          sessionId: canonicalSid,
           selectedAnswers: data.selectedAnswers || {},
           revealedQuestions: data.revealedQuestions || {},
           tableAnswers: data.tableAnswers || {},
@@ -3565,12 +3602,23 @@ router.post('/schedules/:id/reset', async (req, res) => {
            ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=CURRENT_TIMESTAMP`,
           [activeStateKey, activeStateValue]
         );
+        await dbQuery.run(
+          `INSERT INTO app_session (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)
+           ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=CURRENT_TIMESTAMP`,
+          [`${activeStateKey}_${canonicalSid}`, activeStateValue]
+        );
 
         if (data.questions && data.questions.length > 0) {
+          const qVal = JSON.stringify(data.questions);
           await dbQuery.run(
             `INSERT INTO app_session (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)
              ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=CURRENT_TIMESTAMP`,
-            [activeQuestionsKey, JSON.stringify(data.questions)]
+            [activeQuestionsKey, qVal]
+          );
+          await dbQuery.run(
+            `INSERT INTO app_session (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)
+             ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=CURRENT_TIMESTAMP`,
+            [`${activeStateKey}_${canonicalSid}_q`, qVal]
           );
         }
 

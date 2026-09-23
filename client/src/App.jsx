@@ -8430,7 +8430,7 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
     // 1) Save active review session immediately to localStorage (synchronously)
     if (currentTopic && currentTopic.id && finalQuestions.length > 0) {
       console.log('[forceSaveActiveSessions] Immediately saving active review session, sessionId:', reviewSessionId);
-      const activeSid = (overrideData && overrideData._sessionIdOverride) || reviewSessionId || 'legacy_default';
+      const activeSid = (overrideData && overrideData._sessionIdOverride) || reviewSessionId || getOrCreateSessionId(currentTopic.id, currentTopic.schedule_id, currentTopic.review_round);
       const key = currentTopic.schedule_id 
         ? `anti_review_progress_sched_${currentTopic.schedule_id}_${activeSid}`
         : `anti_review_progress_${currentTopic.id}_${activeSid}`;
@@ -8599,7 +8599,7 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
     const topicId = selectedTopic.id;
     const finalScheduleId = selectedTopic.schedule_id;
     const isMixed = topicId && typeof topicId === 'string' && topicId.startsWith('mixed_');
-    const activeSid = isMixed ? (reviewSessionId || `sess_${topicId}`) : (reviewSessionId || 'legacy_default');
+    const activeSid = isMixed ? (reviewSessionId || `sess_${topicId}`) : (reviewSessionId || getOrCreateSessionId(selectedTopic.id, selectedTopic.schedule_id, selectedTopic.review_round));
     try {
       const res = await fetch(`${API_BASE}/api/session/review?topicId=${topicId}&scheduleId=${finalScheduleId || ''}&sessionId=${activeSid}&t=${Date.now()}`);
       if (res.ok) {
@@ -10342,7 +10342,7 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
 
       const targetTopic = { id: topicId, title, keywords, pdf_name: pdfName, schedule_id: finalScheduleId, review_round: finalReviewRound, isBonus, isPractice, category: topicCategory };
       
-      const activeSid = localStorage.getItem(`anti_session_id_${topicId}_${finalScheduleId || '9999'}`) || 'legacy_default';
+      const activeSid = getOrCreateSessionId(topicId, finalScheduleId, finalReviewRound);
       let hasLoadedFromServer = false;
 
       setSelectedTopic(targetTopic);
@@ -10796,20 +10796,19 @@ ${item.intuitive || ''}
         return;
       }
 
-      const existingSid = localStorage.getItem(`anti_session_id_${topicId}_${finalScheduleId || '9999'}`);
+      const canonicalSid = getOrCreateSessionId(topicId, finalScheduleId, finalReviewRound);
 
       try {
-        console.log(`[handleOpenAIQuestions] STEP 1: Checking for existing server review session for topicId=${topicId}`);
-        const checkRes = await fetch(`${API_BASE}/api/session/review?topicId=${topicId}&scheduleId=${finalScheduleId || ''}&sessionId=${existingSid || ''}`);
+        console.log(`[handleOpenAIQuestions] STEP 1: Checking for existing server review session for topicId=${topicId}, canonicalSid=${canonicalSid}`);
+        const checkRes = await fetch(`${API_BASE}/api/session/review?topicId=${topicId}&scheduleId=${finalScheduleId || ''}&sessionId=${canonicalSid}`);
         if (checkRes.ok) {
           const checkData = await checkRes.json();
           if (checkData.success && checkData.data && checkData.data.questions && checkData.data.questions.length > 0) {
             const serverData = checkData.data;
             console.log('[handleOpenAIQuestions] STEP 1 Success! Existing server session found. Restoring directly without server fetch.');
             
-            const restoredSid = serverData.sessionId || activeSid;
+            const restoredSid = serverData.sessionId || canonicalSid;
             setReviewSessionId(restoredSid);
-            localStorage.setItem(`anti_session_id_${topicId}_${finalScheduleId || '9999'}`, restoredSid);
             
             savedQuizScroll.current = serverData.savedQuizScroll || 0;
             if (quizBodyRef.current) {
@@ -10857,15 +10856,7 @@ ${item.intuitive || ''}
       setAiProgressMessage('3단계: 지침 기반 신규 예상 문제 생성 중 (Gemini AI)...');
       setAiProgressPercent(60);
       
-      let newSid;
-      const isAbsoluteSid = existingSid && existingSid.startsWith('sess_topic_') && existingSid.includes('_round_') && existingSid !== 'legacy_default';
-      if (isRestore || isAbsoluteSid) {
-        newSid = existingSid || getOrCreateSessionId(topicId, finalScheduleId, finalReviewRound);
-        localStorage.setItem(`anti_session_id_${topicId}_${finalScheduleId || '9999'}`, newSid);
-      } else {
-        newSid = getOrCreateSessionId(topicId, finalScheduleId, finalReviewRound);
-        localStorage.setItem(`anti_session_id_${topicId}_${finalScheduleId || '9999'}`, newSid);
-      }
+      const newSid = getOrCreateSessionId(topicId, finalScheduleId, finalReviewRound);
       setReviewSessionId(newSid);
 
       const progressId = 'gen_' + Math.random().toString(36).substring(2, 9);
@@ -10904,15 +10895,11 @@ ${item.intuitive || ''}
         const activeSid = data.sessionId || newSid;
         if (activeSid) {
           setReviewSessionId(activeSid);
-          localStorage.setItem(`anti_session_id_${topicId}_${finalScheduleId || '9999'}`, activeSid);
         }
 
         if (data.scheduleId) {
           finalScheduleId = data.scheduleId;
           lastQuizScheduleId.current = data.scheduleId;
-          if (activeSid) {
-            localStorage.setItem(`anti_session_id_${topicId}_${data.scheduleId}`, activeSid);
-          }
           setSelectedTopic(prev => {
             if (prev && String(prev.id) === String(topicId)) {
               const updated = { ...prev, schedule_id: data.scheduleId };
@@ -18145,16 +18132,15 @@ ${itemsStr}
 
             console.log('[Mount Restore] Querying active review session from server for topic:', s.selectedTopic.title);
             const isMixed = topicId && typeof topicId === 'string' && topicId.startsWith('mixed_');
-            const activeSid = isMixed 
+            const canonicalSid = isMixed 
               ? `sess_${topicId}` 
-              : (localStorage.getItem(`anti_session_id_${topicId}_${scheduleId || '9999'}`) || 'legacy_default');
-            const resolvedSid = isMixed 
-              ? `sess_${topicId}`
-              : (activeSid !== 'legacy_default' ? activeSid : getOrCreateSessionId(topicId, scheduleId, s.selectedTopic.review_round));
+              : getOrCreateSessionId(topicId, scheduleId, s.selectedTopic?.review_round);
+            const activeSid = canonicalSid;
+            const resolvedSid = canonicalSid;
             
             let resData = null;
             try {
-              const res = await fetch(`${API_BASE}/api/session/review?topicId=${topicId}&scheduleId=${scheduleId}&sessionId=${activeSid}`);
+              const res = await fetch(`${API_BASE}/api/session/review?topicId=${topicId}&scheduleId=${scheduleId || ''}&sessionId=${canonicalSid}`);
               if (res.ok) {
                 resData = await res.json();
               }
@@ -18173,17 +18159,7 @@ ${itemsStr}
               updateNeonSyncTime(new Date());
               
               setSelectedTopic(s.selectedTopic);
-              
-              const isServerSidAbsolute = (server.sessionId && server.sessionId.startsWith('sess_topic_') && server.sessionId.includes('_round_')) || isMixed;
-              const finalSid = isServerSidAbsolute ? server.sessionId : resolvedSid;
-
-              if (isServerSidAbsolute) {
-                setReviewSessionId(server.sessionId);
-                localStorage.setItem(`anti_session_id_${topicId}_${scheduleId || '9999'}`, server.sessionId);
-              } else {
-                setReviewSessionId(finalSid);
-                localStorage.setItem(`anti_session_id_${topicId}_${scheduleId || '9999'}`, finalSid);
-              }
+              setReviewSessionId(server.sessionId || canonicalSid);
 
               savedQuizScroll.current = server.savedQuizScroll || 0;
               setAiQuestions(server.questions.map(q => healQuizQuestionObject({ ...q, category: s.selectedTopic.category })));
@@ -20665,7 +20641,7 @@ ${itemsStr}
                     }
 
                     // Complete purge of all related localStorage keys for this topic/schedule
-                    const activeSid = reviewSessionId || 'legacy_default';
+                    const activeSid = reviewSessionId || getOrCreateSessionId(selectedTopic?.id, selectedTopic?.schedule_id, selectedTopic?.review_round);
                     const sId = selectedTopic.schedule_id;
                     try {
                       const deleteUrl = `${API_BASE}/api/session/review/topic/${selectedTopic.id}`;
