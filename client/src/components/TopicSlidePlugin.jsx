@@ -18,7 +18,17 @@ import {
   Download,
   Image as ImageIcon
 } from 'lucide-react';
-import { LatexRenderer } from './LatexRenderer';
+import { renderMixedText } from './ChartRenderer';
+
+/**
+ * 🪶 SlideLatex: 훅(Hook)을 전혀 사용하지 않는 초경량 고성능 슬라이드 전용 수식/텍스트 렌더러
+ * (React Hook 규칙 위반 에러 #300 원천 방지 및 KaTeX 고속 렌더링)
+ */
+function SlideLatex({ text, className = '' }) {
+  if (!text) return null;
+  const html = renderMixedText(text, true);
+  return <span className={className} dangerouslySetInnerHTML={{ __html: html }} />;
+}
 
 /**
  * 📦 PDF.js CDN 동적 로더
@@ -894,7 +904,7 @@ export default function TopicSlidePlugin({
                         </h4>
                       </div>
                       <div className="text-[11px] sm:text-xs text-slate-300 leading-relaxed pl-1">
-                        <LatexRenderer text={b.desc || ''} />
+                        <SlideLatex text={b.desc || ''} />
                       </div>
                     </div>
                   ))}
@@ -925,7 +935,7 @@ export default function TopicSlidePlugin({
                           >
                             <span className="text-[9px] font-bold text-slate-400 uppercase">{card.label}</span>
                             <span className="text-xs font-black mt-1 line-clamp-3">
-                              <LatexRenderer text={card.content || ''} />
+                              <SlideLatex text={card.content || ''} />
                             </span>
                           </div>
                         ))}
@@ -939,7 +949,7 @@ export default function TopicSlidePlugin({
                           <span>🎯 기술사 답안 차별화 & 실무 착안점</span>
                         </div>
                         <p className="text-[11px] text-indigo-100 font-medium leading-relaxed">
-                          <LatexRenderer text={currentAiSlide.engineer_note} />
+                          <SlideLatex text={currentAiSlide.engineer_note} />
                         </p>
                       </div>
                     )}
