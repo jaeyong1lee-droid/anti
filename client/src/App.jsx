@@ -3439,6 +3439,45 @@ export default function App() {
   const [showTopicSlideModal, setShowTopicSlideModal] = useState(false);
   const [topicSlideModalId, setTopicSlideModalId] = useState(null);
   const [topicSlideModalTitle, setTopicSlideModalTitle] = useState('');
+  const [generatingSlideTopicIds, setGeneratingSlideTopicIds] = useState({});
+  const [slideRefreshTick, setSlideRefreshTick] = useState(0);
+
+  const handleStartSlideGeneration = async (topicId, topicTitle) => {
+    if (!topicId) return;
+    const topicKey = String(topicId);
+    if (generatingSlideTopicIds[topicKey]) {
+      showNotification(`[${topicTitle}] 이미 백그라운드에서 슬라이드 덱을 작성 중입니다.`, 'warning');
+      return;
+    }
+
+    setGeneratingSlideTopicIds(prev => ({ ...prev, [topicKey]: true }));
+    showNotification(`⚡ [${topicTitle}] 5장 슬라이드 작성을 백그라운드에서 시작했습니다. 창을 닫고 다른 작업을 계속하실 수 있습니다.`, 'info');
+
+    try {
+      const res = await fetch(`${API_BASE}/api/topics/${encodeURIComponent(topicId)}/slides/generate`, {
+        method: 'POST'
+      });
+      if (res.ok) {
+        showNotification(`🎉 [${topicTitle}] 5장 프레젠테이션 슬라이드(PPT) 완성이 완료되었습니다!`, 'success');
+        setSlideRefreshTick(t => t + 1);
+      } else if (res.status === 409) {
+        showNotification(`[${topicTitle}] 이미 슬라이드 덱이 작성 중입니다.`, 'info');
+      } else {
+        const err = await res.json().catch(() => ({}));
+        showNotification(`[${topicTitle}] 슬라이드 생성 중 오류: ${err.error || ''}`, 'error');
+      }
+    } catch (err) {
+      console.error('[Background Slide Generation Error]:', err);
+      showNotification(`[${topicTitle}] 슬라이드 덱 통신 오류가 발생했습니다.`, 'error');
+    } finally {
+      setGeneratingSlideTopicIds(prev => {
+        const copy = { ...prev };
+        delete copy[topicKey];
+        return copy;
+      });
+      setSlideRefreshTick(t => t + 1);
+    }
+  };
 
   const handleOpenTopicSlides = (topicIdOrQuestion, fallbackTitle = '') => {
     let resolvedId = null;
@@ -18167,14 +18206,28 @@ ${itemsStr}
                     <Lightbulb size={14} className="text-amber-400" />
                     <span>힌트</span>
                   </button>
-                  <button
-                    onClick={() => handleOpenTopicSlides(lockscreenQuestion, lockscreenQuestion.question || lockscreenQuestion.sessionName)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 text-amber-300 border border-amber-500/40 hover:border-amber-400/60 rounded-xl text-xs font-black transition-all cursor-pointer shadow-sm active:scale-95 duration-150"
-                    title="관련 토픽 5장 슬라이드 자료(PPT) 보기"
-                  >
-                    <Presentation size={14} className="text-amber-400" />
-                    <span>PPT</span>
-                  </button>
+                  {(() => {
+                    const lockTopicKey = String(lockscreenQuestion.topic_id || lockscreenQuestion.topicId || lockscreenQuestion.question || lockscreenQuestion.sessionName);
+                    const isSlideGen = !!generatingSlideTopicIds[lockTopicKey];
+                    return (
+                      <button
+                        onClick={() => handleOpenTopicSlides(lockscreenQuestion, lockscreenQuestion.question || lockscreenQuestion.sessionName)}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 ${
+                          isSlideGen
+                            ? 'bg-amber-500/30 text-amber-200 border-amber-400 animate-pulse'
+                            : 'bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 text-amber-300 border-amber-500/40 hover:border-amber-400/60'
+                        } border rounded-xl text-xs font-black transition-all cursor-pointer shadow-sm active:scale-95 duration-150`}
+                        title={isSlideGen ? "백그라운드에서 5장 슬라이드 작성 중... (클릭하여 현황 확인)" : "관련 토픽 5장 슬라이드 자료(PPT) 보기"}
+                      >
+                        {isSlideGen ? (
+                          <RefreshCw size={14} className="text-amber-400 animate-spin" />
+                        ) : (
+                          <Presentation size={14} className="text-amber-400" />
+                        )}
+                        <span>{isSlideGen ? 'PPT ⏳작성중' : 'PPT'}</span>
+                      </button>
+                    );
+                  })()}
                   <button
                     onClick={() => {
                       setShowLockscreenQuiz(false);
@@ -20228,16 +20281,27 @@ ${itemsStr}
                   )}
                 </div>
               )}
-              {selectedTopic && !(selectedTopic.id && typeof selectedTopic.id === 'string' && selectedTopic.id.startsWith('mixed_')) && (
-                <button
-                  onClick={() => handleOpenTopicSlides(selectedTopic.id, selectedTopic.title)}
-                  className="flex-1 md:flex-none px-2 md:px-4 py-2 md:py-2.5 bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 text-amber-300 hover:text-white border border-amber-500/40 rounded-xl text-[11px] sm:text-xs md:text-sm font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center gap-1.5 whitespace-nowrap min-w-0 shadow-md"
-                  title="토픽 5장 슬라이드 자료(NotebookLM PPT) 보기"
-                >
-                  <Presentation size={15} className="text-amber-400 flex-shrink-0" />
-                  <span className="whitespace-nowrap">PPT</span>
-                </button>
-              )}
+              {selectedTopic && !(selectedTopic.id && typeof selectedTopic.id === 'string' && selectedTopic.id.startsWith('mixed_')) && (() => {
+                const isSlideGen = !!generatingSlideTopicIds[String(selectedTopic.id)];
+                return (
+                  <button
+                    onClick={() => handleOpenTopicSlides(selectedTopic.id, selectedTopic.title)}
+                    className={`flex-1 md:flex-none px-2 md:px-4 py-2 md:py-2.5 ${
+                      isSlideGen
+                        ? 'bg-amber-500/30 text-amber-200 border-amber-400 animate-pulse'
+                        : 'bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 text-amber-300 hover:text-white border border-amber-500/40'
+                    } rounded-xl text-[11px] sm:text-xs md:text-sm font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center gap-1.5 whitespace-nowrap min-w-0 shadow-md`}
+                    title={isSlideGen ? "백그라운드에서 5장 슬라이드 작성 중... (클릭하여 현황 확인)" : "토픽 5장 슬라이드 자료(NotebookLM PPT) 보기"}
+                  >
+                    {isSlideGen ? (
+                      <RefreshCw size={15} className="text-amber-400 animate-spin flex-shrink-0" />
+                    ) : (
+                      <Presentation size={15} className="text-amber-400 flex-shrink-0" />
+                    )}
+                    <span className="whitespace-nowrap">{isSlideGen ? 'PPT ⏳작성중' : 'PPT'}</span>
+                  </button>
+                );
+              })()}
               {selectedTopic && isDesktop && (
                 <button
                   onClick={() => setShowAiHistoryModal(true)}
@@ -21711,16 +21775,27 @@ ${itemsStr}
                             원
                           </button>
                         )}
-                        {!(selectedTopic.id && typeof selectedTopic.id === 'string' && selectedTopic.id.startsWith('mixed_')) && (
-                          <button
-                            onClick={() => handleOpenTopicSlides(selectedTopic.id, selectedTopic.title)}
-                            className="px-2.5 py-1 text-[10px] font-black rounded-lg bg-gradient-to-r from-amber-950/80 to-orange-950/80 hover:from-amber-900 hover:to-orange-900 text-amber-300 hover:text-white border border-amber-500/40 transition-all cursor-pointer active:scale-95 shadow-md flex items-center gap-1"
-                            title="토픽 5장 슬라이드 자료(NotebookLM PPT) 보기"
-                          >
-                            <Presentation size={11} className="text-amber-400 flex-shrink-0" />
-                            <span>PPT</span>
-                          </button>
-                        )}
+                        {!(selectedTopic.id && typeof selectedTopic.id === 'string' && selectedTopic.id.startsWith('mixed_')) && (() => {
+                          const isSlideGen = !!generatingSlideTopicIds[String(selectedTopic.id)];
+                          return (
+                            <button
+                              onClick={() => handleOpenTopicSlides(selectedTopic.id, selectedTopic.title)}
+                              className={`px-2.5 py-1 text-[10px] font-black rounded-lg ${
+                                isSlideGen
+                                  ? 'bg-amber-900/90 text-amber-200 border-amber-400 animate-pulse'
+                                  : 'bg-gradient-to-r from-amber-950/80 to-orange-950/80 hover:from-amber-900 hover:to-orange-900 text-amber-300 hover:text-white border border-amber-500/40'
+                              } transition-all cursor-pointer active:scale-95 shadow-md flex items-center gap-1`}
+                              title={isSlideGen ? "백그라운드에서 5장 슬라이드 작성 중... (클릭하여 현황 확인)" : "토픽 5장 슬라이드 자료(NotebookLM PPT) 보기"}
+                            >
+                              {isSlideGen ? (
+                                <RefreshCw size={11} className="text-amber-400 animate-spin flex-shrink-0" />
+                              ) : (
+                                <Presentation size={11} className="text-amber-400 flex-shrink-0" />
+                              )}
+                              <span>{isSlideGen ? 'PPT ⏳' : 'PPT'}</span>
+                            </button>
+                          );
+                        })()}
 
                         <button
                           type="button"
@@ -25906,16 +25981,27 @@ ${itemsStr}
                     <span>원보고서</span>
                   </button>
                 )}
-                {selectedTopic && !(selectedTopic.id && typeof selectedTopic.id === 'string' && selectedTopic.id.startsWith('mixed_')) && (
-                  <button
-                    onClick={() => handleOpenTopicSlides(selectedTopic.id, selectedTopic.title)}
-                    className="px-3 py-2 text-xs font-black rounded-xl bg-gradient-to-r from-amber-950/80 to-orange-950/80 hover:from-amber-900 hover:to-orange-900 text-amber-300 hover:text-white border border-amber-500/40 transition-all cursor-pointer active:scale-95 shadow-md flex items-center justify-center gap-1.5"
-                    title="토픽 5장 슬라이드 자료(NotebookLM PPT) 보기"
-                  >
-                    <Presentation size={13} className="text-amber-400 flex-shrink-0" />
-                    <span>PPT</span>
-                  </button>
-                )}
+                {selectedTopic && !(selectedTopic.id && typeof selectedTopic.id === 'string' && selectedTopic.id.startsWith('mixed_')) && (() => {
+                  const isSlideGen = !!generatingSlideTopicIds[String(selectedTopic.id)];
+                  return (
+                    <button
+                      onClick={() => handleOpenTopicSlides(selectedTopic.id, selectedTopic.title)}
+                      className={`px-3 py-2 text-xs font-black rounded-xl ${
+                        isSlideGen
+                          ? 'bg-amber-900/90 text-amber-200 border-amber-400 animate-pulse'
+                          : 'bg-gradient-to-r from-amber-950/80 to-orange-950/80 hover:from-amber-900 hover:to-orange-900 text-amber-300 hover:text-white border border-amber-500/40'
+                      } transition-all cursor-pointer active:scale-95 shadow-md flex items-center justify-center gap-1.5`}
+                      title={isSlideGen ? "백그라운드에서 5장 슬라이드 작성 중... (클릭하여 현황 확인)" : "토픽 5장 슬라이드 자료(NotebookLM PPT) 보기"}
+                    >
+                      {isSlideGen ? (
+                        <RefreshCw size={13} className="text-amber-400 animate-spin flex-shrink-0" />
+                      ) : (
+                        <Presentation size={13} className="text-amber-400 flex-shrink-0" />
+                      )}
+                      <span>{isSlideGen ? 'PPT ⏳작성중' : 'PPT'}</span>
+                    </button>
+                  );
+                })()}
                 {selectedTopic && (
                       <div className="hidden md:flex items-center gap-1.5 mr-1.5">
                         <button
@@ -30883,6 +30969,10 @@ ${itemsStr}
         topicTitle={topicSlideModalTitle}
         onClose={() => setShowTopicSlideModal(false)}
         apiBase={API_BASE}
+        isGenerating={!!generatingSlideTopicIds[String(topicSlideModalId)]}
+        onStartSlideGeneration={handleStartSlideGeneration}
+        slideRefreshTick={slideRefreshTick}
+        showNotification={showNotification}
       />
 
       {/* Custom Overview Prompt Modal */}

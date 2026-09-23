@@ -821,6 +821,9 @@ div, section, article, form, .container, .page, .wrapper, .section, .WordSection
 // 📊 Slide Deck (NotebookLM PPT / PDF / Web 뷰어) API Endpoints
 // ============================================================================
 
+// In-memory set to track currently active background slide generation tasks
+const activeSlideGenerations = new Set();
+
 // Helper: Resolve topic by ID or title with fallback search
 async function resolveTopic(topicId) {
   if (!topicId) return null;
@@ -856,7 +859,8 @@ router.get('/topics/:id/slides', async (req, res) => {
         slide_name: null,
         slide_url: null,
         has_file: false,
-        slide_deck: null
+        slide_deck: null,
+        is_generating: false
       });
     }
 
@@ -875,7 +879,8 @@ router.get('/topics/:id/slides', async (req, res) => {
       slide_name: topic.slide_name || null,
       slide_url: topic.slide_url || null,
       has_file: !!topic.has_file,
-      slide_deck: deck
+      slide_deck: deck,
+      is_generating: activeSlideGenerations.has(String(topic.id))
     });
   } catch (err) {
     console.error('[GET /topics/:id/slides Error]:', err);
@@ -1026,6 +1031,7 @@ router.delete('/topics/:id/slides', async (req, res) => {
 // 5. POST /api/topics/:id/slides/generate -> 토픽 원본 기반 NotebookLM 양식 5-Slide Visual Deck AI 생성
 router.post('/topics/:id/slides/generate', async (req, res) => {
   const topicId = req.params.id;
+  let activeKey = null;
   try {
     let topic = await resolveTopic(topicId);
     if (!topic) {
@@ -1036,6 +1042,12 @@ router.post('/topics/:id/slides/generate', async (req, res) => {
       );
       topic = { id: insertRes.id, title: cleanTitle, keywords: cleanTitle, extracted_text: '', category: '기출문제' };
     }
+
+    activeKey = String(topic.id);
+    if (activeSlideGenerations.has(activeKey)) {
+      return res.status(409).json({ error: '해당 토픽의 슬라이드 덱이 이미 백그라운드에서 작성 중입니다.' });
+    }
+    activeSlideGenerations.add(activeKey);
 
     let sourceText = topic.extracted_text || '';
     if (!sourceText) {
@@ -1107,6 +1119,10 @@ ${(sourceText || '').slice(0, 7000)}`;
   } catch (err) {
     console.error('[POST /topics/:id/slides/generate Error]:', err);
     res.status(500).json({ error: err.message });
+  } finally {
+    if (activeKey) {
+      activeSlideGenerations.delete(activeKey);
+    }
   }
 });
 

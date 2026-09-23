@@ -116,7 +116,11 @@ export default function TopicSlidePlugin({
   topicTitle = '',
   isOpen,
   onClose,
-  apiBase = ''
+  apiBase = '',
+  isGenerating = false,
+  onStartSlideGeneration,
+  slideRefreshTick = 0,
+  showNotification
 }) {
   const [slideMeta, setSlideMeta] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -224,9 +228,6 @@ export default function TopicSlidePlugin({
 
   useEffect(() => {
     if (isOpen && topicId) {
-      setJpgSlides([]);
-      setCurrentSlideIndex(0);
-      setIsConvertingPdf(false);
       setErrorMsg(null);
       fetchSlideMeta();
     } else {
@@ -238,7 +239,7 @@ export default function TopicSlidePlugin({
       setIsConvertingPdf(false);
       setErrorMsg(null);
     }
-  }, [isOpen, topicId]);
+  }, [isOpen, topicId, slideRefreshTick]);
 
   // 2. 키보드 네비게이션
   useEffect(() => {
@@ -267,9 +268,14 @@ export default function TopicSlidePlugin({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, showUploadModal, isFullscreen, slideMeta, currentSlideIndex, jpgSlides, viewMode]);
 
-  // 3. AI 5-Slide Visual Deck 생성
+  // 3. AI 5-Slide Visual Deck 생성 (백그라운드 지원)
   const handleGenerateAiDeck = async () => {
-    if (!topicId || generating) return;
+    if (!topicId || isGenerating || generating) return;
+    if (onStartSlideGeneration) {
+      onStartSlideGeneration(topicId, topicTitle);
+      return;
+    }
+
     setGenerating(true);
     setErrorMsg(null);
     try {
@@ -480,6 +486,8 @@ export default function TopicSlidePlugin({
   const hasJpgSlides = jpgSlides.length > 0;
   const hasAiDeck = aiSlides.length > 0;
   const hasWebUrl = !!slideMeta?.slide_url?.includes('google.com');
+  const hasAnyContent = hasJpgSlides || hasAiDeck || hasWebUrl;
+  const isGeneratingDeck = isGenerating || generating;
 
   // 실제 활성 뷰 모드 산출
   const activeView = (viewMode === 'jpg' && hasJpgSlides)
@@ -608,12 +616,18 @@ export default function TopicSlidePlugin({
             <button
               type="button"
               onClick={handleGenerateAiDeck}
-              disabled={generating}
+              disabled={isGeneratingDeck}
               className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 disabled:opacity-50 text-white text-xs font-bold transition-all cursor-pointer active:scale-95 shadow-md"
-              title="토픽 소스 기반 5장 비주얼 슬라이드 AI 실시간 재생성"
+              title="토픽 소스 기반 5장 비주얼 슬라이드 AI 실시간 재생성 (백그라운드 실행)"
             >
-              <RefreshCw size={13} className={generating ? 'animate-spin' : ''} />
-              <span className="hidden sm:inline">{hasAiDeck ? 'AI 덱 재생성' : 'AI 덱 생성'}</span>
+              <RefreshCw size={13} className={isGeneratingDeck ? 'animate-spin' : ''} />
+              <span className="hidden sm:inline">
+                {isGeneratingDeck
+                  ? '작성 중...'
+                  : hasAiDeck
+                  ? 'AI 덱 재생성'
+                  : 'AI 덱 생성'}
+              </span>
             </button>
 
             {/* 전체화면 */}
@@ -651,11 +665,74 @@ export default function TopicSlidePlugin({
           </div>
         )}
 
+        {/* 백그라운드 슬라이드 덱 작성 중 알림 배너 (기존 슬라이드 자료가 있는 상태에서 재생성 중일 때) */}
+        {isGeneratingDeck && hasAnyContent && (
+          <div className="px-4 py-2 bg-gradient-to-r from-amber-950/90 to-orange-950/90 border-b border-amber-500/40 text-amber-200 text-xs flex items-center justify-between animate-pulse shrink-0">
+            <div className="flex items-center gap-2">
+              <RefreshCw size={13} className="animate-spin text-amber-400 shrink-0" />
+              <span className="font-medium">
+                ⚡ 새로운 5장 프레젠테이션 덱을 백그라운드에서 작성 중입니다 (약 30초~1분 소요)... 완성이 끝나면 자동으로 새 덱으로 갱신됩니다.
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="text-amber-300 hover:text-white text-xs underline font-bold cursor-pointer shrink-0 ml-3"
+              title="창을 닫아도 백그라운드 생성이 계속됩니다"
+            >
+              창 닫고 다른 작업하기
+            </button>
+          </div>
+        )}
+
         {/* ================================================================= */}
         {/* 2. 본체 프레젠테이션 스테이지 (16:9 비율 영역) */}
         {/* ================================================================= */}
         <div className="flex-1 min-h-0 bg-[#060913] relative overflow-hidden flex flex-col justify-center items-center">
-          {loading || generating || isConvertingPdf ? (
+          {/* A. 백그라운드 AI 슬라이드 덱 작성 중이며 아직 기존 슬라이드가 없는 경우 -> 차단 없는 친절한 백그라운드 안내 UI */}
+          {isGeneratingDeck && !hasAnyContent ? (
+            <div className="flex flex-col items-center justify-center p-8 sm:p-12 text-center space-y-5 max-w-lg animate-fade-in">
+              <div className="relative">
+                <div className="w-20 h-20 rounded-full border-4 border-amber-500/20 border-t-amber-400 animate-spin"></div>
+                <Sparkles className="w-8 h-8 text-amber-400 absolute inset-0 m-auto animate-pulse" />
+              </div>
+
+              <div className="space-y-2">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs font-bold">
+                  <RefreshCw size={12} className="animate-spin" />
+                  <span>백그라운드 AI 슬라이드 작성 진행 중</span>
+                </div>
+                <h3 className="text-base sm:text-lg font-black text-white">
+                  NotebookLM 5장 프레젠테이션 덱을 작성하고 있습니다
+                </h3>
+                <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-md">
+                  토픽의 핵심 원문, 역학 메커니즘, KDS 설계기준, 현장 시공 포인트를 집약한 16:9 비주얼 슬라이드를 백그라운드에서 안전하게 구성 중입니다 (약 30초~1분 소요).
+                </p>
+                <p className="text-xs text-amber-400/90 font-medium">
+                  💡 이 창을 닫고 다른 문제 풀이, 채점, 복습 등의 작업을 자유롭게 진행하셔도 백그라운드에서 계속 진행되며, 완성이 끝나면 화면 상단 알림으로 즉시 안내해 드립니다!
+                </p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="w-full sm:w-auto px-5 py-2.5 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-amber-950/40 cursor-pointer flex items-center justify-center gap-2 active:scale-95"
+                >
+                  <span>창 닫고 다른 작업 계속하기 (백그라운드 진행)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowUploadModal(true)}
+                  className="w-full sm:w-auto px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition-all border border-slate-700 cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <Upload size={13} className="text-amber-400" />
+                  <span>내 파일 직접 등록</span>
+                </button>
+              </div>
+            </div>
+          ) : (loading || isConvertingPdf) ? (
+            /* B. 단순 메타데이터 조회 중 또는 로컬 PDF->JPG 변환 처리 중 */
             <div className="flex flex-col items-center justify-center p-12 text-center space-y-4">
               <div className="relative">
                 <div className="w-16 h-16 rounded-full border-4 border-amber-500/20 border-t-amber-400 animate-spin"></div>
@@ -669,15 +746,11 @@ export default function TopicSlidePlugin({
                 <h3 className="text-sm font-bold text-white mb-1">
                   {isConvertingPdf
                     ? `PDF 슬라이드를 가벼운 JPG 형식으로 변환 중... (${convertProgress.current}/${convertProgress.total || '?'})`
-                    : generating
-                    ? 'NotebookLM 스타일 5장 프레젠테이션 덱 생성 중...'
                     : '슬라이드 데이터를 불러오는 중...'}
                 </h3>
                 <p className="text-xs text-slate-400 max-w-sm leading-relaxed">
                   {isConvertingPdf
                     ? '무거운 PDF 대신 고화질/저용량 경량 JPG 이미지 슬라이드로 변환하여 즉각적인 고속 브라우징을 준비합니다.'
-                    : generating
-                    ? '토픽의 핵심 원문, 역학 메커니즘, KDS 설계기준, 현장 시공 포인트를 16:9 비주얼 슬라이드로 구성하고 있습니다.'
                     : '잠시만 기다려 주십시오.'}
                 </p>
               </div>
@@ -906,11 +979,11 @@ export default function TopicSlidePlugin({
                 <button
                   type="button"
                   onClick={handleGenerateAiDeck}
-                  disabled={generating}
-                  className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white rounded-xl text-xs font-bold transition-all shadow-lg cursor-pointer"
+                  disabled={isGeneratingDeck}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all shadow-lg cursor-pointer active:scale-95"
                 >
-                  <Sparkles size={14} />
-                  <span>AI 5장 슬라이드 즉시 생성</span>
+                  <Sparkles size={14} className={isGeneratingDeck ? 'animate-spin' : ''} />
+                  <span>{isGeneratingDeck ? 'AI 슬라이드 백그라운드 작성 중...' : 'AI 5장 슬라이드 생성 (백그라운드)'}</span>
                 </button>
                 <button
                   type="button"
