@@ -18529,11 +18529,10 @@ ${itemsStr}
                   <div className="flex items-center gap-2">
                     <button
                       onClick={handleOpenLockscreenHint}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/40 hover:border-amber-400/60 rounded-xl text-xs font-black transition-all cursor-pointer shadow-sm active:scale-95 duration-150"
+                      className="p-2 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/40 hover:border-amber-400/60 rounded-xl transition-all cursor-pointer shadow-sm active:scale-95 duration-150 flex items-center justify-center"
                       title="AI 초간단 쉬운 힌트 보기"
                     >
-                      <Lightbulb size={14} className="text-amber-400" />
-                      <span>힌트</span>
+                      <Lightbulb size={16} className="text-amber-400" />
                     </button>
                     {(() => {
                       const resolved = resolveTopicInfo(lockscreenQuestion, lockscreenQuestion?.question || lockscreenQuestion?.sessionName);
@@ -18542,19 +18541,18 @@ ${itemsStr}
                       return (
                         <button
                           onClick={() => handleOpenTopicSlides(lockscreenQuestion, lockscreenQuestion?.question || lockscreenQuestion?.sessionName)}
-                          className={`flex items-center gap-1.5 px-3 py-1.5 ${
+                          className={`p-2 ${
                             isSlideGen
                               ? 'bg-amber-500/30 text-amber-200 border-amber-400 animate-pulse'
                               : 'bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 text-amber-300 border-amber-500/40 hover:border-amber-400/60'
-                          } border rounded-xl text-xs font-black transition-all cursor-pointer shadow-sm active:scale-95 duration-150`}
+                          } border rounded-xl transition-all cursor-pointer shadow-sm active:scale-95 duration-150 flex items-center justify-center`}
                           title={isSlideGen ? "백그라운드에서 5장 슬라이드 작성 중... (클릭하여 현황 확인)" : "관련 토픽 5장 슬라이드 자료(PPT) 보기"}
                         >
                           {isSlideGen ? (
-                            <RefreshCw size={14} className="text-amber-400 animate-spin" />
+                            <RefreshCw size={16} className="text-amber-400 animate-spin" />
                           ) : (
-                            <Presentation size={14} className="text-amber-400" />
+                            <Presentation size={16} className="text-amber-400" />
                           )}
-                          <span>{isSlideGen ? 'PPT ⏳작성중' : 'PPT'}</span>
                         </button>
                       );
                     })()}
