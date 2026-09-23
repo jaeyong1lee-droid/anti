@@ -253,7 +253,11 @@ export async function initDatabase() {
             pdf_url TEXT,
             extracted_text TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            category TEXT DEFAULT '일반'
+            category TEXT DEFAULT '일반',
+            slide_name TEXT,
+            slide_data BYTEA,
+            slide_url TEXT,
+            slide_deck_json TEXT
           )
         `);
 
@@ -366,7 +370,11 @@ async function initSQLiteTables() {
       pdf_url TEXT,
       extracted_text TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      category TEXT DEFAULT '일반'
+      category TEXT DEFAULT '일반',
+      slide_name TEXT,
+      slide_data BLOB,
+      slide_url TEXT,
+      slide_deck_json TEXT
     )
   `);
 
@@ -436,6 +444,10 @@ async function migrateSchedulesTable() {
         await pgPool.query(`ALTER TABLE topics ADD COLUMN IF NOT EXISTS category TEXT DEFAULT '일반'`);
         await pgPool.query(`ALTER TABLE topics ADD COLUMN IF NOT EXISTS extracted_text TEXT`);
         await pgPool.query(`ALTER TABLE topics ADD COLUMN IF NOT EXISTS pdf_url TEXT`);
+        await pgPool.query(`ALTER TABLE topics ADD COLUMN IF NOT EXISTS slide_name TEXT`);
+        await pgPool.query(`ALTER TABLE topics ADD COLUMN IF NOT EXISTS slide_url TEXT`);
+        await pgPool.query(`ALTER TABLE topics ADD COLUMN IF NOT EXISTS slide_data BYTEA`);
+        await pgPool.query(`ALTER TABLE topics ADD COLUMN IF NOT EXISTS slide_deck_json TEXT`);
         await pgPool.query(`ALTER TABLE answersheet_reports ADD COLUMN IF NOT EXISTS pdf_url TEXT`);
         await pgPool.query(`CREATE INDEX IF NOT EXISTS idx_schedules_topic_id ON schedules(topic_id)`);
         await pgPool.query(`CREATE INDEX IF NOT EXISTS idx_schedules_status ON schedules(status)`);
@@ -467,6 +479,18 @@ async function migrateSchedulesTable() {
       }
       if (!topicsNames.includes('pdf_url')) {
         await dbQuery.run(`ALTER TABLE topics ADD COLUMN pdf_url TEXT`);
+      }
+      if (!topicsNames.includes('slide_name')) {
+        await dbQuery.run(`ALTER TABLE topics ADD COLUMN slide_name TEXT`);
+      }
+      if (!topicsNames.includes('slide_url')) {
+        await dbQuery.run(`ALTER TABLE topics ADD COLUMN slide_url TEXT`);
+      }
+      if (!topicsNames.includes('slide_data')) {
+        await dbQuery.run(`ALTER TABLE topics ADD COLUMN slide_data BLOB`);
+      }
+      if (!topicsNames.includes('slide_deck_json')) {
+        await dbQuery.run(`ALTER TABLE topics ADD COLUMN slide_deck_json TEXT`);
       }
 
       const reportCols = await dbQuery.all("PRAGMA table_info(answersheet_reports)");

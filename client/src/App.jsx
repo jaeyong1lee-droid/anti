@@ -21,6 +21,7 @@ import { InteractiveQuizModal } from './components/InteractiveQuizModal';
 import SvgZoomModal from './components/SvgZoomModal';
 import ChartRenderer from './components/ChartRenderer';
 import DiagramSvgRenderer from './components/DiagramSvgRenderer';
+import TopicSlidePlugin from './components/TopicSlidePlugin';
 import { 
   buildHtmlDocument, 
   handleOpenHtmlAnswerPopup, 
@@ -92,7 +93,8 @@ import {
   ChevronLeft,
   ArrowUp,
   ArrowDown,
-  Clipboard
+  Clipboard,
+  Presentation
 } from 'lucide-react';
 
 const MODEL_DISPLAY_NAMES = {
@@ -3431,6 +3433,49 @@ export default function App() {
 
   const handleOpenQuestionPreview = (question) => {
     setSelectedPoolQuestion(question);
+  };
+
+  // Topic Slide Deck (NotebookLM PPT) Modal States
+  const [showTopicSlideModal, setShowTopicSlideModal] = useState(false);
+  const [topicSlideModalId, setTopicSlideModalId] = useState(null);
+  const [topicSlideModalTitle, setTopicSlideModalTitle] = useState('');
+
+  const handleOpenTopicSlides = (topicIdOrQuestion, fallbackTitle = '') => {
+    let resolvedId = null;
+    let resolvedTitle = fallbackTitle || '';
+
+    if (topicIdOrQuestion && typeof topicIdOrQuestion === 'object') {
+      const q = topicIdOrQuestion;
+      resolvedTitle = q.question || q.fullTitle || q.sessionName || fallbackTitle || '토픽 슬라이드 자료';
+      if (q.topic_id || q.topicId) {
+        resolvedId = q.topic_id || q.topicId;
+      } else {
+        const qText = (q.question || q.fullTitle || '').trim();
+        if (qText && Array.isArray(topics) && topics.length > 0) {
+          const match = topics.find(t => t.title && (qText.includes(t.title) || t.title.includes(qText)));
+          if (match) {
+            resolvedId = match.id;
+            resolvedTitle = match.title;
+          } else {
+            const kwMatch = topics.find(t => {
+              if (!t.keywords) return false;
+              const kws = t.keywords.split(/[,;\s]+/).map(k => k.trim()).filter(Boolean);
+              return kws.some(k => k.length >= 2 && qText.includes(k));
+            });
+            if (kwMatch) {
+              resolvedId = kwMatch.id;
+              resolvedTitle = kwMatch.title;
+            }
+          }
+        }
+      }
+    } else if (topicIdOrQuestion !== undefined && topicIdOrQuestion !== null) {
+      resolvedId = topicIdOrQuestion;
+    }
+
+    setTopicSlideModalId(resolvedId || resolvedTitle);
+    setTopicSlideModalTitle(resolvedTitle || '토픽 슬라이드 자료');
+    setShowTopicSlideModal(true);
   };
 
   // Lockscreen Subjective Quiz States
@@ -18123,6 +18168,14 @@ ${itemsStr}
                     <span>힌트</span>
                   </button>
                   <button
+                    onClick={() => handleOpenTopicSlides(lockscreenQuestion, lockscreenQuestion.question || lockscreenQuestion.sessionName)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 text-amber-300 border border-amber-500/40 hover:border-amber-400/60 rounded-xl text-xs font-black transition-all cursor-pointer shadow-sm active:scale-95 duration-150"
+                    title="관련 토픽 5장 슬라이드 자료(PPT) 보기"
+                  >
+                    <Presentation size={14} className="text-amber-400" />
+                    <span>PPT</span>
+                  </button>
+                  <button
                     onClick={() => {
                       setShowLockscreenQuiz(false);
                       showLockscreenQuizRef.current = false;
@@ -20175,6 +20228,16 @@ ${itemsStr}
                   )}
                 </div>
               )}
+              {selectedTopic && !(selectedTopic.id && typeof selectedTopic.id === 'string' && selectedTopic.id.startsWith('mixed_')) && (
+                <button
+                  onClick={() => handleOpenTopicSlides(selectedTopic.id, selectedTopic.title)}
+                  className="flex-1 md:flex-none px-2 md:px-4 py-2 md:py-2.5 bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 text-amber-300 hover:text-white border border-amber-500/40 rounded-xl text-[11px] sm:text-xs md:text-sm font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center gap-1.5 whitespace-nowrap min-w-0 shadow-md"
+                  title="토픽 5장 슬라이드 자료(NotebookLM PPT) 보기"
+                >
+                  <Presentation size={15} className="text-amber-400 flex-shrink-0" />
+                  <span className="whitespace-nowrap">PPT</span>
+                </button>
+              )}
               {selectedTopic && isDesktop && (
                 <button
                   onClick={() => setShowAiHistoryModal(true)}
@@ -21646,6 +21709,16 @@ ${itemsStr}
                             title="원본 보고서 파일(HTML/PDF) 팝업 열기"
                           >
                             원
+                          </button>
+                        )}
+                        {!(selectedTopic.id && typeof selectedTopic.id === 'string' && selectedTopic.id.startsWith('mixed_')) && (
+                          <button
+                            onClick={() => handleOpenTopicSlides(selectedTopic.id, selectedTopic.title)}
+                            className="px-2.5 py-1 text-[10px] font-black rounded-lg bg-gradient-to-r from-amber-950/80 to-orange-950/80 hover:from-amber-900 hover:to-orange-900 text-amber-300 hover:text-white border border-amber-500/40 transition-all cursor-pointer active:scale-95 shadow-md flex items-center gap-1"
+                            title="토픽 5장 슬라이드 자료(NotebookLM PPT) 보기"
+                          >
+                            <Presentation size={11} className="text-amber-400 flex-shrink-0" />
+                            <span>PPT</span>
                           </button>
                         )}
 
@@ -25831,6 +25904,16 @@ ${itemsStr}
                   >
                     <FileText size={12} className="flex-shrink-0" />
                     <span>원보고서</span>
+                  </button>
+                )}
+                {selectedTopic && !(selectedTopic.id && typeof selectedTopic.id === 'string' && selectedTopic.id.startsWith('mixed_')) && (
+                  <button
+                    onClick={() => handleOpenTopicSlides(selectedTopic.id, selectedTopic.title)}
+                    className="px-3 py-2 text-xs font-black rounded-xl bg-gradient-to-r from-amber-950/80 to-orange-950/80 hover:from-amber-900 hover:to-orange-900 text-amber-300 hover:text-white border border-amber-500/40 transition-all cursor-pointer active:scale-95 shadow-md flex items-center justify-center gap-1.5"
+                    title="토픽 5장 슬라이드 자료(NotebookLM PPT) 보기"
+                  >
+                    <Presentation size={13} className="text-amber-400 flex-shrink-0" />
+                    <span>PPT</span>
                   </button>
                 )}
                 {selectedTopic && (
@@ -30792,6 +30875,15 @@ ${itemsStr}
           onClose={() => setSvgZoomContent(null)} 
         />
       )}
+
+      {/* 📊 Topic Slide Deck (NotebookLM PPT) Modal */}
+      <TopicSlidePlugin
+        isOpen={showTopicSlideModal}
+        topicId={topicSlideModalId}
+        topicTitle={topicSlideModalTitle}
+        onClose={() => setShowTopicSlideModal(false)}
+        apiBase={API_BASE}
+      />
 
       {/* Custom Overview Prompt Modal */}
       {showOverviewPromptModal && (

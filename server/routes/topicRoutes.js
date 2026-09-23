@@ -817,6 +817,299 @@ div, section, article, form, .container, .page, .wrapper, .section, .WordSection
   }
 });
 
+// ============================================================================
+// 📊 Slide Deck (NotebookLM PPT / PDF / Web 뷰어) API Endpoints
+// ============================================================================
+
+// Helper: Resolve topic by ID or title with fallback search
+async function resolveTopic(topicId) {
+  if (!topicId) return null;
+  const numId = Number(topicId);
+  if (!isNaN(numId) && Number.isInteger(numId) && numId > 0) {
+    const topic = await dbQuery.get(
+      `SELECT id, title, keywords, pdf_name, extracted_text, category, slide_name, slide_url, slide_deck_json,
+              CASE WHEN (slide_data IS NOT NULL OR slide_url IS NOT NULL) THEN 1 ELSE 0 END as has_file
+       FROM topics WHERE id = ?`,
+      [numId]
+    );
+    if (topic) return topic;
+  }
+  const cleanTitle = String(topicId).trim();
+  const topic = await dbQuery.get(
+    `SELECT id, title, keywords, pdf_name, extracted_text, category, slide_name, slide_url, slide_deck_json,
+            CASE WHEN (slide_data IS NOT NULL OR slide_url IS NOT NULL) THEN 1 ELSE 0 END as has_file
+     FROM topics WHERE title = ? OR ? LIKE ('%' || title || '%') ORDER BY LENGTH(title) DESC LIMIT 1`,
+    [cleanTitle, cleanTitle]
+  );
+  return topic;
+}
+
+// 1. GET /api/topics/:id/slides -> 슬라이드 메타데이터 및 덱 JSON 조회
+router.get('/topics/:id/slides', async (req, res) => {
+  const topicId = req.params.id;
+  try {
+    const topic = await resolveTopic(topicId);
+    if (!topic) {
+      return res.json({
+        topic_id: null,
+        title: topicId,
+        slide_name: null,
+        slide_url: null,
+        has_file: false,
+        slide_deck: null
+      });
+    }
+
+    let deck = null;
+    if (topic.slide_deck_json) {
+      try {
+        deck = JSON.parse(topic.slide_deck_json);
+      } catch (e) {
+        deck = null;
+      }
+    }
+
+    res.json({
+      topic_id: topic.id,
+      title: topic.title,
+      slide_name: topic.slide_name || null,
+      slide_url: topic.slide_url || null,
+      has_file: !!topic.has_file,
+      slide_deck: deck
+    });
+  } catch (err) {
+    console.error('[GET /topics/:id/slides Error]:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 2. GET /api/topics/:id/slides/file -> 슬라이드 파일(PDF/PPTX/이미지) 인라인 스트리밍
+router.get('/topics/:id/slides/file', async (req, res) => {
+  const topicId = req.params.id;
+  try {
+    let topic = null;
+    const numId = Number(topicId);
+    if (!isNaN(numId) && Number.isInteger(numId) && numId > 0) {
+      topic = await dbQuery.get(
+        `SELECT slide_name, slide_data, slide_url FROM topics WHERE id = ?`,
+        [numId]
+      );
+    } else {
+      const cleanTitle = String(topicId).trim();
+      topic = await dbQuery.get(
+        `SELECT slide_name, slide_data, slide_url FROM topics WHERE title = ? OR ? LIKE ('%' || title || '%') ORDER BY LENGTH(title) DESC LIMIT 1`,
+        [cleanTitle, cleanTitle]
+      );
+    }
+    if (!topic || (!topic.slide_data && !topic.slide_url)) {
+      return res.status(404).send('등록된 슬라이드 파일이 없습니다.');
+    }
+
+    let slideData = topic.slide_data;
+    if (topic.slide_url && (!slideData || slideData.length === 0)) {
+      return res.redirect(topic.slide_url);
+    }
+
+    const fileName = (topic.slide_name || 'slides.pdf').toLowerCase();
+    let contentType = 'application/pdf';
+    if (fileName.endsWith('.pptx')) {
+      contentType = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+    } else if (fileName.endsWith('.ppt')) {
+      contentType = 'application/vnd.ms-powerpoint';
+    } else if (fileName.endsWith('.png')) {
+      contentType = 'image/png';
+    } else if (fileName.endsWith('.jpg') || fileName.endsWith('.jpeg')) {
+      contentType = 'image/jpeg';
+    } else if (fileName.endsWith('.webp')) {
+      contentType = 'image/webp';
+    }
+
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(topic.slide_name || 'slides')}"`);
+    res.send(slideData);
+  } catch (err) {
+    console.error('[GET /topics/:id/slides/file Error]:', err);
+    res.status(500).send('슬라이드 파일 스트리밍 중 오류가 발생했습니다.');
+  }
+});
+
+// 3. POST /api/topics/:id/slides -> NotebookLM 파일 업로드 또는 구글 슬라이드 URL/덱 등록
+router.post('/topics/:id/slides', upload.single('slide_file'), async (req, res) => {
+  const topicId = req.params.id;
+  try {
+    let topic = await resolveTopic(topicId);
+    if (!topic) {
+      const cleanTitle = String(topicId).trim();
+      const insertRes = await dbQuery.run(
+        `INSERT INTO topics (title, category, keywords) VALUES (?, ?, ?)`,
+        [cleanTitle, '기출문제', cleanTitle]
+      );
+      topic = { id: insertRes.id, title: cleanTitle, slide_url: null };
+    }
+
+    let slideName = req.file ? req.file.originalname : null;
+    let slideData = req.file ? req.file.buffer : null;
+    let slideUrl = req.body?.slide_url ? String(req.body.slide_url).trim() : null;
+    let slideDeckJson = req.body?.slide_deck_json ? (typeof req.body.slide_deck_json === 'string' ? req.body.slide_deck_json : JSON.stringify(req.body.slide_deck_json)) : null;
+
+    if (slideData && process.env.BLOB_READ_WRITE_TOKEN) {
+      try {
+        const mimeType = req.file?.mimetype || 'application/pdf';
+        const blob = await put(`slides/${Date.now()}_${slideName}`, slideData, {
+          access: 'public',
+          contentType: mimeType,
+        });
+        slideUrl = blob.url;
+        slideData = null;
+      } catch (blobErr) {
+        console.warn('Vercel Blob upload failed for slide, saving to database:', blobErr.message);
+      }
+    }
+
+    if (req.file) {
+      await dbQuery.run(
+        `UPDATE topics SET slide_name = ?, slide_data = ?, slide_url = COALESCE(?, slide_url) WHERE id = ?`,
+        [slideName, slideData, slideUrl, topic.id]
+      );
+    } else if (slideUrl) {
+      await dbQuery.run(
+        `UPDATE topics SET slide_url = ?, slide_name = COALESCE(slide_name, 'Google Slides') WHERE id = ?`,
+        [slideUrl, topic.id]
+      );
+    }
+
+    if (slideDeckJson) {
+      await dbQuery.run(
+        `UPDATE topics SET slide_deck_json = ? WHERE id = ?`,
+        [slideDeckJson, topic.id]
+      );
+    }
+
+    res.json({
+      success: true,
+      message: '슬라이드 자료가 성공적으로 등록되었습니다.',
+      slide_name: slideName,
+      slide_url: slideUrl
+    });
+  } catch (err) {
+    console.error('[POST /topics/:id/slides Error]:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 4. DELETE /api/topics/:id/slides -> 슬라이드 자료 삭제
+router.delete('/topics/:id/slides', async (req, res) => {
+  const topicId = req.params.id;
+  try {
+    const topic = await resolveTopic(topicId);
+    if (!topic) {
+      return res.status(404).json({ error: '토픽을 찾을 수 없습니다.' });
+    }
+    if (topic?.slide_url && process.env.BLOB_READ_WRITE_TOKEN) {
+      try {
+        await del(topic.slide_url);
+      } catch (delErr) {
+        console.warn('Failed to delete slide blob:', delErr.message);
+      }
+    }
+    await dbQuery.run(
+      `UPDATE topics SET slide_name = NULL, slide_data = NULL, slide_url = NULL, slide_deck_json = NULL WHERE id = ?`,
+      [topic.id]
+    );
+    res.json({ success: true, message: '슬라이드 자료가 초기화되었습니다.' });
+  } catch (err) {
+    console.error('[DELETE /topics/:id/slides Error]:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 5. POST /api/topics/:id/slides/generate -> 토픽 원본 기반 NotebookLM 양식 5-Slide Visual Deck AI 생성
+router.post('/topics/:id/slides/generate', async (req, res) => {
+  const topicId = req.params.id;
+  try {
+    let topic = await resolveTopic(topicId);
+    if (!topic) {
+      const cleanTitle = String(topicId).trim();
+      const insertRes = await dbQuery.run(
+        `INSERT INTO topics (title, category, keywords) VALUES (?, ?, ?)`,
+        [cleanTitle, '기출문제', cleanTitle]
+      );
+      topic = { id: insertRes.id, title: cleanTitle, keywords: cleanTitle, extracted_text: '', category: '기출문제' };
+    }
+
+    let sourceText = topic.extracted_text || '';
+    if (!sourceText) {
+      sourceText = await getTopicText(topicId, topic.title, topic.keywords);
+    }
+
+    const systemPrompt = `당신은 최고 권위의 토목/지반/터널 기술사 전문 프레젠테이션 수석 엔지니어이자 NotebookLM 스튜디오 슬라이드 디자이너입니다.
+주어진 토픽의 원본 소스를 분석하여, 기술사 수험생 및 실무 기술자가 5분 만에 핵심을 완벽히 마스터할 수 있는 [NotebookLM 스타일 5장 프레젠테이션 슬라이드 덱(Slide Deck)]을 JSON으로 생성하십시오.
+
+반드시 다음 5장의 스토리라인을 정확히 준수하여 구성해야 합니다:
+- Slide 1: [개요 & 핵심 정의] (주제 핵심 정의, 출제 빈도, 3대 핵심 키워드 배지, 발표 목적)
+- Slide 2: [지반/터널 역학 메커니즘] (거동 원리, 하중 전이/응력 경로 메커니즘 3단 비교 카드, 거동 모식도 설명)
+- Slide 3: [KDS 설계기준 & 핵심 지배공식] (국가건설기준 KDS 조항, 핵심 공식 수식, 매개변수 정의 및 물리적 의미)
+- Slide 4: [현장 시공·시험 및 품질관리 착안점] (단계별 시공 절차 플로우, 문제 발생 시 대책, 현장 체크포인트)
+- Slide 5: [기술사 답안 결론 & 실무 제언] (고득점 차별화 포인트, 핵심 비교 매트릭스 표, 최종 총평)
+
+반드시 아래 JSON 형식으로만 순수 JSON을 응답하십시오. markdown 코드블록으로 감싸도 좋습니다.
+
+{
+  "deck_title": "${topic.title}",
+  "topic_category": "${topic.category || '토목공학'}",
+  "total_slides": 5,
+  "slides": [
+    {
+      "slide_no": 1,
+      "category_tag": "개요 & 핵심 정의",
+      "title": "슬라이드 1 제목",
+      "key_takeaway": "한 줄 핵심 결론 요약",
+      "bullet_points": [
+        { "title": "항목1", "desc": "설명...", "badge": "핵심" },
+        { "title": "항목2", "desc": "설명...", "badge": "정의" },
+        { "title": "항목3", "desc": "설명...", "badge": "출제기준" }
+      ],
+      "visual_component": {
+        "type": "summary_cards",
+        "cards": [
+          { "label": "정의", "content": "핵심 정의 내용", "highlight": true },
+          { "label": "적용 범위", "content": "주요 적용 지반/구조물", "highlight": false },
+          { "label": "핵심 파라미터", "content": "주요 지표 수치", "highlight": false }
+        ]
+      },
+      "engineer_note": "기술사 답안 작성 시 1단락 개요 서술 요령"
+    }
+  ]
+}`;
+
+    const userPrompt = `[토픽 제목]: ${topic.title}
+[키워드]: ${topic.keywords || ''}
+[상세 원본 소스 텍스트]:
+${(sourceText || '').slice(0, 7000)}`;
+
+    const responseText = await callLLMWithFailover(systemPrompt, userPrompt, null, 'source-search');
+    const parsedDeck = parseLlmJson(responseText);
+
+    if (parsedDeck && parsedDeck.slides && Array.isArray(parsedDeck.slides)) {
+      const deckJsonStr = JSON.stringify(parsedDeck);
+      await dbQuery.run(
+        `UPDATE topics SET slide_deck_json = ? WHERE id = ?`,
+        [deckJsonStr, topic.id]
+      );
+      return res.json({
+        success: true,
+        slide_deck: parsedDeck,
+        cached: false
+      });
+    } else {
+      throw new Error('AI 슬라이드 덱 JSON 파싱 실패');
+    }
+  } catch (err) {
+    console.error('[POST /topics/:id/slides/generate Error]:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/topics/:id/instructions -> Retrieve instructions
 router.get('/topics/:id/instructions', async (req, res) => {
   try {
