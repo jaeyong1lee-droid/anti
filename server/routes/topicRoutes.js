@@ -838,11 +838,23 @@ async function resolveTopic(topicId) {
     if (topic) return topic;
   }
   const cleanTitle = String(topicId).trim();
-  const topic = await dbQuery.get(
+  // 1. 완전 일치 우선 검색
+  let topic = await dbQuery.get(
     `SELECT id, title, keywords, pdf_name, extracted_text, category, slide_name, slide_url, slide_deck_json,
             CASE WHEN (slide_data IS NOT NULL OR slide_url IS NOT NULL) THEN 1 ELSE 0 END as has_file
-     FROM topics WHERE title = ? OR ? LIKE ('%' || title || '%') ORDER BY LENGTH(title) DESC LIMIT 1`,
-    [cleanTitle, cleanTitle]
+     FROM topics WHERE title = ? LIMIT 1`,
+    [cleanTitle]
+  );
+  if (topic) return topic;
+
+  // 2. 검색어가 제목에 포함되거나, 제목이 검색어에 포함되거나, 키워드에 매칭되는 경우
+  topic = await dbQuery.get(
+    `SELECT id, title, keywords, pdf_name, extracted_text, category, slide_name, slide_url, slide_deck_json,
+            CASE WHEN (slide_data IS NOT NULL OR slide_url IS NOT NULL) THEN 1 ELSE 0 END as has_file
+     FROM topics 
+     WHERE title LIKE ? OR ? LIKE ('%' || title || '%') OR keywords LIKE ?
+     ORDER BY LENGTH(title) ASC LIMIT 1`,
+    [`%${cleanTitle}%`, cleanTitle, `%${cleanTitle}%`]
   );
   return topic;
 }

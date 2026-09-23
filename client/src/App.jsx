@@ -3536,20 +3536,46 @@ export default function App() {
     };
   };
 
-  const handleOpenTopicSlides = (topicIdOrQuestion, fallbackTitle = '') => {
+  const handleOpenTopicSlides = async (topicIdOrQuestion, fallbackTitle = '') => {
     try {
       const { topicId, topicTitle } = resolveTopicInfo(topicIdOrQuestion, fallbackTitle);
       const finalId = topicId || topicTitle;
       const finalTitle = topicTitle || '토픽 슬라이드 자료';
+      const topicKey = String(finalId);
+      const titleKey = String(finalTitle);
 
-      setTopicSlideModalId(finalId);
-      setTopicSlideModalTitle(finalTitle);
-      setShowTopicSlideModal(true);
+      // 1. 이미 백그라운드에서 작성 중인 경우: 팝업을 띄우지 않고 토스트 알림으로만 상태 안내
+      if (generatingSlideTopicIds[topicKey] || generatingSlideTopicIds[titleKey]) {
+        showNotification(`⏳ [${finalTitle}] 현재 5장 PPT 슬라이드를 작성 중입니다. 완성이 끝나면 알림과 함께 버튼으로 바로 열어보실 수 있습니다.`, 'info');
+        return;
+      }
+
+      // 2. 서버에 슬라이드가 이미 준비되어 있는지 확인
+      try {
+        const checkRes = await fetch(`${API_BASE}/api/topics/${encodeURIComponent(finalId)}/slides`);
+        if (checkRes.ok) {
+          const slideData = await checkRes.json();
+          const hasReadySlide = slideData.has_file || 
+                                (slideData.slide_deck && Array.isArray(slideData.slide_deck.slides) && slideData.slide_deck.slides.length > 0) ||
+                                Boolean(slideData.slide_url);
+
+          if (hasReadySlide) {
+            // 이미 완성된 PPT가 있으면 바로 팝업 오픈!
+            setTopicSlideModalId(slideData.topic_id || finalId);
+            setTopicSlideModalTitle(slideData.title || finalTitle);
+            setShowTopicSlideModal(true);
+            return;
+          }
+        }
+      } catch (checkErr) {
+        console.warn('Failed to pre-check slide availability:', checkErr);
+      }
+
+      // 3. 슬라이드가 아직 없는 경우: 빈 팝업을 띄우지 않고, 즉시 백그라운드 작성 시작 + 버튼 아이콘 회전 액션!
+      handleStartSlideGeneration(finalId, finalTitle);
+
     } catch (err) {
       console.error('[handleOpenTopicSlides Error]:', err);
-      setTopicSlideModalId(fallbackTitle || 'slide_modal');
-      setTopicSlideModalTitle(fallbackTitle || '토픽 슬라이드 자료');
-      setShowTopicSlideModal(true);
     }
   };
 
