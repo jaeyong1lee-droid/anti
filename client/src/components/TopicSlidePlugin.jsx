@@ -540,7 +540,7 @@ export default function TopicSlidePlugin({
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40">
-                  NotebookLM Slide Deck
+                  {activeView === 'jpg' ? '16:9 프레젠테이션 슬라이드' : 'AI 브리핑 카드 덱'}
                 </span>
                 <span className="text-[11px] text-slate-400 font-mono hidden sm:inline">
                   {activeView === 'jpg'
@@ -918,7 +918,7 @@ export default function TopicSlidePlugin({
                         <CheckCircle size={12} className="text-emerald-400" />
                         <span>Core Engineering Visual</span>
                       </span>
-                      <span className="text-[9px] text-slate-500 font-mono">NotebookLM Form</span>
+                      <span className="text-[9px] text-slate-500 font-mono">Engineering Matrix</span>
                     </div>
 
                     {/* 카드 매트릭스 렌더링 */}
@@ -1041,7 +1041,7 @@ export default function TopicSlidePlugin({
               <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
                 <div className="flex items-center gap-2">
                   <Upload size={18} className="text-amber-400" />
-                  <h3 className="text-sm font-bold text-white">NotebookLM 슬라이드 등록 및 변경</h3>
+                  <h3 className="text-sm font-bold text-white">슬라이드(PPT / NotebookLM / 이미지) 등록 및 관리</h3>
                 </div>
                 <button
                   type="button"
