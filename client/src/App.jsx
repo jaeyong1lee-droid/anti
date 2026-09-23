@@ -3623,6 +3623,24 @@ export default function App() {
     }
   };
 
+  const lockscreenSyncTimeoutRef = useRef(null);
+  const syncLockscreenAnswerToServer = (userAnswer, gradingResult, hint) => {
+    if (lockscreenSyncTimeoutRef.current) {
+      clearTimeout(lockscreenSyncTimeoutRef.current);
+    }
+    lockscreenSyncTimeoutRef.current = setTimeout(async () => {
+      try {
+        await fetch(`${API_BASE}/api/lockscreen/active`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userAnswer, gradingResult, hint })
+        });
+      } catch (e) {
+        console.warn('Failed to sync lockscreen answer to server:', e);
+      }
+    }, 1000);
+  };
+
   const saveLockscreenAnswerForQuestion = (q, userAnswer, gradingResult, hint) => {
     if (!q) return;
     try {
@@ -3644,6 +3662,11 @@ export default function App() {
         localStorage.removeItem('anti_current_lockscreen_grading_result');
       }
       localStorage.setItem('anti_current_lockscreen_qkey', key);
+
+      // Debounced real-time cross-device sync (PC <-> Mobile)
+      if (q?.lockscreen_id) {
+        syncLockscreenAnswerToServer(map[key].userAnswer, map[key].gradingResult, map[key].hint);
+      }
     } catch (e) {
       console.warn('Failed to save lockscreen answer to localStorage:', e);
     }
@@ -3683,6 +3706,10 @@ export default function App() {
     } catch (e) {}
     return null;
   });
+  const lockscreenQuestionRef = useRef(lockscreenQuestion);
+  useEffect(() => {
+    lockscreenQuestionRef.current = lockscreenQuestion;
+  }, [lockscreenQuestion]);
 
   const [lockscreenHistory, setLockscreenHistory] = useState(() => {
     try {
@@ -3745,6 +3772,10 @@ export default function App() {
     } catch (e) {}
     return null;
   });
+  const lockscreenGradingResultRef = useRef(lockscreenGradingResult);
+  useEffect(() => {
+    lockscreenGradingResultRef.current = lockscreenGradingResult;
+  }, [lockscreenGradingResult]);
 
   const [lockscreenGradingLoading, setLockscreenGradingLoading] = useState(false);
   const [lockscreenLoading, setLockscreenLoading] = useState(false);
@@ -3789,14 +3820,66 @@ export default function App() {
     }
   }, [showLockscreenQuiz]);
 
+  // Real-time synchronization check across devices on focus & visibilitychange (PC ↔ mobile)
+  useEffect(() => {
+    const handleFocusSync = async () => {
+      if (typeof document !== 'undefined' && document.visibilityState && document.visibilityState !== 'visible') {
+        return;
+      }
+      try {
+        const res = await fetch(`${API_BASE}/api/lockscreen/random?t=${Date.now()}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.success && data.question) {
+            const serverId = data.assignment?.lockscreen_id || data.question.lockscreen_id;
+            const currentId = lockscreenQuestionRef.current?.lockscreen_id;
+            const qWithId = {
+              ...data.question,
+              lockscreen_id: serverId
+            };
+            if (serverId && serverId !== currentId) {
+              console.log(`[Lockscreen Sync] Detected active assignment changed to ${serverId}, syncing across devices...`);
+              setLockscreenQuestion(qWithId);
+              try {
+                localStorage.setItem('anti_current_unsolved_lockscreen_question', JSON.stringify(qWithId));
+              } catch (e) {}
+              if (data.assignment?.userAnswer || data.assignment?.gradingResult) {
+                setLockscreenUserAnswer(data.assignment.userAnswer || '');
+                setLockscreenGradingResult(data.assignment.gradingResult || null);
+                if (data.assignment.hint) setLockscreenHint(data.assignment.hint);
+                saveLockscreenAnswerForQuestion(qWithId, data.assignment.userAnswer, data.assignment.gradingResult, data.assignment.hint);
+              } else {
+                loadQuestionAnswerState(qWithId);
+              }
+            } else if (serverId && serverId === currentId) {
+              // Same question ID: if other device graded or updated answer
+              if (data.assignment?.gradingResult && !lockscreenGradingResultRef.current) {
+                setLockscreenGradingResult(data.assignment.gradingResult);
+                if (data.assignment.userAnswer) setLockscreenUserAnswer(data.assignment.userAnswer);
+                saveLockscreenAnswerForQuestion(qWithId, data.assignment.userAnswer, data.assignment.gradingResult, data.assignment.hint);
+              }
+            }
+          }
+        }
+      } catch (e) {}
+    };
+
+    window.addEventListener('focus', handleFocusSync);
+    document.addEventListener('visibilitychange', handleFocusSync);
+    return () => {
+      window.removeEventListener('focus', handleFocusSync);
+      document.removeEventListener('visibilitychange', handleFocusSync);
+    };
+  }, []);
+
   const fetchLockscreenQuestion = async (addToHistory = true, forceNew = false) => {
-    // 1) If not forceNew, check if we already have an unsolved question in localStorage or memory
-    if (!forceNew) {
+    // 1) Fast optimistic load from localStorage for zero delay UI
+    if (!forceNew && !lockscreenQuestionRef.current) {
       try {
         const saved = localStorage.getItem('anti_current_unsolved_lockscreen_question');
         if (saved) {
           const parsed = JSON.parse(saved);
-          if (parsed && (parsed.question || parsed.fullTitle)) {
+          if (parsed && (parsed.question || parsed.fullTitle) && parsed.lockscreen_id) {
             setLockscreenQuestion(parsed);
             loadQuestionAnswerState(parsed);
             if (addToHistory && lockscreenHistoryRef.current.length === 0) {
@@ -3806,43 +3889,68 @@ export default function App() {
               setLockscreenHistory(initHist);
               setLockscreenHistoryIndex(0);
             }
-            return parsed;
           }
         }
       } catch (e) {}
     }
 
-    lockscreenLoadingRef.current = true;
+    if (!lockscreenQuestionRef.current) {
+      lockscreenLoadingRef.current = true;
+      setLockscreenLoading(true);
+    }
+
     try {
-      const res = await fetch(`${API_BASE}/api/lockscreen/random?t=${Date.now()}`);
+      const res = await fetch(`${API_BASE}/api/lockscreen/random?t=${Date.now()}${forceNew ? '&forceNew=true' : ''}`);
       if (res.ok) {
         const data = await res.json();
         if (data && data.success && data.question) {
-          setLockscreenQuestion(data.question);
-          loadQuestionAnswerState(data.question);
+          const serverId = data.assignment?.lockscreen_id || data.question.lockscreen_id;
+          const currentId = lockscreenQuestionRef.current?.lockscreen_id;
+          const qWithId = {
+            ...data.question,
+            lockscreen_id: serverId
+          };
 
-          try {
-            localStorage.setItem('anti_current_unsolved_lockscreen_question', JSON.stringify(data.question));
-          } catch (e) {}
+          // If question changed or not yet set
+          if (!currentId || serverId !== currentId || forceNew) {
+            setLockscreenQuestion(qWithId);
+            try {
+              localStorage.setItem('anti_current_unsolved_lockscreen_question', JSON.stringify(qWithId));
+            } catch (e) {}
 
-          if (addToHistory) {
-            const nextHistory = [
-              ...lockscreenHistoryRef.current.slice(0, lockscreenHistoryIndexRef.current + 1),
-              data.question
-            ];
-            const nextIdx = nextHistory.length - 1;
-            lockscreenHistoryRef.current = nextHistory;
-            lockscreenHistoryIndexRef.current = nextIdx;
-            setLockscreenHistory(nextHistory);
-            setLockscreenHistoryIndex(nextIdx);
+            if (data.assignment?.userAnswer || data.assignment?.gradingResult) {
+              setLockscreenUserAnswer(data.assignment.userAnswer || '');
+              setLockscreenGradingResult(data.assignment.gradingResult || null);
+              if (data.assignment.hint) setLockscreenHint(data.assignment.hint);
+              saveLockscreenAnswerForQuestion(qWithId, data.assignment.userAnswer, data.assignment.gradingResult, data.assignment.hint);
+            } else {
+              loadQuestionAnswerState(qWithId);
+            }
+
+            if (addToHistory) {
+              const nextHistory = [
+                ...lockscreenHistoryRef.current.slice(0, lockscreenHistoryIndexRef.current + 1),
+                qWithId
+              ];
+              const nextIdx = nextHistory.length - 1;
+              lockscreenHistoryRef.current = nextHistory;
+              lockscreenHistoryIndexRef.current = nextIdx;
+              setLockscreenHistory(nextHistory);
+              setLockscreenHistoryIndex(nextIdx);
+            }
+          } else if (data.assignment?.gradingResult && !lockscreenGradingResultRef.current) {
+            setLockscreenGradingResult(data.assignment.gradingResult);
+            if (data.assignment.userAnswer) setLockscreenUserAnswer(data.assignment.userAnswer);
+            saveLockscreenAnswerForQuestion(qWithId, data.assignment.userAnswer, data.assignment.gradingResult, data.assignment.hint);
           }
-          return data.question;
+          return qWithId;
         }
       }
     } catch (err) {
       console.warn('Failed to fetch lockscreen exam question:', err);
     } finally {
       lockscreenLoadingRef.current = false;
+      setLockscreenLoading(false);
     }
     return null;
   };
@@ -4002,6 +4110,8 @@ export default function App() {
         setLockscreenHistory([existingQuestion]);
         setLockscreenHistoryIndex(0);
       }
+      // Reconcile with server in background to ensure real-time PC <-> mobile sync
+      fetchLockscreenQuestion(false, false);
       return;
     }
 
@@ -18402,10 +18512,19 @@ ${itemsStr}
               <div className="w-full max-w-lg flex flex-col space-y-4 my-auto">
                 {/* Streamlined Header: Badges & Close Button */}
                 <div id="lockscreen-header" className="flex items-center justify-between pb-2 border-b border-slate-800/80">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="px-3 py-1 bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 rounded-xl text-xs font-black shadow-sm">
                       {lockscreenQuestion.sessionName} 제1교시 {lockscreenQuestion.number}번
                     </span>
+                    {lockscreenQuestion.lockscreen_id && (
+                      <span 
+                        className="px-2.5 py-1 bg-emerald-950/80 text-emerald-300 border border-emerald-500/40 rounded-xl text-xs font-mono font-black shadow-sm flex items-center gap-1.5"
+                        title="PC ↔ 핸드폰 실시간 동기화 ID"
+                      >
+                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                        {lockscreenQuestion.lockscreen_id}
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     <button

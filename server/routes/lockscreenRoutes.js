@@ -1,7 +1,12 @@
 import express from 'express';
 import { dbQuery } from '../database.js';
 import { saveSessionValue, callLLMWithFailover } from '../services/aiService.js';
-import { getRandomLockscreenExamQuestion, loadAllPastExamQuestions } from '../services/pastExamService.js';
+import { 
+  getRandomLockscreenExamQuestion, 
+  loadAllPastExamQuestions,
+  getActiveLockscreenAssignment,
+  updateActiveLockscreenAnswer 
+} from '../services/pastExamService.js';
 import { gradeSubjective, GRADING_STANDARDS, gradingStandardsList } from '../plugins/gradingPlugin.js';
 import { ENGINEERING_STANDARDS, engineeringStandardsList } from '../plugins/engineeringStandards.js';
 import { healLatexFormulas } from '../utils/latexUtils.js';
@@ -17,28 +22,45 @@ function getCallLLM(req) {
 
 
 
-// GET /api/lockscreen/random -> Retrieve a random 1st-period exam question (excluding questions served within 7 days)
+// GET /api/lockscreen/random -> Retrieve synchronized active lockscreen assignment with LOCK{YYMMDD}_{seq} ID
 router.get('/random', async (req, res) => {
   try {
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
 
-    const question = await getRandomLockscreenExamQuestion();
-    return res.json({ success: true, question });
+    const forceNew = req.query.forceNew === 'true' || req.query.force === 'true';
+    const assignment = await getActiveLockscreenAssignment(forceNew);
+    return res.json({ 
+      success: true, 
+      question: assignment.question,
+      assignment 
+    });
   } catch (err) {
     console.error('GET /api/lockscreen/random error:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// GET /api/lockscreen/sync -> Backward-compatible endpoint returning a random exam question
+// GET /api/lockscreen/sync -> Backward-compatible endpoint returning synchronized assignment
 router.get('/sync', async (req, res) => {
   try {
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
 
-    const question = await getRandomLockscreenExamQuestion();
-    return res.json({ success: true, question, questions: [question] });
+    const assignment = await getActiveLockscreenAssignment(false);
+    return res.json({ success: true, question: assignment.question, assignment, questions: [assignment.question] });
   } catch (err) {
     console.error('GET /api/lockscreen/sync error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/lockscreen/active -> Real-time sync of answer / grading result across PC & mobile
+router.post('/active', async (req, res) => {
+  try {
+    const { userAnswer, gradingResult, hint } = req.body;
+    const updated = await updateActiveLockscreenAnswer(userAnswer, gradingResult, hint);
+    res.json({ success: true, assignment: updated });
+  } catch (err) {
+    console.error('POST /api/lockscreen/active error:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -170,6 +192,11 @@ router.post('/grade', async (req, res) => {
       }
     }
 
+    // Synchronize grading result across all devices
+    updateActiveLockscreenAnswer(userAnswer.trim(), gradingResult, '').catch(err => {
+      console.warn('Failed to update active lockscreen assignment answer:', err);
+    });
+
     res.json({
       success: true,
       result: gradingResult
@@ -180,7 +207,7 @@ router.post('/grade', async (req, res) => {
   }
 });
 
-// POST /api/lockscreen/solve -> Mark question as completed
+// POST /api/lockscreen/solve -> Mark question as completed and advance to next assignment
 router.post('/solve', async (req, res) => {
   try {
     const { id } = req.body;
@@ -199,7 +226,10 @@ router.post('/solve', async (req, res) => {
       await saveSessionValue('lockscreen_past_exam_history', JSON.stringify(history));
     }
 
-    res.json({ success: true });
+    // Advance to next lockscreen assignment for the day (e.g. LOCK260923_2)
+    const nextAssignment = await getActiveLockscreenAssignment(true);
+
+    res.json({ success: true, nextAssignment });
   } catch (err) {
     console.error('POST /api/lockscreen/solve error:', err);
     res.status(500).json({ success: false, error: err.message });

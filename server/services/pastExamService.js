@@ -168,3 +168,105 @@ export async function getRandomLockscreenExamQuestion() {
 
   return selectedQuestion;
 }
+
+/**
+ * Returns current Korea Standard Time (KST, UTC+9) date strings.
+ */
+export function getKSTDateInfo() {
+  const d = new Date(Date.now() + 9 * 60 * 60 * 1000); // KST UTC+9
+  const year = d.getUTCFullYear();
+  const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(d.getUTCDate()).padStart(2, '0');
+  const yy = String(year).slice(-2);
+  return {
+    dateStr: `${year}-${month}-${day}`,
+    yymmdd: `${yy}${month}${day}` // e.g. "260923"
+  };
+}
+
+/**
+ * Gets or creates the currently active lockscreen assignment with format LOCK{YYMMDD}_{seq}.
+ * Synchronized across PC, Mobile, and all devices via Cloud DB.
+ */
+export async function getActiveLockscreenAssignment(forceNew = false) {
+  const { dateStr, yymmdd } = getKSTDateInfo();
+
+  if (!forceNew) {
+    try {
+      const activeRow = await dbQuery.get("SELECT value FROM app_session WHERE key = 'current_lockscreen_assignment'");
+      if (activeRow && activeRow.value) {
+        const assignment = JSON.parse(activeRow.value);
+        if (assignment && assignment.lockscreen_id && assignment.question) {
+          // If assignment matches today's date, return it directly
+          if (assignment.yymmdd === yymmdd) {
+            return assignment;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[pastExamService] Failed to read active assignment:', e.message);
+    }
+  }
+
+  // Need new assignment: calculate sequence number for today
+  let nextSeq = 1;
+  try {
+    const activeRow = await dbQuery.get("SELECT value FROM app_session WHERE key = 'current_lockscreen_assignment'");
+    if (activeRow && activeRow.value) {
+      const prev = JSON.parse(activeRow.value);
+      if (prev && prev.yymmdd === yymmdd) {
+        nextSeq = (prev.seq || 0) + 1;
+      }
+    }
+  } catch (e) {}
+
+  const lockscreenId = `LOCK${yymmdd}_${nextSeq}`;
+  const newQuestion = await getRandomLockscreenExamQuestion();
+
+  const newAssignment = {
+    lockscreen_id: lockscreenId,
+    date: dateStr,
+    yymmdd,
+    seq: nextSeq,
+    question: {
+      ...newQuestion,
+      lockscreen_id: lockscreenId
+    },
+    userAnswer: '',
+    gradingResult: null,
+    hint: '',
+    updatedAt: Date.now()
+  };
+
+  try {
+    await saveSessionValue('current_lockscreen_assignment', JSON.stringify(newAssignment));
+    console.log(`[pastExamService] Synchronized lockscreen assignment active: ${lockscreenId} - [${newQuestion.sessionName} 제1교시 ${newQuestion.number}번]`);
+  } catch (saveErr) {
+    console.warn('[pastExamService] Failed to save active assignment:', saveErr.message);
+  }
+
+  return newAssignment;
+}
+
+/**
+ * Updates the user's answer, grading result, or hint for the currently active lockscreen assignment.
+ */
+export async function updateActiveLockscreenAnswer(userAnswer, gradingResult, hint) {
+  try {
+    const activeRow = await dbQuery.get("SELECT value FROM app_session WHERE key = 'current_lockscreen_assignment'");
+    if (activeRow && activeRow.value) {
+      const assignment = JSON.parse(activeRow.value);
+      if (assignment) {
+        if (typeof userAnswer === 'string') assignment.userAnswer = userAnswer;
+        if (gradingResult !== undefined) assignment.gradingResult = gradingResult;
+        if (hint !== undefined) assignment.hint = hint;
+        assignment.updatedAt = Date.now();
+        await saveSessionValue('current_lockscreen_assignment', JSON.stringify(assignment));
+        return assignment;
+      }
+    }
+  } catch (e) {
+    console.warn('[pastExamService] Failed to update active assignment answer:', e.message);
+  }
+  return null;
+}
