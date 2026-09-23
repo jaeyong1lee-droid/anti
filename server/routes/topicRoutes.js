@@ -7,6 +7,7 @@ import { getTopicText, saveSessionValue, callLLMWithFailover } from '../services
 import * as fileUtils from '../utils/fileUtils.js';
 import * as ocrPlugin from '../plugins/calculationPlugin.js';
 import { parseLlmJson } from '../utils/latexUtils.js';
+import { ENGINEERING_STANDARDS } from '../plugins/engineeringStandards.js';
 
 const router = express.Router();
 const storage = multer.memoryStorage();
@@ -1061,13 +1062,43 @@ router.post('/topics/:id/slides/generate', async (req, res) => {
     }
     activeSlideGenerations.add(activeKey);
 
-    let sourceText = topic.extracted_text || '';
-    if (!sourceText) {
-      sourceText = await getTopicText(topicId, topic.title, topic.keywords);
+    const customSourceText = req.body && req.body.sourceText ? String(req.body.sourceText).trim() : '';
+    let sourceText = customSourceText || topic.extracted_text || '';
+    if (!sourceText || sourceText.length < 150 || sourceText.includes('수기로 등록한 토픽')) {
+      try {
+        const fileText = await getTopicText(topic, fileUtils, ocrPlugin, pdfParse);
+        if (fileText && fileText.length >= 150 && !fileText.includes('수기로 등록한 토픽')) {
+          sourceText = fileText;
+        }
+      } catch (fErr) {
+        console.warn('[Slide Gen] getTopicText fallback error:', fErr);
+      }
+    }
+
+    // 💡 [사용자 특별 지침] 첨부 보고서 텍스트가 없거나 부족한 경우:
+    // "AI 튜터에 검색했을 때 나오는 고품질 전문 지식 및 기술사 강의 해설"을 원천 소스로 자동 생성하여 PPT 제작!
+    if (!sourceText || sourceText.length < 150 || sourceText.includes('수기로 등록한 토픽')) {
+      console.log(`[Slide Gen] Generating rich AI Tutor knowledge base for: ${topic.title}`);
+      const tutorSysPrompt = `당신은 대한민국 토목/지반/터널 기술사 시험 최고 권위의 기술사 전문 AI 튜터입니다.\n${ENGINEERING_STANDARDS}`;
+      const tutorUserPrompt = `수험생이 [${topic.title}] 주제에 대해 학습하고자 합니다. 기술사 답안지 서술 및 현장 실무 강의 수준으로 다음 항목을 빠짐없이 포함하는 완벽하고 깊이 있는 학술적/실무적 지식 본문을 작성해 주십시오:
+1. [개요 및 정의]: 학술적 정의, 출제 빈도, 3대 핵심 키워드, 공학적 의미
+2. [거동 메커니즘 및 역학적 원리]: 물리적 메커니즘, 원리 및 거동 모식
+3. [KDS 설계기준 및 핵심 지배공식]: 관련 국가건설기준(KDS) 조항, 핵심 지배 수식 및 변수 기호 정의
+4. [현장 시공·시험 및 품질관리 착안점]: 현장 시공 절차, 파이핑/보일링 방지 및 계측 관리, 문제 발생 시 대책
+5. [기술사 답안 차별화 결론 & 실무 제언]: 고득점 팁, 비교표, 최종 총평`;
+
+      try {
+        const tutorKnowledge = await callLLMWithFailover(tutorSysPrompt, tutorUserPrompt, null, 'tutor');
+        if (tutorKnowledge && tutorKnowledge.length > 200) {
+          sourceText = tutorKnowledge;
+        }
+      } catch (tutorErr) {
+        console.warn('[Slide Gen] Failed to generate AI Tutor fallback knowledge:', tutorErr);
+      }
     }
 
     const systemPrompt = `당신은 최고 권위의 토목/지반/터널 기술사 전문 프레젠테이션 수석 엔지니어이자 NotebookLM 스튜디오 슬라이드 디자이너입니다.
-주어진 토픽의 원본 소스를 분석하여, 기술사 수험생 및 실무 기술자가 5분 만에 핵심을 완벽히 마스터할 수 있는 [NotebookLM 스타일 5장 프레젠테이션 슬라이드 덱(Slide Deck)]을 JSON으로 생성하십시오.
+주어진 토픽의 원본 소스 및 AI 튜터 지식 베이스를 분석하여, 기술사 수험생 및 실무 기술자가 5분 만에 핵심을 완벽히 마스터할 수 있는 [NotebookLM 스타일 5장 프레젠테이션 슬라이드 덱(Slide Deck)]을 JSON으로 생성하십시오.
 
 반드시 다음 5장의 스토리라인을 정확히 준수하여 구성해야 합니다:
 - Slide 1: [개요 & 핵심 정의] (주제 핵심 정의, 출제 빈도, 3대 핵심 키워드 배지, 발표 목적)
@@ -1108,7 +1139,7 @@ router.post('/topics/:id/slides/generate', async (req, res) => {
 
     const userPrompt = `[토픽 제목]: ${topic.title}
 [키워드]: ${topic.keywords || ''}
-[상세 원본 소스 텍스트]:
+[AI 튜터 전문 지식 및 상세 소스 텍스트]:
 ${(sourceText || '').slice(0, 7000)}`;
 
     const responseText = await callLLMWithFailover(systemPrompt, userPrompt, null, 'source-search');

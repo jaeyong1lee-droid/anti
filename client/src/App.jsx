@@ -3442,7 +3442,7 @@ export default function App() {
   const [generatingSlideTopicIds, setGeneratingSlideTopicIds] = useState({});
   const [slideRefreshTick, setSlideRefreshTick] = useState(0);
 
-  const handleStartSlideGeneration = async (topicId, topicTitle) => {
+  const handleStartSlideGeneration = async (topicId, topicTitle, customSourceText = '') => {
     if (!topicId) return;
     let finalTopicId = topicId;
     let finalTitle = topicTitle || '';
@@ -3468,7 +3468,12 @@ export default function App() {
 
     try {
       const res = await fetch(`${API_BASE}/api/topics/${encodeURIComponent(finalTopicId)}/slides/generate`, {
-        method: 'POST'
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sourceText: customSourceText || undefined,
+          topicTitle: finalTitle
+        })
       });
       if (res.ok) {
         showNotification(`🎉 [${finalTitle || topicTitle}] 5장 프레젠테이션 슬라이드(PPT) 완성이 완료되었습니다!`, 'success');
@@ -30334,6 +30339,34 @@ ${itemsStr}
                         formulaSource="tutor" 
                         isRealTimeTutor={true} 
                       />
+                      <div className="flex items-center gap-2 mt-2 pt-2 border-t border-slate-700/50">
+                        {(() => {
+                          const queryMsg = realTimeChatHistory[i - 1]?.text || selectedTopic?.title || 'AI 튜터 학습 토픽';
+                          const cleanQueryTitle = queryMsg.split('\n')[0].replace(/[#*`]/g, '').trim().slice(0, 30);
+                          const isSlideGen = !!generatingSlideTopicIds[cleanQueryTitle] || (selectedTopic && !!generatingSlideTopicIds[String(selectedTopic.id)]);
+                          return (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleStartSlideGeneration(cleanQueryTitle, cleanQueryTitle, msg.text);
+                              }}
+                              className={`flex items-center gap-1.5 px-2.5 py-1 ${
+                                isSlideGen 
+                                  ? 'bg-amber-500/30 text-amber-200 border-amber-400 animate-pulse' 
+                                  : 'bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border-amber-500/30 hover:border-amber-400/50'
+                              } border rounded-lg text-xs font-bold transition-all cursor-pointer shadow-sm active:scale-95`}
+                              title="이 AI 튜터 답변 내용으로 5장 PPT 슬라이드 덱 생성하기"
+                            >
+                              {isSlideGen ? (
+                                <RefreshCw size={12} className="text-amber-400 animate-spin" />
+                              ) : (
+                                <Presentation size={12} className="text-amber-400" />
+                              )}
+                              <span>{isSlideGen ? 'PPT ⏳작성중' : '이 답변으로 PPT 만들기'}</span>
+                            </button>
+                          );
+                        })()}
+                      </div>
                     </div>
                   )}
                 </div>
