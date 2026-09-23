@@ -540,13 +540,13 @@ export default function TopicSlidePlugin({
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40">
-                  {activeView === 'jpg' ? '16:9 프레젠테이션 슬라이드' : 'AI 브리핑 카드 덱'}
+                  {activeView === 'jpg' ? '16:9 이미지 슬라이드' : '5장 프레젠테이션 덱'}
                 </span>
                 <span className="text-[11px] text-slate-400 font-mono hidden sm:inline">
                   {activeView === 'jpg'
                     ? `Slide ${currentSlideIndex + 1} / ${jpgSlides.length} (경량 JPG)`
                     : activeView === 'ai'
-                    ? `Slide ${currentSlideIndex + 1} / ${aiSlides.length} (AI 브리핑)`
+                    ? `Slide ${currentSlideIndex + 1} / ${aiSlides.length} (서론-본론-결론)`
                     : '프레젠테이션'}
                 </span>
               </div>
@@ -556,7 +556,7 @@ export default function TopicSlidePlugin({
             </div>
           </div>
 
-          {/* 중앙: 뷰 모드 탭 (경량 JPG 슬라이드 vs AI 카드 덱 vs 웹) */}
+          {/* 중앙: 뷰 모드 탭 (경량 JPG 슬라이드 vs 5장 프레젠테이션 vs 웹) */}
           <div className="hidden md:flex items-center gap-1 bg-[#162138] p-1 rounded-xl border border-slate-700/60">
             {hasJpgSlides && (
               <button
@@ -579,7 +579,7 @@ export default function TopicSlidePlugin({
                 }`}
               >
                 <Sparkles size={13} />
-                <span>AI 카드 덱</span>
+                <span>5장 프레젠테이션 덱</span>
               </button>
             )}
             {hasWebUrl && (
@@ -845,122 +845,187 @@ export default function TopicSlidePlugin({
             </div>
           ) : activeView === 'ai' && currentAiSlide ? (
             /* 모드 2: AI 5-Slide Visual Presentation Deck */
-            <div className="w-full h-full max-w-5xl aspect-video p-4 sm:p-6 md:p-8 flex flex-col justify-between overflow-y-auto scrollbar-none animate-fade-in">
-              {/* 슬라이드 상단 진행 바 */}
-              <div className="w-full flex items-center justify-between gap-3 mb-2 shrink-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-extrabold uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40">
-                    {currentAiSlide.category_tag || `SLIDE 0${currentSlideIndex + 1}`}
-                  </span>
-                  <span className="text-[10px] text-slate-400 font-mono">
-                    PART {currentSlideIndex + 1} OF {aiSlides.length}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1">
-                  {aiSlides.map((_, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => setCurrentSlideIndex(idx)}
-                      className={`h-1.5 transition-all rounded-full cursor-pointer ${
-                        idx === currentSlideIndex ? 'w-6 bg-amber-400' : 'w-2 bg-slate-700 hover:bg-slate-500'
-                      }`}
-                      title={`Slide ${idx + 1}로 이동`}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              {/* 슬라이드 헤더 */}
-              <div className="border-b border-slate-800 pb-3 mb-3 shrink-0">
-                <h1 className="text-lg sm:text-xl md:text-2xl font-black text-white tracking-tight flex items-center gap-2">
-                  <span className="text-amber-400 font-mono text-base sm:text-lg">0{currentSlideIndex + 1}.</span>
-                  <span>{currentAiSlide.title}</span>
-                </h1>
-                {currentAiSlide.key_takeaway && (
-                  <p className="text-xs sm:text-sm text-amber-300/90 font-medium mt-1 pl-6 border-l-2 border-amber-500/60 leading-relaxed">
-                    💡 {currentAiSlide.key_takeaway}
-                  </p>
-                )}
-              </div>
-
-              {/* 슬라이드 본문: 2컬럼 레이아웃 */}
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-4 flex-1 min-h-0 items-stretch">
-                {/* 좌측 6컬럼: 핵심 불릿 카드 */}
-                <div className="md:col-span-6 space-y-2 flex flex-col justify-center">
-                  {(currentAiSlide.bullet_points || []).map((b, bIdx) => (
-                    <div
-                      key={bIdx}
-                      className="p-3 bg-[#111827]/80 hover:bg-[#152033] border border-slate-800 hover:border-amber-500/40 rounded-xl transition-all shadow-sm group"
-                    >
-                      <div className="flex items-center gap-2 mb-1">
-                        {b.badge && (
-                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-950/80 text-amber-300 border border-amber-500/30">
-                            {b.badge}
-                          </span>
-                        )}
-                        <h4 className="text-xs sm:text-sm font-bold text-white group-hover:text-amber-300 transition-colors">
-                          {b.title}
-                        </h4>
-                      </div>
-                      <div className="text-[11px] sm:text-xs text-slate-300 leading-relaxed pl-1">
-                        <SlideLatex text={b.desc || ''} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* 우측 6컬럼: 비주얼 컴포넌트 */}
-                <div className="md:col-span-6 flex flex-col justify-center">
-                  <div className="p-3 sm:p-4 bg-gradient-to-br from-[#121B2F] to-[#0A101D] border border-blue-500/30 rounded-2xl shadow-lg h-full flex flex-col justify-between">
-                    <div className="flex items-center justify-between pb-2 border-b border-slate-800">
-                      <span className="text-[10px] font-black uppercase text-blue-400 tracking-wider flex items-center gap-1.5">
-                        <CheckCircle size={12} className="text-emerald-400" />
-                        <span>Core Engineering Visual</span>
-                      </span>
-                      <span className="text-[9px] text-slate-500 font-mono">Engineering Matrix</span>
-                    </div>
-
-                    {/* 카드 매트릭스 렌더링 */}
-                    {currentAiSlide.visual_component?.cards && (
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 my-2">
-                        {currentAiSlide.visual_component.cards.map((card, cIdx) => (
-                          <div
-                            key={cIdx}
-                            className={`p-2.5 rounded-xl border flex flex-col justify-between ${
-                              card.highlight
-                                ? 'bg-amber-950/40 border-amber-500/50 text-amber-200'
-                                : 'bg-[#0E1626] border-slate-800 text-slate-300'
-                            }`}
-                          >
-                            <span className="text-[9px] font-bold text-slate-400 uppercase">{card.label}</span>
-                            <span className="text-xs font-black mt-1 line-clamp-3">
-                              <SlideLatex text={card.content || ''} />
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* 기술사 착안점 & 엔지니어 노트 */}
-                    {currentAiSlide.engineer_note && (
-                      <div className="mt-2 p-2.5 bg-indigo-950/50 border border-indigo-500/40 rounded-xl">
-                        <div className="text-[9.5px] font-bold text-indigo-300 flex items-center gap-1 mb-0.5">
-                          <span>🎯 기술사 답안 차별화 & 실무 착안점</span>
-                        </div>
-                        <p className="text-[11px] text-indigo-100 font-medium leading-relaxed">
-                          <SlideLatex text={currentAiSlide.engineer_note} />
-                        </p>
-                      </div>
-                    )}
+            <div className="w-full h-full flex flex-col justify-between relative overflow-hidden">
+              {/* 메인 슬라이드 스테이지 */}
+              <div className="flex-1 min-h-0 w-full max-w-5xl mx-auto p-3 sm:p-5 md:p-6 flex flex-col justify-between overflow-y-auto scrollbar-none animate-fade-in relative">
+                {/* 슬라이드 상단 진행 바 */}
+                <div className="w-full flex items-center justify-between gap-3 mb-2 shrink-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-extrabold uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                      {currentAiSlide.category_tag || `SLIDE 0${currentSlideIndex + 1}`}
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      PART {currentSlideIndex + 1} OF {aiSlides.length}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    {aiSlides.map((slide, idx) => {
+                      const stages = ['서론', '본론①', '본론②', '본론③', '결론'];
+                      return (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => setCurrentSlideIndex(idx)}
+                          className={`px-2 py-0.5 text-[10px] font-bold transition-all rounded-md cursor-pointer ${
+                            idx === currentSlideIndex 
+                              ? 'bg-amber-400 text-slate-950 font-black shadow-sm' 
+                              : 'bg-slate-800/80 text-slate-400 hover:text-white hover:bg-slate-700'
+                          }`}
+                          title={`Slide ${idx + 1}: ${slide.title || ''}`}
+                        >
+                          {stages[idx] || `0${idx + 1}`}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
+
+                {/* 슬라이드 헤더 */}
+                <div className="border-b border-slate-800 pb-2.5 mb-2.5 shrink-0">
+                  <h1 className="text-base sm:text-lg md:text-xl font-black text-white tracking-tight flex items-center gap-2">
+                    <span className="text-amber-400 font-mono">0{currentSlideIndex + 1}.</span>
+                    <span>{currentAiSlide.title}</span>
+                  </h1>
+                  {currentAiSlide.key_takeaway && (
+                    <p className="text-xs sm:text-sm text-amber-300/90 font-medium mt-1 pl-4 border-l-2 border-amber-500/60 leading-relaxed">
+                      💡 <SlideLatex text={currentAiSlide.key_takeaway} />
+                    </p>
+                  )}
+                </div>
+
+                {/* 슬라이드 본문: 2컬럼 레이아웃 */}
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-4 flex-1 min-h-0 items-stretch">
+                  {/* 좌측 6컬럼: 핵심 불릿 카드 */}
+                  <div className="md:col-span-6 space-y-2 flex flex-col justify-center">
+                    {(currentAiSlide.bullet_points || []).map((b, bIdx) => (
+                      <div
+                        key={bIdx}
+                        className="p-2.5 sm:p-3 bg-[#111827]/80 hover:bg-[#152033] border border-slate-800 hover:border-amber-500/40 rounded-xl transition-all shadow-sm group"
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          {b.badge && (
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-950/80 text-amber-300 border border-amber-500/30 shrink-0">
+                              {b.badge}
+                            </span>
+                          )}
+                          <h4 className="text-xs sm:text-sm font-bold text-white group-hover:text-amber-300 transition-colors">
+                            {b.title}
+                          </h4>
+                        </div>
+                        <div className="text-[11px] sm:text-xs text-slate-300 leading-relaxed pl-1">
+                          <SlideLatex text={b.desc || ''} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* 우측 6컬럼: 비주얼 컴포넌트 */}
+                  <div className="md:col-span-6 flex flex-col justify-center">
+                    <div className="p-3 sm:p-4 bg-gradient-to-br from-[#121B2F] to-[#0A101D] border border-blue-500/30 rounded-2xl shadow-lg h-full flex flex-col justify-between">
+                      <div className="flex items-center justify-between pb-2 border-b border-slate-800 shrink-0">
+                        <span className="text-[10px] font-black uppercase text-blue-400 tracking-wider flex items-center gap-1.5">
+                          <CheckCircle size={12} className="text-emerald-400" />
+                          <span>Core Engineering Visual</span>
+                        </span>
+                        <span className="text-[9px] text-slate-500 font-mono">Engineering Matrix</span>
+                      </div>
+
+                      {/* 이미지 다이어그램이 있는 경우 최우선 시각화 */}
+                      {currentAiSlide.image_url ? (
+                        <div className="my-2 rounded-xl overflow-hidden border border-slate-700 bg-black flex items-center justify-center max-h-[30vh]">
+                          <img 
+                            src={currentAiSlide.image_url} 
+                            alt={currentAiSlide.title} 
+                            className="w-full h-full object-contain pointer-events-none"
+                          />
+                        </div>
+                      ) : null}
+
+                      {/* 카드 매트릭스 렌더링 */}
+                      {currentAiSlide.visual_component?.cards && (
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 my-2">
+                          {currentAiSlide.visual_component.cards.map((card, cIdx) => (
+                            <div
+                              key={cIdx}
+                              className={`p-2 rounded-xl border flex flex-col justify-between ${
+                                card.highlight
+                                  ? 'bg-amber-950/40 border-amber-500/50 text-amber-200'
+                                  : 'bg-[#0E1626] border-slate-800 text-slate-300'
+                              }`}
+                            >
+                              <span className="text-[9px] font-bold text-slate-400 uppercase">{card.label}</span>
+                              <span className="text-xs font-black mt-1 line-clamp-3">
+                                <SlideLatex text={card.content || ''} />
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* 기술사 착안점 & 엔지니어 노트 */}
+                      {currentAiSlide.engineer_note && (
+                        <div className="mt-2 p-2.5 bg-indigo-950/50 border border-indigo-500/40 rounded-xl shrink-0">
+                          <div className="text-[9.5px] font-bold text-indigo-300 flex items-center gap-1 mb-0.5">
+                            <span>🎯 기술사 답안 차별화 & 실무 착안점</span>
+                          </div>
+                          <p className="text-[11px] text-indigo-100 font-medium leading-relaxed">
+                            <SlideLatex text={currentAiSlide.engineer_note} />
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 좌우 이동 플로팅 버튼 */}
+                <button
+                  type="button"
+                  onClick={handlePrevSlide}
+                  disabled={currentSlideIndex === 0}
+                  className="absolute left-1 sm:left-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-slate-900/90 hover:bg-amber-600 disabled:opacity-10 disabled:pointer-events-none border border-slate-700 text-white flex items-center justify-center transition-all cursor-pointer shadow-2xl backdrop-blur-sm z-20 active:scale-95"
+                  title="이전 슬라이드 (◀)"
+                >
+                  <ChevronLeft size={22} />
+                </button>
+                <button
+                  type="button"
+                  onClick={handleNextSlide}
+                  disabled={currentSlideIndex >= aiSlides.length - 1}
+                  className="absolute right-1 sm:right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-slate-900/90 hover:bg-amber-600 disabled:opacity-10 disabled:pointer-events-none border border-slate-700 text-white flex items-center justify-center transition-all cursor-pointer shadow-2xl backdrop-blur-sm z-20 active:scale-95"
+                  title="다음 슬라이드 (▶)"
+                >
+                  <ChevronRight size={22} />
+                </button>
               </div>
 
-              {/* 하단 푸터 */}
-              <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-[10px] text-slate-500 shrink-0">
-                <span>Anti Intelligent Tunnel Engineering Deck</span>
-                <span className="font-mono">키보드 방향키(◀ ▶)로 슬라이드를 넘길 수 있습니다</span>
+              {/* 하단 5장 서론-본론-결론 네비게이션 스트립 */}
+              <div className="w-full bg-[#0B101D] border-t border-slate-800/90 px-4 py-2 flex items-center justify-between gap-3 shrink-0">
+                <div className="flex items-center gap-2 overflow-x-auto scrollbar-none py-0.5 max-w-full">
+                  {aiSlides.map((slide, sIdx) => {
+                    const stageNames = ['서론 | 정의', '본론 ① | 메커니즘', '본론 ② | KDS 수식', '본론 ③ | 실무 시공', '결론 | 고득점 제언'];
+                    const stageLabel = stageNames[sIdx] || `Slide 0${sIdx + 1}`;
+                    return (
+                      <button
+                        key={sIdx}
+                        type="button"
+                        onClick={() => setCurrentSlideIndex(sIdx)}
+                        className={`relative flex items-center gap-2 px-3 py-1.5 rounded-xl transition-all cursor-pointer group shrink-0 ${
+                          sIdx === currentSlideIndex
+                            ? 'ring-2 ring-amber-400 bg-amber-500/25 text-amber-300 font-black shadow-md'
+                            : 'opacity-60 hover:opacity-100 hover:bg-slate-800/60 text-slate-400'
+                        }`}
+                        title={`Slide ${sIdx + 1}: ${slide.title || ''}`}
+                      >
+                        <span className="font-mono text-xs font-bold text-amber-400">0{sIdx + 1}</span>
+                        <span className="text-xs font-bold">{stageLabel}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="flex items-center gap-2 shrink-0 text-slate-400 text-[11px] font-mono hidden sm:flex">
+                  <span className="px-2 py-0.5 rounded bg-slate-800/80 border border-slate-700 text-amber-400">5장 완결 덱</span>
+                  <span>(방향키 ◀ ▶ 넘김)</span>
+                </div>
               </div>
             </div>
           ) : activeView === 'web' && slideMeta?.slide_url ? (
