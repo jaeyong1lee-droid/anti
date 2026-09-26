@@ -957,17 +957,11 @@ router.post('/topics/:id/slides', upload.single('slide_file'), async (req, res) 
   try {
     let topic = await resolveTopic(topicId);
     if (!topic) {
+      // Do NOT create a real topic in DB for slide uploads from lockscreen or non-registered sources.
+      // Use a virtual topic object instead.
       const cleanTitle = String(topicId).trim();
-      const insertRes = await dbQuery.run(
-        `INSERT INTO topics (title, category, keywords) VALUES (?, ?, ?)`,
-        [cleanTitle, '기출문제', cleanTitle]
-      );
-      const plannedDate = fileUtils.getLocalDateString(new Date(), 1);
-      await dbQuery.run(
-        `INSERT INTO schedules (topic_id, review_round, planned_date, status) VALUES (?, 1, ?, 'pending')`,
-        [insertRes.id, plannedDate]
-      );
-      topic = { id: insertRes.id, title: cleanTitle, slide_url: null };
+      topic = { id: null, title: cleanTitle, slide_url: null, _virtual: true };
+      console.log(`[Slide Upload] Virtual topic used (not inserted into DB): "${cleanTitle}"`);
     }
 
     let slideName = req.file ? req.file.originalname : null;
@@ -1053,20 +1047,14 @@ router.post('/topics/:id/slides/generate', async (req, res) => {
   try {
     let topic = await resolveTopic(topicId);
     if (!topic) {
+      // Do NOT create a real topic in DB for slide generation from lockscreen or non-registered sources.
+      // Use a virtual topic object instead to prevent polluting the main topics/schedules tables.
       const cleanTitle = String(topicId).trim();
-      const insertRes = await dbQuery.run(
-        `INSERT INTO topics (title, category, keywords) VALUES (?, ?, ?)`,
-        [cleanTitle, '기출문제', cleanTitle]
-      );
-      const plannedDate = fileUtils.getLocalDateString(new Date(), 1);
-      await dbQuery.run(
-        `INSERT INTO schedules (topic_id, review_round, planned_date, status) VALUES (?, 1, ?, 'pending')`,
-        [insertRes.id, plannedDate]
-      );
-      topic = { id: insertRes.id, title: cleanTitle, keywords: cleanTitle, extracted_text: '', category: '기출문제' };
+      topic = { id: null, title: cleanTitle, keywords: cleanTitle, extracted_text: '', category: '기출문제', _virtual: true };
+      console.log(`[Slide Gen] Virtual topic used (not inserted into DB): "${cleanTitle}"`);
     }
 
-    activeKey = String(topic.id);
+    activeKey = String(topic.id || topic.title);
     if (activeSlideGenerations.has(activeKey)) {
       return res.status(409).json({ error: '해당 토픽의 슬라이드 덱이 이미 백그라운드에서 작성 중입니다.' });
     }
@@ -1157,10 +1145,13 @@ ${(sourceText || '').slice(0, 7000)}`;
 
     if (parsedDeck && parsedDeck.slides && Array.isArray(parsedDeck.slides)) {
       const deckJsonStr = JSON.stringify(parsedDeck);
-      await dbQuery.run(
-        `UPDATE topics SET slide_deck_json = ? WHERE id = ?`,
-        [deckJsonStr, topic.id]
-      );
+      // Only persist to DB for real (registered) topics with a valid numeric id
+      if (topic.id && !topic._virtual) {
+        await dbQuery.run(
+          `UPDATE topics SET slide_deck_json = ? WHERE id = ?`,
+          [deckJsonStr, topic.id]
+        );
+      }
       return res.json({
         success: true,
         slide_deck: parsedDeck,
