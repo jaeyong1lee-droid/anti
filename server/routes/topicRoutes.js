@@ -962,6 +962,11 @@ router.post('/topics/:id/slides', upload.single('slide_file'), async (req, res) 
         `INSERT INTO topics (title, category, keywords) VALUES (?, ?, ?)`,
         [cleanTitle, '기출문제', cleanTitle]
       );
+      const plannedDate = fileUtils.getLocalDateString(new Date(), 1);
+      await dbQuery.run(
+        `INSERT INTO schedules (topic_id, review_round, planned_date, status) VALUES (?, 1, ?, 'pending')`,
+        [insertRes.id, plannedDate]
+      );
       topic = { id: insertRes.id, title: cleanTitle, slide_url: null };
     }
 
@@ -1052,6 +1057,11 @@ router.post('/topics/:id/slides/generate', async (req, res) => {
       const insertRes = await dbQuery.run(
         `INSERT INTO topics (title, category, keywords) VALUES (?, ?, ?)`,
         [cleanTitle, '기출문제', cleanTitle]
+      );
+      const plannedDate = fileUtils.getLocalDateString(new Date(), 1);
+      await dbQuery.run(
+        `INSERT INTO schedules (topic_id, review_round, planned_date, status) VALUES (?, 1, ?, 'pending')`,
+        [insertRes.id, plannedDate]
       );
       topic = { id: insertRes.id, title: cleanTitle, keywords: cleanTitle, extracted_text: '', category: '기출문제' };
     }
