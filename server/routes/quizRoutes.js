@@ -167,6 +167,9 @@ function sanitizeMultipleChoiceAnswer(q) {
     ? circleMap[explicitAnswerPattern[1]] 
     : -1;
 
+  let bestMatch = null;
+  let bestScore = -1;
+
   for (let i = 0; i < options.length; i++) {
     const opt = options[i];
     const normOpt = normalizeMcText(opt);
