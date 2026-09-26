@@ -3687,8 +3687,7 @@ export default function App() {
           gradingResult: entry.gradingResult || list[existingIdx].gradingResult || null,
           hint: entry.hint || list[existingIdx].hint || ''
         };
-        const updated = list.splice(existingIdx, 1)[0];
-        list.unshift(updated);
+        // Keep position fixed! Do NOT splice & unshift to prevent reordering
       } else {
         list.unshift(entry);
       }
@@ -3785,7 +3784,18 @@ export default function App() {
     setLockscreenHint(hnt);
     setShowLockscreenHint(false);
 
-    saveLockscreenAnswerForQuestion(q, ans, res, hnt);
+    try {
+      localStorage.setItem('anti_current_lockscreen_user_answer', ans);
+      if (res) {
+        localStorage.setItem('anti_current_lockscreen_grading_result', JSON.stringify(res));
+      } else {
+        localStorage.removeItem('anti_current_lockscreen_grading_result');
+      }
+      if (key) {
+        localStorage.setItem('anti_current_lockscreen_qkey', key);
+      }
+    } catch (e) {}
+
     setShowRecentLockscreenDropdown(false);
     scrollToLockscreenTop(true);
   };
@@ -18716,24 +18726,40 @@ ${itemsStr}
                           <div className="space-y-1 pt-1">
                             {(() => {
                               const map = new Map();
-                              if (lockscreenQuestion) {
-                                const currentKey = getLockscreenQuestionKey(lockscreenQuestion);
-                                map.set(currentKey, {
-                                  id: currentKey,
-                                  question: lockscreenQuestion,
-                                  userAnswer: lockscreenUserAnswer,
-                                  gradingResult: lockscreenGradingResult,
-                                  hint: lockscreenHint
-                                });
-                              }
+                              // 1. Maintain fixed order of recentLockscreenQuestions
                               (recentLockscreenQuestions || []).forEach(item => {
                                 if (item && item.question) {
                                   const key = getLockscreenQuestionKey(item.question);
                                   if (key && !map.has(key)) {
-                                    map.set(key, item);
+                                    if (lockscreenQuestion && getLockscreenQuestionKey(lockscreenQuestion) === key) {
+                                      map.set(key, {
+                                        ...item,
+                                        userAnswer: (typeof lockscreenUserAnswer === 'string' && lockscreenUserAnswer !== '') ? lockscreenUserAnswer : (item.userAnswer || ''),
+                                        gradingResult: (lockscreenGradingResult !== undefined && lockscreenGradingResult !== null) ? lockscreenGradingResult : (item.gradingResult || null),
+                                        hint: lockscreenHint || item.hint || ''
+                                      });
+                                    } else {
+                                      map.set(key, item);
+                                    }
                                   }
                                 }
                               });
+
+                              // 2. Only if the current question is brand new and not yet in the list, append it
+                              if (lockscreenQuestion) {
+                                const currentKey = getLockscreenQuestionKey(lockscreenQuestion);
+                                if (currentKey && !map.has(currentKey)) {
+                                  map.set(currentKey, {
+                                    id: currentKey,
+                                    question: lockscreenQuestion,
+                                    userAnswer: lockscreenUserAnswer || '',
+                                    gradingResult: lockscreenGradingResult || null,
+                                    hint: lockscreenHint || ''
+                                  });
+                                }
+                              }
+
+                              // 3. Fallback history if needed
                               (lockscreenHistory || []).forEach(q => {
                                 if (q) {
                                   const key = getLockscreenQuestionKey(q);

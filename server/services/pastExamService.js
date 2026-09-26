@@ -321,9 +321,7 @@ export async function saveRecentLockscreenSubmission({ question, userAnswer, gra
         gradingResult: entry.gradingResult || list[existingIndex].gradingResult || null,
         hint: entry.hint || list[existingIndex].hint || ''
       };
-      // Move to front as most recently active
-      const updatedItem = list.splice(existingIndex, 1)[0];
-      list.unshift(updatedItem);
+      // Keep position fixed! Do NOT splice & unshift to prevent reordering
     } else {
       list.unshift(entry);
     }
