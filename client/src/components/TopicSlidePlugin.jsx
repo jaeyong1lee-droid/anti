@@ -156,7 +156,7 @@ export default function TopicSlidePlugin({
     setLoading(true);
     setErrorMsg(null);
     try {
-      const res = await fetch(`${apiBase}/api/topics/${topicId}/slides`);
+      const res = await fetch(`${apiBase}/api/topics/${encodeURIComponent(topicId)}/slides`);
       if (res.ok) {
         const data = await res.json();
         setSlideMeta(data);
@@ -171,7 +171,7 @@ export default function TopicSlidePlugin({
           const singleImageSlide = [{
             slide_no: 1,
             title: data.slide_name,
-            imgUrl: `${apiBase}/api/topics/${topicId}/slides/file`
+            imgUrl: `${apiBase}/api/topics/${encodeURIComponent(topicId)}/slides/file`
           }];
           setJpgSlides(singleImageSlide);
           setViewMode('jpg');
@@ -289,7 +289,7 @@ export default function TopicSlidePlugin({
     setGenerating(true);
     setErrorMsg(null);
     try {
-      const res = await fetch(`${apiBase}/api/topics/${topicId}/slides/generate`, {
+      const res = await fetch(`${apiBase}/api/topics/${encodeURIComponent(topicId)}/slides/generate`, {
         method: 'POST'
       });
       if (res.ok) {

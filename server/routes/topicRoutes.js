@@ -866,14 +866,37 @@ router.get('/topics/:id/slides', async (req, res) => {
   try {
     const topic = await resolveTopic(topicId);
     if (!topic) {
+      const cleanTitle = String(topicId).trim();
+      let virtualDeck = null;
+      let virtualSlideUrl = null;
+      let virtualSlideName = null;
+      try {
+        const row = await dbQuery.get("SELECT value FROM app_session WHERE key = ?", [`virtual_slide_deck_${cleanTitle}`]);
+        if (row && row.value) {
+          const parsed = JSON.parse(row.value);
+          if (parsed.slides) {
+            virtualDeck = parsed;
+          } else if (parsed.slide_deck) {
+            virtualDeck = parsed.slide_deck;
+            virtualSlideUrl = parsed.slide_url || null;
+            virtualSlideName = parsed.slide_name || null;
+          } else if (parsed.slide_url) {
+            virtualSlideUrl = parsed.slide_url;
+            virtualSlideName = parsed.slide_name || 'Google Slides';
+          }
+        }
+      } catch (e) {
+        console.warn('[GET /topics/:id/slides] Failed to load virtual slide deck from session:', e.message);
+      }
+
       return res.json({
-        topic_id: null,
-        title: topicId,
-        slide_name: null,
-        slide_url: null,
+        topic_id: cleanTitle,
+        title: cleanTitle,
+        slide_name: virtualSlideName,
+        slide_url: virtualSlideUrl,
         has_file: false,
-        slide_deck: null,
-        is_generating: false
+        slide_deck: virtualDeck,
+        is_generating: activeSlideGenerations.has(cleanTitle)
       });
     }
 
@@ -983,23 +1006,34 @@ router.post('/topics/:id/slides', upload.single('slide_file'), async (req, res) 
       }
     }
 
-    if (req.file) {
-      await dbQuery.run(
-        `UPDATE topics SET slide_name = ?, slide_data = ?, slide_url = COALESCE(?, slide_url) WHERE id = ?`,
-        [slideName, slideData, slideUrl, topic.id]
-      );
-    } else if (slideUrl) {
-      await dbQuery.run(
-        `UPDATE topics SET slide_url = ?, slide_name = COALESCE(slide_name, 'Google Slides') WHERE id = ?`,
-        [slideUrl, topic.id]
-      );
-    }
+    if (topic.id && !topic._virtual) {
+      if (req.file) {
+        await dbQuery.run(
+          `UPDATE topics SET slide_name = ?, slide_data = ?, slide_url = COALESCE(?, slide_url) WHERE id = ?`,
+          [slideName, slideData, slideUrl, topic.id]
+        );
+      } else if (slideUrl) {
+        await dbQuery.run(
+          `UPDATE topics SET slide_url = ?, slide_name = COALESCE(slide_name, 'Google Slides') WHERE id = ?`,
+          [slideUrl, topic.id]
+        );
+      }
 
-    if (slideDeckJson) {
-      await dbQuery.run(
-        `UPDATE topics SET slide_deck_json = ? WHERE id = ?`,
-        [slideDeckJson, topic.id]
-      );
+      if (slideDeckJson) {
+        await dbQuery.run(
+          `UPDATE topics SET slide_deck_json = ? WHERE id = ?`,
+          [slideDeckJson, topic.id]
+        );
+      }
+    } else {
+      const cleanTitle = String(topic.title || topicId).trim();
+      const virtualPayload = {
+        slide_name: slideName || (slideUrl ? 'Google Slides' : null),
+        slide_url: slideUrl,
+        slide_deck: slideDeckJson ? JSON.parse(slideDeckJson) : null
+      };
+      await saveSessionValue(`virtual_slide_deck_${cleanTitle}`, JSON.stringify(virtualPayload));
+      console.log(`[Slide Upload] Saved virtual slide to app_session for "${cleanTitle}"`);
     }
 
     res.json({
@@ -1151,6 +1185,11 @@ ${(sourceText || '').slice(0, 7000)}`;
           `UPDATE topics SET slide_deck_json = ? WHERE id = ?`,
           [deckJsonStr, topic.id]
         );
+      } else {
+        // Save virtual slide deck in app_session to persist across sessions without polluting topics/schedules!
+        const cleanTitle = String(topic.title || topicId).trim();
+        await saveSessionValue(`virtual_slide_deck_${cleanTitle}`, deckJsonStr);
+        console.log(`[Slide Gen] Saved virtual slide deck to app_session for "${cleanTitle}"`);
       }
       return res.json({
         success: true,

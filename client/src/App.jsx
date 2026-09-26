@@ -3925,6 +3925,45 @@ export default function App() {
     lockscreenQuestionRef.current = lockscreenQuestion;
   }, [lockscreenQuestion]);
 
+  const [hasLockscreenSlide, setHasLockscreenSlide] = useState(false);
+  useEffect(() => {
+    if (!showLockscreenQuiz || !lockscreenQuestion) {
+      setHasLockscreenSlide(false);
+      return;
+    }
+    let isCancelled = false;
+    const checkSlide = async () => {
+      try {
+        const resolved = resolveTopicInfo(lockscreenQuestion, lockscreenQuestion?.question || lockscreenQuestion?.sessionName);
+        const finalId = resolved.topicId || resolved.topicTitle;
+        if (!finalId) {
+          if (!isCancelled) setHasLockscreenSlide(false);
+          return;
+        }
+        const res = await fetch(`${API_BASE}/api/topics/${encodeURIComponent(finalId)}/slides?t=${Date.now()}`);
+        if (res.ok) {
+          const slideData = await res.json();
+          const hasReadySlide = Boolean(
+            slideData.has_file || 
+            (slideData.slide_deck && Array.isArray(slideData.slide_deck.slides) && slideData.slide_deck.slides.length > 0) ||
+            slideData.slide_url
+          );
+          if (!isCancelled) {
+            setHasLockscreenSlide(hasReadySlide);
+          }
+        } else {
+          if (!isCancelled) setHasLockscreenSlide(false);
+        }
+      } catch (err) {
+        if (!isCancelled) setHasLockscreenSlide(false);
+      }
+    };
+    checkSlide();
+    return () => {
+      isCancelled = true;
+    };
+  }, [showLockscreenQuiz, lockscreenQuestion, slideRefreshTick]);
+
   const [lockscreenHistory, setLockscreenHistory] = useState(() => {
     try {
       const saved = localStorage.getItem('anti_current_lockscreen_history');
@@ -18870,14 +18909,22 @@ ${itemsStr}
                           className={`p-2 ${
                             isSlideGen
                               ? 'bg-amber-500/30 text-amber-200 border-amber-400 animate-pulse'
-                              : 'bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 text-amber-300 border-amber-500/40 hover:border-amber-400/60'
+                              : hasLockscreenSlide
+                              ? 'bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 text-amber-300 border-amber-500/40 hover:border-amber-400/60 shadow-sm'
+                              : 'bg-slate-800/80 hover:bg-slate-700/80 text-slate-400 hover:text-slate-200 border-slate-700/80 hover:border-slate-600 shadow-sm'
                           } border rounded-xl transition-all cursor-pointer shadow-sm active:scale-95 duration-150 flex items-center justify-center`}
-                          title={isSlideGen ? "백그라운드에서 5장 슬라이드 작성 중... (클릭하여 현황 확인)" : "관련 토픽 5장 슬라이드 자료(PPT) 보기"}
+                          title={
+                            isSlideGen
+                              ? "백그라운드에서 5장 슬라이드 작성 중... (클릭하여 현황 확인)"
+                              : hasLockscreenSlide
+                              ? "관련 토픽 5장 슬라이드 자료(PPT) 보기 (작성 완료)"
+                              : "관련 토픽 5장 슬라이드 자료(PPT) 생성하기 (클릭 시 작성 시작)"
+                          }
                         >
                           {isSlideGen ? (
                             <RefreshCw size={16} className="text-amber-400 animate-spin" />
                           ) : (
-                            <Presentation size={16} className="text-amber-400" />
+                            <Presentation size={16} className={hasLockscreenSlide ? "text-amber-400" : "text-slate-400"} />
                           )}
                         </button>
                       );
