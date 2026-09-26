@@ -3700,38 +3700,41 @@ export default function App() {
     try {
       const res = await fetch(`${API_BASE}/api/lockscreen/recent?t=${Date.now()}`);
       if (res.ok) {
-        const data = await res.json();
-        if (data && data.success && Array.isArray(data.recent) && data.recent.length > 0) {
-          setRecentLockscreenQuestions(prev => {
-            const map = new Map();
-            data.recent.forEach(item => {
-              if (item && item.question) {
-                const id = item.id || item.question.id || `${item.question.sessionName}_${item.question.number}`;
-                map.set(id, item);
-                const existingMap = getLockscreenAnswersMap();
-                const key = getLockscreenQuestionKey(item.question);
-                if (key) {
-                  existingMap[key] = {
-                    question: item.question,
-                    userAnswer: item.userAnswer || existingMap[key]?.userAnswer || '',
-                    gradingResult: item.gradingResult || existingMap[key]?.gradingResult || null,
-                    hint: item.hint || existingMap[key]?.hint || '',
-                    updatedAt: item.updatedAt || Date.now()
-                  };
-                  localStorage.setItem('anti_lockscreen_answers_map', JSON.stringify(existingMap));
-                }
-              }
-            });
-            (prev || []).forEach(item => {
-              if (item && item.question) {
-                const id = item.id || item.question.id || `${item.question.sessionName}_${item.question.number}`;
-                if (!map.has(id)) {
+        const contentType = res.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+          const data = await res.json();
+          if (data && data.success && Array.isArray(data.recent) && data.recent.length > 0) {
+            setRecentLockscreenQuestions(prev => {
+              const map = new Map();
+              data.recent.forEach(item => {
+                if (item && item.question) {
+                  const id = item.id || item.question.id || `${item.question.sessionName}_${item.question.number}`;
                   map.set(id, item);
+                  const existingMap = getLockscreenAnswersMap();
+                  const key = getLockscreenQuestionKey(item.question);
+                  if (key) {
+                    existingMap[key] = {
+                      question: item.question,
+                      userAnswer: item.userAnswer || existingMap[key]?.userAnswer || '',
+                      gradingResult: item.gradingResult || existingMap[key]?.gradingResult || null,
+                      hint: item.hint || existingMap[key]?.hint || '',
+                      updatedAt: item.updatedAt || Date.now()
+                    };
+                    localStorage.setItem('anti_lockscreen_answers_map', JSON.stringify(existingMap));
+                  }
                 }
-              }
+              });
+              (prev || []).forEach(item => {
+                if (item && item.question) {
+                  const id = item.id || item.question.id || `${item.question.sessionName}_${item.question.number}`;
+                  if (!map.has(id)) {
+                    map.set(id, item);
+                  }
+                }
+              });
+              return Array.from(map.values()).slice(0, 10);
             });
-            return Array.from(map.values()).slice(0, 10);
-          });
+          }
         }
       }
     } catch (e) {
