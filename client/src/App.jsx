@@ -156,11 +156,16 @@ function normalizeMcText(text) {
 }
 
 export function getSanitizedMcAnswer(q) {
-  if (!q || !q.answer) return q ? q.answer : '';
-  if (!q.options || q.options.length === 0) return q.answer;
+  if (!q) return '';
+  if (!q.options || q.options.length === 0) return q.answer || '';
+
+  let currentAns = (q.answer !== undefined && q.answer !== null) ? String(q.answer).trim() : '';
+  if (!currentAns && typeof q.correctIndex === 'number' && q.options[q.correctIndex]) {
+    currentAns = String(q.options[q.correctIndex]).trim();
+  }
+  if (!currentAns) return '';
 
   const options = q.options;
-  const currentAns = String(q.answer).trim();
 
   // 1. 보기 중 정확히 일치하는 항목이 있으면 그대로 반환
   const exactMatch = options.find(opt => String(opt).trim() === currentAns);
@@ -171,7 +176,7 @@ export function getSanitizedMcAnswer(q) {
   const normMatch = options.find(opt => normalizeMcText(opt) === normAns);
   if (normMatch) return normMatch;
 
-  return q.answer;
+  return currentAns || q.answer;
 }
 
 // ── Lazy-loaded heavy components (excluded from initial bundle) ──

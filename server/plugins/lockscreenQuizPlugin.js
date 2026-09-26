@@ -89,6 +89,7 @@ ${LATEX_PROMPT_INSTRUCTIONS}
     "id": "ls_1",
     "question": "문제 질문 내용 (맞는 것을 고르거나 특정 정량적 수치를 묻도록 구성)",
     "options": ["보기 1", "보기 2", "보기 3"],
+    "answer": "보기 1",
     "correctIndex": 0,
     "explanation": "이 공식, 개념 또는 기준 수치에 대한 핵심 메커니즘 및 근거 위주의 해설",
     "source_type": "formula 또는 topic",
@@ -104,7 +105,7 @@ ${LATEX_PROMPT_INSTRUCTIONS}
     if (Array.isArray(parsed) && parsed.length > 0) {
       return parsed.map((q, idx) => {
         let options = Array.isArray(q.options) ? [...q.options] : [];
-        let originalAnswer = options[q.correctIndex !== undefined ? q.correctIndex : 0];
+        let originalAnswer = q.answer || options[q.correctIndex !== undefined ? q.correctIndex : 0] || options[0];
         
         // Shuffle the options to ensure the correct answer is randomly positioned
         for (let i = options.length - 1; i > 0; i--) {

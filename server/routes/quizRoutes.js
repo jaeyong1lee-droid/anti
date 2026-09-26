@@ -134,18 +134,38 @@ function normalizeMcText(text) {
 
 
 function sanitizeMultipleChoiceAnswer(q) {
-  if (!q || !q.options || q.options.length === 0 || !q.explanation) return q;
+  if (!q || !q.options || q.options.length === 0) return q;
 
-  const options = q.options;
-  const exp = q.explanation;
-  const currentAns = (q.answer || '').trim();
+  const cleanedQ = { ...q };
+  // 찌꺼기 필드 제거 (mathContext 등)
+  if (cleanedQ.mathContext !== undefined) {
+    delete cleanedQ.mathContext;
+  }
+
+  const options = cleanedQ.options;
+  const exp = cleanedQ.explanation || '';
+  let currentAns = (cleanedQ.answer || '').trim();
+
+  // 만약 answer가 없고 correctIndex가 주어진 경우 1차 복구
+  if (!currentAns && typeof cleanedQ.correctIndex === 'number' && options[cleanedQ.correctIndex]) {
+    currentAns = String(options[cleanedQ.correctIndex]).trim();
+  }
+
+  // 만약 answer가 동그라미 기호나 숫자 1글자인 경우 보기 내용으로 변환
+  const circleMap = { '①': 0, '②': 1, '③': 2, '④': 3, '⑤': 4, '1': 0, '2': 1, '3': 2, '4': 3, '5': 4 };
+  if (circleMap[currentAns] !== undefined && options[circleMap[currentAns]]) {
+    currentAns = String(options[circleMap[currentAns]]).trim();
+  }
 
   const conclusionMatch = exp.match(/(?:\[최종\s*정답\s*산출\]|따라서|정답은|결론적으로)[\s\S]*$/i);
   const searchTarget = conclusionMatch ? conclusionMatch[0] : exp;
   const normalizedTarget = normalizeMcText(searchTarget);
 
-  let bestMatch = null;
-  let bestScore = 0;
+  // 해설 내 명시적 정답 표기 (예: "정답은 ②번", "정답: 2", "②번이 정답") 감지
+  const explicitAnswerPattern = exp.match(/(?:정답\s*[:는은]?\s*|[①②③④⑤]|\b[1-4]번)[^0-9①②③④⑤]*([①②③④⑤]|[1-4])/i);
+  const explicitAnswerIndex = explicitAnswerPattern && circleMap[explicitAnswerPattern[1]] !== undefined 
+    ? circleMap[explicitAnswerPattern[1]] 
+    : -1;
 
   for (let i = 0; i < options.length; i++) {
     const opt = options[i];
@@ -154,50 +174,100 @@ function sanitizeMultipleChoiceAnswer(q) {
 
     if (normalizedTarget.includes(normOpt)) {
       bestMatch = opt;
-      bestScore = 100;
+      bestScore = 1000;
       break;
     }
 
-    const numKeywords = normOpt.match(/(?:\d+\/\d+|\d+배|변화가\s*없다|증가|감소)/g) || [];
+    let score = 0;
+    if (explicitAnswerIndex === i) {
+      score += 500;
+    }
+
+    const numKeywords = normOpt.match(/(?:\d+\/\d+|\d+배|변화가\s*없다)/g) || [];
     if (numKeywords.length > 0) {
       const matchCount = numKeywords.filter(kw => normalizedTarget.includes(normalizeMcText(kw))).length;
-      if (matchCount > bestScore) {
-        bestScore = matchCount;
-        bestMatch = opt;
+      score += matchCount * 50;
+    }
+
+    const words = opt.replace(/[^가-힣a-zA-Z0-9]/g, ' ').split(/\s+/).filter(w => w.length >= 2);
+    if (words.length > 0) {
+      let wordMatches = 0;
+      for (const w of words) {
+        if (exp.includes(w)) wordMatches++;
       }
+      const overlapScore = wordMatches * 10 + (wordMatches / words.length) * 20;
+      score += overlapScore;
+    }
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestMatch = opt;
     }
   }
 
-  if (bestMatch && currentAns) {
+  // answer가 완전히 누락된 경우 해설 기반 / 보기 기호 기반으로 강제 복원
+  if (!currentAns) {
+    if (bestMatch) {
+      console.log(`[MC Answer Recovered] Empty answer recovered from explanation: '${bestMatch}'`);
+      return {
+        ...cleanedQ,
+        answer: bestMatch
+      };
+    }
+    const numPattern = exp.match(/(?:정답\s*[:는은]?\s*|[①②③④⑤]|\b[1-4]번)[^0-9①②③④⑤]*([①②③④⑤]|[1-4])/i);
+    if (numPattern && circleMap[numPattern[1]] !== undefined && options[circleMap[numPattern[1]]]) {
+      const recovered = options[circleMap[numPattern[1]]];
+      console.log(`[MC Answer Recovered] Empty answer recovered from explanation symbol '${numPattern[1]}': '${recovered}'`);
+      return {
+        ...cleanedQ,
+        answer: recovered
+      };
+    }
+    console.warn(`[MC Answer Recovered] Fallback to first option for empty answer`);
+    return {
+      ...cleanedQ,
+      answer: options[0]
+    };
+  }
+
+  // answer가 존재할 때 해설과 불일치하면 보정
+  if (bestMatch) {
     const normCurrent = normalizeMcText(currentAns);
     if (!normalizedTarget.includes(normCurrent) && (bestScore >= 100 || bestScore > 0)) {
       console.log(`[MC Answer Sanitized] Original answer '${currentAns}' was inconsistent with explanation. Corrected to '${bestMatch}'`);
       return {
-        ...q,
+        ...cleanedQ,
         answer: bestMatch
       };
     }
   }
 
-  return q;
+  return {
+    ...cleanedQ,
+    answer: currentAns
+  };
 }
 
 function shuffleMultipleChoice(q) {
   if (!q || !q.options || q.options.length === 0) return q;
   const sanitized = sanitizeMultipleChoiceAnswer(q);
-  const originalAnswer = sanitized.answer;
+  const originalAnswer = sanitized.answer || sanitized.options[0];
   const shuffledOptions = [...sanitized.options];
   for (let i = shuffledOptions.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [shuffledOptions[i], shuffledOptions[j]] = [shuffledOptions[j], shuffledOptions[i]];
   }
   const normalize = (s) => (s || '').replace(/^\d+\.(?!\d)\s*/, '').trim();
-  const matchedOption = shuffledOptions.find(opt => normalize(opt) === normalize(originalAnswer)) || originalAnswer;
+  let matchedOption = shuffledOptions.find(opt => normalize(opt) === normalize(originalAnswer));
+  if (!matchedOption) {
+    matchedOption = shuffledOptions.find(opt => normalizeMcText(opt) === normalizeMcText(originalAnswer)) || shuffledOptions[0];
+  }
+  const finalCorrectIndex = shuffledOptions.indexOf(matchedOption);
   return {
     ...sanitized,
     options: shuffledOptions,
     answer: matchedOption,
-    correctIndex: shuffledOptions.indexOf(matchedOption) !== -1 ? shuffledOptions.indexOf(matchedOption) : undefined
+    correctIndex: finalCorrectIndex !== -1 ? finalCorrectIndex : 0
   };
 }
 
@@ -1060,6 +1130,7 @@ ${adjustmentsPrompt}
 - 🚨 [유사/중복 질문 출제 절대 금지 - 매우 중요!]: 하나의 공식이나 거동 특성에서 파생되는 변수만 바꾼 형태의 유사한 비례/반비례 질문은 **절대로 중복하여 출제하지 마십시오.**
 - 🚨 [해설 하단 직관적 의미 필수 표기 철칙 - 극도로 중요!]: 모든 객관식 문제의 "explanation"(해설) 본문 맨 아래(📚 참조 문헌 바로 앞)에 반드시 줄을 바꾼 뒤 다음 형식으로 직관적 의미를 1~2문장으로 필수 기재하십시오:
   💡 **직관적 의미**: [정답이 내포하는 물리적/공학적 본질이나 실무적 의미를 한눈에 직관적으로 이해할 수 있는 명쾌하고 쉬운 비유나 설명 1~2문장]
+- 🚨 [객관식 answer 및 correctIndex 필드 필수 포함 철칙 - 극도로 중요!]: 모든 객관식 문항에는 "options" 배열 중 정답 텍스트와 100% 일치하는 문자열을 "answer" 필드에 반드시 기재하고, 0부터 시작하는 해당 정답의 보기 인덱스를 "correctIndex" 필드에 반드시 기재하십시오. (mathContext 등 스키마 외 임의 찌꺼기 필드 생성 엄금)
 
 ${topicInstructionsPrompt}
 ${LATEX_PROMPT_INSTRUCTIONS}
@@ -1071,6 +1142,7 @@ ${LATEX_PROMPT_INSTRUCTIONS}
     "type": "객관식 (4지선다)",
     "question": "질문 내용",
     "options": ["보기 1", "보기 2", "보기 3", "보기 4"],
+    "answer": "보기 1",
     "correctIndex": 0,
     "explanation": "상세한 공학적 해설...\\n\\n💡 **직관적 의미**: 정답의 핵심 직관적 설명 1~2문장\\n\\n📚 참조 문헌(Standards & Literature): 출처 2~3개"
   }
@@ -3131,6 +3203,7 @@ ${ENGINEERING_STANDARDS}
     "question": "공학적 현상 분석 질문",
     "tableData": null,
     "options": ["보기1", "보기2", "보기3", "보기4"],
+    "answer": "보기1",
     "correctIndex": 0,
     "explanation": "이유와 오답 정밀 해설\\n\\n💡 **직관적 의미**: 정답의 핵심 직관적 설명 1~2문장\\n\\n📚 참조 문헌(Standards & Literature) 출처 2~3개 명시"
   }
