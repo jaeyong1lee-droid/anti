@@ -897,6 +897,10 @@ export const renderKatexString = (math, options = {}) => {
   // Strip accidental HTML tags (like <em> or <strong>) that markdown parsers might have injected inside the math block
   processedMath = processedMath.replace(/<\/?(?:em|strong|b|i|u|span|div|p)[^>]*>/gi, '');
 
+  // Self-heal illegal double subscripts before passing to KaTeX (e.g. \Delta_h_w -> \Delta h_w, \sigma_v_0 -> \sigma_{v0})
+  processedMath = processedMath.replace(/\\(Delta|delta|nabla|partial)_([a-zA-Z0-9])_([a-zA-Z0-9])/g, '\\$1 $2_$3');
+  processedMath = processedMath.replace(/_([a-zA-Z0-9])_([a-zA-Z0-9])/g, '_{$1$2}');
+
   // Auto-heal brace balancing (open & orphan closing braces) before passing to KaTeX
 
 

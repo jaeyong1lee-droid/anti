@@ -235,14 +235,22 @@ function replaceRoots(str) {
   }
   return processed;
 }
+// 이중 아래첨자 문법 오류 자동 정규화 (예: \Delta_h_w -> \Delta h_w, \sigma_v_0 -> \sigma_{v0})
+export function healDoubleSubscripts(str) {
+  if (!str || typeof str !== 'string') return str;
+  return str
+    .replace(/\\(Delta|delta|nabla|partial)_([a-zA-Z0-9])_([a-zA-Z0-9])/g, '\\$1 $2_$3')
+    .replace(/_([a-zA-Z0-9])_([a-zA-Z0-9])/g, '_{$1$2}');
+}
+
 // 3. 메인 레이아웃 및 수식 복구 마스터 함수
 export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = null) {
   if (!text || typeof text !== 'string') return text;
 
   let processed = text.replace(/₩/g, '\\');
   
-  processed = processed.replace(/\$\$([\s\S]*?)\$\$/g, (m, p1) => '$$' + p1.replace(/\|/g, '\\vert ') + '$$');
-  processed = processed.replace(/\$([^\$\n]+)\$/g, (m, p1) => '$' + p1.replace(/\|/g, '\\vert ') + '$');
+  processed = processed.replace(/\$\$([\s\S]*?)\$\$/g, (m, p1) => '$$' + healDoubleSubscripts(p1).replace(/\|/g, '\\vert ') + '$$');
+  processed = processed.replace(/\$([^\$\n]+)\$/g, (m, p1) => '$' + healDoubleSubscripts(p1).replace(/\|/g, '\\vert ') + '$');
   
   processed = processed.replace(/\\\([\s\S]*?\\\)/g, (m, p1) => '$' + p1.trim() + '$');
   processed = processed.replace(/\\\[([\s\S]*?)\\\]/g, (m, p1) => '$$' + p1.trim() + '$$');
@@ -917,6 +925,7 @@ export const LATEX_PROMPT_INSTRUCTIONS = `
 5. 수식 내부에서 부등호는 마크다운 파싱 오류를 방지하기 위해 반드시 \\lt, \\gt 로 표기하십시오.
 6. 달러 기호 자체를 이스케이프(\\$ 또는 \\\\$)하지 마십시오.
 8. 변수와 아래첨자(예: $N_c$, $D_f$, $k_h$)는 중간에 달러 기호를 쪼개지 말고 하나의 수식 블록으로 감싸십시오.
+9. 🚨 [이중 아래첨자 금지 및 다중 문자 아래첨자 중괄호 표기 철칙 - 극도로 중요!]: 동일 기호에 아래첨자를 연속(예: \\Delta_h_w, \\sigma_v_0, K_a_0 등)으로 붙이는 KaTeX 문법 위반을 절대 금지합니다. $\\Delta h_w$ (공백 분리) 또는 $\\Delta_{hw}$, $\\sigma_{v0}$, $K_{a0}$처럼 반드시 중괄호({})로 묶거나 공백으로 분리하여 출력하십시오.
 10. <div>, <span> 등의 HTML 태그 사용을 금지하며 강조는 마크다운(**강조**)을 사용하십시오.
 11. 내용이 없는 빈 소제목은 출력하지 마십시오.
 
@@ -930,6 +939,7 @@ export const LATEX_CHAT_PROMPT_INSTRUCTIONS = `
 1. JSON 형식으로 감싸지 말고, 일반 대화 문장 및 마크다운 포맷으로 답변하십시오.
 2. 모든 수식 및 변수 기호($K_s$, $k_h$, $e$, $c$, $\\phi$, $\\sigma$, $\\tau$ 등)는 단독/인라인 여부와 무관하게 반드시 $ 또는 $$ 로 감싸십시오.
 3. 인라인 수식($...$) 안쪽의 시작/끝 공백 및 줄바꿈을 금지합니다.
+4. 이중 아래첨자(예: \\Delta_h_w, \\sigma_v_0)를 절대 금지하며, $\\Delta h_w$ (공백 분리) 또는 $\\Delta_{hw}$, $\\sigma_{v0}$처럼 중괄호({})나 공백을 사용하십시오.
 5. 수식 내 부등호는 \\lt, \\gt 를 사용하십시오.
 7. 데이터 정리가 필요한 경우 HTML이나 tabular 대신 마크다운 표(| 열 | 구분선 |)를 사용하십시오.
 8. 설명 리스트 전체를 하나의 거대한 수식 블록($$...$$)으로 감싸지 말고 개별 수식마다 분리하여 적용하십시오.
