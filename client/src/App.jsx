@@ -3624,7 +3624,7 @@ export default function App() {
   };
 
   const lockscreenSyncTimeoutRef = useRef(null);
-  const syncLockscreenAnswerToServer = (userAnswer, gradingResult, hint) => {
+  const syncLockscreenAnswerToServer = (userAnswer, gradingResult, hint, question) => {
     if (lockscreenSyncTimeoutRef.current) {
       clearTimeout(lockscreenSyncTimeoutRef.current);
     }
@@ -3633,12 +3633,204 @@ export default function App() {
         await fetch(`${API_BASE}/api/lockscreen/active`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userAnswer, gradingResult, hint })
+          body: JSON.stringify({ userAnswer, gradingResult, hint, question })
         });
       } catch (e) {
         console.warn('Failed to sync lockscreen answer to server:', e);
       }
     }, 1000);
+  };
+
+  // Recent 10 lockscreen questions list state & dropdown toggle
+  const [showRecentLockscreenDropdown, setShowRecentLockscreenDropdown] = useState(false);
+  const recentLockscreenDropdownRef = useRef(null);
+
+  const [recentLockscreenQuestions, setRecentLockscreenQuestions] = useState(() => {
+    try {
+      const saved = localStorage.getItem('anti_lockscreen_recent_questions');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return [];
+  });
+  const recentLockscreenQuestionsRef = useRef(recentLockscreenQuestions);
+  useEffect(() => {
+    recentLockscreenQuestionsRef.current = recentLockscreenQuestions;
+    try {
+      localStorage.setItem('anti_lockscreen_recent_questions', JSON.stringify(recentLockscreenQuestions));
+    } catch (e) {}
+  }, [recentLockscreenQuestions]);
+
+  const updateRecentQuestionsList = (q, userAnswer, gradingResult, hint) => {
+    if (!q) return;
+    const qId = q.id || (q.sessionName && q.number ? `${q.sessionName}_${q.number}` : q.question);
+    setRecentLockscreenQuestions(prev => {
+      const list = Array.isArray(prev) ? [...prev] : [];
+      const existingIdx = list.findIndex(item => {
+        const itemQId = item.question?.id || (item.question?.sessionName && item.question?.number ? `${item.question?.sessionName}_${item.question?.number}` : item.question?.question);
+        return itemQId === qId;
+      });
+
+      const entry = {
+        id: qId,
+        question: { ...q },
+        userAnswer: typeof userAnswer === 'string' ? userAnswer : '',
+        gradingResult: gradingResult || null,
+        hint: hint || '',
+        updatedAt: Date.now()
+      };
+
+      if (existingIdx >= 0) {
+        list[existingIdx] = {
+          ...list[existingIdx],
+          ...entry,
+          userAnswer: entry.userAnswer || list[existingIdx].userAnswer || '',
+          gradingResult: entry.gradingResult || list[existingIdx].gradingResult || null,
+          hint: entry.hint || list[existingIdx].hint || ''
+        };
+        const updated = list.splice(existingIdx, 1)[0];
+        list.unshift(updated);
+      } else {
+        list.unshift(entry);
+      }
+      return list.slice(0, 10);
+    });
+  };
+
+  const fetchRecentLockscreenQuestions = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/lockscreen/recent?t=${Date.now()}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.success && Array.isArray(data.recent) && data.recent.length > 0) {
+          setRecentLockscreenQuestions(prev => {
+            const map = new Map();
+            data.recent.forEach(item => {
+              if (item && item.question) {
+                const id = item.id || item.question.id || `${item.question.sessionName}_${item.question.number}`;
+                map.set(id, item);
+                const existingMap = getLockscreenAnswersMap();
+                const key = getLockscreenQuestionKey(item.question);
+                if (key) {
+                  existingMap[key] = {
+                    question: item.question,
+                    userAnswer: item.userAnswer || existingMap[key]?.userAnswer || '',
+                    gradingResult: item.gradingResult || existingMap[key]?.gradingResult || null,
+                    hint: item.hint || existingMap[key]?.hint || '',
+                    updatedAt: item.updatedAt || Date.now()
+                  };
+                  localStorage.setItem('anti_lockscreen_answers_map', JSON.stringify(existingMap));
+                }
+              }
+            });
+            (prev || []).forEach(item => {
+              if (item && item.question) {
+                const id = item.id || item.question.id || `${item.question.sessionName}_${item.question.number}`;
+                if (!map.has(id)) {
+                  map.set(id, item);
+                }
+              }
+            });
+            return Array.from(map.values()).slice(0, 10);
+          });
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to fetch recent lockscreen questions:', e);
+    }
+  };
+
+  useEffect(() => {
+    if (showLockscreenQuiz) {
+      fetchRecentLockscreenQuestions();
+    }
+  }, [showLockscreenQuiz]);
+
+  // Click outside listener for recent questions dropdown
+  useEffect(() => {
+    if (!showRecentLockscreenDropdown) return;
+    const handleClickOutside = (e) => {
+      if (recentLockscreenDropdownRef.current && !recentLockscreenDropdownRef.current.contains(e.target)) {
+        setShowRecentLockscreenDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [showRecentLockscreenDropdown]);
+
+  const handleSelectRecentQuestion = (recentEntry) => {
+    if (!recentEntry || !recentEntry.question) return;
+    const q = recentEntry.question;
+    setLockscreenQuestion(q);
+    try {
+      localStorage.setItem('anti_current_unsolved_lockscreen_question', JSON.stringify(q));
+    } catch (e) {}
+
+    const key = getLockscreenQuestionKey(q);
+    const map = getLockscreenAnswersMap();
+    const mapEntry = map[key];
+
+    const ans = recentEntry.userAnswer || mapEntry?.userAnswer || '';
+    const res = recentEntry.gradingResult || mapEntry?.gradingResult || null;
+    const hnt = recentEntry.hint || mapEntry?.hint || '';
+
+    setLockscreenUserAnswer(ans);
+    setLockscreenGradingResult(res);
+    setLockscreenHint(hnt);
+    setShowLockscreenHint(false);
+
+    saveLockscreenAnswerForQuestion(q, ans, res, hnt);
+    setShowRecentLockscreenDropdown(false);
+    scrollToLockscreenTop(true);
+  };
+
+  // Helper to safely unwrap JSON model answer (fixes {"suggestgedModelAnswer": "..."} display)
+  const cleanSuggestedModelAnswer = (raw) => {
+    if (!raw) return '';
+    let text = typeof raw === 'string' ? raw.trim() : String(raw);
+
+    if (text.startsWith('{') || text.includes('suggestedModelAnswer') || text.includes('suggestgedModelAnswer') || text.includes('"answer"')) {
+      try {
+        const parsed = JSON.parse(text);
+        if (parsed && typeof parsed === 'object') {
+          for (const [k, v] of Object.entries(parsed)) {
+            if (typeof v === 'string' && v.trim().length > 0) {
+              const lowerK = k.toLowerCase().replace(/_/g, '');
+              if (lowerK.includes('answer') || lowerK.includes('suggest') || lowerK.includes('model') || lowerK.includes('content') || lowerK.includes('response')) {
+                text = v.trim();
+                break;
+              }
+            }
+          }
+          if (text.startsWith('{')) {
+            const strVals = Object.values(parsed).filter(v => typeof v === 'string' && v.trim().length > 10);
+            if (strVals.length > 0) {
+              strVals.sort((a, b) => b.length - a.length);
+              text = strVals[0].trim();
+            }
+          }
+        }
+      } catch (e) {
+        const match = text.match(/"(?:suggestedModelAnswer|suggestgedModelAnswer|modelAnswer|answer|response|content)"\s*:\s*"([\s\S]*?)"\s*(?:,\s*"|\}$)/i);
+        if (match && match[1]) {
+          text = match[1]
+            .replace(/\\"/g, '"')
+            .replace(/\\n/g, '\n')
+            .replace(/\\r/g, '\r')
+            .trim();
+        }
+      }
+    }
+
+    text = text.replace(/^```[a-zA-Z]*\n?/, '').replace(/\n?```$/, '').trim();
+    if ((text.startsWith('"') && text.endsWith('"')) || (text.startsWith("'") && text.endsWith("'"))) {
+      text = text.substring(1, text.length - 1).trim();
+    }
+    text = text.replace(/([^\n])\s*(💡\s*(?:\*\*)?직관적\s*의미(?:\*\*)?\s*[:：])/g, '$1\n\n$2');
+    return text;
   };
 
   const saveLockscreenAnswerForQuestion = (q, userAnswer, gradingResult, hint) => {
@@ -3649,6 +3841,7 @@ export default function App() {
       const map = getLockscreenAnswersMap();
       const existing = map[key] || {};
       map[key] = {
+        question: q,
         userAnswer: typeof userAnswer === 'string' ? userAnswer : (existing.userAnswer || ''),
         gradingResult: gradingResult !== undefined ? gradingResult : (existing.gradingResult || null),
         hint: hint !== undefined ? hint : (existing.hint || ''),
@@ -3663,9 +3856,12 @@ export default function App() {
       }
       localStorage.setItem('anti_current_lockscreen_qkey', key);
 
+      // Save to recent submissions list
+      updateRecentQuestionsList(q, map[key].userAnswer, map[key].gradingResult, map[key].hint);
+
       // Debounced real-time cross-device sync (PC <-> Mobile)
       if (q?.lockscreen_id) {
-        syncLockscreenAnswerToServer(map[key].userAnswer, map[key].gradingResult, map[key].hint);
+        syncLockscreenAnswerToServer(map[key].userAnswer, map[key].gradingResult, map[key].hint, q);
       }
     } catch (e) {
       console.warn('Failed to save lockscreen answer to localStorage:', e);
@@ -3753,7 +3949,6 @@ export default function App() {
         const map = getLockscreenAnswersMap();
         if (map[key]?.userAnswer !== undefined) return map[key].userAnswer;
       }
-      return localStorage.getItem('anti_current_lockscreen_user_answer') || '';
     } catch (e) {}
     return '';
   });
@@ -3767,8 +3962,6 @@ export default function App() {
         const map = getLockscreenAnswersMap();
         if (map[key]?.gradingResult !== undefined) return map[key].gradingResult;
       }
-      const rawRes = localStorage.getItem('anti_current_lockscreen_grading_result');
-      if (rawRes) return JSON.parse(rawRes);
     } catch (e) {}
     return null;
   });
@@ -3800,14 +3993,8 @@ export default function App() {
       setLockscreenGradingResult(savedEntry.gradingResult || null);
       setLockscreenHint(savedEntry.hint || '');
     } else {
-      const quickAns = localStorage.getItem('anti_current_lockscreen_user_answer') || '';
-      let quickRes = null;
-      try {
-        const raw = localStorage.getItem('anti_current_lockscreen_grading_result');
-        if (raw) quickRes = JSON.parse(raw);
-      } catch (e) {}
-      setLockscreenUserAnswer(quickAns);
-      setLockscreenGradingResult(quickRes);
+      setLockscreenUserAnswer('');
+      setLockscreenGradingResult(null);
       setLockscreenHint('');
     }
     setShowLockscreenHint(false);
@@ -4019,6 +4206,11 @@ export default function App() {
 
   const handleUnlockLockscreen = async () => {
     const qId = lockscreenQuestion?.id;
+    const currentQ = lockscreenQuestion;
+    const currentAns = lockscreenUserAnswer;
+    const currentRes = lockscreenGradingResult;
+    const currentHnt = lockscreenHint;
+
     localStorage.setItem('anti_last_lockscreen_submit_time', String(Date.now()));
     localStorage.removeItem('anti_current_unsolved_lockscreen_question');
     clearLockscreenAnswerForQuestion(lockscreenQuestion);
@@ -4030,12 +4222,19 @@ export default function App() {
     setLockscreenGradingResult(null);
     setLockscreenHint('');
     setShowLockscreenHint(false);
+    setShowRecentLockscreenDropdown(false);
     if (qId) {
       try {
         await fetch(`${API_BASE}/api/lockscreen/solve`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: qId })
+          body: JSON.stringify({ 
+            id: qId,
+            question: currentQ,
+            userAnswer: currentAns,
+            gradingResult: currentRes,
+            hint: currentHnt
+          })
         });
       } catch (e) {
         console.warn('Failed to record lockscreen solved:', e);
@@ -4059,8 +4258,11 @@ export default function App() {
     }
 
     setLockscreenLoading(true);
+    setLockscreenUserAnswer('');
+    setLockscreenGradingResult(null);
     setLockscreenHint('');
     setShowLockscreenHint(false);
+    setShowRecentLockscreenDropdown(false);
     fetchLockscreenQuestion(true, true).then(() => {
       setLockscreenLoading(false);
     });
@@ -18489,9 +18691,123 @@ ${itemsStr}
                 {/* Streamlined Header: Badges & Close Button */}
                 <div id="lockscreen-header" className="flex items-center justify-between pb-2 border-b border-slate-800/80">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="px-3 py-1 bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 rounded-xl text-xs font-black shadow-sm">
-                      {lockscreenQuestion.sessionName} 제1교시 {lockscreenQuestion.number}번
-                    </span>
+                    <div className="relative" ref={recentLockscreenDropdownRef}>
+                      <button
+                        type="button"
+                        onClick={() => setShowRecentLockscreenDropdown(prev => !prev)}
+                        className="px-3 py-1 bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 hover:text-indigo-200 border border-indigo-500/40 rounded-xl text-xs font-black shadow-sm flex items-center gap-1.5 transition-all cursor-pointer active:scale-95 duration-150"
+                        title="최근 10개 문제 풀이 내역 열기/선택"
+                      >
+                        <span>{lockscreenQuestion.sessionName} 제1교시 {lockscreenQuestion.number}번</span>
+                        <ChevronDown size={14} className={`transition-transform duration-200 ${showRecentLockscreenDropdown ? 'rotate-180 text-indigo-400' : 'text-indigo-300'}`} />
+                      </button>
+
+                      {showRecentLockscreenDropdown && (
+                        <div className="absolute left-0 top-full mt-2 w-72 sm:w-84 bg-slate-900/98 backdrop-blur-xl border border-indigo-500/40 rounded-2xl shadow-2xl p-2.5 z-[100] max-h-96 overflow-y-auto space-y-1.5 animate-in fade-in zoom-in-95 duration-150">
+                          <div className="flex items-center justify-between px-2 py-1 border-b border-slate-800 text-[11px] font-bold text-slate-400">
+                            <span className="flex items-center gap-1 text-indigo-400">
+                              <Clock size={12} /> 최근 푼 문제 (최대 10개)
+                            </span>
+                            <span className="text-[10px] text-slate-500">선택 시 과거 답안 복원</span>
+                          </div>
+                          <div className="space-y-1 pt-1">
+                            {(() => {
+                              const map = new Map();
+                              if (lockscreenQuestion) {
+                                const currentKey = getLockscreenQuestionKey(lockscreenQuestion);
+                                map.set(currentKey, {
+                                  id: currentKey,
+                                  question: lockscreenQuestion,
+                                  userAnswer: lockscreenUserAnswer,
+                                  gradingResult: lockscreenGradingResult,
+                                  hint: lockscreenHint
+                                });
+                              }
+                              (recentLockscreenQuestions || []).forEach(item => {
+                                if (item && item.question) {
+                                  const key = getLockscreenQuestionKey(item.question);
+                                  if (key && !map.has(key)) {
+                                    map.set(key, item);
+                                  }
+                                }
+                              });
+                              (lockscreenHistory || []).forEach(q => {
+                                if (q) {
+                                  const key = getLockscreenQuestionKey(q);
+                                  if (key && !map.has(key)) {
+                                    const saved = getLockscreenAnswersMap()[key];
+                                    map.set(key, {
+                                      id: key,
+                                      question: q,
+                                      userAnswer: saved?.userAnswer || '',
+                                      gradingResult: saved?.gradingResult || null,
+                                      hint: saved?.hint || ''
+                                    });
+                                  }
+                                }
+                              });
+                              const items = Array.from(map.values()).slice(0, 10);
+
+                              if (items.length === 0) {
+                                return (
+                                  <div className="py-4 text-center text-xs text-slate-500">
+                                    최근 풀이 기록이 없습니다.
+                                  </div>
+                                );
+                              }
+
+                              return items.map((item, idx) => {
+                                const q = item.question;
+                                const isCurrent = (q.id && q.id === lockscreenQuestion?.id) ||
+                                  (q.sessionName === lockscreenQuestion?.sessionName && q.number === lockscreenQuestion?.number);
+                                const score = item.gradingResult?.score;
+                                const hasScore = typeof score === 'number';
+
+                                return (
+                                  <button
+                                    key={item.id || idx}
+                                    type="button"
+                                    onClick={() => handleSelectRecentQuestion(item)}
+                                    className={`w-full text-left p-2.5 rounded-xl border transition-all flex flex-col gap-1 cursor-pointer ${
+                                      isCurrent
+                                        ? 'bg-indigo-950/70 border-indigo-500/60 shadow-sm ring-1 ring-indigo-500/40'
+                                        : 'bg-slate-950/60 hover:bg-slate-800/80 border-slate-800 hover:border-slate-700'
+                                    }`}
+                                  >
+                                    <div className="flex items-center justify-between gap-1">
+                                      <span className="text-[11px] font-bold text-indigo-300">
+                                        {q.sessionName || '기출'} 제1교시 {q.number ? `${q.number}번` : ''}
+                                      </span>
+                                      {hasScore ? (
+                                        <span className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded-md ${
+                                          score >= 8 ? 'bg-emerald-950 text-emerald-300 border border-emerald-500/40' :
+                                          score >= 5 ? 'bg-amber-950 text-amber-300 border border-amber-500/40' :
+                                          'bg-rose-950 text-rose-300 border border-rose-500/40'
+                                        }`}>
+                                          {score >= 8 ? `⭕ ${score}점` : score >= 5 ? `⚠️ ${score}점` : `❌ ${score}점`}
+                                        </span>
+                                      ) : item.userAnswer ? (
+                                        <span className="text-[10px] font-medium text-slate-400 bg-slate-800 px-1.5 py-0.5 rounded-md">
+                                          ✍️ 작성중
+                                        </span>
+                                      ) : (
+                                        <span className="text-[10px] font-medium text-slate-500 bg-slate-900 px-1.5 py-0.5 rounded-md">
+                                          미제출
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="text-xs text-slate-200 font-semibold truncate">
+                                      {q.question || q.fullTitle}
+                                    </div>
+                                  </button>
+                                );
+                              });
+                            })()}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
                     {lockscreenQuestion.lockscreen_id && (
                       <span 
                         className="px-2.5 py-1 bg-emerald-950/80 text-emerald-300 border border-emerald-500/40 rounded-xl text-xs font-mono font-black shadow-sm flex items-center gap-1.5"
@@ -18717,7 +19033,7 @@ ${itemsStr}
                       </div>
                       <div className="text-[13px] font-normal leading-relaxed text-slate-300 whitespace-pre-wrap">
                         <LatexRenderer 
-                          text={(lockscreenGradingResult.suggestedModelAnswer || '').replace(/([^\n])\s*(💡\s*(?:\*\*)?직관적\s*의미(?:\*\*)?\s*[:：])/g, '$1\n\n$2')} 
+                          text={cleanSuggestedModelAnswer(lockscreenGradingResult.suggestedModelAnswer)} 
                           katexLoaded={katexLoaded} 
                           isMarkdown={true} 
                           highlightBold={true}
@@ -18733,7 +19049,7 @@ ${itemsStr}
                       id: lockscreenQuestion.id || 'lockscreen_current',
                       question: lockscreenQuestion.question,
                       fullTitle: lockscreenQuestion.fullTitle,
-                      explanation: lockscreenGradingResult.suggestedModelAnswer || '',
+                      explanation: cleanSuggestedModelAnswer(lockscreenGradingResult.suggestedModelAnswer),
                       userAnswer: lockscreenUserAnswer,
                       gradingResult: lockscreenGradingResult
                     }

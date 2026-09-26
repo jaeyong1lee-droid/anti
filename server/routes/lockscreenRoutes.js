@@ -5,7 +5,9 @@ import {
   getRandomLockscreenExamQuestion, 
   loadAllPastExamQuestions,
   getActiveLockscreenAssignment,
-  updateActiveLockscreenAnswer 
+  updateActiveLockscreenAnswer,
+  getRecentLockscreenSubmissions,
+  saveRecentLockscreenSubmission
 } from '../services/pastExamService.js';
 import { gradeSubjective, GRADING_STANDARDS, gradingStandardsList } from '../plugins/gradingPlugin.js';
 import { ENGINEERING_STANDARDS, engineeringStandardsList } from '../plugins/engineeringStandards.js';
@@ -20,7 +22,17 @@ function getCallLLM(req) {
     callLLMWithFailover(sys, prompt, img, scenario, { ...opts, preferredModel, progressId });
 }
 
-
+// GET /api/lockscreen/recent -> Return recent 10 lockscreen questions with submissions & grades
+router.get('/recent', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    const list = await getRecentLockscreenSubmissions();
+    res.json({ success: true, count: list.length, recent: list });
+  } catch (err) {
+    console.error('GET /api/lockscreen/recent error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
 
 // GET /api/lockscreen/random -> Retrieve synchronized active lockscreen assignment with LOCK{YYMMDD}_{seq} ID
 router.get('/random', async (req, res) => {
@@ -56,8 +68,16 @@ router.get('/sync', async (req, res) => {
 // POST /api/lockscreen/active -> Real-time sync of answer / grading result across PC & mobile
 router.post('/active', async (req, res) => {
   try {
-    const { userAnswer, gradingResult, hint } = req.body;
+    const { userAnswer, gradingResult, hint, question } = req.body;
     const updated = await updateActiveLockscreenAnswer(userAnswer, gradingResult, hint);
+    if (question) {
+      saveRecentLockscreenSubmission({
+        question,
+        userAnswer: userAnswer || '',
+        gradingResult: gradingResult || null,
+        hint: hint || ''
+      }).catch(() => {});
+    }
     res.json({ success: true, assignment: updated });
   } catch (err) {
     console.error('POST /api/lockscreen/active error:', err);
@@ -172,7 +192,18 @@ router.post('/grade', async (req, res) => {
 
     if (gradingResult) {
       if (gradingResult.suggestedModelAnswer) {
-        let ans = gradingResult.suggestedModelAnswer;
+        let ans = (gradingResult.suggestedModelAnswer || '').trim();
+        // Unwrap JSON if present (handles suggestedModelAnswer, suggestgedModelAnswer, modelAnswer, etc.)
+        if (ans.startsWith('{') || ans.includes('suggestedModelAnswer') || ans.includes('suggestgedModelAnswer') || ans.includes('"answer"')) {
+          const match = ans.match(/"(?:suggestedModelAnswer|suggestgedModelAnswer|modelAnswer|answer|response|content)"\s*:\s*"([\s\S]*?)"\s*(?:,\s*"|\}$)/i);
+          if (match && match[1]) {
+            ans = match[1]
+              .replace(/\\"/g, '"')
+              .replace(/\\n/g, '\n')
+              .replace(/\\r/g, '\r')
+              .trim();
+          }
+        }
         const bareFormulaRegex = /(?<!\$)\\(?:tau|sigma|gamma|epsilon|alpha|beta|phi|theta|nu|mu|omega|rho|lambda|Delta)\b(?:[a-zA-Z0-9_\\^+=*/()\-.,\s]|\\(?:tan|sin|cos|frac|sqrt|cdot|times|pm|le|ge|neq|approx|partial)\b)*(?:\w|\))(?![\w\\])(?!\$)/g;
         ans = ans.replace(bareFormulaRegex, (match) => {
           const trimmed = match.trim();
@@ -197,6 +228,18 @@ router.post('/grade', async (req, res) => {
       console.warn('Failed to update active lockscreen assignment answer:', err);
     });
 
+    // Save to recent questions list
+    if (question) {
+      saveRecentLockscreenSubmission({
+        question: typeof question === 'object' ? question : { question: questionText },
+        userAnswer: userAnswer.trim(),
+        gradingResult,
+        hint: ''
+      }).catch(err => {
+        console.warn('Failed to save recent lockscreen submission:', err);
+      });
+    }
+
     res.json({
       success: true,
       result: gradingResult
@@ -210,7 +253,7 @@ router.post('/grade', async (req, res) => {
 // POST /api/lockscreen/solve -> Mark question as completed and advance to next assignment
 router.post('/solve', async (req, res) => {
   try {
-    const { id } = req.body;
+    const { id, question, userAnswer, gradingResult, hint } = req.body;
 
     if (id) {
       let history = {};
@@ -224,6 +267,15 @@ router.post('/solve', async (req, res) => {
       }
       history[id] = Date.now();
       await saveSessionValue('lockscreen_past_exam_history', JSON.stringify(history));
+    }
+
+    if (question) {
+      saveRecentLockscreenSubmission({
+        question,
+        userAnswer: userAnswer || '',
+        gradingResult: gradingResult || null,
+        hint: hint || ''
+      }).catch(() => {});
     }
 
     // Advance to next lockscreen assignment for the day (e.g. LOCK260923_2)

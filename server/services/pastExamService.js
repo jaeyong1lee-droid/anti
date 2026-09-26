@@ -262,6 +262,16 @@ export async function updateActiveLockscreenAnswer(userAnswer, gradingResult, hi
         if (hint !== undefined) assignment.hint = hint;
         assignment.updatedAt = Date.now();
         await saveSessionValue('current_lockscreen_assignment', JSON.stringify(assignment));
+
+        if (assignment.question) {
+          saveRecentLockscreenSubmission({
+            question: assignment.question,
+            userAnswer: assignment.userAnswer,
+            gradingResult: assignment.gradingResult,
+            hint: assignment.hint
+          }).catch(() => {});
+        }
+
         return assignment;
       }
     }
@@ -270,3 +280,80 @@ export async function updateActiveLockscreenAnswer(userAnswer, gradingResult, hi
   }
   return null;
 }
+
+/**
+ * Saves or updates a question in the recent 10 lockscreen questions list.
+ */
+export async function saveRecentLockscreenSubmission({ question, userAnswer, gradingResult, hint }) {
+  if (!question) return [];
+  try {
+    const row = await dbQuery.get("SELECT value FROM app_session WHERE key = 'lockscreen_recent_questions'");
+    let list = [];
+    if (row && row.value) {
+      try {
+        list = JSON.parse(row.value);
+        if (!Array.isArray(list)) list = [];
+      } catch (e) {
+        list = [];
+      }
+    }
+
+    const qId = question.id || `${question.sessionName}_${question.number}` || question.question;
+    const existingIndex = list.findIndex(item => {
+      const itemQId = item.question?.id || `${item.question?.sessionName}_${item.question?.number}` || item.question?.question;
+      return itemQId === qId;
+    });
+
+    const entry = {
+      id: qId,
+      question: { ...question },
+      userAnswer: typeof userAnswer === 'string' ? userAnswer : '',
+      gradingResult: gradingResult || null,
+      hint: hint || '',
+      updatedAt: Date.now()
+    };
+
+    if (existingIndex >= 0) {
+      list[existingIndex] = {
+        ...list[existingIndex],
+        ...entry,
+        userAnswer: entry.userAnswer || list[existingIndex].userAnswer || '',
+        gradingResult: entry.gradingResult || list[existingIndex].gradingResult || null,
+        hint: entry.hint || list[existingIndex].hint || ''
+      };
+      // Move to front as most recently active
+      const updatedItem = list.splice(existingIndex, 1)[0];
+      list.unshift(updatedItem);
+    } else {
+      list.unshift(entry);
+    }
+
+    // Retain only the 10 most recent questions
+    if (list.length > 10) {
+      list = list.slice(0, 10);
+    }
+
+    await saveSessionValue('lockscreen_recent_questions', JSON.stringify(list));
+    return list;
+  } catch (err) {
+    console.warn('[pastExamService] Failed to save recent lockscreen submission:', err.message);
+    return [];
+  }
+}
+
+/**
+ * Retrieves the recent 10 lockscreen questions with their user answers and grading results.
+ */
+export async function getRecentLockscreenSubmissions() {
+  try {
+    const row = await dbQuery.get("SELECT value FROM app_session WHERE key = 'lockscreen_recent_questions'");
+    if (row && row.value) {
+      const parsed = JSON.parse(row.value);
+      if (Array.isArray(parsed)) return parsed.slice(0, 10);
+    }
+  } catch (e) {
+    console.warn('[pastExamService] Failed to read recent lockscreen submissions:', e.message);
+  }
+  return [];
+}
+

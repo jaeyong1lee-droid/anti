@@ -193,26 +193,48 @@ ${LATEX_PROMPT_INSTRUCTIONS}`;
     if ((cleanAnswer.startsWith('"') && cleanAnswer.endsWith('"')) || (cleanAnswer.startsWith("'") && cleanAnswer.endsWith("'"))) {
       cleanAnswer = cleanAnswer.substring(1, cleanAnswer.length - 1).trim();
     }
-    if (cleanAnswer.startsWith('{')) {
+    if (cleanAnswer.startsWith('{') || cleanAnswer.includes('suggestedModelAnswer') || cleanAnswer.includes('suggestgedModelAnswer') || cleanAnswer.includes('"answer"')) {
+      let unwrapped = null;
       try {
         const parsed = parseLlmJson(cleanAnswer);
         if (parsed && typeof parsed === 'object') {
-          const candidates = [
-            parsed.answer,
-            parsed.suggestedModelAnswer,
-            parsed.modelAnswer,
-            parsed.response,
-            parsed.model_answer,
-            parsed.content,
-            parsed.text
-          ];
-          let unwrapped = candidates.find(c => typeof c === 'string' && c.trim().length > 0 && !/^(success|ok|true|false)$/i.test(c.trim()));
-          if (typeof unwrapped === 'string' && unwrapped.trim().length > 0) {
-            cleanAnswer = unwrapped.trim();
+          // 1) Search keys case-insensitively for answer/model/suggest/content/response
+          for (const [k, v] of Object.entries(parsed)) {
+            if (typeof v === 'string' && v.trim().length > 0) {
+              const lowerK = k.toLowerCase().replace(/_/g, '');
+              if (lowerK.includes('answer') || lowerK.includes('suggest') || lowerK.includes('model') || lowerK.includes('content') || lowerK.includes('response')) {
+                unwrapped = v.trim();
+                break;
+              }
+            }
+          }
+          // 2) If no key matched, take the longest string value in the object
+          if (!unwrapped) {
+            const stringVals = Object.values(parsed).filter(v => typeof v === 'string' && v.trim().length > 10);
+            if (stringVals.length > 0) {
+              stringVals.sort((a, b) => b.length - a.length);
+              unwrapped = stringVals[0].trim();
+            }
           }
         }
       } catch (e) {
-        // keep cleanAnswer as is
+        // Fallback: Regex extraction if JSON.parse failed due to escape characters or unescaped newlines
+      }
+
+      // 3) Regex fallback if unwrapped is still null
+      if (!unwrapped) {
+        const regexMatch = cleanAnswer.match(/"(?:suggestedModelAnswer|suggestgedModelAnswer|modelAnswer|answer|response|content)"\s*:\s*"([\s\S]*?)"\s*(?:,\s*"|\}$)/i);
+        if (regexMatch && regexMatch[1]) {
+          unwrapped = regexMatch[1]
+            .replace(/\\"/g, '"')
+            .replace(/\\n/g, '\n')
+            .replace(/\\r/g, '\r')
+            .trim();
+        }
+      }
+
+      if (unwrapped && unwrapped.length > 0 && !/^(success|ok|true|false)$/i.test(unwrapped)) {
+        cleanAnswer = unwrapped;
       }
     }
     cleanAnswer = cleanAnswer.replace(/^(모범\s*답안|정답|표준\s*답안)\s*[:：]\s*/i, '').trim();
