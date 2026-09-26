@@ -185,8 +185,25 @@ export function getKSTDateInfo() {
 }
 
 /**
+ * Checks whether a lockscreen assignment has been solved/graded.
+ */
+export function isLockscreenAssignmentSolved(assignment) {
+  if (!assignment) return false;
+  if (assignment.isSolved) return true;
+  if (assignment.gradingResult && typeof assignment.gradingResult.score === 'number') {
+    // If score is 0 due to empty submission ("답안이 입력되지 않았습니다."), not considered solved
+    if (assignment.gradingResult.score === 0 && assignment.gradingResult.reason?.includes('입력되지 않았습니다')) {
+      return false;
+    }
+    return true;
+  }
+  return false;
+}
+
+/**
  * Gets or creates the currently active lockscreen assignment with format LOCK{YYMMDD}_{seq}.
  * Synchronized across PC, Mobile, and all devices via Cloud DB.
+ * Unsolved questions are preserved across date changes so users do not lose their pending quiz.
  */
 export async function getActiveLockscreenAssignment(forceNew = false) {
   const { dateStr, yymmdd } = getKSTDateInfo();
@@ -197,8 +214,15 @@ export async function getActiveLockscreenAssignment(forceNew = false) {
       if (activeRow && activeRow.value) {
         const assignment = JSON.parse(activeRow.value);
         if (assignment && assignment.lockscreen_id && assignment.question) {
-          // If assignment matches today's date, return it directly
+          // 1) If assignment matches today's date, return it directly
           if (assignment.yymmdd === yymmdd) {
+            return assignment;
+          }
+          // 2) If assignment is from a past date but was NOT solved yet,
+          // do NOT replace it! Unsolved questions persist across date changes until solved or skipped.
+          const isSolved = isLockscreenAssignmentSolved(assignment);
+          if (!isSolved) {
+            console.log(`[pastExamService] Retaining unsolved lockscreen assignment across date change: ${assignment.lockscreen_id} (${assignment.question?.sessionName || ''} ${assignment.question?.number ? `${assignment.question.number}번` : ''} - ${assignment.question?.question || ''})`);
             return assignment;
           }
         }
