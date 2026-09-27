@@ -90,6 +90,13 @@ try {
   if (!healedAnswersheet) throw new Error('healAnswersheetQuestionObject 반환 구조 결함');
   console.log('  ➜ [PASS] healAnswersheetQuestionObject ReferenceError 없이 통과!');
 
+  // healLatexFormulas inline \\( ... \\) 및 \\[ ... \\] 테스트 (TypeError: u.trim is not a function 회귀 방지)
+  const healedInlineMath = clientLatexUtils.healLatexFormulas('탄성파 속도비 \\(V_p/V_s\\) 및 공식 \\[q_u = cN_c\\] 검증');
+  if (!healedInlineMath.includes('$V_p/V_s$') || !healedInlineMath.includes('$$q_u = cN_c$$')) {
+    throw new Error('healLatexFormulas inline delimiter 치환 오류: ' + healedInlineMath);
+  }
+  console.log('  ➜ [PASS] healLatexFormulas (inline \\(..\\) 및 display \\[..\\]) TypeError 없이 100% 정상 변환 통과!');
+
 } catch (err) {
   failedCount++;
   console.error(`  ❌ [CRITICAL FAIL] client/src/utils/latexUtils.js 런타임 오류 감지: ${err.stack || err.message}`);
