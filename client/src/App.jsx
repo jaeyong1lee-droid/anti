@@ -7092,20 +7092,26 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
   // On tablets (768px ~ 1366px, portrait/landscape with height > 600px), the nav auto-hides.
   // Swiping right from the left edge (x < 40px) reveals it for 2 seconds then hides again.
   const isTablet = window.innerWidth >= 768 && window.innerWidth <= 1400 && window.innerHeight > 600;
-  const [tabletNavHidden, setTabletNavHidden] = useState(isTablet);
+  const [tabletNavHidden, setTabletNavHidden] = useState(() => {
+    try {
+      const saved = localStorage.getItem('anti_desktop_nav_open');
+      if (saved !== null) return saved !== 'true';
+    } catch (e) {}
+    return isTablet;
+  });
   const tabletNavTimerRef = useRef(null);
   const tabletSwipeStartRef = useRef({ x: 0, y: 0, active: false });
 
   // PC / Desktop Nav panel collapse & expand state
   // Defaults to expanded (true) so clicking buttons (공식, 표, 앞글자, 개요 등) never causes the sidebar to automatically hide.
   // The user can freely collapse or expand the sidebar at any time via the toggle buttons.
+  // Persisted in localStorage so closing and reopening the window strictly preserves the user's hidden/open preference.
   const [desktopNavOpen, setDesktopNavOpen] = useState(() => {
     try {
-      const saved = sessionStorage.getItem('anti_desktop_nav_open');
-      return saved !== null ? saved === 'true' : true;
-    } catch (e) {
-      return true;
-    }
+      const saved = localStorage.getItem('anti_desktop_nav_open');
+      if (saved !== null) return saved === 'true';
+    } catch (e) {}
+    return !isTablet;
   });
 
   // Check if current screen qualifies as tablet (recalculated when window resizes)
@@ -7150,12 +7156,19 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
     };
   }, [isTabletScreen, showTabletNavBriefly]);
 
-  // 태블릿 화면에서만 모달 진입 시 네비게이션 자동 숨김 (데스크톱은 사용자 토글 상태 유지)
+  // 태블릿 화면에서만 모달 진입 시 네비게이션 자동 숨김 (모달 종료 시 사용자의 저장된 설정 복원)
   useEffect(() => {
     const hasModal = !!(selectedTopic || showExam || showFormulaExam || showTheoryExam || showAnswerSheet);
     if (hasModal && isTabletScreen) {
       setTabletNavHidden(true);
       if (tabletNavTimerRef.current) clearTimeout(tabletNavTimerRef.current);
+    } else if (!hasModal && isTabletScreen) {
+      try {
+        const saved = localStorage.getItem('anti_desktop_nav_open');
+        if (saved !== null) {
+          setTabletNavHidden(saved !== 'true');
+        }
+      } catch (e) {}
     }
   }, [selectedTopic, showExam, showFormulaExam, showTheoryExam, showAnswerSheet, isTabletScreen]);
 
@@ -7177,9 +7190,17 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
     const updateTabletState = () => {
       const tablet = window.innerWidth >= 768 && window.innerWidth <= 1400 && window.innerHeight > 600;
       if (!tablet) {
-        // Not tablet anymore – always show nav
-        setTabletNavHidden(false);
         if (tabletNavTimerRef.current) clearTimeout(tabletNavTimerRef.current);
+        try {
+          const saved = localStorage.getItem('anti_desktop_nav_open');
+          if (saved !== null) {
+            setTabletNavHidden(saved !== 'true');
+            setDesktopNavOpen(saved === 'true');
+            return;
+          }
+        } catch (e) {}
+        setTabletNavHidden(false);
+        setDesktopNavOpen(true);
       }
     };
     window.addEventListener('resize', updateTabletState);
@@ -18582,14 +18603,23 @@ ${itemsStr}
 
   const toggleDesktopNav = useCallback(() => {
     if (isTabletScreen) {
-      setTabletNavHidden(prev => !prev);
+      setTabletNavHidden(prev => {
+        const nextHidden = !prev;
+        const nextOpen = !nextHidden;
+        setDesktopNavOpen(nextOpen);
+        try {
+          localStorage.setItem('anti_desktop_nav_open', String(nextOpen));
+        } catch (e) {}
+        return nextHidden;
+      });
     } else {
       setDesktopNavOpen(prev => {
-        const next = !prev;
+        const nextOpen = !prev;
+        setTabletNavHidden(!nextOpen);
         try {
-          sessionStorage.setItem('anti_desktop_nav_open', String(next));
+          localStorage.setItem('anti_desktop_nav_open', String(nextOpen));
         } catch (e) {}
-        return next;
+        return nextOpen;
       });
     }
   }, [isTabletScreen]);

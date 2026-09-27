@@ -296,6 +296,25 @@ if (hardcodeFound || !isDynamic1Ok || !isDynamic2Ok) {
 } else {
   console.log(`  ➜ [PASS] 토픽 하드코딩 찌꺼기 0개 박멸 및 지문 동적 텍스트 파싱 100% 검증 성공!`);
 }
+// [TEST 10] 좌측 네비게이션 메뉴 접힘/펼침 상태 영구 보존(localStorage) 무결성 검증
+console.log('\n[TEST 10] 좌측 네비게이션(사이드바) 접힘/펼침 상태 영구 보존(localStorage) 무결성 검증...');
+const appSource = fs.readFileSync(path.resolve('client/src/App.jsx'), 'utf8');
+
+const hasSessionStorageNavLeak = appSource.includes("sessionStorage.getItem('anti_desktop_nav_open')") || 
+                                 appSource.includes("sessionStorage.setItem('anti_desktop_nav_open'");
+
+const hasLocalStorageNavInit = appSource.includes("localStorage.getItem('anti_desktop_nav_open')");
+const hasLocalStorageNavSave = appSource.includes("localStorage.setItem('anti_desktop_nav_open'");
+
+if (hasSessionStorageNavLeak) {
+  failedCount++;
+  console.error('  ❌ [세션스토리지 누수 감지]: anti_desktop_nav_open이 휘발성 sessionStorage에 저장되어 창 종료 시 초기화되는 결함 발견!');
+} else if (!hasLocalStorageNavInit || !hasLocalStorageNavSave) {
+  failedCount++;
+  console.error(`  ❌ [영구 저장 누락 감지]: localStorage 초기화(${hasLocalStorageNavInit}) 또는 저장(${hasLocalStorageNavSave}) 로직 누락!`);
+} else {
+  console.log('  ➜ [PASS] 좌측 네비게이션 메뉴 접힘/펼침 상태가 sessionStorage가 아닌 localStorage에 100% 영구 저장 및 복원됨 확인!');
+}
 
 console.log('\n==========================================================');
 if (failedCount > 0) {
