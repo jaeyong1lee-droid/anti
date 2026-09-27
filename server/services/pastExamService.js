@@ -234,15 +234,33 @@ export async function getActiveLockscreenAssignment(forceNew = false) {
 
   // Need new assignment: calculate sequence number for today
   let nextSeq = 1;
+  let prevAssignment = null;
   try {
     const activeRow = await dbQuery.get("SELECT value FROM app_session WHERE key = 'current_lockscreen_assignment'");
     if (activeRow && activeRow.value) {
       const prev = JSON.parse(activeRow.value);
-      if (prev && prev.yymmdd === yymmdd) {
-        nextSeq = (prev.seq || 0) + 1;
+      if (prev) {
+        prevAssignment = prev;
+        if (prev.yymmdd === yymmdd) {
+          nextSeq = (prev.seq || 0) + 1;
+        }
       }
     }
   } catch (e) {}
+
+  // Archive previous assignment into lockscreen_recent_questions so it is never lost
+  if (prevAssignment && prevAssignment.question) {
+    try {
+      await saveRecentLockscreenSubmission({
+        question: prevAssignment.question,
+        userAnswer: prevAssignment.userAnswer || '',
+        gradingResult: prevAssignment.gradingResult || null,
+        hint: prevAssignment.hint || ''
+      });
+    } catch (archiveErr) {
+      console.warn('[pastExamService] Failed to archive previous assignment:', archiveErr.message);
+    }
+  }
 
   const lockscreenId = `LOCK${yymmdd}_${nextSeq}`;
   const newQuestion = await getRandomLockscreenExamQuestion();
@@ -264,6 +282,13 @@ export async function getActiveLockscreenAssignment(forceNew = false) {
 
   try {
     await saveSessionValue('current_lockscreen_assignment', JSON.stringify(newAssignment));
+    // Immediately register new assignment to recent questions so it is preserved
+    await saveRecentLockscreenSubmission({
+      question: newAssignment.question,
+      userAnswer: newAssignment.userAnswer || '',
+      gradingResult: newAssignment.gradingResult || null,
+      hint: newAssignment.hint || ''
+    });
     console.log(`[pastExamService] Synchronized lockscreen assignment active: ${lockscreenId} - [${newQuestion.sessionName} 제1교시 ${newQuestion.number}번]`);
   } catch (saveErr) {
     console.warn('[pastExamService] Failed to save active assignment:', saveErr.message);
@@ -365,6 +390,11 @@ export async function saveRecentLockscreenSubmission({ question, userAnswer, gra
       list[existingIndex] = {
         ...list[existingIndex],
         ...entry,
+        question: {
+          ...list[existingIndex].question,
+          ...entry.question,
+          lockscreen_id: entry.question?.lockscreen_id || list[existingIndex].question?.lockscreen_id
+        },
         userAnswer: entry.userAnswer || list[existingIndex].userAnswer || '',
         gradingResult: entry.gradingResult || list[existingIndex].gradingResult || null,
         hint: entry.hint || list[existingIndex].hint || ''
@@ -374,9 +404,9 @@ export async function saveRecentLockscreenSubmission({ question, userAnswer, gra
       list.unshift(entry);
     }
 
-    // Retain only the 10 most recent questions
-    if (list.length > 10) {
-      list = list.slice(0, 10);
+    // Retain up to 20 most recent questions
+    if (list.length > 20) {
+      list = list.slice(0, 20);
     }
 
     await saveSessionValue('lockscreen_recent_questions', JSON.stringify(list));

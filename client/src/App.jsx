@@ -4364,6 +4364,37 @@ export default function App() {
       clearTimeout(lockscreenSyncTimeoutRef.current);
       lockscreenSyncTimeoutRef.current = null;
     }
+
+    // Save current question state before moving to the next
+    if (lockscreenQuestionRef.current) {
+      const curQ = lockscreenQuestionRef.current;
+      saveLockscreenAnswerForQuestion(curQ, lockscreenUserAnswer, lockscreenGradingResult, lockscreenHint);
+      setRecentLockscreenQuestions(prev => {
+        const id = curQ.id || `${curQ.sessionName}_${curQ.number}` || curQ.question;
+        const exists = (prev || []).some(item => (item.id || item.question?.id || `${item.question?.sessionName}_${item.question?.number}`) === id);
+        if (exists) {
+          return (prev || []).map(item => {
+            const itemQId = item.id || item.question?.id || `${item.question?.sessionName}_${item.question?.number}`;
+            return itemQId === id ? {
+              ...item,
+              question: { ...curQ },
+              userAnswer: lockscreenUserAnswer || item.userAnswer || '',
+              gradingResult: lockscreenGradingResult || item.gradingResult || null,
+              hint: lockscreenHint || item.hint || ''
+            } : item;
+          });
+        }
+        return [{
+          id,
+          question: { ...curQ },
+          userAnswer: lockscreenUserAnswer || '',
+          gradingResult: lockscreenGradingResult || null,
+          hint: lockscreenHint || '',
+          updatedAt: Date.now()
+        }, ...(prev || [])];
+      });
+    }
+
     // If forward history exists
     if (lockscreenHistoryIndexRef.current < lockscreenHistoryRef.current.length - 1) {
       const nextIdx = lockscreenHistoryIndexRef.current + 1;
@@ -18863,56 +18894,86 @@ ${itemsStr}
                           <div className="space-y-1 pt-1">
                             {(() => {
                               const map = new Map();
-                              // 1. Maintain fixed order of recentLockscreenQuestions
-                              (recentLockscreenQuestions || []).forEach(item => {
-                                if (item && item.question) {
-                                  const key = getLockscreenQuestionKey(item.question);
-                                  if (key && !map.has(key)) {
-                                    if (lockscreenQuestion && getLockscreenQuestionKey(lockscreenQuestion) === key) {
-                                      map.set(key, {
-                                        ...item,
-                                        userAnswer: (typeof lockscreenUserAnswer === 'string' && lockscreenUserAnswer !== '') ? lockscreenUserAnswer : (item.userAnswer || ''),
-                                        gradingResult: (lockscreenGradingResult !== undefined && lockscreenGradingResult !== null) ? lockscreenGradingResult : (item.gradingResult || null),
-                                        hint: lockscreenHint || item.hint || ''
-                                      });
-                                    } else {
-                                      map.set(key, item);
-                                    }
-                                  }
-                                }
-                              });
+                              const savedAnswers = getLockscreenAnswersMap();
 
-                              // 2. Only if the current question is brand new and not yet in the list, append it
-                              if (lockscreenQuestion) {
-                                const currentKey = getLockscreenQuestionKey(lockscreenQuestion);
-                                if (currentKey && !map.has(currentKey)) {
-                                  map.set(currentKey, {
-                                    id: currentKey,
-                                    question: lockscreenQuestion,
-                                    userAnswer: lockscreenUserAnswer || '',
-                                    gradingResult: lockscreenGradingResult || null,
-                                    hint: lockscreenHint || ''
+                              // Helper to register an item into map with merged state
+                              const registerItem = (q, extra = {}) => {
+                                if (!q) return;
+                                const key = getLockscreenQuestionKey(q);
+                                if (!key) return;
+                                const saved = savedAnswers[key] || {};
+                                const isCur = lockscreenQuestion && getLockscreenQuestionKey(lockscreenQuestion) === key;
+                                const currentData = {
+                                  id: key,
+                                  question: {
+                                    ...q,
+                                    lockscreen_id: q.lockscreen_id || (isCur ? lockscreenQuestion?.lockscreen_id : undefined) || extra.lockscreen_id || saved.question?.lockscreen_id
+                                  },
+                                  userAnswer: isCur && typeof lockscreenUserAnswer === 'string' && lockscreenUserAnswer !== '' 
+                                    ? lockscreenUserAnswer 
+                                    : (extra.userAnswer || saved.userAnswer || ''),
+                                  gradingResult: isCur && lockscreenGradingResult 
+                                    ? lockscreenGradingResult 
+                                    : (extra.gradingResult || saved.gradingResult || null),
+                                  hint: isCur && lockscreenHint 
+                                    ? lockscreenHint 
+                                    : (extra.hint || saved.hint || '')
+                                };
+
+                                if (!map.has(key)) {
+                                  map.set(key, currentData);
+                                } else {
+                                  // Update with richer info if already present
+                                  const prev = map.get(key);
+                                  map.set(key, {
+                                    ...prev,
+                                    ...currentData,
+                                    question: {
+                                      ...prev.question,
+                                      ...currentData.question,
+                                      lockscreen_id: currentData.question.lockscreen_id || prev.question.lockscreen_id
+                                    },
+                                    userAnswer: currentData.userAnswer || prev.userAnswer || '',
+                                    gradingResult: currentData.gradingResult || prev.gradingResult || null,
+                                    hint: currentData.hint || prev.hint || ''
                                   });
                                 }
+                              };
+
+                              // 1. Current active question first
+                              if (lockscreenQuestion) {
+                                registerItem(lockscreenQuestion, {
+                                  userAnswer: lockscreenUserAnswer,
+                                  gradingResult: lockscreenGradingResult,
+                                  hint: lockscreenHint
+                                });
                               }
 
-                              // 3. Fallback history if needed
-                              (lockscreenHistory || []).forEach(q => {
-                                if (q) {
-                                  const key = getLockscreenQuestionKey(q);
-                                  if (key && !map.has(key)) {
-                                    const saved = getLockscreenAnswersMap()[key];
-                                    map.set(key, {
-                                      id: key,
-                                      question: q,
-                                      userAnswer: saved?.userAnswer || '',
-                                      gradingResult: saved?.gradingResult || null,
-                                      hint: saved?.hint || ''
-                                    });
-                                  }
+                              // 2. Lockscreen history in current session (reverse order so recent first)
+                              [...(lockscreenHistory || [])].reverse().forEach(q => {
+                                registerItem(q);
+                              });
+
+                              // 3. Server-provided recent lockscreen questions
+                              (recentLockscreenQuestions || []).forEach(item => {
+                                if (item && item.question) {
+                                  registerItem(item.question, item);
                                 }
                               });
-                              const items = Array.from(map.values()).slice(0, 10);
+
+                              // 4. Sort: Today's LOCK assignments first (sorted descending by sequence), then other past questions
+                              const allItems = Array.from(map.values());
+                              const lockItems = allItems.filter(it => it.question?.lockscreen_id && String(it.question.lockscreen_id).startsWith('LOCK'));
+                              const otherItems = allItems.filter(it => !it.question?.lockscreen_id || !String(it.question.lockscreen_id).startsWith('LOCK'));
+
+                              // Sort lock items descending by lockscreen_id (e.g. LOCK260927_3, LOCK260927_2, LOCK260927_1...)
+                              lockItems.sort((a, b) => {
+                                const idA = String(a.question.lockscreen_id);
+                                const idB = String(b.question.lockscreen_id);
+                                return idB.localeCompare(idA, undefined, { numeric: true });
+                              });
+
+                              const items = [...lockItems, ...otherItems].slice(0, 15);
 
                               if (items.length === 0) {
                                 return (
@@ -18925,7 +18986,8 @@ ${itemsStr}
                               return items.map((item, idx) => {
                                 const q = item.question;
                                 const isCurrent = (q.id && q.id === lockscreenQuestion?.id) ||
-                                  (q.sessionName === lockscreenQuestion?.sessionName && q.number === lockscreenQuestion?.number);
+                                  (q.sessionName === lockscreenQuestion?.sessionName && q.number === lockscreenQuestion?.number) ||
+                                  (q.lockscreen_id && q.lockscreen_id === lockscreenQuestion?.lockscreen_id);
                                 const score = item.gradingResult?.score;
                                 const hasScore = typeof score === 'number';
 
@@ -18941,9 +19003,21 @@ ${itemsStr}
                                     }`}
                                   >
                                     <div className="flex items-center justify-between gap-1">
-                                      <span className="text-[11px] font-bold text-indigo-300">
-                                        {q.sessionName || '기출'} 제1교시 {q.number ? `${q.number}번` : ''}
-                                      </span>
+                                      <div className="flex items-center gap-1.5 overflow-hidden">
+                                        {q.lockscreen_id && (
+                                          <span className="text-[9px] font-mono px-1.5 py-0.5 bg-emerald-950 text-emerald-300 border border-emerald-500/40 rounded-md font-black shrink-0 shadow-sm">
+                                            {q.lockscreen_id}
+                                          </span>
+                                        )}
+                                        <span className="text-[11px] font-bold text-indigo-300 truncate">
+                                          {q.sessionName || '기출'} 제1교시 {q.number ? `${q.number}번` : ''}
+                                        </span>
+                                        {isCurrent && (
+                                          <span className="text-[9px] font-extrabold text-amber-400 bg-amber-950/70 border border-amber-500/30 px-1 rounded shrink-0">
+                                            현재
+                                          </span>
+                                        )}
+                                      </div>
                                       {hasScore ? (
                                         <span className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded-md ${
                                           score >= 8 ? 'bg-emerald-950 text-emerald-300 border border-emerald-500/40' :
