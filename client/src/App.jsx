@@ -7067,10 +7067,16 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
   const tabletSwipeStartRef = useRef({ x: 0, y: 0, active: false });
 
   // PC / Desktop Nav panel collapse & expand state
-  // In full-screen modals, sidebar defaults to collapsed (false) for edge-to-edge view.
-  // On the main dashboard, sidebar defaults to expanded (true).
-  const [modalNavOpen, setModalNavOpen] = useState(false);
-  const [dashboardNavOpen, setDashboardNavOpen] = useState(true);
+  // Defaults to expanded (true) so clicking buttons (공식, 표, 앞글자, 개요 등) never causes the sidebar to automatically hide.
+  // The user can freely collapse or expand the sidebar at any time via the toggle buttons.
+  const [desktopNavOpen, setDesktopNavOpen] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem('anti_desktop_nav_open');
+      return saved !== null ? saved === 'true' : true;
+    } catch (e) {
+      return true;
+    }
+  });
 
   // Check if current screen qualifies as tablet (recalculated when window resizes)
   const isTabletScreen = isDesktop && window.innerWidth <= 1400;
@@ -18642,17 +18648,21 @@ ${itemsStr}
 
   const isDesktopNavOpen = isTabletScreen
     ? !tabletNavHidden
-    : (isAnyFullScreenModalOpen ? modalNavOpen : dashboardNavOpen);
+    : desktopNavOpen;
 
   const toggleDesktopNav = useCallback(() => {
     if (isTabletScreen) {
       setTabletNavHidden(prev => !prev);
-    } else if (isAnyFullScreenModalOpen) {
-      setModalNavOpen(prev => !prev);
     } else {
-      setDashboardNavOpen(prev => !prev);
+      setDesktopNavOpen(prev => {
+        const next = !prev;
+        try {
+          sessionStorage.setItem('anti_desktop_nav_open', String(next));
+        } catch (e) {}
+        return next;
+      });
     }
-  }, [isTabletScreen, isAnyFullScreenModalOpen]);
+  }, [isTabletScreen]);
 
   return (
     <div className="min-h-screen bg-slateCustom-950 pb-16 flex flex-col justify-start w-full max-w-full overflow-x-hidden">
