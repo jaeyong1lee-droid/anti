@@ -316,6 +316,26 @@ if (hasSessionStorageNavLeak) {
   console.log('  ➜ [PASS] 좌측 네비게이션 메뉴 접힘/펼침 상태가 sessionStorage가 아닌 localStorage에 100% 영구 저장 및 복원됨 확인!');
 }
 
+
+// [TEST 11] 기술사 정통 4단계 계층화(### 1. -> (1) -> ① -> · ) 서식 지침 무결성 검증
+console.log('\n[TEST 11] 기술사 정통 4단계 계층화(### 1. -> (1) -> ① -> · ) 서식 지침 무결성 검증...');
+const otherStdSrc = fs.readFileSync(path.resolve('server/plugins/otherStandards.js'), 'utf8');
+const genStdSrc = fs.readFileSync(path.resolve('server/plugins/generationStandards.js'), 'utf8');
+const serverLatexSrc = fs.readFileSync(path.resolve('server/utils/latexUtils.js'), 'utf8');
+const clientLatexSrc = fs.readFileSync(path.resolve('client/src/utils/latexUtils.js'), 'utf8');
+
+const hasOtherStd = otherStdSrc.includes('professional_engineer_hierarchy_standard');
+const hasGenStd = genStdSrc.includes('professional_engineer_hierarchy_standard');
+const hasServerLatex = serverLatexSrc.includes('기술사 4단계 계층화 서식 철칙');
+const hasClientLatex = clientLatexSrc.includes('기술사 4단계 계층화 서식 철칙');
+const hasOldAutonomyLeak = otherStdSrc.includes('format_autonomy_standard');
+
+if (!hasOtherStd || !hasGenStd || !hasServerLatex || !hasClientLatex || hasOldAutonomyLeak) {
+  failedCount++;
+  console.error(`  ❌ [계층화 지침 누락 감지]: otherStd(${hasOtherStd}), genStd(${hasGenStd}), serverLatex(${hasServerLatex}), clientLatex(${hasClientLatex}), oldAutonomyLeak(${hasOldAutonomyLeak})`);
+} else {
+  console.log('  ➜ [PASS] AI 튜터, 문제 출제 지침, LaTeX 프롬프트에 기술사 4단계 계층화 서식 표준 100% 정상 탑재 확인!');
+}
 console.log('\n==========================================================');
 if (failedCount > 0) {
   console.error(`  ❌ 자가 개선 테스터 검증 실패 - ${failedCount}개의 런타임 위험 감지됨!`);
