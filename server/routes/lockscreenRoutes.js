@@ -268,8 +268,10 @@ router.post('/solve', async (req, res) => {
       await saveSessionValue('lockscreen_past_exam_history', JSON.stringify(history));
     }
 
+    const isSolved = gradingResult && typeof gradingResult.score === 'number' && !(gradingResult.score === 0 && gradingResult.reason?.includes('입력되지 않았습니다'));
+
     if (question) {
-      saveRecentLockscreenSubmission({
+      await saveRecentLockscreenSubmission({
         question,
         userAnswer: userAnswer || '',
         gradingResult: gradingResult || null,
@@ -277,8 +279,14 @@ router.post('/solve', async (req, res) => {
       }).catch(() => {});
     }
 
-    // Advance to next lockscreen assignment for the day (e.g. LOCK260923_2)
-    const nextAssignment = await getActiveLockscreenAssignment(true);
+    // Only if solved, mark as solved and advance to next lockscreen assignment
+    let nextAssignment;
+    if (isSolved) {
+      await updateActiveLockscreenAnswer(userAnswer || '', gradingResult, hint || '', question).catch(() => {});
+      nextAssignment = await getActiveLockscreenAssignment(true);
+    } else {
+      nextAssignment = await getActiveLockscreenAssignment(false);
+    }
 
     res.json({ success: true, nextAssignment });
   } catch (err) {

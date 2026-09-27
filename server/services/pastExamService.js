@@ -208,45 +208,38 @@ export function isLockscreenAssignmentSolved(assignment) {
 export async function getActiveLockscreenAssignment(forceNew = false) {
   const { dateStr, yymmdd } = getKSTDateInfo();
 
-  if (!forceNew) {
-    try {
-      const activeRow = await dbQuery.get("SELECT value FROM app_session WHERE key = 'current_lockscreen_assignment'");
-      if (activeRow && activeRow.value) {
-        const assignment = JSON.parse(activeRow.value);
-        if (assignment && assignment.lockscreen_id && assignment.question) {
-          // 1) If assignment matches today's date, return it directly
-          if (assignment.yymmdd === yymmdd) {
-            return assignment;
-          }
-          // 2) If assignment is from a past date but was NOT solved yet,
-          // do NOT replace it! Unsolved questions persist across date changes until solved or skipped.
-          const isSolved = isLockscreenAssignmentSolved(assignment);
-          if (!isSolved) {
-            console.log(`[pastExamService] Retaining unsolved lockscreen assignment across date change: ${assignment.lockscreen_id} (${assignment.question?.sessionName || ''} ${assignment.question?.number ? `${assignment.question.number}번` : ''} - ${assignment.question?.question || ''})`);
-            return assignment;
-          }
-        }
-      }
-    } catch (e) {
-      console.warn('[pastExamService] Failed to read active assignment:', e.message);
-    }
-  }
-
-  // Need new assignment: calculate sequence number for today
-  let nextSeq = 1;
-  let prevAssignment = null;
+  let activeAssignment = null;
   try {
     const activeRow = await dbQuery.get("SELECT value FROM app_session WHERE key = 'current_lockscreen_assignment'");
     if (activeRow && activeRow.value) {
-      const prev = JSON.parse(activeRow.value);
-      if (prev) {
-        prevAssignment = prev;
-        if (prev.yymmdd === yymmdd) {
-          nextSeq = (prev.seq || 0) + 1;
-        }
-      }
+      activeAssignment = JSON.parse(activeRow.value);
     }
-  } catch (e) {}
+  } catch (e) {
+    console.warn('[pastExamService] Failed to read active assignment:', e.message);
+  }
+
+  // [🚨 절대 철칙] 현재 배정된 문제가 풀리지 않은 경우(미제출/미채점):
+  // 사용자의 요청이나 forceNew 여부, 날짜 변경과 무관하게 새로운 ID를 생성하지 않고, 풀지 않은 최신 ID 문제를 엄격히 유지/반환한다.
+  // ("풀지 않으면 진행시키지 말고 풀지 않은 가장 최신 id를 보여줘... 2를 풀면 그때 보여줘야지")
+  if (activeAssignment && activeAssignment.lockscreen_id && activeAssignment.question) {
+    const isSolved = isLockscreenAssignmentSolved(activeAssignment);
+    if (!isSolved) {
+      console.log(`[pastExamService] Active lockscreen assignment ${activeAssignment.lockscreen_id} is UNSOLVED. Rejecting progression and retaining current question.`);
+      return activeAssignment;
+    }
+
+    // 이미 풀린 문제인 경우: forceNew가 아니면서 오늘 날짜이면 그대로 반환 (채점 결과 확인용)
+    if (!forceNew && activeAssignment.yymmdd === yymmdd) {
+      return activeAssignment;
+    }
+  }
+
+  // 현재 문제가 풀렸거나(isSolved) 아직 배정된 문제가 없을 때만 다음 번호(nextSeq) 생성 진행
+  let nextSeq = 1;
+  let prevAssignment = activeAssignment;
+  if (prevAssignment && prevAssignment.yymmdd === yymmdd) {
+    nextSeq = (prevAssignment.seq || 0) + 1;
+  }
 
   // Archive previous assignment into lockscreen_recent_questions so it is never lost
   if (prevAssignment && prevAssignment.question) {

@@ -3712,37 +3712,25 @@ export default function App() {
         const contentType = res.headers.get('content-type') || '';
         if (contentType.includes('application/json')) {
           const data = await res.json();
-          if (data && data.success && Array.isArray(data.recent) && data.recent.length > 0) {
-            setRecentLockscreenQuestions(prev => {
-              const map = new Map();
-              data.recent.forEach(item => {
-                if (item && item.question) {
-                  const id = item.id || item.question.id || `${item.question.sessionName}_${item.question.number}`;
-                  map.set(id, item);
-                  const existingMap = getLockscreenAnswersMap();
-                  const key = getLockscreenQuestionKey(item.question);
-                  if (key) {
-                    existingMap[key] = {
-                      question: item.question,
-                      userAnswer: item.userAnswer || existingMap[key]?.userAnswer || '',
-                      gradingResult: item.gradingResult || existingMap[key]?.gradingResult || null,
-                      hint: item.hint || existingMap[key]?.hint || '',
-                      updatedAt: item.updatedAt || Date.now()
-                    };
-                    localStorage.setItem('anti_lockscreen_answers_map', JSON.stringify(existingMap));
-                  }
-                }
-              });
-              (prev || []).forEach(item => {
-                if (item && item.question) {
-                  const id = item.id || item.question.id || `${item.question.sessionName}_${item.question.number}`;
-                  if (!map.has(id)) {
-                    map.set(id, item);
-                  }
-                }
-              });
-              return Array.from(map.values()).slice(0, 10);
+          if (data && data.success && Array.isArray(data.recent)) {
+            const validRecent = data.recent.filter(item => item && item.question);
+            const existingMap = getLockscreenAnswersMap();
+            validRecent.forEach(item => {
+              const key = getLockscreenQuestionKey(item.question);
+              if (key) {
+                existingMap[key] = {
+                  question: item.question,
+                  userAnswer: item.userAnswer || existingMap[key]?.userAnswer || '',
+                  gradingResult: item.gradingResult || existingMap[key]?.gradingResult || null,
+                  hint: item.hint || existingMap[key]?.hint || '',
+                  updatedAt: item.updatedAt || Date.now()
+                };
+              }
             });
+            try {
+              localStorage.setItem('anti_lockscreen_answers_map', JSON.stringify(existingMap));
+            } catch (e) {}
+            setRecentLockscreenQuestions(validRecent.slice(0, 10));
           }
         }
       }
@@ -4199,7 +4187,9 @@ export default function App() {
           // If question changed or not yet set
           // [🚨 절대 보호] 이미 로드된 문제가 있을 때, 사용자가 '다른 문제 보기'를 명시적으로 누른 경우(forceNew === true)가 아니면
           // 백그라운드 fetchLockscreenQuestion이 멋대로 다른 문제로 덮어쓰지 못하도록 방어한다.
-          if (!currentId || forceNew) {
+          // 단, 현재 로컬 ID가 서버의 최신 동기화 ID와 다르고 아직 작성 중인 답안이 없는 경우(stale/orphan ID)에는 서버의 최신 할당 문제로 즉시 정제한다.
+          const isStaleOrDeletedId = Boolean(currentId && serverId && currentId !== serverId && !lockscreenUserAnswer?.trim());
+          if (!currentId || forceNew || isStaleOrDeletedId) {
             setLockscreenQuestion(qWithId);
             try {
               localStorage.setItem('anti_current_unsolved_lockscreen_question', JSON.stringify(qWithId));
@@ -4217,7 +4207,12 @@ export default function App() {
               loadQuestionAnswerState(qWithId);
             }
 
-            if (addToHistory) {
+            if (isStaleOrDeletedId) {
+              lockscreenHistoryRef.current = [qWithId];
+              lockscreenHistoryIndexRef.current = 0;
+              setLockscreenHistory([qWithId]);
+              setLockscreenHistoryIndex(0);
+            } else if (addToHistory) {
               const nextHistory = [
                 ...lockscreenHistoryRef.current.slice(0, lockscreenHistoryIndexRef.current + 1),
                 qWithId
@@ -4329,8 +4324,6 @@ export default function App() {
     const currentHnt = lockscreenHint;
 
     localStorage.setItem('anti_last_lockscreen_submit_time', String(Date.now()));
-    localStorage.removeItem('anti_current_unsolved_lockscreen_question');
-    clearLockscreenAnswerForQuestion(lockscreenQuestion);
     sessionStorage.removeItem('anti_lockscreen_modal_open');
     setShowLockscreenQuiz(false);
     showLockscreenQuizRef.current = false;
@@ -4340,21 +4333,28 @@ export default function App() {
     setLockscreenHint('');
     setShowLockscreenHint(false);
     setShowRecentLockscreenDropdown(false);
-    if (qId) {
-      try {
-        await fetch(`${API_BASE}/api/lockscreen/solve`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            id: qId,
-            question: currentQ,
-            userAnswer: currentAns,
-            gradingResult: currentRes,
-            hint: currentHnt
-          })
-        });
-      } catch (e) {
-        console.warn('Failed to record lockscreen solved:', e);
+
+    // [🚨 절대 보호] 문제가 실제로 채점/풀이된 경우에만 서버에 solve를 전송하고 로컬 미해결 캐시를 정리
+    const isSolved = currentRes && typeof currentRes.score === 'number' && !(currentRes.score === 0 && currentRes.reason?.includes('입력되지 않았습니다'));
+    if (isSolved) {
+      localStorage.removeItem('anti_current_unsolved_lockscreen_question');
+      clearLockscreenAnswerForQuestion(currentQ);
+      if (qId) {
+        try {
+          await fetch(`${API_BASE}/api/lockscreen/solve`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              id: qId,
+              question: currentQ,
+              userAnswer: currentAns,
+              gradingResult: currentRes,
+              hint: currentHnt
+            })
+          });
+        } catch (e) {
+          console.warn('Failed to record lockscreen solved:', e);
+        }
       }
     }
   };
@@ -4406,6 +4406,14 @@ export default function App() {
         localStorage.setItem('anti_current_unsolved_lockscreen_question', JSON.stringify(q));
       } catch (e) {}
       loadQuestionAnswerState(q);
+      return;
+    }
+
+    // [🚨 절대 철칙] 현재 배정된 문제가 풀리지 않은 경우(미제출/미채점): 새 문제(ID)로 임의 진행 불가!
+    // ("풀지 않으면 진행시키지 말고 풀지 않은 가장 최신 id를 보여줘... 2를 풀면 그때 보여줘야지")
+    const isCurrentSolved = lockscreenGradingResult && typeof lockscreenGradingResult.score === 'number' && !(lockscreenGradingResult.score === 0 && lockscreenGradingResult.reason?.includes('입력되지 않았습니다'));
+    if (!isCurrentSolved) {
+      showNotification('현재 문제의 풀이 및 채점이 완료되어야 다음 문제를 받을 수 있습니다. 🔒', 'info');
       return;
     }
 
@@ -18963,10 +18971,29 @@ ${itemsStr}
 
                               // 4. Sort: Today's LOCK assignments first (sorted descending by sequence), then other past questions
                               const allItems = Array.from(map.values());
-                              const lockItems = allItems.filter(it => it.question?.lockscreen_id && String(it.question.lockscreen_id).startsWith('LOCK'));
+
+                              // Determine maximum valid sequence number for active assignment
+                              let maxValidSeq = Infinity;
+                              const activeLockId = lockscreenQuestion?.lockscreen_id;
+                              if (activeLockId && activeLockId.includes('_')) {
+                                const parsedSeq = parseInt(activeLockId.split('_')[1], 10);
+                                if (!isNaN(parsedSeq)) {
+                                  maxValidSeq = parsedSeq;
+                                }
+                              }
+
+                              const lockItems = allItems.filter(it => {
+                                const lId = it.question?.lockscreen_id;
+                                if (!lId || !String(lId).startsWith('LOCK')) return false;
+                                if (lId.includes('_')) {
+                                  const s = parseInt(lId.split('_')[1], 10);
+                                  if (!isNaN(s) && s > maxValidSeq) return false;
+                                }
+                                return true;
+                              });
                               const otherItems = allItems.filter(it => !it.question?.lockscreen_id || !String(it.question.lockscreen_id).startsWith('LOCK'));
 
-                              // Sort lock items descending by lockscreen_id (e.g. LOCK260927_3, LOCK260927_2, LOCK260927_1...)
+                              // Sort lock items descending by lockscreen_id (e.g. LOCK260927_2, LOCK260927_1, LOCK260927_0...)
                               lockItems.sort((a, b) => {
                                 const idA = String(a.question.lockscreen_id);
                                 const idB = String(b.question.lockscreen_id);
