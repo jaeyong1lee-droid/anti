@@ -884,7 +884,7 @@ export default function TopicSlidePlugin({
                 <div className="border-b border-slate-800 pb-2.5 mb-2.5 shrink-0">
                   <h1 className="text-base sm:text-lg md:text-xl font-black text-white tracking-tight flex items-center gap-2">
                     <span className="text-amber-400 font-mono">0{currentSlideIndex + 1}.</span>
-                    <span>{currentAiSlide.title}</span>
+                    <span><SlideLatex text={currentAiSlide.title} /></span>
                   </h1>
                   {currentAiSlide.key_takeaway && (
                     <p className="text-xs sm:text-sm text-amber-300/90 font-medium mt-1 pl-4 border-l-2 border-amber-500/60 leading-relaxed">
@@ -905,11 +905,11 @@ export default function TopicSlidePlugin({
                         <div className="flex items-center gap-2 mb-1">
                           {b.badge && (
                             <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-950/80 text-amber-300 border border-amber-500/30 shrink-0">
-                              {b.badge}
+                              <SlideLatex text={b.badge} />
                             </span>
                           )}
                           <h4 className="text-xs sm:text-sm font-bold text-white group-hover:text-amber-300 transition-colors">
-                            {b.title}
+                            <SlideLatex text={b.title} />
                           </h4>
                         </div>
                         <div className="text-[11px] sm:text-xs text-slate-300 leading-relaxed pl-1">
@@ -953,7 +953,9 @@ export default function TopicSlidePlugin({
                                   : 'bg-[#0E1626] border-slate-800 text-slate-300'
                               }`}
                             >
-                              <span className="text-[9px] font-bold text-slate-400 uppercase">{card.label}</span>
+                              <span className="text-[9px] font-bold text-slate-400 tracking-wider">
+                                <SlideLatex text={card.label} />
+                              </span>
                               <span className="text-xs font-black mt-1 line-clamp-3">
                                 <SlideLatex text={card.content || ''} />
                               </span>
