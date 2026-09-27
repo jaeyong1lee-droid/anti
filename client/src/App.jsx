@@ -18580,6 +18580,20 @@ ${itemsStr}
     loadAnswersheetQuestions().catch(e => console.warn('[Mount Restore] Failed to load answersheet:', e));
   }, []);
 
+  const toggleDesktopNav = useCallback(() => {
+    if (isTabletScreen) {
+      setTabletNavHidden(prev => !prev);
+    } else {
+      setDesktopNavOpen(prev => {
+        const next = !prev;
+        try {
+          sessionStorage.setItem('anti_desktop_nav_open', String(next));
+        } catch (e) {}
+        return next;
+      });
+    }
+  }, [isTabletScreen]);
+
   if (!isPinVerified) {
     return (
       <div className="fixed inset-0 z-[9999999] flex flex-col items-center justify-center bg-slateCustom-950 text-slate-100 p-4 font-sans select-none">
@@ -18655,20 +18669,6 @@ ${itemsStr}
   const isDesktopNavOpen = isTabletScreen
     ? !tabletNavHidden
     : desktopNavOpen;
-
-  const toggleDesktopNav = useCallback(() => {
-    if (isTabletScreen) {
-      setTabletNavHidden(prev => !prev);
-    } else {
-      setDesktopNavOpen(prev => {
-        const next = !prev;
-        try {
-          sessionStorage.setItem('anti_desktop_nav_open', String(next));
-        } catch (e) {}
-        return next;
-      });
-    }
-  }, [isTabletScreen]);
 
   return (
     <div className="min-h-screen bg-slateCustom-950 pb-16 flex flex-col justify-start w-full max-w-full overflow-x-hidden">

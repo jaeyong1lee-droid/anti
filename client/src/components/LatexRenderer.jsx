@@ -183,12 +183,58 @@ export const LatexRenderer = React.memo(function LatexRenderer({
   isExplanation = false
 }) {
   const containerRef = useRef(null);
+  const longPressTimer = useRef(null);
+  const isLongPressActive = useRef(false);
+  const startPos = useRef({ x: 0, y: 0 });
+  const iframeRef = useRef(null);
 
   useEffect(() => {
     if (window.__restoreAllTableColumnWidths && containerRef.current) {
       window.__restoreAllTableColumnWidths(containerRef.current);
     }
   }, [text]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && typeof window.__restoreAllTableColumnWidths === 'function') {
+      window.__restoreAllTableColumnWidths(document);
+      const timer = setTimeout(() => {
+        if (window.__restoreAllTableColumnWidths) {
+          window.__restoreAllTableColumnWidths(document);
+        }
+      }, 60);
+      return () => clearTimeout(timer);
+    }
+  }, [text, katexLoaded, isMarkdown]);
+
+  // Manage iframe resize event listener and message listener cleanly
+  useEffect(() => {
+    const handleMessage = (event) => {
+      if (event.data && event.data.type === 'mathRendered') {
+        const iframe = iframeRef.current;
+        if (iframe && iframe.contentWindow === event.source) {
+          try {
+            const doc = iframe.contentWindow?.document;
+            if (doc && doc.body) {
+              const height = Math.max(
+                doc.body.scrollHeight,
+                doc.documentElement.scrollHeight,
+                doc.body.offsetHeight,
+                doc.documentElement.offsetHeight
+              );
+              iframe.style.height = (height + 28) + 'px';
+            }
+          } catch (err) {
+            // ignore
+          }
+        }
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => {
+      window.removeEventListener('message', handleMessage);
+    };
+  }, []);
 
   if (!text) return null;
 
@@ -338,11 +384,6 @@ export const LatexRenderer = React.memo(function LatexRenderer({
       </div>
     );
   }
-
-  const longPressTimer = useRef(null);
-  const isLongPressActive = useRef(false);
-  const startPos = useRef({ x: 0, y: 0 });
-  const iframeRef = useRef(null);
 
   const triggerAddFormula = (katexEl) => {
     const annotation = katexEl.querySelector('annotation[encoding="application/x-tex"]');
@@ -501,50 +542,6 @@ export const LatexRenderer = React.memo(function LatexRenderer({
   }
 
   const isHeavy = isHeavyHtml(renderText) && !isRealTimeTutor && formulaSource !== 'tutor';
-
-  // Manage iframe resize event listener and message listener cleanly
-  useEffect(() => {
-    if (!isHeavy) return;
-
-    const handleMessage = (event) => {
-      if (event.data && event.data.type === 'mathRendered') {
-        const iframe = iframeRef.current;
-        if (iframe && iframe.contentWindow === event.source) {
-          try {
-            const doc = iframe.contentWindow?.document;
-            if (doc && doc.body) {
-              const height = Math.max(
-                doc.body.scrollHeight,
-                doc.documentElement.scrollHeight,
-                doc.body.offsetHeight,
-                doc.documentElement.offsetHeight
-              );
-              iframe.style.height = (height + 28) + 'px';
-            }
-          } catch (err) {
-            // ignore
-          }
-        }
-      }
-    };
-
-    window.addEventListener('message', handleMessage);
-    return () => {
-      window.removeEventListener('message', handleMessage);
-    };
-  }, [isHeavy, text]);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined' && typeof window.__restoreAllTableColumnWidths === 'function') {
-      window.__restoreAllTableColumnWidths(document);
-      const timer = setTimeout(() => {
-        if (window.__restoreAllTableColumnWidths) {
-          window.__restoreAllTableColumnWidths(document);
-        }
-      }, 60);
-      return () => clearTimeout(timer);
-    }
-  }, [text, katexLoaded, isMarkdown]);
 
   let processedText = renderText;
 

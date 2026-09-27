@@ -21,14 +21,11 @@ export const AcronymQuiz = React.memo(function AcronymQuiz({
   setFloatedTableId = () => {},
   isExam = false
 }) {
-  if (!q.tableData || !q.tableData.rows) {
-    return <div className="text-red-400 text-xs py-2">오류: 앞글자 데이터가 올바르지 않습니다.</div>;
-  }
-
-  const { rows } = q.tableData;
+  const isValidData = Boolean(q && q.tableData && Array.isArray(q.tableData.rows));
+  const rows = isValidData ? q.tableData.rows : [];
   const tableRef = useRef(null);
 
-  const [isMobileView, setIsMobileView] = useState(() => window.innerWidth < 768);
+  const [isMobileView, setIsMobileView] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
 
   useEffect(() => {
     const handleResize = () => {
@@ -50,6 +47,10 @@ export const AcronymQuiz = React.memo(function AcronymQuiz({
     } catch (e) {}
     return { width: 500, height: 450 };
   });
+
+  if (!isValidData) {
+    return <div className="text-red-400 text-xs py-2">오류: 앞글자 데이터가 올바르지 않습니다.</div>;
+  }
 
   const acronymTableUniqueId = `${isExam ? 'exam' : 'review'}_${questionIdx}_acronym`;
   const isFloated = floatedTableId === acronymTableUniqueId;

@@ -8,10 +8,11 @@ export const ReadOnlyTable = React.memo(function ReadOnlyTable({
   katexLoaded, 
   questionIdx = null 
 }) {
-  if (!tableData || !tableData.headers || !tableData.rows) return null;
-  const { headers, rows } = tableData;
+  const isValidTable = Boolean(tableData && Array.isArray(tableData.headers) && Array.isArray(tableData.rows));
+  const headers = isValidTable ? tableData.headers : [];
+  const rows = isValidTable ? tableData.rows : [];
   const colCount = headers.length;
-  const tableKey = getTableStorageKey(headers);
+  const tableKey = isValidTable ? getTableStorageKey(headers) : null;
 
   const [colWidths, setColWidths] = useState(() => {
     if (tableKey && typeof window !== 'undefined') {
@@ -301,6 +302,8 @@ export const ReadOnlyTable = React.memo(function ReadOnlyTable({
       window.addEventListener('mouseup', stopResize);
     }
   }, [questionIdx, colCount, tableKey]);
+
+  if (!isValidTable) return null;
 
   return (
     <div 

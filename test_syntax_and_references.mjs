@@ -115,15 +115,15 @@ try {
   console.error(`  ❌ [CRITICAL FAIL] server/utils/latexUtils.js 런타임 오류 감지: ${err.stack || err.message}`);
 }
 
-// [TEST 3] 프론트엔드 전수 정적 AST 스코프 분석 (Babel AST 기반 미선언 식별자 ReferenceError 0% 검증)
-console.log('\n[TEST 3] 프론트엔드 전수 정적 AST 스코프 분석 (Babel AST 기반 ReferenceError 0% 전수 검증)...');
+// [TEST 3] 프론트엔드 전수 정적 AST 스코프 & React Hooks 무결성 분석 (ReferenceError 0% 및 React #300/#310 훅 규칙 전수 검증)
+console.log('\n[TEST 3] 프론트엔드 전수 정적 AST 스코프 & React Hooks 무결성 분석 (ReferenceError 0% & React #300/#310 훅 규칙 전수 검증)...');
 try {
   const result = execSync('node client/scripts/verify_scope_integrity.cjs', { encoding: 'utf8' });
   console.log('  ' + result.trim().split('\n').join('\n  '));
-  console.log('  ➜ [PASS] Babel AST 기반 정적 스코프 전수 검사 통과 (잠재적 ReferenceError 위험 0건)');
+  console.log('  ➜ [PASS] Babel AST 기반 정적 스코프 & React Hooks 전수 검사 통과 (ReferenceError 및 Hook 규칙 위반 0건)');
 } catch (err) {
   failedCount++;
-  console.error(`  ❌ [CRITICAL ReferenceError 감지]: AST 스코프 검증 실패!\n${err.stdout || err.message}`);
+  console.error(`  ❌ [CRITICAL 런타임 오류 위험 감지]: AST 스코프/훅 검증 실패!\n${err.stdout || err.message}`);
 }
 
 // [TEST 4] 자물쇠(Lock/Unlock) 기능 UI 컴포넌트 실체화 정밀 검증 (Table, Acronym, Overview)
