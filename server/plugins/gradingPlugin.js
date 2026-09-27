@@ -139,13 +139,8 @@ export async function generateAuthoritativeModelAnswer({
 }) {
   const isCalcQuestion = ((colHeader && colHeader.includes('수치 계산 답안')) || category === '계산');
 
-  // 🚨 [모범 답안 원천 보존 및 2중 LLM 낭비 차단]: DB에 유효한 모범 답안(correctAnswer)이 이미 온전히 존재한다면,
-  // 불필요하게 AI를 다시 호출하여 단문 제목으로 왜곡하거나 채점 지연(2중 LLM 호출)을 유발하는 낭비를 원천 차단하고 원래 정답을 즉시 반환합니다.
-  const trimmedAns = (typeof correctAnswer === 'string') ? correctAnswer.trim().replace(/\$/g, '').trim() : '';
-  const isPlaceholder = !trimmedAns || /^(?:\[?\s*[A-Za-z]\s*\]?|\(?\s*[A-Za-z]\s*\)?|\[?\s*INPUT_\d+\s*\]?)$/i.test(trimmedAns);
-  if (!isPlaceholder && !isReevaluation) {
-    return correctAnswer.trim();
-  }
+  // 🚨 [모든 채점에서 풍부한 모범 답안 생성]: 최초 채점/재평가 구분 없이 항상 LLM으로 권위 있는 심층 모범 답안을 생성합니다.
+  // (기존 correctAnswer는 프롬프트의 '기존 기준 요약'으로 시드 역할만 수행)
 
   const modelAnswerTemperature = isCalcQuestion ? 0.1 : (isReevaluation ? 0.85 : 0.7);
 
@@ -159,9 +154,10 @@ ${colHeader ? `- 표/빈칸 구분 제목 (Column Header): ${colHeader}` : ''}
 ${correctAnswer ? `- 기존 기준 요약: ${correctAnswer}` : ''}
 ${explanation ? `- 원보고서 및 전공 본문 해설 (Source Context):\n${explanation.substring(0, 4000)}` : ''}
 
-${isReevaluation ? `🚨 **[원점 재작성 철칙 (Re-evaluation Directive)]**:
+${isReevaluation ? `🚨 **[심층 모범 답안 도출 철칙]**:
 - 기존 요약 문장에 안주하거나 그대로 답습하지 마십시오.
-- 문제의 행/열 제목과 원보고서 본문 해설의 공학적 메커니즘을 원점에서 심층 재분석하여, 한 차원 높은 완성형 표준 모범 답안을 새롭게 도출하십시오.` : ''}
+- 문제의 행/열 제목과 원보고서 본문 해설의 공학적 메커니즘을 원점에서 심층 재분석하여, 한 차원 높은 완성형 표준 모범 답안을 새롭게 도출하십시오.` : `🚨 **[심층 모범 답안 도출 철칙]**:
+- 기존 기준 요약에 그대로 안주하지 말고, 원보고서 본문 해설의 공학적 메커니즘을 심층 분석하여 완성형 표준 모범 답안을 도출하십시오.`}
 
 🚨 **[모범 답안 작성 철칙 - 극도로 중요!]**:
 1. **[범위 제한]**: 표 채우기(Table Quiz) 문항인 경우, 오직 해당 셀(행: ${rowHeader || '해당 행'}, 열: ${colHeader || '해당 열'}) 한 칸에 들어갈 '그 칸만의 고유하고 구체적인 정답 내용'으로만 작성하십시오. 전체 표의 해설이나 다른 행/열 항목까지 합친 전체 비교 리스트를 출력하는 것을 엄격히 금지합니다.
@@ -275,8 +271,13 @@ export async function gradeSubjective({ question, correctAnswer, userAnswer, row
     return { isCorrect: false, score: 0, reason: '출제 및 해설 정보가 부족하여 AI 채점을 진행할 수 없습니다.' };
   }
 
-  if (!isReevaluation && correctAnswer && normalize(userAnswer) === normalize(correctAnswer)) {
-    return { isCorrect: true, score: 10, reason: '텍스트가 모범 답안과 정확히 일치합니다.', suggestedModelAnswer: correctAnswer };
+  if (correctAnswer && normalize(userAnswer) === normalize(correctAnswer)) {
+    // 정확 일치 시에도 풍부한 모범 답안을 생성하여 학습 효과 극대화 (채점 LLM은 스킵하여 속도 최적화)
+    const richModelAnswer = await generateAuthoritativeModelAnswer({
+      question, correctAnswer, rowHeader, colHeader, explanation, category,
+      callLLMWithFailover, gradingStandards, engineeringStandards, isReevaluation
+    });
+    return { isCorrect: true, score: 10, reason: '텍스트가 모범 답안과 정확히 일치합니다.', suggestedModelAnswer: richModelAnswer };
   }
 
   // 1. Generate Authoritative Model Answer (userAnswer is COMPLETELY ISOLATED from prompt)

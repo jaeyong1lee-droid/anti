@@ -5138,15 +5138,7 @@ export default function App() {
         return;
       }
 
-      if (normalize(cleanUser) === normalize(cleanCorrect)) {
-        nextGrading[`${qIdx}_${inputId}`] = {
-          isCorrect: true,
-          score: 10,
-          reason: '모범 답안과 정확히 일치합니다.',
-          suggestedModelAnswer: cleanCorrect
-        };
-        return;
-      }
+      // 정확 일치도 서버로 보내서 풍부한 모범 답안을 생성 (서버에서 채점 LLM 스킵 최적화 적용됨)
       
       let rowHeader = '';
       let colHeader = '';
