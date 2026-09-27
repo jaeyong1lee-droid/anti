@@ -1595,13 +1595,13 @@ router.post('/table/suggest-title-and-refine', async (req, res) => {
       let fallbackHtml = tableHtml;
       const htmlMatch = responseText.match(/"html"\s*:\s*"([\s\S]+?)"/);
       if (htmlMatch && htmlMatch[1]) {
-        fallbackHtml = htmlMatch[1].replace(/\\"/g, '"').replace(/\\n/g, '\n').trim();
+        fallbackHtml = htmlMatch[1].replace(/\\"/g, '"').replace(/(?:\\r\\n|\\n(?!u\b|abla|eq\b|eg\b|otin|geq|leq|sim|cong|parallel|oindent|ot\b|ewline))/g, '\n').trim();
       }
       
       let fallbackMarkdown = null;
       const mdMatch = responseText.match(/"markdown"\s*:\s*"([\s\S]+?)"/);
       if (mdMatch && mdMatch[1]) {
-        fallbackMarkdown = mdMatch[1].replace(/\\"/g, '"').replace(/\\n/g, '\n').replace(/\\\\/g, '\\').trim();
+        fallbackMarkdown = mdMatch[1].replace(/\\"/g, '"').replace(/(?:\\r\\n|\\n(?!u\b|abla|eq\b|eg\b|otin|geq|leq|sim|cong|parallel|oindent|ot\b|ewline))/g, '\n').replace(/\\\\/g, '\\').trim();
       }
 
       res.json({

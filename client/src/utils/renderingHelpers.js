@@ -1209,8 +1209,6 @@ export const cleanAndSanitizeMathText = (rawText) => {
   
   cleaned = healLatexFormulas(cleaned);
 
-  cleaned = cleaned.replace(/_따라서/g, '따라서');
-
   cleaned = cleaned.replace(/\\\[(\s*[\s\S]*?\s*)\\\]/g, (match, math) => {
     return `$$${math}$$`;
   });

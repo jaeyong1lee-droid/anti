@@ -265,9 +265,6 @@ function cleanQuestionJunk(qText) {
   // 2. Delete noun ending guideline & example junk
   cleaned = cleaned.replace(/명사형\s*종결\s*어미\s*\([^)]*\)/gi, '');
   cleaned = cleaned.replace(/명사형\s*종결\s*어미/gi, '');
-  cleaned = cleaned.replace(/\([^)]*~함[^)]*\)/gi, '');
-  cleaned = cleaned.replace(/\([^)]*~저감[^)]*\)/gi, '');
-  cleaned = cleaned.replace(/\([^)]*~최적화[^)]*\)/gi, '');
   cleaned = cleaned.replace(/빈칸\s*(\([A-Z]\)\s*,\s*){2,}\([A-Z]\)에\s*들어갈/gi, '빈칸에 들어갈');
   cleaned = cleaned.replace(/빈칸\s*(\([A-Z]\)\s*,\s*)+\([A-Z]\)/gi, '빈칸');
 
