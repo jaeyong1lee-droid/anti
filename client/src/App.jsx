@@ -4082,6 +4082,11 @@ export default function App() {
               lockscreen_id: serverId
             };
             if (serverId && serverId !== currentId) {
+              // [🚨 절대 보호] 잠금화면 퀴즈 모달이 열려있거나(showLockscreenQuizRef.current) 사용자가 문제를 보고/풀고 있는 중에는
+              // 백그라운드 포커스 동기화로 인해 문제나 답안이 강제로 다른 문제로 넘어가지 않도록 원천 차단한다.
+              if (showLockscreenQuizRef.current || lockscreenQuestionRef.current) {
+                return;
+              }
               console.log(`[Lockscreen Sync] Detected active assignment changed to ${serverId}, syncing across devices...`);
               setLockscreenQuestion(qWithId);
               try {
@@ -4156,7 +4161,9 @@ export default function App() {
           };
 
           // If question changed or not yet set
-          if (!currentId || serverId !== currentId || forceNew) {
+          // [🚨 절대 보호] 이미 로드된 문제가 있을 때, 사용자가 '다른 문제 보기'를 명시적으로 누른 경우(forceNew === true)가 아니면
+          // 백그라운드 fetchLockscreenQuestion이 멋대로 다른 문제로 덮어쓰지 못하도록 방어한다.
+          if (!currentId || forceNew) {
             setLockscreenQuestion(qWithId);
             try {
               localStorage.setItem('anti_current_unsolved_lockscreen_question', JSON.stringify(qWithId));
