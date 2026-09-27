@@ -46,6 +46,48 @@ export const renderMixedText = (text, isMarkdown = false) => {
     return ph;
   });
 
+  // 3.5. 닫히지 않은 고립된 $ 수식 자동 치유 (예: "저항 계수 $F(\mu)", "$T_h", "$i_c = (G_s - 1)/(1 + e)")
+  if (protectedText.includes('$')) {
+    protectedText = protectedText.replace(/\$([a-zA-Z\\][^\$\n\uE000]*?)(?=[\uAC00-\uD7A3\n\uE000]|$)/g, (match, formula) => {
+      let trimmed = formula.trimEnd();
+      let trailingPunct = '';
+      const punctMatch = trimmed.match(/[,.;:]+$/);
+      if (punctMatch) {
+        trailingPunct = punctMatch[0];
+        trimmed = trimmed.substring(0, trimmed.length - trailingPunct.length).trimEnd();
+      }
+
+      // 괄호 및 중괄호 쌍 유효성 검사 (바깥쪽 닫는 괄호 초과 방지)
+      let openParen = 0, openBrace = 0, openBracket = 0;
+      let validEndIdx = trimmed.length;
+      for (let i = 0; i < trimmed.length; i++) {
+        const ch = trimmed[i];
+        if (ch === '(') openParen++;
+        else if (ch === ')') {
+          if (openParen > 0) openParen--;
+          else { validEndIdx = i; break; }
+        } else if (ch === '{') openBrace++;
+        else if (ch === '}') {
+          if (openBrace > 0) openBrace--;
+          else { validEndIdx = i; break; }
+        } else if (ch === '[') openBracket++;
+        else if (ch === ']') {
+          if (openBracket > 0) openBracket--;
+          else { validEndIdx = i; break; }
+        }
+      }
+
+      const validFormula = trimmed.substring(0, validEndIdx).trim();
+      const leftover = trimmed.substring(validEndIdx) + trailingPunct;
+
+      if (!validFormula) return match;
+
+      const ph = `\uE000INLINEMATH${mathPlaceholders.length}\uE001`;
+      mathPlaceholders.push({ ph, math: validFormula, displayMode: false });
+      return `${ph}${leftover}`;
+    });
+  }
+
   // 4. 달러 기호 없이 노출된 순수 그리스 문자 및 LaTeX 명령어 자동 감지 및 래핑
   // (예: \sigma_v, \tau_{max}, \frac{a}{b}, \Delta u, \phi = 30^\circ, \epsilon_a 등)
   const mathToken = '(?:\\\\[a-zA-Z]+(?:_(?:\\{[^{}]*\\}|[a-zA-Z0-9])|\\^(?:\\{[^{}]*\\}|[a-zA-Z0-9])|\\{[^{}]*\\}|\'{1,3})*|[a-zA-Z](?:_(?:\\{[^{}]*\\}|[a-zA-Z0-9])|\\^(?:\\{[^{}]*\\}|[a-zA-Z0-9])|\'{1,3}))';
@@ -79,6 +121,21 @@ export const renderMixedText = (text, isMarkdown = false) => {
         continue;
       }
     }
+
+    // 그리스 문자 및 특수 기호 KaTeX 호환 정규화
+    math = math.replace(/[µμ]/g, '\\mu ')
+               .replace(/π/g, '\\pi ')
+               .replace(/σ/g, '\\sigma ')
+               .replace(/τ/g, '\\tau ')
+               .replace(/λ/g, '\\lambda ')
+               .replace(/α/g, '\\alpha ')
+               .replace(/β/g, '\\beta ')
+               .replace(/γ/g, '\\gamma ')
+               .replace(/Δ/g, '\\Delta ')
+               .replace(/ε/g, '\\epsilon ')
+               .replace(/θ/g, '\\theta ')
+               .replace(/φ/g, '\\phi ')
+               .replace(/ω/g, '\\omega ');
 
     const rendered = renderKatexString(math, { 
       displayMode: item.displayMode, 
