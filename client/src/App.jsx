@@ -1129,14 +1129,9 @@ const cleanFlowchartCorrectAnswer = (correctAnswer, letter) => {
     }
   }
 
-  // 4) 단독 정답 줄인 경우 (영문 전문용어 보존: a-zA-Z 제거 금지)
-  if (lines.length > 0) {
-    let firstLine = lines[0];
-    let clean = firstLine.replace(/^[#\s\-*\+\d\.\:\[\]]+/, '').replace(/(\\[nr]|[,;\-\s])+$/, '').trim();
-    return cleanAttachmentText(clean);
-  }
-
-  return cleanAttachmentText(correctAnswer.replace(/(\\[nr]|[,;\-\s])+$/, '').trim());
+  // 4) 단독 정답인 경우 (뒷부분의 수식, 상세 해설, 직관적 의미를 잘라내지 않고 온전히 보존)
+  let clean = correctAnswer.replace(/^[#\s\-*\+\d\.\:\[\]]+/, '').replace(/(\\[nr]|[,;\-\s])+$/, '').trim();
+  return cleanAttachmentText(clean);
 };
 
 
@@ -1270,7 +1265,7 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
           e.preventDefault();
           if (isGraded) {
             if (gradeSingleTableCell && !cellGradingLoading?.[inputKey]) {
-              await gradeSingleTableCell(questionIdx, q, inputId);
+              await gradeSingleTableCell(questionIdx, q, inputId, true);
             }
           } else {
             const boxContainer = e.target.closest('.border-indigo-500\\/30') || e.target.closest('.shadow-md') || e.target.closest('.rounded-xl') || e.target.parentElement;
@@ -1284,7 +1279,7 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
                 const targetInputId = inputEl.getAttribute('data-input-id') || inputId;
                 const targetKey = `${questionIdx}_${targetInputId}`;
                 if (gradeSingleTableCell && !cellGradingLoading?.[targetKey]) {
-                  await gradeSingleTableCell(questionIdx, q, targetInputId);
+                  await gradeSingleTableCell(questionIdx, q, targetInputId, isGraded);
                 }
               }
               if (typeof setRevealedQuestions === 'function') {
@@ -1360,10 +1355,10 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
       e.stopPropagation();
       if (isAnyLoading) return;
       
-      // 상자 안의 모든 빈칸 순차적 제출
+      // 상자 안의 모든 빈칸 순차적 제출 (이미 채점된 상자라면 재평가 모드로 실행)
       for (const bi of boxInputs) {
         if (gradeSingleTableCell && !cellGradingLoading?.[bi.inputKey]) {
-          await gradeSingleTableCell(questionIdx, q, bi.inputId);
+          await gradeSingleTableCell(questionIdx, q, bi.inputId, isAllGraded);
         }
       }
 
@@ -1597,9 +1592,9 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
                   {(item.correctAnswer || item.suggestedModelAnswer) && (
                     <div className="text-[14px] sm:text-[16px] text-slate-400 mt-1.5 pt-1.5 border-t border-slate-800/30 pl-6">
                       <span className="font-extrabold text-slate-400">💡 모범 정답: </span>
-                      <span className="text-slate-350 font-bold inline-block">
-                        <LatexRenderer text={item.correctAnswer || item.suggestedModelAnswer} katexLoaded={katexLoaded} forceInline={true} />
-                      </span>
+                      <div className="text-slate-350 font-bold mt-1 text-[14px] sm:text-[16px] leading-relaxed">
+                        <LatexRenderer text={item.correctAnswer || item.suggestedModelAnswer} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} />
+                      </div>
                     </div>
                   )}
                 </div>
