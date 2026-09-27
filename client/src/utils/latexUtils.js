@@ -158,7 +158,7 @@ export function wrapMarkdownTables(text) {
   return resultLines.join('\n');
 }
 
-function healMarkdownTable(tableText, poissonSymbol = null) {
+function healMarkdownTable(tableText) {
   const lines = tableText.split(/\r?\n/);
   const healedLines = lines.map(line => {
     const trimmed = line.trim();
@@ -172,7 +172,7 @@ function healMarkdownTable(tableText, poissonSymbol = null) {
     if (startsWithPipe) cells.shift();
     if (endsWithPipe) cells.pop();
     
-    const healedCells = cells.map(cell => healLatexFormulas(cell.trim(), true, poissonSymbol));
+    const healedCells = cells.map(cell => healLatexFormulas(cell.trim(), true));
     
     let resultLine = '';
     if (startsWithPipe) resultLine += '| ';
@@ -244,7 +244,7 @@ export function healDoubleSubscripts(str) {
 }
 
 // 3. 메인 레이아웃 및 수식 복구 마스터 함수
-export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = null) {
+export function healLatexFormulas(text, isNested = false) {
   if (!text || typeof text !== 'string') return text;
 
   let processed = text.replace(/₩/g, '\\');
@@ -272,7 +272,7 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   const sections = processed.split(/(<!--START_TABLE-->[\s\S]*?<!--END_TABLE-->)/g);
   processed = sections.map(section => {
     if (section.startsWith('<!--START_TABLE-->')) {
-      return healMarkdownTable(section, null);
+      return healMarkdownTable(section);
     }
     return section;
   }).join('');
@@ -281,12 +281,7 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
                        .replace(/<div[^>]*>\s*[•*]?\s*([^<]+?)\s*<\/div>/gi, '\n* $1')
                        .replace(/<\/?(?:div|p|span|li|ul|ol)\b[^>]*>/gi, '');
 
-  const finalTokens = tokenizeForHealing(processed);
-  let result = '';
-
-  for (let i = 0; i < finalTokens.length; i++) {
-    result += finalTokens[i].content;
-  }
+  let result = processed;
 
   result = result.trim();
   result = result.replace(/\$?\[\s*INPUT_(\d+(?:_\d+)?)\s*\]\$?/gi, '[INPUT_$1]');
@@ -307,29 +302,8 @@ export function cleanQuizQuestion(q) {
   return cleanText.trim();
 }
 
-export function healDeep(obj, parentKey = null, context = null) {
+export function healDeep(obj, parentKey = null) {
   if (obj === null || obj === undefined) return obj;
-  
-  let currentContext = context;
-  if (!currentContext && typeof obj === 'object') {
-    try {
-      const serialized = JSON.stringify(obj);
-      let symbol = null;
-      if (/포아송/i.test(serialized)) {
-        if (/(?:포아송)[^a-zA-Z0-9$]*\$?u\$?/i.test(serialized) || /\$?u\$?[^a-zA-Z0-9$]*(?:포아송)/i.test(serialized)) {
-          symbol = 'u';
-        }
-      }
-      if (!symbol && /포아송|비배수|탄성/i.test(serialized)) {
-        if (/(?:포아송|비배수|탄성)[^a-zA-Z0-9$]*\$?v\$?/i.test(serialized) || /\$?v\$?[^a-zA-Z0-9$]*(?:포아송|비배수|탄성)/i.test(serialized)) {
-          symbol = 'v';
-        }
-      }
-      currentContext = { poissonSymbol: symbol };
-    } catch (e) {
-      // ignore
-    }
-  }
 
   if (typeof obj === 'string') {
     if (/\[INPUT_\d+(?:_\d+)?\]/i.test(obj)) {
@@ -351,16 +325,16 @@ export function healDeep(obj, parentKey = null, context = null) {
       }
       return cleanVal;
     }
-    return healLatexFormulas(obj, false, currentContext?.poissonSymbol);
+    return healLatexFormulas(obj, false);
   }
   if (Array.isArray(obj)) {
-    return obj.map(item => healDeep(item, parentKey, currentContext));
+    return obj.map(item => healDeep(item, parentKey));
   }
   if (typeof obj === 'object') {
     const healed = {};
     for (const key in obj) {
       if (Object.prototype.hasOwnProperty.call(obj, key)) {
-        healed[key] = healDeep(obj[key], key, currentContext);
+        healed[key] = healDeep(obj[key], key);
       }
     }
     return healed;

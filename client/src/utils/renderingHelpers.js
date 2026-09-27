@@ -891,8 +891,8 @@ export const renderKatexString = (math, options = {}) => {
   } else if (cleaned.startsWith('$') && cleaned.endsWith('$')) {
     cleaned = cleaned.substring(1, cleaned.length - 1).trim();
   }
-  cleaned = cleaned.replace(/^\$|\$/g, '').trim();
-  processedMath = cleaned.replace(/₩/g, '\\');
+  cleaned = cleaned.replace(/\$/g, '').trim();
+  processedMath = cleaned;
 
   // Strip accidental HTML tags (like <em> or <strong>) that markdown parsers might have injected inside the math block
   processedMath = processedMath.replace(/<\/?(?:em|strong|b|i|u|span|div|p)[^>]*>/gi, '');

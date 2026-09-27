@@ -1,5 +1,4 @@
 import { cleanAndSanitizeMathText, renderKatexString } from './renderingHelpers.js';
-import { healLatexFormulas } from './latexUtils.js';
 
 export function getDefaultSmartColWidth(hIdx, totalCols) {
   if (totalCols <= 1) return '100%';
@@ -29,7 +28,7 @@ function renderCellMath(text) {
   if (!text) return '';
   if (typeof text !== 'string') return text;
   
-  const cleanedText = healLatexFormulas(cleanAndSanitizeMathText(text));
+  const cleanedText = cleanAndSanitizeMathText(text);
   
   // Replace $$ ... $$ first (block math in table cells: render compact without display margins)
   let temp = cleanedText.replace(/\$\$\s*([\s\S]*?)\s*\$\$/g, (match, math) => {

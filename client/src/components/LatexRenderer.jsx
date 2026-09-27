@@ -11,7 +11,6 @@ import {
 } from '../utils/renderingHelpers';
 import { convertMarkdownTablesToHtml } from '../utils/markdownTableRenderer';
 import { convertMarkdownAcronymsToHtml } from '../utils/markdownAcronymRenderer';
-import { healLatexFormulas } from '../utils/latexUtils';
 import ChartRenderer from './ChartRenderer';
 import { parseChartJson } from '../utils/parseChartJson';
 
@@ -507,10 +506,6 @@ export const LatexRenderer = React.memo(function LatexRenderer({
     },
   } : {};
 
-  // 0.5) 연수공식/이론유도 내 지반단위중량 기호 y(\y) 그리크 감마(\gamma) 자가치유 규칙 탑재
-  const healFormulas = (val) => {
-    return healLatexFormulas(val, false, null, forceInline);
-  };
 
   let renderText = cleanAndSanitizeMathText(parsedText);
   if (typeof renderText === 'string') {
@@ -551,7 +546,6 @@ export const LatexRenderer = React.memo(function LatexRenderer({
     cleanedText = cleanedText.replace(/\r\n/g, '\n');
   }
 
-  cleanedText = healFormulas(cleanedText);
   if (typeof cleanedText === 'string') {
     // Convert <b> / <strong> HTML tags & entities into markdown bold (**text**)
     cleanedText = cleanedText.replace(/(?:<b\b[^>]*>|&lt;b&gt;|<strong\b[^>]*>|&lt;strong&gt;)([\s\S]*?)(?:<\/b>|&lt;\/b&gt;|<\/strong>|&lt;\/strong&gt;)/gi, '**$1**');
