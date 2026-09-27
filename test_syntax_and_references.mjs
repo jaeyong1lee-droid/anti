@@ -343,6 +343,30 @@ if (!hasOtherStd || !hasGenStd || !hasServerLatex || !hasClientLatex || hasRigid
 } else {
   console.log('  ➜ [PASS] AI 튜터, 문제 출제 지침, LaTeX 프롬프트에 AI 기본 자율성 주축 + 가독성 양념 3종 100% 정상 탑재 확인!');
 }
+// [TEST 12] bareFormulaRegex 수식 절단 찌꺼기 0건 및 LaTeX 인라인 수식 무결성 검증
+console.log('\n[TEST 12] bareFormulaRegex 수식 절단 찌꺼기 0건 및 LaTeX 인라인 수식 무결성 검증...');
+const gradingPluginSrc = fs.readFileSync(path.resolve('server/plugins/gradingPlugin.js'), 'utf8');
+const lockscreenRoutesSrc = fs.readFileSync(path.resolve('server/routes/lockscreenRoutes.js'), 'utf8');
+
+const hasBareInGrading = gradingPluginSrc.includes('bareFormulaRegex');
+const hasBareInLockscreen = lockscreenRoutesSrc.includes('bareFormulaRegex');
+
+if (hasBareInGrading || hasBareInLockscreen) {
+  failedCount++;
+  console.error(`  ❌ [수식 절단 위험 정규식 감지]: gradingPlugin(${hasBareInGrading}), lockscreenRoutes(${hasBareInLockscreen})`);
+} else {
+  // 실제 수식 텍스트 보존 검증 ($N_\phi = \tan^2(45^\circ + \phi/2)$)
+  const clientLatex = await import('./client/src/utils/latexUtils.js');
+  const testFormula = '단, $q_p$는 단위 극한선단지지력, $q_u$는 암석의 일축압축강도, $N_\\phi$는 암반의 내부마찰각($\\phi$)에 따른 수동토압계수형 인자($N_\\phi = \\tan^2(45^\\circ + \\phi/2)$)입니다.';
+  const healed = clientLatex.healLatexFormulas(testFormula);
+  if (healed.includes('$N_$') || !healed.includes('$N_\\phi = \\tan^2(45^\\circ + \\phi/2)$')) {
+    failedCount++;
+    console.error(`  ❌ [인라인 수식 절단 감지]: ${healed}`);
+  } else {
+    console.log('  ➜ [PASS] bareFormulaRegex 찌꺼기 0건 및 $N_\\phi = \\tan^2(..)$ 수식 절단 없이 100% 무결성 보존 확인!');
+  }
+}
+
 console.log('\n==========================================================');
 if (failedCount > 0) {
   console.error(`  ❌ 자가 개선 테스터 검증 실패 - ${failedCount}개의 런타임 위험 감지됨!`);

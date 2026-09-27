@@ -203,14 +203,6 @@ router.post('/grade', async (req, res) => {
               .trim();
           }
         }
-        const bareFormulaRegex = /(?<!\$)\\(?:tau|sigma|gamma|epsilon|alpha|beta|phi|theta|nu|mu|omega|rho|lambda|Delta)\b(?:[a-zA-Z0-9_\\^+=*/()\-.,\s]|\\(?:tan|sin|cos|frac|sqrt|cdot|times|pm|le|ge|neq|approx|partial)\b)*(?:\w|\))(?![\w\\])(?!\$)/g;
-        ans = ans.replace(bareFormulaRegex, (match) => {
-          const trimmed = match.trim();
-          if (trimmed.includes('=') || trimmed.includes('+') || trimmed.includes('-') || trimmed.includes('/') || trimmed.includes('\\tan') || trimmed.includes('\\sin') || trimmed.includes('\\cos') || trimmed.includes('_')) {
-            return `$${trimmed}$`;
-          }
-          return match;
-        });
         ans = ans.replace(/([^\n])\s*(💡\s*(?:\*\*)?직관적\s*의미(?:\*\*)?\s*[:：])/g, '$1\n\n$2');
         if (typeof healLatexFormulas === 'function') {
           ans = healLatexFormulas(ans);

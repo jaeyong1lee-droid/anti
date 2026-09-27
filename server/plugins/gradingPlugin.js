@@ -234,15 +234,6 @@ ${LATEX_PROMPT_INSTRUCTIONS}`;
     }
     cleanAnswer = cleanAnswer.replace(/^(모범\s*답안|정답|표준\s*답안)\s*[:：]\s*/i, '').trim();
 
-    // 1) bare LaTeX 수식 방어 치유 (달러 기호 누락된 \tau = c + \sigma_n \tan \phi 등 자동 $...$ 감싸기)
-    const bareFormulaRegex = /(?<!\$)\\(?:tau|sigma|gamma|epsilon|alpha|beta|phi|theta|nu|mu|omega|rho|lambda|Delta)\b(?:[a-zA-Z0-9_\\^+=*/()\-.,\s]|\\(?:tan|sin|cos|frac|sqrt|cdot|times|pm|le|ge|neq|approx|partial)\b)*(?:\w|\))(?![\w\\])(?!\$)/g;
-    cleanAnswer = cleanAnswer.replace(bareFormulaRegex, (match) => {
-      const trimmed = match.trim();
-      if (trimmed.includes('=') || trimmed.includes('+') || trimmed.includes('-') || trimmed.includes('/') || trimmed.includes('\\tan') || trimmed.includes('\\sin') || trimmed.includes('\\cos') || trimmed.includes('_')) {
-        return `$${trimmed}$`;
-      }
-      return match;
-    });
 
     // 2) 💡 직관적 의미 앞에 빈 줄이 없으면 반드시 \n\n 으로 분리
     cleanAnswer = cleanAnswer.replace(/([^\n])\s*(💡\s*(?:\*\*)?직관적\s*의미(?:\*\*)?\s*[:：])/g, '$1\n\n$2');
