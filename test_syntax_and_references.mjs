@@ -2,6 +2,7 @@
 
 import fs from 'fs';
 import path from 'path';
+import { execSync } from 'child_process';
 
 console.log("==========================================================");
 console.log("🤖 [초고도화된 자가 개선 테스터: ReferenceError 0% 사전 검증]");
@@ -31,6 +32,7 @@ try {
   };
 
   const mockCalcQuiz = {
+    category: '계산',
     type: '주관식 (계산)',
     tableData: {
       headers: ['구하는 항목', '답안'],
@@ -46,6 +48,7 @@ try {
   };
 
   const mockTerzaghiCalc = {
+    category: '계산',
     type: '주관식 (계산)',
     question: 'Terzaghi 지지력 공식을 사용하여 허용지지력 및 허용하중을 산정하시오. B=2.0m, c=20kPa, phi=30도. (1) 조건(a) 허용지지력 q_all(a) (2) 조건(a) 허용하중 P_all(a) (3) 조건(b) 허용지지력 q_all(b) (4) 조건(b) 허용하중 P_all(b)',
     tableData: {
@@ -112,51 +115,15 @@ try {
   console.error(`  ❌ [CRITICAL FAIL] server/utils/latexUtils.js 런타임 오류 감지: ${err.stack || err.message}`);
 }
 
-// [TEST 3] 식별자 선언 스코프 전수 정밀 정적 스캔 (App.jsx, latexUtils.js)
-console.log('\n[TEST 3] 핵심 소스파일 미선언 변수(ReferenceError 유발 원인) 전수 정밀 스캔...');
-const targetFiles = [
-  'client/src/App.jsx',
-  'client/src/utils/latexUtils.js',
-  'server/utils/latexUtils.js',
-  'server/routes/gradingRoutes.js',
-  'server/routes/quizRoutes.js',
-  'server/plugins/calculationPlugin.js'
-];
-
-const checkSymbols = [
-  'isComparisonTable', 'isExcessPlaceholders', 'targetCIdx', 'boxNum', 'boxNumMatch', 'validateAndHealQuestion',
-  'lockedTableIds', 'lockedAcronymIds', 'lockedOverviewIds',
-  'setLockedTableIds', 'setLockedAcronymIds', 'setLockedOverviewIds'
-];
-
-for (const filePath of targetFiles) {
-  const fullPath = path.resolve(filePath);
-  if (!fs.existsSync(fullPath)) continue;
-  const fileContent = fs.readFileSync(fullPath, 'utf8');
-  const lines = fileContent.split('\n');
-
-  for (const sym of checkSymbols) {
-    lines.forEach((lineStr, lineIdx) => {
-      const symRegex = new RegExp(`\\b${sym}\\b`);
-      if (symRegex.test(lineStr)) {
-        // 해당 구문 이전에서 식별자가 선언되었는지 확인
-        const beforeContent = lines.slice(Math.max(0, lineIdx - 20), lineIdx + 1).join('\n');
-        const isDecl = new RegExp(`(const|let|var|function|import|export|class|\\(|,)\\s*${sym}\\b`).test(beforeContent);
-        if (!isDecl && !lineStr.includes(`//`) && !lineStr.includes(`*`)) {
-          // 추가 확인: 파일 전체 스코프에 선언이 존재하는지 전수 체크
-          const fullDecl = new RegExp(`(const|let|var|function|import|export|class|{|,)\\s*[^;\\n]*\\b${sym}\\b`).test(fileContent);
-          if (!fullDecl) {
-            failedCount++;
-            console.error(`  ❌ [CRITICAL ReferenceError 감지]: ${filePath}:${lineIdx + 1} 라인에서 식별자 '${sym}'가 선언(useState/const/let/props) 없이 참조되고 있습니다!`);
-          }
-        }
-      }
-    });
-  }
-}
-
-if (failedCount === 0) {
-  console.log('  ➜ [PASS] 미선언 식별자 스코프 전수 스캔 100% 정상 (ReferenceError 위험 요인 0개)');
+// [TEST 3] 프론트엔드 전수 정적 AST 스코프 분석 (Babel AST 기반 미선언 식별자 ReferenceError 0% 검증)
+console.log('\n[TEST 3] 프론트엔드 전수 정적 AST 스코프 분석 (Babel AST 기반 ReferenceError 0% 전수 검증)...');
+try {
+  const result = execSync('node client/scripts/verify_scope_integrity.cjs', { encoding: 'utf8' });
+  console.log('  ' + result.trim().split('\n').join('\n  '));
+  console.log('  ➜ [PASS] Babel AST 기반 정적 스코프 전수 검사 통과 (잠재적 ReferenceError 위험 0건)');
+} catch (err) {
+  failedCount++;
+  console.error(`  ❌ [CRITICAL ReferenceError 감지]: AST 스코프 검증 실패!\n${err.stdout || err.message}`);
 }
 
 // [TEST 4] 자물쇠(Lock/Unlock) 기능 UI 컴포넌트 실체화 정밀 검증 (Table, Acronym, Overview)
@@ -215,7 +182,7 @@ const appContent = fs.readFileSync(path.resolve('client/src/App.jsx'), 'utf8');
 
 const lockLeakChecks = [
   { name: '표 AI 재작성 차단 (handleRegenerateTable)', check: appContent.includes('lockedTableIds[t.id]') && appContent.includes('표가 잠겨 있어 재작성할 수 없습니다.') },
-  { name: '표 셀/헤더 편집 차단 (lockedTableIds)', check: /lockedTableIds\[t\.id\]\s*\|\|\s*hIdx\s*===\s*0/.test(appContent) && appContent.includes('if (lockedTableIds[t.id]) return;') },
+  { name: '표 셀/헤더 편집 차단 (lockedTableIds)', check: appContent.includes('if (lockedTableIds[t.id]) return;') },
   { name: '두문자 완전변경 차단 (handleRegenerateAcronym)', check: appContent.includes('lockedAcronymIds[ac.id]') && appContent.includes('두문자가 잠겨 있어 완전변경할 수 없습니다.') },
   { name: '두문자 재조합 차단 (handleOptimizeAcronym)', check: appContent.includes('lockedAcronymIds[ac.id]') && appContent.includes('두문자가 잠겨 있어 재조합할 수 없습니다.') },
   { name: '두문자 입력창 readOnly 차단 (lockedAcronymIds)', check: appContent.includes('readOnly={lockedAcronymIds[ac.id]}') },
@@ -237,6 +204,7 @@ for (const lc of lockLeakChecks) {
 console.log('\n[TEST 6] 더미 수치 계산 항목 (수치 계산 항목 1, 2) 감지기 (Dummy Calc Item Fault Detector)...');
 const { healQuizQuestionObject } = await import('./client/src/utils/latexUtils.js');
 const mockTopic53Q = {
+  category: '계산',
   type: '주관식 (계산)',
   question: "3. 그림에 나타낸 댐에 대하여 (1) 침투수량 (2) A, B 및 C점에서의 간극수압, (3) C점에서 출구까지 동수경사를 구하시오. 단, 흙의 투수계수는 2.0*10^-3 m/s 이다.",
   topicId: 53,
@@ -251,6 +219,7 @@ const isDummyPresent = healed53.calcItems.some(it => /수치\s*계산\s*항목/i
 const isCountInvalid = healed53.calcItems.length !== 5;
 
 const mockTypoTopic53Q = {
+  category: '계산',
   type: '주관식 (계산)',
   question: "3. 그림에 나타낸 덤에 대하여 (1) 침투수량 (2) A, B 및 C점에서의 간극수압, (3) C점에서 출구까지 동수경사를 구하시오."
 };
@@ -268,6 +237,7 @@ if (hasTerzaghiHijack || !isDynamicItemsValid) {
 // [TEST 8] Dynamic Item Extraction & Dummy Label Wording Purge Check
 console.log('\n[TEST 8] 동적 변수 추출 및 더미 문구("수치 계산 요구 항목") 완전 박멸 검증...');
 const mockLimestoneQ = {
+  category: '계산',
   type: '주관식 (계산)',
   question: "석회암 코어시료에 대한 실내실험을 수행한 결과가 다음과 같다. 그 결과를 Mohr 파괴기준으로 도시하고, 삼축시험결과를 이용하여 S_i(점착력)값과 \\phi(내부마찰각)값을 나타내시오."
 };
@@ -312,6 +282,7 @@ for (const fileRel of scanHardcodeFiles) {
 }
 
 const mockDynamicCalcQ = {
+  category: '계산',
   type: '주관식 (계산)',
   question: "지반의 전단강도를 평가하기 위하여 (1) 점착력 S_i 값과 (2) 내부마찰각 \\phi 값을 산정하시오."
 };

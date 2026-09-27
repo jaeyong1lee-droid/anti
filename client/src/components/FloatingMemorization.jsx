@@ -270,6 +270,7 @@ function FloatingTableItem({
   LatexRenderer,
   getColWidthsForTable,
   startColumnResize,
+  autoFitColumnWidth,
   resetColumnWidths,
   rebuildTableHtml
 }) {
@@ -534,6 +535,7 @@ function OverviewComparisonTable({
   LatexRenderer,
   getColWidthsForTable,
   startColumnResize,
+  autoFitColumnWidth,
   resetColumnWidths,
   rebuildMarkdownTable
 }) {
@@ -1428,6 +1430,7 @@ export function FloatingMemorization({
                           LatexRenderer={LatexRenderer}
                           getColWidthsForTable={getColWidthsForTable}
                           startColumnResize={startColumnResize}
+                          autoFitColumnWidth={autoFitColumnWidth}
                           resetColumnWidths={resetColumnWidths}
                           rebuildTableHtml={rebuildTableHtml}
                         />
@@ -2000,6 +2003,7 @@ export function FloatingMemorization({
                                       LatexRenderer={LatexRenderer}
                                       getColWidthsForTable={getColWidthsForTable}
                                       startColumnResize={startColumnResize}
+                                      autoFitColumnWidth={autoFitColumnWidth}
                                       resetColumnWidths={resetColumnWidths}
                                       rebuildMarkdownTable={rebuildMarkdownTable}
                                     />

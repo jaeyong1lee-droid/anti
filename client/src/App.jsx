@@ -1140,7 +1140,7 @@ const cleanFlowchartCorrectAnswer = (correctAnswer, letter) => {
 };
 
 
-const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, questionIdx, tableAnswers, setTableAnswers, revealed, tableGradingResults, q, gradeSingleTableCell, cellGradingLoading, onSubmit, renderCardTutorChat, isExam = false) => {
+const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, questionIdx, tableAnswers, setTableAnswers, revealed, tableGradingResults, q, gradeSingleTableCell, cellGradingLoading, onSubmit, renderCardTutorChat, isExam = false, setRevealedQuestions = null) => {
   const text = typeof flowchartText === 'string' ? flowchartText : '';
   const lines = text.split('\n');
   const items = [];
@@ -5840,6 +5840,10 @@ export default function App() {
   const [formulaAttachedImage, setFormulaAttachedImage] = useState(null); // { name, mimeType, data }
   const [tutorAttachedImages, setTutorAttachedImages] = useState({}); // { [key]: { name, mimeType, data } }
   const formulaTutorFileInputRef = useRef(null);
+  const [previewModalImageUrl, setPreviewModalImageUrl] = useState(null);
+  const handleOpenImagePreviewModal = (url) => {
+    setPreviewModalImageUrl(url);
+  };
 
   // Single Question Regeneration states
   const [regeneratingReview, setRegeneratingReview] = useState({});
@@ -7120,15 +7124,12 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
     };
   }, [isTabletScreen, showTabletNavBriefly]);
 
-  // 퀴즈나 종합평가, 필수공식, 답안지 모달이 열리면 사이드바를 즉시 강제 접힘/숨김 처리하여 전체화면 확보
+  // 태블릿 화면에서만 모달 진입 시 네비게이션 자동 숨김 (데스크톱은 사용자 토글 상태 유지)
   useEffect(() => {
     const hasModal = !!(selectedTopic || showExam || showFormulaExam || showTheoryExam || showAnswerSheet);
-    if (hasModal) {
-      if (isTabletScreen) {
-        setTabletNavHidden(true);
-        if (tabletNavTimerRef.current) clearTimeout(tabletNavTimerRef.current);
-      }
-      setModalNavOpen(false);
+    if (hasModal && isTabletScreen) {
+      setTabletNavHidden(true);
+      if (tabletNavTimerRef.current) clearTimeout(tabletNavTimerRef.current);
     }
   }, [selectedTopic, showExam, showFormulaExam, showTheoryExam, showAnswerSheet, isTabletScreen]);
 
@@ -7428,6 +7429,7 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
   // Theory questions states (independent of formulas)
   const theoryQuestions = [];
   const setTheoryQuestions = () => {};
+  const handleSaveTheoryQuestions = async () => {};
   const loadingTheory = false;
   const setLoadingTheory = () => {};
   const theoryRevealed = {};
@@ -9527,7 +9529,7 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
 
       if (saveSessionRes.ok && scoreRes.ok) {
         showNotification(`성적이 ${updatedScore}점으로 정상 업데이트되었습니다!`, 'success');
-        fetchTopics();
+        fetchAllTopics();
         handleCloseReadOnlyQuiz();
       } else {
         const errData = await scoreRes.json().catch(() => ({}));
@@ -10451,7 +10453,7 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
       if (data.success) {
         alert('성공적으로 저장되었습니다.');
         setShowHtmlEditModal(false);
-        fetchTopics();
+        fetchAllTopics();
       } else {
         alert(data.error || '저장하는 데 실패했습니다.');
       }
@@ -11924,28 +11926,6 @@ ${item.intuitive || ''}
         setReviewSessionId(activeSid);
         
         const topicCategory = selectedTopic.category || '믹스';
-        
-        // Find latest updated table content from formulaTables state if available
-        const cleanQTitle = (currentQ?.question || '').replace(/^\[.*?\]\s*/, '').trim();
-        const matchingTable = (formulaTables || []).find(t => 
-          t.id === currentQ?.id || 
-          t.id === currentQ?.originalId || 
-          (t.title && cleanQTitle.includes(t.title)) || 
-          (t.title && t.title.includes(cleanQTitle))
-        );
-        const latestTableContent = matchingTable ? (matchingTable.comparison || matchingTable.markdown || matchingTable.content || matchingTable.html) : null;
-
-        const body = {
-          mode,
-          topicId: isReview ? selectedTopic?.id : null,
-          currentQuestion: currentQ,
-          questionIdx: idx,
-          allQuestions: isReview ? aiQuestions : examQuestions,
-          progressId,
-          targetTypeSelection,
-          formulaTables,
-          latestTableContent
-        };
         
         setAiQuestions(questions.map(q => healQuizQuestionObject({ ...q, category: topicCategory })));
         setSelectedAnswers({});
@@ -22620,9 +22600,7 @@ ${itemsStr}
                           setChatHistory([]);
                           setTutorAnswers({});
                           setTutorInputText({});
-                          if (typeof setCurrentAttachedImage === 'function') {
-                            setCurrentAttachedImage(null);
-                          }
+                          setAttachedImage(null);
                           try {
                             const saved = localStorage.getItem('anti_app_state');
                             if (saved) {
@@ -26066,9 +26044,7 @@ ${itemsStr}
                           setChatHistory([]);
                           setTutorAnswers({});
                           setTutorInputText({});
-                          if (typeof setCurrentAttachedImage === 'function') {
-                            setCurrentAttachedImage(null);
-                          }
+                          setAttachedImage(null);
                           try {
                             const saved = localStorage.getItem('anti_app_state');
                             if (saved) {
@@ -31468,6 +31444,28 @@ ${itemsStr}
                 생성하기
               </button>
             </div>
+        </div>
+      )}
+
+      {/* 이미지 미리보기 모달 */}
+      {previewModalImageUrl && (
+        <div 
+          className="fixed inset-0 z-[9999999] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 select-none cursor-pointer"
+          onClick={() => setPreviewModalImageUrl(null)}
+        >
+          <div className="relative max-w-4xl max-h-[90vh] flex flex-col items-center" onClick={e => e.stopPropagation()}>
+            <button 
+              onClick={() => setPreviewModalImageUrl(null)} 
+              className="absolute -top-10 right-0 text-white hover:text-rose-400 font-bold text-sm bg-slate-800/80 px-3 py-1 rounded-full cursor-pointer transition-colors"
+            >
+              닫기 ✕
+            </button>
+            <img 
+              src={previewModalImageUrl} 
+              alt="첨부 이미지 확대" 
+              className="max-w-full max-h-[85vh] object-contain rounded-xl shadow-2xl border border-slate-700 select-none" 
+            />
+          </div>
         </div>
       )}
     </div>
