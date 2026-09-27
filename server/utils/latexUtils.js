@@ -204,7 +204,7 @@ function replaceRoots(str) {
     return isInside ? `\\sqrt{${p1}}` : `$\\sqrt{${p1}}$`;
   });
 
-  let regex = /(?:([0-9]+)(?:_|계)?)?(?:루트|√)\(/;
+  let regex = /(?:([0-9]+)(?:_|계)?)?√\(/;
   let match;
   
   while ((match = processed.match(regex)) !== null) {
