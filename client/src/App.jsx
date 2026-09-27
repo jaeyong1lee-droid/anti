@@ -3836,8 +3836,7 @@ export default function App() {
         if (match && match[1]) {
           text = match[1]
             .replace(/\\"/g, '"')
-            .replace(/\\n/g, '\n')
-            .replace(/\\r/g, '\r')
+            .replace(/(?:\\r\\n|\\n(?!u\b|abla|eq\b|eg\b|otin|geq|leq|sim|cong|parallel|oindent|ot\b|ewline))/g, '\n')
             .trim();
         }
       }

@@ -227,8 +227,7 @@ ${LATEX_PROMPT_INSTRUCTIONS}`;
         if (regexMatch && regexMatch[1]) {
           unwrapped = regexMatch[1]
             .replace(/\\"/g, '"')
-            .replace(/\\n/g, '\n')
-            .replace(/\\r/g, '\r')
+            .replace(/(?:\\r\\n|\\n(?!u\b|abla|eq\b|eg\b|otin|geq|leq|sim|cong|parallel|oindent|ot\b|ewline))/g, '\n')
             .trim();
         }
       }
@@ -402,9 +401,7 @@ export function robustJSONParse(text) {
       return str
         .replace(/\\"/g, '"')
         .replace(/\\\\/g, '\\')
-        .replace(/\\n/g, '\n')
-        .replace(/\\r/g, '\r')
-        .replace(/\\t/g, '\t');
+        .replace(/(?:\\r\\n|\\n(?!u\b|abla|eq\b|eg\b|otin|geq|leq|sim|cong|parallel|oindent|ot\b|ewline))/g, '\n');
     };
 
     const isCorrect = isCorrectMatch ? isCorrectMatch[1].toLowerCase() === 'true' : true;
