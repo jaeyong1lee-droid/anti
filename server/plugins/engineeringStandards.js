@@ -33,6 +33,11 @@ export let standardsList = [
     "id": "original_report_text_analysis_first",
     "title": "원보고서 및 본문 해설 텍스트 기반 수치/답안 정밀 도출 철칙",
     "content": "\n[🚨 원보고서 및 본문 해설 텍스트 기반 수치/답안 정밀 도출 철칙 — 극도로 중요!]:\n- AI는 주관식 수치 계산 문제를 채점하거나 모범 답안 및 해설을 도출할 때, 그림/이미지 시각적 짐작에 의존하지 말고 오직 원보고서 본문 텍스트, 문제 지문(question), 행/열 제목(rowHeader/colHeader), 전체 해설(explanation), 국가기준(KDS/KCS) 수식에 명시된 정밀 수치 데이터를 최우선으로 직접 정밀하게 분석해야 합니다.\n- 사용자가 제출한 수치(userAnswer)가 원보고서 해설의 정밀 계산 수치값(Real Calculated Value)과 일치하는지를 정밀 수치 오차 범위(±5% 이내 10점 만점, ±5%~15% 부분 점수, 15% 초과 오답)로 정확하게 대조 판단하고, 절대로 사용자의 오답 수치를 모범 답안으로 환각(Hallucination) 받아 적지 마십시오.\n"
+  },
+  {
+    "id": "hansbo_barron_consolidation",
+    "title": "연약지반 수직배수공법 방사방향 압밀 공식(Hansbo/Barron) 수식 표기 기준",
+    "content": "\n[🏗️ 연약지반 수직배수공법 방사방향 압밀 공식 표기 절대 철칙]:\n- Hansbo(1979/1981) 또는 Barron(1948) 방사방향 압밀 이론 관련 문제, 슬라이드, 해설 작성 시 수식 기호를 혼용하여 $F(\\mu)$와 같은 환각/찌꺼기 수식을 작성하는 것을 엄격히 금지합니다.\n- 1. **Hansbo 공식**: $U_h = 1 - \\exp\\left(-\\frac{8T_h}{\\mu}\\right)$ (또는 $U_r = 1 - \\exp\\left(-\\frac{8T_h}{\\mu}\\right)$)\n     * 분모는 반드시 **$\\mu$** (또는 총 저항계수 $F$)로 단독 표기해야 하며, $F(\\mu)$로 잘못 표기해서는 안 됩니다.\n     * 저항계수: $\\mu = \\ln(n/s) + \\frac{k_h}{k_s}\\ln(s) - \\frac{3}{4} + \\pi z(2l-z)\\frac{k_h}{q_w}$ (또는 $\\mu = \\mu_n + \\mu_s + \\mu_r$)\n- 2. **Barron 공식**: $U_h = 1 - \\exp\\left(-\\frac{8T_h}{F(n)}\\right)$\n     * 간격비 $n = d_e / d_w$ 에 대한 함수 $F(n) = \\frac{n^2}{n^2 - 1}\\ln(n) - \\frac{3n^2 - 1}{4n^2} \\approx \\ln(n) - 0.75$\n- 모든 수식 변수는 반드시 닫힌 달러 기호 쌍($...$)으로 완벽하게 감싸 작성하십시오.\n"
   }
 ];
 
