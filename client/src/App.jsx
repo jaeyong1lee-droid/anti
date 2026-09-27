@@ -19102,7 +19102,7 @@ ${itemsStr}
                     </div>
 
                     {/* Reason / Feedback */}
-                    <div className="text-slate-300 font-medium text-[13px] mt-2 pt-2 border-t border-slate-700/50">
+                    <div className="text-slate-200 font-medium text-[14px] mt-2 pt-2 border-t border-slate-700/50">
                       <strong className="text-slate-200">채점 사유:</strong>{' '}
                       <LatexRenderer text={lockscreenGradingResult.reason} katexLoaded={katexLoaded} />
                     </div>
@@ -19115,7 +19115,7 @@ ${itemsStr}
                         <Sparkles size={14} />
                         <span>AI 전문 모범 답안</span>
                       </div>
-                      <div className="text-[13px] font-normal leading-relaxed text-slate-300 whitespace-pre-wrap">
+                      <div className="text-[14px] font-normal leading-relaxed text-slate-200 whitespace-pre-wrap">
                         <LatexRenderer 
                           text={cleanSuggestedModelAnswer(lockscreenGradingResult.suggestedModelAnswer)} 
                           katexLoaded={katexLoaded} 
@@ -19193,7 +19193,7 @@ ${itemsStr}
                     </div>
 
                     {/* Modal Content */}
-                    <div className="py-2 text-slate-200 leading-relaxed text-[13px] max-h-[50vh] overflow-y-auto min-h-[90px] flex flex-col justify-center select-text">
+                    <div className="py-2 text-slate-200 leading-relaxed text-[14px] max-h-[50vh] overflow-y-auto min-h-[90px] flex flex-col justify-center select-text">
                       {lockscreenHintLoading ? (
                         <div className="flex flex-col items-center justify-center py-6 gap-3 w-full text-center">
                           <div className="w-6 h-6 border-2 border-amber-400 border-t-transparent rounded-full animate-spin"></div>
