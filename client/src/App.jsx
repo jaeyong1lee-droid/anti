@@ -18554,6 +18554,8 @@ ${itemsStr}
     );
   }
 
+  const isAnyFullScreenModalOpen = !!(selectedTopic || showExam || showFormulaExam || showTheoryExam || showAnswerSheet);
+
   return (
     <div className="min-h-screen bg-slateCustom-950 pb-16 flex flex-col justify-start w-full max-w-full overflow-x-hidden">
 
@@ -19312,7 +19314,7 @@ ${itemsStr}
       })()}
 
       {/* Top Premium Navbar */}
-      <header className="w-full glass-panel border-b border-slate-800 py-5 px-6 md:px-12 flex flex-col md:flex-row justify-between items-center gap-4 sticky top-0 z-40 ">
+      <header className={`w-full glass-panel border-b border-slate-800 py-5 px-6 md:px-12 flex flex-col md:flex-row justify-between items-center gap-4 sticky top-0 z-40 ${isAnyFullScreenModalOpen ? 'hidden' : ''}`}>
         <div className="flex items-center justify-between w-full md:w-auto gap-4 ">
           <div className="flex items-center gap-3">
             <div className="p-2 md:p-3 bg-gradient-to-tr from-brand-600 to-indigo-500 rounded-2xl glow-purple flex items-center justify-center">
@@ -19582,7 +19584,7 @@ ${itemsStr}
 
       {/* Main Content Area */}
       <main
-        className={`w-full mx-auto px-3 ${!isTabletScreen ? 'md:px-12 md:pl-36' : ''} mt-8 flex-grow ${isTabletScreen || viewMode === 'all_topics' ? 'max-w-none xl:max-w-none 2xl:max-w-none' : 'max-w-7xl xl:max-w-[85rem] 2xl:max-w-[95rem]'}`}
+        className={`w-full mx-auto px-3 ${!isTabletScreen ? 'md:px-12 md:pl-36' : ''} mt-8 flex-grow ${isTabletScreen || viewMode === 'all_topics' ? 'max-w-none xl:max-w-none 2xl:max-w-none' : 'max-w-7xl xl:max-w-[85rem] 2xl:max-w-[95rem]'} ${isAnyFullScreenModalOpen ? 'hidden' : ''}`}
         style={isTabletScreen ? {
           paddingLeft: tabletNavHidden ? '12px' : '144px',
           paddingRight: '12px',
@@ -20686,7 +20688,7 @@ ${itemsStr}
         <div 
           onTouchStart={handleSwipeTouchStart}
           onTouchEnd={(e) => handleSwipeTouchEnd(e, reviewMobileTab, setReviewMobileTab)}
-          className={`fixed inset-y-0 right-0 left-0 z-50 bg-black/80 backdrop-blur-sm flex flex-col ${!isTabletScreen ? 'md:pl-36' : ''} pc-enlarged-text overflow-hidden scrollbar-none-mobile`}
+          className={`fixed inset-y-0 right-0 left-0 z-50 bg-slate-950 flex flex-col ${!isTabletScreen ? 'md:pl-36' : ''} pc-enlarged-text overflow-hidden scrollbar-none-mobile`}
           style={isTabletScreen ? {
             paddingLeft: tabletNavHidden ? '12px' : '144px',
             transition: 'padding-left 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -24563,7 +24565,7 @@ ${itemsStr}
         <div 
           onTouchStart={handleSwipeTouchStart}
           onTouchEnd={(e) => handleSwipeTouchEnd(e, examMobileTab, setExamMobileTab)}
-          className={`fixed inset-y-0 right-0 left-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col ${!isTabletScreen ? 'md:pl-36' : ''} pc-enlarged-text overflow-hidden scrollbar-none-mobile`}
+          className={`fixed inset-y-0 right-0 left-0 z-[60] bg-slate-950 flex flex-col ${!isTabletScreen ? 'md:pl-36' : ''} pc-enlarged-text overflow-hidden scrollbar-none-mobile`}
           style={isTabletScreen ? {
             paddingLeft: tabletNavHidden ? '12px' : '144px',
             transition: 'padding-left 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -26497,7 +26499,7 @@ ${itemsStr}
         <div 
           onTouchStart={handleSwipeTouchStart}
           onTouchEnd={(e) => handleSwipeTouchEnd(e, formulaMobileTab, setFormulaMobileTab)}
-          className={`fixed inset-y-0 right-0 left-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col ${!isTabletScreen ? 'md:pl-36' : ''} pc-enlarged-text overflow-hidden scrollbar-none-mobile`}
+          className={`fixed inset-y-0 right-0 left-0 z-[60] bg-slate-950 flex flex-col ${!isTabletScreen ? 'md:pl-36' : ''} pc-enlarged-text overflow-hidden scrollbar-none-mobile`}
           style={isTabletScreen ? {
             paddingLeft: tabletNavHidden ? '12px' : '144px',
             transition: 'padding-left 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -26819,7 +26821,7 @@ ${itemsStr}
           {/* Layout Split Container (Mobile: Hides inactive column to lock layout, PC: Side-by-Side) */}
           <div 
             ref={formulaSplitContainerRef}
-            className="flex-1 flex flex-row overflow-x-hidden overflow-y-hidden min-h-0 w-full scrollbar-none "
+            className="flex-1 flex flex-row overflow-x-hidden overflow-y-hidden min-h-0 w-full scrollbar-none bg-slate-950"
           >
             
             {/* Left Vertical Button Strip (Visible ONLY in mobile landscape) */}
@@ -29024,7 +29026,7 @@ ${itemsStr}
                     {/* Chat Message History */}
                     <div 
                       ref={formulaChatBodyRef}
-                      className="flex-grow overflow-y-auto overflow-x-hidden px-3 pb-3 pt-1.5 md:pr-2 space-y-3.5 scrollbar-none-mobile bg-slate-950/20 custom-vertical-scrollbar min-h-0"
+                      className="flex-grow overflow-y-auto overflow-x-hidden px-3 pb-3 pt-1.5 md:pr-2 space-y-3.5 scrollbar-none-mobile bg-slate-950 custom-vertical-scrollbar min-h-0"
                     >
                       {(selectedFormulaIdx === -1 && formulaChatHistory.length === 0) ? (
                         <div className="text-center py-8 px-4 opacity-50 flex flex-col items-center justify-center h-full">
@@ -29442,7 +29444,7 @@ ${itemsStr}
       {/* ===== ESSENTIAL ANSWERSHEET STUDY MODAL ===== */}
       {showAnswerSheet && (
         <div 
-          className={`fixed inset-y-0 right-0 left-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col ${!isTabletScreen ? 'md:pl-36' : ''} pc-enlarged-text overflow-hidden scrollbar-none-mobile`}
+          className={`fixed inset-y-0 right-0 left-0 z-[60] bg-slate-950 flex flex-col ${!isTabletScreen ? 'md:pl-36' : ''} pc-enlarged-text overflow-hidden scrollbar-none-mobile`}
           style={isTabletScreen ? {
             paddingLeft: tabletNavHidden ? '12px' : '144px',
             transition: 'padding-left 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
