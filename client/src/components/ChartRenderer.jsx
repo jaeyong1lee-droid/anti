@@ -19,17 +19,8 @@ export const renderMixedText = (text, isMarkdown = false) => {
   const str = typeof text === 'string' ? text : String(text);
   if (!str.trim()) return '';
 
-  // 1. 단일 백슬래시 탈락 및 Tab/FormFeed/VerticalTab 기호로 변형된 \text / \frac / S_{extmax} 등 자동 복원
-  let sanitized = str
-    .replace(/\t(ext|au|heta|an|imes|ilde)\b/g, '\\t$1')
-    .replace(/\x0c(rac)\b/g, '\\f$1')
-    .replace(/\x0b(ert)\b/g, '\\v$1')
-    .replace(/([A-Za-z0-9_\^\-]+)\s*[\t ]+ext\b/g, '$1\\text')
-    .replace(/\b([A-Za-z0-9_]+)_{ext([A-Za-z0-9]+)}/g, '$1_{\\text{$2}}')
-    .replace(/\b([A-Za-z0-9_]+)ext([A-Za-z0-9]+)\b/g, '$1_{\\text{$2}}');
-
-  // 2. 메인 렌더링 파이프라인의 수식 정제 및 자동 치유 적용
-  sanitized = cleanAndSanitizeMathText(sanitized);
+  // 1. 메인 렌더링 파이프라인의 수식 정제 및 자동 치유 적용
+  let sanitized = cleanAndSanitizeMathText(str);
   sanitized = healLatexFormulas(sanitized, false, null);
 
   // 3. 기존 $ 및 $$ 수식 블록 보호 (방화벽 - 언더스코어 간섭 없는 안전 토큰 사용)

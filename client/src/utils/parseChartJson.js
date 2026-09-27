@@ -8,14 +8,15 @@
  * @throws {Error} 파싱 실패 시 에러 던짐
  */
 import { normalizeChartData } from '../components/ChartRenderer.jsx';
+import { escapeJsonBackslashes } from './latexUtils.js';
 
 export function parseChartJson(rawJsonStr) {
   if (!rawJsonStr) return null;
 
   let jsonStr = rawJsonStr.trim();
   
-  // 1. 단일 백슬래시 교정: 이중 백슬래시로 이스케이프 되지 않은 LaTeX 기호 보호 (\f, \n 등도 강제 이스케이프하여 KaTeX \frac 등 보호)
-  jsonStr = jsonStr.replace(/(?<!\\)\\(?!["\\/])/g, '\\\\');
+  // 1. 표준 escapeJsonBackslashes로 LaTeX 기호 사전 보호 (\tau, \text, \frac 등)
+  jsonStr = escapeJsonBackslashes(jsonStr);
   
   // 2. 후행 쉼표(Trailing Comma) 제거: JSON 배열이나 객체 마지막에 쉼표가 붙는 환각 방어
   jsonStr = jsonStr.replace(/,\s*([\]}])/g, '$1');
@@ -37,27 +38,6 @@ export function parseChartJson(rawJsonStr) {
     } catch (e2) {
       console.error("[parseChartJson] Failed to parse JSON even with Function fallback. Original string:", rawJsonStr);
       throw e2;
-    }
-  }
-
-  // 5. LaTeX 이스케이프 복원: JSON 파싱 과정에서 \t(Tab), \f(FormFeed), \v(VerticalTab)로 흡수된 \text, \tau, \theta, \frac 등을 정규 LaTeX 표기로 복원
-  const normalizeLatexStr = (str) => {
-    if (!str || typeof str !== 'string') return str;
-    return str
-      .replace(/\t(ext|au|heta|an|imes|ilde)\b/g, '\\t$1')
-      .replace(/\x0c(rac)\b/g, '\\f$1')
-      .replace(/\x0b(ert)\b/g, '\\v$1');
-  };
-
-  if (result && typeof result === 'object') {
-    if (result.description) result.description = normalizeLatexStr(result.description);
-    if (result.title) result.title = normalizeLatexStr(result.title);
-    if (result.xAxisLabel) result.xAxisLabel = normalizeLatexStr(result.xAxisLabel);
-    if (result.yAxisLabel) result.yAxisLabel = normalizeLatexStr(result.yAxisLabel);
-    if (Array.isArray(result.lines)) {
-      result.lines.forEach(l => {
-        if (l && l.name) l.name = normalizeLatexStr(l.name);
-      });
     }
   }
 
