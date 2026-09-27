@@ -205,7 +205,7 @@ div[class*="overflow-y-auto"] {
 
 
 /* PC version font size enlargement (1.2x) for modals */
-@media (min-width: 768px), (orientation: landscape) {
+@media (min-width: 768px) and (min-height: 551px) {
   .pc-enlarged-text .text-\[10px\] { font-size: calc(10px * 1.2) !important; }
   .pc-enlarged-text .text-\[11px\] { font-size: calc(11px * 1.2) !important; }
   .pc-enlarged-text .text-\[12px\] { font-size: calc(12px * 1.2) !important; }

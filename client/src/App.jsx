@@ -6978,8 +6978,15 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
     localStorage.setItem(key, formulaMobileTab);
   }, [formulaMobileTab, selectedTopic?.id]);
 
-  // Desktop view state (width >= 768px OR landscape orientation)
-  const [isDesktop, setIsDesktop] = useState(() => window.innerWidth >= 768 || window.innerWidth > window.innerHeight);
+  // Screen classification state
+  const [isLandscape, setIsLandscape] = useState(() => window.innerWidth > window.innerHeight);
+  const [isMobileLandscape, setIsMobileLandscape] = useState(() => {
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    return w > h && h <= 550;
+  });
+  // Desktop view state (width >= 768px with height > 550px)
+  const [isDesktop, setIsDesktop] = useState(() => window.innerWidth >= 768 && window.innerHeight > 550);
   const [isCover, setIsCover] = useState(() => {
     const w = window.innerWidth;
     const h = window.innerHeight;
@@ -7113,11 +7120,14 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
 
   useEffect(() => {
     const handleResize = () => {
-      const isLandscape = window.innerWidth > window.innerHeight;
-      const isDesktopScreen = window.innerWidth >= 768 || isLandscape;
-      setIsDesktop(isDesktopScreen);
       const w = window.innerWidth;
       const h = window.innerHeight;
+      const landscape = w > h;
+      const mobileLandscape = landscape && h <= 550;
+      const desktop = w >= 768 && h > 550;
+      setIsLandscape(landscape);
+      setIsMobileLandscape(mobileLandscape);
+      setIsDesktop(desktop);
       setIsCover(h > 0 && w > 0 && (h / w < 1.5));
     };
     window.addEventListener('resize', handleResize);
@@ -20688,7 +20698,7 @@ ${itemsStr}
         <div 
           onTouchStart={handleSwipeTouchStart}
           onTouchEnd={(e) => handleSwipeTouchEnd(e, reviewMobileTab, setReviewMobileTab)}
-          className={`fixed inset-y-0 right-0 left-0 z-50 bg-slate-950 flex flex-col ${!isTabletScreen ? 'md:pl-36' : ''} pc-enlarged-text overflow-hidden scrollbar-none-mobile`}
+          className={`fixed inset-y-0 right-0 left-0 z-50 bg-slate-950 flex flex-col ${isDesktop && !isTabletScreen ? 'md:pl-36' : ''} ${isDesktop ? 'pc-enlarged-text' : ''} overflow-hidden scrollbar-none-mobile`}
           style={isTabletScreen ? {
             paddingLeft: tabletNavHidden ? '12px' : '144px',
             transition: 'padding-left 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -20708,159 +20718,20 @@ ${itemsStr}
 
           {/* Main Layout Area */}
           <div className="flex-1 flex flex-row min-h-0 w-full overflow-hidden">
-            {/* Left Vertical Button Strip (Visible ONLY in mobile landscape) */}
-                        {/* Left Vertical Button Strip (Visible ONLY in mobile landscape) */}
-            <div className="hidden flex-col gap-2 p-2 bg-slateCustom-950 border-r border-slate-800/80 w-40 flex-shrink-0 items-stretch justify-start overflow-y-auto scrollbar-none" style={isTabletScreen ? {display:'flex'} : {}}>
-              {lastActiveReview && (
-                <button
-                  onClick={() => {
-                    handleOpenLastActiveReview();
-                  }}
-                  className="flex bg-light-rainbow-animate border rounded-xl p-2 items-center gap-2 cursor-pointer transition-all duration-200 hover:scale-[1.02] active:scale-95 text-left w-full select-none"
-                  title="공부중 복습 이어서 진행"
-                >
-                  <Clock size={12} className="text-slate-950 shrink-0" />
-                  <span className="text-[9px] font-black text-slate-950 truncate text-ellipsis overflow-hidden whitespace-nowrap max-w-[80px]">공부중: {lastActiveReview.title}</span>
-                </button>
-              )}
-
-              <button
-                onClick={async () => {
-                  forceSaveActiveSessions();
-                  setSelectedTopic(null);
-                  setViewMode('dashboard');
-                }}
-                className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-slateCustom-900/60 text-slate-400 border-slate-800/80 hover:text-white hover:bg-slate-800/50 transition-all cursor-pointer"
-              >
-                <Calendar size={12} />
-                <span>오늘의 복습</span>
-              </button>
-
-              <button
-                onClick={async () => {
-                  forceSaveActiveSessions();
-                  setSelectedTopic(null);
-                  setViewMode('all_topics');
-                }}
-                className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-slateCustom-900/60 text-slate-400 border-slate-800/80 hover:text-white hover:bg-slate-800/50 transition-all cursor-pointer"
-              >
-                <List size={12} />
-                <span>복습토픽</span>
-              </button>
-
-              <button
-                onClick={async () => {
-                  forceSaveActiveSessions();
-                  setSelectedTopic(null);
-                  handleOpenExam();
-                }}
-                className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-slateCustom-900/60 text-amber-400 border-slate-800/80 hover:text-amber-200 hover:bg-amber-950/40 transition-all cursor-pointer"
-              >
-                <Award size={12} />
-                <span>종합평가</span>
-              </button>
-
-              <button
-                onClick={async () => {
-                  forceSaveActiveSessions();
-                  setSelectedTopic(null);
-                  handleOpenFormulaExam();
-                }}
-                className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-slateCustom-900/60 text-rose-400 border-slate-800/80 hover:text-rose-200 hover:bg-rose-950/40 transition-all cursor-pointer"
-              >
-                <Sigma size={12} />
-                <span>필수공식</span>
-              </button>
-
-
-                            <button
-                onClick={async () => {
-                  forceSaveActiveSessions();
-                  setSelectedTopic(null);
-                  handleOpenAnswerSheet();
-                }}
-                className="flex items-center justify-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-slateCustom-900/60 text-emerald-400 border-slate-800/80 hover:text-emerald-200 hover:bg-emerald-950/40 transition-all cursor-pointer"
-              >
-                <span>답</span>
-              </button>
-
-              <div className="h-px bg-slate-800/60 my-1 shrink-0" />
-
-              {selectedTopic && (
-                <button
-                  onClick={handleOpenManageTopicInstructionsModal}
-                  className="flex items-center justify-center w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-amber-950/80 hover:bg-amber-900 text-amber-300 hover:text-white border-amber-500/40 transition-all cursor-pointer active:scale-95"
-                  title="토픽 전용 문제 출제 지침을 관리합니다."
-                >
-                  <span>지침</span>
-                </button>
-              )}
-
-              {selectedTopic?.pdf_name && (
-                <button
-                  onClick={handleOpenOriginalReport}
-                  className="flex items-center justify-center w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-violet-950/80 hover:bg-violet-900 text-violet-300 hover:text-white border-violet-500/40 transition-all cursor-pointer active:scale-95"
-                  title="원본 보고서 파일(HTML/PDF) 팝업 열기"
-                >
-                  <span>보고서</span>
-                </button>
-              )}
-
-              {selectedTopic && isDesktop && (
-                <button
-                  onClick={() => setShowAiHistoryModal(true)}
-                  className="flex items-center justify-center w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-slate-900/85 hover:bg-slate-850 text-slate-300 hover:text-white border-slate-700/40 transition-all cursor-pointer active:scale-95"
-                  title="AI 작업 이력 및 자가검증 교정 로그를 조회합니다."
-                >
-                  <span>ai</span>
-                </button>
-              )}
-
-              {selectedTopic && (
-                <button
-                  type="button"
-                  onClick={handleTogglePreferredModel}
-                  className="flex items-center justify-center w-full text-[11px] font-black py-2 px-2.5 rounded-xl border border-emerald-500/40 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 hover:text-white transition-all cursor-pointer active:scale-95 select-none shadow-md"
-                  title="Gemini AI API 모델 선택 (3.5 Lite -> 3.8 Flash -> 3.7 Flash -> 3.1 Lite -> 3.6 Flash -> 3.5 Flash)"
-                >
-                  <span>
-                    API: {getModelDisplayName(preferredModel)}
-                  </span>
-                </button>
-              )}
-
-              <button
-                onClick={() => { 
-                  savedQuizScroll.current = quizBodyRef.current?.scrollTop || 0; 
-                  setSelectedTopic(null); 
-                }}
-                className="flex items-center justify-center w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-slateCustom-900 text-slate-300 hover:text-white border-slate-800 hover:bg-slate-800/50 transition-all cursor-pointer active:scale-95"
-                title={selectedTopic?.isReadOnly ? "화면 닫기" : "화면만 숨김 (재개 시 문제 유지)"}
-              >
-                <span>닫기</span>
-              </button>
-            </div>
-
-            {/* Layout Split Container (Mobile: Horizontal Swipe, PC: Side-by-Side) */}
+            {/* Layout Split Container (Mobile Portrait: Tab toggle, Mobile Landscape / PC: Side-by-Side) */}
             <div 
               ref={reviewSplitContainerRef}
-              onScroll={(e) => {
-                if (!isDesktop && false) {
-                  const scrollLeft = e.currentTarget.scrollLeft;
-                  const clientWidth = e.currentTarget.clientWidth;
-                  if (clientWidth > 0) {
-                    const activeTab = scrollLeft > clientWidth / 2 ? 'tutor' : 'list';
-                    setReviewMobileTab(activeTab);
-                  }
-                }
-              }}
-              className={`flex-1 flex flex-row ${(!isDesktop) ? 'overflow-x-hidden' : 'overflow-x-auto md:overflow-x-hidden'} overflow-y-hidden ${(!isDesktop) ? '' : 'snap-x snap-mandatory'} scroll-smooth min-h-0 w-full scrollbar-none`}
+              className={`flex-1 flex flex-row overflow-x-hidden overflow-y-hidden min-h-0 w-full scrollbar-none`}
             >
 
-              {/* Left: Quiz Wrapper (Takes exactly 60% width on Desktop) */}
+              {/* Left: Quiz Wrapper (Takes 50% width on Mobile Landscape, 60% on Desktop) */}
               <div 
-                className={`w-full shrink-0 md:flex-1 md:shrink min-w-0 snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30 ${
-                  (!isDesktop && reviewMobileTab !== 'list') ? 'hidden' : ''
+                className={`shrink-0 md:shrink min-w-0 snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30 ${
+                  isMobileLandscape
+                    ? 'w-1/2 flex-1 border-r border-slate-800/80'
+                    : isDesktop
+                    ? 'w-full md:flex-1'
+                    : `w-full ${reviewMobileTab !== 'list' ? 'hidden' : ''}`
                 }`}
               >
           {/* Review Header */}
@@ -22426,7 +22297,7 @@ ${itemsStr}
             onMouseDown={startResize}
             onTouchStart={startResize}
             style={{ touchAction: 'none' }}
-            className="hidden md:flex md:w-[50px] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20 cursor-col-resize select-none hover:bg-slate-800/25 active:bg-violet-500/10 transition-colors group"
+            className={`${isDesktop ? 'flex md:w-[50px]' : 'hidden'} h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20 cursor-col-resize select-none hover:bg-slate-800/25 active:bg-violet-500/10 transition-colors group`}
           >
             <div className="absolute inset-y-0 w-px bg-slate-800/80 group-hover:bg-slate-700/80 group-active:bg-violet-500/50 transition-colors pointer-events-none" />
             {/* Floating Scroll Button Capsule (Floats beautifully in the center of the empty gutter) */}
@@ -22452,11 +22323,15 @@ ${itemsStr}
             </div>
           </div>
 
-          {/* Right: Gemini Chat Sidebar (Takes exactly 30% width on Desktop) */}
+          {/* Right: Gemini Chat Sidebar (Takes 50% width on Mobile Landscape, 30% on Desktop) */}
           <div 
-            style={isDesktop ? { width: 'var(--right-sidebar-width)' } : {}}
-            className={`w-full md:w-[24vw] min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 md:border-l border-slate-800/30 flex flex-col overflow-x-hidden ${
-              (!isDesktop && reviewMobileTab !== 'tutor') ? 'hidden' : ''
+            style={isDesktop ? { width: 'var(--right-sidebar-width)' } : isMobileLandscape ? { width: '50%' } : {}}
+            className={`min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 md:border-l border-slate-800/30 flex flex-col overflow-x-hidden ${
+              isMobileLandscape
+                ? 'w-1/2 flex-1'
+                : isDesktop
+                ? 'w-full md:w-[24vw]'
+                : `w-full ${reviewMobileTab !== 'tutor' ? 'hidden' : ''}`
             }`}
           >
               {/* Sidebar Header */}
@@ -24565,7 +24440,7 @@ ${itemsStr}
         <div 
           onTouchStart={handleSwipeTouchStart}
           onTouchEnd={(e) => handleSwipeTouchEnd(e, examMobileTab, setExamMobileTab)}
-          className={`fixed inset-y-0 right-0 left-0 z-[60] bg-slate-950 flex flex-col ${!isTabletScreen ? 'md:pl-36' : ''} pc-enlarged-text overflow-hidden scrollbar-none-mobile`}
+          className={`fixed inset-y-0 right-0 left-0 z-[60] bg-slate-950 flex flex-col ${isDesktop && !isTabletScreen ? 'md:pl-36' : ''} ${isDesktop ? 'pc-enlarged-text' : ''} overflow-hidden scrollbar-none-mobile`}
           style={isTabletScreen ? {
             paddingLeft: tabletNavHidden ? '12px' : '144px',
             transition: 'padding-left 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -24576,227 +24451,20 @@ ${itemsStr}
 
           {/* Main Layout Area */}
           <div className="flex-1 flex flex-row min-h-0 w-full overflow-hidden">
-            {/* Left Vertical Button Strip (Visible ONLY in mobile landscape) */}
-            <div className="hidden flex-col gap-2 p-2 bg-slateCustom-950 border-r border-slate-800/80 w-40 flex-shrink-0 items-stretch justify-start overflow-y-auto scrollbar-none">
-              
-              <button
-                onClick={() => {
-                  // 수동 저장 기능
-                  fetch(`${API_BASE}/api/session/exam`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ examQuestions, examRevealed, examAnswers, examTopic, tableAnswers: examTableAnswers, tableGradingResults: examTableGradingResults, savedExamScroll: examBodyRef.current?.scrollTop || 0 }),
-                  }).then(() => alert('진행 상황이 저장되었습니다.')).catch(e => console.warn('세션 저장 실패:', e));
-                }}
-                className="flex items-center justify-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-emerald-950/40 text-emerald-300 border-emerald-500/30 hover:bg-emerald-900/60 transition-all cursor-pointer active:scale-95"
-              >
-                <span>SAVE</span>
-              </button>
-
-              {lastActiveReview && (
-                <button
-                  onClick={() => {
-                    setShowExam(false);
-                    handleOpenLastActiveReview();
-                  }}
-                  className="flex bg-light-rainbow-animate border rounded-xl p-2 items-center gap-2 cursor-pointer transition-all duration-200 hover:scale-[1.02] active:scale-95 text-left w-full select-none"
-                  title="공부중 복습 이어서 진행"
-                >
-                  <Clock size={12} className="text-slate-950 shrink-0" />
-                  <span className="text-[9px] font-black text-slate-950 truncate text-ellipsis overflow-hidden whitespace-nowrap max-w-[80px]">공부중: {lastActiveReview.title}</span>
-                </button>
-              )}
-
-              <button
-                onClick={() => {
-                  savedExamScroll.current = examBodyRef.current?.scrollTop || 0;
-                  fetch(`${API_BASE}/api/session/exam`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ examQuestions, examRevealed, examAnswers, examTopic, savedExamScroll: savedExamScroll.current }),
-                  }).catch(e => console.warn('세션 저장 실패:', e));
-                  setShowExam(false);
-                  setViewMode('dashboard');
-                }}
-                className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-slateCustom-900/60 text-slate-400 border-slate-800/80 hover:text-white hover:bg-slate-800/50 transition-all cursor-pointer"
-              >
-                <Calendar size={12} />
-                <span>오늘의 복습</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  savedExamScroll.current = examBodyRef.current?.scrollTop || 0;
-                  fetch(`${API_BASE}/api/session/exam`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ examQuestions, examRevealed, examAnswers, examTopic, savedExamScroll: savedExamScroll.current }),
-                  }).catch(e => console.warn('세션 저장 실패:', e));
-                  setShowExam(false);
-                  setViewMode('all_topics');
-                }}
-                className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-slateCustom-900/60 text-slate-400 border-slate-800/80 hover:text-white hover:bg-slate-800/50 transition-all cursor-pointer"
-              >
-                <List size={12} />
-                <span>복습토픽</span>
-              </button>
-
-              <button
-                className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-gradient-to-tr from-amber-600 to-yellow-500 text-white border-amber-500 shadow-lg select-none cursor-default"
-              >
-                <Award size={12} />
-                <span>종합평가</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  savedExamScroll.current = examBodyRef.current?.scrollTop || 0;
-                  fetch(`${API_BASE}/api/session/exam`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ examQuestions, examRevealed, examAnswers, examTopic, savedExamScroll: savedExamScroll.current }),
-                  }).catch(e => console.warn('세션 저장 실패:', e));
-                  setShowExam(false);
-                  handleOpenFormulaExam();
-                }}
-                className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-slateCustom-900/60 text-rose-400 border-slate-800/80 hover:text-rose-200 hover:bg-rose-950/40 transition-all cursor-pointer"
-              >
-                <Sigma size={12} />
-                <span>필수공식</span>
-              </button>
-
-
-              <button
-                onClick={() => {
-                  savedExamScroll.current = examBodyRef.current?.scrollTop || 0;
-                  fetch(`${API_BASE}/api/session/exam`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ examQuestions, examRevealed, examAnswers, examTopic, savedExamScroll: savedExamScroll.current }),
-                  }).catch(e => console.warn('세션 저장 실패:', e));
-                  setShowExam(false);
-                  handleOpenAnswerSheet();
-                }}
-                className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-slateCustom-900/60 text-emerald-400 border-slate-800/80 hover:text-emerald-200 hover:bg-emerald-950/40 transition-all cursor-pointer"
-              >
-                <FileText size={12} />
-                <span>답안지</span>
-              </button>
-
-              <div className="h-px bg-slate-800/60 my-1 shrink-0" />
-
-              <button
-                onClick={handleAddExamQuestions}
-                disabled={loadingExam}
-                className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-indigo-950/80 hover:bg-indigo-900 text-indigo-300 hover:text-white border-indigo-500/40 transition-all cursor-pointer active:scale-95 disabled:opacity-50"
-                title="종합평가에 신규 AI 문제 10문항 추가"
-              >
-                <span className="text-[10px]">➕</span>
-                <span>문제 추가</span>
-              </button>
-              
-              <button
-                onClick={handleRefreshExamQuestions}
-                disabled={loadingExam}
-                className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-violet-950/40 hover:bg-violet-900/60 text-violet-300 hover:text-white border-violet-500/20 transition-all cursor-pointer active:scale-95 disabled:opacity-50"
-                title="종합평가 전체 문제 실시간 AI 재출제"
-              >
-                <span className="text-xs">🔄</span>
-                <span>리프레쉬</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  savedExamScroll.current = examBodyRef.current?.scrollTop || 0;
-                  setShowExam(false);
-                }}
-                className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-slateCustom-900 text-slate-300 hover:text-white border-slate-800 hover:bg-slate-800/50 transition-all cursor-pointer active:scale-95"
-                title="화면만 숨김 (재개 시 문제 유지)"
-              >
-                <span className="text-[10px]">❌</span>
-                <span>닫기</span>
-              </button>
-
-              <button
-                onClick={async () => {
-                  if (window.confirm("종합평가를 완전히 종료하고 결과 리포트를 저장하시겠습니까?")) {
-                    try {
-                      await fetch(`${API_BASE}/api/session/exam`, { method: 'DELETE' });
-                    } catch (e) {
-                      console.warn('세션 삭제 실패:', e);
-                    }
-                    setShowExam(false); setExamQuestions([]); setExamRevealed({}); setExamAnswers({}); setExamTopic(null); setExamOptionExplanations({}); setExamTableAnswers({}); setExamTableGradingResults({}); setShowAnswersState({}); setExamShowAnswersState({});
-                  }
-                }}
-                className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-rose-950/60 hover:bg-rose-900/65 text-rose-300 hover:text-white border-rose-500/20 transition-all cursor-pointer active:scale-95"
-                title="종합평가 종료"
-              >
-                <span className="text-xs">⏹️</span>
-                <span>종료</span>
-              </button>
-
-              <button
-                onClick={async () => {
-                  if (window.confirm("튜터 대화 기록과 저장된 캐시 찌꺼기를 모두 삭제하시겠습니까?")) {
-                    setChatHistory([]);
-                    setTutorAnswers({});
-                    setTutorInputText({});
-                    if (typeof setCurrentAttachedImage === 'function') {
-                      setCurrentAttachedImage(null);
-                    }
-                    try {
-                      const saved = localStorage.getItem('anti_app_state');
-                      if (saved) {
-                        const parsed = JSON.parse(saved);
-                        parsed.chatHistory = [];
-                        parsed.tutorAnswers = {};
-                        parsed.tutorInputText = {};
-                        localStorage.setItem('anti_app_state', JSON.stringify(parsed));
-                      }
-                    } catch (e) {
-                      console.warn('Failed to clean anti_app_state:', e);
-                    }
-                    setChatHistory([]);
-                    setTutorAnswers({});
-                    setTutorInputText({});
-                    setRealTimeChatHistory([]);
-                    localStorage.removeItem('anti_realtime_chat_history');
-                    await forceSaveActiveSessions(false, true, {
-                      chatHistory: [],
-                      tutorAnswers: {},
-                      tutorInputText: {}
-                    });
-                    alert("튜터 데이터가 초기화되었습니다.");
-                  }
-                }}
-                className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 hover:text-white border-rose-800/80 hover:border-rose-700/80 transition-all cursor-pointer active:scale-95"
-                title="튜터 관련 대화 내용, 캐시 및 저장메모리 청소"
-              >
-                <span className="text-xs">🧹</span>
-                <span>튜터클린</span>
-              </button>
-            </div>
-
-            {/* Layout Split Container (Mobile: Horizontal Swipe, PC: Side-by-Side) */}
+            {/* Layout Split Container (Mobile Portrait: Tab toggle, Mobile Landscape / PC: Side-by-Side) */}
             <div 
               ref={examSplitContainerRef}
-              onScroll={(e) => {
-                if (!isDesktop && false) {
-                  const scrollLeft = e.currentTarget.scrollLeft;
-                  const clientWidth = e.currentTarget.clientWidth;
-                  if (clientWidth > 0) {
-                    const activeTab = scrollLeft > clientWidth / 2 ? 'tutor' : 'list';
-                    setExamMobileTab(activeTab);
-                  }
-                }
-              }}
-              className={`flex-1 flex flex-row ${(!isDesktop) ? 'overflow-x-hidden' : 'overflow-x-auto md:overflow-x-hidden'} overflow-y-hidden ${(!isDesktop) ? '' : 'snap-x snap-mandatory'} scroll-smooth min-h-0 w-full scrollbar-none`}
+              className={`flex-1 flex flex-row overflow-x-hidden overflow-y-hidden min-h-0 w-full scrollbar-none`}
             >
             
-            {/* Left: Exam Wrapper (Takes exactly 60% width on Desktop) */}
+            {/* Left: Exam Wrapper (Takes 50% width on Mobile Landscape, 60% on Desktop) */}
             <div 
-              className={`w-full shrink-0 md:flex-1 md:shrink min-w-0 snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30 ${
-                (!isDesktop && examMobileTab !== 'list') ? 'hidden' : ''
+              className={`shrink-0 md:shrink min-w-0 snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30 ${
+                isMobileLandscape
+                  ? 'w-1/2 flex-1 border-r border-slate-800/80'
+                  : isDesktop
+                  ? 'w-full md:flex-1'
+                  : `w-full ${examMobileTab !== 'list' ? 'hidden' : ''}`
               }`}
             >
           {/* Exam Header */}
@@ -26114,7 +25782,7 @@ ${itemsStr}
               onMouseDown={startResize}
               onTouchStart={startResize}
               style={{ touchAction: 'none' }}
-              className="hidden md:flex md:w-[50px] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20 cursor-col-resize select-none hover:bg-slate-800/25 active:bg-amber-500/10 transition-colors group"
+              className={`${isDesktop ? 'flex md:w-[50px]' : 'hidden'} h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20 cursor-col-resize select-none hover:bg-slate-800/25 active:bg-amber-500/10 transition-colors group`}
             >
               <div className="absolute inset-y-0 w-px bg-slate-800/80 group-hover:bg-slate-700/80 group-active:bg-amber-500/50 transition-colors pointer-events-none" />
               {/* Floating Scroll Button Capsule (Floats beautifully in the center of the empty gutter) */}
@@ -26140,11 +25808,15 @@ ${itemsStr}
               </div>
             </div>
 
-            {/* Right: Gemini Sidebar (Takes exactly 30% width on Desktop) */}
+            {/* Right: Gemini Sidebar (Takes 50% width on Mobile Landscape, 30% on Desktop) */}
             <div 
-              style={isDesktop ? { width: 'var(--right-sidebar-width)' } : {}}
-              className={`w-full md:w-[24vw] min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 md:border-l border-slate-800/30 flex flex-col overflow-x-hidden ${
-                (!isDesktop && examMobileTab !== 'tutor') ? 'hidden' : ''
+              style={isDesktop ? { width: 'var(--right-sidebar-width)' } : isMobileLandscape ? { width: '50%' } : {}}
+              className={`min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 md:border-l border-slate-800/30 flex flex-col overflow-x-hidden ${
+                isMobileLandscape
+                  ? 'w-1/2 flex-1'
+                  : isDesktop
+                  ? 'w-full md:w-[24vw]'
+                  : `w-full ${examMobileTab !== 'tutor' ? 'hidden' : ''}`
               }`}
             >
               {/* Sidebar Header */}
@@ -26499,7 +26171,7 @@ ${itemsStr}
         <div 
           onTouchStart={handleSwipeTouchStart}
           onTouchEnd={(e) => handleSwipeTouchEnd(e, formulaMobileTab, setFormulaMobileTab)}
-          className={`fixed inset-y-0 right-0 left-0 z-[60] bg-slate-950 flex flex-col ${!isTabletScreen ? 'md:pl-36' : ''} pc-enlarged-text overflow-hidden scrollbar-none-mobile`}
+          className={`fixed inset-y-0 right-0 left-0 z-[60] bg-slate-950 flex flex-col ${isDesktop && !isTabletScreen ? 'md:pl-36' : ''} ${isDesktop ? 'pc-enlarged-text' : ''} overflow-hidden scrollbar-none-mobile`}
           style={isTabletScreen ? {
             paddingLeft: tabletNavHidden ? '12px' : '144px',
             transition: 'padding-left 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -26508,7 +26180,7 @@ ${itemsStr}
           
           {/* Formula Header */}
           {(!isDesktop) ? (
-            formulaMobileTab === 'list' ? (
+            (formulaMobileTab === 'list' || isMobileLandscape) ? (
               /* Mobile Portrait Header for Formulas Modal */
               <div className="flex flex-col gap-3 px-4 py-4 bg-slateCustom-950 border-b border-slate-800/80 flex-shrink-0">
                 {/* Title Line */}
@@ -26824,100 +26496,16 @@ ${itemsStr}
             className="flex-1 flex flex-row overflow-x-hidden overflow-y-hidden min-h-0 w-full scrollbar-none bg-slate-950"
           >
             
-            {/* Left Vertical Button Strip (Visible ONLY in mobile landscape) */}
-                        {/* Left Vertical Button Strip (Visible ONLY in mobile landscape) */}
-            <div className="hidden flex-col gap-2 p-2 bg-slateCustom-950 border-r border-slate-800/80 w-40 flex-shrink-0 items-stretch justify-start overflow-y-auto scrollbar-none">
-              {lastActiveReview && (
-                <button
-                  onClick={() => {
-                    handleSaveFormulaQuestions(latestFormulaQuestionsRef.current, false);
-                    setShowFormulaExam(false);
-                    handleOpenLastActiveReview();
-                  }}
-                  className="flex bg-light-rainbow-animate border rounded-xl p-2 items-center gap-2 cursor-pointer transition-all duration-200 hover:scale-[1.02] active:scale-95 text-left w-full select-none"
-                  title="공부중 복습 이어서 진행"
-                >
-                  <Clock size={12} className="text-slate-950 shrink-0" />
-                  <span className="text-[9px] font-black text-slate-950 truncate text-ellipsis overflow-hidden whitespace-nowrap max-w-[80px]">공부중: {lastActiveReview.title}</span>
-                </button>
-              )}
-
-              <button
-                onClick={() => {
-                  handleSaveFormulaQuestions(latestFormulaQuestionsRef.current, false);
-                  setShowFormulaExam(false);
-                  setViewMode('dashboard');
-                  setSelectedTopic(null);
-                }}
-                className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-slateCustom-900/60 text-slate-400 border-slate-800/80 hover:text-white hover:bg-slate-800/50 transition-all cursor-pointer"
-              >
-                <Calendar size={12} />
-                <span>오늘의 복습</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  handleSaveFormulaQuestions(latestFormulaQuestionsRef.current, false);
-                  setShowFormulaExam(false);
-                  setViewMode('all_topics');
-                  setSelectedTopic(null);
-                }}
-                className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-slateCustom-900/60 text-slate-400 border-slate-800/80 hover:text-white hover:bg-slate-800/50 transition-all cursor-pointer"
-              >
-                <List size={12} />
-                <span>복습토픽</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  handleSaveFormulaQuestions(latestFormulaQuestionsRef.current, false);
-                  setShowFormulaExam(false);
-                  handleOpenExam();
-                }}
-                className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-slateCustom-900/60 text-amber-400 border-slate-800/80 hover:text-amber-200 hover:bg-amber-950/40 transition-all cursor-pointer"
-              >
-                <Award size={12} />
-                <span>종합평가</span>
-              </button>
-
-              <button
-                className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-gradient-to-tr from-rose-600 to-pink-500 text-white border-rose-500 shadow-lg select-none cursor-default"
-              >
-                <Sigma size={12} />
-                <span>필수공식</span>
-              </button>
-
-
-              <button
-                onClick={() => {
-                  handleSaveFormulaQuestions(latestFormulaQuestionsRef.current, false);
-                  setShowFormulaExam(false);
-                  handleOpenAnswerSheet();
-                }}
-                className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-slateCustom-900/60 text-emerald-400 border-slate-800/80 hover:text-emerald-200 hover:bg-emerald-950/40 transition-all cursor-pointer"
-              >
-                <FileText size={12} />
-                <span>답안지</span>
-              </button>
-
-              <div className="h-px bg-slate-800/60 my-1" />
-
-              <button
-                onClick={() => setShowAiHistoryModal(true)}
-                className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-slateCustom-900/60 text-slate-400 border-slate-800/80 hover:text-violet-300 hover:bg-slate-800/50 transition-all cursor-pointer"
-              >
-                <Clock size={12} className="text-violet-400 shrink-0" />
-                <span>AI이력</span>
-              </button>
-
-              </div>
-            
-            {/* Left: Formula Wrapper (Takes exactly 68% width on Desktop) */}
-              <div 
-                className={`w-full shrink-0 md:flex-1 md:shrink min-w-0 snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30 ${
-                  (!isDesktop && formulaMobileTab !== 'list') ? 'hidden' : ''
-                }`}
-              >
+            {/* Left: Formula Wrapper (Takes 50% width on Mobile Landscape, 68% on Desktop) */}
+            <div 
+              className={`shrink-0 md:shrink min-w-0 snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30 ${
+                isMobileLandscape
+                  ? 'w-1/2 flex-1 border-r border-slate-800/80'
+                  : isDesktop
+                  ? 'w-full md:flex-1'
+                  : `w-full ${formulaMobileTab !== 'list' ? 'hidden' : ''}`
+              }`}
+            >
                             {/* Sub-tabs for Memorization Modal */}
               <div className="w-full px-3 sm:px-6 md:px-5 pt-4 pb-2 bg-slateCustom-950/20 md:flex hidden gap-2 justify-start border-b border-slate-800/40 select-none">
                 <button
@@ -28941,12 +28529,12 @@ ${itemsStr}
                 )}
               </div>
             </div>
-{/* Middle: Gutter (Takes exactly 50px width on Desktop) */}
+            {/* Middle: Gutter (Takes exactly 50px width on Desktop) */}
             <div 
               onMouseDown={startResize}
               onTouchStart={startResize}
               style={{ touchAction: 'none' }}
-              className="hidden md:flex md:w-[50px] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20 cursor-col-resize select-none hover:bg-slate-800/25 active:bg-rose-500/10 transition-colors group"
+              className={`${isDesktop ? 'flex md:w-[50px]' : 'hidden'} h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20 cursor-col-resize select-none hover:bg-slate-800/25 active:bg-rose-500/10 transition-colors group`}
             >
               <div className="absolute inset-y-0 w-px bg-slate-800/80 group-hover:bg-slate-700/80 group-active:bg-rose-500/50 transition-colors pointer-events-none" />
               {/* Floating Scroll Button Capsule (Floats beautifully in the center of the empty gutter) */}
@@ -28972,13 +28560,17 @@ ${itemsStr}
               </div>
             </div>
 
-            {/* Right: Formula AI Tutor Sidebar */}
-              <div 
-                style={isDesktop ? { width: 'var(--right-sidebar-width)' } : {}}
-                className={`w-full max-w-full min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800/30 flex flex-col overflow-x-hidden ${
-                  (!isDesktop && formulaMobileTab !== 'tutor') ? 'hidden' : ''
-                }`}
-              >
+            {/* Right: Formula AI Tutor Sidebar (Takes 50% width on Mobile Landscape, 30% on Desktop) */}
+            <div 
+              style={isDesktop ? { width: 'var(--right-sidebar-width)' } : isMobileLandscape ? { width: '50%' } : {}}
+              className={`min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800/30 flex flex-col overflow-x-hidden ${
+                isMobileLandscape
+                  ? 'w-1/2 flex-1'
+                  : isDesktop
+                  ? 'w-full max-w-full md:w-[24vw]'
+                  : `w-full ${formulaMobileTab !== 'tutor' ? 'hidden' : ''}`
+              }`}
+            >
               {formulaSubTab === 'image' ? (
                 <div className="flex flex-col h-full overflow-hidden w-full">
                   {/* Minimized Image Upload Panel */}
@@ -29444,7 +29036,7 @@ ${itemsStr}
       {/* ===== ESSENTIAL ANSWERSHEET STUDY MODAL ===== */}
       {showAnswerSheet && (
         <div 
-          className={`fixed inset-y-0 right-0 left-0 z-[60] bg-slate-950 flex flex-col ${!isTabletScreen ? 'md:pl-36' : ''} pc-enlarged-text overflow-hidden scrollbar-none-mobile`}
+          className={`fixed inset-y-0 right-0 left-0 z-[60] bg-slate-950 flex flex-col ${isDesktop && !isTabletScreen ? 'md:pl-36' : ''} ${isDesktop ? 'pc-enlarged-text' : ''} overflow-hidden scrollbar-none-mobile`}
           style={isTabletScreen ? {
             paddingLeft: tabletNavHidden ? '12px' : '144px',
             transition: 'padding-left 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -29678,137 +29270,19 @@ ${itemsStr}
             </div>
           )}
 
-          {/* Sub-header tabs for Mobile */}
-          {(isDesktop) && (
-            <div className="flex md:hidden bg-slateCustom-950 px-5 py-2 border-b border-emerald-500/10 justify-center flex-shrink-0 ">
-              <div className="flex bg-slateCustom-900 p-1 rounded-xl w-full max-w-[320px] border border-slate-800">
-                <button
-                  onClick={() => {
-                    setAnswersheetMobileTab('list');
-                    answersheetSplitContainerRef.current?.scrollTo({ left: 0, behavior: 'smooth' });
-                  }}
-                  className={`flex-1 py-1.5 text-center text-xs font-black rounded-lg transition-all cursor-pointer ${
-                    answersheetMobileTab === 'list'
-                      ? 'bg-emerald-650 text-white shadow-md'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  답안지 리스트
-                </button>
-                <button
-                  onClick={() => {
-                    setAnswersheetMobileTab('tutor');
-                    const containerWidth = answersheetSplitContainerRef.current?.clientWidth || 0;
-                    answersheetSplitContainerRef.current?.scrollTo({ left: containerWidth, behavior: 'smooth' });
-                  }}
-                  className={`flex-1 py-1.5 text-center text-xs font-black rounded-lg transition-all cursor-pointer ${
-                    answersheetMobileTab === 'tutor'
-                      ? 'bg-emerald-650 text-white shadow-md'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  보고서 업로드
-                </button>
-              </div>
-            </div>
-          )}
-
           {/* Modal Container */}
           <div 
             ref={answersheetSplitContainerRef}
-            onScroll={(e) => {
-              if (!isDesktop) {
-                const scrollLeft = e.currentTarget.scrollLeft;
-                const clientWidth = e.currentTarget.clientWidth;
-                if (clientWidth > 0) {
-                  const activeTab = scrollLeft > clientWidth / 2 ? 'tutor' : 'list';
-                  setAnswersheetMobileTab(activeTab);
-                }
-              }
-            }}
-            className={`flex-1 flex flex-row ${(!isDesktop) ? 'overflow-x-hidden' : 'overflow-x-auto md:overflow-x-hidden'} overflow-y-hidden ${(!isDesktop) ? '' : 'snap-x snap-mandatory'} scroll-smooth min-h-0 w-full scrollbar-none `}
+            className={`flex-1 flex flex-row overflow-x-hidden overflow-y-hidden min-h-0 w-full scrollbar-none `}
           >
-            
-            {/* Left Vertical Button Strip (Visible ONLY in mobile landscape) */}
-                        {/* Left Vertical Button Strip (Visible ONLY in mobile landscape) */}
-            <div className="hidden flex-col gap-2 p-2 bg-slateCustom-950 border-r border-slate-800/80 w-40 flex-shrink-0 items-stretch justify-start overflow-y-auto scrollbar-none">
-              {lastActiveReview && (
-                <button
-                  onClick={() => {
-                    handleSaveAnswersheetQuestions(latestAnswersheetQuestionsRef.current, false);
-                    setShowAnswerSheet(false);
-                    handleOpenLastActiveReview();
-                  }}
-                  className="flex bg-light-rainbow-animate border rounded-xl p-2 items-center gap-2 cursor-pointer transition-all duration-200 hover:scale-[1.02] active:scale-95 text-left w-full select-none"
-                  title="공부중 복습 이어서 진행"
-                >
-                  <Clock size={12} className="text-slate-950 shrink-0" />
-                  <span className="text-[9px] font-black text-slate-950 truncate text-ellipsis overflow-hidden whitespace-nowrap max-w-[80px]">공부중: {lastActiveReview.title}</span>
-                </button>
-              )}
-
-              <button
-                onClick={() => {
-                  handleSaveAnswersheetQuestions(latestAnswersheetQuestionsRef.current, false);
-                  setShowAnswerSheet(false);
-                  setViewMode('dashboard');
-                  setSelectedTopic(null);
-                }}
-                className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-slateCustom-900/60 text-slate-400 border-slate-800/80 hover:text-white hover:bg-slate-800/50 transition-all cursor-pointer"
-              >
-                <Calendar size={12} />
-                <span>오늘의 복습</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  handleSaveAnswersheetQuestions(latestAnswersheetQuestionsRef.current, false);
-                  setShowAnswerSheet(false);
-                  setViewMode('all_topics');
-                  setSelectedTopic(null);
-                }}
-                className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-slateCustom-900/60 text-slate-400 border-slate-800/80 hover:text-white hover:bg-slate-800/50 transition-all cursor-pointer"
-              >
-                <List size={12} />
-                <span>복습토픽</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  handleSaveAnswersheetQuestions(latestAnswersheetQuestionsRef.current, false);
-                  setShowAnswerSheet(false);
-                  handleOpenExam();
-                }}
-                className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-slateCustom-900/60 text-amber-400 border-slate-800/80 hover:text-amber-200 hover:bg-amber-950/40 transition-all cursor-pointer"
-              >
-                <Award size={12} />
-                <span>종합평가</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  handleSaveAnswersheetQuestions(latestAnswersheetQuestionsRef.current, false);
-                  setShowAnswerSheet(false);
-                  handleOpenFormulaExam();
-                }}
-                className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-slateCustom-900/60 text-rose-400 border-slate-800/80 hover:text-rose-200 hover:bg-rose-950/40 transition-all cursor-pointer"
-              >
-                <Sigma size={12} />
-                <span>필수공식</span>
-              </button>
-
-
-              <button
-                className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-gradient-to-tr from-emerald-600 to-teal-500 text-white border-emerald-500 shadow-lg select-none cursor-default"
-              >
-                <FileText size={12} />
-                <span>답안지</span>
-              </button>
-
-              </div>
-            
-            {/* Left: Answersheet List */}
-            <div className="w-full shrink-0 md:flex-1 md:shrink min-w-0 snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30">
+            {/* Left: Answersheet List (Takes 50% width on Mobile Landscape, 60% on Desktop) */}
+            <div className={`shrink-0 md:shrink min-w-0 snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30 ${
+              isMobileLandscape
+                ? 'w-1/2 flex-1 border-r border-slate-800/80'
+                : isDesktop
+                ? 'w-full md:flex-1'
+                : `w-full ${answersheetMobileTab !== 'list' ? 'hidden' : ''}`
+            }`}>
               <div 
                 ref={answersheetBodyRef} 
                 className="flex-1 w-full overflow-y-auto overflow-x-hidden p-3 sm:p-6 md:px-5 scroll-smooth flex flex-col scrollbar-none-mobile"
@@ -30130,7 +29604,7 @@ ${itemsStr}
               onMouseDown={startResize}
               onTouchStart={startResize}
               style={{ touchAction: 'none' }}
-              className="hidden md:flex md:w-[50px] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20 cursor-col-resize select-none hover:bg-slate-800/25 active:bg-emerald-500/10 transition-colors group"
+              className={`${isDesktop ? 'flex md:w-[50px]' : 'hidden'} h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20 cursor-col-resize select-none hover:bg-slate-800/25 active:bg-emerald-500/10 transition-colors group`}
             >
               <div className="absolute inset-y-0 w-px bg-slate-800/80 group-hover:bg-slate-700/80 group-active:bg-emerald-500/50 transition-colors pointer-events-none" />
               <div 
@@ -30155,11 +29629,15 @@ ${itemsStr}
               </div>
             </div>
 
-            {/* Right: PDF/HTML upload section instead of AI Tutor */}
+            {/* Right: PDF/HTML upload section (Takes 50% width on Mobile Landscape, 30% on Desktop) */}
             <div 
-              style={isDesktop ? { width: 'var(--right-sidebar-width)' } : {}}
-              className={`w-full max-w-full min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800 flex flex-col overflow-x-hidden ${
-                (!isDesktop && answersheetMobileTab !== 'tutor') ? 'hidden' : ''
+              style={isDesktop ? { width: 'var(--right-sidebar-width)' } : isMobileLandscape ? { width: '50%' } : {}}
+              className={`min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800 flex flex-col overflow-x-hidden ${
+                isMobileLandscape
+                  ? 'w-1/2 flex-1'
+                  : isDesktop
+                  ? 'w-full max-w-full md:w-[24vw]'
+                  : `w-full ${answersheetMobileTab !== 'tutor' ? 'hidden' : ''}`
               }`}
             >
               {/* Header */}
