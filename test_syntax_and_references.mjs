@@ -317,24 +317,24 @@ if (hasSessionStorageNavLeak) {
 }
 
 
-// [TEST 11] 기술사 정통 4단계 계층화(### 1. -> (1) -> ① -> · ) 서식 지침 무결성 검증
-console.log('\n[TEST 11] 기술사 정통 4단계 계층화(### 1. -> (1) -> ① -> · ) 서식 지침 무결성 검증...');
+// [TEST 11] AI 기본 자율성 주축 + 가독성 양념 3종(* (1) 금지, 변수 간결화, 위계 분별) 무결성 검증
+console.log('\n[TEST 11] AI 기본 자율성 주축 + 가독성 양념 3종(* (1) 금지, 변수 간결화, 위계 분별) 무결성 검증...');
 const otherStdSrc = fs.readFileSync(path.resolve('server/plugins/otherStandards.js'), 'utf8');
 const genStdSrc = fs.readFileSync(path.resolve('server/plugins/generationStandards.js'), 'utf8');
 const serverLatexSrc = fs.readFileSync(path.resolve('server/utils/latexUtils.js'), 'utf8');
 const clientLatexSrc = fs.readFileSync(path.resolve('client/src/utils/latexUtils.js'), 'utf8');
 
-const hasOtherStd = otherStdSrc.includes('professional_engineer_hierarchy_standard');
-const hasGenStd = genStdSrc.includes('professional_engineer_hierarchy_standard');
-const hasServerLatex = serverLatexSrc.includes('기술사 4단계 계층화 서식 철칙');
-const hasClientLatex = clientLatexSrc.includes('기술사 4단계 계층화 서식 철칙');
-const hasOldAutonomyLeak = otherStdSrc.includes('format_autonomy_standard');
+const hasOtherStd = otherStdSrc.includes('format_autonomy_standard') && otherStdSrc.includes('* (1)');
+const hasGenStd = genStdSrc.includes('format_readability_seasoning_standard') && genStdSrc.includes('* (1)');
+const hasServerLatex = serverLatexSrc.includes('가독성 서식 수칙') && serverLatexSrc.includes('* (1)');
+const hasClientLatex = clientLatexSrc.includes('가독성 서식 수칙') && clientLatexSrc.includes('* (1)');
+const hasRigidConstraintLeak = otherStdSrc.includes('professional_engineer_hierarchy_standard') || genStdSrc.includes('professional_engineer_hierarchy_standard');
 
-if (!hasOtherStd || !hasGenStd || !hasServerLatex || !hasClientLatex || hasOldAutonomyLeak) {
+if (!hasOtherStd || !hasGenStd || !hasServerLatex || !hasClientLatex || hasRigidConstraintLeak) {
   failedCount++;
-  console.error(`  ❌ [계층화 지침 누락 감지]: otherStd(${hasOtherStd}), genStd(${hasGenStd}), serverLatex(${hasServerLatex}), clientLatex(${hasClientLatex}), oldAutonomyLeak(${hasOldAutonomyLeak})`);
+  console.error(`  ❌ [서식 지침 불일치 감지]: otherStd(${hasOtherStd}), genStd(${hasGenStd}), serverLatex(${hasServerLatex}), clientLatex(${hasClientLatex}), rigidConstraintLeak(${hasRigidConstraintLeak})`);
 } else {
-  console.log('  ➜ [PASS] AI 튜터, 문제 출제 지침, LaTeX 프롬프트에 기술사 4단계 계층화 서식 표준 100% 정상 탑재 확인!');
+  console.log('  ➜ [PASS] AI 튜터, 문제 출제 지침, LaTeX 프롬프트에 AI 기본 자율성 주축 + 가독성 양념 3종 100% 정상 탑재 확인!');
 }
 console.log('\n==========================================================');
 if (failedCount > 0) {
