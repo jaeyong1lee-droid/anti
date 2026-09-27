@@ -860,6 +860,66 @@ async function resolveTopic(topicId) {
   return topic;
 }
 
+const MAX_RECENT_LOCKSCREEN_SLIDES = 10;
+
+async function getRecentLockscreenSlide(title) {
+  try {
+    const row = await dbQuery.get("SELECT value FROM app_session WHERE key = 'recent_lockscreen_slides'");
+    if (row && row.value) {
+      const list = JSON.parse(row.value);
+      if (Array.isArray(list)) {
+        const clean = String(title).trim();
+        return list.find(item => item.title === clean || item.id === clean) || null;
+      }
+    }
+  } catch (err) {
+    console.warn('[getRecentLockscreenSlide Error]:', err.message);
+  }
+  return null;
+}
+
+async function saveRecentLockscreenSlide(title, slideDeck, slideUrl = null, slideName = null) {
+  try {
+    const row = await dbQuery.get("SELECT value FROM app_session WHERE key = 'recent_lockscreen_slides'");
+    let list = [];
+    if (row && row.value) {
+      try {
+        list = JSON.parse(row.value);
+        if (!Array.isArray(list)) list = [];
+      } catch (e) {
+        list = [];
+      }
+    }
+
+    const clean = String(title).trim();
+    const existingIndex = list.findIndex(item => item.title === clean || item.id === clean);
+
+    const entry = {
+      title: clean,
+      slide_deck: slideDeck || null,
+      slide_url: slideUrl || null,
+      slide_name: slideName || null,
+      updatedAt: Date.now()
+    };
+
+    if (existingIndex >= 0) {
+      list[existingIndex] = { ...list[existingIndex], ...entry };
+    } else {
+      list.unshift(entry);
+    }
+
+    // 드롭다운 토글버튼의 최근 10개 문제 리스트와 일치하도록 최대 10개만 유지 (오래된 슬라이드 자동 소멸)
+    if (list.length > MAX_RECENT_LOCKSCREEN_SLIDES) {
+      list = list.slice(0, MAX_RECENT_LOCKSCREEN_SLIDES);
+    }
+
+    await saveSessionValue('recent_lockscreen_slides', JSON.stringify(list));
+    console.log(`[Recent Slides] Cached slide for "${clean}" (Stored: ${list.length}/${MAX_RECENT_LOCKSCREEN_SLIDES})`);
+  } catch (err) {
+    console.warn('[saveRecentLockscreenSlide Error]:', err.message);
+  }
+}
+
 // 1. GET /api/topics/:id/slides -> 슬라이드 메타데이터 및 덱 JSON 조회
 router.get('/topics/:id/slides', async (req, res) => {
   const topicId = req.params.id;
@@ -867,35 +927,15 @@ router.get('/topics/:id/slides', async (req, res) => {
     const topic = await resolveTopic(topicId);
     if (!topic) {
       const cleanTitle = String(topicId).trim();
-      let virtualDeck = null;
-      let virtualSlideUrl = null;
-      let virtualSlideName = null;
-      try {
-        const row = await dbQuery.get("SELECT value FROM app_session WHERE key = ?", [`virtual_slide_deck_${cleanTitle}`]);
-        if (row && row.value) {
-          const parsed = JSON.parse(row.value);
-          if (parsed.slides) {
-            virtualDeck = parsed;
-          } else if (parsed.slide_deck) {
-            virtualDeck = parsed.slide_deck;
-            virtualSlideUrl = parsed.slide_url || null;
-            virtualSlideName = parsed.slide_name || null;
-          } else if (parsed.slide_url) {
-            virtualSlideUrl = parsed.slide_url;
-            virtualSlideName = parsed.slide_name || 'Google Slides';
-          }
-        }
-      } catch (e) {
-        console.warn('[GET /topics/:id/slides] Failed to load virtual slide deck from session:', e.message);
-      }
+      const recentSlide = await getRecentLockscreenSlide(cleanTitle);
 
       return res.json({
         topic_id: cleanTitle,
         title: cleanTitle,
-        slide_name: virtualSlideName,
-        slide_url: virtualSlideUrl,
+        slide_name: recentSlide?.slide_name || null,
+        slide_url: recentSlide?.slide_url || null,
         has_file: false,
-        slide_deck: virtualDeck,
+        slide_deck: recentSlide?.slide_deck || null,
         is_generating: activeSlideGenerations.has(cleanTitle)
       });
     }
@@ -1027,13 +1067,8 @@ router.post('/topics/:id/slides', upload.single('slide_file'), async (req, res) 
       }
     } else {
       const cleanTitle = String(topic.title || topicId).trim();
-      const virtualPayload = {
-        slide_name: slideName || (slideUrl ? 'Google Slides' : null),
-        slide_url: slideUrl,
-        slide_deck: slideDeckJson ? JSON.parse(slideDeckJson) : null
-      };
-      await saveSessionValue(`virtual_slide_deck_${cleanTitle}`, JSON.stringify(virtualPayload));
-      console.log(`[Slide Upload] Saved virtual slide to app_session for "${cleanTitle}"`);
+      const parsedDeck = slideDeckJson ? JSON.parse(slideDeckJson) : null;
+      await saveRecentLockscreenSlide(cleanTitle, parsedDeck, slideUrl, slideName);
     }
 
     res.json({
@@ -1186,10 +1221,9 @@ ${(sourceText || '').slice(0, 7000)}`;
           [deckJsonStr, topic.id]
         );
       } else {
-        // Save virtual slide deck in app_session to persist across sessions without polluting topics/schedules!
+        // 드롭다운 토글버튼의 최근 10개 문제 리스트와 일치하도록 최대 10개까지만 보관 (영구보관 X)
         const cleanTitle = String(topic.title || topicId).trim();
-        await saveSessionValue(`virtual_slide_deck_${cleanTitle}`, deckJsonStr);
-        console.log(`[Slide Gen] Saved virtual slide deck to app_session for "${cleanTitle}"`);
+        await saveRecentLockscreenSlide(cleanTitle, parsedDeck);
       }
       return res.json({
         success: true,
