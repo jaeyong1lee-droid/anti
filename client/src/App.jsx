@@ -7001,6 +7001,12 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
   const tabletNavTimerRef = useRef(null);
   const tabletSwipeStartRef = useRef({ x: 0, y: 0, active: false });
 
+  // PC / Desktop Nav panel collapse & expand state
+  // In full-screen modals, sidebar defaults to collapsed (false) for edge-to-edge view.
+  // On the main dashboard, sidebar defaults to expanded (true).
+  const [modalNavOpen, setModalNavOpen] = useState(false);
+  const [dashboardNavOpen, setDashboardNavOpen] = useState(true);
+
   // Check if current screen qualifies as tablet (recalculated when window resizes)
   const isTabletScreen = isDesktop && window.innerWidth <= 1400;
 
@@ -7043,14 +7049,17 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
     };
   }, [isTabletScreen, showTabletNavBriefly]);
 
-  // 퀴즈나 종합평가 모달이 열리면 사이드바를 즉시 강제 숨김 처리
+  // 퀴즈나 종합평가, 필수공식, 답안지 모달이 열리면 사이드바를 즉시 강제 접힘/숨김 처리하여 전체화면 확보
   useEffect(() => {
-    const hasModal = !!(selectedTopic || showExam || showFormulaExam || showTheoryExam);
-    if (hasModal && isTabletScreen) {
-      setTabletNavHidden(true);
-      if (tabletNavTimerRef.current) clearTimeout(tabletNavTimerRef.current);
+    const hasModal = !!(selectedTopic || showExam || showFormulaExam || showTheoryExam || showAnswerSheet);
+    if (hasModal) {
+      if (isTabletScreen) {
+        setTabletNavHidden(true);
+        if (tabletNavTimerRef.current) clearTimeout(tabletNavTimerRef.current);
+      }
+      setModalNavOpen(false);
     }
-  }, [selectedTopic, showExam, showFormulaExam, showTheoryExam, isTabletScreen]);
+  }, [selectedTopic, showExam, showFormulaExam, showTheoryExam, showAnswerSheet, isTabletScreen]);
 
   // 탭 변경, 문제 종료, 페이지 이동 시 플로팅된 표 닫기
   useEffect(() => {
@@ -18566,6 +18575,20 @@ ${itemsStr}
 
   const isAnyFullScreenModalOpen = !!(selectedTopic || showExam || showFormulaExam || showTheoryExam || showAnswerSheet);
 
+  const isDesktopNavOpen = isTabletScreen
+    ? !tabletNavHidden
+    : (isAnyFullScreenModalOpen ? modalNavOpen : dashboardNavOpen);
+
+  const toggleDesktopNav = useCallback(() => {
+    if (isTabletScreen) {
+      setTabletNavHidden(prev => !prev);
+    } else if (isAnyFullScreenModalOpen) {
+      setModalNavOpen(prev => !prev);
+    } else {
+      setDashboardNavOpen(prev => !prev);
+    }
+  }, [isTabletScreen, isAnyFullScreenModalOpen]);
+
   return (
     <div className="min-h-screen bg-slateCustom-950 pb-16 flex flex-col justify-start w-full max-w-full overflow-x-hidden">
 
@@ -19594,12 +19617,14 @@ ${itemsStr}
 
       {/* Main Content Area */}
       <main
-        className={`w-full mx-auto px-3 ${!isTabletScreen ? 'md:px-12 md:pl-36' : ''} mt-8 flex-grow ${isTabletScreen || viewMode === 'all_topics' ? 'max-w-none xl:max-w-none 2xl:max-w-none' : 'max-w-7xl xl:max-w-[85rem] 2xl:max-w-[95rem]'} ${isAnyFullScreenModalOpen ? 'hidden' : ''}`}
-        style={isTabletScreen ? {
-          paddingLeft: tabletNavHidden ? '12px' : '144px',
+        className={`w-full mx-auto px-3 md:px-12 mt-8 flex-grow ${isTabletScreen || viewMode === 'all_topics' ? 'max-w-none xl:max-w-none 2xl:max-w-none' : 'max-w-7xl xl:max-w-[85rem] 2xl:max-w-[95rem]'} ${isAnyFullScreenModalOpen ? 'hidden' : ''}`}
+        style={{
+          paddingLeft: isTabletScreen 
+            ? (tabletNavHidden ? '12px' : '144px')
+            : (isDesktop ? (isDesktopNavOpen ? '144px' : '24px') : '12px'),
           paddingRight: '12px',
-          transition: 'padding-left 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
-        } : {}}
+          transition: 'padding-left 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        }}
       >
         {/* Statistics Dashboard Banner */}
             {(isDesktop || viewMode !== 'all_topics') && (
@@ -20698,11 +20723,13 @@ ${itemsStr}
         <div 
           onTouchStart={handleSwipeTouchStart}
           onTouchEnd={(e) => handleSwipeTouchEnd(e, reviewMobileTab, setReviewMobileTab)}
-          className={`fixed inset-y-0 right-0 left-0 z-50 bg-slate-950 flex flex-col ${isDesktop && !isTabletScreen ? 'md:pl-36' : ''} ${isDesktop ? 'pc-enlarged-text' : ''} overflow-hidden scrollbar-none-mobile`}
-          style={isTabletScreen ? {
-            paddingLeft: tabletNavHidden ? '12px' : '144px',
-            transition: 'padding-left 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
-          } : {}}
+          className={`fixed inset-y-0 right-0 left-0 z-50 bg-slate-950 flex flex-col ${isDesktop ? 'pc-enlarged-text' : ''} overflow-hidden scrollbar-none-mobile`}
+          style={{
+            paddingLeft: isTabletScreen 
+              ? (tabletNavHidden ? '12px' : '144px')
+              : (isDesktop ? (isDesktopNavOpen ? '144px' : '0px') : '0px'),
+            transition: 'padding-left 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+          }}
         >
           {isSavingSession && (
             <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-md z-[100] flex flex-col items-center justify-center gap-3">
@@ -24440,11 +24467,13 @@ ${itemsStr}
         <div 
           onTouchStart={handleSwipeTouchStart}
           onTouchEnd={(e) => handleSwipeTouchEnd(e, examMobileTab, setExamMobileTab)}
-          className={`fixed inset-y-0 right-0 left-0 z-[60] bg-slate-950 flex flex-col ${isDesktop && !isTabletScreen ? 'md:pl-36' : ''} ${isDesktop ? 'pc-enlarged-text' : ''} overflow-hidden scrollbar-none-mobile`}
-          style={isTabletScreen ? {
-            paddingLeft: tabletNavHidden ? '12px' : '144px',
-            transition: 'padding-left 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
-          } : {}}
+          className={`fixed inset-y-0 right-0 left-0 z-[60] bg-slate-950 flex flex-col ${isDesktop ? 'pc-enlarged-text' : ''} overflow-hidden scrollbar-none-mobile`}
+          style={{
+            paddingLeft: isTabletScreen 
+              ? (tabletNavHidden ? '12px' : '144px')
+              : (isDesktop ? (isDesktopNavOpen ? '144px' : '0px') : '0px'),
+            transition: 'padding-left 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+          }}
         >
           
 
@@ -26171,11 +26200,13 @@ ${itemsStr}
         <div 
           onTouchStart={handleSwipeTouchStart}
           onTouchEnd={(e) => handleSwipeTouchEnd(e, formulaMobileTab, setFormulaMobileTab)}
-          className={`fixed inset-y-0 right-0 left-0 z-[60] bg-slate-950 flex flex-col ${isDesktop && !isTabletScreen ? 'md:pl-36' : ''} ${isDesktop ? 'pc-enlarged-text' : ''} overflow-hidden scrollbar-none-mobile`}
-          style={isTabletScreen ? {
-            paddingLeft: tabletNavHidden ? '12px' : '144px',
-            transition: 'padding-left 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
-          } : {}}
+          className={`fixed inset-y-0 right-0 left-0 z-[60] bg-slate-950 flex flex-col ${isDesktop ? 'pc-enlarged-text' : ''} overflow-hidden scrollbar-none-mobile`}
+          style={{
+            paddingLeft: isTabletScreen 
+              ? (tabletNavHidden ? '12px' : '144px')
+              : (isDesktop ? (isDesktopNavOpen ? '144px' : '0px') : '0px'),
+            transition: 'padding-left 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+          }}
         >
           
           {/* Formula Header */}
@@ -29036,11 +29067,13 @@ ${itemsStr}
       {/* ===== ESSENTIAL ANSWERSHEET STUDY MODAL ===== */}
       {showAnswerSheet && (
         <div 
-          className={`fixed inset-y-0 right-0 left-0 z-[60] bg-slate-950 flex flex-col ${isDesktop && !isTabletScreen ? 'md:pl-36' : ''} ${isDesktop ? 'pc-enlarged-text' : ''} overflow-hidden scrollbar-none-mobile`}
-          style={isTabletScreen ? {
-            paddingLeft: tabletNavHidden ? '12px' : '144px',
-            transition: 'padding-left 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
-          } : {}}
+          className={`fixed inset-y-0 right-0 left-0 z-[60] bg-slate-950 flex flex-col ${isDesktop ? 'pc-enlarged-text' : ''} overflow-hidden scrollbar-none-mobile`}
+          style={{
+            paddingLeft: isTabletScreen 
+              ? (tabletNavHidden ? '12px' : '144px')
+              : (isDesktop ? (isDesktopNavOpen ? '144px' : '0px') : '0px'),
+            transition: 'padding-left 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+          }}
         >
           
           {/* Header */}
@@ -29838,14 +29871,60 @@ ${itemsStr}
             />
           )}
 
-          {/* Nav panel – slides in/out on tablet, always visible on wide desktop */}
+          {/* PC Floating Action Button to unfold left sidebar when collapsed */}
+          {isDesktop && !isDesktopNavOpen && (
+            <button
+              onClick={toggleDesktopNav}
+              className="fixed left-0 top-1/2 -translate-y-1/2 z-[95] flex flex-col items-center justify-center gap-1.5 py-3 px-2 rounded-r-2xl glass-panel bg-slateCustom-950/95 border-r border-y border-brand-500/50 shadow-[4px_0_24px_rgba(99,102,241,0.25)] hover:border-brand-400 hover:shadow-[4px_0_30px_rgba(99,102,241,0.45)] text-brand-400 hover:text-white transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer group"
+              title="네비게이션 메뉴 펼치기 (클릭)"
+            >
+              <ChevronRight size={18} className="group-hover:translate-x-0.5 transition-transform text-brand-400 group-hover:text-white" />
+              <span className="text-[10px] font-black tracking-tight text-slate-300 group-hover:text-white [writing-mode:vertical-rl] select-none">
+                메뉴
+              </span>
+            </button>
+          )}
+
+          {/* Nav panel – slides in/out on tablet and PC desktop */}
           <div
-            className="fixed left-4 top-1/2 -translate-y-1/2 hidden md:flex flex-col gap-4 glass-panel p-3 border border-slate-800 shadow-2xl z-[90] rounded-2xl glow-purple animate-fade-in floating-left-sidebar"
+            className="fixed left-4 top-1/2 -translate-y-1/2 hidden md:flex flex-col gap-3.5 glass-panel p-3 border border-slate-800 shadow-2xl z-[90] rounded-2xl glow-purple animate-fade-in floating-left-sidebar"
             style={isTabletScreen ? {
               transform: `translateX(${tabletNavHidden ? 'calc(-100% - 2rem)' : '0'}) translateY(-50%)`,
               transition: 'transform 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
-            } : {}}
+            } : {
+              transform: isDesktopNavOpen ? 'translateX(0) translateY(-50%)' : 'translateX(calc(-100% - 2rem)) translateY(-50%)',
+              transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              pointerEvents: isDesktopNavOpen ? 'auto' : 'none',
+            }}
           >
+            {/* Header with Collapse Button for PC Desktop */}
+            {isDesktop && (
+              <div className="flex items-center justify-between pb-1.5 border-b border-slate-800/80 mb-0.5 w-full">
+                <div className="flex items-center gap-1.5 pl-1">
+                  <Brain size={13} className="text-brand-400" />
+                  <span className="text-[10px] font-black text-slate-300 select-none">메뉴</span>
+                </div>
+                <button
+                  onClick={toggleDesktopNav}
+                  className="flex items-center gap-1 px-1.5 py-0.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-700/60 text-slate-400 hover:text-white transition-all cursor-pointer active:scale-95"
+                  title="사이드바 접기 (버튼으로 감추기)"
+                >
+                  <ChevronLeft size={13} />
+                  <span className="text-[9px] font-bold">접기</span>
+                </button>
+              </div>
+            )}
+
+            {/* Attached Handle Tab on Sidebar Right Edge for convenient closing */}
+            {isDesktop && isDesktopNavOpen && (
+              <button
+                onClick={toggleDesktopNav}
+                className="absolute -right-3.5 top-1/2 -translate-y-1/2 w-4 h-12 rounded-r-lg glass-panel bg-slateCustom-950 border-r border-y border-slate-700/80 hover:border-brand-500/60 flex items-center justify-center text-slate-400 hover:text-white shadow-lg transition-all cursor-pointer group"
+                title="사이드바 접기"
+              >
+                <ChevronLeft size={12} className="group-hover:-translate-x-0.5 transition-transform" />
+              </button>
+            )}
             <button
               onClick={async () => {
                 forceSaveActiveSessions();
