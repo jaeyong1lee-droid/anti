@@ -977,25 +977,6 @@ export default function TopicSlidePlugin({
                   </div>
                 </div>
 
-                {/* 좌우 이동 플로팅 버튼 */}
-                <button
-                  type="button"
-                  onClick={handlePrevSlide}
-                  disabled={currentSlideIndex === 0}
-                  className="absolute left-1 sm:left-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-slate-900/90 hover:bg-amber-600 disabled:opacity-10 disabled:pointer-events-none border border-slate-700 text-white flex items-center justify-center transition-all cursor-pointer shadow-2xl backdrop-blur-sm z-20 active:scale-95"
-                  title="이전 슬라이드 (◀)"
-                >
-                  <ChevronLeft size={22} />
-                </button>
-                <button
-                  type="button"
-                  onClick={handleNextSlide}
-                  disabled={currentSlideIndex >= aiSlides.length - 1}
-                  className="absolute right-1 sm:right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-slate-900/90 hover:bg-amber-600 disabled:opacity-10 disabled:pointer-events-none border border-slate-700 text-white flex items-center justify-center transition-all cursor-pointer shadow-2xl backdrop-blur-sm z-20 active:scale-95"
-                  title="다음 슬라이드 (▶)"
-                >
-                  <ChevronRight size={22} />
-                </button>
               </div>
 
               {/* 하단 5장 서론-본론-결론 네비게이션 스트립 */}
@@ -1079,7 +1060,7 @@ export default function TopicSlidePlugin({
                 type="button"
                 onClick={handlePrevSlide}
                 disabled={currentSlideIndex === 0}
-                className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-slate-900/80 hover:bg-amber-600 disabled:opacity-20 disabled:hover:bg-slate-900/80 border border-slate-700 text-white flex items-center justify-center transition-all cursor-pointer shadow-xl backdrop-blur-sm"
+                className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-slate-900/80 hover:bg-amber-600 disabled:opacity-20 disabled:hover:bg-slate-900/80 border border-slate-700 text-white flex items-center justify-center transition-all cursor-pointer shadow-xl backdrop-blur-sm z-20 active:scale-95"
                 title="이전 슬라이드 (◀)"
               >
                 <ChevronLeft size={22} />
@@ -1088,7 +1069,7 @@ export default function TopicSlidePlugin({
                 type="button"
                 onClick={handleNextSlide}
                 disabled={currentSlideIndex >= aiSlides.length - 1}
-                className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-slate-900/80 hover:bg-amber-600 disabled:opacity-20 disabled:hover:bg-slate-900/80 border border-slate-700 text-white flex items-center justify-center transition-all cursor-pointer shadow-xl backdrop-blur-sm"
+                className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-slate-900/80 hover:bg-amber-600 disabled:opacity-20 disabled:hover:bg-slate-900/80 border border-slate-700 text-white flex items-center justify-center transition-all cursor-pointer shadow-xl backdrop-blur-sm z-20 active:scale-95"
                 title="다음 슬라이드 (▶)"
               >
                 <ChevronRight size={22} />
