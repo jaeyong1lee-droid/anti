@@ -898,6 +898,13 @@ export function FloatingMemorization({
         }
       }
       
+      // Extract dynamic tokens from question title and text
+      const stopWords = new Set(['문제', '다음', '대하여', '설명', '서술', '비교', '관한', '경우', '기준', '검토']);
+      const dynamicTokens = `${qTitle || ''} ${qText || ''}`
+        .split(/[\s,()\/·+_\-[\]{}]+/)
+        .map(w => w.trim())
+        .filter(w => w.length >= 2 && !stopWords.has(w));
+
       // Find best matching card title/keyword
       let bestMatch = '';
       if (targetTab === 'acronym' && formulaAcronyms) {
@@ -911,14 +918,11 @@ export function FloatingMemorization({
         if (found) {
           bestMatch = found.title;
         } else {
-          const keywords = ['비배수', '전단강도', '압밀', '액상화', '지하수', '토압', '지지력', '사면', '옹벽', '터널', '말뚝', '기초'];
-          for (const kw of keywords) {
-            if (qText.includes(kw) || qTitle.includes(kw)) {
-              const foundKw = formulaAcronyms.find(ac => (ac.title || '').includes(kw));
-              if (foundKw) {
-                bestMatch = foundKw.title;
-                break;
-              }
+          for (const tok of dynamicTokens) {
+            const foundKw = formulaAcronyms.find(ac => (ac.title || '').includes(tok));
+            if (foundKw) {
+              bestMatch = foundKw.title;
+              break;
             }
           }
         }
@@ -930,7 +934,17 @@ export function FloatingMemorization({
           const qTextClean = qText.replace(/\s+/g, '');
           return qTextClean.includes(tClean) || tClean.includes(qTextClean) || (qTitle && (qTitle.includes(tClean) || tClean.includes(qTitle)));
         });
-        if (found) bestMatch = found.title;
+        if (found) {
+          bestMatch = found.title;
+        } else {
+          for (const tok of dynamicTokens) {
+            const foundKw = formulaTables.find(tb => (tb.title || '').includes(tok));
+            if (foundKw) {
+              bestMatch = foundKw.title;
+              break;
+            }
+          }
+        }
       } else if (targetTab === 'overview' && formulaOverviews) {
         const found = formulaOverviews.find(ov => {
           const title = (ov.title || '').trim();
@@ -939,7 +953,17 @@ export function FloatingMemorization({
           const qTextClean = qText.replace(/\s+/g, '');
           return qTextClean.includes(tClean) || tClean.includes(qTextClean) || (qTitle && (qTitle.includes(tClean) || tClean.includes(qTitle)));
         });
-        if (found) bestMatch = found.title;
+        if (found) {
+          bestMatch = found.title;
+        } else {
+          for (const tok of dynamicTokens) {
+            const foundKw = formulaOverviews.find(ov => (ov.title || '').includes(tok));
+            if (foundKw) {
+              bestMatch = foundKw.title;
+              break;
+            }
+          }
+        }
       } else if (targetTab === 'image' && formulaImages) {
         const found = formulaImages.find(img => {
           const title = (img.title || '').trim();
@@ -948,21 +972,24 @@ export function FloatingMemorization({
           const qTextClean = qText.replace(/\s+/g, '');
           return qTextClean.includes(tClean) || tClean.includes(qTextClean) || (qTitle && (qTitle.includes(tClean) || tClean.includes(qTitle)));
         });
-        if (found) bestMatch = found.title;
+        if (found) {
+          bestMatch = found.title;
+        } else {
+          for (const tok of dynamicTokens) {
+            const foundKw = formulaImages.find(img => (img.title || '').includes(tok));
+            if (foundKw) {
+              bestMatch = foundKw.title;
+              break;
+            }
+          }
+        }
       }
       
       setSubTab(targetTab);
       if (bestMatch) {
         setSearchQuery(bestMatch);
       } else {
-        const keywords = ['비배수', '전단강도', '압밀', '액상화', '지하수', '토압', '지지력', '사면', '옹벽', '터널', '말뚝', '기초'];
-        let fallbackKw = '';
-        for (const kw of keywords) {
-          if (qText.includes(kw) || qTitle.includes(kw)) {
-            fallbackKw = kw;
-            break;
-          }
-        }
+        const fallbackKw = dynamicTokens[0] || '';
         setSearchQuery(fallbackKw);
       }
     }

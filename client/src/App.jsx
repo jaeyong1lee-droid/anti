@@ -1379,29 +1379,8 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
       intuitiveText = q.flowchartIntuitive[boxNum] || q.flowchartIntuitive[String(boxNum)];
     }
     if (!intuitiveText) {
-      // Fallback heuristics based on title keywords
-      const titleText = title.toLowerCase();
-      if (titleText.includes('종료') || titleText.includes('완성') || titleText.includes('완료') || titleText.includes('진입') || titleText.includes('해석 종료') || titleText.includes('최종') || titleText.includes('판정') || titleText.includes('반영')) {
-        intuitiveText = '모든 실험과 해석 결과를 바탕으로 지반이 최종적으로 안정한지 판정하고, 이를 실제 구조물 설계 도면과 시공 계획에 최종 반영하여 마무리하는 단계입니다.';
-      } else if (titleText.includes('모델링') || titleText.includes('설정') || titleText.includes('가정') || titleText.includes('경계')) {
-        intuitiveText = '설계할 지반과 기초 구조물의 형태를 컴퓨터나 수식으로 모델링하고, 힘을 받았을 때 지반이 어떻게 파괴될지 예상 영역과 경계를 설정하여 분석을 준비하는 기초 단계입니다.';
-      } else if (titleText.includes('대책') || titleText.includes('하중') || titleText.includes('설치') || titleText.includes('보강')) {
-        intuitiveText = '지반이나 옹벽에 가해지는 하중(무게나 수압 등)을 계산하고, 지반이 약할 경우 이를 튼튼하게 보강하기 위해 네일, 앵커, 옹벽 설치 등 적절한 대책을 세우는 단계입니다.';
-      } else if (titleText.includes('선정') || titleText.includes('결정') || titleText.includes('공법') || titleText.includes('형식')) {
-        intuitiveText = '현장 조건과 지반 특성에 가장 잘 맞는 최적의 공법이나 구조물 형식을 최종 결정하는 단계입니다. 안전성과 경제성을 함께 고려하여 지반 개량이나 옹벽, 기초 등의 구체적인 종류를 선택합니다.';
-      } else if (titleText.includes('지지력') || titleText.includes('용량') || titleText.includes('계수') || titleText.includes('극한')) {
-        intuitiveText = '지반이 파괴되기 직전까지 버틸 수 있는 최대 하중인 극한 지지력을 도출하는 단계입니다. 공식에 사용되는 여러 지반 계수들을 계산하여 지반이 하중을 얼마나 견딜 수 있는지 용량을 평가합니다.';
-      } else if (titleText.includes('시험') || titleText.includes('실험') || titleText.includes('압밀') || titleText.includes('일축') || titleText.includes('삼축')) {
-        intuitiveText = '채취한 흙이나 암석 시료에 압력을 가해 부서지거나 미끄러지는 시점의 전단 강도를 직접 측정하는 단계입니다. 실제 지중에서 발생하는 압력 상태를 모사하여 흙이 견딜 수 있는 힘의 한계를 실험실에서 정밀하게 확인합니다.';
-      } else if (titleText.includes('조사') || titleText.includes('측정') || titleText.includes('상수') || titleText.includes('획득')) {
-        intuitiveText = '지반 조사를 통해 현장의 흙을 직접 채취하거나 시험을 준비하는 단계입니다. 흙의 종류와 상태(예: 모래인지 점토인지, 단단한지 느슨한지)를 파악하고 설계에 필요한 가장 기본적인 물리적 수치들을 확인하는 과정입니다.';
-      } else if (titleText.includes('시뮬레이션') || titleText.includes('해석') || titleText.includes('분석') || titleText.includes('거동') || titleText.includes('응력') || titleText.includes('경로')) {
-        intuitiveText = '컴퓨터 프로그램이나 응력 경로 그래프를 활용해 하중이 가해질 때 지반 내부의 힘(응력)이 어떻게 변하고 움직이는지 모사하는 단계입니다. 힘의 흐름을 분석하여 흙이 어느 경로를 따라 변형되는지 추적합니다.';
-      } else if (titleText.includes('검토') || titleText.includes('평가') || titleText.includes('계산') || titleText.includes('산정')) {
-        intuitiveText = '구조물의 붕괴나 지반 미끄러짐을 막기 위해 안전을 위협하는 힘에 대비하여 지반이 버텨낼 수 있는 저항력의 비율(안전율)을 계산하는 단계입니다. 설계 기준 규격을 만족하여 안심하고 시공할 수 있는지 평가합니다.';
-      } else {
-        intuitiveText = '지반공학적 표준 절차에 따라 안전성과 경제성을 충족하는지 순서대로 설계 프로세스를 점검하는 단계입니다.';
-      }
+      const cleanTitle = title.replace(/\[.*?\]/g, '').trim();
+      intuitiveText = cleanTitle ? `${cleanTitle} 단계의 핵심 절차 및 요구조건을 검토합니다.` : '공학적 표준 절차에 따라 안전성과 경제성을 충족하는지 검토하는 단계입니다.';
     }
 
     const hasBoxNumber = !!boxNumMatch || /\[[\d\*\s가-힣a-zA-Z\-]+\]/.test(title) || boxInputs.length > 0;
@@ -16171,24 +16150,6 @@ ${item.intuitive || ''}
 
   const getAcronymRecommendKeywords = (ac) => {
     const list = [];
-    const topicKeywordMap = {
-      '약액주입': ['지하수오염', '지반용기', '용탈', '알칼리용탈', '식생영향', '유기물오염', '수질오염', '시멘트용출', '중금속용출', '내구성저하', '겔화시간', '침투압', '고결체'],
-      '사면안정': ['한계평형해석', 'Fellenius방법', 'Bishop간편법', 'Spencer방법', 'Janbu방법', '수치해석', '안전율', '지하수위', '인장균열', '사면경사', '소단', '옹벽', '보강토'],
-      '토목섬유': ['지오텍스타일', '지오그리드', '지오네트', '지오멤브레인', '지오콤포지트', '필터', '배수', '보강', '격리', '방수', '보호', '인장강도', '크리프'],
-      '투수계수': ['양수시험', '주입시험', '이방성비(kh/kv)', '등가투수계수', '상류법', '압밀시험', '현장투수시험', '정수두시험', '변수두시험', 'Darcy법칙', '간극비', '윤동도'],
-      '부등침하': ['연약지반', '편재하중', '투수성차이', '다짐불량', '지반개량', '구조물강성화', '침하계측', '압밀침하', '즉시침하', '허용부등침하각', '말뚝기초'],
-      '말뚝': ['슬라임(Slime)', '공벽붕괴', '이흙(Mud Cake)', '콘크리트품질', '케이싱인발', '응력이완', '공벽방치시간', '주변마찰력', '선단지지력', '동재하시험', '정재하시험'],
-      '비배수': ['일축압축시험', '삼축압축시험(UU)', '현장베인시험(VST)', '콘관입시험(CPT)', '수성비(c/p)', '비배수강도', '예민비', '교란', '점착력'],
-      '터널': ['강관다단그라우팅', '훠폴링', '숏크리트', '락볼트', '강지보', '계측', '천단침하', '내공변위', '지중변위', '인버트', '막장면안정', '지반이완'],
-      '옹벽': ['주동토압', '수동토압', '정지토압', 'Coulomb토압', 'Rankine토압', '전도', '활동', '지지력', '배수공', '뒷채움재', '보강토옹벽', '지오그리드'],
-      '연약지반': ['샌드드레인', '페이퍼드레인', '팩드레인', '심층혼합처리(DCM)', '웰포인트', '진공압밀', '치환공법', '프리로딩', '압밀침하', '침하계측', '측방유동'],
-      '다짐': ['최적함수비(OMC)', '최대건조밀도', '다짐에너지', '현장다짐도', '들밀도시험', '모래치환법', '평판재하시험(PBT)', '영공기간극곡선', '점성토다짐'],
-      '암반': ['RQD', 'RMR', 'Q분류', '불연속면', '절리', '층리', '단층', '평사투영', '원추파괴', '평면파괴', '쐐기파괴', '전도파괴', '지압', '초기응력'],
-      '흙막이': ['지중연속벽(Slurry Wall)', 'SGR공법', 'LW공법', 'JSP공법', '어스앵커', '소일네일링', '스트러트(Strut)', '히빙(Heaving)', '보일링(Boiling)', '파이핑(Piping)', '계측'],
-      '댐': ['파이핑(Piping)', '누수', '필터재', '코어(Core)', '사면안정', '수압파쇄(Hydraulic Fracturing)', '침윤선', '차수벽', '그라우팅'],
-      '기초': ['얕은기초', '깊은기초', '허용지지력', '극한지지력', 'Terzaghi공식', 'Meyerhof공식', 'Vesic공식', '탄성침하', '압밀침하', '말뚝지지력', '부마찰력']
-    };
-
     // 1. matching topic keywords from DB
     const matchingTopic = allTopics.find(t => t.title === ac.title);
     if (matchingTopic && matchingTopic.keywords) {
@@ -16198,13 +16159,28 @@ ${item.intuitive || ''}
       });
     }
 
-    // 2. matching category keywords from topicKeywordMap based on title
-    const normalizedTitle = (ac.title || '').replace(/\s+/g, '');
-    Object.keys(topicKeywordMap).forEach(key => {
-      if (normalizedTitle.includes(key)) {
-        topicKeywordMap[key].forEach(k => list.push(k));
+    // 2. dynamically match related topics from allTopics based on title
+    const normalizedTitle = (ac.title || '').replace(/\s+/g, '').toLowerCase();
+    allTopics.forEach(t => {
+      if (!t || t.id === matchingTopic?.id) return;
+      const tNorm = (t.title || '').replace(/\s+/g, '').toLowerCase();
+      if (tNorm && (normalizedTitle.includes(tNorm) || tNorm.includes(normalizedTitle))) {
+        if (t.keywords) {
+          t.keywords.split(',').forEach(k => {
+            const trimmed = k.trim();
+            if (trimmed) list.push(trimmed);
+          });
+        }
       }
     });
+
+    // 3. dynamically extract keyword tokens from acronym title
+    if (ac.title) {
+      ac.title.split(/[\s,()\/·+_\-[\]{}]+/).forEach(tok => {
+        const trimmed = tok.trim();
+        if (trimmed.length >= 2) list.push(trimmed);
+      });
+    }
 
     // Deduplicate
     const uniqueCandidates = Array.from(new Set(list));
