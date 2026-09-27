@@ -69,8 +69,8 @@ router.get('/sync', async (req, res) => {
 router.post('/active', async (req, res) => {
   try {
     const { userAnswer, gradingResult, hint, question } = req.body;
-    const updated = await updateActiveLockscreenAnswer(userAnswer, gradingResult, hint);
-    if (question) {
+    const updated = await updateActiveLockscreenAnswer(userAnswer, gradingResult, hint, question);
+    if (question && (userAnswer || gradingResult)) {
       saveRecentLockscreenSubmission({
         question,
         userAnswer: userAnswer || '',
@@ -222,8 +222,8 @@ router.post('/grade', async (req, res) => {
       }
     }
 
-    // Synchronize grading result across all devices
-    updateActiveLockscreenAnswer(userAnswer.trim(), gradingResult, '').catch(err => {
+    // Synchronize grading result across all devices only for this specific question
+    updateActiveLockscreenAnswer(userAnswer.trim(), gradingResult, '', question).catch(err => {
       console.warn('Failed to update active lockscreen assignment answer:', err);
     });
 

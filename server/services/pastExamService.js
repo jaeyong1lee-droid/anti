@@ -274,13 +274,37 @@ export async function getActiveLockscreenAssignment(forceNew = false) {
 
 /**
  * Updates the user's answer, grading result, or hint for the currently active lockscreen assignment.
+ * CRITICAL: Only updates if targetQuestion matches the currently active assignment!
+ * If targetQuestion is provided and does not match, rejects the update to prevent cross-question contamination.
  */
-export async function updateActiveLockscreenAnswer(userAnswer, gradingResult, hint) {
+export async function updateActiveLockscreenAnswer(userAnswer, gradingResult, hint, targetQuestion = null) {
   try {
     const activeRow = await dbQuery.get("SELECT value FROM app_session WHERE key = 'current_lockscreen_assignment'");
     if (activeRow && activeRow.value) {
       const assignment = JSON.parse(activeRow.value);
-      if (assignment) {
+      if (assignment && assignment.question) {
+        // Validation: Ensure the answer being updated belongs to the active assignment
+        if (targetQuestion) {
+          const targetLockscreenId = targetQuestion.lockscreen_id;
+          const targetQId = targetQuestion.id || `${targetQuestion.sessionName}_${targetQuestion.number}` || targetQuestion.question;
+          const currentLockscreenId = assignment.lockscreen_id;
+          const currentQId = assignment.question?.id || `${assignment.question?.sessionName}_${assignment.question?.number}` || assignment.question?.question;
+
+          const isLockscreenMismatch = targetLockscreenId && currentLockscreenId && targetLockscreenId !== currentLockscreenId;
+          const isQIdMismatch = targetQId && currentQId && targetQId !== currentQId;
+
+          if (isLockscreenMismatch || isQIdMismatch) {
+            console.log(`[pastExamService] Target question does not match active assignment (${targetQId} vs ${currentQId}). Saving to recent list only.`);
+            saveRecentLockscreenSubmission({
+              question: targetQuestion,
+              userAnswer,
+              gradingResult,
+              hint
+            }).catch(() => {});
+            return null;
+          }
+        }
+
         if (typeof userAnswer === 'string') assignment.userAnswer = userAnswer;
         if (gradingResult !== undefined) assignment.gradingResult = gradingResult;
         if (hint !== undefined) assignment.hint = hint;

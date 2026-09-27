@@ -3630,7 +3630,15 @@ export default function App() {
     if (lockscreenSyncTimeoutRef.current) {
       clearTimeout(lockscreenSyncTimeoutRef.current);
     }
+    const targetKey = getLockscreenQuestionKey(question);
     lockscreenSyncTimeoutRef.current = setTimeout(async () => {
+      // Guard: Make sure the user hasn't switched to another question during the delay!
+      const currentQ = lockscreenQuestionRef.current;
+      const currentKey = getLockscreenQuestionKey(currentQ);
+      if (targetKey && currentKey && targetKey !== currentKey) {
+        console.log(`[Lockscreen Sync] Aborted delayed sync: question switched from ${targetKey} to ${currentKey}`);
+        return;
+      }
       try {
         await fetch(`${API_BASE}/api/lockscreen/active`, {
           method: 'POST',
@@ -3767,6 +3775,10 @@ export default function App() {
 
   const handleSelectRecentQuestion = (recentEntry) => {
     if (!recentEntry || !recentEntry.question) return;
+    if (lockscreenSyncTimeoutRef.current) {
+      clearTimeout(lockscreenSyncTimeoutRef.current);
+      lockscreenSyncTimeoutRef.current = null;
+    }
     const q = recentEntry.question;
     setLockscreenQuestion(q);
     try {
@@ -4000,7 +4012,13 @@ export default function App() {
         const q = JSON.parse(savedQ);
         const key = getLockscreenQuestionKey(q);
         const map = getLockscreenAnswersMap();
-        if (map[key]?.userAnswer !== undefined) return map[key].userAnswer;
+        if (map[key]?.userAnswer !== undefined) {
+          const entryQText = map[key]?.question?.question?.trim();
+          const currentQText = q?.question?.trim();
+          if (!entryQText || !currentQText || entryQText === currentQText) {
+            return map[key].userAnswer;
+          }
+        }
       }
     } catch (e) {}
     return '';
@@ -4013,7 +4031,13 @@ export default function App() {
         const q = JSON.parse(savedQ);
         const key = getLockscreenQuestionKey(q);
         const map = getLockscreenAnswersMap();
-        if (map[key]?.gradingResult !== undefined) return map[key].gradingResult;
+        if (map[key]?.gradingResult !== undefined) {
+          const entryQText = map[key]?.question?.question?.trim();
+          const currentQText = q?.question?.trim();
+          if (!entryQText || !currentQText || entryQText === currentQText) {
+            return map[key].gradingResult;
+          }
+        }
       }
     } catch (e) {}
     return null;
@@ -4042,6 +4066,18 @@ export default function App() {
     const map = getLockscreenAnswersMap();
     const savedEntry = key ? map[key] : null;
     if (savedEntry) {
+      // Validate that savedEntry actually belongs to this question
+      const entryQ = savedEntry.question;
+      const entryQText = entryQ?.question?.trim();
+      const currentQText = q.question?.trim();
+      if (entryQText && currentQText && entryQText !== currentQText) {
+        console.warn(`[Lockscreen] Detected contaminated answer in localStorage for ${key}, clearing mismatch.`);
+        setLockscreenUserAnswer('');
+        setLockscreenGradingResult(null);
+        setLockscreenHint('');
+        setShowLockscreenHint(false);
+        return;
+      }
       setLockscreenUserAnswer(savedEntry.userAnswer || '');
       setLockscreenGradingResult(savedEntry.gradingResult || null);
       setLockscreenHint(savedEntry.hint || '');
@@ -4088,7 +4124,9 @@ export default function App() {
               try {
                 localStorage.setItem('anti_current_unsolved_lockscreen_question', JSON.stringify(qWithId));
               } catch (e) {}
-              if (data.assignment?.userAnswer || data.assignment?.gradingResult) {
+              const assignmentQ = data.assignment?.question;
+              const assignmentMatches = !assignmentQ || !assignmentQ.question || (qWithId.question && assignmentQ.question.trim() === qWithId.question.trim());
+              if (assignmentMatches && (data.assignment?.userAnswer || data.assignment?.gradingResult)) {
                 setLockscreenUserAnswer(data.assignment.userAnswer || '');
                 setLockscreenGradingResult(data.assignment.gradingResult || null);
                 if (data.assignment.hint) setLockscreenHint(data.assignment.hint);
@@ -4098,7 +4136,9 @@ export default function App() {
               }
             } else if (serverId && serverId === currentId) {
               // Same question ID: if other device graded or updated answer
-              if (data.assignment?.gradingResult && !lockscreenGradingResultRef.current) {
+              const assignmentQ = data.assignment?.question;
+              const assignmentMatches = !assignmentQ || !assignmentQ.question || (qWithId.question && assignmentQ.question.trim() === qWithId.question.trim());
+              if (assignmentMatches && data.assignment?.gradingResult && !lockscreenGradingResultRef.current) {
                 setLockscreenGradingResult(data.assignment.gradingResult);
                 if (data.assignment.userAnswer) setLockscreenUserAnswer(data.assignment.userAnswer);
                 saveLockscreenAnswerForQuestion(qWithId, data.assignment.userAnswer, data.assignment.gradingResult, data.assignment.hint);
@@ -4165,7 +4205,10 @@ export default function App() {
               localStorage.setItem('anti_current_unsolved_lockscreen_question', JSON.stringify(qWithId));
             } catch (e) {}
 
-            if (data.assignment?.userAnswer || data.assignment?.gradingResult) {
+            const assignmentQ = data.assignment?.question;
+            const assignmentMatches = !assignmentQ || !assignmentQ.question || (qWithId.question && assignmentQ.question.trim() === qWithId.question.trim());
+
+            if (assignmentMatches && (data.assignment?.userAnswer || data.assignment?.gradingResult)) {
               setLockscreenUserAnswer(data.assignment.userAnswer || '');
               setLockscreenGradingResult(data.assignment.gradingResult || null);
               if (data.assignment.hint) setLockscreenHint(data.assignment.hint);
@@ -4186,9 +4229,13 @@ export default function App() {
               setLockscreenHistoryIndex(nextIdx);
             }
           } else if (data.assignment?.gradingResult && !lockscreenGradingResultRef.current) {
-            setLockscreenGradingResult(data.assignment.gradingResult);
-            if (data.assignment.userAnswer) setLockscreenUserAnswer(data.assignment.userAnswer);
-            saveLockscreenAnswerForQuestion(qWithId, data.assignment.userAnswer, data.assignment.gradingResult, data.assignment.hint);
+            const assignmentQ = data.assignment?.question;
+            const assignmentMatches = !assignmentQ || !assignmentQ.question || (qWithId.question && assignmentQ.question.trim() === qWithId.question.trim());
+            if (assignmentMatches) {
+              setLockscreenGradingResult(data.assignment.gradingResult);
+              if (data.assignment.userAnswer) setLockscreenUserAnswer(data.assignment.userAnswer);
+              saveLockscreenAnswerForQuestion(qWithId, data.assignment.userAnswer, data.assignment.gradingResult, data.assignment.hint);
+            }
           }
           return qWithId;
         }
@@ -4235,24 +4282,30 @@ export default function App() {
 
   const handleGradeLockscreenAnswer = async () => {
     if (!lockscreenQuestion || !lockscreenUserAnswer.trim() || lockscreenGradingLoading) return;
+    const targetQ = lockscreenQuestion;
+    const targetKey = getLockscreenQuestionKey(targetQ);
+    const targetAnswer = lockscreenUserAnswer.trim();
     setLockscreenGradingLoading(true);
     try {
       const res = await fetch(`${API_BASE}/api/lockscreen/grade`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          question: lockscreenQuestion,
-          userAnswer: lockscreenUserAnswer.trim(),
-          questionId: lockscreenQuestion.id,
+          question: targetQ,
+          userAnswer: targetAnswer,
+          questionId: targetQ.id,
           preferredModel: preferredModelRef.current || preferredModel
         })
       });
       const data = await res.json();
       if (data && data.success && data.result) {
-        setLockscreenGradingResult(data.result);
-        saveLockscreenAnswerForQuestion(lockscreenQuestion, lockscreenUserAnswer.trim(), data.result, lockscreenHint);
+        const currentActiveKey = getLockscreenQuestionKey(lockscreenQuestionRef.current);
+        if (currentActiveKey === targetKey) {
+          setLockscreenGradingResult(data.result);
+          scrollToLockscreenTop(true);
+        }
+        saveLockscreenAnswerForQuestion(targetQ, targetAnswer, data.result, lockscreenHint);
         localStorage.setItem('anti_last_lockscreen_submit_time', String(Date.now()));
-        scrollToLockscreenTop(true);
       } else {
         showNotification(data.error || 'AI 채점 중 오류가 발생했습니다.', 'error');
       }
@@ -4265,6 +4318,10 @@ export default function App() {
   };
 
   const handleUnlockLockscreen = async () => {
+    if (lockscreenSyncTimeoutRef.current) {
+      clearTimeout(lockscreenSyncTimeoutRef.current);
+      lockscreenSyncTimeoutRef.current = null;
+    }
     const qId = lockscreenQuestion?.id;
     const currentQ = lockscreenQuestion;
     const currentAns = lockscreenUserAnswer;
@@ -4303,6 +4360,10 @@ export default function App() {
   };
 
   const handleNextLockscreenQuestion = () => {
+    if (lockscreenSyncTimeoutRef.current) {
+      clearTimeout(lockscreenSyncTimeoutRef.current);
+      lockscreenSyncTimeoutRef.current = null;
+    }
     // If forward history exists
     if (lockscreenHistoryIndexRef.current < lockscreenHistoryRef.current.length - 1) {
       const nextIdx = lockscreenHistoryIndexRef.current + 1;
@@ -4329,6 +4390,10 @@ export default function App() {
   };
 
   const handlePrevLockscreenQuestion = () => {
+    if (lockscreenSyncTimeoutRef.current) {
+      clearTimeout(lockscreenSyncTimeoutRef.current);
+      lockscreenSyncTimeoutRef.current = null;
+    }
     if (lockscreenHistoryIndexRef.current > 0) {
       const prevIdx = lockscreenHistoryIndexRef.current - 1;
       lockscreenHistoryIndexRef.current = prevIdx;
