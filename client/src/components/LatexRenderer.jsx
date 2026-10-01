@@ -540,18 +540,40 @@ export const LatexRenderer = React.memo(function LatexRenderer({
 
   let processedText = renderText;
 
-  // 1) 불필요한 연속 개행을 최소 2개로 압축하여 컴팩트하게 정리
+  // 1) 수식($...$, $$...$$) 및 코드블록을 격리한 후, 텍스트 영역의 리터럴 \n을 실제 개행(\n)으로 1회 안전 복원
   let cleanedText = processedText;
   if (typeof cleanedText === 'string') {
     cleanedText = cleanedText.replace(/\r\n/g, '\n');
-  }
 
-  if (typeof cleanedText === 'string') {
-    // Convert <b> / <strong> HTML tags & entities into markdown bold (**text**)
-    cleanedText = cleanedText.replace(/(?:<b\b[^>]*>|&lt;b&gt;|<strong\b[^>]*>|&lt;strong&gt;)([\s\S]*?)(?:<\/b>|&lt;\/b&gt;|<\/strong>|&lt;\/strong&gt;)/gi, '**$1**');
+    if (cleanedText.includes('\\n')) {
+      const mathPlaceholders = [];
+      let mIdx = 0;
+      cleanedText = cleanedText
+        .replace(/```[\s\S]*?```/g, m => {
+          const ph = `___CODE_PH_${mIdx++}___`;
+          mathPlaceholders.push({ ph, content: m });
+          return ph;
+        })
+        .replace(/\$\$[\s\S]*?\$\$/g, m => {
+          const ph = `___MATH_PH_${mIdx++}___`;
+          mathPlaceholders.push({ ph, content: m });
+          return ph;
+        })
+        .replace(/\$((?:[^\$\n<]|<(?![a-zA-Z/!]))+?)\$/g, m => {
+          const ph = `___MATH_PH_${mIdx++}___`;
+          mathPlaceholders.push({ ph, content: m });
+          return ph;
+        });
+
+      cleanedText = cleanedText.replace(/\\n/g, '\n');
+
+      mathPlaceholders.forEach(({ ph, content }) => {
+        cleanedText = cleanedText.replace(ph, () => content);
+      });
+    }
+
     // Collapse empty lines between colon-ended lines and list items
     cleanedText = cleanedText.replace(/(:[ \t]*)\n\n+(\s*(?:\d+\.(?!\d)|\d+\)|[a-zA-Z가-힣]\)|\*|-|•|[①-⑳]))/g, '$1\n$2');
-
     cleanedText = cleanedText.replace(/\n{3,}/g, '\n\n').trim();
   }
 

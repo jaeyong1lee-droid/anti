@@ -1149,7 +1149,7 @@ ${LATEX_PROMPT_INSTRUCTIONS}
     "options": ["보기 1", "보기 2", "보기 3", "보기 4"],
     "answer": "보기 1",
     "correctIndex": 0,
-    "explanation": "상세한 공학적 해설...\\n\\n💡 **직관적 의미**: 정답의 핵심 직관적 설명 1~2문장\\n\\n📚 참조 문헌(Standards & Literature): 출처 2~3개"
+    "explanation": "상세한 공학적 해설...\n\n💡 **직관적 의미**: 정답의 핵심 직관적 설명 1~2문장\n\n📚 참조 문헌(Standards & Literature): 출처 2~3개"
   }
 ]
 `;
@@ -3210,7 +3210,7 @@ ${ENGINEERING_STANDARDS}
     "options": ["보기1", "보기2", "보기3", "보기4"],
     "answer": "보기1",
     "correctIndex": 0,
-    "explanation": "이유와 오답 정밀 해설\\n\\n💡 **직관적 의미**: 정답의 핵심 직관적 설명 1~2문장\\n\\n📚 참조 문헌(Standards & Literature) 출처 2~3개 명시"
+    "explanation": "이유와 오답 정밀 해설\n\n💡 **직관적 의미**: 정답의 핵심 직관적 설명 1~2문장\n\n📚 참조 문헌(Standards & Literature) 출처 2~3개 명시"
   }
 ] (※ 만약 표가 필요한 질문이라면 "tableData": {"headers": ["구분", "지반 X", "지반 Y"], "rows": [["퇴적 환경", "해수", "담수"]]} 처럼 구조화된 표 객체를 작성하고, 그렇지 않은 일반 질문이면 "tableData": null 로 설정하십시오.)
 `;
