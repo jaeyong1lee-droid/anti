@@ -1100,6 +1100,36 @@ const cleanFlowchartCorrectAnswer = (correctAnswer, letter) => {
     return '';
   }
 
+  // 1-1) JSON 객체/문자열 형태의 다중 정답({ "A": "...", "B": "..." })에서 해당 letter만 정밀 추출
+  if (letter && (correctAnswer.includes(`"${letter}"`) || correctAnswer.includes(`'${letter}'`) || correctAnswer.trim().startsWith('{'))) {
+    try {
+      let jsonClean = correctAnswer.trim().replace(/^```[a-zA-Z]*\n?/, '').replace(/\n?```$/, '').trim();
+      const firstBrace = jsonClean.indexOf('{');
+      const lastBrace = jsonClean.lastIndexOf('}');
+      if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+        jsonClean = jsonClean.substring(firstBrace, lastBrace + 1);
+        const parsed = JSON.parse(jsonClean);
+        if (parsed && typeof parsed === 'object') {
+          for (const [k, v] of Object.entries(parsed)) {
+            const cleanK = k.replace(/[\(\)\[\]_'"\s]/g, '').toUpperCase();
+            if (cleanK === letter.toUpperCase() && typeof v === 'string' && v.trim().length > 0) {
+              return cleanAttachmentText(v.trim());
+            }
+          }
+        }
+      }
+    } catch (e) {
+      // JSON 파싱 실패 시 아래 정규식으로 진행
+    }
+
+    // JSON Regex fallback: "A": "..." or 'A': '...'
+    const jsonKeyRegex = new RegExp(`['"]\\s*\\(?\\s*${letter}\\s*\\)?\\s*['"]\\s*:\\s*['"]([\\s\\S]*?)['"]\\s*(?:,\\s*['"]|\\})`, 'i');
+    const jsonMatch = correctAnswer.match(jsonKeyRegex);
+    if (jsonMatch && jsonMatch[1]) {
+      return cleanAttachmentText(jsonMatch[1].trim());
+    }
+  }
+
   // 2) (A) ..., (B) ..., [C] ... 형태의 다중 정답 문자열에서 해당 letter 구간만 정밀 추출
   if (letter) {
     const letterPattern = new RegExp('(?:\\(|\\[)\\s*' + letter + '\\s*(?:\\)|\\])\\s*([\\s\\S]*?)(?=(?:\\(|\\[)\\s*[A-Z]\\s*(?:\\)|\\])|$)', 'i');
@@ -5501,8 +5531,45 @@ export default function App() {
         const match = inputId.match(/INPUT_(\d+)/);
         if (match) {
           const index = parseInt(match[1], 10);
-          rowHeader = `(${String.fromCharCode(65 + index - 1)})`;
-          colHeader = '입력 답안';
+          const letter = String.fromCharCode(65 + index - 1);
+
+          // 흐름도 내 상자 단계 및 역할(제목 vs 세부내용) 동적 매핑
+          const lines = (q.question || '').split('\n');
+          let boxCount = 0;
+          let inBox = false;
+          let foundBoxNum = null;
+          let isTitle = false;
+
+          for (let l of lines) {
+            if (l.includes('┌')) {
+              boxCount++;
+              inBox = true;
+            } else if (l.includes('└')) {
+              inBox = false;
+            } else if (inBox && l.includes(`(${letter})`)) {
+              foundBoxNum = boxCount;
+              if (l.includes(`[ (${letter}) ]`) || l.includes(`[(${letter})]`) || l.includes(`[ ${letter} ]`)) {
+                isTitle = true;
+              }
+              break;
+            }
+          }
+
+          const pairDefaults = {
+            'A': { step: '2단계', role: '단계 제목(명칭)' },
+            'B': { step: '2단계', role: '세부 설계 활동/검토 내용' },
+            'C': { step: '4단계', role: '단계 제목(명칭)' },
+            'D': { step: '4단계', role: '세부 설계 활동/검토 내용' },
+            'E': { step: '6단계(또는 분기 우측 단계)', role: '단계 제목(명칭)' },
+            'F': { step: '6단계(또는 분기 우측 단계)', role: '세부 설계 활동/검토 내용' }
+          };
+
+          const defaultInfo = pairDefaults[letter];
+          const stepName = defaultInfo ? defaultInfo.step : (foundBoxNum ? `${foundBoxNum}단계` : '');
+          const roleName = isTitle ? '단계 제목(명칭)' : (defaultInfo ? defaultInfo.role : '세부 활동');
+
+          rowHeader = stepName ? `(${letter}) [${stepName} 상자의 ${roleName}]` : `(${letter})`;
+          colHeader = isTitle ? '단계 제목 답안' : '세부 활동 답안';
         }
       }
     }

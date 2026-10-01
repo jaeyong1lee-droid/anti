@@ -144,6 +144,10 @@ export async function generateAuthoritativeModelAnswer({
 
   const modelAnswerTemperature = isCalcQuestion ? 0.1 : (isReevaluation ? 0.85 : 0.7);
 
+  // 대상 빈칸 알파벳 추출 (예: "(B)" -> "B")
+  const letterMatch = (rowHeader || '').match(/\(?\b([A-F])\b\)?/i);
+  const targetLetter = letterMatch ? letterMatch[1].toUpperCase() : null;
+
   const answerGenPrompt = `당신은 지반공학 및 토목공학 최고 권위의 기술사 시험 출제위원입니다.
 제시된 문제 맥락, 표의 행/열 구분, 원보고서 및 전공 교재 본문 해설, 그리고 기존 기준을 바탕으로, 해당 항목에 들어갈 가장 학술적이고 정확한 권위 있는 단독 표준 모범 답안을 도출하십시오.
 
@@ -160,13 +164,19 @@ ${isReevaluation ? `🚨 **[심층 모범 답안 도출 철칙]**:
 - 기존 기준 요약에 그대로 안주하지 말고, 원보고서 본문 해설의 공학적 메커니즘을 심층 분석하여 완성형 표준 모범 답안을 도출하십시오.`}
 
 🚨 **[모범 답안 작성 철칙 - 극도로 중요!]**:
-1. **[범위 제한]**: 표 채우기(Table Quiz) 문항인 경우, 오직 해당 셀(행: ${rowHeader || '해당 행'}, 열: ${colHeader || '해당 열'}) 한 칸에 들어갈 '그 칸만의 고유하고 구체적인 정답 내용'으로만 작성하십시오. 전체 표의 해설이나 다른 행/열 항목까지 합친 전체 비교 리스트를 출력하는 것을 엄격히 금지합니다.
-2. **[공학적 메커니즘 및 표준 공식]**: 단순 단답 나열에 그치지 말고, 해당 개념의 공학적 메커니즘과 핵심 표준 공식(표준 LaTeX 수식 표기)을 충실히 포함하십시오.
-   - 포아송비 $\nu$, 부피탄성계수 $K$, 탄성계수 $E$, 수평지반반력계수 $k_h$, 전단강도 $\tau$, 점착력 $c$, 마찰각 $\phi$ 등 공인된 표준 학술 기호를 정확히 사용하십시오.
+1. **[단일 빈칸 범위 제한 - 다중 딕셔너리 출력 절대 금지]**: 
+   - 표 채우기(Table Quiz) 또는 플로우차트 문항인 경우, 오직 해당 항목(행: ${rowHeader || '해당 행'}, 열: ${colHeader || '해당 열'}) 한 칸에 들어갈 '그 칸만의 고유하고 구체적인 정답 내용'으로만 작성하십시오.
+   - ⚠️ 전체 빈칸을 묶은 JSON 객체({ "A": ..., "B": ..., "C": ... })나 전체 목록을 반환하는 것을 극도로 엄격히 금지합니다.
+   - 오직 지정된 빈칸 ${targetLetter ? `(${targetLetter})` : (rowHeader || '')} 한 칸만의 순수 텍스트 정답을 출력하십시오.
+2. **[플로우차트 상자 및 빈칸 구조 절대 준수]**:
+   - 본 플로우차트 문항은 각 단계 상자마다 [단계 제목]과 [세부 활동] 2개의 빈칸이 짝을 이룹니다. (예: [2]단계 = (A) 단계명, (B) 세부활동 / [4]단계 = (C) 단계명, (D) 세부활동).
+   - 현재 채점 대상은 [${rowHeader || ''}] 입니다. 절대로 (B)를 [4]단계로 건너뛰어 오인하지 마십시오.
+3. **[공학적 메커니즘 및 표준 공식]**: 단순 단답 나열에 그치지 말고, 해당 개념의 공학적 메커니즘과 핵심 표준 공식(표준 LaTeX 수식 표기)을 충실히 포함하십시오.
+   - 포아송비 $\\nu$, 부피탄성계수 $K$, 탄성계수 $E$, 수평지반반력계수 $k_h$, 전단강도 $\\tau$, 점착력 $c$, 마찰각 $\\phi$ 등 공인된 표준 학술 기호를 정확히 사용하십시오.
    - 인라인 수식은 $...$, 핵심 결론 공식이나 파괴기준식 등은 앞뒤 줄바꿈 후 $$...$$ 블록 수식으로 작성하십시오.
-3. **[문단 구분 및 가독성]**: 문단 구분은 반드시 **엔터 2번(빈 줄)**으로 명확히 분리하여, 전체 글이 줄바꿈 없이 하나의 거대한 통문장으로 뭉개지지 않도록 하십시오. 단, 마크다운 헤더 기호('#', '##')나 수평선('---')은 사용하지 마십시오.
-4. **[순수 정답 텍스트 출력]**: "모범 답안:", "정답은 다음과 같습니다" 등의 불필요한 메타 서론, 따옴표, 또는 JSON 래핑 없이, 학생에게 보여줄 순수 모범 답안 내용만을 직접 출력하십시오.
-5. 💡 **[정답 하단 직관적 의미 필수 추가 철칙 - 극도로 중요!]**: 모범 답안 맨 마지막 줄(공학적 설명 및 수식 하단)에 **반드시 빈 줄(엔터 2번)을 띄운 뒤** 다음 형식으로 직관적 의미를 1~2문장으로 명시하십시오:
+4. **[문단 구분 및 가독성]**: 문단 구분은 반드시 **엔터 2번(빈 줄)**으로 명확히 분리하여, 전체 글이 줄바꿈 없이 하나의 거대한 통문장으로 뭉개지지 않도록 하십시오. 단, 마크다운 헤더 기호('#', '##')나 수평선('---')은 사용하지 마십시오.
+5. **[순수 정답 텍스트 출력]**: "모범 답안:", "정답은 다음과 같습니다" 등의 불필요한 메타 서론, 따옴표, 또는 JSON 래핑 없이, 학생에게 보여줄 순수 모범 답안 내용만을 직접 출력하십시오.
+6. 💡 **[정답 하단 직관적 의미 필수 추가 철칙 - 극도로 중요!]**: 모범 답안 맨 마지막 줄(공학적 설명 및 수식 하단)에 **반드시 빈 줄(엔터 2번)을 띄운 뒤** 다음 형식으로 직관적 의미를 1~2문장으로 명시하십시오:
 
 💡 **직관적 의미**: [공학적 공식이나 원리의 물리적 본질, 핵심 변수의 상호작용 또는 실무적 의미를 한눈에 직관적으로 단번에 이해할 수 있는 명쾌하고 쉬운 비유나 설명 1~2문장]
 `;
@@ -189,21 +199,35 @@ ${LATEX_PROMPT_INSTRUCTIONS}`;
     if ((cleanAnswer.startsWith('"') && cleanAnswer.endsWith('"')) || (cleanAnswer.startsWith("'") && cleanAnswer.endsWith("'"))) {
       cleanAnswer = cleanAnswer.substring(1, cleanAnswer.length - 1).trim();
     }
-    if (cleanAnswer.startsWith('{') || cleanAnswer.includes('suggestedModelAnswer') || cleanAnswer.includes('suggestgedModelAnswer') || cleanAnswer.includes('"answer"')) {
+    if (cleanAnswer.startsWith('{') || cleanAnswer.includes('suggestedModelAnswer') || cleanAnswer.includes('suggestgedModelAnswer') || cleanAnswer.includes('"answer"') || (targetLetter && cleanAnswer.includes(`"${targetLetter}"`))) {
       let unwrapped = null;
       try {
         const parsed = parseLlmJson(cleanAnswer);
         if (parsed && typeof parsed === 'object') {
-          // 1) Search keys case-insensitively for answer/model/suggest/content/response
-          for (const [k, v] of Object.entries(parsed)) {
-            if (typeof v === 'string' && v.trim().length > 0) {
-              const lowerK = k.toLowerCase().replace(/_/g, '');
-              if (lowerK.includes('answer') || lowerK.includes('suggest') || lowerK.includes('model') || lowerK.includes('content') || lowerK.includes('response')) {
+          // 0) First: If target letter exists (e.g. 'A', 'B'), check if the parsed object has a direct key for it!
+          if (targetLetter) {
+            for (const [k, v] of Object.entries(parsed)) {
+              const cleanK = k.replace(/[\(\)\[\]_'"\s]/g, '').toUpperCase();
+              if (cleanK === targetLetter && typeof v === 'string' && v.trim().length > 0) {
                 unwrapped = v.trim();
                 break;
               }
             }
           }
+
+          // 1) Search keys case-insensitively for answer/model/suggest/content/response
+          if (!unwrapped) {
+            for (const [k, v] of Object.entries(parsed)) {
+              if (typeof v === 'string' && v.trim().length > 0) {
+                const lowerK = k.toLowerCase().replace(/_/g, '');
+                if (lowerK.includes('answer') || lowerK.includes('suggest') || lowerK.includes('model') || lowerK.includes('content') || lowerK.includes('response')) {
+                  unwrapped = v.trim();
+                  break;
+                }
+              }
+            }
+          }
+
           // 2) If no key matched, take the longest string value in the object
           if (!unwrapped) {
             const stringVals = Object.values(parsed).filter(v => typeof v === 'string' && v.trim().length > 10);
@@ -218,6 +242,17 @@ ${LATEX_PROMPT_INSTRUCTIONS}`;
       }
 
       // 3) Regex fallback if unwrapped is still null
+      if (!unwrapped && targetLetter) {
+        const letterRegex = new RegExp(`['"]\\s*\\(?\\s*${targetLetter}\\s*\\)?\\s*['"]\\s*:\\s*['"]([\\s\\S]*?)['"]\\s*(?:,\\s*['"]|\\})`, 'i');
+        const lMatch = cleanAnswer.match(letterRegex);
+        if (lMatch && lMatch[1]) {
+          unwrapped = lMatch[1]
+            .replace(/\\"/g, '"')
+            .replace(/(?:\\r\\n|\\n(?!u\b|abla|eq\b|eg\b|otin|geq|leq|sim|cong|parallel|oindent|ot\b|ewline))/g, '\n')
+            .trim();
+        }
+      }
+
       if (!unwrapped) {
         const regexMatch = cleanAnswer.match(/"(?:suggestedModelAnswer|suggestgedModelAnswer|modelAnswer|answer|response|content)"\s*:\s*"([\s\S]*?)"\s*(?:,\s*"|\}$)/i);
         if (regexMatch && regexMatch[1]) {
@@ -233,7 +268,6 @@ ${LATEX_PROMPT_INSTRUCTIONS}`;
       }
     }
     cleanAnswer = cleanAnswer.replace(/^(모범\s*답안|정답|표준\s*답안)\s*[:：]\s*/i, '').trim();
-
 
     // 2) 💡 직관적 의미 앞에 빈 줄이 없으면 반드시 \n\n 으로 분리
     cleanAnswer = cleanAnswer.replace(/([^\n])\s*(💡\s*(?:\*\*)?직관적\s*의미(?:\*\*)?\s*[:：])/g, '$1\n\n$2');
@@ -290,6 +324,11 @@ export async function gradeSubjective({ question, correctAnswer, userAnswer, row
 - 문제/맥락: ${question || '주관식 빈칸 채우기'}
 ${rowHeader ? `- 표 행 제목 (Row Header): ${rowHeader}` : ''}
 ${colHeader ? `- 표/빈칸 구분 제목 (Column Header): ${colHeader}` : ''}
+${(rowHeader && (rowHeader.includes('(') || rowHeader.includes('상자') || rowHeader.includes('INPUT'))) ? `
+🚨 **[플로우차트 빈칸 채점 주의사항]**:
+- 채점 대상 빈칸: ${rowHeader} (${colHeader || '입력 답안'})
+- 본 플로우차트 문항은 각 상자마다 [단계 제목]과 [세부 활동] 2개의 빈칸이 짝을 이룹니다. (예: 2단계=(A)제목, (B)세부활동 / 4단계=(C)제목, (D)세부활동).
+- 절대로 (B)를 4단계로 건너뛰어 착각하지 마시고, 지정된 상자 위치의 공학적 본질 및 기준 모범 답안에 맞춰 공정하게 채점하십시오.` : ''}
 ${explanation ? `- 전체 해설 (Explanation): ${explanation}` : ''}
 - 기준 모범 답안 (Canonical Model Answer): ${authoritativeModelAnswer}
 - 사용자의 답안 (Student Answer): ${userAnswer}
