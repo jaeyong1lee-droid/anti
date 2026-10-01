@@ -7,10 +7,6 @@ import { put, get } from '@vercel/blob';
 import { saveSessionValue, globalPreferredModel, updatePreferredModel, callLLMWithFailover, startBackendProgressTimer, updateProgress } from '../services/aiService.js';
 import { updateLiveEngineeringStandards, standardsList, ENGINEERING_STANDARDS } from '../plugins/engineeringStandards.js';
 import { updateLiveGradingStandards, gradingStandardsList } from '../plugins/gradingPlugin.js';
-let validationStandardsList = [];
-function updateLiveValidationStandards(newList) {
-  validationStandardsList = newList;
-}
 import { updateLiveGenerationStandards, generationStandardsList } from '../plugins/generationStandards.js';
 import { updateLiveLockscreenStandards, lockscreenStandardsList } from '../plugins/lockscreenStandards.js';
 import { healFormulaQuestionObject, healAnswersheetQuestionObject, healQuizQuestionObject, parseLlmJson, healLatexFormulas, LATEX_CHAT_PROMPT_INSTRUCTIONS } from '../utils/latexUtils.js';
@@ -1601,37 +1597,6 @@ router.get('/debug-db', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-
-// GET /api/debug-keys
-router.get('/debug-keys', (req, res) => {
-  res.json({
-    primary: process.env.GEMINI_API_KEY || 'not_set',
-    secondary: process.env.GEMINI_API_KEY_SECONDARY || 'not_set'
-  });
-});
-
-// GET /api/debug-topic-27
-router.get('/debug-topic-27', async (req, res) => {
-  try {
-    const resSchedules = await dbQuery.all(
-      "SELECT id, review_round, status, score, completed_at, planned_date FROM schedules WHERE topic_id = 27 ORDER BY review_round"
-    );
-    const scheduleIds = resSchedules.map(r => r.id);
-    let sessions = [];
-    if (scheduleIds.length > 0) {
-      const queryStr = `SELECT key, LENGTH(value) as len FROM app_session WHERE key IN (${scheduleIds.map(id => `'completed_review_schedule_${id}'`).join(',')})`;
-      sessions = await dbQuery.all(queryStr);
-    }
-    res.json({
-      success: true,
-      schedules: resSchedules,
-      sessions: sessions
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
 
 export default router;
 

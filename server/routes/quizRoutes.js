@@ -4163,16 +4163,6 @@ router.delete('/session/exam', async (req, res) => {
   }
 });
 
-// POST /api/admin/backfill-scores -> Admin manual backfill trigger
-router.post('/admin/backfill-scores', async (req, res) => {
-  try {
-    res.json({ success: true, message: '과거 복습 이력 점수 백필 완료' });
-  } catch (err) {
-    console.error('Admin backfill error:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
 // POST /api/search-source -> Dedicated Source Search API assigned to gemini-3.1-flash-lite
 router.post('/search-source', async (req, res) => {
   try {
