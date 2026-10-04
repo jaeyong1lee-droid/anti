@@ -772,15 +772,32 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
 
 
 
+  // Standalone horizontal rule divider
+  tempText = tempText.replace(/^[ \t]*(?:(?:\*[ \t]*){3,}|(?:-[ \t]*){3,}|(?:_[ \t]*){3,})$/gm, '<hr style="border: 0; border-top: 1px solid rgba(255, 255, 255, 0.1); margin: 0.8rem 0;" />');
+
   // Bold & Italics text highlight
   const yellowColor = '#fbbf24';
   const shouldHighlight = isMarkdown || isTutor || isExplanation || highlightBold;
   const boldColor = shouldHighlight ? yellowColor : '#f1f5f9';
   
-  tempText = tempText.replace(/\*\*\*([^\*]+?)\*\*\*/g, `<strong style="color: ${boldColor}; font-style: italic; font-weight: 800;">$1</strong>`);
-  tempText = tempText.replace(/\*\*([^\*]+?)\*\*/g, `<strong style="color: ${boldColor}; font-weight: 700;">$1</strong>`);
-  // Standalone horizontal rule divider
-  tempText = tempText.replace(/^[ \t]*(?:\* * \*|\*\*\*|---|___)[ \t]*$/gm, '<hr style="border: 0; border-top: 1px solid rgba(255, 255, 255, 0.1); margin: 0.8rem 0;" />');
+  tempText = tempText.replace(/\*\*\*([^\*\n]+?)\*\*\*/g, `<strong style="color: ${boldColor}; font-style: italic; font-weight: 800;">$1</strong>`);
+  tempText = tempText.replace(/\*\*([^\*\n]+?)\*\*/g, `<strong style="color: ${boldColor}; font-weight: 700;">$1</strong>`);
+
+  // 문장 수준(들여쓰기 Depth)에 따른 머리기호 불릿 계층 변환 (1수준: ●, 2수준: ○, 3수준: ·, 4수준 이상: -)
+  tempText = tempText.replace(/^([ \t]*)([*+-])[ \t]+(.+)$/gm, (match, leadingSpaces, bulletChar, content) => {
+    const rawLen = leadingSpaces.replace(/\t/g, '  ').length;
+    let newBullet = '●';
+    if (rawLen >= 6) {
+      newBullet = '-';
+    } else if (rawLen >= 4) {
+      newBullet = '·';
+    } else if (rawLen >= 2) {
+      newBullet = '○';
+    } else {
+      newBullet = '●';
+    }
+    return `${leadingSpaces}${newBullet} ${content}`;
+  });
 
   // Render headings
   tempText = tempText.replace(/^(###+)\s+(.*?)$/gm, (match, hashes, title) => {
