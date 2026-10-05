@@ -171,7 +171,6 @@ function extractJsonArray(str) {
             return parseLlmJson(jsonSub);
           } catch (e) {
             console.warn('Failed parsing extracted JSON substring via bracket matching:', e.message);
-            throw e;
           }
         }
       }
@@ -185,8 +184,7 @@ function extractJsonArray(str) {
     try {
       return parseLlmJson(jsonSub);
     } catch (e) {
-      console.warn('Failed parsing extracted JSON substring via extractJsonArray fallback.');
-      throw e;
+      console.warn('Failed parsing extracted JSON substring via extractJsonArray fallback:', e.message);
     }
   }
   return null;
@@ -242,6 +240,16 @@ function escapeJsonBackslashes(str) {
         result += '\\\\';
         i++;
       }
+    } else if (inString && char.charCodeAt(0) < 32) {
+      if (char === '\n') result += '\\n';
+      else if (char === '\r') result += '\\r';
+      else if (char === '\t') result += '\\t';
+      else if (char === '\b') result += '\\b';
+      else if (char === '\f') result += '\\f';
+      else {
+        result += '\\u' + char.charCodeAt(0).toString(16).padStart(4, '0');
+      }
+      i++;
     } else {
       result += char;
       i++;

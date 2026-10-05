@@ -801,33 +801,36 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
 
   // Render headings
   tempText = tempText.replace(/^(###+)\s+(.*?)$/gm, (match, hashes, title) => {
+    const cleanTitle = (title || '').replace(/^#+\s*/, '');
     if (isTutor) {
-      return `<h3 class="text-[14px] sm:text-[16px]" style="margin-top: 1.8rem; margin-bottom: 0.6rem; font-weight: normal; color: #f1f5f9; border-bottom: 1px solid rgba(51, 65, 85, 0.2); padding-bottom: 0.15rem;">${title}</h3>`;
+      return `<h3 class="text-[14px] sm:text-[16px]" style="margin-top: 1.8rem; margin-bottom: 0.6rem; font-weight: normal; color: #f1f5f9; border-bottom: 1px solid rgba(51, 65, 85, 0.2); padding-bottom: 0.15rem;">${cleanTitle}</h3>`;
     }
     if (isMarkdown) {
-      return `<h3 style="margin-top: 1.8rem; margin-bottom: 0.8rem; font-weight: 800; color: #f1f5f9; font-size: 1.05rem; border-bottom: 1px solid #334155; padding-bottom: 0.3rem;">${title}</h3>`;
+      return `<h3 style="margin-top: 1.8rem; margin-bottom: 0.8rem; font-weight: 800; color: #f1f5f9; font-size: 1.05rem; border-bottom: 1px solid #334155; padding-bottom: 0.3rem;">${cleanTitle}</h3>`;
     } else {
-      return `<h3 style="margin-top: 0.8rem; margin-bottom: 0.4rem; font-weight: 800; color: #f1f5f9; font-size: 1rem; border-bottom: 1px solid rgba(51, 65, 85, 0.2); padding-bottom: 0.2rem;">${title}</h3>`;
+      return `<h3 style="margin-top: 0.8rem; margin-bottom: 0.4rem; font-weight: 800; color: #f1f5f9; font-size: 1rem; border-bottom: 1px solid rgba(51, 65, 85, 0.2); padding-bottom: 0.2rem;">${cleanTitle}</h3>`;
     }
   });
   tempText = tempText.replace(/^(##)\s+(.*?)$/gm, (match, hashes, title) => {
+    const cleanTitle = (title || '').replace(/^#+\s*/, '');
     if (isTutor) {
-      return `<h2 class="text-[14px] sm:text-[16px]" style="margin-top: 2.2rem; margin-bottom: 0.8rem; font-weight: normal; color: #f8fafc; border-bottom: 1px solid rgba(71, 85, 105, 0.2); padding-bottom: 0.2rem;">${title}</h2>`;
+      return `<h2 class="text-[14px] sm:text-[16px]" style="margin-top: 2.2rem; margin-bottom: 0.8rem; font-weight: normal; color: #f8fafc; border-bottom: 1px solid rgba(71, 85, 105, 0.2); padding-bottom: 0.2rem;">${cleanTitle}</h2>`;
     }
     if (isMarkdown) {
-      return `<h2 style="margin-top: 2rem; margin-bottom: 1rem; font-weight: 900; color: #f8fafc; font-size: 1.2rem; border-bottom: 1px solid #475569; padding-bottom: 0.4rem;">${title}</h2>`;
+      return `<h2 style="margin-top: 2rem; margin-bottom: 1rem; font-weight: 900; color: #f8fafc; font-size: 1.2rem; border-bottom: 1px solid #475569; padding-bottom: 0.4rem;">${cleanTitle}</h2>`;
     } else {
-      return `<h2 style="margin-top: 1rem; margin-bottom: 0.5rem; font-weight: 900; color: #f8fafc; font-size: 1.1rem; border-bottom: 1px solid rgba(71, 85, 105, 0.3); padding-bottom: 0.3rem;">${title}</h2>`;
+      return `<h2 style="margin-top: 1rem; margin-bottom: 0.5rem; font-weight: 900; color: #f8fafc; font-size: 1.1rem; border-bottom: 1px solid rgba(71, 85, 105, 0.3); padding-bottom: 0.3rem;">${cleanTitle}</h2>`;
     }
   });
   tempText = tempText.replace(/^(#)\s+(.*?)$/gm, (match, hashes, title) => {
+    const cleanTitle = (title || '').replace(/^#+\s*/, '');
     if (isTutor) {
-      return `<h1 class="text-[14px] sm:text-[16px]" style="margin-top: 2.6rem; margin-bottom: 1rem; font-weight: normal; color: #f8fafc; border-bottom: 1px solid rgba(71, 85, 105, 0.25); padding-bottom: 0.25rem;">${title}</h1>`;
+      return `<h1 class="text-[14px] sm:text-[16px]" style="margin-top: 2.6rem; margin-bottom: 1rem; font-weight: normal; color: #f8fafc; border-bottom: 1px solid rgba(71, 85, 105, 0.25); padding-bottom: 0.25rem;">${cleanTitle}</h1>`;
     }
     if (isMarkdown) {
-      return `<h1 style="margin-top: 2.4rem; margin-bottom: 1.2rem; font-weight: 950; color: #f8fafc; font-size: 1.35rem; border-bottom: 1px solid #475569; padding-bottom: 0.5rem;">${title}</h1>`;
+      return `<h1 style="margin-top: 2.4rem; margin-bottom: 1.2rem; font-weight: 950; color: #f8fafc; font-size: 1.35rem; border-bottom: 1px solid #475569; padding-bottom: 0.5rem;">${cleanTitle}</h1>`;
     } else {
-      return `<h1 style="margin-top: 1.2rem; margin-bottom: 0.6rem; font-weight: 950; color: #f8fafc; font-size: 1.2rem; border-bottom: 1px solid rgba(71, 85, 105, 0.3); padding-bottom: 0.35rem;">${title}</h1>`;
+      return `<h1 style="margin-top: 1.2rem; margin-bottom: 0.6rem; font-weight: 950; color: #f8fafc; font-size: 1.2rem; border-bottom: 1px solid rgba(71, 85, 105, 0.3); padding-bottom: 0.35rem;">${cleanTitle}</h1>`;
     }
   });
 

@@ -593,15 +593,15 @@ router.post('/topics/:id/ai-questions', async (req, res) => {
           cachedResponseData = {
             questions: healed,
             ...cachedMeta,
-            sessionId: parsed.sessionId || sId,
+            sessionId: parsed.sessionId || cleanSid,
             isFallback: false,
             isCached: true,
             scheduleId: resolvedScheduleId
           };
         } else {
           // Calculation topic must have exactly 4 questions, otherwise discard cache
-          await dbQuery.run('DELETE FROM app_session WHERE key = ?', [key]);
-          await dbQuery.run('DELETE FROM app_session WHERE key = ?', [key]);
+          const staleKey = cached.key || primaryKey;
+          await dbQuery.run('DELETE FROM app_session WHERE key = ?', [staleKey]);
         }
       }
     }
@@ -1194,10 +1194,15 @@ let parsedArray = null;
         }
         let parsed = null;
         try {
-          parsed = parseLlmJson(text);
+          parsed = parseLlmJson(sanitizeJsonControlChars(text));
         } catch (parseErr) {
           console.warn(`[Batch ${batchName}] parseLlmJson failed, trying regex extraction:`, parseErr);
-          parsed = extractJsonArray(responseText);
+          try {
+            parsed = extractJsonArray(responseText);
+          } catch (extractErr) {
+            console.warn(`[Batch ${batchName}] extractJsonArray failed:`, extractErr);
+            parsed = [];
+          }
         }
         return Array.isArray(parsed) ? parsed : [];
       };
@@ -2396,6 +2401,50 @@ $$k_h = k_{h0} \\left(\\frac{B_H}{0.3}\\right)^{-3/4}$$
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+export function sanitizeJsonControlChars(str) {
+  if (!str || typeof str !== 'string') return str;
+  let result = '';
+  let inString = false;
+  let isEscaped = false;
+
+  for (let i = 0; i < str.length; i++) {
+    const char = str[i];
+    
+    if (isEscaped) {
+      result += char;
+      isEscaped = false;
+      continue;
+    }
+    
+    if (char === '\\') {
+      result += char;
+      isEscaped = true;
+      continue;
+    }
+    
+    if (char === '"') {
+      inString = !inString;
+      result += char;
+      continue;
+    }
+    
+    if (inString && char.charCodeAt(0) < 32) {
+      if (char === '\n') result += '\\n';
+      else if (char === '\r') result += '\\r';
+      else if (char === '\t') result += '\\t';
+      else if (char === '\b') result += '\\b';
+      else if (char === '\f') result += '\\f';
+      else {
+        result += '\\u' + char.charCodeAt(0).toString(16).padStart(4, '0');
+      }
+      continue;
+    }
+    
+    result += char;
+  }
+  return result;
+}
+
 function extractJsonArray(str) {
   if (!str) return null;
   const startIdx = str.indexOf('[');
@@ -2427,10 +2476,9 @@ function extractJsonArray(str) {
         if (depth === 0) {
           const jsonSub = str.substring(startIdx, i + 1);
           try {
-            return parseLlmJson(jsonSub);
+            return parseLlmJson(sanitizeJsonControlChars(jsonSub));
           } catch (e) {
             console.warn('Failed parsing extracted JSON substring via bracket matching:', e.message);
-            throw e;
           }
         }
       }
@@ -2442,10 +2490,9 @@ function extractJsonArray(str) {
   if (endIdx > startIdx) {
     const jsonSub = str.substring(startIdx, endIdx + 1);
     try {
-      return parseLlmJson(jsonSub);
+      return parseLlmJson(sanitizeJsonControlChars(jsonSub));
     } catch (e) {
-      console.warn('Failed parsing extracted JSON substring via extractJsonArray fallback.');
-      throw e;
+      console.warn('Failed parsing extracted JSON substring via extractJsonArray fallback:', e.message);
     }
   }
   return null;
@@ -2710,7 +2757,7 @@ ${ENGINEERING_STANDARDS}
         }
         let parsedList = null;
         try {
-          parsedList = parseLlmJson(text);
+          parsedList = parseLlmJson(sanitizeJsonControlChars(text));
         } catch {
           parsedList = extractJsonArray(rawText);
         }
@@ -3224,7 +3271,7 @@ ${ENGINEERING_STANDARDS}
 
         let batchQuestions = null;
         try {
-          batchQuestions = parseLlmJson(text);
+          batchQuestions = parseLlmJson(sanitizeJsonControlChars(text));
         } catch {
           batchQuestions = extractJsonArray(rawText);
         }
