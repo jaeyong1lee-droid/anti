@@ -783,21 +783,30 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
   tempText = tempText.replace(/\*\*\*([^\*\n]+?)\*\*\*/g, `<strong style="color: ${boldColor}; font-style: italic; font-weight: 800;">$1</strong>`);
   tempText = tempText.replace(/\*\*([^\*\n]+?)\*\*/g, `<strong style="color: ${boldColor}; font-weight: 700;">$1</strong>`);
 
-  // 문장 수준(들여쓰기 Depth)에 따른 머리기호 불릿 계층 변환 (1수준: ●, 2수준: ○, 3수준: ·, 4수준 이상: -)
+  // 문장 수준(들여쓰기 Depth)에 따른 머리기호 불릿 계층 변환 (1수준: •, 2수준: ◦, 3수준: ·, 4수준 이상: -)
   tempText = tempText.replace(/^([ \t]*)([*+-])[ \t]+(.+)$/gm, (match, leadingSpaces, bulletChar, content) => {
     const rawLen = leadingSpaces.replace(/\t/g, '  ').length;
-    let newBullet = '●';
+    let newBullet = '•';
     if (rawLen >= 6) {
       newBullet = '-';
     } else if (rawLen >= 4) {
       newBullet = '·';
     } else if (rawLen >= 2) {
-      newBullet = '○';
+      newBullet = '◦';
     } else {
-      newBullet = '●';
+      newBullet = '•';
     }
     return `${leadingSpaces}${newBullet} ${content}`;
   });
+
+  // 거대한 기하도형 불릿(●, ○, ■, □)을 작고 세련된 표준 타이포그래피 불릿(•, ◦, ▪, ▫)으로 자동 변환
+  tempText = tempText.replace(/^([ \t]*)●[ \t]*/gm, '$1• ');
+  tempText = tempText.replace(/^([ \t]*)○[ \t]*/gm, '$1◦ ');
+  tempText = tempText.replace(/^([ \t]*)■[ \t]*/gm, '$1▪ ');
+  tempText = tempText.replace(/^([ \t]*)□[ \t]*/gm, '$1▫ ');
+
+  // 중복 불릿 기호 자동 정제
+  tempText = tempText.replace(/^([ \t]*[•◦▪▫·\-])[ \t]+[•◦▪▫·\-][ \t]+/gm, '$1 ');
 
   // Render headings
   tempText = tempText.replace(/^(###+)\s+(.*?)$/gm, (match, hashes, title) => {
