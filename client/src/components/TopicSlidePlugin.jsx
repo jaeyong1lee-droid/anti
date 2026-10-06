@@ -16,7 +16,8 @@ import {
   CheckCircle,
   AlertCircle,
   Download,
-  Image as ImageIcon
+  Image as ImageIcon,
+  MessageSquare
 } from 'lucide-react';
 import { renderMixedText } from './ChartRenderer';
 
@@ -130,7 +131,8 @@ export default function TopicSlidePlugin({
   isGenerating = false,
   onStartSlideGeneration,
   slideRefreshTick = 0,
-  showNotification
+  showNotification,
+  onOpenTutor
 }) {
   const [slideMeta, setSlideMeta] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -256,6 +258,7 @@ export default function TopicSlidePlugin({
     if (!isOpen) return;
     const handleKeyDown = (e) => {
       if (showUploadModal) return;
+      if (e.target?.tagName === 'INPUT' || e.target?.tagName === 'TEXTAREA' || e.target?.isContentEditable) return;
       if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') {
         e.preventDefault();
         handleNextSlide();
@@ -610,6 +613,17 @@ export default function TopicSlidePlugin({
                 <span className="hidden sm:inline">JPG 저장</span>
               </button>
             )}
+
+            {/* 실시간 AI 튜터 버튼 */}
+            <button
+              type="button"
+              onClick={() => onOpenTutor?.(topicTitle)}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-500 hover:from-brand-500 hover:to-indigo-400 text-white font-bold text-xs transition-all shadow-md select-none cursor-pointer border-none active:scale-95"
+              title="실시간 AI 튜터 팝업 열기"
+            >
+              <MessageSquare size={13} />
+              <span className="hidden sm:inline">AI 튜터</span>
+            </button>
 
             {/* 파일 등록/변경 버튼 */}
             <button

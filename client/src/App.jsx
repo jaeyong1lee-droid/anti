@@ -30634,7 +30634,7 @@ ${itemsStr}
             right: 0,
             top: 0,
             bottom: 0,
-            zIndex: showLockscreenQuiz ? 10000002 : 99999,
+            zIndex: (showLockscreenQuiz || showTopicSlideModal) ? 10000002 : 99999,
             display: 'flex',
             flexDirection: 'column',
           } : {
@@ -30643,7 +30643,7 @@ ${itemsStr}
             top: 'var(--realtime-tutor-y)',
             width: 'var(--realtime-tutor-w)',
             height: 'var(--realtime-tutor-h)',
-            zIndex: showLockscreenQuiz ? 10000002 : 99999,
+            zIndex: (showLockscreenQuiz || showTopicSlideModal) ? 10000002 : 99999,
             display: 'flex',
             flexDirection: 'column',
           }}
@@ -31476,6 +31476,15 @@ ${itemsStr}
         onStartSlideGeneration={handleStartSlideGeneration}
         slideRefreshTick={slideRefreshTick}
         showNotification={showNotification}
+        onOpenTutor={() => {
+          setIsRealTimeTutorOpen(true);
+          setTimeout(() => {
+            if (realTimeChatBodyRef.current) {
+              realTimeChatBodyRef.current.scrollTop = realTimeChatBodyRef.current.scrollHeight;
+            }
+            realTimeTutorInputRef.current?.focus();
+          }, 100);
+        }}
       />
 
       {/* Custom Overview Prompt Modal */}
