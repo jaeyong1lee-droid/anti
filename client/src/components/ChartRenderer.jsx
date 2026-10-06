@@ -19,8 +19,9 @@ export const renderMixedText = (text, isMarkdown = false) => {
   const str = typeof text === 'string' ? text : String(text);
   if (!str.trim()) return '';
 
-  // 1. 메인 렌더링 파이프라인의 수식 정제 및 자동 치유 적용
-  let sanitized = cleanAndSanitizeMathText(str);
+  // 1. 개행 정규화 및 메인 렌더링 파이프라인의 수식 정제 적용
+  let normalized = str.replace(/\r\n/g, '\n').replace(/\\n/g, '\n');
+  let sanitized = cleanAndSanitizeMathText(normalized);
   sanitized = healLatexFormulas(sanitized, false, null);
 
   // 3. 기존 $ 및 $$ 수식 블록 보호 (방화벽 - 언더스코어 간섭 없는 안전 토큰 사용)
@@ -78,19 +79,6 @@ export const renderMixedText = (text, isMarkdown = false) => {
       return `${ph}${leftover}`;
     });
   }
-
-  // 4. 달러 기호 없이 노출된 순수 그리스 문자 및 LaTeX 명령어 자동 감지 및 래핑
-  // (예: \sigma_v, \tau_{max}, \frac{a}{b}, \Delta u, \phi = 30^\circ, \epsilon_a 등)
-  const mathToken = '(?:\\\\[a-zA-Z]+(?:_(?:\\{[^{}]*\\}|[a-zA-Z0-9])|\\^(?:\\{[^{}]*\\}|[a-zA-Z0-9])|\\{[^{}]*\\}|\'{1,3})*|[a-zA-Z](?:_(?:\\{[^{}]*\\}|[a-zA-Z0-9])|\\^(?:\\{[^{}]*\\}|[a-zA-Z0-9])|\'{1,3}))';
-  const bareLatexPattern = new RegExp(mathToken + '(?:\\s*(?:[=+\\-*\\/<>~]|\\\\le|\\\\ge|\\\\approx|\\\\times|\\\\cdot)\\s*(?:' + mathToken + '|[a-zA-Z0-9\\.]+|\\{[^{}]*\\}))*', 'g');
-
-  protectedText = protectedText.replace(bareLatexPattern, (match) => {
-    // 수식 기호(역슬래시, 첨자, 거듭제곱)가 포함된 경우에만 안전하게 KaTeX 대상으로 포섭
-    if (!/\\|[_\^]/.test(match)) return match;
-    const ph = `\uE000INLINEMATH${mathPlaceholders.length}\uE001`;
-    mathPlaceholders.push({ ph, math: match.trim(), displayMode: false });
-    return ph;
-  });
 
   // 5. 마크다운 문법 적용 (description 등 서술 텍스트인 경우)
   let result = protectedText;

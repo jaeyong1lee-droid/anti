@@ -956,7 +956,7 @@ export default function TopicSlidePlugin({
                               <span className="text-[9px] font-bold text-slate-400 tracking-wider">
                                 <SlideLatex text={card.label} />
                               </span>
-                              <span className="text-xs font-black mt-1 line-clamp-3">
+                              <span className="text-xs font-black mt-1 whitespace-pre-line leading-relaxed">
                                 <SlideLatex text={card.content || ''} />
                               </span>
                             </div>
