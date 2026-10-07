@@ -22,12 +22,48 @@ import {
 import { renderMixedText } from './ChartRenderer';
 
 /**
+ * 🪶 prepareSlideMath: 슬라이드 전용 고립 수식 치유 함수
+ * AI가 카드 요약이나 본문에서 누락한 달러 기호($) 및 공학 변수/그리스 문자를 온전한 수식 블록으로 복원
+ */
+function prepareSlideMath(raw) {
+  if (!raw || typeof raw !== 'string') return raw || '';
+
+  // 1. 이미 존재하는 $...$ 및 $$...$$ 블록 임시 보호
+  const tokens = [];
+  let masked = raw.replace(/\$\$[\s\S]*?\$\$|\$[^\$\n]+\$/g, (m) => {
+    const ph = `__MATH_PH_${tokens.length}__`;
+    tokens.push({ ph, val: m });
+    return ph;
+  });
+
+  // 2. 고립된 백슬래시 LaTeX 기호 자동 수식화 (예: \gamma_i, \phi, \lambda_R, \lambda_L 등)
+  const mathSymbols = 'alpha|beta|gamma|delta|epsilon|varepsilon|zeta|eta|theta|vartheta|iota|kappa|lambda|mu|nu|xi|pi|varpi|rho|varrho|sigma|varsigma|tau|upsilon|phi|varphi|chi|psi|omega|Gamma|Delta|Theta|Lambda|Xi|Pi|Sigma|Upsilon|Phi|Psi|Omega|sqrt|frac|dfrac|sum|int|partial|le|ge|ne|neq|approx|sim|times|cdot|pm|mp|infty';
+  const symbolRegex = new RegExp(`(?:\\\\(?:${mathSymbols})(?:_\\{[^}]*\\}|\\^\\{[^}]*\\}|\\{[^}]*\\}|_[a-zA-Z0-9]+|\\^[a-zA-Z0-9]+)*(?![a-zA-Z]))`, 'gi');
+  masked = masked.replace(symbolRegex, (m) => `$${m}$`);
+
+  // 3. 소괄호 안의 고립된 공학 변수 (예: (R_n), (R_r), (V_R) 등) 수식화
+  masked = masked.replace(/\(([^()]+)\)/g, (match, inner) => {
+    if (/[\uAC00-\uD7A3]/.test(inner)) return match;
+    const healedInner = inner.replace(/\b([A-Z]_[a-zA-Z0-9]{1,2})\b/g, (m) => `$${m}$`);
+    return `(${healedInner})`;
+  });
+
+  // 4. 보호했던 수식 복원
+  for (const { ph, val } of tokens) {
+    masked = masked.replace(ph, val);
+  }
+
+  return masked;
+}
+
+/**
  * 🪶 SlideLatex: 훅(Hook)을 전혀 사용하지 않는 초경량 고성능 슬라이드 전용 수식/텍스트 렌더러
  * (React Hook 규칙 위반 에러 #300 원천 방지 및 KaTeX 고속 렌더링)
  */
 function SlideLatex({ text, className = '' }) {
   if (!text) return null;
-  const html = renderMixedText(text, true);
+  const processed = prepareSlideMath(text);
+  const html = renderMixedText(processed, true);
   return <span className={className} dangerouslySetInnerHTML={{ __html: html }} />;
 }
 

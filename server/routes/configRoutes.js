@@ -1361,10 +1361,18 @@ router.post('/session/exam', async (req, res) => {
 
 // POST /api/chat
 router.post('/chat', async (req, res) => {
-  const { message, history, image, overviewMode, acronymMode } = req.body;
+  const { message, history, image, images, overviewMode, acronymMode } = req.body;
   const progressId = req.body.progressId || req.query.progressId;
   const localCallLLM = (sys, prompt, img, scenario, opts) => 
     callLLMWithFailover(sys, prompt, img, scenario, { ...opts, progressId });
+
+  const rawImages = images || (image ? (Array.isArray(image) ? image : [image]) : []);
+  let imageList = [];
+  if (Array.isArray(rawImages)) {
+    imageList = rawImages.filter(img => img && img.data && img.mimeType);
+  }
+  const hasImages = imageList.length > 0;
+  const imageArg = hasImages ? (imageList.length === 1 ? imageList[0] : imageList) : null;
 
   let progressTimer = null;
   if (progressId) {
@@ -1374,7 +1382,7 @@ router.post('/chat', async (req, res) => {
   try {
     if (overviewMode) {
       try {
-        const responseText = await generateOverviewTutorResponse(message, image, localCallLLM);
+        const responseText = await generateOverviewTutorResponse(message, imageArg, localCallLLM);
         const healedText = healLatexFormulas(responseText);
         if (progressId) {
           updateProgress(progressId, 1, '1단계: 개요서 생성 완료!', 100);
@@ -1391,7 +1399,7 @@ router.post('/chat', async (req, res) => {
 
     if (acronymMode) {
       try {
-        const responseText = await generateAcronymTutorResponse(message, image, localCallLLM);
+        const responseText = await generateAcronymTutorResponse(message, imageArg, localCallLLM);
         const healedText = healLatexFormulas(responseText);
         if (progressId) {
           updateProgress(progressId, 1, '1단계: 앞글자 연상 완료!', 100);
@@ -1418,11 +1426,12 @@ router.post('/chat', async (req, res) => {
     }
     
     let currentMessage = (message || '').trim();
-    if (image) {
+    if (hasImages) {
+      const count = imageList.length;
       if (!currentMessage) {
-        currentMessage = "[첨부 이미지 분석 요청] 수험생이 기술사 관련 스크린샷/이미지를 첨부하였습니다. 이미지에 담긴 모든 텍스트, 문제, 수식, 그래프, 도표 등을 고도로 이해하기 쉽게 분석 및 판독하여, 해당 문제의 출제 의도, 명쾌한 풀이 과정 및 정확한 최종 정답을 친절하고 기술적/공학적으로 완벽히 설명해 주십시오.";
+        currentMessage = `[첨부 이미지(${count}장) 분석 요청] 수험생이 기술사 관련 스크린샷/이미지 ${count}장을 첨부하였습니다. 각 이미지에 담긴 모든 텍스트, 문제, 수식, 그래프, 도표 간의 연계 관계를 종합적으로 판독하여, 해당 문제의 출제 의도, 명쾌한 풀이 과정 및 정확한 최종 정답을 친절하고 기술적/공학적으로 완벽히 설명해 주십시오.`;
       } else {
-        currentMessage = `[첨부 이미지 분석 요청] 수험생이 이미지(스크린샷)와 함께 다음 질문을 보냈습니다: "${currentMessage}". 첨부된 이미지에 표현된 핵심 기술적 문제, 수식, 다이어그램, 텍스트 등을 최우선으로 분석하여 질문에 매우 구체적이고 체계적으로 답변해 주십시오.`;
+        currentMessage = `[첨부 이미지(${count}장) 분석 요청] 수험생이 ${count}장의 이미지(스크린샷)와 함께 다음 질문을 보냈습니다: "${currentMessage}". 첨부된 모든 이미지에 표현된 핵심 기술적 문제, 수식, 다이어그램, 텍스트 등을 최우선으로 상호 대조 분석하여 질문에 매우 구체적이고 체계적으로 답변해 주십시오.`;
       }
     }
     structuredPrompt += currentMessage;
@@ -1460,7 +1469,7 @@ ${SVG_DIAGRAM_PROMPT}
 ${CHART_DIAGRAM_PROMPT}
 ${LATEX_CHAT_PROMPT_INSTRUCTIONS}`;
 
-      const responseText = await localCallLLM(systemInstruction, structuredPrompt, image, 'tutor');
+      const responseText = await localCallLLM(systemInstruction, structuredPrompt, imageArg, 'tutor');
       const healedText = healLatexFormulas(responseText);
       if (progressId) {
         updateProgress(progressId, 1, '1단계: 답변 생성 완료!', 100);

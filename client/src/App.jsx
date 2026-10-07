@@ -7729,7 +7729,13 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
   const chatBodyRef = useRef(null);
   const tutorFileInputRef = useRef(null);
   const mobileTutorFileInputRef = useRef(null);
-  const [attachedImage, setAttachedImage] = useState(null); // { name, mimeType, data }
+  const [attachedImages, setAttachedImages] = useState([]); // Array of { id, name, mimeType, data }
+  const attachedImage = attachedImages.length > 0 ? attachedImages[0] : null;
+  const setAttachedImage = (val) => {
+    if (!val) setAttachedImages([]);
+    else if (Array.isArray(val)) setAttachedImages(val);
+    else setAttachedImages([val]);
+  };
   const [hintText, setHintText] = useState(null);
   const [isHintLoading, setIsHintLoading] = useState(false);
   const [showHintModal, setShowHintModal] = useState(false);
@@ -13480,25 +13486,48 @@ ${item.intuitive || ''}
 
   // ── Gemini Sidebar Image Attachment Handlers ───────────────────────
   const handleImageAttachment = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+    const rawFiles = Array.from(e.target.files || []);
+    if (!rawFiles || rawFiles.length === 0) return;
 
-    if (!file.type.startsWith('image/')) {
+    const validFiles = rawFiles.filter(f => f.type.startsWith('image/'));
+    if (validFiles.length === 0) {
       showNotification('이미지 파일만 첨부할 수 있습니다.', 'error');
       return;
     }
 
-    const compressed = await compressImageFile(file);
-    if (compressed) {
-      setAttachedImage(compressed);
+    const compressedList = [];
+    for (let i = 0; i < validFiles.length; i++) {
+      const f = validFiles[i];
+      const comp = await compressImageFile(f);
+      if (comp) {
+        compressedList.push({
+          ...comp,
+          id: `img_${Date.now()}_${i}_${Math.random().toString(36).substring(2, 7)}`,
+          name: comp.name || f.name || `image_${Date.now().toString().slice(-4)}.jpg`
+        });
+      }
     }
+
+    if (compressedList.length > 0) {
+      setAttachedImages(prev => [...prev, ...compressedList]);
+      showNotification(`${compressedList.length}개의 이미지가 추가 첨부되었습니다!`);
+    }
+
+    // Reset input value to allow re-selecting same files
+    e.target.value = '';
+  };
+
+  const handleRemoveAttachedImage = (idOrIndex) => {
+    setAttachedImages(prev => prev.filter((img, idx) => (img.id ? img.id !== idOrIndex : idx !== idOrIndex)));
   };
 
   const handleClearAttachedImage = () => {
-    setAttachedImage(null);
+    setAttachedImages([]);
   };
 
   const handlePasteImage = async (e) => {
+    const foundImages = [];
+
     // 1. clipboardData.files 우선 검사 (모던 브라우저 및 OS 캡처 비트맵 파일 직접 맵핑 대응)
     const files = e.clipboardData?.files;
     if (files && files.length > 0) {
@@ -13507,36 +13536,43 @@ ${item.intuitive || ''}
         if (file.type.startsWith('image/')) {
           const compressed = await compressImageFile(file);
           if (compressed) {
-            setAttachedImage(compressed);
-            showNotification('클립보드 이미지가 첨부되었습니다!');
+            foundImages.push({
+              ...compressed,
+              id: `paste_${Date.now()}_${i}_${Math.random().toString(36).substring(2, 7)}`,
+              name: compressed.name || `screenshot_${Date.now().toString().slice(-4)}.jpg`
+            });
           }
-          e.preventDefault();
-          return;
         }
       }
     }
 
     // 2. clipboardData.items 보조 검사 (브라우저 호환성 백업 및 특수 클립보드 항목 대응)
-    const items = e.clipboardData?.items;
-    if (items) {
-      for (let i = 0; i < items.length; i++) {
-        const item = items[i];
-        if (item.type.startsWith('image/') || item.kind === 'file') {
-          const file = item.getAsFile();
-          if (!file) continue;
+    if (foundImages.length === 0) {
+      const items = e.clipboardData?.items;
+      if (items) {
+        for (let i = 0; i < items.length; i++) {
+          const item = items[i];
+          if (item.type.startsWith('image/') || item.kind === 'file') {
+            const file = item.getAsFile();
+            if (!file) continue;
 
-          const compressed = await compressImageFile(file);
-          if (compressed) {
-            setAttachedImage({
-              ...compressed,
-              name: compressed.name || `clipboard-image-${Date.now().toString().slice(-4)}.jpg`
-            });
-            showNotification('클립보드 이미지가 첨부되었습니다!');
+            const compressed = await compressImageFile(file);
+            if (compressed) {
+              foundImages.push({
+                ...compressed,
+                id: `paste_${Date.now()}_${i}_${Math.random().toString(36).substring(2, 7)}`,
+                name: compressed.name || `screenshot_${Date.now().toString().slice(-4)}.jpg`
+              });
+            }
           }
-          e.preventDefault();
-          return;
         }
       }
+    }
+
+    if (foundImages.length > 0) {
+      e.preventDefault();
+      setAttachedImages(prev => [...prev, ...foundImages]);
+      showNotification(`${foundImages.length}개의 스크린샷이 추가 첨부되었습니다!`);
     }
   };
 
@@ -14671,15 +14707,15 @@ ${item.intuitive || ''}
   // ── Gemini Sidebar Chat Handler ───────────────────────────────
   const handleSendChat = async (customMessage, overrideAcronymMode = false) => {
     const userMessage = (typeof customMessage === 'string' ? customMessage : chatInput).trim();
-    if ((!userMessage && !attachedImage) || isChatLoading) return;
+    if ((!userMessage && attachedImages.length === 0) || isChatLoading) return;
     
-    const currentAttachedImage = attachedImage;
+    const currentAttachedImages = [...attachedImages];
     if (typeof customMessage !== 'string') {
       setChatInput('');
       if (sidebarChatInputRef.current) sidebarChatInputRef.current.style.height = 'auto';
       if (mobileChatInputRef.current) mobileChatInputRef.current.style.height = 'auto';
     }
-    setAttachedImage(null);
+    setAttachedImages([]);
     
     // 공식이 첨부되어 있다면 프롬프트 상단에 메타 정보로 추가하고 즉시 비웁니다.
     let apiMessage = userMessage;
@@ -14695,7 +14731,12 @@ ${item.intuitive || ''}
       displayMessage = `$$${sentAttachedFormula}$$\n\n${userMessage}`;
     }
     
-    const newUserMsg = { role: 'user', text: displayMessage, image: currentAttachedImage };
+    const newUserMsg = { 
+      role: 'user', 
+      text: displayMessage, 
+      image: currentAttachedImages[0] || null,
+      images: currentAttachedImages 
+    };
     const historyWithUser = [...chatHistoryRef.current, newUserMsg];
     setChatHistory(historyWithUser);
     chatHistoryRef.current = historyWithUser;
@@ -14717,7 +14758,8 @@ ${item.intuitive || ''}
         body: JSON.stringify({ 
           history: historyWithUser.map(h => ({ role: h.role, text: h.text })), 
           message: apiMessage,
-          image: currentAttachedImage ? { mimeType: currentAttachedImage.mimeType, data: currentAttachedImage.data } : null,
+          image: currentAttachedImages.length === 1 ? { mimeType: currentAttachedImages[0].mimeType, data: currentAttachedImages[0].data } : null,
+          images: currentAttachedImages.map(img => ({ mimeType: img.mimeType, data: img.data })),
           acronymMode: overrideAcronymMode || acronymModeActive,
           progressId
         })
@@ -22822,19 +22864,26 @@ ${itemsStr}
                     }>
                       {msg.role === 'user' ? (
                         <div className="flex flex-col gap-2">
-                          {msg.image && (
-                            <img 
-                              src={`data:${msg.image.mimeType};base64,${msg.image.data}`} 
-                              alt="첨부 이미지" 
-                              className="max-w-full max-h-48 rounded-xl object-contain border border-indigo-455 shadow-md"
-                            />
+                          {(msg.images && msg.images.length > 0 ? msg.images : (msg.image ? [msg.image] : [])).length > 0 && (
+                            <div className={`grid gap-2 my-1 ${
+                              (msg.images?.length || 1) === 1 ? 'grid-cols-1' : 'grid-cols-2'
+                            }`}>
+                              {(msg.images && msg.images.length > 0 ? msg.images : [msg.image]).map((img, imgIdx) => (
+                                <img 
+                                  key={imgIdx}
+                                  src={`data:${img.mimeType};base64,${img.data}`} 
+                                  alt={`첨부 이미지 ${imgIdx + 1}`} 
+                                  className="max-w-full max-h-48 rounded-xl object-contain border border-indigo-400/40 shadow-md bg-slate-950/60"
+                                />
+                              ))}
+                            </div>
                           )}
                           {msg.text && (
                             <div className="whitespace-pre-wrap">
                               <LatexRenderer 
                                 text={msg.text} 
                                 katexLoaded={katexLoaded} 
-                                enableAddFormula={false}
+                                enableAddFormula={false} 
                                 isMarkdown={true}
                               />
                             </div>
@@ -22890,24 +22939,45 @@ ${itemsStr}
               </div>
 
               <div className="p-3 border-t border-slate-800 bg-slateCustom-950 flex-shrink-0 ">
-                {/* 첨부 이미지 미리보기 */}
-                {attachedImage && (
-                  <div className="mb-2 p-2 bg-slate-900/60 border border-slate-800 rounded-xl flex items-center justify-between gap-2 animate-fade-in">
-                    <div className="flex items-center gap-2 overflow-hidden">
-                      <img 
-                        src={`data:${attachedImage.mimeType};base64,${attachedImage.data}`} 
-                        alt="미리보기" 
-                        className="w-8 h-8 rounded-lg object-contain bg-slate-950 border border-slate-800"
-                      />
-                      <span className="text-[11px] text-slate-400 truncate max-w-[180px] font-semibold">{attachedImage.name}</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleClearAttachedImage}
-                      className="w-5 h-5 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 flex items-center justify-center cursor-pointer transition-all active:scale-95"
-                    >
-                      <X size={10} />
-                    </button>
+                {/* 첨부 이미지 미리보기 목록 */}
+                {attachedImages.length > 0 && (
+                  <div className="mb-2 flex flex-wrap gap-1.5 animate-fade-in max-h-36 overflow-y-auto pr-1">
+                    {attachedImages.map((img, idx) => (
+                      <div 
+                        key={img.id || idx} 
+                        className="p-1.5 bg-slate-900/90 border border-slate-800 rounded-xl flex items-center justify-between gap-1.5 shadow-sm shrink-0"
+                      >
+                        <div className="flex items-center gap-1.5 overflow-hidden">
+                          <img 
+                            src={`data:${img.mimeType};base64,${img.data}`} 
+                            alt="미리보기" 
+                            className="w-7 h-7 rounded-lg object-contain bg-slate-950 border border-slate-800 shrink-0"
+                          />
+                          <span className="text-[10.5px] text-slate-300 truncate max-w-[130px] font-semibold">
+                            {img.name || `image_${idx + 1}.jpg`}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveAttachedImage(img.id || idx)}
+                          className="w-4 h-4 rounded-md bg-slate-800 hover:bg-rose-900/60 hover:text-rose-300 text-slate-400 flex items-center justify-center cursor-pointer transition-all active:scale-95 ml-1"
+                          title="삭제"
+                        >
+                          <X size={10} />
+                        </button>
+                      </div>
+                    ))}
+                    {attachedImages.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={handleClearAttachedImage}
+                        className="px-2 py-1 text-[10px] font-bold text-rose-400 hover:text-rose-300 bg-rose-950/40 hover:bg-rose-950/70 border border-rose-800/40 rounded-lg flex items-center gap-1 self-center transition-all cursor-pointer"
+                        title="전체 비우기"
+                      >
+                        <Trash2 size={10} />
+                        <span>전체 비우기</span>
+                      </button>
+                    )}
                   </div>
                 )}
                 
@@ -22930,6 +23000,7 @@ ${itemsStr}
                     ref={tutorFileInputRef} 
                     onChange={handleImageAttachment} 
                     accept="image/*" 
+                    multiple
                     className="hidden" 
                   />
 
@@ -22960,7 +23031,7 @@ ${itemsStr}
                   {/* 전송 버튼 */}
                   <button
                     type="submit"
-                    disabled={(!chatInput.trim() && !attachedImage) || isChatLoading}
+                    disabled={(!chatInput.trim() && attachedImages.length === 0) || isChatLoading}
                     className="w-8 h-8 bg-slate-300 hover:bg-slate-200 disabled:opacity-30 disabled:hover:bg-slate-300 rounded-xl flex items-center justify-center transition-all cursor-pointer shadow-md shadow-slate-300/10 active:scale-95 flex-shrink-0"
                   >
                     <Send size={12} className="text-slate-900" />
@@ -26255,12 +26326,19 @@ ${itemsStr}
                     }>
                       {msg.role === 'user' ? (
                         <div className="flex flex-col gap-2">
-                          {msg.image && (
-                            <img 
-                              src={`data:${msg.image.mimeType};base64,${msg.image.data}`} 
-                              alt="첨부 이미지" 
-                              className="max-w-full max-h-48 rounded-xl object-contain border border-indigo-455 shadow-md"
-                            />
+                          {(msg.images && msg.images.length > 0 ? msg.images : (msg.image ? [msg.image] : [])).length > 0 && (
+                            <div className={`grid gap-2 my-1 ${
+                              (msg.images?.length || 1) === 1 ? 'grid-cols-1' : 'grid-cols-2'
+                            }`}>
+                              {(msg.images && msg.images.length > 0 ? msg.images : [msg.image]).map((img, imgIdx) => (
+                                <img 
+                                  key={imgIdx}
+                                  src={`data:${img.mimeType};base64,${img.data}`} 
+                                  alt={`첨부 이미지 ${imgIdx + 1}`} 
+                                  className="max-w-full max-h-48 rounded-xl object-contain border border-indigo-400/40 shadow-md bg-slate-950/60"
+                                />
+                              ))}
+                            </div>
                           )}
                           {msg.text && (
                             <div className="whitespace-pre-wrap">
@@ -26323,24 +26401,45 @@ ${itemsStr}
               </div>
 
               <div className="p-3 border-t border-slate-800 bg-slateCustom-950 flex-shrink-0 ">
-                {/* 첨부 이미지 미리보기 */}
-                {attachedImage && (
-                  <div className="mb-2 p-2 bg-slate-900/60 border border-slate-800 rounded-xl flex items-center justify-between gap-2 animate-fade-in">
-                    <div className="flex items-center gap-2 overflow-hidden">
-                      <img 
-                        src={`data:${attachedImage.mimeType};base64,${attachedImage.data}`} 
-                        alt="미리보기" 
-                        className="w-8 h-8 rounded-lg object-contain bg-slate-950 border border-slate-800"
-                      />
-                      <span className="text-[11px] text-slate-400 truncate max-w-[180px] font-semibold">{attachedImage.name}</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleClearAttachedImage}
-                      className="w-5 h-5 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 flex items-center justify-center cursor-pointer transition-all active:scale-95"
-                    >
-                      <X size={10} />
-                    </button>
+                {/* 첨부 이미지 목록 미리보기 */}
+                {attachedImages.length > 0 && (
+                  <div className="mb-2 flex flex-wrap gap-1.5 animate-fade-in max-h-36 overflow-y-auto pr-1">
+                    {attachedImages.map((img, idx) => (
+                      <div 
+                        key={img.id || idx} 
+                        className="p-1.5 bg-slate-900/90 border border-slate-800 rounded-xl flex items-center justify-between gap-1.5 shadow-sm shrink-0"
+                      >
+                        <div className="flex items-center gap-1.5 overflow-hidden">
+                          <img 
+                            src={`data:${img.mimeType};base64,${img.data}`} 
+                            alt="미리보기" 
+                            className="w-7 h-7 rounded-lg object-contain bg-slate-950 border border-slate-800 shrink-0"
+                          />
+                          <span className="text-[10.5px] text-slate-300 truncate max-w-[130px] font-semibold">
+                            {img.name || `image_${idx + 1}.jpg`}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveAttachedImage(img.id || idx)}
+                          className="w-4 h-4 rounded-md bg-slate-800 hover:bg-rose-900/60 hover:text-rose-300 text-slate-400 flex items-center justify-center cursor-pointer transition-all active:scale-95 ml-1"
+                          title="삭제"
+                        >
+                          <X size={10} />
+                        </button>
+                      </div>
+                    ))}
+                    {attachedImages.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={handleClearAttachedImage}
+                        className="px-2 py-1 text-[10px] font-bold text-rose-400 hover:text-rose-300 bg-rose-950/40 hover:bg-rose-950/70 border border-rose-800/40 rounded-lg flex items-center gap-1 self-center transition-all cursor-pointer"
+                        title="전체 비우기"
+                      >
+                        <Trash2 size={10} />
+                        <span>전체 비우기</span>
+                      </button>
+                    )}
                   </div>
                 )}
 
@@ -26363,6 +26462,7 @@ ${itemsStr}
                     ref={mobileTutorFileInputRef} 
                     onChange={handleImageAttachment} 
                     accept="image/*" 
+                    multiple
                     className="hidden" 
                   />
 
@@ -26393,7 +26493,7 @@ ${itemsStr}
                   {/* 전송 버튼 */}
                   <button
                     type="submit"
-                    disabled={(!chatInput.trim() && !attachedImage) || isChatLoading}
+                    disabled={(!chatInput.trim() && attachedImages.length === 0) || isChatLoading}
                     className="w-8 h-8 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-30 disabled:hover:bg-indigo-600 rounded-xl flex items-center justify-center transition-all cursor-pointer shadow-md shadow-indigo-600/10 active:scale-95 flex-shrink-0"
                   >
                     <Send size={12} className="text-white" />

@@ -6,7 +6,7 @@ import { dbQuery } from '../database.js';
 import { getTopicText, saveSessionValue, callLLMWithFailover } from '../services/aiService.js';
 import * as fileUtils from '../utils/fileUtils.js';
 import * as ocrPlugin from '../plugins/calculationPlugin.js';
-import { parseLlmJson } from '../utils/latexUtils.js';
+import { parseLlmJson, LATEX_PROMPT_INSTRUCTIONS } from '../utils/latexUtils.js';
 import { ENGINEERING_STANDARDS } from '../plugins/engineeringStandards.js';
 
 const router = express.Router();
@@ -1174,8 +1174,11 @@ router.post('/topics/:id/slides/generate', async (req, res) => {
 - Slide 4: category_tag: "본론 ③ | 실무 해석 및 현장 시공·품질관리" (단계별 시공 절차 플로우, 문제 발생 시 대책 및 한계동수경사/안전율 기준, 현장 체크포인트)
 - Slide 5: category_tag: "결론 | 기술사 답안 결론 & 실무 제언" (고득점 차별화 포인트, 핵심 비교 매트릭스 표, 최종 총평 및 실무 제언)
 
+${LATEX_PROMPT_INSTRUCTIONS}
+
 [수식 표기 절대 철칙]:
 - 모든 수식, 변수 기호, 함수(예: $F(\\mu)$, $U_r$, $T_h$, $\\sigma'$, $\\tau$)는 반드시 여는 달러와 닫는 달러 쌍($...$)을 완벽히 일치시켜 작성하십시오. 닫는 달러를 절대 누락하지 마십시오.
+- 요약 카드(visual_component.cards)의 label 및 content에 들어가는 변수나 기호(예: 하중계수 ($\\gamma_i$), 저항계수 ($\\phi$), 명목저항 ($R_n$), 설계저항 ($R_r$), 변동계수 ($V_R$), 바이어스 계수 ($\\lambda_R, \\lambda_L$) 등)도 예외 없이 반드시 달러 기호($...$)로 감싸서 표기하십시오. 괄호 표기 시 날것의 기호(\\gamma_i)를 절대 금지합니다.
 - 유니코드 특수문자(µ 등)를 직접 쓰지 말고 표준 LaTeX 역슬래시 명령어(\\mu 등)를 사용하십시오.
 
 반드시 아래 JSON 형식으로만 순수 JSON을 응답하십시오. markdown 코드블록으로 감싸도 좋습니다.
@@ -1198,9 +1201,9 @@ router.post('/topics/:id/slides/generate', async (req, res) => {
       "visual_component": {
         "type": "summary_cards",
         "cards": [
-          { "label": "정의", "content": "핵심 정의 내용", "highlight": true },
-          { "label": "적용 범위", "content": "주요 적용 지반/구조물", "highlight": false },
-          { "label": "핵심 파라미터", "content": "주요 지표 수치", "highlight": false }
+          { "label": "하중계수 ($\\gamma_i$)", "content": "설계하중 증대 계수", "highlight": true },
+          { "label": "명목저항 ($R_n$)", "content": "극한지지력 이론값", "highlight": false },
+          { "label": "설계저항 ($R_r$)", "content": "저항계수 곱한 값 ($R_r = \\phi R_n$)", "highlight": false }
         ]
       },
       "engineer_note": "기술사 답안 작성 시 1단락 개요 서술 요령"
