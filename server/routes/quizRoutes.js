@@ -157,97 +157,66 @@ function sanitizeMultipleChoiceAnswer(q) {
     currentAns = String(options[circleMap[currentAns]]).trim();
   }
 
-  const conclusionMatch = exp.match(/(?:\[최종\s*정답\s*산출\]|따라서|정답은|결론적으로)[\s\S]*$/i);
-  const searchTarget = conclusionMatch ? conclusionMatch[0] : exp;
-  const normalizedTarget = normalizeMcText(searchTarget);
-
-  // 해설 내 명시적 정답 표기 (예: "정답은 ②번", "정답: 2", "②번이 정답") 감지
-  const explicitAnswerPattern = exp.match(/(?:정답\s*[:는은]?\s*|[①②③④⑤]|\b[1-4]번)[^0-9①②③④⑤]*([①②③④⑤]|[1-4])/i);
-  const explicitAnswerIndex = explicitAnswerPattern && circleMap[explicitAnswerPattern[1]] !== undefined 
-    ? circleMap[explicitAnswerPattern[1]] 
-    : -1;
-
-  let bestMatch = null;
-  let bestScore = -1;
-
-  for (let i = 0; i < options.length; i++) {
-    const opt = options[i];
-    const normOpt = normalizeMcText(opt);
-    if (!normOpt) continue;
-
-    if (normalizedTarget.includes(normOpt)) {
-      bestMatch = opt;
-      bestScore = 1000;
-      break;
-    }
-
-    let score = 0;
-    if (explicitAnswerIndex === i) {
-      score += 500;
-    }
-
-    const numKeywords = normOpt.match(/(?:\d+\/\d+|\d+배|변화가\s*없다)/g) || [];
-    if (numKeywords.length > 0) {
-      const matchCount = numKeywords.filter(kw => normalizedTarget.includes(normalizeMcText(kw))).length;
-      score += matchCount * 50;
-    }
-
-    const words = opt.replace(/[^가-힣a-zA-Z0-9]/g, ' ').split(/\s+/).filter(w => w.length >= 2);
-    if (words.length > 0) {
-      let wordMatches = 0;
-      for (const w of words) {
-        if (exp.includes(w)) wordMatches++;
-      }
-      const overlapScore = wordMatches * 10 + (wordMatches / words.length) * 20;
-      score += overlapScore;
-    }
-
-    if (score > bestScore) {
-      bestScore = score;
-      bestMatch = opt;
-    }
+  // 1. 이미 currentAns가 options 중 하나와 일치하는지 확인 (정확 일치 또는 normalizeMcText 일치)
+  let matchedIndex = options.findIndex(opt => opt === currentAns);
+  if (matchedIndex === -1 && currentAns) {
+    const normCurrent = normalizeMcText(currentAns);
+    matchedIndex = options.findIndex(opt => normalizeMcText(opt) === normCurrent);
   }
 
-  // answer가 완전히 누락된 경우 해설 기반 / 보기 기호 기반으로 강제 복원
-  if (!currentAns) {
-    if (bestMatch) {
-      console.log(`[MC Answer Recovered] Empty answer recovered from explanation: '${bestMatch}'`);
-      return {
-        ...cleanedQ,
-        answer: bestMatch
-      };
-    }
-    const numPattern = exp.match(/(?:정답\s*[:는은]?\s*|[①②③④⑤]|\b[1-4]번)[^0-9①②③④⑤]*([①②③④⑤]|[1-4])/i);
-    if (numPattern && circleMap[numPattern[1]] !== undefined && options[circleMap[numPattern[1]]]) {
-      const recovered = options[circleMap[numPattern[1]]];
-      console.log(`[MC Answer Recovered] Empty answer recovered from explanation symbol '${numPattern[1]}': '${recovered}'`);
-      return {
-        ...cleanedQ,
-        answer: recovered
-      };
-    }
-    console.warn(`[MC Answer Recovered] Fallback to first option for empty answer`);
+  // 만약 currentAns가 보기 중 하나와 정상 일치한다면, 그 정답을 그대로 신뢰하고 유지 (단어 중복 점수 등에 의한 하이재킹 원천 차단)
+  if (matchedIndex !== -1) {
     return {
       ...cleanedQ,
-      answer: options[0]
+      answer: options[matchedIndex],
+      correctIndex: matchedIndex
     };
   }
 
-  // answer가 존재할 때 해설과 불일치하면 보정
-  if (bestMatch) {
-    const normCurrent = normalizeMcText(currentAns);
-    if (!normalizedTarget.includes(normCurrent) && (bestScore >= 100 || bestScore > 0)) {
-      console.log(`[MC Answer Sanitized] Original answer '${currentAns}' was inconsistent with explanation. Corrected to '${bestMatch}'`);
+  // 2. answer가 누락되었거나 보기와 전혀 매칭되지 않는 비정상적인 경우에만 해설 기반 복구 수행
+  // (1) 해설 내 명시적 정답 기호(예: "[정답: ④번]", "정답은 ③") 감지
+  const explicitAnswerPattern = exp.match(/(?:\[최종\s*정답\s*산출\]\s*|\[정답\s*[:는은]?\s*|정답\s*[:는은]\s*|정답은\s*)([①②③④⑤]|[1-5])\s*번?/i);
+  if (explicitAnswerPattern && circleMap[explicitAnswerPattern[1]] !== undefined) {
+    const idx = circleMap[explicitAnswerPattern[1]];
+    if (options[idx]) {
+      console.log(`[MC Answer Recovered] Recovered from explicit explanation pattern '${explicitAnswerPattern[0]}': '${options[idx]}'`);
       return {
         ...cleanedQ,
-        answer: bestMatch
+        answer: options[idx],
+        correctIndex: idx
       };
     }
   }
 
+  // (2) 해설 내 특정 보기 문장이 온전히 포함(Verbatim)되어 있는지 검사
+  const normalizedExp = normalizeMcText(exp);
+  for (let i = 0; i < options.length; i++) {
+    const normOpt = normalizeMcText(options[i]);
+    if (normOpt && normOpt.length >= 5 && normalizedExp.includes(normOpt)) {
+      console.log(`[MC Answer Recovered] Recovered from verbatim explanation match: '${options[i]}'`);
+      return {
+        ...cleanedQ,
+        answer: options[i],
+        correctIndex: i
+      };
+    }
+  }
+
+  // (3) correctIndex가 유효 범위 내에 있다면 해당 보기 채택
+  if (typeof cleanedQ.correctIndex === 'number' && cleanedQ.correctIndex >= 0 && cleanedQ.correctIndex < options.length) {
+    return {
+      ...cleanedQ,
+      answer: options[cleanedQ.correctIndex],
+      correctIndex: cleanedQ.correctIndex
+    };
+  }
+
+  // (4) 최종 최후의 폴백: 첫 번째 보기 채택
+  console.warn(`[MC Answer Recovered] Fallback to first option for unresolved answer`);
   return {
     ...cleanedQ,
-    answer: currentAns
+    answer: options[0],
+    correctIndex: 0
   };
 }
 
