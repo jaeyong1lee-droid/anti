@@ -238,29 +238,7 @@ ${LATEX_PROMPT_INSTRUCTIONS}`;
           }
         }
       } catch (e) {
-        // Fallback: Regex extraction if JSON.parse failed due to escape characters or unescaped newlines
-      }
-
-      // 3) Regex fallback if unwrapped is still null
-      if (!unwrapped && targetLetter) {
-        const letterRegex = new RegExp(`['"]\\s*\\(?\\s*${targetLetter}\\s*\\)?\\s*['"]\\s*:\\s*['"]([\\s\\S]*?)['"]\\s*(?:,\\s*['"]|\\})`, 'i');
-        const lMatch = cleanAnswer.match(letterRegex);
-        if (lMatch && lMatch[1]) {
-          unwrapped = lMatch[1]
-            .replace(/\\"/g, '"')
-            .replace(/(?:\\r\\n|\\n(?!u\b|abla|eq\b|eg\b|otin|geq|leq|sim|cong|parallel|oindent|ot\b|ewline))/g, '\n')
-            .trim();
-        }
-      }
-
-      if (!unwrapped) {
-        const regexMatch = cleanAnswer.match(/"(?:suggestedModelAnswer|suggestgedModelAnswer|modelAnswer|answer|response|content)"\s*:\s*"([\s\S]*?)"\s*(?:,\s*"|\}$)/i);
-        if (regexMatch && regexMatch[1]) {
-          unwrapped = regexMatch[1]
-            .replace(/\\"/g, '"')
-            .replace(/(?:\\r\\n|\\n(?!u\b|abla|eq\b|eg\b|otin|geq|leq|sim|cong|parallel|oindent|ot\b|ewline))/g, '\n')
-            .trim();
-        }
+        // Standard parseLlmJson handles all JSON parsing with control character and LaTeX protection
       }
 
       if (unwrapped && unwrapped.length > 0 && !/^(success|ok|true|false)$/i.test(unwrapped)) {

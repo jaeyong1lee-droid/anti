@@ -6,7 +6,8 @@ import {
   healTheoryQuestionObject, 
   healFormulaQuestionObject, 
   healAnswersheetQuestionObject,
-  isCalculationQuestion
+  isCalculationQuestion,
+  parseLlmJson
 } from './utils/latexUtils';
 import { convertMarkdownTablesToHtml } from './utils/markdownTableRenderer';
 import { convertMarkdownAcronymsToHtml } from './utils/markdownAcronymRenderer';
@@ -3813,7 +3814,7 @@ export default function App() {
 
     if (text.startsWith('{') || text.includes('suggestedModelAnswer') || text.includes('suggestgedModelAnswer') || text.includes('"answer"')) {
       try {
-        const parsed = JSON.parse(text);
+        const parsed = parseLlmJson(text) || JSON.parse(text);
         if (parsed && typeof parsed === 'object') {
           for (const [k, v] of Object.entries(parsed)) {
             if (typeof v === 'string' && v.trim().length > 0) {
@@ -3837,6 +3838,7 @@ export default function App() {
         if (match && match[1]) {
           text = match[1]
             .replace(/\\"/g, '"')
+            .replace(/\\\\/g, '\\')
             .replace(/(?:\\r\\n|\\n(?!u\b|abla|eq\b|eg\b|otin|geq|leq|sim|cong|parallel|oindent|ot\b|ewline))/g, '\n')
             .trim();
         }
