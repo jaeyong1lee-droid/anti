@@ -248,8 +248,10 @@ export function healLatexFormulas(text, isNested = false) {
   if (!text || typeof text !== 'string') return text;
 
   let processed = text.replace(/₩/g, '\\');
+  // 3중 이상 연속 달러 기호($$$, $$$$) 찌꺼기를 표준 $$로 정제
+  processed = processed.replace(/\${3,}/g, () => '$$');
   
-  processed = processed.replace(/\$\$([\s\S]*?)\$\$/g, (m, p1) => '$$' + healDoubleSubscripts(p1).replace(/\|/g, '\\vert ') + '$$');
+  processed = processed.replace(/\${2,}([\s\S]*?)\${2,}/g, (m, p1) => '$$' + healDoubleSubscripts(p1).replace(/\|/g, '\\vert ') + '$$');
   processed = processed.replace(/\$([^\$\n]+)\$/g, (m, p1) => '$' + healDoubleSubscripts(p1).replace(/\|/g, '\\vert ') + '$');
   
   processed = processed.replace(/\\\(([\s\S]*?)\\\)/g, (m, p1) => '$' + (p1 || '').trim() + '$');

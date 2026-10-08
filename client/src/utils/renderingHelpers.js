@@ -746,10 +746,10 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
 
   // (Line endings normalized early at top)
 
-  // Protect $$ ... $$
-  tempText = tempText.replace(/\$\$\s*([\s\S]*?)\s*\$\$/g, (match) => {
+  // Protect $$ ... $$ (3개 이상의 달러 기호가 붙어도 온전히 하나의 블록으로 흡수하고 표준 $$로 정제)
+  tempText = tempText.replace(/\${2,}\s*([\s\S]*?)\${2,}/g, (match, inner) => {
     const placeholder = `___BLOCK_MATH_${placeholderIndex}___`;
-    mathBlocks.push({ placeholder, content: match });
+    mathBlocks.push({ placeholder, content: `$$${(inner || '').trim()}$$` });
     placeholderIndex++;
     return placeholder;
   });

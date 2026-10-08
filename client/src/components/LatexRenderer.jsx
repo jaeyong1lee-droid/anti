@@ -725,7 +725,7 @@ export const LatexRenderer = React.memo(function LatexRenderer({
     });
     if (window.katex) {
       const isInline = className.includes('inline');
-      htmlContent = htmlContent.replace(/\$\$\s*([\s\S]*?)\s*\$\$/g, (m, math) => {
+      htmlContent = htmlContent.replace(/\${2,}\s*([\s\S]*?)\s*\${2,}/g, (m, math) => {
         if (isInline) {
           const rendered = renderKatexString(math.trim(), { displayMode: false, throwOnError: false });
           return `<span class="inline bg-transparent select-text">${rendered}</span>`;
@@ -774,7 +774,7 @@ export const LatexRenderer = React.memo(function LatexRenderer({
     let processedSvg = match;
     // SVG 내부 텍스트에 대해서만 독립적으로 수식 렌더링 (외부 텍스트와 절대 섞이지 않음)
     if (window.katex) {
-      processedSvg = processedSvg.replace(/\$\$\s*([\s\S]*?)\s*\$\$/g, (m, math) => {
+      processedSvg = processedSvg.replace(/\${2,}\s*([\s\S]*?)\s*\${2,}/g, (m, math) => {
         return renderKatexString(math.trim(), { displayMode: true, throwOnError: false });
       });
       processedSvg = processedSvg.replace(/\$((?:[^\$\n<]|<(?![a-zA-Z/!]))+?)\$/g, (m, math) => {
@@ -791,7 +791,7 @@ export const LatexRenderer = React.memo(function LatexRenderer({
   const parts = [];
   let lastIndex = 0;
   // 방화벽(Block Boundary Firewall) 적용: $$ 수식이 HTML 구조 태그(svg, div, table 등)를 침범/집어삼키지 못하도록 차단
-  const blockRegex = /\$\$((?:(?!<\/?(?:div|svg|foreignObject|table|tr|td|th|p|pre|blockquote|ul|ol|li)\b)[\s\S])*?)\$\$/g;
+  const blockRegex = /\${2,}((?:(?!<\/?(?:div|svg|foreignObject|table|tr|td|th|p|pre|blockquote|ul|ol|li)\b)[\s\S])*?)\${2,}/g;
   let match;
 
   while ((match = blockRegex.exec(textToProcess)) !== null) {

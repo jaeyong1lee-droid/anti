@@ -269,8 +269,11 @@ ${LATEX_PROMPT_INSTRUCTIONS}`;
     }
     cleanAnswer = cleanAnswer.replace(/^(모범\s*답안|정답|표준\s*답안)\s*[:：]\s*/i, '').trim();
 
-    // 2) 💡 직관적 의미 앞에 빈 줄이 없으면 반드시 \n\n 으로 분리
-    cleanAnswer = cleanAnswer.replace(/([^\n])\s*(💡\s*(?:\*\*)?직관적\s*의미(?:\*\*)?\s*[:：])/g, '$1\n\n$2');
+    // 1) 3중 이상 연속 달러 기호($$$, $$$$) 찌꺼기를 표준 $$로 정제
+    cleanAnswer = cleanAnswer.replace(/\${3,}/g, () => '$$');
+
+    // 2) 💡 직관적 의미 앞에 빈 줄이 없으면 반드시 \n\n 으로 분리 (앞 글자 캡처 부작용 제거)
+    cleanAnswer = cleanAnswer.replace(/\n*\s*(💡\s*(?:\*\*)?직관적\s*의미(?:\*\*)?\s*[:：])/g, '\n\n$1').trim();
 
     // 3) 표준 수식 치유 함수 적용
     if (typeof healLatexFormulas === 'function') {
