@@ -183,17 +183,22 @@ export const renderMixedText = (text, isMarkdown = false) => {
 // Custom Tooltip with KaTeX support via LatexRenderer
 const CustomTooltip = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
+    const labelStr = label !== undefined && label !== null ? String(label) : '';
+    const labelHasMath = labelStr.includes('$') || labelStr.includes('\\');
     return (
       <div className="bg-slate-900 border border-slate-700/60 p-2 sm:p-3 rounded-lg shadow-xl text-slate-200">
         <div className="text-[9px] sm:text-[11px] font-bold mb-1.5 border-b border-slate-700/60 pb-1">
-          <LatexRenderer text={label} forceInline={true} />
+          {labelHasMath ? <LatexRenderer text={labelStr} forceInline={true} /> : <span>{labelStr}</span>}
         </div>
-        {payload.map((entry, index) => (
-          <div key={index} className="flex items-center gap-1.5 text-[9px] sm:text-[11px] font-semibold" style={{ color: entry.color }}>
-            <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full" style={{ backgroundColor: entry.color }}></span>
-            <LatexRenderer text={entry.name} forceInline={true} />: <span className="font-mono ml-1 font-bold">{entry.value}</span>
-          </div>
-        ))}
+        {payload.map((entry, index) => {
+          const nameStr = entry?.name !== undefined && entry?.name !== null ? String(entry.name) : '';
+          return (
+            <div key={index} className="flex items-center gap-1.5 text-[9px] sm:text-[11px] font-semibold" style={{ color: entry.color }}>
+              <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full" style={{ backgroundColor: entry.color }}></span>
+              <LatexRenderer text={nameStr} forceInline={true} />: <span className="font-mono ml-1 font-bold">{entry.value}</span>
+            </div>
+          );
+        })}
       </div>
     );
   }
@@ -203,13 +208,14 @@ const CustomTooltip = ({ active, payload, label }) => {
 // Custom Legend to support KaTeX via LatexRenderer
 const CustomLegend = (props) => {
   const { payload } = props;
+  if (!Array.isArray(payload)) return null;
   
   return (
     <ul className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 mt-2.5 w-full px-2">
       {payload.map((entry, index) => (
         <li key={`item-${index}`} className="flex items-center gap-1.5 text-[9.5px] sm:text-xs font-bold text-slate-300">
           <span className="block w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full" style={{ backgroundColor: entry.color }}></span>
-          <LatexRenderer text={entry.value} forceInline={true} />
+          <LatexRenderer text={String(entry.value ?? '')} forceInline={true} />
         </li>
       ))}
     </ul>
@@ -262,7 +268,7 @@ export const normalizeChartData = (raw) => {
     };
 
     const lines = datasets.map((ds, idx) => {
-      const rawColor = (ds.borderColor || ds.backgroundColor || '').toLowerCase();
+      const rawColor = String(ds.borderColor || ds.backgroundColor || '').toLowerCase();
       const strokeColor = colorMap[rawColor] || ds.borderColor || ds.backgroundColor || palette[idx % palette.length];
       return {
         name: ds.label || `시리즈 ${idx + 1}`,
@@ -328,11 +334,14 @@ const ChartRenderer = ({ data: rawData, height, compact = false, hideHeader = fa
   // Custom tick formatter to render KaTeX in Axis ticks (via <foreignObject>)
   // Recharts XAxis tick supports React elements
   const CustomTickX = ({ x, y, payload }) => {
+    const val = payload?.value !== undefined && payload?.value !== null ? payload.value : '';
+    const strVal = String(val);
+    const hasMath = strVal.includes('$') || strVal.includes('\\');
     return (
       <g transform={`translate(${x},${y})`}>
         <foreignObject x="-30" y="5" width="60" height="20" style={{ overflow: 'visible' }}>
           <div xmlns="http://www.w3.org/1999/xhtml" className="flex items-start justify-center text-[9px] sm:text-[11px] font-semibold text-slate-400 w-full h-full pt-1 normal-nums">
-            <LatexRenderer text={payload.value} forceInline={true} />
+            {hasMath ? <LatexRenderer text={strVal} forceInline={true} /> : <span>{strVal}</span>}
           </div>
         </foreignObject>
       </g>
@@ -340,11 +349,14 @@ const ChartRenderer = ({ data: rawData, height, compact = false, hideHeader = fa
   };
 
   const CustomTickY = ({ x, y, payload }) => {
+    const val = payload?.value !== undefined && payload?.value !== null ? payload.value : '';
+    const strVal = String(val);
+    const hasMath = strVal.includes('$') || strVal.includes('\\');
     return (
       <g transform={`translate(${x},${y})`}>
         <foreignObject x="-50" y="-10" width="45" height="20" style={{ overflow: 'visible' }}>
           <div xmlns="http://www.w3.org/1999/xhtml" className="flex items-center justify-end text-[9px] sm:text-[11px] font-semibold text-slate-400 w-full h-full pr-1 normal-nums">
-            <LatexRenderer text={payload.value} forceInline={true} />
+            {hasMath ? <LatexRenderer text={strVal} forceInline={true} /> : <span>{strVal}</span>}
           </div>
         </foreignObject>
       </g>

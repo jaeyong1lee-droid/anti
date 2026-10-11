@@ -1049,7 +1049,7 @@ export const getTableScoreColorTheme = (gradingResult, isCorrect, value) => {
 };
 
 export const isHeavyHtml = (rawText) => {
-  if (!rawText) return false;
+  if (!rawText || typeof rawText !== 'string') return false;
   const lower = rawText.toLowerCase();
   return (
     lower.includes('<!doctype') ||

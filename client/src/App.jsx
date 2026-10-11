@@ -590,7 +590,7 @@ function PdfImageRenderer({ pdfUrl, pdfjsLoaded }) {
 
 // 1.4) HTML/시뮬레이터 감지 및 문서 템플릿 생성 헬퍼
 const isHeavyHtml = (rawText) => {
-  if (!rawText) return false;
+  if (!rawText || typeof rawText !== 'string') return false;
   const lower = rawText.toLowerCase();
   return (
     lower.includes('<!doctype') ||

@@ -5,7 +5,7 @@ import { PopoutWindow } from './PopoutWindow';
 import { getTableScoreColorTheme, areCellsEqual, isOverviewReview as isOverviewReviewHelper, getAnswerValue, getGradingResult, getCorrectAnswerForInput } from '../utils/renderingHelpers';
 import { getTableStorageKey, getDefaultColumnWidths } from '../utils/markdownTableRenderer';
 
-const normalize = (s) => (s || '').trim().toLowerCase().replace(/\s+/g, '');
+const normalize = (s) => String(s || '').trim().toLowerCase().replace(/\s+/g, '');
 const cleanCellText = (cell) => {
   if (typeof cell !== 'string') return cell;
   let clean = cell.replace(/&lt;/gi, '<').replace(/&gt;/gi, '>').replace(/&amp;/gi, '&').replace(/&quot;/gi, '"');
