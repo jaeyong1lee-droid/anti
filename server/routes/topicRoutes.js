@@ -1169,7 +1169,7 @@ router.post('/topics/:id/slides/generate', async (req, res) => {
 
 반드시 다음 5장의 서론-본론-결론 스토리라인을 정확히 준수하여 5장의 슬라이드를 작성해야 합니다:
 - Slide 1: category_tag: "서론 | 개요 & 핵심 정의" (토픽의 공학적 정의, 출제 빈도, 3대 핵심 키워드 배지, 발표 및 학습 목적)
-- Slide 2: category_tag: "본론 ① | 거동 메커니즘 & 작도 원리" (물리적 거동 원리, 작도/전이 메커니즘 3단 비교 카드, 거동 모식도 해설)
+- Slide 2: category_tag: "본론 ① | 거동 메커니즘 & 작도 원리" (물리적 거동 원리. 하중-침하, 응력-변형률, GRC/SCC, t-z 등 역학적 곡선 거동이 핵심인 토픽인 경우 visual_component에 동적 인터랙티브 차트("type": "chart", "chart": { "title": "...", "xAxisLabel": "...", "yAxisLabel": "...", "description": "...", "lines": [{"name": "...", "dataKey": "y1", "stroke": "#38bdf8"}], "data": [{"x": "0", "y1": 0}, ...] }) 형식을 적극 생성하십시오. 그래프보다 텍스트 비교가 적합한 경우 3단 카드("type": "summary_cards", "cards": [...])를 사용하십시오.)
 - Slide 3: category_tag: "본론 ② | KDS 설계기준 & 핵심 지배공식" (국가건설기준 KDS 조항, 핵심 공식 수식 KaTeX 포맷($...$), 매개변수 정의 및 물리적 의미)
 - Slide 4: category_tag: "본론 ③ | 실무 해석 및 현장 시공·품질관리" (단계별 시공 절차 플로우, 문제 발생 시 대책 및 한계동수경사/안전율 기준, 현장 체크포인트)
 - Slide 5: category_tag: "결론 | 기술사 답안 결론 & 실무 제언" (고득점 차별화 포인트, 핵심 비교 매트릭스 표, 최종 총평 및 실무 제언)

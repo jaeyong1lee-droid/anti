@@ -160,14 +160,14 @@ const CustomLegend = (props) => {
   const { payload } = props;
   
   return (
-    <ul className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 mt-4 w-full px-2">
+    <ul className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 mt-2.5 w-full px-2">
       {payload.map((entry, index) => {
         const renderText = () => {
           return <span dangerouslySetInnerHTML={{ __html: renderMixedText(entry.value) }} />;
         };
 
         return (
-          <li key={`item-${index}`} className="flex items-center gap-1.5 text-[10px] sm:text-xs font-bold text-slate-300">
+          <li key={`item-${index}`} className="flex items-center gap-1.5 text-[9.5px] sm:text-xs font-bold text-slate-300">
             <span className="block w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full" style={{ backgroundColor: entry.color }}></span>
             {renderText()}
           </li>
@@ -181,11 +181,26 @@ const CustomLegend = (props) => {
 export const normalizeChartData = (raw) => {
   if (!raw || typeof raw !== 'object') return null;
 
+  // AI 응답이 { visual_component: { ... } }, { chart: { ... } }, { chart_data: { ... } } 래핑 객체인 경우 선제적 언래핑
+  if (raw.visual_component && typeof raw.visual_component === 'object') {
+    raw = { ...raw, ...raw.visual_component };
+  }
+  if (raw.chart && typeof raw.chart === 'object') {
+    raw = { ...raw, ...raw.chart };
+  } else if (raw.chart_data && typeof raw.chart_data === 'object') {
+    raw = { ...raw, ...raw.chart_data };
+  }
+
+  // lines / series 별칭 호환
+  if (!Array.isArray(raw.lines) && Array.isArray(raw.series)) {
+    raw.lines = raw.series;
+  }
+
   // Case 1: 이미 Recharts 배열 형식인 경우 (x 속성 보정)
   if (Array.isArray(raw.data)) {
     const fixedData = raw.data.map(item => {
       if (item && typeof item === 'object' && item.x === undefined) {
-        return { ...item, x: item.label || item.name || '' };
+        return { ...item, x: item.X !== undefined ? item.X : (item.label || item.name || '') };
       }
       return item;
     });
@@ -243,10 +258,10 @@ export const normalizeChartData = (raw) => {
   return raw;
 };
 
-const ChartRenderer = ({ data: rawData }) => {
+const ChartRenderer = ({ data: rawData, height, compact = false, hideHeader = false, className = '' }) => {
   const data = normalizeChartData(rawData);
   if (!data || !data.data || !Array.isArray(data.data) || data.data.length === 0) {
-    return <div className="text-rose-400 p-4 bg-rose-900/20 border border-rose-500/30 rounded-xl my-4 text-sm font-bold">⚠️ 유효하지 않은 차트 데이터입니다 (JSON 형식이 올바르지 않습니다).</div>;
+    return <div className="text-rose-400 p-3 bg-rose-900/20 border border-rose-500/30 rounded-xl my-2 text-xs font-bold">⚠️ 유효하지 않은 차트 데이터입니다 (JSON 형식이 올바르지 않습니다).</div>;
   }
 
   const { title = '공학 차트그래프', xAxisLabel = 'X축', yAxisLabel = 'Y축', description, lines = [], data: chartData } = data;
@@ -312,8 +327,10 @@ const ChartRenderer = ({ data: rawData }) => {
     );
   };
 
+  const containerHeightClass = height ? height : (compact ? 'h-[210px] sm:h-[240px]' : 'h-[360px] sm:h-[400px]');
+
   return (
-    <div className="w-full my-4 border border-slate-700/60 rounded-xl overflow-hidden shadow-lg bg-slate-900/40 relative select-text normal-nums chart-katex-container">
+    <div className={`w-full ${compact ? 'my-1 border-slate-700/50 bg-slate-950/60' : 'my-4 border-slate-700/60 bg-slate-900/40'} border rounded-xl overflow-hidden shadow-lg relative select-text normal-nums chart-katex-container ${className}`}>
       <style>{`
         .chart-katex-container .katex {
           font-size: 1.05em !important;
@@ -325,31 +342,33 @@ const ChartRenderer = ({ data: rawData }) => {
         }
       `}</style>
       {/* Header */}
-      <div className="px-3 py-2 bg-slate-800/50 border-b border-slate-700/60 flex items-center justify-between mb-4">
-        <h4 className="text-[14px] font-semibold text-slate-200 flex items-center leading-relaxed">
-          <span className="mr-2">📈</span>
-          <span dangerouslySetInnerHTML={{ __html: renderMixedText(title) }} />
-        </h4>
-        <div className="px-2 py-1 bg-amber-500/10 border border-amber-500/30 rounded text-[10px] text-amber-400 font-medium whitespace-nowrap">
-          인터랙티브 차트
+      {!hideHeader && (
+        <div className={`px-3 ${compact ? 'py-1.5' : 'py-2'} bg-slate-800/50 border-b border-slate-700/60 flex items-center justify-between ${compact ? 'mb-1' : 'mb-3'}`}>
+          <h4 className={`${compact ? 'text-[12px]' : 'text-[14px]'} font-semibold text-slate-200 flex items-center leading-relaxed`}>
+            <span className="mr-1.5">📈</span>
+            <span dangerouslySetInnerHTML={{ __html: renderMixedText(title) }} />
+          </h4>
+          <div className="px-2 py-0.5 bg-amber-500/10 border border-amber-500/30 rounded text-[9.5px] text-amber-400 font-medium whitespace-nowrap">
+            인터랙티브 차트
+          </div>
         </div>
-      </div>
+      )}
 
-      <div className="p-2 sm:p-4 w-full h-[360px] sm:h-[400px]">
+      <div className={`w-full ${compact ? 'p-1 sm:p-2' : 'p-2 sm:p-4'} ${containerHeightClass}`}>
         {/* Recharts Container */}
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={chartData} margin={{ top: 30, right: 15, left: 0, bottom: 10 }}>
+          <LineChart data={chartData} margin={{ top: compact ? 20 : 30, right: 15, left: 0, bottom: compact ? 5 : 10 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.5} />
             <XAxis 
               dataKey="x" 
               stroke="#64748b" 
-              height={25}
+              height={compact ? 22 : 25}
               tick={<CustomTickX />} 
               label={<CustomXAxisLabel />} 
             />
             <YAxis 
               stroke="#64748b" 
-              width={55}
+              width={compact ? 48 : 55}
               tick={<CustomTickY />}
               label={<CustomYAxisLabel />} 
             />
@@ -363,9 +382,9 @@ const ChartRenderer = ({ data: rawData }) => {
                 dataKey={line.dataKey} 
                 name={line.name}
                 stroke={line.stroke} 
-                strokeWidth={isMobile ? 1.5 : 2.5}
-                dot={{ r: isMobile ? 1 : 2, strokeWidth: 1, fill: '#0f172a' }}
-                activeDot={{ r: isMobile ? 4 : 6, fill: line.stroke, stroke: '#fff', strokeWidth: 1.5 }}
+                strokeWidth={isMobile || compact ? 1.8 : 2.5}
+                dot={{ r: isMobile || compact ? 1 : 2, strokeWidth: 1, fill: '#0f172a' }}
+                activeDot={{ r: isMobile || compact ? 4 : 6, fill: line.stroke, stroke: '#fff', strokeWidth: 1.5 }}
                 animationDuration={1500}
                 animationEasing="ease-out"
               />
@@ -375,7 +394,7 @@ const ChartRenderer = ({ data: rawData }) => {
       </div>
 
       {description && (
-        <div className="mx-3 mb-4 p-3 bg-slate-800/80 border border-slate-700/60 rounded-lg text-[12px] sm:text-[13px] text-slate-300 font-medium leading-relaxed shadow-inner">
+        <div className={`${compact ? 'mx-2 mb-2 p-2 text-[11px]' : 'mx-3 mb-4 p-3 text-[12px] sm:text-[13px]'} bg-slate-800/80 border border-slate-700/60 rounded-lg text-slate-300 font-medium leading-relaxed shadow-inner`}>
           <div className="flex items-start gap-1.5">
             <span className="text-blue-400 mt-[1px] shrink-0 select-none">💡</span>
             <div className="flex-1 select-text" dangerouslySetInnerHTML={{ __html: renderMixedText(description, true) }} />

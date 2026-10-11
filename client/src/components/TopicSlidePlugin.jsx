@@ -19,7 +19,8 @@ import {
   Image as ImageIcon,
   MessageSquare
 } from 'lucide-react';
-import { renderMixedText } from './ChartRenderer';
+import ChartRenderer, { renderMixedText } from './ChartRenderer';
+import DiagramSvgRenderer from './DiagramSvgRenderer';
 
 /**
  * 🪶 prepareSlideMath: 슬라이드 전용 고립 수식 치유 함수
@@ -972,15 +973,25 @@ export default function TopicSlidePlugin({
                   {/* 우측 6컬럼: 비주얼 컴포넌트 */}
                   <div className="md:col-span-6 flex flex-col justify-center">
                     <div className="p-3 sm:p-4 bg-gradient-to-br from-[#121B2F] to-[#0A101D] border border-blue-500/30 rounded-2xl shadow-lg h-full flex flex-col justify-between">
+                      {/* 비주얼 컴포넌트 헤더 */}
                       <div className="flex items-center justify-between pb-2 border-b border-slate-800 shrink-0">
                         <span className="text-[10px] font-black uppercase text-blue-400 tracking-wider flex items-center gap-1.5">
                           <CheckCircle size={12} className="text-emerald-400" />
                           <span>Core Engineering Visual</span>
                         </span>
-                        <span className="text-[9px] text-slate-500 font-mono">Engineering Matrix</span>
+                        <span className="text-[9px] text-slate-500 font-mono">
+                          {(() => {
+                            if (currentAiSlide.visual_component?.chart || currentAiSlide.visual_component?.chart_data || currentAiSlide.visual_component?.type === 'chart' || (Array.isArray(currentAiSlide.visual_component?.data) && currentAiSlide.visual_component.data.length > 0)) {
+                              return 'Interactive Chart';
+                            }
+                            if (currentAiSlide.image_url) return 'Diagram Visual';
+                            if (currentAiSlide.visual_component?.svg) return 'Vector Diagram';
+                            return 'Engineering Matrix';
+                          })()}
+                        </span>
                       </div>
 
-                      {/* 이미지 다이어그램이 있는 경우 최우선 시각화 */}
+                      {/* 1. 이미지 다이어그램이 있는 경우 시각화 */}
                       {currentAiSlide.image_url ? (
                         <div className="my-2 rounded-xl overflow-hidden border border-slate-700 bg-black flex items-center justify-center max-h-[30vh]">
                           <img 
@@ -991,7 +1002,34 @@ export default function TopicSlidePlugin({
                         </div>
                       ) : null}
 
-                      {/* 카드 매트릭스 렌더링 */}
+                      {/* 2. 동적 인터랙티브 차트(Recharts) 시각화 */}
+                      {(() => {
+                        const chartData = currentAiSlide.visual_component?.chart || 
+                                          currentAiSlide.visual_component?.chart_data || 
+                                          (currentAiSlide.visual_component?.type === 'chart' ? currentAiSlide.visual_component : null) ||
+                                          (Array.isArray(currentAiSlide.visual_component?.data) ? currentAiSlide.visual_component : null);
+                        
+                        if (!chartData) return null;
+
+                        return (
+                          <div className="my-1.5 w-full">
+                            <ChartRenderer 
+                              data={chartData} 
+                              compact={true} 
+                              height="h-[210px] sm:h-[245px]" 
+                            />
+                          </div>
+                        );
+                      })()}
+
+                      {/* 3. SVG 벡터 공학 다이어그램 시각화 (있는 경우) */}
+                      {currentAiSlide.visual_component?.svg && (
+                        <div className="my-2 rounded-xl overflow-hidden border border-slate-700/60 bg-slate-900/60 p-2">
+                          <DiagramSvgRenderer svgStr={currentAiSlide.visual_component.svg} />
+                        </div>
+                      )}
+
+                      {/* 4. 카드 매트릭스 렌더링 */}
                       {currentAiSlide.visual_component?.cards && (
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 my-2">
                           {currentAiSlide.visual_component.cards.map((card, cIdx) => (
