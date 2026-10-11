@@ -1179,6 +1179,7 @@ ${LATEX_PROMPT_INSTRUCTIONS}
 [수식 표기 절대 철칙]:
 - 모든 수식, 변수 기호, 함수(예: $F(\\mu)$, $U_r$, $T_h$, $\\sigma'$, $\\tau$)는 반드시 여는 달러와 닫는 달러 쌍($...$)을 완벽히 일치시켜 작성하십시오. 닫는 달러를 절대 누락하지 마십시오.
 - 요약 카드(visual_component.cards)의 label 및 content에 들어가는 변수나 기호(예: 하중계수 ($\\gamma_i$), 저항계수 ($\\phi$), 명목저항 ($R_n$), 설계저항 ($R_r$), 변동계수 ($V_R$), 바이어스 계수 ($\\lambda_R, \\lambda_L$) 등)도 예외 없이 반드시 달러 기호($...$)로 감싸서 표기하십시오. 괄호 표기 시 날것의 기호(\\gamma_i)를 절대 금지합니다.
+- 동적 인터랙티브 차트(visual_component.chart)의 title, xAxisLabel, yAxisLabel, lines[].name, description 등에 들어가는 모든 공학 변수, 그리스 문자, 수식(예: $\\epsilon_1$, $\\sigma_1 - \\sigma_3$, $q = \\frac{\\sigma_1 - \\sigma_3}{2}$, $E_{50}$, $E_i$ 등)도 예외 없이 반드시 달러 기호($...$)로 감싸서 표기하십시오. 날것의 LaTeX 명령어(\\frac, \\epsilon_1, E_{50})를 달러 기호 없이 노출시키는 행위를 엄격히 금지합니다.
 - 유니코드 특수문자(µ 등)를 직접 쓰지 말고 표준 LaTeX 역슬래시 명령어(\\mu 등)를 사용하십시오.
 
 반드시 아래 JSON 형식으로만 순수 JSON을 응답하십시오. markdown 코드블록으로 감싸도 좋습니다.

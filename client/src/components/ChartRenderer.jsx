@@ -12,6 +12,55 @@ import {
 
 import { renderKatexString, cleanAndSanitizeMathText } from '../utils/renderingHelpers';
 import { healLatexFormulas } from '../utils/latexUtils';
+import { LatexRenderer } from './LatexRenderer';
+
+/**
+ * 🪶 autoWrapBareMath: 차트 데이터 내에 AI가 달러 기호($)를 누락하고 보낸 날것의 LaTeX 수식을 $...$로 자동 래핑
+ */
+export const autoWrapBareMath = (text) => {
+  if (!text || typeof text !== 'string') return text || '';
+  if (!/\\|[_\^]/.test(text)) return text;
+
+  // 1. 이미 존재하는 $...$ 및 $$...$$ 블록 임시 보호
+  const tokens = [];
+  let masked = text.replace(/\$\$[\s\S]*?\$\$|\$[^\$\n]+\$/g, (m) => {
+    const ph = `__MATH_PH_${tokens.length}__`;
+    tokens.push({ ph, val: m });
+    return ph;
+  });
+
+  // 2. 등호 포함 수식 (예: q = \frac{\sigma_1 - \sigma_3}{2} (\text{kPa}))
+  masked = masked.replace(/([a-zA-Z]\s*=\s*\\(?:frac|dfrac)\{[^{}]*\}\{[^{}]*\}(?:\s*\(\\text\{[^{}]*\}\))?)/g, (m) => {
+    const ph = `__MATH_PH_${tokens.length}__`;
+    tokens.push({ ph, val: `$${m}$` });
+    return ph;
+  });
+
+  // 3. 고립된 백슬래시 분수 (예: \frac{a}{b})
+  masked = masked.replace(/(?<!\$)(?:\\(?:frac|dfrac)\{[^{}]*\}\{[^{}]*\})(?!\$)/g, (m) => {
+    const ph = `__MATH_PH_${tokens.length}__`;
+    tokens.push({ ph, val: `$${m}$` });
+    return ph;
+  });
+
+  // 4. 그리스 문자 및 변수 첨자 (예: \epsilon_1, E_{50}, \sigma_3, \tau_{max}, \Delta u 등)
+  const mathSymbols = 'alpha|beta|gamma|delta|epsilon|varepsilon|zeta|eta|theta|vartheta|iota|kappa|lambda|mu|nu|xi|pi|varpi|rho|varrho|sigma|varsigma|tau|upsilon|phi|varphi|chi|psi|omega|Gamma|Delta|Theta|Lambda|Xi|Pi|Sigma|Upsilon|Phi|Psi|Omega';
+  const symbolRegex = new RegExp(`(?<![a-zA-Z\\$])([A-Z]_[a-zA-Z0-9]+|[A-Z]_\\{[^{}]+\\}|\\\\(?:${mathSymbols})(?:_[a-zA-Z0-9]+|_\\{[^{}]+\\})?)(?![a-zA-Z0-9_\\}\\$])`, 'gi');
+  masked = masked.replace(symbolRegex, (m) => {
+    const ph = `__MATH_PH_${tokens.length}__`;
+    tokens.push({ ph, val: `$${m}$` });
+    return ph;
+  });
+
+  // 5. 보호했던 수식 복원
+  for (const { ph, val } of tokens) {
+    masked = masked.replace(ph, val);
+  }
+
+  // 중복 $ 정제
+  masked = masked.replace(/\${3,}/g, '$$').replace(/\${2}([^$]+)\${2}/g, '$$$1$$');
+  return masked;
+};
 
 // Renders mixed text with math using the main LaTeX rendering & sanitization pipeline
 export const renderMixedText = (text, isMarkdown = false) => {
@@ -131,53 +180,38 @@ export const renderMixedText = (text, isMarkdown = false) => {
   return result;
 };
 
-// Custom Tooltip with KaTeX support via dangerouslySetInnerHTML
+// Custom Tooltip with KaTeX support via LatexRenderer
 const CustomTooltip = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
-    // Process label through KaTeX if window.katex is available, else leave as is
-    const renderLabel = () => {
-      return <div dangerouslySetInnerHTML={{ __html: renderMixedText(label) }} />;
-    };
-
     return (
       <div className="bg-slate-900 border border-slate-700/60 p-2 sm:p-3 rounded-lg shadow-xl text-slate-200">
-        <div className="text-[9px] sm:text-[11px] font-bold mb-1.5 border-b border-slate-700/60 pb-1">{renderLabel()}</div>
-        {payload.map((entry, index) => {
-          const renderName = () => {
-            return <span dangerouslySetInnerHTML={{ __html: renderMixedText(entry.name) }} />;
-          };
-          
-          return (
-            <div key={index} className="flex items-center gap-1.5 text-[9px] sm:text-[11px] font-semibold" style={{ color: entry.color }}>
-              <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full" style={{ backgroundColor: entry.color }}></span>
-              {renderName()}: <span className="font-mono ml-1 font-bold">{entry.value}</span>
-            </div>
-          );
-        })}
+        <div className="text-[9px] sm:text-[11px] font-bold mb-1.5 border-b border-slate-700/60 pb-1">
+          <LatexRenderer text={label} forceInline={true} />
+        </div>
+        {payload.map((entry, index) => (
+          <div key={index} className="flex items-center gap-1.5 text-[9px] sm:text-[11px] font-semibold" style={{ color: entry.color }}>
+            <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full" style={{ backgroundColor: entry.color }}></span>
+            <LatexRenderer text={entry.name} forceInline={true} />: <span className="font-mono ml-1 font-bold">{entry.value}</span>
+          </div>
+        ))}
       </div>
     );
   }
   return null;
 };
 
-// Custom Legend to support KaTeX
+// Custom Legend to support KaTeX via LatexRenderer
 const CustomLegend = (props) => {
   const { payload } = props;
   
   return (
     <ul className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 mt-2.5 w-full px-2">
-      {payload.map((entry, index) => {
-        const renderText = () => {
-          return <span dangerouslySetInnerHTML={{ __html: renderMixedText(entry.value) }} />;
-        };
-
-        return (
-          <li key={`item-${index}`} className="flex items-center gap-1.5 text-[9.5px] sm:text-xs font-bold text-slate-300">
-            <span className="block w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full" style={{ backgroundColor: entry.color }}></span>
-            {renderText()}
-          </li>
-        );
-      })}
+      {payload.map((entry, index) => (
+        <li key={`item-${index}`} className="flex items-center gap-1.5 text-[9.5px] sm:text-xs font-bold text-slate-300">
+          <span className="block w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full" style={{ backgroundColor: entry.color }}></span>
+          <LatexRenderer text={entry.value} forceInline={true} />
+        </li>
+      ))}
     </ul>
   );
 };
@@ -201,6 +235,8 @@ export const normalizeChartData = (raw) => {
     raw.lines = raw.series;
   }
 
+  let result = raw;
+
   // Case 1: 이미 Recharts 배열 형식인 경우 (x 속성 보정)
   if (Array.isArray(raw.data)) {
     const fixedData = raw.data.map(item => {
@@ -209,11 +245,9 @@ export const normalizeChartData = (raw) => {
       }
       return item;
     });
-    return { ...raw, data: fixedData };
-  }
-
-  // Case 2: Chart.js 형식 ({ type, data: { labels: [...], datasets: [...] } }) 지원
-  if (raw.data && typeof raw.data === 'object' && Array.isArray(raw.data.datasets)) {
+    result = { ...raw, data: fixedData };
+  } else if (raw.data && typeof raw.data === 'object' && Array.isArray(raw.data.datasets)) {
+    // Case 2: Chart.js 형식 ({ type, data: { labels: [...], datasets: [...] } }) 지원
     const labels = Array.isArray(raw.data.labels) ? raw.data.labels : [];
     const datasets = raw.data.datasets;
     const palette = ['#38bdf8', '#f43f5e', '#34d399', '#fbbf24', '#a855f7', '#fb923c', '#06b6d4'];
@@ -250,7 +284,7 @@ export const normalizeChartData = (raw) => {
       yLabel = datasets[0].label;
     }
 
-    return {
+    result = {
       title: raw.title || (raw.options?.plugins?.title?.text) || '공학 차트그래프',
       xAxisLabel: raw.xAxisLabel || (raw.options?.scales?.x?.title?.text) || '심도 (X축)',
       yAxisLabel: yLabel || '측정값 (Y축)',
@@ -260,7 +294,22 @@ export const normalizeChartData = (raw) => {
     };
   }
 
-  return raw;
+  // 텍스트 필드 자동 수식 래핑 (AI가 달러 $ 누락 시 선제적 보정)
+  if (result && typeof result === 'object') {
+    result = {
+      ...result,
+      title: autoWrapBareMath(result.title),
+      xAxisLabel: autoWrapBareMath(result.xAxisLabel),
+      yAxisLabel: autoWrapBareMath(result.yAxisLabel),
+      description: autoWrapBareMath(result.description),
+      lines: Array.isArray(result.lines) ? result.lines.map(line => ({
+        ...line,
+        name: autoWrapBareMath(line.name)
+      })) : result.lines
+    };
+  }
+
+  return result;
 };
 
 const ChartRenderer = ({ data: rawData, height, compact = false, hideHeader = false, className = '' }) => {
@@ -279,12 +328,11 @@ const ChartRenderer = ({ data: rawData, height, compact = false, hideHeader = fa
   // Custom tick formatter to render KaTeX in Axis ticks (via <foreignObject>)
   // Recharts XAxis tick supports React elements
   const CustomTickX = ({ x, y, payload }) => {
-    const tickHtml = renderMixedText(payload.value);
     return (
       <g transform={`translate(${x},${y})`}>
         <foreignObject x="-30" y="5" width="60" height="20" style={{ overflow: 'visible' }}>
           <div xmlns="http://www.w3.org/1999/xhtml" className="flex items-start justify-center text-[9px] sm:text-[11px] font-semibold text-slate-400 w-full h-full pt-1 normal-nums">
-            <span dangerouslySetInnerHTML={{ __html: tickHtml }} />
+            <LatexRenderer text={payload.value} forceInline={true} />
           </div>
         </foreignObject>
       </g>
@@ -292,12 +340,11 @@ const ChartRenderer = ({ data: rawData, height, compact = false, hideHeader = fa
   };
 
   const CustomTickY = ({ x, y, payload }) => {
-    const tickHtml = renderMixedText(payload.value);
     return (
       <g transform={`translate(${x},${y})`}>
         <foreignObject x="-50" y="-10" width="45" height="20" style={{ overflow: 'visible' }}>
           <div xmlns="http://www.w3.org/1999/xhtml" className="flex items-center justify-end text-[9px] sm:text-[11px] font-semibold text-slate-400 w-full h-full pr-1 normal-nums">
-            <span dangerouslySetInnerHTML={{ __html: tickHtml }} />
+            <LatexRenderer text={payload.value} forceInline={true} />
           </div>
         </foreignObject>
       </g>
@@ -306,12 +353,11 @@ const ChartRenderer = ({ data: rawData, height, compact = false, hideHeader = fa
 
   const CustomXAxisLabel = ({ viewBox }) => {
     const { x = 0, y = 0, width = 0 } = viewBox || {};
-    const html = renderMixedText(xAxisLabel);
     return (
       <g>
         <foreignObject x={x} y={y - 35} width={width} height={30} style={{ overflow: 'visible' }}>
           <div xmlns="http://www.w3.org/1999/xhtml" className="flex items-end justify-end text-[10px] sm:text-[12px] font-bold text-slate-400 w-full h-full text-right pr-2 pb-1 normal-nums">
-            <span dangerouslySetInnerHTML={{ __html: html }} />
+            <LatexRenderer text={xAxisLabel} forceInline={true} />
           </div>
         </foreignObject>
       </g>
@@ -320,12 +366,11 @@ const ChartRenderer = ({ data: rawData, height, compact = false, hideHeader = fa
 
   const CustomYAxisLabel = ({ viewBox }) => {
     const { x = 0, y = 0 } = viewBox || {};
-    const html = renderMixedText(yAxisLabel);
     return (
       <g>
         <foreignObject x={10} y={y - 25} width={250} height={20} style={{ overflow: 'visible' }}>
           <div xmlns="http://www.w3.org/1999/xhtml" className="flex items-center justify-start text-left text-[10px] sm:text-[12px] font-bold text-slate-400 w-full h-full whitespace-nowrap normal-nums">
-            <span dangerouslySetInnerHTML={{ __html: html }} />
+            <LatexRenderer text={yAxisLabel} forceInline={true} />
           </div>
         </foreignObject>
       </g>
@@ -351,7 +396,7 @@ const ChartRenderer = ({ data: rawData, height, compact = false, hideHeader = fa
         <div className={`px-3 ${compact ? 'py-1.5' : 'py-2'} bg-slate-800/50 border-b border-slate-700/60 flex items-center justify-between ${compact ? 'mb-1' : 'mb-3'}`}>
           <h4 className={`${compact ? 'text-[12px]' : 'text-[14px]'} font-semibold text-slate-200 flex items-center leading-relaxed`}>
             <span className="mr-1.5">📈</span>
-            <span dangerouslySetInnerHTML={{ __html: renderMixedText(title) }} />
+            <LatexRenderer text={title} forceInline={true} />
           </h4>
           <div className="px-2 py-0.5 bg-amber-500/10 border border-amber-500/30 rounded text-[9.5px] text-amber-400 font-medium whitespace-nowrap">
             인터랙티브 차트
@@ -402,7 +447,9 @@ const ChartRenderer = ({ data: rawData, height, compact = false, hideHeader = fa
         <div className={`${compact ? 'mx-2 mb-2 p-2 text-[11px]' : 'mx-3 mb-4 p-3 text-[12px] sm:text-[13px]'} bg-slate-800/80 border border-slate-700/60 rounded-lg text-slate-300 font-medium leading-relaxed shadow-inner`}>
           <div className="flex items-start gap-1.5">
             <span className="text-blue-400 mt-[1px] shrink-0 select-none">💡</span>
-            <div className="flex-1 select-text" dangerouslySetInnerHTML={{ __html: renderMixedText(description, true) }} />
+            <div className="flex-1 select-text">
+              <LatexRenderer text={description} isMarkdown={true} forceInline={true} />
+            </div>
           </div>
         </div>
       )}
