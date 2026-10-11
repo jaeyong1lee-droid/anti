@@ -24,50 +24,14 @@ import DiagramSvgRenderer from './DiagramSvgRenderer';
 import { LatexRenderer } from './LatexRenderer';
 
 /**
- * 🪶 prepareSlideMath: 슬라이드 전용 고립 수식 치유 함수
- * AI가 카드 요약이나 본문에서 누락한 달러 기호($) 및 공학 변수/그리스 문자를 온전한 수식 블록으로 복원
- */
-function prepareSlideMath(raw) {
-  if (!raw || typeof raw !== 'string') return raw || '';
-
-  // 1. 이미 존재하는 $...$ 및 $$...$$ 블록 임시 보호
-  const tokens = [];
-  let masked = raw.replace(/\$\$[\s\S]*?\$\$|\$[^\$\n]+\$/g, (m) => {
-    const ph = `__MATH_PH_${tokens.length}__`;
-    tokens.push({ ph, val: m });
-    return ph;
-  });
-
-  // 2. 고립된 백슬래시 LaTeX 기호 자동 수식화 (예: \gamma_i, \phi, \lambda_R, \lambda_L 등)
-  const mathSymbols = 'alpha|beta|gamma|delta|epsilon|varepsilon|zeta|eta|theta|vartheta|iota|kappa|lambda|mu|nu|xi|pi|varpi|rho|varrho|sigma|varsigma|tau|upsilon|phi|varphi|chi|psi|omega|Gamma|Delta|Theta|Lambda|Xi|Pi|Sigma|Upsilon|Phi|Psi|Omega|sqrt|frac|dfrac|sum|int|partial|le|ge|ne|neq|approx|sim|times|cdot|pm|mp|infty';
-  const symbolRegex = new RegExp(`(?:\\\\(?:${mathSymbols})(?:_\\{[^}]*\\}|\\^\\{[^}]*\\}|\\{[^}]*\\}|_[a-zA-Z0-9]+|\\^[a-zA-Z0-9]+)*(?![a-zA-Z]))`, 'gi');
-  masked = masked.replace(symbolRegex, (m) => `$${m}$`);
-
-  // 3. 소괄호 안의 고립된 공학 변수 (예: (R_n), (R_r), (V_R) 등) 수식화
-  masked = masked.replace(/\(([^()]+)\)/g, (match, inner) => {
-    if (/[\uAC00-\uD7A3]/.test(inner)) return match;
-    const healedInner = inner.replace(/\b([A-Z]_[a-zA-Z0-9]{1,2})\b/g, (m) => `$${m}$`);
-    return `(${healedInner})`;
-  });
-
-  // 4. 보호했던 수식 복원
-  for (const { ph, val } of tokens) {
-    masked = masked.replace(ph, val);
-  }
-
-  return masked;
-}
-
-/**
  * 🪶 SlideLatex: 메인 LatexRenderer 기반 슬라이드 전용 수식/텍스트 렌더러
  * (수식 완전 보호, KaTeX 정밀 렌더링, 인라인 레이아웃 최적화)
  */
 function SlideLatex({ text, className = '' }) {
   if (!text) return null;
-  const processed = prepareSlideMath(text);
   return (
     <LatexRenderer 
-      text={processed} 
+      text={text} 
       className={className} 
       isMarkdown={true} 
       forceInline={true} 
@@ -1043,7 +1007,7 @@ export default function TopicSlidePlugin({
                           {currentAiSlide.visual_component.cards.map((card, cIdx) => (
                             <div
                               key={cIdx}
-                              className={`p-2 rounded-xl border flex flex-col justify-between ${
+                              className={`p-2 rounded-xl border flex flex-col gap-1 ${
                                 card.highlight
                                   ? 'bg-amber-950/40 border-amber-500/50 text-amber-200'
                                   : 'bg-[#0E1626] border-slate-800 text-slate-300'
@@ -1052,7 +1016,7 @@ export default function TopicSlidePlugin({
                               <span className="text-[9px] font-bold text-slate-400 tracking-wider">
                                 <SlideLatex text={card.label} />
                               </span>
-                              <span className="text-xs font-black mt-1 whitespace-pre-line leading-relaxed">
+                              <span className="text-xs font-black">
                                 <SlideLatex text={card.content || ''} />
                               </span>
                             </div>
