@@ -3803,6 +3803,13 @@ export default function App() {
       }
     } catch (e) {}
 
+    // 선택한 과거/이전 문제를 서버의 현재 활성 과제(Assignment)로 실시간 동기화
+    fetch(`${API_BASE}/api/lockscreen/select`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question: q, userAnswer: ans, gradingResult: res, hint: hnt })
+    }).catch(err => console.warn('Failed to sync selected lockscreen question to server:', err));
+
     setShowRecentLockscreenDropdown(false);
     scrollToLockscreenTop(true);
   };
@@ -4190,12 +4197,10 @@ export default function App() {
             lockscreen_id: serverId
           };
 
-          // If question changed or not yet set
-          // [🚨 절대 보호] 이미 로드된 문제가 있을 때, 사용자가 '다른 문제 보기'를 명시적으로 누른 경우(forceNew === true)가 아니면
-          // 백그라운드 fetchLockscreenQuestion이 멋대로 다른 문제로 덮어쓰지 못하도록 방어한다.
-          // 단, 현재 로컬 ID가 서버의 최신 동기화 ID와 다르고 아직 작성 중인 답안이 없는 경우(stale/orphan ID)에는 서버의 최신 할당 문제로 즉시 정제한다.
-          const isStaleOrDeletedId = Boolean(currentId && serverId && currentId !== serverId && !lockscreenUserAnswer?.trim());
-          if (!currentId || forceNew || isStaleOrDeletedId) {
+          // [🚨 절대 철칙] 이미 로드된 문제가 있을 때, 사용자가 '다른 문제 보기'를 명시적으로 누른 경우(forceNew === true)가 아니면
+          // 백그라운드 fetchLockscreenQuestion이 멋대로 다른 문제로 덮어쓰지 못하도록 엄격히 방어한다.
+          // ("풀지 않는 한, 또는 다른 문제 풀기를 누르지 않는 한 넘어가지 말아야지")
+          if (!currentId || forceNew) {
             setLockscreenQuestion(qWithId);
             try {
               localStorage.setItem('anti_current_unsolved_lockscreen_question', JSON.stringify(qWithId));
@@ -4213,12 +4218,7 @@ export default function App() {
               loadQuestionAnswerState(qWithId);
             }
 
-            if (isStaleOrDeletedId) {
-              lockscreenHistoryRef.current = [qWithId];
-              lockscreenHistoryIndexRef.current = 0;
-              setLockscreenHistory([qWithId]);
-              setLockscreenHistoryIndex(0);
-            } else if (addToHistory) {
+            if (addToHistory) {
               const nextHistory = [
                 ...lockscreenHistoryRef.current.slice(0, lockscreenHistoryIndexRef.current + 1),
                 qWithId
@@ -4447,6 +4447,13 @@ export default function App() {
         localStorage.setItem('anti_current_unsolved_lockscreen_question', JSON.stringify(q));
       } catch (e) {}
       loadQuestionAnswerState(q);
+
+      // 이전 문제로 복귀 시 서버의 활성 과제도 해당 문제로 실시간 동기화
+      fetch(`${API_BASE}/api/lockscreen/select`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: q })
+      }).catch(err => console.warn('Failed to sync prev lockscreen question to server:', err));
     }
   };
 
@@ -19074,24 +19081,9 @@ ${itemsStr}
                               // 4. Sort: Today's LOCK assignments first (sorted descending by sequence), then other past questions
                               const allItems = Array.from(map.values());
 
-                              // Determine maximum valid sequence number for active assignment
-                              let maxValidSeq = Infinity;
-                              const activeLockId = lockscreenQuestion?.lockscreen_id;
-                              if (activeLockId && activeLockId.includes('_')) {
-                                const parsedSeq = parseInt(activeLockId.split('_')[1], 10);
-                                if (!isNaN(parsedSeq)) {
-                                  maxValidSeq = parsedSeq;
-                                }
-                              }
-
                               const lockItems = allItems.filter(it => {
                                 const lId = it.question?.lockscreen_id;
-                                if (!lId || !String(lId).startsWith('LOCK')) return false;
-                                if (lId.includes('_')) {
-                                  const s = parseInt(lId.split('_')[1], 10);
-                                  if (!isNaN(s) && s > maxValidSeq) return false;
-                                }
-                                return true;
+                                return lId && String(lId).startsWith('LOCK');
                               });
                               const otherItems = allItems.filter(it => !it.question?.lockscreen_id || !String(it.question.lockscreen_id).startsWith('LOCK'));
 

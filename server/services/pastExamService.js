@@ -292,6 +292,53 @@ export async function getActiveLockscreenAssignment(forceNew = false) {
 }
 
 /**
+ * Sets an existing / recent assignment as the currently active lockscreen assignment.
+ * When the user selects an older question from history or recent dropdown,
+ * this synchronizes the server so the selected question remains active.
+ */
+export async function selectActiveLockscreenAssignment(targetQuestion, userAnswer = '', gradingResult = null, hint = '') {
+  if (!targetQuestion) return null;
+  const lockscreenId = targetQuestion.lockscreen_id || null;
+  const { dateStr, yymmdd } = getKSTDateInfo();
+
+  let seq = 1;
+  if (lockscreenId && lockscreenId.includes('_')) {
+    const parsed = parseInt(lockscreenId.split('_')[1], 10);
+    if (!isNaN(parsed)) seq = parsed;
+  }
+
+  const assignment = {
+    lockscreen_id: lockscreenId || `LOCK${yymmdd}_${seq}`,
+    date: dateStr,
+    yymmdd,
+    seq,
+    question: {
+      ...targetQuestion,
+      lockscreen_id: lockscreenId || `LOCK${yymmdd}_${seq}`
+    },
+    userAnswer: userAnswer || '',
+    gradingResult: gradingResult || null,
+    hint: hint || '',
+    updatedAt: Date.now()
+  };
+
+  try {
+    await saveSessionValue('current_lockscreen_assignment', JSON.stringify(assignment));
+    await saveRecentLockscreenSubmission({
+      question: assignment.question,
+      userAnswer: assignment.userAnswer,
+      gradingResult: assignment.gradingResult,
+      hint: assignment.hint
+    });
+    console.log(`[pastExamService] Selected lockscreen assignment now active: ${assignment.lockscreen_id} - [${assignment.question.sessionName} 제1교시 ${assignment.question.number}번]`);
+  } catch (err) {
+    console.warn('[pastExamService] Failed to save selected assignment:', err.message);
+  }
+
+  return assignment;
+}
+
+/**
  * Updates the user's answer, grading result, or hint for the currently active lockscreen assignment.
  * CRITICAL: Only updates if targetQuestion matches the currently active assignment!
  * If targetQuestion is provided and does not match, rejects the update to prevent cross-question contamination.

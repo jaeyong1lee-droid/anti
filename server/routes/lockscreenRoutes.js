@@ -5,6 +5,7 @@ import {
   getRandomLockscreenExamQuestion, 
   loadAllPastExamQuestions,
   getActiveLockscreenAssignment,
+  selectActiveLockscreenAssignment,
   updateActiveLockscreenAnswer,
   getRecentLockscreenSubmissions,
   saveRecentLockscreenSubmission
@@ -81,6 +82,21 @@ router.post('/active', async (req, res) => {
     res.json({ success: true, assignment: updated });
   } catch (err) {
     console.error('POST /api/lockscreen/active error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/lockscreen/select -> Set a selected/previous question as the active lockscreen assignment
+router.post('/select', async (req, res) => {
+  try {
+    const { question, userAnswer, gradingResult, hint } = req.body;
+    if (!question) {
+      return res.status(400).json({ success: false, error: 'Question is required' });
+    }
+    const assignment = await selectActiveLockscreenAssignment(question, userAnswer, gradingResult, hint);
+    res.json({ success: true, assignment });
+  } catch (err) {
+    console.error('POST /api/lockscreen/select error:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
