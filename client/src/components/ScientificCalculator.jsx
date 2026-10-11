@@ -1498,7 +1498,15 @@ export function ScientificCalculator() {
       roots.push(r);
     };
 
-    const grid = [-100, -50, -20, -10, -5, -2, -1, -0.5, 0, 0.5, 1, 2, 5, 10, 20, 50, 100];
+    const grid = [
+      -100000, -50000, -20000, -10000, -5000, -2000, -1000, -500, -200, -100,
+      -50, -20, -10, -5, -2, -1, -0.5, -0.1, -0.01, 0, 0.01, 0.1, 0.5, 1, 2, 5,
+      10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000
+    ];
+    if (typeof variables[varName] === 'number' && isFinite(variables[varName])) {
+      grid.push(variables[varName] - 1, variables[varName], variables[varName] + 1);
+      grid.sort((a, b) => a - b);
+    }
     const evals = grid.map(x => ({ x, y: evalWithVar(x) }));
 
     for (let i = 0; i < evals.length - 1; i++) {
@@ -1516,7 +1524,9 @@ export function ScientificCalculator() {
       [-1.0, 0.0],
       [0.0, 1.0],
       [-10.0, -9.0],
-      [9.0, 10.0]
+      [9.0, 10.0],
+      [-100.0, -90.0],
+      [90.0, 100.0]
     ];
     for (const pair of startPairs) {
       const r = runSecant(pair[0], pair[1], evalWithVar);
@@ -1525,6 +1535,11 @@ export function ScientificCalculator() {
 
     if (roots.length === 0) return 'Error';
 
+    if (roots.length > 4) {
+      const origin = (typeof variables[varName] === 'number' && isFinite(variables[varName])) ? variables[varName] : 0;
+      roots.sort((a, b) => Math.abs(a - origin) - Math.abs(b - origin));
+      roots.splice(4);
+    }
     roots.sort((a, b) => a - b);
     
     if (roots.length === 1) {
@@ -1581,6 +1596,10 @@ export function ScientificCalculator() {
       
       if (!processedExpr.trim()) return '';
       
+      // Resolve fractions upfront so equation solvers and variable searches never collide with 'frac'
+      processedExpr = resolveFractions(processedExpr);
+      if (processedExpr.includes('Error')) return 'Error';
+
       if (!isInternal && processedExpr.includes('=')) {
         const eqParts = processedExpr.split('=');
         if (eqParts.length !== 2) return 'Error';
@@ -1589,7 +1608,8 @@ export function ScientificCalculator() {
         const varRegex = /[a-zA-Z\u0370-\u03ff]+(_[a-zA-Z\u0370-\u03ff0-9]+)?/g;
         const excludedNames = new Set([
           'sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'sinh', 'cosh', 'tanh', 'asinh', 'acosh', 'atanh',
-          'log', 'ln', 'exp', 'sqrt', 'cbrt', 'Abs', 'Ans', 'Math', 'd', 'dx', 'd/dx', 'pi', 'e'
+          'log', 'ln', 'exp', 'sqrt', 'cbrt', 'Abs', 'Ans', 'Math', 'd', 'dx', 'd/dx', 'pi', 'e',
+          'frac', 'fact'
         ]);
         
         let match;
@@ -1629,8 +1649,7 @@ export function ScientificCalculator() {
         return solvedVal.toString();
       }
       
-      let preProcessed = resolveFractions(processedExpr);
-      if (preProcessed.includes('Error')) return 'Error';
+      let preProcessed = processedExpr;
       
       // Replace built-in words with tokens to prevent them from being split by implicit multiplication or variable substitution
       const builtInWords = [
@@ -1670,7 +1689,8 @@ export function ScientificCalculator() {
       const varRegex = /[a-zA-Z\u0370-\u03ff]+(_[a-zA-Z\u0370-\u03ff0-9]+)?/g;
       const excludedNames = new Set([
         'sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'sinh', 'cosh', 'tanh', 'asinh', 'acosh', 'atanh',
-        'log', 'ln', 'exp', 'sqrt', 'cbrt', 'Abs', 'Ans', 'Math', 'd', 'dx', 'd/dx', 'pi', 'e'
+        'log', 'ln', 'exp', 'sqrt', 'cbrt', 'Abs', 'Ans', 'Math', 'd', 'dx', 'd/dx', 'pi', 'e',
+        'frac', 'fact'
       ]);
       
       let match;
