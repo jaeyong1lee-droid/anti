@@ -218,13 +218,14 @@ export async function getActiveLockscreenAssignment(forceNew = false) {
     console.warn('[pastExamService] Failed to read active assignment:', e.message);
   }
 
-  // [🚨 절대 철칙] 현재 배정된 문제가 풀리지 않은 경우(미제출/미채점):
-  // 사용자의 요청이나 forceNew 여부, 날짜 변경과 무관하게 새로운 ID를 생성하지 않고, 풀지 않은 최신 ID 문제를 엄격히 유지/반환한다.
-  // ("풀지 않으면 진행시키지 말고 풀지 않은 가장 최신 id를 보여줘... 2를 풀면 그때 보여줘야지")
+  // [🚨 절대 보호] 현재 배정된 문제가 풀리지 않은 경우(미제출/미채점):
+  // 사용자가 '다른 문제 보기'(forceNew === true)를 명시적으로 누른 것이 아니라면(기본 진입/백그라운드 동기화/날짜 변경),
+  // 새로운 ID를 생성하지 않고, 풀지 않은 최신 ID 문제를 엄격히 유지/반환한다.
+  // 단, 사용자가 '다른 문제 보기'(forceNew === true)를 명시적으로 클릭한 경우에는 다음 문제로 즉시 전환한다.
   if (activeAssignment && activeAssignment.lockscreen_id && activeAssignment.question) {
     const isSolved = isLockscreenAssignmentSolved(activeAssignment);
-    if (!isSolved) {
-      console.log(`[pastExamService] Active lockscreen assignment ${activeAssignment.lockscreen_id} is UNSOLVED. Rejecting progression and retaining current question.`);
+    if (!isSolved && !forceNew) {
+      console.log(`[pastExamService] Active lockscreen assignment ${activeAssignment.lockscreen_id} is UNSOLVED. Retaining current question.`);
       return activeAssignment;
     }
 

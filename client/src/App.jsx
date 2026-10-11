@@ -4415,14 +4415,7 @@ export default function App() {
       return;
     }
 
-    // [🚨 절대 철칙] 현재 배정된 문제가 풀리지 않은 경우(미제출/미채점): 새 문제(ID)로 임의 진행 불가!
-    // ("풀지 않으면 진행시키지 말고 풀지 않은 가장 최신 id를 보여줘... 2를 풀면 그때 보여줘야지")
-    const isCurrentSolved = lockscreenGradingResult && typeof lockscreenGradingResult.score === 'number' && !(lockscreenGradingResult.score === 0 && lockscreenGradingResult.reason?.includes('입력되지 않았습니다'));
-    if (!isCurrentSolved) {
-      showNotification('현재 문제의 풀이 및 채점이 완료되어야 다음 문제를 받을 수 있습니다. 🔒', 'info');
-      return;
-    }
-
+    // 사용자가 '다른 문제 보기'를 클릭한 경우: 현재 문제와 작성 중인 답안을 안전하게 보존한 후 다음 문제로 즉시 전환
     setLockscreenLoading(true);
     setLockscreenUserAnswer('');
     setLockscreenGradingResult(null);
@@ -4438,6 +4431,11 @@ export default function App() {
     if (lockscreenSyncTimeoutRef.current) {
       clearTimeout(lockscreenSyncTimeoutRef.current);
       lockscreenSyncTimeoutRef.current = null;
+    }
+    // 이전 문제로 넘어가기 전 현재 작성 중인 답안 상태 안전하게 보관
+    if (lockscreenQuestionRef.current) {
+      const curQ = lockscreenQuestionRef.current;
+      saveLockscreenAnswerForQuestion(curQ, lockscreenUserAnswer, lockscreenGradingResult, lockscreenHint);
     }
     if (lockscreenHistoryIndexRef.current > 0) {
       const prevIdx = lockscreenHistoryIndexRef.current - 1;
