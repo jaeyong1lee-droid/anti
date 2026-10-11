@@ -20,7 +20,7 @@ export const renderMixedText = (text, isMarkdown = false) => {
   if (!str.trim()) return '';
 
   // 1. 개행 정규화 및 메인 렌더링 파이프라인의 수식 정제 적용
-  let normalized = str.replace(/\r\n/g, '\n').replace(/\\n/g, '\n');
+  let normalized = str.replace(/\r\n/g, '\n');
   let sanitized = cleanAndSanitizeMathText(normalized);
   sanitized = healLatexFormulas(sanitized, false, null);
 
@@ -37,6 +37,11 @@ export const renderMixedText = (text, isMarkdown = false) => {
     mathPlaceholders.push({ ph, math: math.trim(), displayMode: false });
     return ph;
   });
+
+  // 3.1. 수식 블록이 보호된 후, 텍스트 영역의 리터럴 \n만 안전 복원 (\nu 등 LaTeX 명령어 훼손 원천 방지)
+  if (protectedText.includes('\\n')) {
+    protectedText = protectedText.replace(/\\n/g, '\n');
+  }
 
   // 3.5. 닫히지 않은 고립된 $ 수식 자동 치유 (예: "저항 계수 $F(\mu)", "$T_h", "$i_c = (G_s - 1)/(1 + e)")
   if (protectedText.includes('$')) {

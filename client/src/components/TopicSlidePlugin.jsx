@@ -19,8 +19,9 @@ import {
   Image as ImageIcon,
   MessageSquare
 } from 'lucide-react';
-import ChartRenderer, { renderMixedText } from './ChartRenderer';
+import ChartRenderer from './ChartRenderer';
 import DiagramSvgRenderer from './DiagramSvgRenderer';
+import { LatexRenderer } from './LatexRenderer';
 
 /**
  * 🪶 prepareSlideMath: 슬라이드 전용 고립 수식 치유 함수
@@ -58,14 +59,21 @@ function prepareSlideMath(raw) {
 }
 
 /**
- * 🪶 SlideLatex: 훅(Hook)을 전혀 사용하지 않는 초경량 고성능 슬라이드 전용 수식/텍스트 렌더러
- * (React Hook 규칙 위반 에러 #300 원천 방지 및 KaTeX 고속 렌더링)
+ * 🪶 SlideLatex: 메인 LatexRenderer 기반 슬라이드 전용 수식/텍스트 렌더러
+ * (수식 완전 보호, KaTeX 정밀 렌더링, 인라인 레이아웃 최적화)
  */
 function SlideLatex({ text, className = '' }) {
   if (!text) return null;
   const processed = prepareSlideMath(text);
-  const html = renderMixedText(processed, true);
-  return <span className={className} dangerouslySetInnerHTML={{ __html: html }} />;
+  return (
+    <LatexRenderer 
+      text={processed} 
+      className={className} 
+      isMarkdown={true} 
+      forceInline={true} 
+      formulaSource="slide"
+    />
+  );
 }
 
 /**
