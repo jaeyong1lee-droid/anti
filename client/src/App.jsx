@@ -4227,6 +4227,9 @@ export default function App() {
           // 백그라운드 fetchLockscreenQuestion이 멋대로 다른 문제로 덮어쓰지 못하도록 엄격히 방어한다.
           // ("풀지 않는 한, 또는 다른 문제 풀기를 누르지 않는 한 넘어가지 말아야지")
           if (!currentId || forceNew) {
+            if (forceNew && currentId && serverId === currentId) {
+              showNotification('현재 배정된 문제를 다 풀어서 채점받으신 후 새로운 문제가 생성됩니다.', 'info');
+            }
             setLockscreenQuestion(qWithId);
             try {
               localStorage.setItem('anti_current_unsolved_lockscreen_question', JSON.stringify(qWithId));

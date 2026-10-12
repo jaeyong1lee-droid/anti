@@ -200,12 +200,25 @@ export function isLockscreenAssignmentSolved(assignment) {
   return false;
 }
 
+let inFlightAssignmentPromise = null;
+
 /**
  * Gets or creates the currently active lockscreen assignment with format LOCK{YYMMDD}_{seq}.
  * Synchronized across PC, Mobile, and all devices via Cloud DB.
- * Unsolved questions are preserved across date changes so users do not lose their pending quiz.
+ * [🚨 절대 원칙: "다음부터는 다 풀면 문제를 만들어"]
+ * 현재 배정된 문제를 다 풀어서 채점이 완료(isSolved === true)되기 전까지는 어떠한 경우에도 새 문제를 생성하지 않는다.
  */
 export async function getActiveLockscreenAssignment(forceNew = false) {
+  if (inFlightAssignmentPromise) {
+    return await inFlightAssignmentPromise;
+  }
+  inFlightAssignmentPromise = _getActiveLockscreenAssignmentCore(forceNew).finally(() => {
+    inFlightAssignmentPromise = null;
+  });
+  return await inFlightAssignmentPromise;
+}
+
+async function _getActiveLockscreenAssignmentCore(forceNew = false) {
   const { dateStr, yymmdd } = getKSTDateInfo();
 
   let activeAssignment = null;
@@ -218,31 +231,69 @@ export async function getActiveLockscreenAssignment(forceNew = false) {
     console.warn('[pastExamService] Failed to read active assignment:', e.message);
   }
 
-  // [🚨 절대 보호] 현재 배정된 문제가 풀리지 않은 경우(미제출/미채점):
-  // 사용자가 '다른 문제 보기'(forceNew === true)를 명시적으로 누른 것이 아니라면(기본 진입/백그라운드 동기화/날짜 변경),
-  // 새로운 ID를 생성하지 않고, 풀지 않은 최신 ID 문제를 엄격히 유지/반환한다.
-  // 단, 사용자가 '다른 문제 보기'(forceNew === true)를 명시적으로 클릭한 경우에는 다음 문제로 즉시 전환한다.
+  // 1. 현재 배정된 문제가 존재할 때의 처리
   if (activeAssignment && activeAssignment.lockscreen_id && activeAssignment.question) {
     const isSolved = isLockscreenAssignmentSolved(activeAssignment);
-    if (!isSolved && !forceNew) {
+
+    // [🚨 사용자 절대 철칙: "다음부터는 다 풀면 문제를 만들어"]
+    // 현재 배정된 문제가 아직 풀리지 않은 경우(!isSolved):
+    // 날짜가 바뀌거나, 새로고침하거나, 포커스가 이동해도 절대 새로운 문제를 생성하지 않는다!
+    if (!isSolved) {
+      // 사용자가 '다른 문제 보기'(forceNew === true)를 명시적으로 요청한 경우:
+      // 기존에 이미 배정되어 있는 다른 미해결 문제(예: LOCK261012_2, LOCK261012_3)가 목록에 있다면 그것으로 전환.
+      // 새 문제(4번, 5번 등)를 추가로 찍어내지 않고 오직 기존 미해결 문제 간에만 순환한다.
+      if (forceNew) {
+        const recentSubmissions = await getRecentLockscreenSubmissions();
+        const otherUnsolved = recentSubmissions.find(item => 
+          item.question && 
+          item.question.lockscreen_id && 
+          item.question.lockscreen_id !== activeAssignment.lockscreen_id && 
+          !isLockscreenAssignmentSolved(item)
+        );
+        if (otherUnsolved) {
+          console.log(`[pastExamService] Switching to existing unsolved question: ${otherUnsolved.question.lockscreen_id}`);
+          return await selectActiveLockscreenAssignment(
+            otherUnsolved.question, 
+            otherUnsolved.userAnswer || '', 
+            otherUnsolved.gradingResult || null, 
+            otherUnsolved.hint || ''
+          );
+        }
+        // 기존에 다른 미해결 문제가 없다면 새 문제를 생성하지 않고 현재 문제를 그대로 유지
+        console.log(`[pastExamService] Active question ${activeAssignment.lockscreen_id} is UNSOLVED. Rejecting creation of new question until solved.`);
+        return activeAssignment;
+      }
+
       console.log(`[pastExamService] Active lockscreen assignment ${activeAssignment.lockscreen_id} is UNSOLVED. Retaining current question.`);
       return activeAssignment;
     }
 
-    // 이미 풀린 문제인 경우: forceNew가 아니면서 오늘 날짜이면 그대로 반환 (채점 결과 확인용)
+    // 이미 풀린 문제(isSolved === true)인 경우:
+    // 사용자가 다음 문제를 요청하지 않았고(forceNew === false) 오늘 푼 문제이면 채점 결과 확인을 위해 그대로 반환
     if (!forceNew && activeAssignment.yymmdd === yymmdd) {
       return activeAssignment;
     }
   }
 
-  // 현재 문제가 풀렸거나(isSolved) 아직 배정된 문제가 없을 때만 다음 번호(nextSeq) 생성 진행
+  // 2. [비로소 새 문제 생성]: 현재 문제가 '다 풀렸거나(isSolved)' 아직 배정된 문제가 아예 없을 때만 다음 문제 생성!
   let nextSeq = 1;
-  let prevAssignment = activeAssignment;
-  if (prevAssignment && prevAssignment.yymmdd === yymmdd) {
-    nextSeq = (prevAssignment.seq || 0) + 1;
+  try {
+    const recentList = await getRecentLockscreenSubmissions();
+    for (const item of recentList) {
+      const lid = item.question?.lockscreen_id || item.lockscreen_id || '';
+      if (lid.startsWith(`LOCK${yymmdd}_`)) {
+        const parsed = parseInt(lid.split('_')[1], 10);
+        if (!isNaN(parsed) && parsed >= nextSeq) {
+          nextSeq = parsed + 1;
+        }
+      }
+    }
+  } catch (seqErr) {
+    console.warn('[pastExamService] Failed to determine nextSeq from recent list:', seqErr.message);
   }
 
   // Archive previous assignment into lockscreen_recent_questions so it is never lost
+  let prevAssignment = activeAssignment;
   if (prevAssignment && prevAssignment.question) {
     try {
       await saveRecentLockscreenSubmission({
@@ -283,7 +334,7 @@ export async function getActiveLockscreenAssignment(forceNew = false) {
       gradingResult: newAssignment.gradingResult || null,
       hint: newAssignment.hint || ''
     });
-    console.log(`[pastExamService] Synchronized lockscreen assignment active: ${lockscreenId} - [${newQuestion.sessionName} 제1교시 ${newQuestion.number}번]`);
+    console.log(`[pastExamService] Synchronized lockscreen assignment active (solved-first gate passed): ${lockscreenId} - [${newQuestion.sessionName} 제1교시 ${newQuestion.number}번]`);
   } catch (saveErr) {
     console.warn('[pastExamService] Failed to save active assignment:', saveErr.message);
   }
