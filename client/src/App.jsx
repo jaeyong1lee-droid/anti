@@ -4793,7 +4793,9 @@ export default function App() {
       modelName: preferredModel || 'gemini-3.5-flash-lite',
       percent: 0,
       timeline: ['준비 중...'],
-      validationLogs: []
+      validationLogs: [],
+      wikiGrounding: null,
+      kcscGrounding: null
     };
 
     setAiHistory(prev => {
@@ -4976,6 +4978,13 @@ export default function App() {
               }
             }
 
+            let wikiGrounding = item.wikiGrounding;
+            let kcscGrounding = item.kcscGrounding;
+            if (data) {
+              if (data.wikiGrounding) wikiGrounding = data.wikiGrounding;
+              if (data.kcscGrounding) kcscGrounding = data.kcscGrounding;
+            }
+
             return {
               ...item,
               endTime: new Date().toISOString(),
@@ -4983,7 +4992,9 @@ export default function App() {
               percent: finalPercent,
               timeline,
               modelName,
-              validationLogs: validationLogs.length > 0 ? validationLogs : item.validationLogs
+              validationLogs: validationLogs.length > 0 ? validationLogs : item.validationLogs,
+              wikiGrounding: wikiGrounding || item.wikiGrounding || null,
+              kcscGrounding: kcscGrounding || item.kcscGrounding || null
             };
           }
           return item;
@@ -5131,6 +5142,9 @@ export default function App() {
     const progressId = 'grade_' + Math.random().toString(36).substring(2, 9);
     startProgressPolling(progressId);
 
+    let lastWikiGrounding = null;
+    let lastKcscGrounding = null;
+
     const processSingleInput = async (inputId) => {
       const userAnswer = getAnswerValue(activeAnswers, qIdx, inputId) || activeAnswers[`${qIdx}_${inputId}`] || '';
       const correctAnswer = getCorrectAnswerForInput(q, inputId);
@@ -5257,6 +5271,8 @@ export default function App() {
           })
         });
         const data = await res.json();
+        if (data.wikiGrounding) lastWikiGrounding = data.wikiGrounding;
+        if (data.kcscGrounding) lastKcscGrounding = data.kcscGrounding;
         const suggestedModelAnswer = data.suggestedModelAnswer;
         nextGrading[`${qIdx}_${inputId}`] = {
           isCorrect: data.isCorrect,
@@ -5331,7 +5347,10 @@ export default function App() {
         forceSaveActiveSessions(false, false, { examTableGradingResults: nextGrading });
       }
 
-      stopProgressPolling('2단계: 주관식 표 채우기 채점 완료!', 100);
+      stopProgressPolling('2단계: 주관식 표 채우기 채점 완료!', 100, true, {
+        wikiGrounding: lastWikiGrounding,
+        kcscGrounding: lastKcscGrounding
+      });
       return nextGrading;
     } catch (e) {
       stopProgressPolling('채점 실패', 100, false);
@@ -5581,6 +5600,7 @@ export default function App() {
       }
     }
 
+    let gradeData = null;
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 40000);
@@ -5603,12 +5623,12 @@ export default function App() {
           progressId
         })
       });
-      const data = await res.json();
-      const suggestedModelAnswer = data.suggestedModelAnswer;
+      gradeData = await res.json();
+      const suggestedModelAnswer = gradeData.suggestedModelAnswer;
       nextGrading[key] = {
-        isCorrect: data.isCorrect,
-        score: data.score,
-        reason: data.reason,
+        isCorrect: gradeData.isCorrect,
+        score: gradeData.score,
+        reason: gradeData.reason,
         suggestedModelAnswer
       };
     } catch (err) {
@@ -5639,7 +5659,7 @@ export default function App() {
       forceSaveActiveSessions(false, false, { examTableGradingResults: nextGrading });
     }
 
-    stopProgressPolling('재채점 완료!', 100);
+    stopProgressPolling('재채점 완료!', 100, true, gradeData);
     setCellGradingLoading(prev => ({ ...prev, [key]: false }));
   };
 
@@ -5843,7 +5863,7 @@ export default function App() {
       if (data.suggestedModelAnswer && !/^(success|ok|true|false)$/i.test(data.suggestedModelAnswer.trim())) {
         q.answer = data.suggestedModelAnswer;
       }
-      stopProgressPolling('채점 완료!', 100);
+      stopProgressPolling('채점 완료!', 100, true, data);
     } catch (err) {
       console.error('Grading error:', err);
       const normalize = (s) => (s || '').trim().toLowerCase().replace(/\s+/g, '');
@@ -13091,7 +13111,7 @@ ${item.intuitive || ''}
       }
       if (!res.ok) throw new Error(data.error || '답변을 생성하지 못했습니다.');
       
-      stopProgressPolling('답변 생성이 완료되었습니다!', 100);
+      stopProgressPolling('답변 생성이 완료되었습니다!', 100, true, data);
       setTutorAnswers(prev => ({
         ...prev,
         [key]: { loading: false, text: data.text, error: '' }
@@ -13699,7 +13719,7 @@ ${item.intuitive || ''}
           progressId
         })
       });
-      stopProgressPolling('답변 생성이 완료되었습니다!', 100);
+      stopProgressPolling('답변 생성이 완료되었습니다!', 100, true, data);
       setRealTimeChatHistory(prev => [...prev, { role: 'model', text: data.text }]);
     } catch (err) {
       stopProgressPolling('답변 생성 실패', 100, false);
@@ -24580,8 +24600,8 @@ ${itemsStr}
 
       {/* AI 작업이력 팝업 모달 */}
       {showAiHistoryModal && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md transition-all duration-300 animate-fadeIn" onClick={() => setShowAiHistoryModal(false)}>
-          <div className="relative w-full max-w-4xl max-h-[85vh] flex flex-col bg-slate-900/90 border border-slate-700/50 rounded-2xl shadow-2xl overflow-hidden glassmorphism text-slate-100 font-sans" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-5 bg-slate-950/85 backdrop-blur-md transition-all duration-300 animate-fadeIn" onClick={() => setShowAiHistoryModal(false)}>
+          <div className="relative w-full max-w-[96vw] max-h-[92vh] h-[92vh] flex flex-col bg-slate-900/95 border border-slate-700/60 rounded-2xl shadow-2xl overflow-hidden glassmorphism text-slate-100 font-sans" onClick={(e) => e.stopPropagation()}>
             
             {/* 헤더 */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950/45">
@@ -24668,20 +24688,124 @@ ${itemsStr}
                       {/* 카드 바디 (로그 전개 영역) */}
                       <div className="p-4 space-y-4 text-xs">
                         
-                        {/* 실시간 진행 로그 */}
-                        <div>
-                          <div className="flex items-center justify-between mb-1.5 text-slate-400 font-bold">
-                            <span>진행 타임라인 로그 ({(item.timeline || []).length})</span>
+                        {/* 3분할 패널: [1] 지금의 정보 (진행 타임라인 로그) | [2] 위키피디아 검색사항 | [3] KCSC 검색사항 */}
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3.5 items-stretch">
+                          {/* 창 1: 지금의 정보 (진행 타임라인 로그) */}
+                          <div className="flex flex-col bg-slate-950/60 border border-slate-800/90 rounded-xl overflow-hidden shadow-inner">
+                            <div className="flex items-center justify-between px-3.5 py-2.5 bg-slate-900/70 border-b border-slate-800/80">
+                              <span className="font-bold text-slate-200 flex items-center gap-1.5 text-xs">
+                                <span className="text-violet-400">⏳</span> 1. 진행 타임라인 로그
+                              </span>
+                              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700/60">
+                                {(item.timeline || []).length}개 기록
+                              </span>
+                            </div>
+                            <div className="p-3 font-mono text-[11px] leading-relaxed text-slate-350 space-y-1.5 max-h-[220px] overflow-y-auto flex-1">
+                              {(item.timeline || []).length === 0 ? (
+                                <div className="text-slate-500 italic py-6 text-center">기록된 타임라인이 없습니다.</div>
+                              ) : (
+                                (item.timeline || []).map((line, idx) => (
+                                  <div key={idx} className="flex gap-2 items-start">
+                                    <span className="text-slate-500 select-none text-[10px] mt-0.5 font-sans">[{idx + 1}]</span>
+                                    <span className={idx === (item.timeline || []).length - 1 && isRunning ? 'text-amber-300 font-medium' : 'text-slate-300'}>
+                                      {line}
+                                    </span>
+                                  </div>
+                                ))
+                              )}
+                            </div>
                           </div>
-                          <div className="bg-slate-950/60 border border-slate-800/80 rounded-lg p-3 font-mono text-[11px] leading-relaxed text-slate-350 space-y-1 max-h-[160px] overflow-y-auto">
-                            {(item.timeline || []).map((line, idx) => (
-                              <div key={idx} className="flex gap-2">
-                                <span className="text-slate-500 select-none">[{idx + 1}]</span>
-                                <span className={idx === (item.timeline || []).length - 1 && isRunning ? 'text-amber-300' : ''}>
-                                  {line}
-                                </span>
-                              </div>
-                            ))}
+
+                          {/* 창 2: 위키피디아 검색사항 */}
+                          <div className="flex flex-col bg-slate-950/60 border border-sky-500/25 rounded-xl overflow-hidden shadow-inner">
+                            <div className="flex items-center justify-between px-3.5 py-2.5 bg-sky-950/30 border-b border-sky-500/20">
+                              <span className="font-bold text-sky-300 flex items-center gap-1.5 text-xs">
+                                <span>📚</span> 2. 위키피디아 검색사항
+                              </span>
+                              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-sky-900/40 text-sky-300 border border-sky-500/30">
+                                Wikipedia Grounding
+                              </span>
+                            </div>
+                            <div className="p-3 text-[11px] leading-relaxed text-slate-300 max-h-[220px] overflow-y-auto flex-1">
+                              {item.wikiGrounding ? (
+                                <div className="whitespace-pre-wrap font-sans text-sky-200/90 text-left space-y-1">
+                                  {item.wikiGrounding}
+                                </div>
+                              ) : (
+                                <div className="flex flex-col items-center justify-center py-6 text-slate-500 space-y-2 text-center h-full">
+                                  <span className="text-xs">위키피디아 지식 검색 내역이 비어 있습니다.</span>
+                                  <button
+                                    type="button"
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      const q = item.topicTitle || '지반공학';
+                                      try {
+                                        const res = await fetch(`${API_BASE}/api/wiki/grounding?q=${encodeURIComponent(q)}`);
+                                        const json = await res.json();
+                                        if (json && json.groundingContext) {
+                                          setAiHistory(prev => {
+                                            const updated = prev.map(h => h.id === item.id ? { ...h, wikiGrounding: json.groundingContext } : h);
+                                            localStorage.setItem('anti_ai_history', JSON.stringify(updated));
+                                            return updated;
+                                          });
+                                        }
+                                      } catch (err) {
+                                        console.warn('Manual wiki fetch error:', err);
+                                      }
+                                    }}
+                                    className="px-2.5 py-1 text-[11px] bg-sky-600/30 hover:bg-sky-600/50 text-sky-200 border border-sky-500/40 rounded-lg transition-all cursor-pointer font-bold active:scale-95"
+                                  >
+                                    🔍 위키피디아 즉시 조회
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* 창 3: KCSC 검색사항 */}
+                          <div className="flex flex-col bg-slate-950/60 border border-emerald-500/25 rounded-xl overflow-hidden shadow-inner">
+                            <div className="flex items-center justify-between px-3.5 py-2.5 bg-emerald-950/30 border-b border-emerald-500/20">
+                              <span className="font-bold text-emerald-300 flex items-center gap-1.5 text-xs">
+                                <span>🏛️</span> 3. KCSC 검색사항
+                              </span>
+                              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-900/40 text-emerald-300 border border-emerald-500/30">
+                                KDS / KCS 기준값
+                              </span>
+                            </div>
+                            <div className="p-3 text-[11px] leading-relaxed text-slate-300 max-h-[220px] overflow-y-auto flex-1">
+                              {item.kcscGrounding ? (
+                                <div className="whitespace-pre-wrap font-sans text-emerald-200/90 text-left space-y-1">
+                                  {item.kcscGrounding}
+                                </div>
+                              ) : (
+                                <div className="flex flex-col items-center justify-center py-6 text-slate-500 space-y-2 text-center h-full">
+                                  <span className="text-xs">KCSC 국가건설기준 검색 내역이 비어 있습니다.</span>
+                                  <button
+                                    type="button"
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      const q = item.topicTitle || '지반공학';
+                                      try {
+                                        const res = await fetch(`${API_BASE}/api/kcsc/grounding?q=${encodeURIComponent(q)}`);
+                                        const json = await res.json();
+                                        if (json && json.groundingContext) {
+                                          setAiHistory(prev => {
+                                            const updated = prev.map(h => h.id === item.id ? { ...h, kcscGrounding: json.groundingContext } : h);
+                                            localStorage.setItem('anti_ai_history', JSON.stringify(updated));
+                                            return updated;
+                                          });
+                                        }
+                                      } catch (err) {
+                                        console.warn('Manual kcsc fetch error:', err);
+                                      }
+                                    }}
+                                    className="px-2.5 py-1 text-[11px] bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-200 border border-emerald-500/40 rounded-lg transition-all cursor-pointer font-bold active:scale-95"
+                                  >
+                                    🔍 KCSC 기준 즉시 조회
+                                  </button>
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
 

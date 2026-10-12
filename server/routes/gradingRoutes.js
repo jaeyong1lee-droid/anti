@@ -10,6 +10,7 @@ import { GENERATION_STANDARDS, generationStandardsList } from '../plugins/genera
 import { FLOWCHART_QUIZ_GENERATION_PROMPT } from '../plugins/flowchartQuizPlugin.js';
 import * as ocrPlugin from '../plugins/calculationPlugin.js';
 import { getKcscVerificationContext } from '../services/kcscService.js';
+import { getWikipediaKnowledge } from '../services/wikipediaService.js';
 
 const router = express.Router();
 const BT = '```';
@@ -120,11 +121,17 @@ router.post('/grade-subjective', async (req, res) => {
   }
 
   let kcscContext = '';
+  let wikiGrounding = '';
   try {
     const kcscQuery = `${question || ''} ${rowHeader || ''} ${activeExplanation ? activeExplanation.substring(0, 300) : ''}`.trim();
-    kcscContext = await getKcscVerificationContext(kcscQuery, category);
-  } catch (kcscErr) {
-    console.warn('[gradingRoutes] KCSC verification context warning:', kcscErr.message);
+    const [kcscRes, wikiRes] = await Promise.allSettled([
+      getKcscVerificationContext(kcscQuery, category),
+      getWikipediaKnowledge(kcscQuery)
+    ]);
+    if (kcscRes.status === 'fulfilled') kcscContext = kcscRes.value || '';
+    if (wikiRes.status === 'fulfilled') wikiGrounding = wikiRes.value || '';
+  } catch (searchErr) {
+    console.warn('[gradingRoutes] Verification & wiki context warning:', searchErr.message);
   }
 
   try {
@@ -142,12 +149,17 @@ router.post('/grade-subjective', async (req, res) => {
           gradingStandards: dynamicGradingStandards,
           engineeringStandards: dynamicEngineeringStandards,
           isReevaluation: isReeval,
-          kcscContext
+          kcscContext,
+          wikiGrounding
         });
         if (progressId) {
           stopBackendProgressTimer(progressId, 90, '1단계: 제출 답안 AI 정밀 분석 완료', true, progressTimer);
         }
-        return res.json(result);
+        return res.json({
+          ...result,
+          wikiGrounding,
+          kcscGrounding: kcscContext
+        });
       } catch (err) {
         lastError = err;
         attempt++;
@@ -169,7 +181,9 @@ router.post('/grade-subjective', async (req, res) => {
       score: localCorrect ? 10 : 0,
       reason: localCorrect 
         ? '로컬 단순 비교로 정답 판정' 
-        : 'AI 채점 오버로드로 평가 실패 (재평가 버튼을 눌러주세요)'
+        : 'AI 채점 오버로드로 평가 실패 (재평가 버튼을 눌러주세요)',
+      wikiGrounding,
+      kcscGrounding: kcscContext
     });
   } catch (outerErr) {
     console.error('Outer AI grading error:', outerErr);

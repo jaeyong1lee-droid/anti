@@ -266,6 +266,13 @@ export async function searchStandards(query, docType = null, limit = 10) {
         score += 30;
       }
 
+      // 개별 단어/토큰 분할 검색 (다중 키워드 매칭)
+      const tokens = q.split(/[\s,._/]+/).filter(w => w.length >= 2 && !['시공', '공사', '기준', '설계', '해석'].includes(w));
+      for (const token of tokens) {
+        if (name.includes(token)) score += 40;
+        if (parents.includes(token)) score += 15;
+      }
+
       // 동의어 및 공학 키워드 가중치
       if ((q.includes('dmm') || q.includes('심층혼합')) && (name.includes('고결공') || code === '113030' || name.includes('연약지반'))) {
         score += 60;

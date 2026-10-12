@@ -14,6 +14,7 @@ import { generateCalcTopicQuiz } from '../plugins/calculationPlugin.js';
 import * as itemQuizPlugin from '../plugins/formulaItemQuizPlugin.js';
 import pdfParse from 'pdf-parse';
 import { getWikipediaKnowledge } from '../services/wikipediaService.js';
+import { getKcscVerificationContext } from '../services/kcscService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -713,12 +714,18 @@ ${adjustments.map((a, idx) => `
     const coreSubject = getCoreSubjectFromTitle(topic.title);
     const topicInstructionsPrompt = await getFormattedTopicInstructions(topicId);
 
-    // 📚 문제 출제 전 위키피디아 사전 지식 조회 (이론/정의 환각 차단)
+    // 📚 문제 출제 전 위키피디아 사전 지식 및 KCSC 국가건설기준 공식 기준값 조회 (환각 차단 및 기준 일치)
     let wikiGrounding = '';
+    let kcscGrounding = '';
     try {
-      wikiGrounding = await getWikipediaKnowledge(`${topic.title} ${topic.keywords || ''}`);
+      const [wikiRes, kcscRes] = await Promise.allSettled([
+        getWikipediaKnowledge(`${topic.title} ${topic.keywords || ''}`),
+        getKcscVerificationContext(`${topic.title} ${topic.keywords || ''}`, topic.category)
+      ]);
+      if (wikiRes.status === 'fulfilled') wikiGrounding = wikiRes.value || '';
+      if (kcscRes.status === 'fulfilled') kcscGrounding = kcscRes.value || '';
     } catch (wErr) {
-      console.warn('[Quiz Gen] Wikipedia knowledge lookup error:', wErr.message);
+      console.warn('[Quiz Gen] Knowledge lookup error:', wErr.message);
     }
 
     const activeGenerationStandards = generationStandardsList && generationStandardsList.length > 0
@@ -736,6 +743,7 @@ ${adjustments.map((a, idx) => `
 [핵심 키워드]: ${topic.keywords || '제공되지 않음'}
 [첨부파일 본문 텍스트](HTML 공부노트): ${fileText || '제공되지 않음'}
 ${wikiGrounding ? `\n${wikiGrounding}\n` : ''}
+${kcscGrounding ? `\n${kcscGrounding}\n` : ''}
 
 [출제 요구사항]:
 1. 1번 문항 (첨부 이미지의 물음과 본문 HTML의 답변을 분석한 표채우기 질문) - type: "주관식 (표채우기)"
@@ -865,6 +873,7 @@ ${flowchartSpecificInstruction}
 [핵심 키워드]: ${topic.keywords || '제공되지 않음'}
 [핵심 소스 텍스트]: ${fileText || '제공되지 않음'}
 ${wikiGrounding ? `\n${wikiGrounding}\n` : ''}
+${kcscGrounding ? `\n${kcscGrounding}\n` : ''}
 
 [🚨 토픽 범위 엄격 제한 및 출제 범위 확충 — 최우선 준수사항]:
 - **맹목적으로 [첨부파일 본문 텍스트]의 지엽적인 자구에만 국한하여 문제를 출제하지 마십시오.** 
@@ -1014,6 +1023,7 @@ ${activeEngineeringStandards}
 [핵심 키워드]: ${topic.keywords || '제공되지 않음'}
 [첨부파일 본문 텍스트]: ${fileText || '제공되지 않음'}
 ${wikiGrounding ? `\n${wikiGrounding}\n` : ''}
+${kcscGrounding ? `\n${kcscGrounding}\n` : ''}
 
 [출제 요구사항]:
 반드시 총 2개의 주관식 (표채우기) 문제를 다음과 같이 구성하여 출제하십시오:
@@ -1097,6 +1107,8 @@ ${adjustmentsPrompt}
 [토픽 원본 제목]: ${topic.title}
 [핵심 키워드]: ${topic.keywords || '제공되지 않음'}
 [첨부파일 본문 텍스트]: ${fileText || '제공되지 않음'}
+${wikiGrounding ? `\n${wikiGrounding}\n` : ''}
+${kcscGrounding ? `\n${kcscGrounding}\n` : ''}
 
 - **🚨 [토픽 명칭 정제 및 찌꺼기 제거 철칙]**: 문제를 출제할 때 질문 지문에 "공학 해석 보고서", "공부노트", "요약본" 같은 문서 형태를 가리키는 군더더기 찌꺼기 명칭을 그대로 주어로 사용하지 마십시오. 문제 지문에는 오직 순수한 공학 핵심 주제인 **"${coreSubject}"** 명칭만을 활용하여 질문 문장을 다듬으십시오.
 
@@ -1158,7 +1170,12 @@ let parsedArray = null;
       // Save to session and return - clear old cached keys first to prevent orphaned _q keys
       await dbQuery.run("DELETE FROM app_session WHERE key LIKE ?", [`review_questions_topic_${topicId}%`]);
       await saveSessionValue(`review_questions_topic_${topicId}`, JSON.stringify({ questions: finalCalcQuestions }));
-      return res.json({ success: true, questions: finalCalcQuestions });
+      return res.json({
+        success: true,
+        questions: finalCalcQuestions,
+        wikiGrounding,
+        kcscGrounding
+      });
     } else {
       const targetModel = (req.body && req.body.preferredModel) || globalPreferredModel || 'gemini-3.5-flash-lite';
       const [batch1Text, batch2Text, batch3Text] = await Promise.all([
@@ -1282,7 +1299,9 @@ let parsedArray = null;
     res.json({
       questions: deduplicated,
       isFallback: false,
-      scheduleId: resolvedScheduleId
+      scheduleId: resolvedScheduleId,
+      wikiGrounding,
+      kcscGrounding
     });
 
   } catch (err) {

@@ -15,6 +15,7 @@ import { defaultOverviews, generateOverviewTutorResponse } from '../plugins/over
 import { SVG_DIAGRAM_PROMPT } from '../plugins/svgDiagramPlugin.js';
 import { CHART_DIAGRAM_PROMPT } from '../plugins/chartPlugin.js';
 import { getWikipediaKnowledge } from '../services/wikipediaService.js';
+import { getKcscVerificationContext } from '../services/kcscService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -1437,16 +1438,26 @@ router.post('/chat', async (req, res) => {
     }
     structuredPrompt += currentMessage;
 
-    // 📚 사용자 질문에 대해 먼저 위키피디아 지반공학 사전 지식을 조회하여 주입 (환각 방지)
+    // 📚 사용자 질문에 대해 먼저 위키피디아 지반공학 사전 지식 및 KCSC 국가건설기준 공식 기준값 조회 (환각 방지)
     let wikiGrounding = '';
+    let kcscGrounding = '';
     try {
-      wikiGrounding = await getWikipediaKnowledge(currentMessage || message);
+      const queryText = currentMessage || message;
+      const [wRes, kRes] = await Promise.allSettled([
+        getWikipediaKnowledge(queryText),
+        getKcscVerificationContext(queryText)
+      ]);
+      if (wRes.status === 'fulfilled') wikiGrounding = wRes.value || '';
+      if (kRes.status === 'fulfilled') kcscGrounding = kRes.value || '';
     } catch (wErr) {
-      console.warn('[Chat] Wikipedia knowledge lookup error:', wErr.message);
+      console.warn('[Chat] Grounding lookup error:', wErr.message);
     }
 
     if (wikiGrounding) {
       structuredPrompt = `${wikiGrounding}\n\n${structuredPrompt}`;
+    }
+    if (kcscGrounding) {
+      structuredPrompt = `${kcscGrounding}\n\n${structuredPrompt}`;
     }
 
     try {
@@ -1487,7 +1498,11 @@ ${LATEX_CHAT_PROMPT_INSTRUCTIONS}`;
       if (progressId) {
         updateProgress(progressId, 1, '1단계: 답변 생성 완료!', 100);
       }
-      res.json({ text: healedText });
+      res.json({
+        text: healedText,
+        wikiGrounding,
+        kcscGrounding
+      });
     } catch (err) {
       console.error('Chat route error:', err);
       if (progressId) {
