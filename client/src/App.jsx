@@ -3474,17 +3474,43 @@ export default function App() {
     showNotification(`⚡ [${finalTitle || topicTitle}] 5장 슬라이드 작성을 백그라운드에서 시작했습니다. 창을 닫고 다른 작업을 계속하실 수 있습니다.`, 'info');
 
     try {
-      const res = await fetch(`${API_BASE}/api/topics/${encodeURIComponent(finalTopicId)}/slides/generate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sourceText: customSourceText || undefined,
-          topicTitle: finalTitle
-        })
-      });
+      const maxRetries = 2;
+      let attempt = 0;
+      let res = null;
+      let lastErr = null;
+
+      while (attempt <= maxRetries) {
+        try {
+          res = await fetch(`${API_BASE}/api/topics/${encodeURIComponent(finalTopicId)}/slides/generate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              sourceText: customSourceText || undefined,
+              topicTitle: finalTitle
+            })
+          });
+          break;
+        } catch (fetchErr) {
+          lastErr = fetchErr;
+          attempt++;
+          if (attempt <= maxRetries) {
+            console.warn(`[Background Slide Generation] 네트워크 일시 중단 감지, 재시도 중 (${attempt}/${maxRetries}):`, fetchErr.message);
+            await new Promise(r => setTimeout(r, 1500));
+          }
+        }
+      }
+
+      if (!res) {
+        throw lastErr || new Error('네트워크 연결이 일시적으로 원활하지 않습니다.');
+      }
+
       if (res.ok) {
         showNotification(`🎉 [${finalTitle || topicTitle}] 5장 프레젠테이션 슬라이드(PPT) 완성이 완료되었습니다!`, 'success');
         setSlideRefreshTick(t => t + 1);
+        // ✨ 생성이 완료되면 사용자 화면에 완성된 5장 슬라이드 덱 팝업을 즉시 오픈!
+        setTopicSlideModalId(finalTopicId);
+        setTopicSlideModalTitle(finalTitle || topicTitle);
+        setShowTopicSlideModal(true);
       } else if (res.status === 409) {
         showNotification(`[${finalTitle || topicTitle}] 이미 슬라이드 덱이 작성 중입니다.`, 'info');
       } else {
@@ -3493,7 +3519,7 @@ export default function App() {
       }
     } catch (err) {
       console.error('[Background Slide Generation Error]:', err);
-      showNotification(`[${finalTitle || topicTitle}] 슬라이드 덱 통신 오류가 발생했습니다.`, 'error');
+      showNotification(`[${finalTitle || topicTitle}] 슬라이드 덱 통신 오류가 발생했습니다: ${err.message || ''}`, 'error');
     } finally {
       setGeneratingSlideTopicIds(prev => {
         const copy = { ...prev };

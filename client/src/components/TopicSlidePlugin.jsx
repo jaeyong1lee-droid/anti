@@ -192,7 +192,7 @@ export default function TopicSlidePlugin({
           try {
             setIsConvertingPdf(true);
             setConvertProgress({ current: 0, total: 0 });
-            const fileRes = await fetch(`${apiBase}/api/topics/${topicId}/slides/file`);
+            const fileRes = await fetch(`${apiBase}/api/topics/${encodeURIComponent(topicId)}/slides/file`);
             if (fileRes.ok) {
               const buffer = await fileRes.arrayBuffer();
               const converted = await convertPdfToJpgSlides(buffer, (cur, tot) => {
@@ -203,7 +203,7 @@ export default function TopicSlidePlugin({
 
               // 향후 재방문 시 즉각 로딩을 위해 서버에 JPG 덱 캐시 저장
               try {
-                await fetch(`${apiBase}/api/topics/${topicId}/slides`, {
+                await fetch(`${apiBase}/api/topics/${encodeURIComponent(topicId)}/slides`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
@@ -354,7 +354,7 @@ export default function TopicSlidePlugin({
           slides: convertedSlides
         }));
 
-        const res = await fetch(`${apiBase}/api/topics/${topicId}/slides`, {
+        const res = await fetch(`${apiBase}/api/topics/${encodeURIComponent(topicId)}/slides`, {
           method: 'POST',
           body: formData
         });
@@ -395,7 +395,7 @@ export default function TopicSlidePlugin({
           slides: imageSlides
         }));
 
-        const res = await fetch(`${apiBase}/api/topics/${topicId}/slides`, {
+        const res = await fetch(`${apiBase}/api/topics/${encodeURIComponent(topicId)}/slides`, {
           method: 'POST',
           body: formData
         });
@@ -427,7 +427,7 @@ export default function TopicSlidePlugin({
     setIsUploading(true);
     setErrorMsg(null);
     try {
-      const res = await fetch(`${apiBase}/api/topics/${topicId}/slides`, {
+      const res = await fetch(`${apiBase}/api/topics/${encodeURIComponent(topicId)}/slides`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -455,7 +455,7 @@ export default function TopicSlidePlugin({
   const handleDeleteSlides = async () => {
     if (!window.confirm('등록된 슬라이드 자료(JPG 파일 및 덱)를 완전히 삭제하시겠습니까?')) return;
     try {
-      const res = await fetch(`${apiBase}/api/topics/${topicId}/slides`, {
+      const res = await fetch(`${apiBase}/api/topics/${encodeURIComponent(topicId)}/slides`, {
         method: 'DELETE'
       });
       if (res.ok) {
