@@ -135,7 +135,8 @@ export async function generateAuthoritativeModelAnswer({
   callLLMWithFailover,
   gradingStandards,
   engineeringStandards,
-  isReevaluation = false
+  isReevaluation = false,
+  kcscContext = ''
 }) {
   const isCalcQuestion = ((colHeader && colHeader.includes('수치 계산 답안')) || category === '계산');
 
@@ -157,6 +158,7 @@ ${rowHeader ? `- 표 행 제목 (Row Header): ${rowHeader}` : ''}
 ${colHeader ? `- 표/빈칸 구분 제목 (Column Header): ${colHeader}` : ''}
 ${correctAnswer ? `- 기존 기준 요약: ${correctAnswer}` : ''}
 ${explanation ? `- 원보고서 및 전공 본문 해설 (Source Context):\n${explanation.substring(0, 4000)}` : ''}
+${kcscContext ? `\n[🏛️ 국가건설기준(KCSC KDS/KCS) 법정 기준값 및 시공/품질 규정]:\n${kcscContext}\n` : ''}
 
 ${isReevaluation ? `🚨 **[심층 모범 답안 도출 철칙]**:
 - 기존 요약 문장에 안주하거나 그대로 답습하지 마십시오.
@@ -268,7 +270,7 @@ ${LATEX_PROMPT_INSTRUCTIONS}`;
   return correctAnswer || '공학적 기준에 부합하는 표준 답안';
 }
 
-export async function gradeSubjective({ question, correctAnswer, userAnswer, rowHeader, colHeader, explanation, category, callLLMWithFailover, gradingStandards, engineeringStandards, isReevaluation = false }) {
+export async function gradeSubjective({ question, correctAnswer, userAnswer, rowHeader, colHeader, explanation, category, callLLMWithFailover, gradingStandards, engineeringStandards, isReevaluation = false, kcscContext = '' }) {
   if (!userAnswer) {
     return { isCorrect: false, score: 0, reason: '답안이 비어 있습니다.', suggestedModelAnswer: correctAnswer };
   }
@@ -281,7 +283,8 @@ export async function gradeSubjective({ question, correctAnswer, userAnswer, row
     // 정확 일치 시에도 풍부한 모범 답안을 생성하여 학습 효과 극대화 (채점 LLM은 스킵하여 속도 최적화)
     const richModelAnswer = await generateAuthoritativeModelAnswer({
       question, correctAnswer, rowHeader, colHeader, explanation, category,
-      callLLMWithFailover, gradingStandards, engineeringStandards, isReevaluation
+      callLLMWithFailover, gradingStandards, engineeringStandards, isReevaluation,
+      kcscContext
     });
     return { isCorrect: true, score: 10, reason: '텍스트가 모범 답안과 정확히 일치합니다.', suggestedModelAnswer: richModelAnswer };
   }
@@ -297,7 +300,8 @@ export async function gradeSubjective({ question, correctAnswer, userAnswer, row
     callLLMWithFailover,
     gradingStandards,
     engineeringStandards,
-    isReevaluation
+    isReevaluation,
+    kcscContext
   });
 
   // 2. Grade User Answer against the Authoritative Model Answer
@@ -311,6 +315,12 @@ ${(rowHeader && (rowHeader.includes('(') || rowHeader.includes('상자') || rowH
 - 본 플로우차트 문항은 각 상자마다 [단계 제목]과 [세부 활동] 2개의 빈칸이 짝을 이룹니다. (예: 2단계=(A)제목, (B)세부활동 / 4단계=(C)제목, (D)세부활동).
 - 절대로 (B)를 4단계로 건너뛰어 착각하지 마시고, 지정된 상자 위치의 공학적 본질 및 기준 모범 답안에 맞춰 공정하게 채점하십시오.` : ''}
 ${explanation ? `- 전체 해설 (Explanation): ${explanation}` : ''}
+${kcscContext ? `
+🚨 [🏛️ 국가건설기준(KCSC KDS/KCS) 공식 기준값 및 시공·품질 검증 지침]:
+- 아래 국가건설기준 공식 기준값(허용오차, 안전율, 양생일령, 대기시간, 강도 등)과 시공/품질 필수 검사 항목을 최우선 검증 잣대로 삼으십시오.
+- 사용자의 답안(userAnswer)이 공인 기준값이나 시공 규정과 부합하면 만점/가점을 부여하고, 공식 기준값에 반하거나 왜곡된 수치/공법을 기재한 경우 감점하고 KCSC 기준을 명시하십시오.
+${kcscContext}
+` : ''}
 - 기준 모범 답안 (Canonical Model Answer): ${authoritativeModelAnswer}
 - 사용자의 답안 (Student Answer): ${userAnswer}
 

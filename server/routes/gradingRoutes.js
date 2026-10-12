@@ -9,6 +9,7 @@ import { ENGINEERING_STANDARDS, standardsList as engineeringStandardsList } from
 import { GENERATION_STANDARDS, generationStandardsList } from '../plugins/generationStandards.js';
 import { FLOWCHART_QUIZ_GENERATION_PROMPT } from '../plugins/flowchartQuizPlugin.js';
 import * as ocrPlugin from '../plugins/calculationPlugin.js';
+import { getKcscVerificationContext } from '../services/kcscService.js';
 
 const router = express.Router();
 const BT = '```';
@@ -118,6 +119,14 @@ router.post('/grade-subjective', async (req, res) => {
     }
   }
 
+  let kcscContext = '';
+  try {
+    const kcscQuery = `${question || ''} ${rowHeader || ''} ${activeExplanation ? activeExplanation.substring(0, 300) : ''}`.trim();
+    kcscContext = await getKcscVerificationContext(kcscQuery, category);
+  } catch (kcscErr) {
+    console.warn('[gradingRoutes] KCSC verification context warning:', kcscErr.message);
+  }
+
   try {
     while (attempt < maxAttempts) {
       try {
@@ -132,7 +141,8 @@ router.post('/grade-subjective', async (req, res) => {
           callLLMWithFailover: localCallLLM,
           gradingStandards: dynamicGradingStandards,
           engineeringStandards: dynamicEngineeringStandards,
-          isReevaluation: isReeval
+          isReevaluation: isReeval,
+          kcscContext
         });
         if (progressId) {
           stopBackendProgressTimer(progressId, 90, '1단계: 제출 답안 AI 정밀 분석 완료', true, progressTimer);

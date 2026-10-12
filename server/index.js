@@ -21,6 +21,7 @@ import topicRoutes from './routes/topicRoutes.js';
 import quizRoutes from './routes/quizRoutes.js';
 import gradingRoutes from './routes/gradingRoutes.js';
 import lockscreenRoutes from './routes/lockscreenRoutes.js';
+import kcscRoutes from './routes/kcscRoutes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -228,6 +229,7 @@ app.use('/api', topicRoutes);
 app.use('/api', quizRoutes);
 app.use('/api', gradingRoutes);
 app.use('/api/lockscreen', lockscreenRoutes);
+app.use('/api/kcsc', kcscRoutes);
 
 // Static Client Asset Serving for Production deployments
 const clientBuildPath = path.resolve(__dirname, '../client/dist');

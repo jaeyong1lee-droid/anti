@@ -47,5 +47,6 @@ scratch/
 node-v*
 *.zip
 *.mjs
+server/data/kcsc_cache/*.json
 
 
