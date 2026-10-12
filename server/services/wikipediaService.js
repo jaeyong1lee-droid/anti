@@ -14,6 +14,7 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { fileURLToPath } from 'url';
+import { callLLMWithFailover } from './aiService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -71,6 +72,9 @@ export const GEO_CIVIL_EN_WIKI_MAP = {
   '모래다짐말뚝': 'Vibroflotation',
   '웰포인트': 'Wellpoint',
   '진공압밀': 'Vacuum consolidation',
+  '언더피닝': 'Underpinning',
+  '지반조사': 'Geotechnical investigation',
+  '시추조사': 'Geotechnical investigation',
 
   // 2. 토질역학 및 전단강도 (Soil Mechanics & Shear Strength)
   '삼축압축': 'Triaxial shear test',
@@ -356,9 +360,88 @@ export async function searchWiki(query, lang = 'en', limit = 5) {
 }
 
 /**
+ * 🤖 AI 기반 영문 지반·토목공학 표준 표제어 정제 시스템 프롬프트
+ */
+export const WIKI_AI_REFINE_SYSTEM_PROMPT = `You are a Civil & Geotechnical Engineering Terminology Expert.
+Given a Korean engineering query, question, or topic, extract and translate it into the single most canonical English Wikipedia article title for civil/geotechnical engineering.
+Use standard, established English Wikipedia titles (e.g. 'Slope stability', 'Tunnel boring machine', 'Retaining wall', 'Deep cement mixing', 'Deep foundation', 'Rock mass classification', 'Bearing capacity', 'Soil mechanics', 'Grouting', 'Underpinning', 'Slurry wall').
+Prefer general, canonical Wikipedia article titles over overly narrow composite phrases.
+
+Rules:
+1. Output ONLY the exact English Wikipedia article title.
+2. If the input is not related to civil, geotechnical, geological, or structural engineering, output 'NONE'.
+3. Do not output explanations, markdown, quotes, or trailing punctuation.`;
+
+/**
+ * 🤖 국문 질문/토픽을 AI(Gemini)로 분석하여 영문 위키백과 표준 표제어로 동적 정제
+ * - 1순위: 내장 딕셔너리(GEO_CIVIL_EN_WIKI_MAP) 0ms 즉각 매칭
+ * - 2순위: 캐시(Memory & File) 적중 시 즉각 반환
+ * - 3순위: Gemini LLM으로 영문 표준 전공 표제어 추출 (비전공 질문은 'NONE' 반환)
+ * @param {string} queryText 
+ * @returns {Promise<string|null>} 정제된 영문 표제어 또는 null
+ */
+export async function refineQueryToEnglishWikiTitle(queryText) {
+  if (!queryText || typeof queryText !== 'string' || queryText.trim().length < 2) return null;
+  
+  // 1. 사전 매핑 즉각 확인 (0ms)
+  const directMatch = resolveEnglishWikiTitle(queryText);
+  if (directMatch) return directMatch;
+
+  const cleanInput = queryText.trim().substring(0, 300);
+  const cacheKey = `ai_refine_${Buffer.from(cleanInput).toString('base64').substring(0, 48)}`;
+
+  // 2. 인메모리 캐시 확인
+  if (memoryWikiCache.has(cacheKey)) {
+    return memoryWikiCache.get(cacheKey);
+  }
+
+  // 3. 디스크 캐시 확인
+  const cachePath = path.join(WIKI_CACHE_DIR, `${encodeURIComponent(cacheKey)}.json`);
+  if (fs.existsSync(cachePath)) {
+    try {
+      const data = JSON.parse(fs.readFileSync(cachePath, 'utf8'));
+      if (data && data.refinedTitle) {
+        memoryWikiCache.set(cacheKey, data.refinedTitle);
+        return data.refinedTitle;
+      }
+    } catch (e) {}
+  }
+
+  // 4. AI(Gemini) 동적 번역 및 표제어 정제
+  try {
+    const rawEnTitle = await callLLMWithFailover(
+      WIKI_AI_REFINE_SYSTEM_PROMPT,
+      `Input text: "${cleanInput}"\nCanonical English Wikipedia title:`,
+      null,
+      { temperature: 0.1, preferredModel: 'gemini-3.5-flash-lite' },
+      'general'
+    );
+    const cleanTitle = (rawEnTitle || '')
+      .trim()
+      .replace(/^['"`]+|['"`]+$/g, '')
+      .replace(/^Wikipedia:\s*/i, '')
+      .replace(/[.\n\r]+$/, '')
+      .trim();
+
+    if (cleanTitle) {
+      memoryWikiCache.set(cacheKey, cleanTitle);
+      try {
+        fs.writeFileSync(cachePath, JSON.stringify({ original: cleanInput, refinedTitle: cleanTitle }, null, 2), 'utf8');
+      } catch (err) {}
+      return cleanTitle;
+    }
+  } catch (err) {
+    console.warn('[wikipediaService] AI refinement error:', err.message);
+  }
+
+  return null;
+}
+
+/**
  * 📚 [핵심 함수]: 질문이나 토픽에 대해 영문 위키피디아 사전 지식을 정밀 조회하여 Grounding 블록 반환
- * - 1순위: 지반공학 한-영 매핑 딕셔너리 기반 정확한 영문 위키 문서(Deep cement mixing 등) 즉각 추출
- * - 2순위: 질문 내 영문 전문 키워드(Terzaghi 등) 기반 영문 위키 공학 문서 검색
+ * - 1순위: 지반공학 한-영 매핑 딕셔너리 기반 정확한 영문 위키 문서(Deep cement mixing 등) 즉각 추출 (0ms)
+ * - 2순위: AI(Gemini) 동적 영문 표제어 정제 레이어 가동 -> 영문 위키 요약/검색 연동
+ * - 3순위: 질문 내 영문 전문 키워드(Terzaghi 등) 기반 영문 위키 공학 문서 검색
  * - [철칙]: 검색어와 무관한 일반 문서([정유공장], [미세 플라스틱] 등) 100% 기각 및 차단
  * @param {string} queryOrMessage 질문 텍스트 또는 토픽명
  */
@@ -367,7 +450,7 @@ export async function getWikipediaKnowledge(queryOrMessage) {
 
   const queryStr = String(queryOrMessage).trim();
 
-  // 1. 영문 지반공학 표준 표제어 매핑 확인
+  // 1. 영문 지반공학 표준 표제어 사전 매핑 확인 (0ms 초고속)
   const matchedEnTitle = resolveEnglishWikiTitle(queryStr);
   let summary = null;
 
@@ -375,15 +458,40 @@ export async function getWikipediaKnowledge(queryOrMessage) {
     summary = await getWikiSummary(matchedEnTitle, 'en');
   }
 
-  // 2. 매핑 미적중 시: 영문 전문 용어(학자명, 기술명 등)가 질문에 포함되어 있는 경우에 한해 영문 위키 공학 검색
+  // 2. 사전 매핑 미적중 시: AI 기반 영문 지반공학 표준 표제어 동적 정제 레이어 가동
+  if (!summary) {
+    const aiRefinedTitle = await refineQueryToEnglishWikiTitle(queryStr);
+    if (aiRefinedTitle && aiRefinedTitle.toUpperCase() === 'NONE') {
+      // 🛑 AI가 비전공/무관 주제로 판정(NONE)한 경우, 억지 검색을 중단하고 즉시 빈값 반환 (오염 차단)
+      return '';
+    }
+    if (aiRefinedTitle) {
+      summary = await getWikiSummary(aiRefinedTitle, 'en');
+      
+      // 위키 표제어 직통 매칭 실패 시 키워드 연관 검색으로 2차 확인
+      if (!summary) {
+        const hits = await searchWiki(`${aiRefinedTitle} geotechnical`, 'en', 3);
+        for (const hit of hits) {
+          const hitText = (hit.title + ' ' + hit.snippet).toLowerCase();
+          const isGeoRelated = /soil|rock|geotechnical|foundation|ground|civil|slope|retaining|tunnel|shear|mechanics|earth|dam|concrete|grout|drilling|excavation|consolidation|settlement/.test(hitText);
+          if (isGeoRelated) {
+            summary = await getWikiSummary(hit.title, 'en');
+            if (summary) break;
+          }
+        }
+      }
+    }
+  }
+
+  // 3. 본문 내 영문 전문 용어(학자명, 기술명 등) 검출 시 공학 연관 검색
   if (!summary) {
     const enTerms = queryStr.match(/\b[A-Za-z]{3,15}\b/g) || [];
     for (const term of enTerms) {
+      if (['the', 'and', 'for', 'with', 'from', 'this', 'that', 'none'].includes(term.toLowerCase())) continue;
       const hits = await searchWiki(`${term} geotechnical`, 'en', 3);
       for (const hit of hits) {
-        // 공학 연관 검증 (title 또는 snippet에 지반/토목 관련어가 있어야만 채택)
         const hitText = (hit.title + ' ' + hit.snippet).toLowerCase();
-        const isGeoRelated = /soil|rock|geotechnical|foundation|ground|civil|slope|retaining|tunnel|shear|mechanics/.test(hitText);
+        const isGeoRelated = /soil|rock|geotechnical|foundation|ground|civil|slope|retaining|tunnel|shear|mechanics|earth|dam|concrete|grout/.test(hitText);
         if (isGeoRelated) {
           const s = await getWikiSummary(hit.title, 'en');
           if (s) {
@@ -396,8 +504,8 @@ export async function getWikipediaKnowledge(queryOrMessage) {
     }
   }
 
-  // 3. 지반공학적 연관성이 전혀 없는 경우 엉뚱한 문서([정유공장] 등)를 강제 주입하지 않고 빈값 반환
-  if (!summary) return '';
+  // 4. 지반공학적 연관성이 전혀 없는 경우 엉뚱한 문서([정유공장] 등)를 강제 주입하지 않고 빈값 반환 (철칙 준수)
+  if (!summary || !summary.extract) return '';
 
   const block = `- **표제어**: [${summary.title}] (English Wikipedia)
   - **공학적 정의 및 핵심 내용**:

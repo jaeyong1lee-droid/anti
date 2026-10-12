@@ -9,7 +9,8 @@ import express from 'express';
 import {
   getWikiSummary,
   searchWiki,
-  getWikipediaKnowledge
+  getWikipediaKnowledge,
+  refineQueryToEnglishWikiTitle
 } from '../services/wikipediaService.js';
 
 const router = express.Router();
@@ -68,6 +69,24 @@ router.get('/grounding', async (req, res) => {
     res.json({ success: true, groundingContext: grounding });
   } catch (err) {
     console.error('[wikipediaRoutes] /grounding error:', err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/**
+ * GET /api/wiki/refine
+ * 국문 질문/토픽을 AI 기반 영문 위키피디아 표준 표제어로 동적 정제
+ */
+router.get('/refine', async (req, res) => {
+  try {
+    const { q } = req.query;
+    if (!q) {
+      return res.status(400).json({ success: false, error: '검색어(q)를 입력하십시오.' });
+    }
+    const refinedTitle = await refineQueryToEnglishWikiTitle(q);
+    res.json({ success: true, original: q, refinedTitle });
+  } catch (err) {
+    console.error('[wikipediaRoutes] /refine error:', err.message);
     res.status(500).json({ success: false, error: err.message });
   }
 });
