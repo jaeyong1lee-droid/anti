@@ -48,5 +48,6 @@ node-v*
 *.zip
 *.mjs
 server/data/kcsc_cache/*.json
+server/data/wiki_cache/*.json
 
 

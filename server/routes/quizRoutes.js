@@ -13,6 +13,7 @@ import * as ocrPlugin from '../plugins/calculationPlugin.js';
 import { generateCalcTopicQuiz } from '../plugins/calculationPlugin.js';
 import * as itemQuizPlugin from '../plugins/formulaItemQuizPlugin.js';
 import pdfParse from 'pdf-parse';
+import { getWikipediaKnowledge } from '../services/wikipediaService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -712,6 +713,14 @@ ${adjustments.map((a, idx) => `
     const coreSubject = getCoreSubjectFromTitle(topic.title);
     const topicInstructionsPrompt = await getFormattedTopicInstructions(topicId);
 
+    // 📚 문제 출제 전 위키피디아 사전 지식 조회 (이론/정의 환각 차단)
+    let wikiGrounding = '';
+    try {
+      wikiGrounding = await getWikipediaKnowledge(`${topic.title} ${topic.keywords || ''}`);
+    } catch (wErr) {
+      console.warn('[Quiz Gen] Wikipedia knowledge lookup error:', wErr.message);
+    }
+
     const activeGenerationStandards = generationStandardsList && generationStandardsList.length > 0
       ? generationStandardsList.map((std, idx) => `${idx + 1}. **${std.title}**:\n   - ${std.content}`).join('\n')
       : GENERATION_STANDARDS;
@@ -726,6 +735,7 @@ ${adjustments.map((a, idx) => `
 [토픽 원본 제목]: ${topic.title}
 [핵심 키워드]: ${topic.keywords || '제공되지 않음'}
 [첨부파일 본문 텍스트](HTML 공부노트): ${fileText || '제공되지 않음'}
+${wikiGrounding ? `\n${wikiGrounding}\n` : ''}
 
 [출제 요구사항]:
 1. 1번 문항 (첨부 이미지의 물음과 본문 HTML의 답변을 분석한 표채우기 질문) - type: "주관식 (표채우기)"
@@ -854,6 +864,7 @@ ${flowchartSpecificInstruction}
 [토픽 원본 제목]: ${topic.title}
 [핵심 키워드]: ${topic.keywords || '제공되지 않음'}
 [핵심 소스 텍스트]: ${fileText || '제공되지 않음'}
+${wikiGrounding ? `\n${wikiGrounding}\n` : ''}
 
 [🚨 토픽 범위 엄격 제한 및 출제 범위 확충 — 최우선 준수사항]:
 - **맹목적으로 [첨부파일 본문 텍스트]의 지엽적인 자구에만 국한하여 문제를 출제하지 마십시오.** 
@@ -1002,6 +1013,7 @@ ${activeEngineeringStandards}
 [토픽 원본 제목]: ${topic.title}
 [핵심 키워드]: ${topic.keywords || '제공되지 않음'}
 [첨부파일 본문 텍스트]: ${fileText || '제공되지 않음'}
+${wikiGrounding ? `\n${wikiGrounding}\n` : ''}
 
 [출제 요구사항]:
 반드시 총 2개의 주관식 (표채우기) 문제를 다음과 같이 구성하여 출제하십시오:

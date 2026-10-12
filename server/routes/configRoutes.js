@@ -14,6 +14,7 @@ import { defaultAcronyms, generateAcronymTutorResponse } from '../plugins/acrony
 import { defaultOverviews, generateOverviewTutorResponse } from '../plugins/overviewsPlugin.js';
 import { SVG_DIAGRAM_PROMPT } from '../plugins/svgDiagramPlugin.js';
 import { CHART_DIAGRAM_PROMPT } from '../plugins/chartPlugin.js';
+import { getWikipediaKnowledge } from '../services/wikipediaService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -1435,6 +1436,18 @@ router.post('/chat', async (req, res) => {
       }
     }
     structuredPrompt += currentMessage;
+
+    // 📚 사용자 질문에 대해 먼저 위키피디아 지반공학 사전 지식을 조회하여 주입 (환각 방지)
+    let wikiGrounding = '';
+    try {
+      wikiGrounding = await getWikipediaKnowledge(currentMessage || message);
+    } catch (wErr) {
+      console.warn('[Chat] Wikipedia knowledge lookup error:', wErr.message);
+    }
+
+    if (wikiGrounding) {
+      structuredPrompt = `${wikiGrounding}\n\n${structuredPrompt}`;
+    }
 
     try {
       const systemInstruction = `당신은 대한민국 국가기술자격 기술사 시험(토질및기초기술사, 토목구조기술사, 토목시공기술사, 도로및공항기술사, 수자원개발기술사, 상하수도기술사, 터널기술사 등 토목공학 전 분야) 최고 권위의 기술사 시험 전문 튜터입니다.
