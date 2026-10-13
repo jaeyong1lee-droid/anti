@@ -862,6 +862,29 @@ async function resolveTopic(topicId) {
 
 const MAX_RECENT_LOCKSCREEN_SLIDES = 10;
 
+function normalizeSlideDeck(deck) {
+  if (!deck || !Array.isArray(deck.slides)) return deck;
+  deck.slides.forEach(slide => {
+    if (slide && slide.visual_component) {
+      if (slide.visual_component.summary_cards && !slide.visual_component.cards) {
+        slide.visual_component.cards = slide.visual_component.summary_cards;
+        slide.visual_component.type = slide.visual_component.type || 'summary_cards';
+      }
+      if (slide.visual_component.items && !slide.visual_component.cards) {
+        slide.visual_component.cards = slide.visual_component.items;
+        slide.visual_component.type = slide.visual_component.type || 'summary_cards';
+      }
+      if (Array.isArray(slide.visual_component)) {
+        slide.visual_component = {
+          type: 'summary_cards',
+          cards: slide.visual_component
+        };
+      }
+    }
+  });
+  return deck;
+}
+
 async function getRecentLockscreenSlide(title) {
   try {
     const row = await dbQuery.get("SELECT value FROM app_session WHERE key = 'recent_lockscreen_slides'");
@@ -869,7 +892,11 @@ async function getRecentLockscreenSlide(title) {
       const list = JSON.parse(row.value);
       if (Array.isArray(list)) {
         const clean = String(title).trim();
-        return list.find(item => item.title === clean || item.id === clean) || null;
+        const found = list.find(item => item.title === clean || item.id === clean) || null;
+        if (found && found.slide_deck) {
+          found.slide_deck = normalizeSlideDeck(found.slide_deck);
+        }
+        return found;
       }
     }
   } catch (err) {
@@ -894,9 +921,11 @@ async function saveRecentLockscreenSlide(title, slideDeck, slideUrl = null, slid
     const clean = String(title).trim();
     const existingIndex = list.findIndex(item => item.title === clean || item.id === clean);
 
+    const normalizedDeck = normalizeSlideDeck(slideDeck);
+
     const entry = {
       title: clean,
-      slide_deck: slideDeck || null,
+      slide_deck: normalizedDeck || null,
       slide_url: slideUrl || null,
       slide_name: slideName || null,
       updatedAt: Date.now()
@@ -935,7 +964,7 @@ router.get('/topics/:id/slides', async (req, res) => {
         slide_name: recentSlide?.slide_name || null,
         slide_url: recentSlide?.slide_url || null,
         has_file: false,
-        slide_deck: recentSlide?.slide_deck || null,
+        slide_deck: normalizeSlideDeck(recentSlide?.slide_deck || null),
         is_generating: activeSlideGenerations.has(cleanTitle)
       });
     }
@@ -943,7 +972,7 @@ router.get('/topics/:id/slides', async (req, res) => {
     let deck = null;
     if (topic.slide_deck_json) {
       try {
-        deck = JSON.parse(topic.slide_deck_json);
+        deck = normalizeSlideDeck(JSON.parse(topic.slide_deck_json));
       } catch (e) {
         deck = null;
       }
@@ -1218,9 +1247,10 @@ ${LATEX_PROMPT_INSTRUCTIONS}
 ${(sourceText || '').slice(0, 7000)}`;
 
     const responseText = await callLLMWithFailover(systemPrompt, userPrompt, null, 'source-search');
-    const parsedDeck = parseLlmJson(responseText);
+    let parsedDeck = parseLlmJson(responseText);
 
     if (parsedDeck && parsedDeck.slides && Array.isArray(parsedDeck.slides)) {
+      parsedDeck = normalizeSlideDeck(parsedDeck);
       const deckJsonStr = JSON.stringify(parsedDeck);
       // Only persist to DB for real (registered) topics with a valid numeric id
       if (topic.id && !topic._virtual) {

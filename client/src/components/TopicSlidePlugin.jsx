@@ -953,11 +953,14 @@ export default function TopicSlidePlugin({
                         </span>
                         <span className="text-[9px] text-slate-500 font-mono">
                           {(() => {
-                            if (currentAiSlide.visual_component?.chart || currentAiSlide.visual_component?.chart_data || currentAiSlide.visual_component?.type === 'chart' || (Array.isArray(currentAiSlide.visual_component?.data) && currentAiSlide.visual_component.data.length > 0)) {
-                              return 'Interactive Chart';
-                            }
+                            const chartData = currentAiSlide.visual_component?.chart || 
+                                              currentAiSlide.visual_component?.chart_data || 
+                                              (currentAiSlide.visual_component?.type === 'chart' ? currentAiSlide.visual_component : null) ||
+                                              (Array.isArray(currentAiSlide.visual_component?.data) && currentAiSlide.visual_component.data.length > 0 ? currentAiSlide.visual_component : null);
+                            if (chartData) return 'Interactive Chart';
                             if (currentAiSlide.image_url) return 'Diagram Visual';
                             if (currentAiSlide.visual_component?.svg) return 'Vector Diagram';
+                            if (currentAiSlide.visual_component?.matrix || currentAiSlide.visual_component?.table) return 'Comparison Matrix';
                             return 'Engineering Matrix';
                           })()}
                         </span>
@@ -1001,28 +1004,104 @@ export default function TopicSlidePlugin({
                         </div>
                       )}
 
-                      {/* 4. 카드 매트릭스 렌더링 */}
-                      {currentAiSlide.visual_component?.cards && (
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 my-2">
-                          {currentAiSlide.visual_component.cards.map((card, cIdx) => (
-                            <div
-                              key={cIdx}
-                              className={`p-2 rounded-xl border flex flex-col gap-1 ${
-                                card.highlight
-                                  ? 'bg-amber-950/40 border-amber-500/50 text-amber-200'
-                                  : 'bg-[#0E1626] border-slate-800 text-slate-300'
-                              }`}
-                            >
-                              <span className="text-[9px] font-bold text-slate-400 tracking-wider">
-                                <SlideLatex text={card.label} />
-                              </span>
-                              <span className="text-xs font-black">
-                                <SlideLatex text={card.content || ''} />
-                              </span>
+                      {/* 4. 카드 매트릭스 렌더링 (cards, summary_cards, items 및 배열 지원) */}
+                      {(() => {
+                        const rawCards = currentAiSlide.visual_component?.cards || 
+                                         currentAiSlide.visual_component?.summary_cards || 
+                                         currentAiSlide.visual_component?.items || 
+                                         (Array.isArray(currentAiSlide.visual_component) ? currentAiSlide.visual_component : null);
+
+                        if (!rawCards || !Array.isArray(rawCards) || rawCards.length === 0) return null;
+
+                        const gridColsClass = rawCards.length === 1 
+                          ? 'grid-cols-1' 
+                          : rawCards.length === 2 
+                            ? 'grid-cols-1 sm:grid-cols-2' 
+                            : rawCards.length === 4 
+                              ? 'grid-cols-1 sm:grid-cols-2' 
+                              : 'grid-cols-1 sm:grid-cols-3';
+
+                        return (
+                          <div className={`grid ${gridColsClass} gap-2 my-2`}>
+                            {rawCards.map((card, cIdx) => (
+                              <div
+                                key={cIdx}
+                                className={`p-2.5 rounded-xl border flex flex-col gap-1 transition-all ${
+                                  card.highlight
+                                    ? 'bg-amber-950/40 border-amber-500/50 text-amber-200 shadow-[0_0_12px_rgba(245,158,11,0.15)]'
+                                    : 'bg-[#0E1626] border-slate-800 text-slate-300'
+                                }`}
+                              >
+                                <span className="text-[9.5px] font-bold text-slate-400 tracking-wider">
+                                  <SlideLatex text={card.label || card.title || `Point ${cIdx + 1}`} />
+                                </span>
+                                <span className="text-xs font-black leading-snug">
+                                  <SlideLatex text={card.content || card.desc || card.value || ''} />
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })()}
+
+                      {/* 5. 비교 매트릭스 / 테이블 시각화 (matrix 또는 table 형식 지원) */}
+                      {(() => {
+                        const tableData = currentAiSlide.visual_component?.matrix || currentAiSlide.visual_component?.table;
+                        if (!tableData) return null;
+                        const headers = tableData.headers || tableData.columns;
+                        const rows = tableData.rows || tableData.data;
+                        if (!Array.isArray(headers) || !Array.isArray(rows) || rows.length === 0) return null;
+
+                        return (
+                          <div className="my-2 overflow-x-auto rounded-xl border border-slate-800 bg-[#0E1626]/80 p-2">
+                            <table className="w-full text-left text-xs border-collapse">
+                              <thead>
+                                <tr className="border-b border-slate-700/60 text-slate-400 text-[10px] font-bold">
+                                  {headers.map((h, i) => (
+                                    <th key={i} className="pb-1.5 px-2"><SlideLatex text={String(h)} /></th>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {rows.map((row, rIdx) => (
+                                  <tr key={rIdx} className="border-b border-slate-800/40 text-slate-300 hover:bg-slate-800/30">
+                                    {(Array.isArray(row) ? row : Object.values(row)).map((cell, cIdx) => (
+                                      <td key={cIdx} className="py-1.5 px-2 text-[11px]"><SlideLatex text={String(cell)} /></td>
+                                    ))}
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        );
+                      })()}
+
+                      {/* 6. 시각화 컴포넌트 부재 시 자동 고득점 핵심 정리 Fallback */}
+                      {(() => {
+                        const hasChart = currentAiSlide.visual_component?.chart || 
+                                          currentAiSlide.visual_component?.chart_data || 
+                                          (currentAiSlide.visual_component?.type === 'chart') ||
+                                          (Array.isArray(currentAiSlide.visual_component?.data) && currentAiSlide.visual_component.data.length > 0);
+                        const hasCards = currentAiSlide.visual_component?.cards || 
+                                         currentAiSlide.visual_component?.summary_cards || 
+                                         currentAiSlide.visual_component?.items || 
+                                         (Array.isArray(currentAiSlide.visual_component) && currentAiSlide.visual_component.length > 0);
+                        const hasTable = currentAiSlide.visual_component?.matrix || currentAiSlide.visual_component?.table;
+                        const hasAnyVisual = currentAiSlide.image_url || hasChart || currentAiSlide.visual_component?.svg || hasCards || hasTable;
+
+                        if (hasAnyVisual) return null;
+
+                        return (
+                          <div className="my-3 p-3.5 rounded-xl bg-slate-900/70 border border-slate-800 flex flex-col gap-2 shadow-inner">
+                            <div className="text-[10px] font-bold text-sky-400 tracking-wider flex items-center gap-1.5">
+                              <span>💡 Core Takeaway & Focus</span>
                             </div>
-                          ))}
-                        </div>
-                      )}
+                            <p className="text-xs text-slate-200 leading-relaxed font-medium">
+                              <SlideLatex text={currentAiSlide.key_takeaway || '핵심 공학 개념과 실무 시사점을 종합 검토하십시오.'} />
+                            </p>
+                          </div>
+                        );
+                      })()}
 
                       {/* 기술사 착안점 & 엔지니어 노트 */}
                       {currentAiSlide.engineer_note && (
