@@ -503,3 +503,137 @@ export async function searchSourceDocumentWithGeminiLite(systemInstruction, user
     isSourceSearch: true
   });
 }
+
+let topicGroundingCache = {
+  rows: null,
+  loadedAt: 0
+};
+
+async function getCachedTopicsForGrounding() {
+  const now = Date.now();
+  if (topicGroundingCache.rows && (now - topicGroundingCache.loadedAt < 60000)) {
+    return topicGroundingCache.rows;
+  }
+  try {
+    const rows = await dbQuery.all(
+      `SELECT id, title, keywords, category, extracted_text 
+       FROM topics 
+       WHERE extracted_text IS NOT NULL AND extracted_text != ''`
+    );
+    topicGroundingCache.rows = Array.isArray(rows) ? rows : [];
+    topicGroundingCache.loadedAt = now;
+    return topicGroundingCache.rows;
+  } catch (err) {
+    console.warn('[TopicGrounding] Failed to load topics cache:', err.message);
+    return topicGroundingCache.rows || [];
+  }
+}
+
+/**
+ * 질문 텍스트 또는 topicId를 기반으로 DB에 등록된 토픽 본문(extracted_text)을 검색하여
+ * 프롬프트 주입용 컨텍스트 문자열로 반환합니다.
+ */
+export async function getMatchingTopicContent(queryText = '', topicId = null, maxChars = 5000) {
+  try {
+    const rows = await getCachedTopicsForGrounding();
+    const numericId = Number(topicId);
+
+    // 1. 명시적 topicId가 주어진 경우 최우선 매칭
+    if (!isNaN(numericId) && numericId > 0) {
+      let target = rows.find(r => Number(r.id) === numericId);
+      if (!target) {
+        target = await dbQuery.get(
+          `SELECT id, title, keywords, category, extracted_text FROM topics WHERE id = ?`,
+          [numericId]
+        );
+      }
+      if (target && target.extracted_text && !target.extracted_text.includes('수기로 등록한 토픽')) {
+        const text = target.extracted_text.trim().substring(0, maxChars);
+        return `[📚 관련 등록 토픽 본문 (${target.title})]:\n${text}`;
+      }
+    }
+
+    // 2. queryText 기반 키워드/제목 스마트 매칭
+    const qClean = String(queryText || '').trim().toLowerCase();
+    if (!qClean || qClean.length < 2 || rows.length === 0) return '';
+
+    const GENERIC_WORDS = new Set([
+      '및', '의', '에', '와', '과', '대한', '위한', '방법', '특성', '검토', '해석',
+      '비교', '종류', '원인', '대책', '정의', '개념', '이론', '공법', '시험', '측정',
+      '기준', '설계', '시공', '관리', '영향', '요소', '현상', '방지', '산정', '공식',
+      '문제', '설명', '특징', '장단점', '차이점', '유도', '계산', '적용', '원리', '거동',
+      '단순', '테스트', '질문', '결과', '이용한', '분석', '추정', '결정', '산출', '조사',
+      '평가', '계획', '검증', '일반', '구조', '지반', '토질', '기초', '토목', '현장'
+    ]);
+
+    const scored = [];
+    for (const row of rows) {
+      if (!row.extracted_text || row.extracted_text.includes('수기로 등록한 토픽')) continue;
+      let score = 0;
+      let matchedSpecificTerm = false;
+      const titleLower = String(row.title || '').trim().toLowerCase();
+      const titleCore = titleLower.replace(/\([^)]*\)/g, '').trim();
+
+      if (titleLower && titleLower.length >= 2 && qClean.includes(titleLower)) {
+        score += 25;
+        matchedSpecificTerm = true;
+      } else if (titleCore && titleCore.length >= 2 && qClean.includes(titleCore)) {
+        score += 20;
+        matchedSpecificTerm = true;
+      }
+
+      // 제목 단어 매칭
+      const titleTokens = titleLower
+        .split(/[\s,·/()[\]\-_]+/)
+        .map(t => t.trim())
+        .filter(t => t.length >= 2);
+
+      for (const token of titleTokens) {
+        if (qClean.includes(token)) {
+          if (GENERIC_WORDS.has(token)) {
+            score += 1;
+          } else {
+            score += 8;
+            matchedSpecificTerm = true;
+          }
+        }
+      }
+
+      // 키워드 매칭
+      const kwTokens = String(row.keywords || '')
+        .toLowerCase()
+        .split(/[\s,·/()[\]]+/)
+        .map(t => t.trim())
+        .filter(t => t.length >= 2);
+
+      for (const kw of kwTokens) {
+        if (qClean.includes(kw)) {
+          if (GENERIC_WORDS.has(kw)) {
+            score += 1;
+          } else {
+            score += 6;
+            matchedSpecificTerm = true;
+          }
+        }
+      }
+
+      if (matchedSpecificTerm && score >= 8) {
+        scored.push({ row, score });
+      }
+    }
+
+    scored.sort((a, b) => b.score - a.score);
+    const topMatches = scored.slice(0, 2);
+    if (topMatches.length === 0) return '';
+
+    const perTopicLimit = Math.floor(maxChars / topMatches.length);
+    const blocks = topMatches.map(
+      ({ row }) => `[📚 관련 등록 토픽 본문 (${row.title})]:\n${row.extracted_text.trim().substring(0, perTopicLimit)}`
+    );
+    return blocks.join('\n\n');
+  } catch (err) {
+    console.warn('[getMatchingTopicContent] Error:', err.message);
+    return '';
+  }
+}
+

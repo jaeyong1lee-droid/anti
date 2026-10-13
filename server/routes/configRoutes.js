@@ -4,7 +4,7 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { dbQuery } from '../database.js';
 import { put, get } from '@vercel/blob';
-import { saveSessionValue, globalPreferredModel, updatePreferredModel, callLLMWithFailover, startBackendProgressTimer, updateProgress } from '../services/aiService.js';
+import { saveSessionValue, globalPreferredModel, updatePreferredModel, callLLMWithFailover, startBackendProgressTimer, updateProgress, getMatchingTopicContent } from '../services/aiService.js';
 import { updateLiveEngineeringStandards, standardsList, ENGINEERING_STANDARDS } from '../plugins/engineeringStandards.js';
 import { updateLiveGradingStandards, gradingStandardsList } from '../plugins/gradingPlugin.js';
 import { updateLiveGenerationStandards, generationStandardsList } from '../plugins/generationStandards.js';
@@ -1364,6 +1364,7 @@ router.post('/session/exam', async (req, res) => {
 // POST /api/chat
 router.post('/chat', async (req, res) => {
   const { message, history, image, images, overviewMode, acronymMode } = req.body;
+  const topicId = req.body.topicId || req.body.topic_id || null;
   const progressId = req.body.progressId || req.query.progressId;
   const localCallLLM = (sys, prompt, img, scenario, opts) => 
     callLLMWithFailover(sys, prompt, img, scenario, { ...opts, progressId });
@@ -1382,14 +1383,39 @@ router.post('/chat', async (req, res) => {
   }
 
   try {
+    // 📚 모든 튜터 모드(일반/개요/두문자)에서 위키피디아 + KCSC 국가건설기준 + 등록 토픽 본문 3대 근거 조회
+    let wikiGrounding = '';
+    let kcscGrounding = '';
+    let topicGrounding = '';
+    try {
+      const queryText = (message || '').trim();
+      if (queryText || topicId) {
+        const [wRes, kRes, tRes] = await Promise.allSettled([
+          getWikipediaKnowledge(queryText),
+          getKcscVerificationContext(queryText),
+          getMatchingTopicContent(queryText, topicId, 6000)
+        ]);
+        if (wRes.status === 'fulfilled') wikiGrounding = wRes.value || '';
+        if (kRes.status === 'fulfilled') kcscGrounding = kRes.value || '';
+        if (tRes.status === 'fulfilled') topicGrounding = tRes.value || '';
+      }
+    } catch (wErr) {
+      console.warn('[Chat] Grounding lookup error:', wErr.message);
+    }
+
+    const groundingBlock = [topicGrounding, wikiGrounding, kcscGrounding].filter(Boolean).join('\n\n');
+
     if (overviewMode) {
       try {
-        const responseText = await generateOverviewTutorResponse(message, imageArg, localCallLLM);
+        const enrichedMessage = groundingBlock
+          ? `${message}\n\n[참고 근거 자료 (등록 토픽 본문 / 위키피디아 / KCSC 국가건설기준 - 표 내용 작성 시 참고하되 출력 형식은 표만 유지)]:\n${groundingBlock}`
+          : message;
+        const responseText = await generateOverviewTutorResponse(enrichedMessage, imageArg, localCallLLM);
         const healedText = healLatexFormulas(responseText);
         if (progressId) {
           updateProgress(progressId, 1, '1단계: 개요서 생성 완료!', 100);
         }
-        return res.json({ text: healedText });
+        return res.json({ text: healedText, wikiGrounding, kcscGrounding, topicGrounding });
       } catch (err) {
         console.error('Overview tutor generation error:', err);
         if (progressId) {
@@ -1401,12 +1427,15 @@ router.post('/chat', async (req, res) => {
 
     if (acronymMode) {
       try {
-        const responseText = await generateAcronymTutorResponse(message, imageArg, localCallLLM);
+        const enrichedMessage = groundingBlock
+          ? `${message}\n\n[참고 근거 자료 (등록 토픽 본문 / 위키피디아 / KCSC 국가건설기준 - 두문자 설명 작성 시 참고하되 출력 형식 준수)]:\n${groundingBlock}`
+          : message;
+        const responseText = await generateAcronymTutorResponse(enrichedMessage, imageArg, localCallLLM);
         const healedText = healLatexFormulas(responseText);
         if (progressId) {
           updateProgress(progressId, 1, '1단계: 앞글자 연상 완료!', 100);
         }
-        return res.json({ text: healedText });
+        return res.json({ text: healedText, wikiGrounding, kcscGrounding, topicGrounding });
       } catch (err) {
         console.error('Acronym tutor generation error:', err);
         if (progressId) {
@@ -1438,26 +1467,8 @@ router.post('/chat', async (req, res) => {
     }
     structuredPrompt += currentMessage;
 
-    // 📚 사용자 질문에 대해 먼저 위키피디아 지반공학 사전 지식 및 KCSC 국가건설기준 공식 기준값 조회 (환각 방지)
-    let wikiGrounding = '';
-    let kcscGrounding = '';
-    try {
-      const queryText = currentMessage || message;
-      const [wRes, kRes] = await Promise.allSettled([
-        getWikipediaKnowledge(queryText),
-        getKcscVerificationContext(queryText)
-      ]);
-      if (wRes.status === 'fulfilled') wikiGrounding = wRes.value || '';
-      if (kRes.status === 'fulfilled') kcscGrounding = kRes.value || '';
-    } catch (wErr) {
-      console.warn('[Chat] Grounding lookup error:', wErr.message);
-    }
-
-    if (wikiGrounding) {
-      structuredPrompt = `${wikiGrounding}\n\n${structuredPrompt}`;
-    }
-    if (kcscGrounding) {
-      structuredPrompt = `${kcscGrounding}\n\n${structuredPrompt}`;
+    if (groundingBlock) {
+      structuredPrompt = `${groundingBlock}\n\n${structuredPrompt}`;
     }
 
     try {
@@ -1501,7 +1512,8 @@ ${LATEX_CHAT_PROMPT_INSTRUCTIONS}`;
       res.json({
         text: healedText,
         wikiGrounding,
-        kcscGrounding
+        kcscGrounding,
+        topicGrounding
       });
     } catch (err) {
       console.error('Chat route error:', err);

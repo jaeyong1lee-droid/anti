@@ -1,6 +1,6 @@
 import express from 'express';
 import { dbQuery } from '../database.js';
-import { saveSessionValue, callLLMWithFailover } from '../services/aiService.js';
+import { saveSessionValue, callLLMWithFailover, getMatchingTopicContent } from '../services/aiService.js';
 import { 
   getRandomLockscreenExamQuestion, 
   loadAllPastExamQuestions,
@@ -132,6 +132,24 @@ router.post('/hint', async (req, res) => {
 
     const callLLM = getCallLLM(req);
 
+    let wikiGrounding = '';
+    let kcscContext = '';
+    let topicGrounding = '';
+    try {
+      const [wRes, kRes, tRes] = await Promise.allSettled([
+        getWikipediaKnowledge(text),
+        getKcscVerificationContext(text),
+        getMatchingTopicContent(text, null, 5000)
+      ]);
+      if (wRes.status === 'fulfilled') wikiGrounding = wRes.value || '';
+      if (kRes.status === 'fulfilled') kcscContext = kRes.value || '';
+      if (tRes.status === 'fulfilled') topicGrounding = tRes.value || '';
+    } catch (gErr) {
+      console.warn('[lockscreenRoutes/hint] Grounding lookup error:', gErr.message);
+    }
+
+    const groundingBlock = [topicGrounding, wikiGrounding, kcscContext].filter(Boolean).join('\n\n');
+
     const systemInstruction = `당신은 대한민국 최고의 토목/지반공학 기술사 전문 튜터입니다.
 수험생이 풀고 있는 기술사 1교시 단답형 기출문제에 대해 **비전공자나 초보자도 한눈에 직관적으로 이해할 수 있도록 '아주 쉽고 명쾌한 설명과 핵심 힌트'**를 제공해 주십시오.
 
@@ -143,7 +161,7 @@ router.post('/hint', async (req, res) => {
 5. 수식이 필요한 경우 LaTeX($...$) 문법을 올바르게 사용하십시오.
 ${dynamicEngineeringStandards}`;
 
-    const userPrompt = `다음 기술사 기출문제에 대해 아주 쉽고 직관적인 힌트와 핵심 설명을 작성해 주십시오:
+    const userPrompt = `${groundingBlock ? `${groundingBlock}\n\n` : ''}다음 기술사 기출문제에 대해 아주 쉽고 직관적인 힌트와 핵심 설명을 작성해 주십시오:
 
 [문제]
 ${sessionInfo ? `[${sessionInfo} ${numberInfo}] ` : ''}${text}`;
@@ -153,7 +171,10 @@ ${sessionInfo ? `[${sessionInfo} ${numberInfo}] ` : ''}${text}`;
 
     res.json({
       success: true,
-      hint: healedText
+      hint: healedText,
+      wikiGrounding,
+      kcscGrounding: kcscContext,
+      topicGrounding
     });
   } catch (err) {
     console.error('POST /api/lockscreen/hint error:', err);
@@ -190,16 +211,19 @@ router.post('/grade', async (req, res) => {
 
     const callLLM = getCallLLM(req);
 
-    // 📚 락스크린 기출 채점 시 위키피디아 사전 지식 및 KCSC 국가건설기준 공식 기준값 조회 (환각 방지 및 기준 일치)
+    // 📚 락스크린 기출 채점 시 위키피디아 사전 지식 + KCSC 국가건설기준 공식 기준값 + 등록 토픽 본문 3대 근거 조회
     let wikiGrounding = '';
     let kcscContext = '';
+    let topicGrounding = '';
     try {
-      const [wRes, kRes] = await Promise.allSettled([
+      const [wRes, kRes, tRes] = await Promise.allSettled([
         getWikipediaKnowledge(questionText),
-        getKcscVerificationContext(questionText)
+        getKcscVerificationContext(questionText),
+        getMatchingTopicContent(questionText, null, 5000)
       ]);
       if (wRes.status === 'fulfilled') wikiGrounding = wRes.value || '';
       if (kRes.status === 'fulfilled') kcscContext = kRes.value || '';
+      if (tRes.status === 'fulfilled') topicGrounding = tRes.value || '';
     } catch (gErr) {
       console.warn('[lockscreenRoutes] Grounding lookup error:', gErr.message);
     }
@@ -215,7 +239,7 @@ router.post('/grade', async (req, res) => {
 채점관 평가 수칙:
 1. 사용자가 문제 제목이나 제시된 단어를 단순히 되묻거나(예: '?'), 문제 단어만 앵무새처럼 반복한 경우 반드시 0점~1점으로 엄격히 오답 처리하십시오.
 2. 1교시 기술사 문제에 걸맞게 해당 토픽의 정의(개념), 발생 메커니즘(원인 및 지반 거동 특성), 핵심 공식(수식), 판정 기준/설계 고려사항 중 유효한 공학적 설명이 실질적으로 포함되어 있는지를 엄격하게 평가하십시오.
-3. 고도화된 완성형 모범 답안(suggestedModelAnswer)에는 개념의 정의, 수식/공식(LaTeX), 그리고 실무/판정 기준을 체계적으로 서술하십시오.`,
+3. 고도화된 완성형 모범 답안(suggestedModelAnswer)에는 개념의 정의, 수식/공식(LaTeX), 그리고 실무/판정 기준을 체계적으로 서술하십시오.${topicGrounding ? `\n\n${topicGrounding}` : ''}`,
       category: '일반',
       callLLMWithFailover: callLLM,
       gradingStandards: dynamicGradingStandards,
@@ -267,7 +291,10 @@ router.post('/grade', async (req, res) => {
 
     res.json({
       success: true,
-      result: gradingResult
+      result: gradingResult,
+      wikiGrounding,
+      kcscGrounding: kcscContext,
+      topicGrounding
     });
   } catch (err) {
     console.error('POST /api/lockscreen/grade error:', err);

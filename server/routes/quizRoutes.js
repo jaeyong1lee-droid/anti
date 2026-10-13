@@ -2577,6 +2577,20 @@ router.post('/exam/all', async (req, res) => {
     const combinedText = topicTexts.join('\n\n---\n\n');
     const topicTitles = topics.map(t => t.title).join(', ');
 
+    let wikiGrounding = '';
+    let kcscGrounding = '';
+    try {
+      const groundingQuery = topics.slice(0, 12).map(t => `${t.title} ${t.keywords || ''}`).join(' ').trim();
+      const [wRes, kRes] = await Promise.allSettled([
+        getWikipediaKnowledge(groundingQuery),
+        getKcscVerificationContext(groundingQuery)
+      ]);
+      if (wRes.status === 'fulfilled') wikiGrounding = wRes.value || '';
+      if (kRes.status === 'fulfilled') kcscGrounding = kRes.value || '';
+    } catch (gErr) {
+      console.warn('[종합평가] Grounding lookup warning:', gErr.message);
+    }
+
     // Fetch all user feedbacks (upvoted / downvoted) to adjust frequency in exam prompt
     let feedbackPrompt = '';
     try {
@@ -2694,6 +2708,8 @@ ${adjustments.map((a, idx) => `
 [평가 범위 토픽 목록]: ${topicTitles}
 [통합 소스 텍스트]:
 ${combinedText}
+${wikiGrounding ? `\n${wikiGrounding}\n` : ''}
+${kcscGrounding ? `\n${kcscGrounding}\n` : ''}
 
 ${feedbackPrompt}
 
@@ -3074,6 +3090,20 @@ router.post('/exam/additional', async (req, res) => {
     const combinedText = topicTexts.join('\n\n---\n\n');
     const topicTitles = topics.map(t => t.title).join(', ');
 
+    let wikiGrounding = '';
+    let kcscGrounding = '';
+    try {
+      const groundingQuery = topics.slice(0, 12).map(t => `${t.title} ${t.keywords || ''}`).join(' ').trim();
+      const [wRes, kRes] = await Promise.allSettled([
+        getWikipediaKnowledge(groundingQuery),
+        getKcscVerificationContext(groundingQuery)
+      ]);
+      if (wRes.status === 'fulfilled') wikiGrounding = wRes.value || '';
+      if (kRes.status === 'fulfilled') kcscGrounding = kRes.value || '';
+    } catch (gErr) {
+      console.warn('[종합평가 추가] Grounding lookup warning:', gErr.message);
+    }
+
     // Retrieve custom formula questions from database
     let customFormulas = [];
     try {
@@ -3203,6 +3233,8 @@ router.post('/exam/additional', async (req, res) => {
 
 [평가 범위 토픽 목록 및 본문]:
 ${combinedText}
+${wikiGrounding ? `\n${wikiGrounding}\n` : ''}
+${kcscGrounding ? `\n${kcscGrounding}\n` : ''}
 
 [인용된 필수공식 목록]:
 ${formulasText || '인용된 내용 없음'}

@@ -1,7 +1,7 @@
 import express from 'express';
 import pdfParse from 'pdf-parse';
 import { dbQuery } from '../database.js';
-import { callLLMWithFailover, analyzeStandardsBeforeTask, getTopicText, startBackendProgressTimer, updateProgress, stopBackendProgressTimer, globalPreferredModel } from '../services/aiService.js';
+import { callLLMWithFailover, analyzeStandardsBeforeTask, getTopicText, getMatchingTopicContent, startBackendProgressTimer, updateProgress, stopBackendProgressTimer, globalPreferredModel } from '../services/aiService.js';
 import { healQuizQuestionObject, parseLlmJson, healLatexFormulas, validateAndHealQuestion } from '../utils/latexUtils.js';
 import * as fileUtils from '../utils/fileUtils.js';
 import { gradeSubjective, GRADING_STANDARDS, gradingStandardsList } from '../plugins/gradingPlugin.js';
@@ -100,38 +100,29 @@ router.post('/grade-subjective', async (req, res) => {
 
   let activeExplanation = explanation || '';
   const topicId = req.body.topicId || req.body.topic_id;
-  if ((!activeExplanation || activeExplanation.length < 30) && (topicId || question)) {
-    try {
-      let topicRow = null;
-      if (topicId) {
-        topicRow = await dbQuery.get('SELECT extracted_text FROM topics WHERE id = ?', [topicId]);
-      }
-      if (!topicRow && question) {
-        const qClean = String(question).replace(/수치\s*계산.*/, '').trim();
-        if (qClean.length > 5) {
-          topicRow = await dbQuery.get('SELECT extracted_text FROM topics WHERE title LIKE ? OR extracted_text LIKE ? LIMIT 1', [`%${qClean.substring(0, 15)}%`, `%${qClean.substring(0, 15)}%`]);
-        }
-      }
-      if (topicRow && topicRow.extracted_text) {
-        activeExplanation = topicRow.extracted_text;
-      }
-    } catch (e) {
-      console.warn('[gradingRoutes] Auto-enrich explanation error:', e.message);
-    }
-  }
-
+  let topicGrounding = '';
   let kcscContext = '';
   let wikiGrounding = '';
+
   try {
-    const kcscQuery = `${question || ''} ${rowHeader || ''} ${activeExplanation ? activeExplanation.substring(0, 300) : ''}`.trim();
-    const [kcscRes, wikiRes] = await Promise.allSettled([
-      getKcscVerificationContext(kcscQuery, category),
-      getWikipediaKnowledge(kcscQuery)
+    const searchQuery = `${question || ''} ${rowHeader || ''} ${activeExplanation ? activeExplanation.substring(0, 300) : ''}`.trim();
+    const [topicRes, kcscRes, wikiRes] = await Promise.allSettled([
+      getMatchingTopicContent(`${question || ''} ${rowHeader || ''}`, topicId, 5000),
+      getKcscVerificationContext(searchQuery, category),
+      getWikipediaKnowledge(searchQuery)
     ]);
+    if (topicRes.status === 'fulfilled' && topicRes.value) {
+      topicGrounding = topicRes.value;
+      if (!activeExplanation) {
+        activeExplanation = topicGrounding;
+      } else if (!activeExplanation.includes(topicGrounding.substring(0, 80))) {
+        activeExplanation = `${activeExplanation}\n\n${topicGrounding}`;
+      }
+    }
     if (kcscRes.status === 'fulfilled') kcscContext = kcscRes.value || '';
     if (wikiRes.status === 'fulfilled') wikiGrounding = wikiRes.value || '';
   } catch (searchErr) {
-    console.warn('[gradingRoutes] Verification & wiki context warning:', searchErr.message);
+    console.warn('[gradingRoutes] Verification, wiki & topic context warning:', searchErr.message);
   }
 
   try {
@@ -158,7 +149,8 @@ router.post('/grade-subjective', async (req, res) => {
         return res.json({
           ...result,
           wikiGrounding,
-          kcscGrounding: kcscContext
+          kcscGrounding: kcscContext,
+          topicGrounding
         });
       } catch (err) {
         lastError = err;
@@ -183,7 +175,8 @@ router.post('/grade-subjective', async (req, res) => {
         ? '로컬 단순 비교로 정답 판정' 
         : 'AI 채점 오버로드로 평가 실패 (재평가 버튼을 눌러주세요)',
       wikiGrounding,
-      kcscGrounding: kcscContext
+      kcscGrounding: kcscContext,
+      topicGrounding
     });
   } catch (outerErr) {
     console.error('Outer AI grading error:', outerErr);
@@ -861,10 +854,30 @@ ${otherQs.map((q, i) => `기존 문제 ${i + 1}: ${q.question || '없음'}`).joi
 `;
       }
 
+      const isCalcQuestion = topic?.category === '계산';
+      let wikiGrounding = '';
+      let kcscGrounding = '';
+      if (!isCalcQuestion) {
+        try {
+          const gQuery = `${topic.title} ${topic.keywords || ''} ${currentQuestion?.question || ''}`.trim();
+          const [wRes, kRes] = await Promise.allSettled([
+            getWikipediaKnowledge(gQuery),
+            getKcscVerificationContext(gQuery, topic.category)
+          ]);
+          if (wRes.status === 'fulfilled') wikiGrounding = wRes.value || '';
+          if (kRes.status === 'fulfilled') kcscGrounding = kRes.value || '';
+        } catch (gErr) {
+          console.warn('[Regen] Grounding lookup warning:', gErr.message);
+        }
+      }
+
       const prompt = `당신은 기술사 시험 출제위원입니다.
 ${duplicatePreventionPrompt}
 ${flowchartDuplicationPrompt}
 [토픽 제목]: ${topic.title}
+${(!isCalcQuestion && fileText) ? `[토픽 원본 본문 (Source Document)]:\n${fileText}\n` : ''}
+${wikiGrounding ? `${wikiGrounding}\n` : ''}
+${kcscGrounding ? `${kcscGrounding}\n` : ''}
 [기초 소스 문제]:
 - 질문: ${currentQuestion?.question}
 - 유형: ${targetType}
@@ -1020,11 +1033,27 @@ ${formatRequirement ? `[응답 포맷]:\n${formatRequirement}` : ''}`;
       const qType = currentQuestion?.type || '객관식';
       const qSubtype = currentQuestion?.subtype || '';
 
+      let wikiGrounding = '';
+      let kcscGrounding = '';
+      try {
+        const gQuery = `${currentQuestion?.question || ''} ${topicTitles.substring(0, 300)}`.trim();
+        const [wRes, kRes] = await Promise.allSettled([
+          getWikipediaKnowledge(gQuery),
+          getKcscVerificationContext(gQuery)
+        ]);
+        if (wRes.status === 'fulfilled') wikiGrounding = wRes.value || '';
+        if (kRes.status === 'fulfilled') kcscGrounding = kRes.value || '';
+      } catch (gErr) {
+        console.warn('[Regen Exam] Grounding lookup warning:', gErr.message);
+      }
+
       const prompt = `당신은 기술사 시험 출제위원입니다.
 ${duplicatePreventionPrompt}
 [평가 범위 토픽 목록]: ${topicTitles}
 [통합 소스 텍스트]:
 ${combinedText}
+${wikiGrounding ? `\n${wikiGrounding}\n` : ''}
+${kcscGrounding ? `\n${kcscGrounding}\n` : ''}
 
 [기초 소스 문제]:
 - 질문: ${currentQuestion?.question}
@@ -1048,7 +1077,7 @@ ${getActiveEngineeringStandards()}
       const activeTopic = topics.find(t => t.id === Number(finalTopicId));
       const activeTopicTitle = activeTopic ? activeTopic.title : '';
       const activeTopicKeywords = activeTopic ? activeTopic.keywords : '';
-      let activeTopicFileText = '';
+      const activeTopicFileText = activeTopic ? (extractedTextMap[activeTopic.id] || '') : '';
 
       const healedQ = healQuizQuestionObject({
         ...parsedQuestion,
@@ -1115,7 +1144,8 @@ router.post('/question/adjust', async (req, res) => {
     }
 
     if (mode === 'review') {
-      const topic = await dbQuery.get(`SELECT id, title, keywords, pdf_name, category, pdf_url, extracted_text FROM topics WHERE id = ?`, [topicId]);
+      const resolvedTopicId = (topicId && topicId !== 'mixed') ? topicId : (currentQuestion?.originalTopicId || currentQuestion?.topic_id || topicId);
+      const topic = await dbQuery.get(`SELECT id, title, keywords, pdf_name, category, pdf_url, extracted_text, pdf_data FROM topics WHERE id = ?`, [resolvedTopicId]);
       if (!topic) {
         if (progressTimer) clearInterval(progressTimer);
         return res.status(404).json({ error: '토픽을 찾을 수 없습니다.' });
@@ -1127,6 +1157,23 @@ router.post('/question/adjust', async (req, res) => {
         fileText = fileUtils.smartTruncate(fileText, 25000);
       }
 
+      const isCalcQuestion = topic?.category === '계산';
+      let wikiGrounding = '';
+      let kcscGrounding = '';
+      if (!isCalcQuestion) {
+        try {
+          const gQuery = `${topic.title} ${topic.keywords || ''} ${currentQuestion?.question || ''} ${userFeedback || ''}`.trim();
+          const [wRes, kRes] = await Promise.allSettled([
+            getWikipediaKnowledge(gQuery),
+            getKcscVerificationContext(gQuery, topic.category)
+          ]);
+          if (wRes.status === 'fulfilled') wikiGrounding = wRes.value || '';
+          if (kRes.status === 'fulfilled') kcscGrounding = kRes.value || '';
+        } catch (gErr) {
+          console.warn('[Adjust] Grounding lookup warning:', gErr.message);
+        }
+      }
+
       let targetType = '객관식 (4지선다)';
       const currentType = currentQuestion?.type || '';
       if (currentType.includes('개요')) targetType = '주관식 (개요)';
@@ -1136,6 +1183,10 @@ router.post('/question/adjust', async (req, res) => {
       else targetType = '객관식 (4지선다)';
 
       const prompt = `당신은 기술사 시험 출제위원입니다.
+[토픽 제목]: ${topic.title}
+${(!isCalcQuestion && fileText) ? `[토픽 원본 본문 (Source Document)]:\n${fileText}\n` : ''}
+${wikiGrounding ? `${wikiGrounding}\n` : ''}
+${kcscGrounding ? `${kcscGrounding}\n` : ''}
 [사용자 조정 요청]: "${userFeedback}"
 [기초 소스 문제]:
 - 질문: ${currentQuestion?.question}
@@ -1155,7 +1206,7 @@ ${getActiveEngineeringStandards()}
       }
 
       let parsedQuestion = parseLlmJson(text);
-      const finalTopicId = Number(topicId || currentQuestion?.topic_id);
+      const finalTopicId = Number(resolvedTopicId || currentQuestion?.topic_id);
       if (finalTopicId) {
         try {
           await dbQuery.run(
@@ -1258,6 +1309,20 @@ ${getActiveEngineeringStandards()}
       const qType = currentQuestion?.type || '객관식';
       const qSubtype = currentQuestion?.subtype || '';
 
+      let wikiGrounding = '';
+      let kcscGrounding = '';
+      try {
+        const gQuery = `${currentQuestion?.question || ''} ${userFeedback || ''} ${topicTitles.substring(0, 300)}`.trim();
+        const [wRes, kRes] = await Promise.allSettled([
+          getWikipediaKnowledge(gQuery),
+          getKcscVerificationContext(gQuery)
+        ]);
+        if (wRes.status === 'fulfilled') wikiGrounding = wRes.value || '';
+        if (kRes.status === 'fulfilled') kcscGrounding = kRes.value || '';
+      } catch (gErr) {
+        console.warn('[Adjust Exam] Grounding lookup warning:', gErr.message);
+      }
+
       const prompt = `당신은 기술사 시험 출제위원입니다.
 [사용자 조정 요청]: "${userFeedback}"
 [기초 소스 문제]:
@@ -1266,6 +1331,8 @@ ${getActiveEngineeringStandards()}
 [평가 범위 토픽 목록]: ${topicTitles}
 [통합 소스 텍스트]:
 ${combinedText}
+${wikiGrounding ? `\n${wikiGrounding}\n` : ''}
+${kcscGrounding ? `\n${kcscGrounding}\n` : ''}
 
 반드시 사용자 요구사항을 100% 반영하여 수정, 보완, 응용 또는 전면 개편된 새로운 문제 1개를 반환하십시오.
 ${getActiveGenerationStandards()}
@@ -1284,7 +1351,7 @@ ${getActiveEngineeringStandards()}
       const activeTopic = topics.find(t => t.id === Number(finalTopicId));
       const activeTopicTitle = activeTopic ? activeTopic.title : '';
       const activeTopicKeywords = activeTopic ? activeTopic.keywords : '';
-      let activeTopicFileText = '';
+      const activeTopicFileText = activeTopic ? (extractedTextMap[activeTopic.id] || '') : '';
 
       if (finalTopicId) {
         try {

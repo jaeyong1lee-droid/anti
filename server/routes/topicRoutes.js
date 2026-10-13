@@ -3,7 +3,7 @@ import multer from 'multer';
 import pdfParse from 'pdf-parse';
 import { put, del } from '@vercel/blob';
 import { dbQuery } from '../database.js';
-import { getTopicText, saveSessionValue, callLLMWithFailover } from '../services/aiService.js';
+import { getTopicText, getMatchingTopicContent, saveSessionValue, callLLMWithFailover } from '../services/aiService.js';
 import * as fileUtils from '../utils/fileUtils.js';
 import * as ocrPlugin from '../plugins/calculationPlugin.js';
 import { parseLlmJson, LATEX_PROMPT_INSTRUCTIONS } from '../utils/latexUtils.js';
@@ -1173,12 +1173,35 @@ router.post('/topics/:id/slides/generate', async (req, res) => {
       }
     }
 
+    // 📚 슬라이드 생성 시 위키피디아 사전 지식 + KCSC 국가건설기준 공식 기준값 + 관련 등록 토픽 본문 조회
+    let wikiGrounding = '';
+    let kcscGrounding = '';
+    let matchedTopicGrounding = '';
+    try {
+      const [wRes, kRes, tRes] = await Promise.allSettled([
+        getWikipediaKnowledge(`${topic.title} ${topic.keywords || ''}`),
+        getKcscVerificationContext(`${topic.title} ${topic.keywords || ''}`, topic.category || ''),
+        (!sourceText || sourceText.length < 150 || sourceText.includes('수기로 등록한 토픽'))
+          ? getMatchingTopicContent(`${topic.title} ${topic.keywords || ''}`, topic.id, 6000)
+          : Promise.resolve('')
+      ]);
+      if (wRes.status === 'fulfilled') wikiGrounding = wRes.value || '';
+      if (kRes.status === 'fulfilled') kcscGrounding = kRes.value || '';
+      if (tRes.status === 'fulfilled') matchedTopicGrounding = tRes.value || '';
+    } catch (gErr) {
+      console.warn('[Slide Gen] Grounding lookup error:', gErr.message);
+    }
+
+    if ((!sourceText || sourceText.length < 150 || sourceText.includes('수기로 등록한 토픽')) && matchedTopicGrounding) {
+      sourceText = matchedTopicGrounding;
+    }
+
     // 💡 [사용자 특별 지침] 첨부 보고서 텍스트가 없거나 부족한 경우:
     // "AI 튜터에 검색했을 때 나오는 고품질 전문 지식 및 기술사 강의 해설"을 원천 소스로 자동 생성하여 PPT 제작!
     if (!sourceText || sourceText.length < 150 || sourceText.includes('수기로 등록한 토픽')) {
       console.log(`[Slide Gen] Generating rich AI Tutor knowledge base for: ${topic.title}`);
       const tutorSysPrompt = `당신은 대한민국 토목/지반/터널 기술사 시험 최고 권위의 기술사 전문 AI 튜터입니다.\n${ENGINEERING_STANDARDS}`;
-      const tutorUserPrompt = `수험생이 [${topic.title}] 주제에 대해 학습하고자 합니다. 기술사 답안지 서술 및 현장 실무 강의 수준으로 다음 항목을 빠짐없이 포함하는 완벽하고 깊이 있는 학술적/실무적 지식 본문을 작성해 주십시오:
+      const tutorUserPrompt = `${wikiGrounding ? `${wikiGrounding}\n\n` : ''}${kcscGrounding ? `${kcscGrounding}\n\n` : ''}수험생이 [${topic.title}] 주제에 대해 학습하고자 합니다. 기술사 답안지 서술 및 현장 실무 강의 수준으로 다음 항목을 빠짐없이 포함하는 완벽하고 깊이 있는 학술적/실무적 지식 본문을 작성해 주십시오:
 1. [개요 및 정의]: 학술적 정의, 출제 빈도, 3대 핵심 키워드, 공학적 의미
 2. [거동 메커니즘 및 역학적 원리]: 물리적 메커니즘, 원리 및 거동 모식
 3. [KDS 설계기준 및 핵심 지배공식]: 관련 국가건설기준(KDS) 조항, 핵심 지배 수식 및 변수 기호 정의
@@ -1242,20 +1265,6 @@ ${LATEX_PROMPT_INSTRUCTIONS}
     }
   ]
 }`;
-
-    // 📚 슬라이드 생성 시 위키피디아 사전 지식 및 KCSC 국가건설기준 공식 기준값 조회 (환각 방지 및 기준 일치)
-    let wikiGrounding = '';
-    let kcscGrounding = '';
-    try {
-      const [wRes, kRes] = await Promise.allSettled([
-        getWikipediaKnowledge(`${topic.title} ${topic.keywords || ''}`),
-        getKcscVerificationContext(`${topic.title} ${topic.keywords || ''}`, topic.category || '')
-      ]);
-      if (wRes.status === 'fulfilled') wikiGrounding = wRes.value || '';
-      if (kRes.status === 'fulfilled') kcscGrounding = kRes.value || '';
-    } catch (gErr) {
-      console.warn('[Slide Gen] Grounding lookup error:', gErr.message);
-    }
 
     const userPrompt = `[토픽 제목]: ${topic.title}
 [키워드]: ${topic.keywords || ''}
