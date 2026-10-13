@@ -8,6 +8,8 @@ import * as fileUtils from '../utils/fileUtils.js';
 import * as ocrPlugin from '../plugins/calculationPlugin.js';
 import { parseLlmJson, LATEX_PROMPT_INSTRUCTIONS } from '../utils/latexUtils.js';
 import { ENGINEERING_STANDARDS } from '../plugins/engineeringStandards.js';
+import { getWikipediaKnowledge } from '../services/wikipediaService.js';
+import { getKcscVerificationContext } from '../services/kcscService.js';
 
 const router = express.Router();
 const storage = multer.memoryStorage();
@@ -1241,8 +1243,24 @@ ${LATEX_PROMPT_INSTRUCTIONS}
   ]
 }`;
 
+    // 📚 슬라이드 생성 시 위키피디아 사전 지식 및 KCSC 국가건설기준 공식 기준값 조회 (환각 방지 및 기준 일치)
+    let wikiGrounding = '';
+    let kcscGrounding = '';
+    try {
+      const [wRes, kRes] = await Promise.allSettled([
+        getWikipediaKnowledge(`${topic.title} ${topic.keywords || ''}`),
+        getKcscVerificationContext(`${topic.title} ${topic.keywords || ''}`, topic.category || '')
+      ]);
+      if (wRes.status === 'fulfilled') wikiGrounding = wRes.value || '';
+      if (kRes.status === 'fulfilled') kcscGrounding = kRes.value || '';
+    } catch (gErr) {
+      console.warn('[Slide Gen] Grounding lookup error:', gErr.message);
+    }
+
     const userPrompt = `[토픽 제목]: ${topic.title}
 [키워드]: ${topic.keywords || ''}
+${wikiGrounding ? `\n${wikiGrounding}\n` : ''}
+${kcscGrounding ? `\n${kcscGrounding}\n` : ''}
 [AI 튜터 전문 지식 및 상세 소스 텍스트]:
 ${(sourceText || '').slice(0, 7000)}`;
 

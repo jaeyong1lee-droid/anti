@@ -13,6 +13,8 @@ import {
 import { gradeSubjective, GRADING_STANDARDS, gradingStandardsList } from '../plugins/gradingPlugin.js';
 import { ENGINEERING_STANDARDS, engineeringStandardsList } from '../plugins/engineeringStandards.js';
 import { healLatexFormulas } from '../utils/latexUtils.js';
+import { getWikipediaKnowledge } from '../services/wikipediaService.js';
+import { getKcscVerificationContext } from '../services/kcscService.js';
 
 const router = express.Router();
 
@@ -188,6 +190,20 @@ router.post('/grade', async (req, res) => {
 
     const callLLM = getCallLLM(req);
 
+    // 📚 락스크린 기출 채점 시 위키피디아 사전 지식 및 KCSC 국가건설기준 공식 기준값 조회 (환각 방지 및 기준 일치)
+    let wikiGrounding = '';
+    let kcscContext = '';
+    try {
+      const [wRes, kRes] = await Promise.allSettled([
+        getWikipediaKnowledge(questionText),
+        getKcscVerificationContext(questionText)
+      ]);
+      if (wRes.status === 'fulfilled') wikiGrounding = wRes.value || '';
+      if (kRes.status === 'fulfilled') kcscContext = kRes.value || '';
+    } catch (gErr) {
+      console.warn('[lockscreenRoutes] Grounding lookup error:', gErr.message);
+    }
+
     const gradingResult = await gradeSubjective({
       question: `[토질및기초기술사 기출문제 ${sessionInfo} 제1교시 ${numberInfo}] ${questionText}`,
       correctAnswer: '',
@@ -203,7 +219,9 @@ router.post('/grade', async (req, res) => {
       category: '일반',
       callLLMWithFailover: callLLM,
       gradingStandards: dynamicGradingStandards,
-      engineeringStandards: dynamicEngineeringStandards
+      engineeringStandards: dynamicEngineeringStandards,
+      kcscContext,
+      wikiGrounding
     });
 
     if (gradingResult) {
