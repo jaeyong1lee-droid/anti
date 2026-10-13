@@ -381,11 +381,21 @@ function fetchWikiJson(url, timeoutMs = 8000) {
 }
 
 /**
- * 텍스트에서 괄호 속 영문 약어(DMM, SPT, CU/CD 등) 및 국문 키워드를 분석하여 영문 위키 표제어 도출
+ * 텍스트에서 괄호 속 영문 약어(DMM, SPT, CU/CD 등) 및 국문 키워드를 분석하여 복수의 영문 위키 표제어 도출
  */
-export function resolveEnglishWikiTitle(query) {
-  if (!query) return null;
+export function resolveEnglishWikiTitles(query, maxTitles = 2) {
+  if (!query) return [];
   const lower = query.toLowerCase();
+  const matched = [];
+  const seen = new Set();
+  const addTitle = (t) => {
+    if (!t) return;
+    const key = t.toLowerCase();
+    if (!seen.has(key)) {
+      seen.add(key);
+      matched.push(t);
+    }
+  };
 
   // 1. 괄호 속 핵심 영문 약어 우선 매칭 (예: (DMM), (SPT), (CU/CD), [RMR] 등)
   const acrMatches = query.matchAll(/[\(\[]([A-Za-z0-9_\/-]+)[\)\]]/g);
@@ -394,11 +404,13 @@ export function resolveEnglishWikiTitle(query) {
     const parts = rawAcr.split(/[\/,_-]/);
     for (const p of parts) {
       if (GEO_CIVIL_EN_WIKI_MAP[p]) {
-        return GEO_CIVIL_EN_WIKI_MAP[p];
+        addTitle(GEO_CIVIL_EN_WIKI_MAP[p]);
+        if (matched.length >= maxTitles) return matched;
       }
     }
     if (GEO_CIVIL_EN_WIKI_MAP[rawAcr]) {
-      return GEO_CIVIL_EN_WIKI_MAP[rawAcr];
+      addTitle(GEO_CIVIL_EN_WIKI_MAP[rawAcr]);
+      if (matched.length >= maxTitles) return matched;
     }
   }
 
@@ -407,19 +419,32 @@ export function resolveEnglishWikiTitle(query) {
   for (const w of englishWords) {
     const wLower = w.toLowerCase();
     if (GEO_CIVIL_EN_WIKI_MAP[wLower]) {
-      return GEO_CIVIL_EN_WIKI_MAP[wLower];
+      addTitle(GEO_CIVIL_EN_WIKI_MAP[wLower]);
+      if (matched.length >= maxTitles) return matched;
     }
   }
 
-  // 3. 한국어 지반공학 용어 매핑 (긴 키워드 우선 매칭)
+  // 3. 한국어 지반공학 용어 매핑 (긴 키워드 우선 매칭, 부분문자열 중복 방지)
   const sortedKeys = Object.keys(GEO_CIVIL_EN_WIKI_MAP).sort((a, b) => b.length - a.length);
+  const matchedKoKeys = [];
   for (const koKey of sortedKeys) {
     if (lower.includes(koKey)) {
-      return GEO_CIVIL_EN_WIKI_MAP[koKey];
+      if (matchedKoKeys.some(prev => prev.includes(koKey))) continue;
+      matchedKoKeys.push(koKey);
+      addTitle(GEO_CIVIL_EN_WIKI_MAP[koKey]);
+      if (matched.length >= maxTitles) return matched;
     }
   }
 
-  return null;
+  return matched;
+}
+
+/**
+ * 텍스트에서 괄호 속 영문 약어(DMM, SPT, CU/CD 등) 및 국문 키워드를 분석하여 단일 영문 위키 표제어 도출
+ */
+export function resolveEnglishWikiTitle(query) {
+  const titles = resolveEnglishWikiTitles(query, 1);
+  return titles.length > 0 ? titles[0] : null;
 }
 
 /**
@@ -610,8 +635,8 @@ export async function refineQueryToEnglishWikiTitle(queryText) {
       WIKI_AI_REFINE_SYSTEM_PROMPT,
       `Input text: "${cleanInput}"\nCanonical English Wikipedia title:`,
       null,
-      { temperature: 0.1, preferredModel: 'gemini-3.5-flash-lite' },
-      'general'
+      'general',
+      { temperature: 0.1, preferredModel: 'gemini-3.5-flash-lite' }
     );
     const cleanTitle = (rawEnTitle || '')
       .trim()
@@ -636,13 +661,14 @@ export async function refineQueryToEnglishWikiTitle(queryText) {
 
 /**
  * 📚 [핵심 함수]: 질문이나 토픽에 대해 영문 위키피디아 사전 지식을 정밀 조회하여 Grounding 블록 반환 (DB 우선 0ms 초고속)
- * - 1순위: 지반공학 한-영 매핑 딕셔너리 및 DB 표제어 캐시 즉각 추출 (0ms)
+ * - 1순위: 지반공학 한-영 매핑 딕셔너리 및 DB 표제어 캐시 즉각 추출 (최대 2개 개념 비교 대응, 0ms)
  * - 2순위: 지반 전수 DB(wiki_knowledge) 국문 키워드/제목 직통 매칭 (0ms)
  * - 3순위: AI(Gemini) 동적 영문 표제어 정제 레이어 가동 -> 영문 위키 요약/검색 연동
  * - [철칙]: 검색어와 무관한 일반 문서([정유공장], [미세 플라스틱] 등) 100% 기각 및 차단
  * @param {string} queryOrMessage 질문 텍스트 또는 토픽명
+ * @param {number} maxTotalChars 반환할 최대 본문 길이 (기본 8500자)
  */
-export async function getWikipediaKnowledge(queryOrMessage) {
+export async function getWikipediaKnowledge(queryOrMessage, maxTotalChars = 8500) {
   if (!queryOrMessage || String(queryOrMessage).trim().length < 2) return '';
 
   const queryStr = String(queryOrMessage).trim();
@@ -651,33 +677,43 @@ export async function getWikipediaKnowledge(queryOrMessage) {
   // 0. 영문 위키피디아 지반 전수 DB(wiki_knowledge) 인메모리 캐시 로드 (0ms)
   await ensureWikiDbLoaded();
 
-  let summary = null;
+  const summaries = [];
+  const seenTitles = new Set();
+  const addSummary = (s) => {
+    if (!s || !s.extract) return;
+    const tKey = (s.canonicalTitle || s.title || '').toLowerCase();
+    if (tKey && !seenTitles.has(tKey)) {
+      seenTitles.add(tKey);
+      summaries.push(s);
+    }
+  };
 
-  // 1. 영문 지반공학 표준 표제어 사전 매핑 확인 (0ms 초고속)
-  const matchedEnTitle = resolveEnglishWikiTitle(queryStr);
-  if (matchedEnTitle) {
+  // 1. 영문 지반공학 표준 표제어 사전 매핑 확인 (복수 비교 개념 최대 2개까지 0ms 초고속 추출)
+  const matchedEnTitles = resolveEnglishWikiTitles(queryStr, 2);
+  for (const matchedEnTitle of matchedEnTitles) {
     const key = matchedEnTitle.toLowerCase();
     if (dbWikiMap.has(key)) {
-      summary = dbWikiMap.get(key);
+      addSummary(dbWikiMap.get(key));
     } else {
-      summary = await getWikiSummary(matchedEnTitle, 'en');
+      const s = await getWikiSummary(matchedEnTitle, 'en');
+      if (s) addSummary(s);
     }
   }
 
   // 2. DB 내 국문 키워드(ko_keywords) 및 국문 표제어(ko_title) 직통 매칭 (0ms)
-  if (!summary && dbWikiKnowledgeCache && dbWikiKnowledgeCache.length > 0) {
+  if (summaries.length === 0 && dbWikiKnowledgeCache && dbWikiKnowledgeCache.length > 0) {
     for (const item of dbWikiKnowledgeCache) {
       const koTitle = (item.koTitle || '').toLowerCase();
       const koKeywords = (item.koKeywords || '').toLowerCase();
       if ((koTitle && lowerQ.includes(koTitle)) || (koKeywords && koKeywords.split(/[\s,]+/).some(k => k.length >= 2 && lowerQ.includes(k)))) {
-        summary = item;
-        break;
+        addSummary(item);
+        if (summaries.length >= 2) break;
       }
     }
   }
 
   // 3. 사전/DB 미적중 시: AI 기반 영문 지반공학 표준 표제어 동적 정제 레이어 가동
-  if (!summary) {
+  if (summaries.length === 0) {
     const aiRefinedTitle = await refineQueryToEnglishWikiTitle(queryStr);
     if (aiRefinedTitle && aiRefinedTitle.toUpperCase() === 'NONE') {
       // 🛑 AI가 비전공/무관 주제로 판정(NONE)한 경우, 억지 검색을 중단하고 즉시 빈값 반환 (오염 차단)
@@ -686,34 +722,34 @@ export async function getWikipediaKnowledge(queryOrMessage) {
     if (aiRefinedTitle) {
       const key = aiRefinedTitle.toLowerCase();
       if (dbWikiMap.has(key)) {
-        summary = dbWikiMap.get(key);
+        addSummary(dbWikiMap.get(key));
       } else {
-        summary = await getWikiSummary(aiRefinedTitle, 'en');
-        
+        let s = await getWikiSummary(aiRefinedTitle, 'en');
         // 위키 표제어 직통 매칭 실패 시 키워드 연관 검색으로 2차 확인
-        if (!summary) {
+        if (!s) {
           const hits = await searchWiki(`${aiRefinedTitle} geotechnical`, 'en', 3);
           for (const hit of hits) {
             const hitText = (hit.title + ' ' + hit.snippet).toLowerCase();
             const isGeoRelated = /soil|rock|geotechnical|foundation|ground|civil|slope|retaining|tunnel|shear|mechanics|earth|dam|concrete|grout|drilling|excavation|consolidation|settlement/.test(hitText);
             if (isGeoRelated) {
-              summary = await getWikiSummary(hit.title, 'en');
-              if (summary) break;
+              s = await getWikiSummary(hit.title, 'en');
+              if (s) break;
             }
           }
         }
+        if (s) addSummary(s);
       }
     }
   }
 
   // 4. 본문 내 영문 전문 용어(학자명, 기술명 등) 검출 시 공학 연관 검색
-  if (!summary) {
+  if (summaries.length === 0) {
     const enTerms = queryStr.match(/\b[A-Za-z]{3,15}\b/g) || [];
     for (const term of enTerms) {
       if (['the', 'and', 'for', 'with', 'from', 'this', 'that', 'none'].includes(term.toLowerCase())) continue;
       const key = term.toLowerCase();
       if (dbWikiMap.has(key)) {
-        summary = dbWikiMap.get(key);
+        addSummary(dbWikiMap.get(key));
         break;
       }
       const hits = await searchWiki(`${term} geotechnical`, 'en', 3);
@@ -723,29 +759,34 @@ export async function getWikipediaKnowledge(queryOrMessage) {
         if (isGeoRelated) {
           const s = await getWikiSummary(hit.title, 'en');
           if (s) {
-            summary = s;
+            addSummary(s);
             break;
           }
         }
       }
-      if (summary) break;
+      if (summaries.length > 0) break;
     }
   }
 
   // 5. 지반공학적 연관성이 전혀 없는 경우 엉뚱한 문서([정유공장] 등)를 강제 주입하지 않고 빈값 반환 (철칙 준수)
-  if (!summary || !summary.extract) return '';
+  if (summaries.length === 0) return '';
 
-  const title = summary.canonicalTitle || summary.title;
-  const pageUrl = summary.pageUrl || `https://en.wikipedia.org/wiki/${encodeURIComponent(title.replace(/\s+/g, '_'))}`;
-
-  const block = `- **표제어**: [${title}] (English Wikipedia)
+  const perArticleLimit = Math.floor(maxTotalChars / summaries.length);
+  const blocks = summaries.map(summary => {
+    const title = summary.canonicalTitle || summary.title;
+    const pageUrl = summary.pageUrl || `https://en.wikipedia.org/wiki/${encodeURIComponent(title.replace(/\s+/g, '_'))}`;
+    const extractText = summary.extract.length > perArticleLimit
+      ? summary.extract.slice(0, perArticleLimit).replace(/\n[^\n]*$/, '')
+      : summary.extract;
+    return `- **표제어**: [${title}] (English Wikipedia)
 - **공학적 정의, 거동 메커니즘 및 시험·산정 기준**:
-${summary.extract}
+${extractText}
 - **출처**: ${pageUrl}`;
+  });
 
   return `
 [📚 위키피디아 공학 사전 지식 (English Wikipedia Grounding)]:
 답변 또는 문제 출제 전, 아래 영문 위키피디아 사전의 공학적 개념 정의 및 거동 원리를 최우선 참조하여 전공 이론의 환각(Hallucination)을 철저히 방지하십시오:
-${block}
+${blocks.join('\n\n')}
 `;
 }

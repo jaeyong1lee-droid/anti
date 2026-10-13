@@ -305,8 +305,35 @@ const KOREAN_STOPWORDS = new Set([
   '다음', '표의', '빈칸', '들어갈', '내용을', '쓰시오', '설명하시오', '기술하시오',
   '대하여', '관한', '무엇인가', '어떤', '경우', '가장', '옳은', '틀린', '문제',
   '문항', '해당', '각각', '서술하시오', '구하시오', '산정하시오', '비교하시오',
-  '대책을', '원인을', '특징을', '장단점을', '방법을', '기준을', '정의를', '그림'
+  '대책을', '원인을', '특징을', '장단점을', '방법을', '기준을', '정의를', '그림',
+  // 범용 문서/메타 어휘 (단독 매칭 시 무관한 시방서 오탐 유발 방지)
+  '일반', '설계', '시공', '기준', '설계기준', '시방서', '표준시방서', '공사', '시설', '시설물', '구조물',
+  '대책', '대책시설', '원인', '특성', '특징', '성질', '방법', '방법론', '방안', '활용', '활용방안',
+  '검토', '검토사항', '유의사항', '사항', '분석', '산정', '산정방법', '평가', '비교', '보고서',
+  '종합', '기술', '기술사', '토질및기초기술사', '서술형', '답안', '문제점', '종류', '종류별',
+  '영향', '영향요소', '요소', '결정', '확보', '확보방안', '대상', '관점', '유지관리', '관리',
+  '계획', '개요', '상관관계', '거동', '측정', '측정방법', '적용', '특수', '공통', '기타',
+  '해석', '안정', '안정성', '결함', '손상', '조사', '시험', '측량', '지반', '지반공학적', '흙의', '기본적'
 ]);
+
+function extractCleanEngineeringTokens(q) {
+  const tokenSet = new Set();
+  const parts = q.split(/[\s,._/()\[\]·-]+/);
+  for (const raw of parts) {
+    if (!raw || raw.length < 2 || KOREAN_STOPWORDS.has(raw)) continue;
+    // 한국어 조사 제거 (의, 은, 는, 이, 가, 을, 를, 에, 에서, 으로, 로, 과, 와, 별)
+    const stripped = raw.replace(/(에서|으로|은|는|이|가|을|를|의|에|로|과|와|별)$/, '');
+    if (stripped.length >= 2 && !KOREAN_STOPWORDS.has(stripped)) {
+      tokenSet.add(stripped);
+      // '~공법' 접미어 분리 (예: 압밀공법 -> 압밀, 약액주입공법 -> 약액주입)
+      if (stripped.endsWith('공법') && stripped.length >= 4) {
+        const stem = stripped.slice(0, -2);
+        if (stem.length >= 2 && !KOREAN_STOPWORDS.has(stem)) tokenSet.add(stem);
+      }
+    }
+  }
+  return Array.from(tokenSet);
+}
 
 /**
  * 국가건설기준 지능형 동적 검색 (DB 우선 0ms 초고속 조회)
@@ -326,8 +353,8 @@ export async function searchStandards(query, docType = null, limit = 10) {
     const candidates = targetDocType ? dbStandards.filter(s => s.docType === targetDocType) : dbStandards;
     const scored = [];
 
-    // 불용어 필터링 적용된 핵심 토큰 추출
-    const rawTokens = q.split(/[\s,._/()\[\]]+/).filter(w => w.length >= 2 && !KOREAN_STOPWORDS.has(w));
+    // 불용어 및 조사 필터링 적용된 핵심 전공 토큰 추출
+    const rawTokens = extractCleanEngineeringTokens(q);
 
     for (const item of candidates) {
       let score = 0;
@@ -342,27 +369,41 @@ export async function searchStandards(query, docType = null, limit = 10) {
         score += 100;
       }
       // 명칭 직통 매칭 (+80)
-      if (name.includes(q) || (cleanQ.length >= 2 && name.replace(/\s+/g, '').includes(cleanQ))) {
+      if (name.includes(q) || (cleanQ.length >= 3 && name.replace(/\s+/g, '').includes(cleanQ))) {
         score += 80;
       }
-      // 키워드 매칭 (+50)
-      if (keywords.includes(q)) {
+      // 키워드 직통 매칭 (+50)
+      if (q.length >= 3 && keywords.includes(q)) {
         score += 50;
       }
 
       // 개별 전공 토큰 매칭
       for (const token of rawTokens) {
-        if (name.includes(token)) score += 35;
+        if (name.includes(token)) score += 40;
         if (keywords.includes(token)) score += 25;
-        if (category.includes(token)) score += 15;
+      }
+      // 카테고리는 명칭/키워드 매칭이 이미 존재할 때만 보조 가점 부여 (범용 카테고리 오탐 차단)
+      if (score > 0) {
+        for (const token of rawTokens) {
+          if (category.includes(token)) score += 10;
+        }
       }
 
-      // 지반 전공 약어 가중치
-      if ((q.includes('dmm') || q.includes('심층혼합')) && (code === '113030' || name.includes('고결공'))) score += 60;
-      if ((q.includes('pvd') || q.includes('연직배수')) && (code === '113020' || name.includes('연직배수'))) score += 60;
-      if ((q.includes('scp') || q.includes('다짐말뚝')) && (code === '113035' || name.includes('다짐공'))) score += 60;
+      // 지반 전공 핵심 동의어/약어 가중치
+      if ((q.includes('dmm') || q.includes('심층혼합')) && (code === '113030' || name.includes('고결공'))) score += 70;
+      if ((q.includes('pvd') || q.includes('연직배수') || q.includes('압밀')) && (code === '113020' || code === '113005' || name.includes('연직배수'))) score += 60;
+      if ((q.includes('scp') || q.includes('다짐말뚝')) && (code === '113035' || name.includes('다짐공'))) score += 70;
+      if ((q.includes('약액주입') || q.includes('그라우팅')) && (code === '113045' || name.includes('그라우팅'))) score += 70;
+      if ((q.includes('무리말뚝') || q.includes('말뚝')) && (code === '115015' || code === '115040')) score += 50;
+      if ((q.includes('불교란') || q.includes('시료') || q.includes('다운홀') || q.includes('탄성파')) && (code === '111010' || code === '102020')) score += 60;
 
-      if (score > 0) {
+      // 지반(11xxxx)·터널(27xxxx) 본류 코드 우선순위 부여 (수로터널/농업시설 등 지엽적 타공종 역전 방지)
+      if (score >= 40 && (code.startsWith('11') || code.startsWith('27') || code === '102020')) {
+        score += 15;
+      }
+
+      // 최소 점수 임계값(45점 이상: 최소 제목 적중 또는 복수 전공 키워드 적중 필수)
+      if (score >= 45) {
         scored.push({
           score,
           docType: item.docType,
@@ -381,12 +422,19 @@ export async function searchStandards(query, docType = null, limit = 10) {
       scored.sort((a, b) => b.score - a.score);
       return scored.slice(0, limit);
     }
+
+    // 전수 DB(지반·터널 126개 기준)가 정상 로드된 상태에서 매칭된 기준이 없다면,
+    // 명시적 코드 번호 검색이 아닌 이상 비전공(건축 점토벽돌, 강구조 등) OpenAPI 목록으로 폴백하지 않고 빈 배열 반환 (오탐 원천 차단)
+    if (!/^\d{4,}$/.test(cleanQ)) {
+      return [];
+    }
   }
 
   // 2. DB 미적중 시: 기존 OpenAPI / 파일 캐시 폴백 (비지반 일반 공종 대응)
   const types = docType ? [docType.toUpperCase()] : ['KCS', 'KDS'];
   const results = [];
   const seenKeys = new Set();
+  const fallbackTokens = extractCleanEngineeringTokens(q);
 
   for (const t of types) {
     const list = await fetchCodeList(t);
@@ -400,24 +448,19 @@ export async function searchStandards(query, docType = null, limit = 10) {
       const parents = (it.listParentCodes || []).map(p => String(p.name || '')).join(' ').toLowerCase();
 
       let score = 0;
-      if (cleanQ.length > 2 && (code.includes(cleanQ) || fullCode.includes(cleanQ))) {
+      if (cleanQ.length >= 4 && (code.includes(cleanQ) || fullCode.includes(cleanQ))) {
         score += 100;
       }
-      if (name.includes(q) || cleanQ.length > 1 && name.replace(/\s+/g, '').includes(cleanQ)) {
+      if (name.includes(q) || (cleanQ.length >= 3 && name.replace(/\s+/g, '').includes(cleanQ))) {
         score += 80;
       }
-      if (parents.includes(q)) {
-        score += 30;
-      }
 
-      // 개별 단어/토큰 분할 검색
-      const tokens = q.split(/[\s,._/]+/).filter(w => w.length >= 2 && !KOREAN_STOPWORDS.has(w));
-      for (const token of tokens) {
+      for (const token of fallbackTokens) {
         if (name.includes(token)) score += 40;
-        if (parents.includes(token)) score += 15;
+        if (score > 0 && parents.includes(token)) score += 10;
       }
 
-      if (score > 0) {
+      if (score >= 45) {
         seenKeys.add(key);
         results.push({
           score,

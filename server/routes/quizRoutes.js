@@ -632,7 +632,7 @@ router.post('/topics/:id/ai-questions', async (req, res) => {
     carryOverQuestions = incorrectQuestions.slice(0, carryOverCount);
 
     let fileText = '';
-    if (topic.pdf_data) {
+    if (topic.pdf_data || topic.pdf_url || topic.extracted_text) {
       fileText = await getTopicText(topic, fileUtils, ocrPlugin, pdfParse);
       fileText = fileUtils.smartTruncate(fileText, 30000);
     }
@@ -2577,20 +2577,6 @@ router.post('/exam/all', async (req, res) => {
     const combinedText = topicTexts.join('\n\n---\n\n');
     const topicTitles = topics.map(t => t.title).join(', ');
 
-    let wikiGrounding = '';
-    let kcscGrounding = '';
-    try {
-      const groundingQuery = topics.slice(0, 12).map(t => `${t.title} ${t.keywords || ''}`).join(' ').trim();
-      const [wRes, kRes] = await Promise.allSettled([
-        getWikipediaKnowledge(groundingQuery),
-        getKcscVerificationContext(groundingQuery)
-      ]);
-      if (wRes.status === 'fulfilled') wikiGrounding = wRes.value || '';
-      if (kRes.status === 'fulfilled') kcscGrounding = kRes.value || '';
-    } catch (gErr) {
-      console.warn('[종합평가] Grounding lookup warning:', gErr.message);
-    }
-
     // Fetch all user feedbacks (upvoted / downvoted) to adjust frequency in exam prompt
     let feedbackPrompt = '';
     try {
@@ -2693,6 +2679,22 @@ ${adjustments.map((a, idx) => `
 
     const batchPromises = Array.from({ length: TOTAL_BATCHES }).map(async (_, idx) => {
       const randomSeed = Math.floor(Math.random() * 10000);
+      let wikiGrounding = '';
+      let kcscGrounding = '';
+      try {
+        const bTopic1 = topics[(idx * 2) % topics.length];
+        const bTopic2 = topics[(idx * 2 + 1) % topics.length];
+        const batchQuery = [bTopic1, bTopic2].filter(Boolean).map(t => t.title).join(' ');
+        const [wRes, kRes] = await Promise.allSettled([
+          getWikipediaKnowledge(batchQuery, 3500),
+          getKcscVerificationContext(batchQuery)
+        ]);
+        if (wRes.status === 'fulfilled') wikiGrounding = wRes.value || '';
+        if (kRes.status === 'fulfilled') kcscGrounding = kRes.value || '';
+      } catch (gErr) {
+        console.warn(`[종합평가 배치 ${idx + 1}] Grounding lookup warning:`, gErr.message);
+      }
+
       const batchPrompt = `
 당신은 국가기술자격 기술사 시험 출제위원입니다.
 아래 범위 토픽 소스 자료를 참고하여, 다른 문제들과 절대 중복되지 않는 고난도 종합평가 문제 **정확히 5개**를 생성하십시오.
@@ -3090,20 +3092,6 @@ router.post('/exam/additional', async (req, res) => {
     const combinedText = topicTexts.join('\n\n---\n\n');
     const topicTitles = topics.map(t => t.title).join(', ');
 
-    let wikiGrounding = '';
-    let kcscGrounding = '';
-    try {
-      const groundingQuery = topics.slice(0, 12).map(t => `${t.title} ${t.keywords || ''}`).join(' ').trim();
-      const [wRes, kRes] = await Promise.allSettled([
-        getWikipediaKnowledge(groundingQuery),
-        getKcscVerificationContext(groundingQuery)
-      ]);
-      if (wRes.status === 'fulfilled') wikiGrounding = wRes.value || '';
-      if (kRes.status === 'fulfilled') kcscGrounding = kRes.value || '';
-    } catch (gErr) {
-      console.warn('[종합평가 추가] Grounding lookup warning:', gErr.message);
-    }
-
     // Retrieve custom formula questions from database
     let customFormulas = [];
     try {
@@ -3218,6 +3206,22 @@ router.post('/exam/additional', async (req, res) => {
       const randomSeed = Math.floor(Math.random() * 10000);
       const countToGenerate = i === 2 ? 5 : 4;
       const mcCount = i === 2 ? 4 : 3;
+
+      let wikiGrounding = '';
+      let kcscGrounding = '';
+      try {
+        const bTopic1 = topics[(i * 2) % topics.length];
+        const bTopic2 = topics[(i * 2 + 1) % topics.length];
+        const batchQuery = [bTopic1, bTopic2].filter(Boolean).map(t => t.title).join(' ');
+        const [wRes, kRes] = await Promise.allSettled([
+          getWikipediaKnowledge(batchQuery, 3500),
+          getKcscVerificationContext(batchQuery)
+        ]);
+        if (wRes.status === 'fulfilled') wikiGrounding = wRes.value || '';
+        if (kRes.status === 'fulfilled') kcscGrounding = kRes.value || '';
+      } catch (gErr) {
+        console.warn(`[종합평가 추가 배치 ${i + 1}] Grounding lookup warning:`, gErr.message);
+      }
       
       const batchPrompt = `
 당신은 국가기술자격 기술사 시험 출제위원입니다.

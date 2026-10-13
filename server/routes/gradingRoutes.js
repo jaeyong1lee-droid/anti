@@ -1036,7 +1036,7 @@ ${formatRequirement ? `[응답 포맷]:\n${formatRequirement}` : ''}`;
       let wikiGrounding = '';
       let kcscGrounding = '';
       try {
-        const gQuery = `${currentQuestion?.question || ''} ${topicTitles.substring(0, 300)}`.trim();
+        const gQuery = `${currentQuestion?.topic_title || ''} ${currentQuestion?.question || ''}`.trim() || (targetTopics[0]?.title || '');
         const [wRes, kRes] = await Promise.allSettled([
           getWikipediaKnowledge(gQuery),
           getKcscVerificationContext(gQuery)
@@ -1312,7 +1312,7 @@ ${getActiveEngineeringStandards()}
       let wikiGrounding = '';
       let kcscGrounding = '';
       try {
-        const gQuery = `${currentQuestion?.question || ''} ${userFeedback || ''} ${topicTitles.substring(0, 300)}`.trim();
+        const gQuery = `${currentQuestion?.topic_title || ''} ${currentQuestion?.question || ''} ${userFeedback || ''}`.trim() || (targetTopics[0]?.title || '');
         const [wRes, kRes] = await Promise.allSettled([
           getWikipediaKnowledge(gQuery),
           getKcscVerificationContext(gQuery)
