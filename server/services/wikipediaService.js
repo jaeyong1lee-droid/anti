@@ -128,9 +128,10 @@ export const GEO_CIVIL_EN_WIKI_MAP = {
   '샌드컴팩션': 'Vibroflotation',
   'scp': 'Vibroflotation',
   '바이브로플로테이션': 'Vibroflotation',
-  '치환공법': 'Ground improvement',
-  '모래다짐말뚝': 'Vibroflotation',
-  '웰포인트': 'Wellpoint',
+  '웰포인트': 'Dewatering',
+  '웰포인트공법': 'Dewatering',
+  '지하수위저하': 'Dewatering',
+  '딥웰': 'Dewatering',
   '진공압밀': 'Vacuum consolidation',
   '언더피닝': 'Underpinning',
   '지반조사': 'Geotechnical investigation',
@@ -348,7 +349,42 @@ export function resolveEnglishWikiTitle(query) {
 }
 
 /**
- * 특정 표제어의 위키백과 Summary 조회
+ * 위키백과 본문에서 각주/참고문헌/외부링크 제거 및 분량 최적화 (Clean & Rich Sections)
+ */
+export function cleanWikiArticle(raw) {
+  if (!raw) return '';
+  const cutoffRegex = /\n==\s*(References|See also|External links|Notes|Bibliography|Further reading)\s*==/i;
+  let text = raw.split(cutoffRegex)[0].trim();
+  text = text.replace(/\r\n/g, '\n').replace(/\n{3,}/g, '\n\n');
+
+  if (text.length > 8500) {
+    const sections = text.split(/\n(?=== )/);
+    let accumulated = '';
+    for (const sec of sections) {
+      const secHeader = sec.split('\n')[0].toLowerCase();
+      if (accumulated.length > 5000 && (secHeader.includes('history') || secHeader.includes('etymology') || secHeader.includes('early'))) {
+        continue;
+      }
+      if (accumulated.length + sec.length <= 8500) {
+        accumulated += (accumulated ? '\n\n' : '') + sec;
+      } else {
+        const remaining = 8500 - accumulated.length;
+        if (remaining > 500) {
+          const trimmedSec = sec.slice(0, remaining).replace(/\n[^\n]*$/, '');
+          accumulated += (accumulated ? '\n\n' : '') + trimmedSec;
+        }
+        break;
+      }
+    }
+    return accumulated.trim();
+  }
+
+  return text;
+}
+
+/**
+ * 특정 표제어의 위키백과 본문(Rich Engineering Text) 조회
+ * (Action API 풀텍스트 우선 수집 -> 요약 API Fallback)
  * @param {string} title 표제어
  * @param {string} lang 'en' | 'ko'
  */
@@ -370,6 +406,32 @@ export async function getWikiSummary(title, lang = 'en') {
     } catch (e) {}
   }
 
+  // 1. Action API를 통한 풍부한 공학 본문(Rich Full Extract) 우선 수집
+  try {
+    const fullUrl = `https://${lang}.wikipedia.org/w/api.php?action=query&prop=extracts&explaintext=true&redirects=1&titles=${encodeURIComponent(cleanTitle)}&format=json`;
+    const fullData = await fetchWikiJson(fullUrl);
+    const pages = fullData?.query?.pages || {};
+    const pageId = Object.keys(pages)[0];
+    const rawExtract = pages[pageId]?.extract || '';
+    const cleanExtract = cleanWikiArticle(rawExtract);
+
+    if (cleanExtract && cleanExtract.length > 200) {
+      const result = {
+        title: pages[pageId]?.title || title,
+        description: '',
+        extract: cleanExtract,
+        pageUrl: `https://${lang}.wikipedia.org/wiki/${encodeURIComponent(cleanTitle)}`,
+        lang
+      };
+      memoryWikiCache.set(cacheKey, result);
+      try {
+        fs.writeFileSync(cachePath, JSON.stringify(result, null, 2), 'utf8');
+      } catch (e) {}
+      return result;
+    }
+  } catch (err) {}
+
+  // 2. 풀텍스트 실패 시 기본 요약(REST summary) API로 안전한 Fallback
   const url = `https://${lang}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(cleanTitle)}`;
   const data = await fetchWikiJson(url);
 
@@ -603,9 +665,9 @@ export async function getWikipediaKnowledge(queryOrMessage) {
   const pageUrl = summary.pageUrl || `https://en.wikipedia.org/wiki/${encodeURIComponent(title.replace(/\s+/g, '_'))}`;
 
   const block = `- **표제어**: [${title}] (English Wikipedia)
-  - **공학적 정의 및 핵심 내용**:
-    ${summary.extract}
-  - **출처**: ${pageUrl}`;
+- **공학적 정의, 거동 메커니즘 및 시험·산정 기준**:
+${summary.extract}
+- **출처**: ${pageUrl}`;
 
   return `
 [📚 위키피디아 공학 사전 지식 (English Wikipedia Grounding)]:
