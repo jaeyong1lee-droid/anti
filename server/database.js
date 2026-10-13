@@ -315,6 +315,43 @@ export async function initDatabase() {
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
           )
         `);
+        // 6. kcsc_standards table: stores official KCSC standards, thresholds, and inspection items
+        await pgPool.query(`
+          CREATE TABLE IF NOT EXISTS kcsc_standards (
+            id SERIAL PRIMARY KEY,
+            doc_type VARCHAR(10) NOT NULL,
+            code VARCHAR(20) NOT NULL,
+            full_code VARCHAR(30),
+            name VARCHAR(255) NOT NULL,
+            category VARCHAR(255),
+            keywords TEXT,
+            thresholds_json TEXT,
+            inspections_json TEXT,
+            clause_count INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(doc_type, code)
+          )
+        `);
+        await pgPool.query(`CREATE INDEX IF NOT EXISTS idx_kcsc_doc_code ON kcsc_standards(doc_type, code)`);
+
+        // 7. wiki_knowledge table: stores English Wikipedia geotechnical engineering knowledge
+        await pgPool.query(`
+          CREATE TABLE IF NOT EXISTS wiki_knowledge (
+            id SERIAL PRIMARY KEY,
+            canonical_title VARCHAR(255) NOT NULL UNIQUE,
+            ko_title VARCHAR(255),
+            ko_keywords TEXT,
+            category VARCHAR(100),
+            description TEXT,
+            extract TEXT NOT NULL,
+            page_url TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          )
+        `);
+        await pgPool.query(`CREATE INDEX IF NOT EXISTS idx_wiki_canonical ON wiki_knowledge(canonical_title)`);
+
         console.log('Cloud PostgreSQL database tables initialized successfully.');
         await migrateSchedulesTable();
 
@@ -430,6 +467,41 @@ async function initSQLiteTables() {
       FOREIGN KEY (topic_id) REFERENCES topics (id) ON DELETE CASCADE
     )
   `);
+  await dbQuery.run(`
+    CREATE TABLE IF NOT EXISTS kcsc_standards (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      doc_type TEXT NOT NULL,
+      code TEXT NOT NULL,
+      full_code TEXT,
+      name TEXT NOT NULL,
+      category TEXT,
+      keywords TEXT,
+      thresholds_json TEXT,
+      inspections_json TEXT,
+      clause_count INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(doc_type, code)
+    )
+  `);
+  await dbQuery.run(`CREATE INDEX IF NOT EXISTS idx_kcsc_doc_code ON kcsc_standards(doc_type, code)`);
+
+  await dbQuery.run(`
+    CREATE TABLE IF NOT EXISTS wiki_knowledge (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      canonical_title TEXT NOT NULL UNIQUE,
+      ko_title TEXT,
+      ko_keywords TEXT,
+      category TEXT,
+      description TEXT,
+      extract TEXT NOT NULL,
+      page_url TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  await dbQuery.run(`CREATE INDEX IF NOT EXISTS idx_wiki_canonical ON wiki_knowledge(canonical_title)`);
+
   console.log('Local SQLite database tables initialized successfully.');
   await migrateSchedulesTable();
 }

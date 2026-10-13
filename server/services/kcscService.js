@@ -74,6 +74,78 @@ function fetchJsonFromUrl(url, timeoutMs = 10000) {
   });
 }
 
+import { dbQuery } from '../database.js';
+
+// In-memory cache for all Geotechnical KCSC standards loaded from DB / seed
+let dbKcscStandardsCache = null;
+let dbKcscMap = new Map();
+
+/**
+ * 🏛️ DB(PostgreSQL/SQLite) 또는 시드 파일(seeds/kcsc_geotechnical_seed.json)로부터
+ * 지반분야 전체 KCSC 기준(120개)을 인메모리에 0ms 즉각 적재
+ */
+export async function ensureKcscDbLoaded() {
+  if (dbKcscStandardsCache && dbKcscStandardsCache.length > 0) {
+    return dbKcscStandardsCache;
+  }
+
+  // 1. Try loading from Database
+  try {
+    const rows = await dbQuery.all('SELECT doc_type, code, full_code, name, category, keywords, thresholds_json, inspections_json, clause_count FROM kcsc_standards');
+    if (Array.isArray(rows) && rows.length > 0) {
+      dbKcscStandardsCache = rows.map(r => ({
+        docType: r.doc_type,
+        code: r.code,
+        fullCode: r.full_code,
+        name: r.name,
+        category: r.category,
+        keywords: r.keywords || '',
+        thresholds: typeof r.thresholds_json === 'string' ? JSON.parse(r.thresholds_json || '[]') : (r.thresholds_json || []),
+        inspections: typeof r.inspections_json === 'string' ? JSON.parse(r.inspections_json || '[]') : (r.inspections_json || []),
+        clauseCount: r.clause_count || 0
+      }));
+      dbKcscMap.clear();
+      for (const item of dbKcscStandardsCache) {
+        dbKcscMap.set(`${item.docType}_${item.code}`, item);
+      }
+      return dbKcscStandardsCache;
+    }
+  } catch (err) {
+    console.warn('[kcscService] Load from DB failed, checking seed file:', err.message);
+  }
+
+  // 2. Fallback to pre-compiled seed JSON file
+  const seedPath = path.resolve(__dirname, '../data/seeds/kcsc_geotechnical_seed.json');
+  if (fs.existsSync(seedPath)) {
+    try {
+      const seedData = JSON.parse(fs.readFileSync(seedPath, 'utf8'));
+      if (Array.isArray(seedData) && seedData.length > 0) {
+        dbKcscStandardsCache = seedData.map(r => ({
+          docType: r.docType,
+          code: r.code,
+          fullCode: r.fullCode,
+          name: r.name,
+          category: r.category,
+          keywords: r.keywords || '',
+          thresholds: typeof r.thresholdsJson === 'string' ? JSON.parse(r.thresholdsJson || '[]') : (r.thresholdsJson || []),
+          inspections: typeof r.inspectionsJson === 'string' ? JSON.parse(r.inspectionsJson || '[]') : (r.inspectionsJson || []),
+          clauseCount: r.clauseCount || 0
+        }));
+        dbKcscMap.clear();
+        for (const item of dbKcscStandardsCache) {
+          dbKcscMap.set(`${item.docType}_${item.code}`, item);
+        }
+        return dbKcscStandardsCache;
+      }
+    } catch (e) {
+      console.warn('[kcscService] Read seed file failed:', e.message);
+    }
+  }
+
+  dbKcscStandardsCache = [];
+  return dbKcscStandardsCache;
+}
+
 // 메모리 캐시 (속도 극대화)
 const memoryCodeListCache = new Map();
 const memoryViewerCache = new Map();
@@ -229,8 +301,15 @@ export async function getCleanClauses(docType, code) {
   return clauses;
 }
 
+const KOREAN_STOPWORDS = new Set([
+  '다음', '표의', '빈칸', '들어갈', '내용을', '쓰시오', '설명하시오', '기술하시오',
+  '대하여', '관한', '무엇인가', '어떤', '경우', '가장', '옳은', '틀린', '문제',
+  '문항', '해당', '각각', '서술하시오', '구하시오', '산정하시오', '비교하시오',
+  '대책을', '원인을', '특징을', '장단점을', '방법을', '기준을', '정의를', '그림'
+]);
+
 /**
- * 국가건설기준 지능형 동적 검색
+ * 국가건설기준 지능형 동적 검색 (DB 우선 0ms 초고속 조회)
  * @param {string} query 검색어 (예: '연약지반', 'DMM', '심층혼합', '흙막이', '고결공', '앵커', '기초', '113030' 등)
  * @param {string} docType 'KDS' | 'KCS' | null (전체)
  * @param {number} limit 반환할 최대 기준 수
@@ -240,6 +319,71 @@ export async function searchStandards(query, docType = null, limit = 10) {
   const q = String(query).trim().toLowerCase();
   const cleanQ = q.replace(/[^\w가-힣]/g, '');
 
+  // 1. 지반·터널 전수 DB(kcsc_standards) 인메모리 캐시 우선 확인 (0ms)
+  const dbStandards = await ensureKcscDbLoaded();
+  if (Array.isArray(dbStandards) && dbStandards.length > 0) {
+    const targetDocType = docType ? docType.toUpperCase() : null;
+    const candidates = targetDocType ? dbStandards.filter(s => s.docType === targetDocType) : dbStandards;
+    const scored = [];
+
+    // 불용어 필터링 적용된 핵심 토큰 추출
+    const rawTokens = q.split(/[\s,._/()\[\]]+/).filter(w => w.length >= 2 && !KOREAN_STOPWORDS.has(w));
+
+    for (const item of candidates) {
+      let score = 0;
+      const code = item.code || '';
+      const fullCode = item.fullCode || '';
+      const name = (item.name || '').toLowerCase();
+      const keywords = (item.keywords || '').toLowerCase();
+      const category = (item.category || '').toLowerCase();
+
+      // 코드 일치 (+100)
+      if (cleanQ.length >= 4 && (code.includes(cleanQ) || fullCode.includes(cleanQ))) {
+        score += 100;
+      }
+      // 명칭 직통 매칭 (+80)
+      if (name.includes(q) || (cleanQ.length >= 2 && name.replace(/\s+/g, '').includes(cleanQ))) {
+        score += 80;
+      }
+      // 키워드 매칭 (+50)
+      if (keywords.includes(q)) {
+        score += 50;
+      }
+
+      // 개별 전공 토큰 매칭
+      for (const token of rawTokens) {
+        if (name.includes(token)) score += 35;
+        if (keywords.includes(token)) score += 25;
+        if (category.includes(token)) score += 15;
+      }
+
+      // 지반 전공 약어 가중치
+      if ((q.includes('dmm') || q.includes('심층혼합')) && (code === '113030' || name.includes('고결공'))) score += 60;
+      if ((q.includes('pvd') || q.includes('연직배수')) && (code === '113020' || name.includes('연직배수'))) score += 60;
+      if ((q.includes('scp') || q.includes('다짐말뚝')) && (code === '113035' || name.includes('다짐공'))) score += 60;
+
+      if (score > 0) {
+        scored.push({
+          score,
+          docType: item.docType,
+          code: item.code,
+          fullCode: item.fullCode,
+          name: item.name,
+          categoryPath: item.category,
+          thresholds: item.thresholds,
+          inspections: item.inspections,
+          clauseCount: item.clauseCount
+        });
+      }
+    }
+
+    if (scored.length > 0) {
+      scored.sort((a, b) => b.score - a.score);
+      return scored.slice(0, limit);
+    }
+  }
+
+  // 2. DB 미적중 시: 기존 OpenAPI / 파일 캐시 폴백 (비지반 일반 공종 대응)
   const types = docType ? [docType.toUpperCase()] : ['KCS', 'KDS'];
   const results = [];
   const seenKeys = new Set();
@@ -266,22 +410,11 @@ export async function searchStandards(query, docType = null, limit = 10) {
         score += 30;
       }
 
-      // 개별 단어/토큰 분할 검색 (다중 키워드 매칭)
-      const tokens = q.split(/[\s,._/]+/).filter(w => w.length >= 2 && !['시공', '공사', '기준', '설계', '해석'].includes(w));
+      // 개별 단어/토큰 분할 검색
+      const tokens = q.split(/[\s,._/]+/).filter(w => w.length >= 2 && !KOREAN_STOPWORDS.has(w));
       for (const token of tokens) {
         if (name.includes(token)) score += 40;
         if (parents.includes(token)) score += 15;
-      }
-
-      // 동의어 및 공학 키워드 가중치
-      if ((q.includes('dmm') || q.includes('심층혼합')) && (name.includes('고결공') || code === '113030' || name.includes('연약지반'))) {
-        score += 60;
-      }
-      if ((q.includes('pbd') || q.includes('연직배수')) && (name.includes('연직배수') || code === '113020')) {
-        score += 60;
-      }
-      if ((q.includes('scp') || q.includes('다짐말뚝')) && (name.includes('다짐공') || code === '113035')) {
-        score += 60;
       }
 
       if (score > 0) {
@@ -404,12 +537,22 @@ export async function getKcscVerificationContext(topicTitleOrQuestion, category 
     let contextBlocks = [];
 
     for (const match of matches) {
-      const clauses = await getCleanClauses(match.docType, match.code);
-      if (!clauses || clauses.length === 0) continue;
+      let topThresholds = [];
+      let topInspections = [];
 
-      const criteria = extractVerificationCriteria(clauses);
-      const topThresholds = criteria.thresholds.slice(0, 4);
-      const topInspections = criteria.inspectionItems.slice(0, 4);
+      // 1. DB/시드 캐시에서 이미 사전 추출된 기준값 및 검사항목 우선 활용 (0ms)
+      if (Array.isArray(match.thresholds) && match.thresholds.length > 0 || Array.isArray(match.inspections) && match.inspections.length > 0) {
+        topThresholds = (match.thresholds || []).slice(0, 4);
+        topInspections = (match.inspections || []).slice(0, 4);
+      } else {
+        // 2. 비지반 외부 기준 폴백
+        const clauses = await getCleanClauses(match.docType, match.code);
+        if (clauses && clauses.length > 0) {
+          const criteria = extractVerificationCriteria(clauses);
+          topThresholds = criteria.thresholds.slice(0, 4);
+          topInspections = criteria.inspectionItems.slice(0, 4);
+        }
+      }
 
       if (topThresholds.length === 0 && topInspections.length === 0) continue;
 

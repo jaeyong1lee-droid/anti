@@ -38,6 +38,66 @@ try {
   } catch (err) {}
 }
 
+import crypto from 'crypto';
+import { dbQuery } from '../database.js';
+
+let dbWikiKnowledgeCache = null;
+let dbWikiMap = new Map(); // canonical_title.toLowerCase() -> item
+
+/**
+ * 📚 DB(PostgreSQL/SQLite) 또는 시드 파일(seeds/wiki_geotechnical_seed.json)로부터
+ * 영문 위키피디아 지반공학 지식 DB(70+개)를 인메모리에 0ms 즉각 적재
+ */
+export async function ensureWikiDbLoaded() {
+  if (dbWikiKnowledgeCache && dbWikiKnowledgeCache.length > 0) {
+    return dbWikiKnowledgeCache;
+  }
+
+  // 1. Try DB
+  try {
+    const rows = await dbQuery.all('SELECT canonical_title, ko_title, ko_keywords, category, description, extract, page_url FROM wiki_knowledge');
+    if (Array.isArray(rows) && rows.length > 0) {
+      dbWikiKnowledgeCache = rows.map(r => ({
+        canonicalTitle: r.canonical_title,
+        koTitle: r.ko_title,
+        koKeywords: r.ko_keywords || '',
+        category: r.category,
+        description: r.description || '',
+        extract: r.extract,
+        pageUrl: r.page_url
+      }));
+      dbWikiMap.clear();
+      for (const item of dbWikiKnowledgeCache) {
+        dbWikiMap.set(item.canonicalTitle.toLowerCase(), item);
+      }
+      return dbWikiKnowledgeCache;
+    }
+  } catch (err) {
+    console.warn('[wikipediaService] Load from DB failed, checking seed file:', err.message);
+  }
+
+  // 2. Fallback seed JSON
+  const seedPath = path.resolve(__dirname, '../data/seeds/wiki_geotechnical_seed.json');
+  if (fs.existsSync(seedPath)) {
+    try {
+      const seedData = JSON.parse(fs.readFileSync(seedPath, 'utf8'));
+      if (Array.isArray(seedData) && seedData.length > 0) {
+        dbWikiKnowledgeCache = seedData;
+        dbWikiMap.clear();
+        for (const item of dbWikiKnowledgeCache) {
+          dbWikiMap.set(item.canonicalTitle.toLowerCase(), item);
+        }
+        return dbWikiKnowledgeCache;
+      }
+    } catch (e) {
+      console.warn('[wikipediaService] Read seed file failed:', e.message);
+    }
+  }
+
+  dbWikiKnowledgeCache = [];
+  return dbWikiKnowledgeCache;
+}
+
 const memoryWikiCache = new Map();
 
 /**
@@ -388,7 +448,8 @@ export async function refineQueryToEnglishWikiTitle(queryText) {
   if (directMatch) return directMatch;
 
   const cleanInput = queryText.trim().substring(0, 300);
-  const cacheKey = `ai_refine_${Buffer.from(cleanInput).toString('base64').substring(0, 48)}`;
+  const hash = crypto.createHash('md5').update(cleanInput).digest('hex');
+  const cacheKey = `ai_refine_${hash}`;
 
   // 2. 인메모리 캐시 확인
   if (memoryWikiCache.has(cacheKey)) {
@@ -438,10 +499,10 @@ export async function refineQueryToEnglishWikiTitle(queryText) {
 }
 
 /**
- * 📚 [핵심 함수]: 질문이나 토픽에 대해 영문 위키피디아 사전 지식을 정밀 조회하여 Grounding 블록 반환
- * - 1순위: 지반공학 한-영 매핑 딕셔너리 기반 정확한 영문 위키 문서(Deep cement mixing 등) 즉각 추출 (0ms)
- * - 2순위: AI(Gemini) 동적 영문 표제어 정제 레이어 가동 -> 영문 위키 요약/검색 연동
- * - 3순위: 질문 내 영문 전문 키워드(Terzaghi 등) 기반 영문 위키 공학 문서 검색
+ * 📚 [핵심 함수]: 질문이나 토픽에 대해 영문 위키피디아 사전 지식을 정밀 조회하여 Grounding 블록 반환 (DB 우선 0ms 초고속)
+ * - 1순위: 지반공학 한-영 매핑 딕셔너리 및 DB 표제어 캐시 즉각 추출 (0ms)
+ * - 2순위: 지반 전수 DB(wiki_knowledge) 국문 키워드/제목 직통 매칭 (0ms)
+ * - 3순위: AI(Gemini) 동적 영문 표제어 정제 레이어 가동 -> 영문 위키 요약/검색 연동
  * - [철칙]: 검색어와 무관한 일반 문서([정유공장], [미세 플라스틱] 등) 100% 기각 및 차단
  * @param {string} queryOrMessage 질문 텍스트 또는 토픽명
  */
@@ -449,16 +510,37 @@ export async function getWikipediaKnowledge(queryOrMessage) {
   if (!queryOrMessage || String(queryOrMessage).trim().length < 2) return '';
 
   const queryStr = String(queryOrMessage).trim();
+  const lowerQ = queryStr.toLowerCase();
+
+  // 0. 영문 위키피디아 지반 전수 DB(wiki_knowledge) 인메모리 캐시 로드 (0ms)
+  await ensureWikiDbLoaded();
+
+  let summary = null;
 
   // 1. 영문 지반공학 표준 표제어 사전 매핑 확인 (0ms 초고속)
   const matchedEnTitle = resolveEnglishWikiTitle(queryStr);
-  let summary = null;
-
   if (matchedEnTitle) {
-    summary = await getWikiSummary(matchedEnTitle, 'en');
+    const key = matchedEnTitle.toLowerCase();
+    if (dbWikiMap.has(key)) {
+      summary = dbWikiMap.get(key);
+    } else {
+      summary = await getWikiSummary(matchedEnTitle, 'en');
+    }
   }
 
-  // 2. 사전 매핑 미적중 시: AI 기반 영문 지반공학 표준 표제어 동적 정제 레이어 가동
+  // 2. DB 내 국문 키워드(ko_keywords) 및 국문 표제어(ko_title) 직통 매칭 (0ms)
+  if (!summary && dbWikiKnowledgeCache && dbWikiKnowledgeCache.length > 0) {
+    for (const item of dbWikiKnowledgeCache) {
+      const koTitle = (item.koTitle || '').toLowerCase();
+      const koKeywords = (item.koKeywords || '').toLowerCase();
+      if ((koTitle && lowerQ.includes(koTitle)) || (koKeywords && koKeywords.split(/[\s,]+/).some(k => k.length >= 2 && lowerQ.includes(k)))) {
+        summary = item;
+        break;
+      }
+    }
+  }
+
+  // 3. 사전/DB 미적중 시: AI 기반 영문 지반공학 표준 표제어 동적 정제 레이어 가동
   if (!summary) {
     const aiRefinedTitle = await refineQueryToEnglishWikiTitle(queryStr);
     if (aiRefinedTitle && aiRefinedTitle.toUpperCase() === 'NONE') {
@@ -466,28 +548,38 @@ export async function getWikipediaKnowledge(queryOrMessage) {
       return '';
     }
     if (aiRefinedTitle) {
-      summary = await getWikiSummary(aiRefinedTitle, 'en');
-      
-      // 위키 표제어 직통 매칭 실패 시 키워드 연관 검색으로 2차 확인
-      if (!summary) {
-        const hits = await searchWiki(`${aiRefinedTitle} geotechnical`, 'en', 3);
-        for (const hit of hits) {
-          const hitText = (hit.title + ' ' + hit.snippet).toLowerCase();
-          const isGeoRelated = /soil|rock|geotechnical|foundation|ground|civil|slope|retaining|tunnel|shear|mechanics|earth|dam|concrete|grout|drilling|excavation|consolidation|settlement/.test(hitText);
-          if (isGeoRelated) {
-            summary = await getWikiSummary(hit.title, 'en');
-            if (summary) break;
+      const key = aiRefinedTitle.toLowerCase();
+      if (dbWikiMap.has(key)) {
+        summary = dbWikiMap.get(key);
+      } else {
+        summary = await getWikiSummary(aiRefinedTitle, 'en');
+        
+        // 위키 표제어 직통 매칭 실패 시 키워드 연관 검색으로 2차 확인
+        if (!summary) {
+          const hits = await searchWiki(`${aiRefinedTitle} geotechnical`, 'en', 3);
+          for (const hit of hits) {
+            const hitText = (hit.title + ' ' + hit.snippet).toLowerCase();
+            const isGeoRelated = /soil|rock|geotechnical|foundation|ground|civil|slope|retaining|tunnel|shear|mechanics|earth|dam|concrete|grout|drilling|excavation|consolidation|settlement/.test(hitText);
+            if (isGeoRelated) {
+              summary = await getWikiSummary(hit.title, 'en');
+              if (summary) break;
+            }
           }
         }
       }
     }
   }
 
-  // 3. 본문 내 영문 전문 용어(학자명, 기술명 등) 검출 시 공학 연관 검색
+  // 4. 본문 내 영문 전문 용어(학자명, 기술명 등) 검출 시 공학 연관 검색
   if (!summary) {
     const enTerms = queryStr.match(/\b[A-Za-z]{3,15}\b/g) || [];
     for (const term of enTerms) {
       if (['the', 'and', 'for', 'with', 'from', 'this', 'that', 'none'].includes(term.toLowerCase())) continue;
+      const key = term.toLowerCase();
+      if (dbWikiMap.has(key)) {
+        summary = dbWikiMap.get(key);
+        break;
+      }
       const hits = await searchWiki(`${term} geotechnical`, 'en', 3);
       for (const hit of hits) {
         const hitText = (hit.title + ' ' + hit.snippet).toLowerCase();
@@ -504,13 +596,16 @@ export async function getWikipediaKnowledge(queryOrMessage) {
     }
   }
 
-  // 4. 지반공학적 연관성이 전혀 없는 경우 엉뚱한 문서([정유공장] 등)를 강제 주입하지 않고 빈값 반환 (철칙 준수)
+  // 5. 지반공학적 연관성이 전혀 없는 경우 엉뚱한 문서([정유공장] 등)를 강제 주입하지 않고 빈값 반환 (철칙 준수)
   if (!summary || !summary.extract) return '';
 
-  const block = `- **표제어**: [${summary.title}] (English Wikipedia)
+  const title = summary.canonicalTitle || summary.title;
+  const pageUrl = summary.pageUrl || `https://en.wikipedia.org/wiki/${encodeURIComponent(title.replace(/\s+/g, '_'))}`;
+
+  const block = `- **표제어**: [${title}] (English Wikipedia)
   - **공학적 정의 및 핵심 내용**:
     ${summary.extract}
-  - **출처**: ${summary.pageUrl}`;
+  - **출처**: ${pageUrl}`;
 
   return `
 [📚 위키피디아 공학 사전 지식 (English Wikipedia Grounding)]:

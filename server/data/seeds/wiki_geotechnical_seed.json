@@ -1,0 +1,632 @@
+[
+  {
+    "canonicalTitle": "Soil mechanics",
+    "koTitle": "토질역학",
+    "koKeywords": "토질역학, 흙의 성질, 흙의 역학",
+    "category": "Soil Mechanics",
+    "description": "Branch of soil physics and applied mechanics that describes the behavior of soils",
+    "extract": "Soil mechanics is a branch of soil physics and applied mechanics that describes the behavior of soils. It differs from fluid mechanics and solid mechanics in the sense that soils consist of a heterogeneous mixture of fluids and particles but soil also contains organic solids and other matter. Along with rock mechanics, soil mechanics provides the theoretical basis for analysis in geotechnical engineering, a subdiscipline of civil engineering, and engineering geology, a subdiscipline of geology. Soil mechanics is used to analyze the deformations of and flow of fluids within natural and man-made structures that are supported on or made of soil, or structures that are buried in soils. Example applications are building and bridge foundations, retaining walls, dams, and buried pipeline systems. Principles of soil mechanics are also used in related disciplines such as geophysical engineering, coastal engineering, agricultural engineering, and hydrology.",
+    "pageUrl": "https://en.wikipedia.org/wiki/Soil_mechanics"
+  },
+  {
+    "canonicalTitle": "Effective stress",
+    "koTitle": "유효응력",
+    "koKeywords": "유효응력, 간극수압, 전응력, 테르자기",
+    "category": "Soil Mechanics",
+    "description": "Physical quantity in soil",
+    "extract": "Effective stress is a fundamental concept in soil mechanics and geotechnical engineering that describes the portion of total stress in a soil mass that is carried by the solid soil skeleton, rather than the pore water. This concept applies broadly to granular media like sand, silt, and clay, as well as to porous materials such as rock, concrete, metal powders and biological tissues. It is crucial for understanding the mechanical behaviour of porous media, as effective stress governs both their strength and volume change (deformation).",
+    "pageUrl": "https://en.wikipedia.org/wiki/Effective_stress"
+  },
+  {
+    "canonicalTitle": "Soil consolidation",
+    "koTitle": "압밀",
+    "koKeywords": "압밀, 압밀시험, 1차원압밀, 테르자기, 침하",
+    "category": "Soil Mechanics",
+    "description": "Process by which soils decrease in volume",
+    "extract": "Soil consolidation refers to the mechanical process by which soil changes volume gradually in response to a change in pressure. This happens because soil is a three-phase material. The first phase consists of soil grains, and a combination of void (air) or other fluid comprise the second and third phases. When soil saturated with water is subjected to an increase in pressure, the high volumetric stiffness of water compared to the soil matrix means that the water initially absorbs all the change in pressure without changing volume, creating excess pore water pressure. As water diffuses away from regions of high pressure due to seepage, the soil matrix gradually takes up the pressure change and shrinks in volume. The theoretical framework of consolidation is therefore closely related to the concept of effective stress, and hydraulic conductivity. The early theoretical modern models were proposed one century ago, according to two different approaches, by Karl Terzaghi and Paul Fillunger. The Terzaghi's model is currently the most utilized in engineering practice and is based on the diffusion equation.",
+    "pageUrl": "https://en.wikipedia.org/wiki/Soil_consolidation"
+  },
+  {
+    "canonicalTitle": "Shear strength (soil)",
+    "koTitle": "전단강도",
+    "koKeywords": "전단강도, 쿨롱, 점착력, 내부마찰각",
+    "category": "Soil Mechanics",
+    "description": "Magnitude of the shear stress that a soil can sustain",
+    "extract": "Shear strength is a term used in soil mechanics to describe the magnitude of the shear stress that a soil can sustain. The shear resistance of soil is a result of friction and interlocking of particles, and possibly cementation or bonding of particle contacts. Due to interlocking, particulate material may expand or contract in volume as it is subject to shear strains. If soil expands its volume, the density of particles will decrease and the strength will decrease; in this case, the peak strength would be followed by a reduction of shear stress. The stress-strain relationship levels off when the material stops expanding or contracting, and when interparticle bonds are broken. The theoretical state at which the shear stress and density remain constant while the shear strain increases may be called the critical state, steady state, or residual strength.",
+    "pageUrl": "https://en.wikipedia.org/wiki/Shear_strength_(soil)"
+  },
+  {
+    "canonicalTitle": "Triaxial shear test",
+    "koTitle": "삼축압축시험",
+    "koKeywords": "삼축압축, cu, cd, uu, 삼축시험, 응력경로",
+    "category": "Soil Mechanics",
+    "description": "Stress test with different levels of stress in each perpendicular direction",
+    "extract": "In materials science, a triaxial shear test is a common method to measure the mechanical properties of many deformable solids, especially soil and rock, and other granular materials or powders. There are several variations on the test. In a triaxial shear test, stress is applied to a sample of the material being tested in a way which results in stresses along one axis being different from the stresses in perpendicular directions. This is typically achieved by placing the sample between two parallel platens which apply stress in one direction, and applying fluid pressure to the specimen to apply stress in the perpendicular directions (see: § True triaxial test, below, for testing apparatus which allows application of different levels of stress in each of three orthogonal directions).",
+    "pageUrl": "https://en.wikipedia.org/wiki/Triaxial_shear_test"
+  },
+  {
+    "canonicalTitle": "Direct shear test",
+    "koTitle": "직접전단시험",
+    "koKeywords": "직접전단, 전단상자",
+    "category": "Soil Mechanics",
+    "description": "Test to measure sheer strength",
+    "extract": "A  direct shear test is a laboratory or field test used by geotechnical engineers to measure the shear strength properties of soil or rock material, or of discontinuities in soil or rock masses.",
+    "pageUrl": "https://en.wikipedia.org/wiki/Direct_shear_test"
+  },
+  {
+    "canonicalTitle": "Mohr–Coulomb theory",
+    "koTitle": "모어-쿨롱 파괴이론",
+    "koKeywords": "모어원, 쿨롱, 모어쿨롱, 파괴포락선",
+    "category": "Soil Mechanics",
+    "description": "Mathematical model in materials science",
+    "extract": "Mohr–Coulomb theory is a mathematical model describing the response of brittle materials such as concrete, or rubble piles, to shear stress as well as normal stress. Most of the classical engineering materials follow this rule in at least a portion of their shear failure envelope. Generally the theory applies to materials for which the compressive strength far exceeds the tensile strength.",
+    "pageUrl": "https://en.wikipedia.org/wiki/Mohr%E2%80%93Coulomb_theory"
+  },
+  {
+    "canonicalTitle": "Critical state soil mechanics",
+    "koTitle": "임계상태 토질역학",
+    "koKeywords": "임계상태, 캠클레이, cam-clay",
+    "category": "Soil Mechanics",
+    "description": "Behavior of soil under varying stresses",
+    "extract": "Critical state soil mechanics is the area of soil mechanics that encompasses the conceptual models representing the mechanical behavior of saturated remoulded soils based on the critical state concept. At the critical state, the relationship between forces applied in the soil (stress), and the resulting deformation resulting from this stress (strain) becomes constant. The soil will continue to deform, but the stress will no longer increase.",
+    "pageUrl": "https://en.wikipedia.org/wiki/Critical_state_soil_mechanics"
+  },
+  {
+    "canonicalTitle": "Atterberg limits",
+    "koTitle": "아터버그 한계",
+    "koKeywords": "아터버그, 액성한계, 소성한계, 소성지수, pi, ll, pl",
+    "category": "Soil Mechanics",
+    "description": "Geotechnical characteristics of a soil related to its water content",
+    "extract": "The Atterberg limits are a basic measure of the critical water contents of a fine-grained soil: its shrinkage limit, plastic limit, and liquid limit.",
+    "pageUrl": "https://en.wikipedia.org/wiki/Atterberg_limits"
+  },
+  {
+    "canonicalTitle": "Soil compaction",
+    "koTitle": "다짐",
+    "koKeywords": "다짐, 최적함수비, 최대건조밀도, 프록터, 다짐곡선",
+    "category": "Soil Mechanics",
+    "description": "Process in geotechnical engineering to increase soil density",
+    "extract": "In geotechnical engineering, soil compaction is the process in which stress applied to a soil causes densification as air is displaced from the pores between the soil grains. When stress is applied that causes densification due to water being displaced from between the soil grains, then consolidation, not compaction, has occurred. Normally, compaction is the result of heavy machinery compressing the soil, but it can also occur due to the passage of, for example, animal feet.",
+    "pageUrl": "https://en.wikipedia.org/wiki/Soil_compaction"
+  },
+  {
+    "canonicalTitle": "Relative density",
+    "koTitle": "상대밀도",
+    "koKeywords": "상대밀도, dr, 모래다짐",
+    "category": "Soil Mechanics",
+    "description": "Ratio of two densities",
+    "extract": "Relative density, also called specific gravity, is a dimensionless quantity defined as the ratio of the density of a substance to the density of a given reference material. The relative density of solids and liquids is nearly always measured with respect to water at its densest ; for gases, the reference is air at room temperature. The term \"relative density\" is preferred modern use, for example in ISO, IUPAC, and NIST, while the term \"specific gravity\" is gradually being abandoned.",
+    "pageUrl": "https://en.wikipedia.org/wiki/Relative_density"
+  },
+  {
+    "canonicalTitle": "Void ratio",
+    "koTitle": "간극비",
+    "koKeywords": "간극비, 공극비, 간극률, 포화도",
+    "category": "Soil Mechanics",
+    "description": "Dimensionless quantity related to porosity",
+    "extract": "The void ratio of a mixture of solids and fluids, or of a porous composite material such as concrete, is the ratio of the volume of the voids filled by the fluids to the volume of all the solids. \nIt is a dimensionless quantity in materials science and in soil science, and is closely related to the porosity, the ratio of the volume of voids to the total volume, as follows:",
+    "pageUrl": "https://en.wikipedia.org/wiki/Void_ratio"
+  },
+  {
+    "canonicalTitle": "Water content",
+    "koTitle": "함수비",
+    "koKeywords": "함수비, 함수량, 포화도",
+    "category": "Soil Mechanics",
+    "description": "Quantity of water contained in a material",
+    "extract": "Water content or moisture content is the quantity of water contained in a material, such as soil, rock, ceramics, crops, or wood. Water content is used in a wide range of scientific and technical areas. It is expressed as a ratio, which can range from 0 to the value of the materials' porosity at saturation. It can be given on a volumetric or gravimetric (mass) basis.",
+    "pageUrl": "https://en.wikipedia.org/wiki/Water_content"
+  },
+  {
+    "canonicalTitle": "Unified Soil Classification System",
+    "koTitle": "통일분류법",
+    "koKeywords": "통일분류법, uscs, sp, sw, cl, ch, sm, sc",
+    "category": "Soil Mechanics",
+    "description": "System describing soil texture and grain size",
+    "extract": "The Unified Soil Classification System (USCS) is a soil classification system used in engineering and geology to describe the texture and grain size of a soil. The classification system can be applied to most unconsolidated materials, and is represented by a two-letter symbol. Each letter is described below:",
+    "pageUrl": "https://en.wikipedia.org/wiki/Unified_Soil_Classification_System"
+  },
+  {
+    "canonicalTitle": "Hydraulic conductivity",
+    "koTitle": "투수계수",
+    "koKeywords": "투수계수, 투수시험, 다르시, 침투",
+    "category": "Soil Mechanics",
+    "description": "Ability of water to flow through a porous material",
+    "extract": "In science and engineering, hydraulic conductivity is a property of porous materials, soils and rocks, that describes the ease with which a fluid can move through the pore space, or fracture network. It depends on the intrinsic permeability of the material, the degree of saturation, and on the density and viscosity of the fluid. Saturated hydraulic conductivity, Ksat, describes water movement through saturated media.\nBy definition, hydraulic conductivity is the ratio of volume flux to hydraulic gradient yielding a quantitative measure of a saturated soil's ability to transmit water when subjected to a hydraulic gradient.",
+    "pageUrl": "https://en.wikipedia.org/wiki/Hydraulic_conductivity"
+  },
+  {
+    "canonicalTitle": "Flow net",
+    "koTitle": "유선망",
+    "koKeywords": "유선망, 유선, 등수두선, 침투수량",
+    "category": "Soil Mechanics",
+    "description": "Type of graph",
+    "extract": "A flow net is a graphical representation of two-dimensional steady-state groundwater flow through aquifers.",
+    "pageUrl": "https://en.wikipedia.org/wiki/Flow_net"
+  },
+  {
+    "canonicalTitle": "Quicksand",
+    "koTitle": "보일링/퀵샌드",
+    "koKeywords": "보일링, 퀵샌드, 유동화",
+    "category": "Soil Mechanics",
+    "description": "Colloid consisting of granular material and water",
+    "extract": "Quicksand, also known as sinking sand, is a colloid consisting of fine granular material and water. It forms in saturated loose sand when the sand is suddenly agitated. When water in the sand cannot escape, it creates a liquefied soil that loses strength and cannot support weight. Quicksand can form in standing water or in upward flowing water. In the case of upward-flowing water, forces oppose the force of gravity and suspend the soil particle.",
+    "pageUrl": "https://en.wikipedia.org/wiki/Quicksand"
+  },
+  {
+    "canonicalTitle": "Soil liquefaction",
+    "koTitle": "액상화",
+    "koKeywords": "액상화, 지진액상화, 과잉간극수압, 모래액상화",
+    "category": "Soil Mechanics",
+    "description": "Soil material that is ordinarily a solid behaving like a thick liquid",
+    "extract": "Soil liquefaction occurs when a cohesionless saturated or partially saturated soil substantially loses strength and stiffness in response to an applied stress such as shaking during an earthquake or other sudden change in stress condition, in which material that is ordinarily a solid behaves like a liquid, a sudden physical change termed thixotropy. In soil mechanics, the term \"liquefied\" was first used by Allen Hazen in reference to the 1918 failure of the Calaveras Dam in California. He described the mechanism of flow liquefaction of the embankment dam as:If the pressure of the water in the pores is great enough to carry all the load, it will have the effect of holding the particles apart and of producing a condition that is practically equivalent to that of quicksand... the initial movement of some part of the material might result in accumulating pressure, first on one point, and then on another, successively, as the early points of concentration were liquefied.",
+    "pageUrl": "https://en.wikipedia.org/wiki/Soil_liquefaction"
+  },
+  {
+    "canonicalTitle": "Stress (mechanics)",
+    "koTitle": "응력경로",
+    "koKeywords": "응력경로, tsp, esp, p-q, 모어원경로",
+    "category": "Soil Mechanics",
+    "description": "Physical quantity that expresses internal forces in a continuous material",
+    "extract": "In continuum mechanics, stress is a physical quantity that describes forces present during deformation. For example, an object being pulled apart, such as a stretched elastic band, is subject to tensile stress and may undergo elongation. An object being pushed together, such as a crumpled sponge, is subject to compressive stress and may undergo shortening. The greater the force and the smaller the cross-sectional area of the body on which it acts, the greater the stress. Stress has dimension of force per area, with SI units of newtons per square meter (N/m2) or pascal (Pa).",
+    "pageUrl": "https://en.wikipedia.org/wiki/Stress_(mechanics)"
+  },
+  {
+    "canonicalTitle": "Pore water pressure",
+    "koTitle": "간극수압",
+    "koKeywords": "간극수압, 과잉간극수압, 유효응력원리",
+    "category": "Soil Mechanics",
+    "description": "Pressure of groundwater held within a soil or rock, in gaps between particles",
+    "extract": "Pore water pressure refers to the pressure of groundwater held within a soil or rock, in gaps between particles (pores). Pore water pressures below the phreatic level of the groundwater are measured with piezometers. The vertical pore water pressure distribution in aquifers can generally be assumed to be close to hydrostatic.",
+    "pageUrl": "https://en.wikipedia.org/wiki/Pore_water_pressure"
+  },
+  {
+    "canonicalTitle": "Soil consolidation",
+    "koTitle": "2차 압밀",
+    "koKeywords": "2차압밀, 크리프, 2차압밀계수",
+    "category": "Soil Mechanics",
+    "description": "Process by which soils decrease in volume",
+    "extract": "Soil consolidation refers to the mechanical process by which soil changes volume gradually in response to a change in pressure. This happens because soil is a three-phase material. The first phase consists of soil grains, and a combination of void (air) or other fluid comprise the second and third phases. When soil saturated with water is subjected to an increase in pressure, the high volumetric stiffness of water compared to the soil matrix means that the water initially absorbs all the change in pressure without changing volume, creating excess pore water pressure. As water diffuses away from regions of high pressure due to seepage, the soil matrix gradually takes up the pressure change and shrinks in volume. The theoretical framework of consolidation is therefore closely related to the concept of effective stress, and hydraulic conductivity. The early theoretical modern models were proposed one century ago, according to two different approaches, by Karl Terzaghi and Paul Fillunger. The Terzaghi's model is currently the most utilized in engineering practice and is based on the diffusion equation.",
+    "pageUrl": "https://en.wikipedia.org/wiki/Soil_consolidation"
+  },
+  {
+    "canonicalTitle": "Lateral earth pressure",
+    "koTitle": "측방토압",
+    "koKeywords": "토압, 주동토압, 수동토압, 정지토압, 랭킨, 쿨롱",
+    "category": "Soil Mechanics",
+    "description": "Pressure of soil in horizontal direction",
+    "extract": "The lateral earth pressure is the pressure that soil exerts in the horizontal direction. It is important because it affects the consolidation behavior and strength of the soil and because it is considered in the design of geotechnical engineering structures such as retaining walls, basements, tunnels, deep foundations and braced excavations.",
+    "pageUrl": "https://en.wikipedia.org/wiki/Lateral_earth_pressure"
+  },
+  {
+    "canonicalTitle": "Terzaghi's principle",
+    "koTitle": "테르자기 원리",
+    "koKeywords": "테르자기, 1차원압밀, 유효응력원리",
+    "category": "Soil Mechanics",
+    "description": "Theory of soil consolidation and effective stress",
+    "extract": "Terzaghi's principle states that when stress is applied to a porous material, it is opposed also by the fluid pressure filling the pores in the material.",
+    "pageUrl": "https://en.wikipedia.org/wiki/Terzaghi's_principle"
+  },
+  {
+    "canonicalTitle": "Deep cement mixing",
+    "koTitle": "심층혼합처리공법 (DMM)",
+    "koKeywords": "dmm, dcm, 심층혼합, 심층혼합공법, 고결공, 시멘트개량",
+    "category": "Ground Improvement",
+    "description": "",
+    "extract": "Deep cement mixing (DCM) is a geotechnical engineering deep foundation ground\nimprovement technique where a binder material, typically cement, is injected into the ground for ground stabilisation and land reclamation. The technique can also be used for containing contaminants and water cut-off. The resulting stabilised soil generally has a higher strength, lower permeability, lower compressibility and reduced liquefaction risk than the original soil. In land reclamation applications it is typically used when cheaper techniques such as dredging or draining cannot be applied because of environmental concerns due to contaminated soil that these two techniques would release. The expansion of the Hong Kong International Airport and Tokyo's Haneda Airport are examples of this.",
+    "pageUrl": "https://en.wikipedia.org/wiki/Deep_cement_mixing"
+  },
+  {
+    "canonicalTitle": "Pressure grouting",
+    "koTitle": "제트그라우팅",
+    "koKeywords": "제트그라우팅, jsp, rjm, cjp, 고압분사, 고압분사주입",
+    "category": "Ground Improvement",
+    "description": "",
+    "extract": "Pressure grouting or jet grouting involves injecting a grout material into otherwise inaccessible but interconnected pore or void space of which neither the configuration or volume are known, and is often referred to simply as grouting.",
+    "pageUrl": "https://en.wikipedia.org/wiki/Pressure_grouting"
+  },
+  {
+    "canonicalTitle": "Grout",
+    "koTitle": "그라우팅",
+    "koKeywords": "그라우팅, 약액주입, 침투주입, 컴팩션그라우팅",
+    "category": "Ground Improvement",
+    "description": "Building material",
+    "extract": "Grout is a dense substance that flows like a liquid yet hardens upon application, often used to fill gaps or to function as reinforcement in existing structures. Grout is generally a mixture of water, cement, and sand, and is frequently employed in efforts such as pressure grouting, embedding rebar in masonry walls, connecting sections of precast concrete, filling voids, and sealing joints such as those between tiles. Common uses for grout in the household include filling in tiles of shower floors and kitchen tiles. It is often color tinted when it has to be kept visible and sometimes includes fine gravel when being used to fill large spaces. Unlike other structural pastes such as plaster or joint compound, correctly mixed and applied grout forms a water-resistant seal.",
+    "pageUrl": "https://en.wikipedia.org/wiki/Grout"
+  },
+  {
+    "canonicalTitle": "Dynamic compaction",
+    "koTitle": "동다짐공법",
+    "koKeywords": "동다짐, 동압밀, 충격다짐, 중추낙하",
+    "category": "Ground Improvement",
+    "description": "Method of increasing soil density",
+    "extract": "Dynamic compaction is a method that is used to increase the density of soils when certain subsurface constraints make other methods of soil compaction inappropriate. The process involves dropping a heavy weight repeatedly on the ground at regularly spaced points, usually laid out in a systematic fashion such as a grid. The weight and the height from which it is dropped determine the force delivered to the ground surface and thus the amount of compaction that occurs. Depending on the degree of compaction desired, the weight may vary between 8 and 36 tonnes, and the height between 1 and 30 metres.",
+    "pageUrl": "https://en.wikipedia.org/wiki/Dynamic_compaction"
+  },
+  {
+    "canonicalTitle": "Vacuum consolidation",
+    "koTitle": "진공압밀공법",
+    "koKeywords": "진공압밀, 대기압재하, 진공배수",
+    "category": "Ground Improvement",
+    "description": "",
+    "extract": "Vacuum consolidation is a soft soil improvement method that has been successfully used by geotechnical engineers and specialists of ground improvement companies in countries such as Australia, China, Korea, Thailand and France for soil improvement or land reclamation. It does not necessarily require surcharge fill and vacuum loads of 80kPa or greater can, typically, be maintained for as long as required.",
+    "pageUrl": "https://en.wikipedia.org/wiki/Vacuum_consolidation"
+  },
+  {
+    "canonicalTitle": "Underpinning",
+    "koTitle": "언더피닝",
+    "koKeywords": "언더피닝, 기초보강, 침하복원",
+    "category": "Ground Improvement",
+    "description": "Process of strengthening the foundation of an existing structure",
+    "extract": "In construction or renovation, underpinning is the process of strengthening the foundation of an existing building or other structure. Underpinning may be necessary for a variety of reasons:The original foundation is not strong or stable enough.\nThe usage of the structure has changed.\nThe properties of the soil supporting the foundation may have changed or were mischaracterized during design.\nThe construction of nearby structures necessitates the excavation of soil supporting existing foundations.\nTo increase the depth or load capacity of existing foundations to support the addition of another storey to the building.\nIt is more economical, due to land price or otherwise, to work on the present structure's foundation than to build a new one.\nEarthquake, flood, drought or other natural causes have caused the structure to move, requiring stabilisation of foundation soils and/or footings.",
+    "pageUrl": "https://en.wikipedia.org/wiki/Underpinning"
+  },
+  {
+    "canonicalTitle": "Elevance Health",
+    "koTitle": "웰포인트공법",
+    "koKeywords": "웰포인트, 지하수위저하, 딥웰, 집수정",
+    "category": "Ground Improvement",
+    "description": "American healthcare company",
+    "extract": "Elevance Health, Inc. is an American health insurance company. Prior to June 2022, Elevance Health was named Anthem, Inc. The company is the world's seventh largest healthcare company based on revenue. Its services include medical, pharmaceutical, dental, behavioral health, long-term care, and disability plans through affiliated companies such as Anthem Blue Cross and Blue Shield, Anthem Blue Cross in California, Wellpoint, and Carelon. It is the largest for-profit managed health care company in the Blue Cross Blue Shield Association. As of 2022, the company had 46.8 million members within its affiliated companies' health plans.",
+    "pageUrl": "https://en.wikipedia.org/wiki/Elevance_Health"
+  },
+  {
+    "canonicalTitle": "Geotextile",
+    "koTitle": "토목섬유 (지오텍스타일)",
+    "koKeywords": "토목섬유, 지오텍스타일, 지오그리드, 지오컴포지트, 토속매트",
+    "category": "Ground Improvement",
+    "description": "Textile material used in ground stabilization and construction",
+    "extract": "Geotextiles are versatile permeable fabrics that, when used in conjunction with soil, can effectively perform multiple functions, including separation, filtration, reinforcement, protection, and drainage. Typically crafted from polypropylene or polyester, geotextile fabrics are available in two primary forms: woven, which resembles traditional mail bag sacking, and nonwoven, which resembles felt.",
+    "pageUrl": "https://en.wikipedia.org/wiki/Geotextile"
+  },
+  {
+    "canonicalTitle": "Standard penetration test",
+    "koTitle": "표준관입시험 (SPT)",
+    "koKeywords": "spt, 표준관입, n치, 엔치, 타격횟수",
+    "category": "Site Investigation",
+    "description": "Geotechnical engineering test of soil properties",
+    "extract": "The standard penetration test (SPT) is an in-situ dynamic penetration test designed to provide information on the geotechnical engineering properties of soil. This test is the most frequently used subsurface exploration drilling test performed worldwide. The test procedure is described in ISO 22476-3, ASTM D1586 and Australian Standards AS 1289.6.3.1.\nThe test provides samples for identification purposes and provides a measure of penetration resistance which can be used for geotechnical design purposes. Various local and widely published international correlations that relate blow count, or N-value, to the engineering properties of soils are available for geotechnical engineering purposes.",
+    "pageUrl": "https://en.wikipedia.org/wiki/Standard_penetration_test"
+  },
+  {
+    "canonicalTitle": "Cone penetration test",
+    "koTitle": "콘관입시험 (CPT)",
+    "koKeywords": "cpt, cptu, 콘관입, 선단저항력, 마찰비, 간극수압",
+    "category": "Site Investigation",
+    "description": "Method used to determine the geotechnical engineering properties of soils",
+    "extract": "The cone penetration or cone penetrometer test (CPT) is a method used to determine the geotechnical engineering properties of soils and delineating soil stratigraphy. It was initially developed in the 1950s at the Dutch Laboratory for Soil Mechanics in Delft to investigate soft soils. Based on this history it has also been called the \"Dutch cone test\". Today, the CPT is one of the most used and accepted soil methods for soil investigation worldwide.",
+    "pageUrl": "https://en.wikipedia.org/wiki/Cone_penetration_test"
+  },
+  {
+    "canonicalTitle": "Pressuremeter test",
+    "koTitle": "프레셔미터시험 (PMT)",
+    "koKeywords": "pmt, 프레셔미터, 메나드, 횡주압",
+    "category": "Site Investigation",
+    "description": "",
+    "extract": "A pressuremeter is a meter constructed to measure the “at-rest horizontal earth pressure”. The pressuremeter has two major components. The first component is a read-out unit that remains above ground. The second component of the pressure meter is a probe that is inserted into the borehole (ground) to read the pressure.",
+    "pageUrl": "https://en.wikipedia.org/wiki/Pressuremeter_test"
+  },
+  {
+    "canonicalTitle": "Geotechnical investigation",
+    "koTitle": "지반조사",
+    "koKeywords": "지반조사, 시추조사, 보링, 주상도, 물리탐사",
+    "category": "Site Investigation",
+    "description": "Study of properties of soil earthworks",
+    "extract": "Geotechnical investigations are performed by geotechnical engineers or engineering geologists to obtain information on the physical properties of soil earthworks and foundations for proposed structures and for repair of distress to earthworks and structures caused by subsurface conditions; this type of investigation is called a site investigation. Geotechnical investigations are also used to measure the thermal resistance of soils or backfill materials required for underground transmission lines, oil and gas pipelines, radioactive waste disposal, and solar thermal storage facilities. A geotechnical investigation will include surface exploration and subsurface exploration of a site. Sometimes, geophysical methods are used to obtain data about sites. Subsurface exploration usually involves soil sampling and laboratory tests of the soil samples retrieved.",
+    "pageUrl": "https://en.wikipedia.org/wiki/Geotechnical_investigation"
+  },
+  {
+    "canonicalTitle": "Rock mass classification",
+    "koTitle": "암반분류",
+    "koKeywords": "암반분류, rmr, q시스템, rqd, gsi",
+    "category": "Rock Mechanics",
+    "description": "",
+    "extract": "Rock mass classification systems are used for various engineering design and stability analysis. These are based on empirical relations between rock mass parameters and engineering applications, such as tunnels, slopes, foundations, and excavatability. The first rock mass classification system in geotechnical engineering was proposed in 1946 for tunnels with steel set support.",
+    "pageUrl": "https://en.wikipedia.org/wiki/Rock_mass_classification"
+  },
+  {
+    "canonicalTitle": "Rock mass rating",
+    "koTitle": "RMR 분류",
+    "koKeywords": "rmr, 비에니아프스키, 암반평점",
+    "category": "Rock Mechanics",
+    "description": "Rock mass classification system",
+    "extract": "The rock mass rating (RMR) is a geomechanical classification system for rocks, developed by Z. T. Bieniawski between 1972 and 1973. \nSince then it has undergone multiple modifications out of which, RMR89 is commonly used. Recently RMR14 has been proposed to improve the RMR performance by incorporating new experiences from tunnel practices. Continuous functions and a software \"QuickRMR\" for RMR89 and RMR14 have also been proposed by Kundu. RMR combines the most significant geologic parameters of influence and represents them with one overall comprehensive index of rock mass quality, which is used for the design and construction of excavations in rock, such as tunnels, mines, slopes, and foundations.",
+    "pageUrl": "https://en.wikipedia.org/wiki/Rock_mass_rating"
+  },
+  {
+    "canonicalTitle": "Q-systems",
+    "koTitle": "Q 시스템",
+    "koKeywords": "q시스템, 바톤, ngi",
+    "category": "Rock Mechanics",
+    "description": "",
+    "extract": "Q-systems are a method of directed graph transformations according to given grammar rules, developed at the Université de Montréal by Alain Colmerauer in 1967–70 for use in natural language processing. The Université de Montréal's machine translation system, TAUM-73, used the Q-Systems as its language formalism.",
+    "pageUrl": "https://en.wikipedia.org/wiki/Q-systems"
+  },
+  {
+    "canonicalTitle": "Foundation (engineering)",
+    "koTitle": "기초공학",
+    "koKeywords": "기초, 직접기초, 깊은기초, 지지력, 침하량",
+    "category": "Foundations",
+    "description": "Lowest and supporting layer of a structure",
+    "extract": "In engineering, a foundation is the element of a structure that connects it to the ground, or more rarely water, transferring loads from the structure to the ground. Foundations are generally considered either shallow or deep. Foundation engineering is the application of soil mechanics and rock mechanics in the design of foundation elements of structures.",
+    "pageUrl": "https://en.wikipedia.org/wiki/Foundation_(engineering)"
+  },
+  {
+    "canonicalTitle": "Shallow foundation",
+    "koTitle": "얕은기초",
+    "koKeywords": "얕은기초, 독립기초, 복합기초, 전면기초, 매트기초",
+    "category": "Foundations",
+    "description": "Type of building foundation",
+    "extract": "A shallow foundation is a type of building foundation that transfers structural load to the earth very near to the surface, rather than to a subsurface layer or a range of depths, as does a deep foundation. Customarily, a shallow foundation is considered as such when the width of the entire foundation is greater than its depth. In comparison to deep foundations, shallow foundations are less technical, thus making them more economical and the most widely used for relatively light structures.",
+    "pageUrl": "https://en.wikipedia.org/wiki/Shallow_foundation"
+  },
+  {
+    "canonicalTitle": "Piling",
+    "koTitle": "깊은기초 (말뚝)",
+    "koKeywords": "깊은기초, 말뚝기초, 현장타설말뚝, 기성콘크리트말뚝, 강관말뚝",
+    "category": "Foundations",
+    "description": "Type of foundation",
+    "extract": "A pile or piling is a vertical structural element of a deep foundation, driven or drilled deep into the ground at the building site. A deep foundation is a type of foundation that transfers building loads to the earth farther down from the surface than a shallow foundation does to a subsurface layer or a range of depths.",
+    "pageUrl": "https://en.wikipedia.org/wiki/Piling"
+  },
+  {
+    "canonicalTitle": "Bearing capacity",
+    "koTitle": "지지력",
+    "koKeywords": "지지력, 극한지지력, 허용지지력, 테르자기지지력식, 메이어호프",
+    "category": "Foundations",
+    "description": "Capacity of soil to support loads",
+    "extract": "In geotechnical engineering, bearing capacity is the capacity of soil to support the loads applied to the ground. The bearing capacity of soil is the maximum average contact pressure between the foundation and the soil which should not produce shear failure in the soil. Ultimate bearing capacity is the theoretical maximum pressure which can be supported without failure; allowable bearing capacity is the ultimate bearing capacity divided by a factor of safety. Sometimes, on soft soil sites, large settlements may occur under loaded foundations without actual shear failure occurring; in such cases, the allowable bearing capacity is based on the maximum allowable settlement. The allowable bearing pressure is the maximum pressure that can be applied to the soil without causing failure. The ultimate bearing capacity, on the other hand, is the maximum pressure that can be applied to the soil before it fails.",
+    "pageUrl": "https://en.wikipedia.org/wiki/Bearing_capacity"
+  },
+  {
+    "canonicalTitle": "Settlement (structural)",
+    "koTitle": "침하량",
+    "koKeywords": "침하량, 즉시침하, 탄성침하, 부등침하",
+    "category": "Foundations",
+    "description": "Sinking of a building foundation",
+    "extract": "Settlement is the downward movement or the sinking of a structure's foundation. It is mostly caused by changes in the underlying soil, such as drying and shrinking, wetting and softening, or compression due to the soil being poorly compacted when construction started.\nSome settlement is quite normal after construction has been completed.",
+    "pageUrl": "https://en.wikipedia.org/wiki/Settlement_(structural)"
+  },
+  {
+    "canonicalTitle": "Caisson (engineering)",
+    "koTitle": "케이슨 기초",
+    "koKeywords": "케이슨, 뉴매틱케이슨, 우물통기초",
+    "category": "Foundations",
+    "description": "Rigid structure to provide workers with a dry working environment below water level",
+    "extract": "In geotechnical engineering, a caisson is a watertight retaining structure. It is used, for example, to work on the foundations of a bridge pier, for the construction of a concrete dam, or for the repair of ships.",
+    "pageUrl": "https://en.wikipedia.org/wiki/Caisson_(engineering)"
+  },
+  {
+    "canonicalTitle": "Piling",
+    "koTitle": "마이크로파일",
+    "koKeywords": "마이크로파일, 소구경말뚝, 보강말뚝",
+    "category": "Foundations",
+    "description": "Type of foundation",
+    "extract": "A pile or piling is a vertical structural element of a deep foundation, driven or drilled deep into the ground at the building site. A deep foundation is a type of foundation that transfers building loads to the earth farther down from the surface than a shallow foundation does to a subsurface layer or a range of depths.",
+    "pageUrl": "https://en.wikipedia.org/wiki/Piling"
+  },
+  {
+    "canonicalTitle": "Retaining wall",
+    "koTitle": "옹벽 / 흙막이",
+    "koKeywords": "옹벽, 흙막이, 가시설, 토압, 안정조건",
+    "category": "Retaining Structures",
+    "description": "Artificial wall used for supporting soil between two different elevations",
+    "extract": "Retaining walls are relatively rigid walls used for supporting soil laterally so that it can be retained at different levels on the two sides. Retaining walls are structures designed to restrain soil to a slope that it would not naturally keep to. They are used to bound soils between two different elevations often in areas of inconveniently steep terrain in areas where the landscape needs to be shaped severely and engineered for more specific purposes like hillside farming or roadway overpasses. A retaining wall that retains soil on the backside and water on the frontside is called a seawall or a bulkhead.",
+    "pageUrl": "https://en.wikipedia.org/wiki/Retaining_wall"
+  },
+  {
+    "canonicalTitle": "Mechanically stabilized earth",
+    "koTitle": "보강토 옹벽 (MSE)",
+    "koKeywords": "보강토, 보강토옹벽, mse, 전면판, 보강재, 지오그리드",
+    "category": "Retaining Structures",
+    "description": "Soil constructed with artificial reinforcing",
+    "extract": "Mechanically stabilized earth is soil constructed with artificial reinforcing. It can be used for retaining walls, bridge abutments, seawalls, and dikes. Although the basic principles of MSE have been used throughout history, MSE was developed in its current form in the 1960s. The reinforcing elements used can vary but include steel and geosynthetics.",
+    "pageUrl": "https://en.wikipedia.org/wiki/Mechanically_stabilized_earth"
+  },
+  {
+    "canonicalTitle": "Slurry wall",
+    "koTitle": "지하연속벽 (슬러리월)",
+    "koKeywords": "슬러리월, 지하연속벽, 지중연속벽, 안정액, 벤토나이트",
+    "category": "Retaining Structures",
+    "description": "Civil engineering technique",
+    "extract": "A slurry wall is a civil engineering technique used to build reinforced concrete walls in areas of soft earth close to open water, or with a high groundwater table. This technique is typically used to build diaphragm (water-blocking) walls surrounding tunnels and open cuts, and to lay foundations. Slurry walls are a \"well-established\" technology but the decision to use slurry walls for a certain project requires geophysical and other engineering studies to develop a plan appropriate for the needs of that specific location. Slurry walls may need to be used in conjunction with other methods to meet project objectives.",
+    "pageUrl": "https://en.wikipedia.org/wiki/Slurry_wall"
+  },
+  {
+    "canonicalTitle": "Tieback (geotechnical)",
+    "koTitle": "그라운드 앵커 (어스앵커)",
+    "koKeywords": "어스앵커, 그라운드앵커, 타이백, 인장재, 정착장, 자유장",
+    "category": "Retaining Structures",
+    "description": "Structural element used to transfer tensile force into the ground",
+    "extract": "In geotechnical engineering, a tieback is a structural element installed in soil or rock to transfer applied tensile load into the material behind it. Typically in the form of a horizontal wire or rod, or a helical anchor, a tieback is commonly used along with other retaining systems to provide additional stability to cantilevered retaining and slurry walls. With one end of the tieback secured to the wall, the other end is anchored to a stable structure, such as a concrete deadman which has been driven into the ground or anchored into earth with sufficient resistance. The tieback-deadman structure resists forces that would otherwise cause the wall to lean, as for example, when a seawall is pushed seaward by water trapped on the landward side after a heavy rain.",
+    "pageUrl": "https://en.wikipedia.org/wiki/Tieback_(geotechnical)"
+  },
+  {
+    "canonicalTitle": "Soil nailing",
+    "koTitle": "소일네일링",
+    "koKeywords": "소일네일링, 소일네일, 전면판, 네일",
+    "category": "Retaining Structures",
+    "description": "Remedial construction measure",
+    "extract": "Soil nailing is a remedial construction measure to treat unstable natural soil slopes or unstable man-made (fill) slopes as a construction technique that allows the safe over-steepening of new or existing soil slopes. The technique involves the insertion of relatively slender reinforcing elements into the slope – often general purpose reinforcing bars (rebar) although proprietary solid or hollow-system bars are also available. Solid bars are usually installed into pre-drilled holes and then grouted into place using a separate grout line, whereas hollow bars may be drilled and grouted simultaneously by the use of a sacrificial drill bit and by pumping grout down the hollow bar as drilling progresses. Kinetic methods of firing relatively short bars into soil slopes have also been developed.",
+    "pageUrl": "https://en.wikipedia.org/wiki/Soil_nailing"
+  },
+  {
+    "canonicalTitle": "Retaining wall",
+    "koTitle": "강널말뚝 (시트파일)",
+    "koKeywords": "시트파일, 강널말뚝, 연식벽, 자립식",
+    "category": "Retaining Structures",
+    "description": "Artificial wall used for supporting soil between two different elevations",
+    "extract": "Retaining walls are relatively rigid walls used for supporting soil laterally so that it can be retained at different levels on the two sides. Retaining walls are structures designed to restrain soil to a slope that it would not naturally keep to. They are used to bound soils between two different elevations often in areas of inconveniently steep terrain in areas where the landscape needs to be shaped severely and engineered for more specific purposes like hillside farming or roadway overpasses. A retaining wall that retains soil on the backside and water on the frontside is called a seawall or a bulkhead.",
+    "pageUrl": "https://en.wikipedia.org/wiki/Retaining_wall"
+  },
+  {
+    "canonicalTitle": "Slope stability",
+    "koTitle": "사면안정",
+    "koKeywords": "사면안정, 비탈면, 비탈면안정, 안전율, 한계평형법",
+    "category": "Slope Stability",
+    "description": "Stability of soil or rock slopes",
+    "extract": "Slope stability refers to the condition of inclined soil or rock slopes to withstand or undergo movement; the opposite condition is called slope instability or slope failure. The stability condition of slopes is a subject of study and research in soil mechanics, geotechnical engineering, and engineering geology. Analyses are generally aimed at understanding the causes of an occurred slope failure, or the factors that can potentially trigger a slope movement, resulting in a landslide, as well as at preventing the initiation of such movement, slowing it down or arresting it through mitigation countermeasures.",
+    "pageUrl": "https://en.wikipedia.org/wiki/Slope_stability"
+  },
+  {
+    "canonicalTitle": "Landslide",
+    "koTitle": "산사태",
+    "koKeywords": "산사태, 사면붕괴, 원호활동, 평면파괴",
+    "category": "Slope Stability",
+    "description": "Natural hazard involving ground movement",
+    "extract": "Landslides, also known as landslips, rockslips, rockfalls, mudslides, mudslips or rockslides, are several forms of mass wasting that may include a wide range of ground movements, such as rockfalls, mudflows, shallow or deep-seated slope failures and debris flows. Landslides occur in a variety of environments, characterized by either steep or gentle slope gradients, from mountain ranges to coastal cliffs or even underwater, in which case they are called submarine landslides.",
+    "pageUrl": "https://en.wikipedia.org/wiki/Landslide"
+  },
+  {
+    "canonicalTitle": "Tunnel",
+    "koTitle": "터널공학",
+    "koKeywords": "터널, 굴착, 지보, 방수, 환기",
+    "category": "Tunnels",
+    "description": "Underground passage made for traffic",
+    "extract": "A tunnel is an underground or undersea passageway. It is dug through surrounding soil, earth or rock, or laid under water, and is usually completely enclosed except for the two portals common at each end, though there may be access and ventilation openings at various points along the length. A pipeline differs significantly from a tunnel, though some recent tunnels have used immersed tube construction techniques rather than traditional tunnel boring methods.",
+    "pageUrl": "https://en.wikipedia.org/wiki/Tunnel"
+  },
+  {
+    "canonicalTitle": "New Austrian tunneling method",
+    "koTitle": "NATM 공법",
+    "koKeywords": "natm, 나틈, 숏크리트, 록볼트, 강지보, 계측",
+    "category": "Tunnels",
+    "description": "Method of modern tunnel design and construction",
+    "extract": "The new Austrian tunneling method (NATM), also known as the sequential excavation method (SEM) or sprayed concrete lining method (SCL), Neue Österreichische Tunnelbaumethode (NÖT) in German, is a method of modern tunnel design and construction employing sophisticated monitoring to optimize various wall reinforcement techniques based on the type of rock encountered as tunneling progresses. This technique first gained attention in the 1960s based on the work of Ladislaus von Rabcewicz, Leopold Müller, and Franz Pacher between 1957 and 1965 in Austria. The name NATM was intended to distinguish it from earlier methods, with its economic advantage of employing inherent geological strength available in the surrounding rock mass to stabilize the tunnel wherever possible rather than reinforcing the entire tunnel.",
+    "pageUrl": "https://en.wikipedia.org/wiki/New_Austrian_tunneling_method"
+  },
+  {
+    "canonicalTitle": "Tunnel boring machine",
+    "koTitle": "TBM 공법",
+    "koKeywords": "tbm, 실드tbm, 쉴드, 굴진기, 세그먼트",
+    "category": "Tunnels",
+    "description": "Device used to excavate tunnels",
+    "extract": "A tunnel boring machine (TBM), also known as a \"mole\", is a machine used to excavate tunnels. TBMs are an alternative to drilling and blasting methods and \"hand mining\", allowing more rapid excavation through hard rock, wet or dry soil, or sand. TBM-bored tunnel cross-sections extend up to 17.6 meters (58 ft). TBM tunnels are typically circular in cross-section. Specialized tunnel boring machines have been developed to excavate non-circular tunnels, including rectangular and horseshoe-shaped profiles. Much narrower tunnels are typically bored using trenchless construction methods or horizontal directional drilling rather than by TBMs.",
+    "pageUrl": "https://en.wikipedia.org/wiki/Tunnel_boring_machine"
+  },
+  {
+    "canonicalTitle": "Shotcrete",
+    "koTitle": "숏크리트",
+    "koKeywords": "숏크리트, 분사콘크리트, 급결제, 리바운드",
+    "category": "Tunnels",
+    "description": "Pneumatically projected concrete",
+    "extract": "Shotcrete, gunite, or sprayed concrete is concrete or mortar conveyed through a hose and pneumatically projected at high velocity onto a surface. This construction technique was invented by Carl Akeley and first used in 1907. The concrete is typically reinforced by conventional steel rods, steel mesh, or fibers.",
+    "pageUrl": "https://en.wikipedia.org/wiki/Shotcrete"
+  },
+  {
+    "canonicalTitle": "Rock bolt",
+    "koTitle": "록볼트",
+    "koKeywords": "록볼트, 전면접착형, 정착형, 봉합효과",
+    "category": "Tunnels",
+    "description": "Long anchor bolt, for stabilizing rock excavations",
+    "extract": "A rock bolt is a long anchor bolt, for stabilizing rock excavations, which may be used in tunnels or rock cuts. It transfers load from the unstable exterior to the confined interior of the rock mass.",
+    "pageUrl": "https://en.wikipedia.org/wiki/Rock_bolt"
+  },
+  {
+    "canonicalTitle": "Rock mechanics",
+    "koTitle": "암반역학",
+    "koKeywords": "암반역학, 불연속면, 절리, 단층, 암석강도",
+    "category": "Rock Mechanics",
+    "description": "Study of the mechanical behavior of rocks",
+    "extract": "Rock mechanics is a theoretical and applied science of the mechanical behavior of rocks and rock masses.",
+    "pageUrl": "https://en.wikipedia.org/wiki/Rock_mechanics"
+  },
+  {
+    "canonicalTitle": "Immersed tube",
+    "koTitle": "침매터널",
+    "koKeywords": "침매터널, 침매함, 기초사석",
+    "category": "Tunnels",
+    "description": "Type of undersea tunnel",
+    "extract": "An immersed tube is a kind of undersea tunnel composed of segments, constructed elsewhere and floated to the tunnel site to be sunk into place and then linked together. They are commonly used for road and rail crossings of rivers, estuaries and sea channels. Immersed tubes are often used in conjunction with other forms of tunnel at their end, such as a cut and cover or bored tunnel, which is usually necessary to continue the tunnel from near the water's edge to the entrance at the land surface.",
+    "pageUrl": "https://en.wikipedia.org/wiki/Immersed_tube"
+  },
+  {
+    "canonicalTitle": "Groundwater",
+    "koTitle": "지하수위",
+    "koKeywords": "지하수위, Groundwater",
+    "category": "Geotechnical Engineering",
+    "description": "Water located beneath the ground surface",
+    "extract": "Groundwater is the water present beneath Earth's surface in rock and soil pore spaces and in the fractures of rock formations. About 30 percent of all readily available fresh water in the world is groundwater. A unit of rock or an unconsolidated deposit is called an aquifer when it can yield a usable quantity of water. The depth at which soil pore spaces or fractures and voids in rock become completely saturated with water is called the water table. Groundwater is recharged from the surface; it may discharge from the surface naturally at springs and seeps, and can form oases or wetlands. Groundwater is also often withdrawn for agricultural, municipal, and industrial use by constructing and operating extraction wells. The study of the distribution and movement of groundwater is hydrogeology, also called groundwater hydrology.",
+    "pageUrl": "https://en.wikipedia.org/wiki/Groundwater"
+  },
+  {
+    "canonicalTitle": "Buoyancy",
+    "koTitle": "부력",
+    "koKeywords": "부력, Buoyancy",
+    "category": "Geotechnical Engineering",
+    "description": "Upward force that opposes the weight of an object immersed in fluid",
+    "extract": "Buoyancy, or upthrust, is the force exerted by a fluid opposing the weight of a partially or fully immersed object. The pressure of a fluid increases with depth below the fluid's surface because of the weight of the fluid above. Thus, the pressure at the bottom of a container of fluid is greater than at the top of the container. Similarly, the pressure at the bottom of an object submerged in a fluid is greater than at the top of the object. This pressure difference results in a net upward force on the object. The magnitude of the force is proportional to the pressure difference, and, as explained by Archimedes' principle, is equivalent to the weight of the fluid that would otherwise occupy the submerged volume of the object, i.e. the displaced fluid.",
+    "pageUrl": "https://en.wikipedia.org/wiki/Buoyancy"
+  },
+  {
+    "canonicalTitle": "Tectonic uplift",
+    "koTitle": "양압력",
+    "koKeywords": "양압력, Uplift (geology)",
+    "category": "Geotechnical Engineering",
+    "description": "Geologic uplift of Earth's surface that is attributed to plate tectonics",
+    "extract": "Tectonic uplift is the geologic uplift of Earth's surface that is attributed to plate tectonics. While isostatic response is important, an increase in the mean elevation of a region can only occur in response to tectonic processes of crustal thickening, changes in the density distribution of the crust and underlying mantle, and flexural support due to the bending of rigid lithosphere.",
+    "pageUrl": "https://en.wikipedia.org/wiki/Tectonic_uplift"
+  },
+  {
+    "canonicalTitle": "Joint (geology)",
+    "koTitle": "절리",
+    "koKeywords": "절리, Joint (geology)",
+    "category": "Geotechnical Engineering",
+    "description": "Type of fracture in rock",
+    "extract": "In geology, and more specifically in structural geology, a joint is a break (fracture) of natural origin in a layer or body of rock that lacks visible or measurable movement parallel to the surface (plane) of the fracture. Although joints can occur singly, they most frequently appear as joint sets and systems. A joint set is a family of parallel, evenly spaced joints that can be identified through mapping and analysis of their orientations, spacing, and physical properties. A joint system consists of two or more intersecting joint sets.",
+    "pageUrl": "https://en.wikipedia.org/wiki/Joint_(geology)"
+  },
+  {
+    "canonicalTitle": "Fault (geology)",
+    "koTitle": "단층",
+    "koKeywords": "단층, Fault (geology)",
+    "category": "Geotechnical Engineering",
+    "description": "Fracture or discontinuity in displaced rock",
+    "extract": "In geology, a fault is a planar fracture or discontinuity in a volume of rock across which there has been significant displacement as a result of rock-mass movements. Large faults within Earth's crust result from the action of plate tectonic forces, with the largest forming the boundaries between the plates, such as the megathrust faults of subduction zones or transform faults. Energy release associated with rapid movement on active faults is the cause of most earthquakes. Faults may also displace slowly, by aseismic creep.",
+    "pageUrl": "https://en.wikipedia.org/wiki/Fault_(geology)"
+  },
+  {
+    "canonicalTitle": "Seismic base isolation",
+    "koTitle": "면진",
+    "koKeywords": "면진, Base isolation",
+    "category": "Geotechnical Engineering",
+    "description": "Means of protecting a structure against earthquake",
+    "extract": "Seismic base isolation, also known as base isolation, or base isolation system, is one of the most popular means of protecting a structure against earthquake forces. It is a collection of structural elements which should substantially decouple a superstructure from its substructure that is in turn resting on the shaking ground, thus protecting a building or non-building structure's integrity.",
+    "pageUrl": "https://en.wikipedia.org/wiki/Seismic_base_isolation"
+  },
+  {
+    "canonicalTitle": "Tuned mass damper",
+    "koTitle": "제진",
+    "koKeywords": "제진, Tuned mass damper",
+    "category": "Geotechnical Engineering",
+    "description": "Device designed to reduce vibrations in structures",
+    "extract": "A tuned mass damper (TMD), also known as a harmonic absorber or seismic damper, is a device mounted in structures to reduce mechanical vibrations, consisting of a mass mounted on one or more damped springs. Its oscillation frequency is tuned to be similar to the resonant frequency of the object it is mounted to, and reduces the object's maximum amplitude while weighing much less than it.",
+    "pageUrl": "https://en.wikipedia.org/wiki/Tuned_mass_damper"
+  },
+  {
+    "canonicalTitle": "Earthquake engineering",
+    "koTitle": "내진",
+    "koKeywords": "내진, Earthquake engineering",
+    "category": "Geotechnical Engineering",
+    "description": "Study of earthquake-resistant structures",
+    "extract": "Earthquake engineering is an interdisciplinary branch of engineering that designs and analyzes structures, such as buildings and bridges, with earthquakes in mind. Its overall goal is to make such structures more resistant to earthquakes. An earthquake engineer aims to construct structures that will not be damaged in minor shaking and will avoid serious damage or collapse in a major earthquake. \nA properly engineered structure does not necessarily have to be extremely strong or expensive. It has to be properly designed to withstand the seismic effects while sustaining an acceptable level of damage.",
+    "pageUrl": "https://en.wikipedia.org/wiki/Earthquake_engineering"
+  },
+  {
+    "canonicalTitle": "Earthquake",
+    "koTitle": "지진",
+    "koKeywords": "지진, Earthquake",
+    "category": "Geotechnical Engineering",
+    "description": "Sudden movement of the Earth's crust",
+    "extract": "An earthquake, also called a quake, tremor, or temblor, is the shaking of the Earth's surface resulting from a sudden release of energy in the lithosphere that creates seismic waves. Earthquakes can range in intensity, from those so weak they cannot be felt, to those violent enough to propel objects and people into the air, damage critical infrastructure, and wreak destruction across entire cities. The seismic activity of an area is the frequency, type, and size of earthquakes experienced over a particular time. The seismicity at a particular location in the Earth is the average rate of seismic energy released per unit volume.",
+    "pageUrl": "https://en.wikipedia.org/wiki/Earthquake"
+  },
+  {
+    "canonicalTitle": "Response spectrum",
+    "koTitle": "응답스펙트럼",
+    "koKeywords": "응답스펙트럼, Response spectrum",
+    "category": "Geotechnical Engineering",
+    "description": "Response of a structure to oscillation",
+    "extract": "A response spectrum is a plot of the peak or steady-state response of a series of oscillators of varying natural frequency, that are forced into motion by the same base vibration or shock. The resulting plot can then be used to pick off the response of any linear system, given its natural frequency of oscillation. One such use is in assessing the peak response of buildings to earthquakes. The science of strong ground motion may use some values from the ground response spectrum for correlation with seismic damage.",
+    "pageUrl": "https://en.wikipedia.org/wiki/Response_spectrum"
+  }
+]
