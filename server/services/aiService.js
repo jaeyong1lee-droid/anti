@@ -563,8 +563,19 @@ export async function getMatchingTopicContent(queryText = '', topicId = null, ma
       '기준', '설계', '시공', '관리', '영향', '요소', '현상', '방지', '산정', '공식',
       '문제', '설명', '특징', '장단점', '차이점', '유도', '계산', '적용', '원리', '거동',
       '단순', '테스트', '질문', '결과', '이용한', '분석', '추정', '결정', '산출', '조사',
-      '평가', '계획', '검증', '일반', '구조', '지반', '토질', '기초', '토목', '현장'
+      '평가', '계획', '검증', '일반', '구조', '지반', '토질', '기초', '토목', '현장',
+      '흙', '흙의', '지반의', '토질역학', '토질역학적', '지반공학', '지반공학적', '공학적', '역학적',
+      '물리적', '보고서', '기술', '기술사', '토질및기초기술사', '서술형', '답안', '검토사항', '유의사항',
+      '방안', '활용', '활용방안', '확보', '확보방안', '문제점', '대책시설', '상관관계', '아래', '파괴'
     ]);
+
+    const isGenericToken = (tok) => {
+      if (!tok || tok.length < 2) return true;
+      if (GENERIC_WORDS.has(tok)) return true;
+      const stripped = tok.replace(/(에서|으로|은|는|이|가|을|를|의|에|로|과|와|별|적)$/, '');
+      if (!stripped || stripped.length < 2 || GENERIC_WORDS.has(stripped)) return true;
+      return false;
+    };
 
     const scored = [];
     for (const row of rows) {
@@ -590,7 +601,7 @@ export async function getMatchingTopicContent(queryText = '', topicId = null, ma
 
       for (const token of titleTokens) {
         if (qClean.includes(token)) {
-          if (GENERIC_WORDS.has(token)) {
+          if (isGenericToken(token)) {
             score += 1;
           } else {
             score += 8;
@@ -608,7 +619,7 @@ export async function getMatchingTopicContent(queryText = '', topicId = null, ma
 
       for (const kw of kwTokens) {
         if (qClean.includes(kw)) {
-          if (GENERIC_WORDS.has(kw)) {
+          if (isGenericToken(kw)) {
             score += 1;
           } else {
             score += 6;

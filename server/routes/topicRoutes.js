@@ -1197,8 +1197,10 @@ router.post('/topics/:id/slides/generate', async (req, res) => {
     }
 
     // 💡 [사용자 특별 지침] 첨부 보고서 텍스트가 없거나 부족한 경우:
-    // "AI 튜터에 검색했을 때 나오는 고품질 전문 지식 및 기술사 강의 해설"을 원천 소스로 자동 생성하여 PPT 제작!
-    if (!sourceText || sourceText.length < 150 || sourceText.includes('수기로 등록한 토픽')) {
+    // 위키/KCSC 그라운딩조차 부족한 경우에만 1차 AI 튜터 본문을 사전 생성하고,
+    // 그라운딩이 충분한 경우에는 단일 LLM 호출로 즉시 5장 슬라이드 덱을 합성하여 타임아웃을 방지합니다.
+    const hasRichGrounding = (wikiGrounding.length + kcscGrounding.length) >= 400;
+    if ((!sourceText || sourceText.length < 150 || sourceText.includes('수기로 등록한 토픽')) && !hasRichGrounding) {
       console.log(`[Slide Gen] Generating rich AI Tutor knowledge base for: ${topic.title}`);
       const tutorSysPrompt = `당신은 대한민국 토목/지반/터널 기술사 시험 최고 권위의 기술사 전문 AI 튜터입니다.\n${ENGINEERING_STANDARDS}`;
       const tutorUserPrompt = `${wikiGrounding ? `${wikiGrounding}\n\n` : ''}${kcscGrounding ? `${kcscGrounding}\n\n` : ''}수험생이 [${topic.title}] 주제에 대해 학습하고자 합니다. 기술사 답안지 서술 및 현장 실무 강의 수준으로 다음 항목을 빠짐없이 포함하는 완벽하고 깊이 있는 학술적/실무적 지식 본문을 작성해 주십시오:
@@ -1219,7 +1221,8 @@ router.post('/topics/:id/slides/generate', async (req, res) => {
     }
 
     const systemPrompt = `당신은 최고 권위의 대한민국 토목/지반/터널 기술사 전문 수석 프레젠테이션 엔지니어이자 슬라이드 디자이너입니다.
-주어진 토픽의 원본 소스 및 AI 튜터 지식 베이스를 면밀히 분석하여, 기술사 수험생 및 실무 기술자가 5분 만에 핵심을 완벽히 마스터할 수 있는 [서론-본론①-본론②-본론③-결론 5장 완결형 프레젠테이션 슬라이드 덱]을 JSON으로 생성하십시오.
+주어진 토픽의 원본 소스, 영문 위키피디아 사전 지식, KCSC 국가건설기준 및 AI 튜터 지식 베이스를 면밀히 분석하여, 기술사 수험생 및 실무 기술자가 5분 만에 핵심을 완벽히 마스터할 수 있는 [서론-본론①-본론②-본론③-결론 5장 완결형 프레젠테이션 슬라이드 덱]을 JSON으로 생성하십시오.
+${ENGINEERING_STANDARDS}
 
 반드시 다음 5장의 서론-본론-결론 스토리라인을 정확히 준수하여 5장의 슬라이드를 작성해야 합니다:
 - Slide 1: category_tag: "서론 | 개요 & 핵심 정의" (토픽의 공학적 정의, 출제 빈도, 3대 핵심 키워드 배지, 발표 및 학습 목적)
@@ -1236,7 +1239,7 @@ ${LATEX_PROMPT_INSTRUCTIONS}
 - 동적 인터랙티브 차트(visual_component.chart)의 title, xAxisLabel, yAxisLabel, lines[].name, description 등에 들어가는 모든 공학 변수, 그리스 문자, 수식(예: $\\epsilon_1$, $\\sigma_1 - \\sigma_3$, $q = \\frac{\\sigma_1 - \\sigma_3}{2}$, $E_{50}$, $E_i$ 등)도 예외 없이 반드시 달러 기호($...$)로 감싸서 표기하십시오. 날것의 LaTeX 명령어(\\frac, \\epsilon_1, E_{50})를 달러 기호 없이 노출시키는 행위를 엄격히 금지합니다.
 - 유니코드 특수문자(µ 등)를 직접 쓰지 말고 표준 LaTeX 역슬래시 명령어(\\mu 등)를 사용하십시오.
 
-반드시 아래 JSON 형식으로만 순수 JSON을 응답하십시오. markdown 코드블록으로 감싸도 좋습니다.
+반드시 아래 JSON 형식으로만 순수 JSON 객체({ ... })를 응답하십시오.
 
 {
   "deck_title": "${topic.title}",
@@ -1271,10 +1274,16 @@ ${LATEX_PROMPT_INSTRUCTIONS}
 ${wikiGrounding ? `\n${wikiGrounding}\n` : ''}
 ${kcscGrounding ? `\n${kcscGrounding}\n` : ''}
 [AI 튜터 전문 지식 및 상세 소스 텍스트]:
-${(sourceText || '').slice(0, 7000)}`;
+${(sourceText || '위키피디아 및 KCSC 기준과 토목/지반 기술사 전문 지식을 종합하여 작성하십시오.').slice(0, 7000)}`;
 
-    const responseText = await callLLMWithFailover(systemPrompt, userPrompt, null, 'source-search');
-    let parsedDeck = parseLlmJson(responseText);
+    const responseText = await callLLMWithFailover(systemPrompt, userPrompt, null, 'question', { temperature: 0.2 });
+    let cleanDeckJson = (responseText || '').trim();
+    const firstBraceIdx = cleanDeckJson.indexOf('{');
+    const lastBraceIdx = cleanDeckJson.lastIndexOf('}');
+    if (firstBraceIdx !== -1 && lastBraceIdx > firstBraceIdx) {
+      cleanDeckJson = cleanDeckJson.substring(firstBraceIdx, lastBraceIdx + 1);
+    }
+    let parsedDeck = parseLlmJson(cleanDeckJson);
 
     if (parsedDeck && parsedDeck.slides && Array.isArray(parsedDeck.slides)) {
       parsedDeck = normalizeSlideDeck(parsedDeck);
