@@ -3639,6 +3639,14 @@ export default function App() {
 
   const lockscreenScrollRef = useRef(null);
 
+  const getClientKSTYymmdd = () => {
+    const d = new Date(Date.now() + 9 * 60 * 60 * 1000); // KST UTC+9
+    const year = d.getUTCFullYear();
+    const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(d.getUTCDate()).padStart(2, '0');
+    return `${String(year).slice(-2)}${month}${day}`;
+  };
+
   const getLockscreenQuestionKey = (q) => {
     if (!q) return '';
     if (q.id) return String(q.id);
@@ -3811,9 +3819,13 @@ export default function App() {
     }
     const q = recentEntry.question;
     setLockscreenQuestion(q);
-    try {
-      localStorage.setItem('anti_current_unsolved_lockscreen_question', JSON.stringify(q));
-    } catch (e) {}
+    const todayYymmdd = getClientKSTYymmdd();
+    const isTodayAssignment = Boolean(q.lockscreen_id && q.lockscreen_id.startsWith(`LOCK${todayYymmdd}_`));
+    if (isTodayAssignment) {
+      try {
+        localStorage.setItem('anti_current_unsolved_lockscreen_question', JSON.stringify(q));
+      } catch (e) {}
+    }
 
     const key = getLockscreenQuestionKey(q);
     const map = getLockscreenAnswersMap();
@@ -3842,12 +3854,14 @@ export default function App() {
       }
     } catch (e) {}
 
-    // 선택한 과거/이전 문제를 서버의 현재 활성 과제(Assignment)로 실시간 동기화
-    fetch(`${API_BASE}/api/lockscreen/select`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question: q, userAnswer: ans, gradingResult: res, hint: hnt })
-    }).catch(err => console.warn('Failed to sync selected lockscreen question to server:', err));
+    // 오늘 날짜의 과제인 경우에만 서버의 활성 과제로 동기화 (과거 문제 조회가 오늘의 일일 퀴즈를 훼손하지 않음)
+    if (isTodayAssignment) {
+      fetch(`${API_BASE}/api/lockscreen/select`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: q, userAnswer: ans, gradingResult: res, hint: hnt })
+      }).catch(err => console.warn('Failed to sync selected lockscreen question to server:', err));
+    }
 
     setShowRecentLockscreenDropdown(false);
     scrollToLockscreenTop(true);
@@ -3963,8 +3977,16 @@ export default function App() {
   // Load existing unsolved lockscreen question and history from localStorage if present
   const [lockscreenQuestion, setLockscreenQuestion] = useState(() => {
     try {
+      const todayYymmdd = getClientKSTYymmdd();
       const saved = localStorage.getItem('anti_current_unsolved_lockscreen_question');
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed?.lockscreen_id?.startsWith(`LOCK${todayYymmdd}_`)) {
+          return parsed;
+        } else {
+          localStorage.removeItem('anti_current_unsolved_lockscreen_question');
+        }
+      }
     } catch (e) {}
     return null;
   });
@@ -4171,16 +4193,20 @@ export default function App() {
               ...data.question,
               lockscreen_id: serverId
             };
+            const todayYymmdd = getClientKSTYymmdd();
+            const isCurrentPastDate = Boolean(currentId && !currentId.startsWith(`LOCK${todayYymmdd}_`));
             if (serverId && serverId !== currentId) {
-              // [🚨 절대 보호] 잠금화면 퀴즈 모달이 열려있거나(showLockscreenQuizRef.current) 사용자가 문제를 보고/풀고 있는 중에는
+              // [🚨 절대 보호] 잠금화면 퀴즈 모달이 열려있고 오늘 날짜의 문제를 풀고 있는 중에는
               // 백그라운드 포커스 동기화로 인해 문제나 답안이 강제로 다른 문제로 넘어가지 않도록 원천 차단한다.
-              if (showLockscreenQuizRef.current || lockscreenQuestionRef.current) {
+              if (showLockscreenQuizRef.current && !isCurrentPastDate) {
                 return;
               }
               console.log(`[Lockscreen Sync] Detected active assignment changed to ${serverId}, syncing across devices...`);
               setLockscreenQuestion(qWithId);
               try {
-                localStorage.setItem('anti_current_unsolved_lockscreen_question', JSON.stringify(qWithId));
+                if (serverId.startsWith(`LOCK${todayYymmdd}_`)) {
+                  localStorage.setItem('anti_current_unsolved_lockscreen_question', JSON.stringify(qWithId));
+                }
               } catch (e) {}
               const assignmentQ = data.assignment?.question;
               const assignmentMatches = !assignmentQ || !assignmentQ.question || (qWithId.question && assignmentQ.question.trim() === qWithId.question.trim());
@@ -4222,13 +4248,14 @@ export default function App() {
   }, []);
 
   const fetchLockscreenQuestion = async (addToHistory = true, forceNew = false) => {
-    // 1) Fast optimistic load from localStorage for zero delay UI
+    // 1) Fast optimistic load from localStorage for zero delay UI (오늘 날짜의 문제만 허용)
     if (!forceNew && !lockscreenQuestionRef.current) {
       try {
+        const todayYymmdd = getClientKSTYymmdd();
         const saved = localStorage.getItem('anti_current_unsolved_lockscreen_question');
         if (saved) {
           const parsed = JSON.parse(saved);
-          if (parsed && (parsed.question || parsed.fullTitle) && parsed.lockscreen_id) {
+          if (parsed && (parsed.question || parsed.fullTitle) && parsed.lockscreen_id && parsed.lockscreen_id.startsWith(`LOCK${todayYymmdd}_`)) {
             setLockscreenQuestion(parsed);
             loadQuestionAnswerState(parsed);
             if (addToHistory && lockscreenHistoryRef.current.length === 0) {
@@ -4238,6 +4265,8 @@ export default function App() {
               setLockscreenHistory(initHist);
               setLockscreenHistoryIndex(0);
             }
+          } else {
+            localStorage.removeItem('anti_current_unsolved_lockscreen_question');
           }
         }
       } catch (e) {}
@@ -4260,16 +4289,19 @@ export default function App() {
             lockscreen_id: serverId
           };
 
-          // [🚨 절대 철칙] 이미 로드된 문제가 있을 때, 사용자가 '다른 문제 보기'를 명시적으로 누른 경우(forceNew === true)가 아니면
-          // 백그라운드 fetchLockscreenQuestion이 멋대로 다른 문제로 덮어쓰지 못하도록 엄격히 방어한다.
-          // ("풀지 않는 한, 또는 다른 문제 풀기를 누르지 않는 한 넘어가지 말아야지")
-          if (!currentId || forceNew) {
-            if (forceNew && currentId && serverId === currentId) {
-              showNotification('현재 배정된 문제를 다 풀어서 채점받으신 후 새로운 문제가 생성됩니다.', 'info');
-            }
+          const todayYymmdd = getClientKSTYymmdd();
+          const isCurrentPastDate = Boolean(currentId && !currentId.startsWith(`LOCK${todayYymmdd}_`));
+          const hasUnsavedDraft = Boolean(lockscreenUserAnswer && lockscreenUserAnswer.trim().length > 0 && !lockscreenGradingResultRef.current);
+          const shouldAdoptServerQuestion = forceNew || !currentId || isCurrentPastDate || (serverId !== currentId && !hasUnsavedDraft);
+
+          if (shouldAdoptServerQuestion) {
             setLockscreenQuestion(qWithId);
             try {
-              localStorage.setItem('anti_current_unsolved_lockscreen_question', JSON.stringify(qWithId));
+              if (serverId.startsWith(`LOCK${todayYymmdd}_`)) {
+                localStorage.setItem('anti_current_unsolved_lockscreen_question', JSON.stringify(qWithId));
+              } else {
+                localStorage.removeItem('anti_current_unsolved_lockscreen_question');
+              }
             } catch (e) {}
 
             const assignmentQ = data.assignment?.question;
@@ -4518,17 +4550,13 @@ export default function App() {
       setLockscreenHistoryIndex(prevIdx);
       const q = lockscreenHistoryRef.current[prevIdx];
       setLockscreenQuestion(q);
-      try {
-        localStorage.setItem('anti_current_unsolved_lockscreen_question', JSON.stringify(q));
-      } catch (e) {}
+      const todayYymmdd = getClientKSTYymmdd();
+      if (q?.lockscreen_id?.startsWith(`LOCK${todayYymmdd}_`)) {
+        try {
+          localStorage.setItem('anti_current_unsolved_lockscreen_question', JSON.stringify(q));
+        } catch (e) {}
+      }
       loadQuestionAnswerState(q);
-
-      // 이전 문제로 복귀 시 서버의 활성 과제도 해당 문제로 실시간 동기화
-      fetch(`${API_BASE}/api/lockscreen/select`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: q })
-      }).catch(err => console.warn('Failed to sync prev lockscreen question to server:', err));
     }
   };
 
@@ -4541,18 +4569,24 @@ export default function App() {
     showLockscreenQuizRef.current = true;
     sessionStorage.setItem('anti_lockscreen_modal_open', 'true');
 
-    // Check if we already have an unsolved question in memory or in localStorage
+    // Check if we already have an unsolved question in memory or in localStorage for today
+    const todayYymmdd = getClientKSTYymmdd();
     let existingQuestion = lockscreenQuestion;
     if (!existingQuestion) {
       try {
         const saved = localStorage.getItem('anti_current_unsolved_lockscreen_question');
         if (saved) {
-          existingQuestion = JSON.parse(saved);
+          const parsed = JSON.parse(saved);
+          if (parsed?.lockscreen_id?.startsWith(`LOCK${todayYymmdd}_`)) {
+            existingQuestion = parsed;
+          } else {
+            localStorage.removeItem('anti_current_unsolved_lockscreen_question');
+          }
         }
       } catch (e) {}
     }
 
-    if (existingQuestion) {
+    if (existingQuestion && existingQuestion.lockscreen_id?.startsWith(`LOCK${todayYymmdd}_`)) {
       setLockscreenQuestion(existingQuestion);
       setLockscreenLoading(false);
       loadQuestionAnswerState(existingQuestion);

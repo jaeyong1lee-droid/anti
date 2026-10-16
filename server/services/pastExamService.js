@@ -251,49 +251,29 @@ async function _getActiveLockscreenAssignmentCore(forceNew = false) {
 
   // 1. 현재 배정된 문제가 존재할 때의 처리
   if (activeAssignment && activeAssignment.lockscreen_id && activeAssignment.question) {
+    const isToday = activeAssignment.yymmdd === yymmdd;
     const isSolved = isLockscreenAssignmentSolved(activeAssignment);
 
-    // [🚨 사용자 절대 철칙: "다음부터는 다 풀면 문제를 만들어"]
-    // 현재 배정된 문제가 아직 풀리지 않은 경우(!isSolved):
-    // 날짜가 바뀌거나, 새로고침하거나, 포커스가 이동해도 절대 새로운 문제를 생성하지 않는다!
-    if (!isSolved) {
-      // 사용자가 '다른 문제 보기'(forceNew === true)를 명시적으로 요청한 경우:
-      // 기존에 이미 배정되어 있는 다른 미해결 문제(예: LOCK261012_2, LOCK261012_3)가 목록에 있다면 그것으로 전환.
-      // 새 문제(4번, 5번 등)를 추가로 찍어내지 않고 오직 기존 미해결 문제 간에만 순환한다.
-      if (forceNew) {
-        const recentSubmissions = await getRecentLockscreenSubmissions();
-        const otherUnsolved = recentSubmissions.find(item => 
-          item.question && 
-          item.question.lockscreen_id && 
-          item.question.lockscreen_id !== activeAssignment.lockscreen_id && 
-          !isLockscreenAssignmentSolved(item)
-        );
-        if (otherUnsolved) {
-          console.log(`[pastExamService] Switching to existing unsolved question: ${otherUnsolved.question.lockscreen_id}`);
-          return await selectActiveLockscreenAssignment(
-            otherUnsolved.question, 
-            otherUnsolved.userAnswer || '', 
-            otherUnsolved.gradingResult || null, 
-            otherUnsolved.hint || ''
-          );
-        }
-        // 기존에 다른 미해결 문제가 없다면 새 문제를 생성하지 않고 현재 문제를 그대로 유지
-        console.log(`[pastExamService] Active question ${activeAssignment.lockscreen_id} is UNSOLVED. Rejecting creation of new question until solved.`);
+    // Case 1: 오늘 날짜(yymmdd)에 배정된 문제인 경우
+    if (isToday) {
+      // 사용자가 명시적으로 '다른 문제 보기'(forceNew === true)를 요청하지 않은 경우:
+      // - 아직 안 풀었으면(!isSolved): 풀던 중 새로고침/포커스/탭전환에도 현재 문제를 안전하게 유지
+      // - 이미 풀었으면(isSolved): 채점 결과 확인을 위해 유지
+      if (!forceNew) {
         return activeAssignment;
       }
-
-      console.log(`[pastExamService] Active lockscreen assignment ${activeAssignment.lockscreen_id} is UNSOLVED. Retaining current question.`);
-      return activeAssignment;
-    }
-
-    // 이미 풀린 문제(isSolved === true)인 경우:
-    // 사용자가 다음 문제를 요청하지 않았고(forceNew === false) 오늘 푼 문제이면 채점 결과 확인을 위해 그대로 반환
-    if (!forceNew && activeAssignment.yymmdd === yymmdd) {
-      return activeAssignment;
+      // 사용자가 명시적으로 '다른 문제 보기'(forceNew === true)를 클릭한 경우:
+      // 아래 2번으로 내려가서 현재 문제를 아카이빙하고 오늘의 다음 문제(LOCK{yymmdd}_{nextSeq})를 생성!
+      console.log(`[pastExamService] '다른 문제 보기' (forceNew=true) requested for today's assignment. Archiving and generating next question.`);
+    } else {
+      // Case 2: 과거 날짜의 문제인 경우 (날짜 변경!)
+      // 오늘 접속했으면 무조건 오늘 날짜의 첫 문제(LOCK{yymmdd}_1)를 배정해야 함!
+      // 과거 문제는 lockscreen_recent_questions에 보존/아카이빙하고 아래 2번으로 통과하여 오늘 문제 생성.
+      console.log(`[pastExamService] Date transitioned from ${activeAssignment.yymmdd} to ${yymmdd}. Archiving old assignment ${activeAssignment.lockscreen_id} and generating today's question.`);
     }
   }
 
-  // 2. [비로소 새 문제 생성]: 현재 문제가 '다 풀렸거나(isSolved)' 아직 배정된 문제가 아예 없을 때만 다음 문제 생성!
+  // 2. 신규 문제 생성 (오늘 날짜의 첫 문제이거나, 사용자가 '다른 문제 보기'를 클릭한 경우)
   let nextSeq = 1;
   try {
     const recentList = await getRecentLockscreenSubmissions();
@@ -305,6 +285,9 @@ async function _getActiveLockscreenAssignmentCore(forceNew = false) {
           nextSeq = parsed + 1;
         }
       }
+    }
+    if (activeAssignment && activeAssignment.yymmdd === yymmdd && typeof activeAssignment.seq === 'number' && activeAssignment.seq >= nextSeq) {
+      nextSeq = activeAssignment.seq + 1;
     }
   } catch (seqErr) {
     console.warn('[pastExamService] Failed to determine nextSeq from recent list:', seqErr.message);
@@ -372,15 +355,19 @@ export async function selectActiveLockscreenAssignment(targetQuestion, userAnswe
   const { dateStr, yymmdd } = getKSTDateInfo();
 
   let seq = 1;
-  if (lockscreenId && lockscreenId.includes('_')) {
-    const parsed = parseInt(lockscreenId.split('_')[1], 10);
+  let qYymmdd = yymmdd;
+  if (lockscreenId && lockscreenId.startsWith('LOCK') && lockscreenId.includes('_')) {
+    const raw = lockscreenId.slice(4);
+    const parts = raw.split('_');
+    if (parts[0] && parts[0].length === 6) qYymmdd = parts[0];
+    const parsed = parseInt(parts[1], 10);
     if (!isNaN(parsed)) seq = parsed;
   }
 
   const assignment = {
     lockscreen_id: lockscreenId || `LOCK${yymmdd}_${seq}`,
-    date: dateStr,
-    yymmdd,
+    date: targetQuestion.date || (qYymmdd === yymmdd ? dateStr : `20${qYymmdd.slice(0, 2)}-${qYymmdd.slice(2, 4)}-${qYymmdd.slice(4, 6)}`),
+    yymmdd: qYymmdd,
     seq,
     question: {
       ...targetQuestion,
