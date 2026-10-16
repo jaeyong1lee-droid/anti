@@ -132,28 +132,46 @@ export async function getRandomLockscreenExamQuestion() {
     console.warn('[pastExamService] Failed to read exam history from app_session:', e.message);
   }
 
+  // Also cross-check recent questions list to ensure no recently served question is missed
+  const recentIds = new Set();
+  try {
+    const recentList = await getRecentLockscreenSubmissions();
+    for (const item of recentList) {
+      const qId = item?.question?.id || item?.id;
+      if (qId) recentIds.add(qId);
+    }
+  } catch (e) {}
+
   const now = Date.now();
   const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
-  // Filter candidates: questions never served or served >= 7 days ago
-  const availableCandidates = allQuestions.filter(q => {
-    const lastServed = history[q.id];
-    if (!lastServed) return true;
-    return (now - lastServed) >= SEVEN_DAYS_MS;
-  });
+  // 1순위: 한 번도 출제된 적 없는 미출제 문제를 최우선 배정
+  const unservedCandidates = allQuestions.filter(q => !history[q.id] && !recentIds.has(q.id));
 
   let selectedQuestion = null;
 
-  if (availableCandidates.length > 0) {
-    const randomIndex = Math.floor(Math.random() * availableCandidates.length);
-    selectedQuestion = availableCandidates[randomIndex];
+  if (unservedCandidates.length > 0) {
+    const randomIndex = Math.floor(Math.random() * unservedCandidates.length);
+    selectedQuestion = unservedCandidates[randomIndex];
   } else {
-    const sortedByOldest = [...allQuestions].sort((a, b) => {
-      const timeA = history[a.id] || 0;
-      const timeB = history[b.id] || 0;
-      return timeA - timeB;
+    // 2순위: 전 문항(299개)을 모두 1회 이상 학습한 경우에만 7일 경과 문항 순환
+    const availableCandidates = allQuestions.filter(q => {
+      const lastServed = history[q.id];
+      if (!lastServed) return true;
+      return (now - lastServed) >= SEVEN_DAYS_MS;
     });
-    selectedQuestion = sortedByOldest[0];
+
+    if (availableCandidates.length > 0) {
+      const randomIndex = Math.floor(Math.random() * availableCandidates.length);
+      selectedQuestion = availableCandidates[randomIndex];
+    } else {
+      const sortedByOldest = [...allQuestions].sort((a, b) => {
+        const timeA = history[a.id] || 0;
+        const timeB = history[b.id] || 0;
+        return timeA - timeB;
+      });
+      selectedQuestion = sortedByOldest[0];
+    }
   }
 
   // Record question selection timestamp
@@ -327,12 +345,13 @@ async function _getActiveLockscreenAssignmentCore(forceNew = false) {
 
   try {
     await saveSessionValue('current_lockscreen_assignment', JSON.stringify(newAssignment));
-    // Immediately register new assignment to recent questions so it is preserved
+    // Immediately register new assignment to recent questions with overwrite: true so old answers never leak
     await saveRecentLockscreenSubmission({
       question: newAssignment.question,
-      userAnswer: newAssignment.userAnswer || '',
-      gradingResult: newAssignment.gradingResult || null,
-      hint: newAssignment.hint || ''
+      userAnswer: '',
+      gradingResult: null,
+      hint: '',
+      overwrite: true
     });
     console.log(`[pastExamService] Synchronized lockscreen assignment active (solved-first gate passed): ${lockscreenId} - [${newQuestion.sessionName} 제1교시 ${newQuestion.number}번]`);
   } catch (saveErr) {
@@ -449,7 +468,7 @@ export async function updateActiveLockscreenAnswer(userAnswer, gradingResult, hi
 /**
  * Saves or updates a question in the recent 10 lockscreen questions list.
  */
-export async function saveRecentLockscreenSubmission({ question, userAnswer, gradingResult, hint }) {
+export async function saveRecentLockscreenSubmission({ question, userAnswer, gradingResult, hint, overwrite = false }) {
   if (!question) return [];
   try {
     const row = await dbQuery.get("SELECT value FROM app_session WHERE key = 'lockscreen_recent_questions'");
@@ -479,17 +498,29 @@ export async function saveRecentLockscreenSubmission({ question, userAnswer, gra
     };
 
     if (existingIndex >= 0) {
+      const existingItem = list[existingIndex];
+      const entryLockId = entry.question?.lockscreen_id;
+      const existingLockId = existingItem.question?.lockscreen_id;
+      const isDifferentLockAssignment = Boolean(entryLockId && existingLockId && entryLockId !== existingLockId);
+      const shouldReplaceCleanly = overwrite || isDifferentLockAssignment;
+
       list[existingIndex] = {
-        ...list[existingIndex],
+        ...existingItem,
         ...entry,
         question: {
-          ...list[existingIndex].question,
+          ...existingItem.question,
           ...entry.question,
-          lockscreen_id: entry.question?.lockscreen_id || list[existingIndex].question?.lockscreen_id
+          lockscreen_id: entryLockId || existingLockId
         },
-        userAnswer: entry.userAnswer || list[existingIndex].userAnswer || '',
-        gradingResult: entry.gradingResult || list[existingIndex].gradingResult || null,
-        hint: entry.hint || list[existingIndex].hint || ''
+        userAnswer: shouldReplaceCleanly
+          ? entry.userAnswer
+          : (entry.userAnswer || existingItem.userAnswer || ''),
+        gradingResult: shouldReplaceCleanly
+          ? entry.gradingResult
+          : (entry.gradingResult || existingItem.gradingResult || null),
+        hint: shouldReplaceCleanly
+          ? entry.hint
+          : (entry.hint || existingItem.hint || '')
       };
       // Keep position fixed! Do NOT splice & unshift to prevent reordering
     } else {

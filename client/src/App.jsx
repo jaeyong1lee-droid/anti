@@ -3749,11 +3749,22 @@ export default function App() {
             validRecent.forEach(item => {
               const key = getLockscreenQuestionKey(item.question);
               if (key) {
+                const prev = existingMap[key];
+                const isDiffLockId = Boolean(
+                  item.question?.lockscreen_id &&
+                  prev?.question?.lockscreen_id &&
+                  item.question.lockscreen_id !== prev.question.lockscreen_id
+                );
+                const isUngradedReset = !item.gradingResult && Boolean(prev?.gradingResult);
                 existingMap[key] = {
                   question: item.question,
-                  userAnswer: item.userAnswer || existingMap[key]?.userAnswer || '',
-                  gradingResult: item.gradingResult || existingMap[key]?.gradingResult || null,
-                  hint: item.hint || existingMap[key]?.hint || '',
+                  userAnswer: (isDiffLockId || isUngradedReset)
+                    ? (item.userAnswer || '')
+                    : (item.userAnswer || prev?.userAnswer || ''),
+                  gradingResult: item.gradingResult || null,
+                  hint: (isDiffLockId || isUngradedReset)
+                    ? (item.hint || '')
+                    : (item.hint || prev?.hint || ''),
                   updatedAt: item.updatedAt || Date.now()
                 };
               }
@@ -3807,10 +3818,12 @@ export default function App() {
     const key = getLockscreenQuestionKey(q);
     const map = getLockscreenAnswersMap();
     const mapEntry = map[key];
+    const isSameLockId = !q.lockscreen_id || !mapEntry?.question?.lockscreen_id || q.lockscreen_id === mapEntry.question.lockscreen_id;
+    const isUngradedReset = !recentEntry.gradingResult && Boolean(mapEntry?.gradingResult);
 
-    const ans = recentEntry.userAnswer || mapEntry?.userAnswer || '';
-    const res = recentEntry.gradingResult || mapEntry?.gradingResult || null;
-    const hnt = recentEntry.hint || mapEntry?.hint || '';
+    const ans = recentEntry.userAnswer || ((isSameLockId && !isUngradedReset) ? mapEntry?.userAnswer : '') || '';
+    const res = recentEntry.gradingResult || ((isSameLockId && !isUngradedReset) ? mapEntry?.gradingResult : null) || null;
+    const hnt = recentEntry.hint || ((isSameLockId && !isUngradedReset) ? mapEntry?.hint : '') || '';
 
     setLockscreenUserAnswer(ans);
     setLockscreenGradingResult(res);
@@ -4042,7 +4055,10 @@ export default function App() {
         if (map[key]?.userAnswer !== undefined) {
           const entryQText = map[key]?.question?.question?.trim();
           const currentQText = q?.question?.trim();
-          if (!entryQText || !currentQText || entryQText === currentQText) {
+          const entryLockId = map[key]?.question?.lockscreen_id;
+          const currentLockId = q?.lockscreen_id;
+          const lockMatches = !entryLockId || !currentLockId || entryLockId === currentLockId;
+          if (lockMatches && (!entryQText || !currentQText || entryQText === currentQText)) {
             return map[key].userAnswer;
           }
         }
@@ -4061,7 +4077,10 @@ export default function App() {
         if (map[key]?.gradingResult !== undefined) {
           const entryQText = map[key]?.question?.question?.trim();
           const currentQText = q?.question?.trim();
-          if (!entryQText || !currentQText || entryQText === currentQText) {
+          const entryLockId = map[key]?.question?.lockscreen_id;
+          const currentLockId = q?.lockscreen_id;
+          const lockMatches = !entryLockId || !currentLockId || entryLockId === currentLockId;
+          if (lockMatches && (!entryQText || !currentQText || entryQText === currentQText)) {
             return map[key].gradingResult;
           }
         }
@@ -4081,7 +4100,7 @@ export default function App() {
   const [lockscreenHint, setLockscreenHint] = useState('');
   const [lockscreenHintLoading, setLockscreenHintLoading] = useState(false);
 
-  const loadQuestionAnswerState = (q) => {
+  const loadQuestionAnswerState = (q, serverAssignment = null) => {
     if (!q) {
       setLockscreenUserAnswer('');
       setLockscreenGradingResult(null);
@@ -4093,15 +4112,27 @@ export default function App() {
     const map = getLockscreenAnswersMap();
     const savedEntry = key ? map[key] : null;
     if (savedEntry) {
-      // Validate that savedEntry actually belongs to this question
+      // Validate that savedEntry actually belongs to this exact question AND lockscreen_id assignment
       const entryQ = savedEntry.question;
       const entryQText = entryQ?.question?.trim();
       const currentQText = q.question?.trim();
-      if (entryQText && currentQText && entryQText !== currentQText) {
-        console.warn(`[Lockscreen] Detected contaminated answer in localStorage for ${key}, clearing mismatch.`);
-        setLockscreenUserAnswer('');
+      const entryLockId = entryQ?.lockscreen_id;
+      const currentLockId = q.lockscreen_id;
+      const isTextMismatch = Boolean(entryQText && currentQText && entryQText !== currentQText);
+      const isLockIdMismatch = Boolean(entryLockId && currentLockId && entryLockId !== currentLockId);
+      const isServerReset = Boolean(serverAssignment && !serverAssignment.gradingResult && savedEntry.gradingResult);
+
+      if (isTextMismatch || isLockIdMismatch || isServerReset) {
+        console.warn(`[Lockscreen] Detected contaminated/old assignment answer in localStorage for ${key}, clearing mismatch.`);
+        delete map[key];
+        try {
+          localStorage.setItem('anti_lockscreen_answers_map', JSON.stringify(map));
+          localStorage.removeItem('anti_current_lockscreen_user_answer');
+          localStorage.removeItem('anti_current_lockscreen_grading_result');
+        } catch (e) {}
+        setLockscreenUserAnswer(serverAssignment?.userAnswer || '');
         setLockscreenGradingResult(null);
-        setLockscreenHint('');
+        setLockscreenHint(serverAssignment?.hint || '');
         setShowLockscreenHint(false);
         return;
       }
@@ -4159,7 +4190,7 @@ export default function App() {
                 if (data.assignment.hint) setLockscreenHint(data.assignment.hint);
                 saveLockscreenAnswerForQuestion(qWithId, data.assignment.userAnswer, data.assignment.gradingResult, data.assignment.hint);
               } else {
-                loadQuestionAnswerState(qWithId);
+                loadQuestionAnswerState(qWithId, data.assignment);
               }
             } else if (serverId && serverId === currentId) {
               // Same question ID: if other device graded or updated answer
@@ -4169,6 +4200,12 @@ export default function App() {
                 setLockscreenGradingResult(data.assignment.gradingResult);
                 if (data.assignment.userAnswer) setLockscreenUserAnswer(data.assignment.userAnswer);
                 saveLockscreenAnswerForQuestion(qWithId, data.assignment.userAnswer, data.assignment.gradingResult, data.assignment.hint);
+              } else if (assignmentMatches && !data.assignment?.gradingResult && lockscreenGradingResultRef.current) {
+                // Server state is ungraded/reset, clear stale client gradingResult
+                clearLockscreenAnswerForQuestion(qWithId);
+                setLockscreenGradingResult(null);
+                setLockscreenUserAnswer(data.assignment?.userAnswer || '');
+                setLockscreenHint(data.assignment?.hint || '');
               }
             }
           }
@@ -4244,7 +4281,7 @@ export default function App() {
               if (data.assignment.hint) setLockscreenHint(data.assignment.hint);
               saveLockscreenAnswerForQuestion(qWithId, data.assignment.userAnswer, data.assignment.gradingResult, data.assignment.hint);
             } else {
-              loadQuestionAnswerState(qWithId);
+              loadQuestionAnswerState(qWithId, data.assignment);
             }
 
             if (addToHistory) {
@@ -4265,6 +4302,15 @@ export default function App() {
               setLockscreenGradingResult(data.assignment.gradingResult);
               if (data.assignment.userAnswer) setLockscreenUserAnswer(data.assignment.userAnswer);
               saveLockscreenAnswerForQuestion(qWithId, data.assignment.userAnswer, data.assignment.gradingResult, data.assignment.hint);
+            }
+          } else if (!data.assignment?.gradingResult && lockscreenGradingResultRef.current) {
+            const assignmentQ = data.assignment?.question;
+            const assignmentMatches = !assignmentQ || !assignmentQ.question || (qWithId.question && assignmentQ.question.trim() === qWithId.question.trim());
+            if (assignmentMatches) {
+              clearLockscreenAnswerForQuestion(qWithId);
+              setLockscreenGradingResult(null);
+              setLockscreenUserAnswer(data.assignment?.userAnswer || '');
+              setLockscreenHint(data.assignment?.hint || '');
             }
           }
           return qWithId;
@@ -4786,7 +4832,7 @@ export default function App() {
   const [showMobileNavbarMemoryPopup, setShowMobileNavbarMemoryPopup] = useState(false);
   const activeProgressIdRef = useRef(null);
 
-  const startProgressPolling = (progressId) => {
+  const startProgressPolling = (progressId, customQueryOrTitle = null) => {
     if (progressIntervalRef.current) {
       clearInterval(progressIntervalRef.current);
       progressIntervalRef.current = null;
@@ -4804,7 +4850,7 @@ export default function App() {
       if (progressId.startsWith('ref_')) return 'AI 복습 문제 리프레쉬';
       if (progressId.startsWith('exp_')) return 'AI 보기 상세해설 생성';
       if (progressId.startsWith('hint_')) return 'AI 풀이 힌트 생성';
-      if (progressId.startsWith('tutor_')) return 'AI 튜터 질의응답';
+      if (progressId.startsWith('tutor_') || progressId.startsWith('realtime_tutor_')) return 'AI 튜터 질의응답';
       if (progressId.startsWith('guide_')) return 'AI 맞춤형 학습 가이드 생성';
       if (progressId.startsWith('exam_gen_')) return 'AI 종합평가 문제 생성';
       if (progressId.startsWith('exam_ref_')) return 'AI 종합평가 문제 리프레쉬';
@@ -4812,10 +4858,19 @@ export default function App() {
       return 'AI 분석 작업';
     })();
 
+    const cleanCustomQuery = typeof customQueryOrTitle === 'string' && customQueryOrTitle.trim()
+      ? customQueryOrTitle.trim().replace(/\s+/g, ' ').slice(0, 60)
+      : null;
+
+    const displayTitle = cleanCustomQuery
+      ? (selectedTopic ? `${selectedTopic.title} (질문: ${cleanCustomQuery})` : cleanCustomQuery)
+      : (selectedTopic ? selectedTopic.title : '지반공학 종합평가');
+
     const newRecord = {
       id: progressId,
       taskName,
-      topicTitle: selectedTopic ? selectedTopic.title : '지반공학 종합평가',
+      topicTitle: displayTitle,
+      queryText: cleanCustomQuery || (selectedTopic ? selectedTopic.title : '지반공학'),
       startTime: new Date().toISOString(),
       endTime: null,
       status: 'running',
@@ -4919,7 +4974,8 @@ export default function App() {
             if (!modelName) modelName = 'gemini-3.5-flash';
 
             // Insert detailed timeline logs based on the scenario and actual data returned
-            if (data) {
+            const hasQuestionsPayload = !!(data && (data.questions || data.question || data.isCached));
+            if (hasQuestionsPayload) {
               if (data.isCached) {
                 timeline.push(`[캐시 복원] 이전 세션의 문제 세트(${data.questions ? data.questions.length : 0}문항)와 사용자 상태를 즉시 복원했습니다. (API 호출 건너뜀)`);
                 timeline.push(`[완료] 데이터 로드가 성공적으로 완료되었습니다.`);
@@ -4951,7 +5007,7 @@ export default function App() {
               const isGrading = finishedId.startsWith('grade_');
               const isExplanation = finishedId.startsWith('exp_');
               const isHint = finishedId.startsWith('hint_');
-              const isTutor = finishedId.startsWith('tutor_');
+              const isTutor = finishedId.startsWith('tutor_') || finishedId.startsWith('realtime_tutor_');
               const isGuide = finishedId.startsWith('guide_');
               
               if (isGrading) {
@@ -13044,7 +13100,7 @@ ${item.intuitive || ''}
     }));
 
     const progressId = 'tutor_' + Math.random().toString(36).substring(2, 9);
-    startProgressPolling(progressId);
+    startProgressPolling(progressId, userQuery);
 
     try {
       let contextPrompt = `[학습 문맥 정보]\n`;
@@ -13734,7 +13790,7 @@ ${item.intuitive || ''}
     setIsRealTimeChatLoading(true);
 
     const progressId = 'realtime_tutor_' + Math.random().toString(36).substring(2, 9);
-    startProgressPolling(progressId);
+    startProgressPolling(progressId, userMessage);
 
     try {
       const data = await safeFetchJson(`${API_BASE}/api/chat`, {
@@ -14805,7 +14861,7 @@ ${item.intuitive || ''}
     });
 
     const progressId = 'tutor_' + Math.random().toString(36).substring(2, 9);
-    startProgressPolling(progressId);
+    startProgressPolling(progressId, userMessage);
 
     try {
       const data = await safeFetchJson(`${API_BASE}/api/chat`, {
@@ -14820,7 +14876,7 @@ ${item.intuitive || ''}
           progressId
         })
       });
-      stopProgressPolling('답변 생성이 완료되었습니다!', 100);
+      stopProgressPolling('답변 생성이 완료되었습니다!', 100, true, data);
       
       const newModelMsg = { role: 'model', text: data.text };
       const historyWithModel = [...chatHistoryRef.current, newModelMsg];
@@ -18470,7 +18526,7 @@ ${itemsStr}
     }
     
     const progressId = 'tutor_' + Math.random().toString(36).substring(2, 9);
-    startProgressPolling(progressId);
+    startProgressPolling(progressId, userMessage);
 
     try {
       const data = await safeFetchJson(`${API_BASE}/api/chat`, {
@@ -18487,7 +18543,7 @@ ${itemsStr}
           progressId
         })
       });
-      stopProgressPolling('답변 생성이 완료되었습니다!', 100);
+      stopProgressPolling('답변 생성이 완료되었습니다!', 100, true, data);
       saveFormulaChatHistory(prev => [...prev, { role: 'model', text: data.text }]);
     } catch (err) {
       stopProgressPolling('답변 생성 실패', 100, false);
@@ -24763,75 +24819,75 @@ ${itemsStr}
                               ) : (
                                 <div className="flex flex-col items-center justify-center py-6 text-slate-500 space-y-2 text-center h-full">
                                   <span className="text-xs">위키피디아 지식 검색 내역이 비어 있습니다.</span>
-                                  <button
-                                    type="button"
-                                    onClick={async (e) => {
-                                      e.stopPropagation();
-                                      const q = item.topicTitle || '지반공학';
-                                      try {
-                                        const res = await fetch(`${API_BASE}/api/wiki/grounding?q=${encodeURIComponent(q)}`);
-                                        const json = await res.json();
-                                        if (json && json.groundingContext) {
-                                          setAiHistory(prev => {
-                                            const updated = prev.map(h => h.id === item.id ? { ...h, wikiGrounding: json.groundingContext } : h);
-                                            localStorage.setItem('anti_ai_history', JSON.stringify(updated));
-                                            return updated;
-                                          });
+                                    <button
+                                      type="button"
+                                      onClick={async (e) => {
+                                        e.stopPropagation();
+                                        const q = item.queryText || item.topicTitle || '지반공학';
+                                        try {
+                                          const res = await fetch(`${API_BASE}/api/wiki/grounding?q=${encodeURIComponent(q)}`);
+                                          const json = await res.json();
+                                          if (json && json.groundingContext) {
+                                            setAiHistory(prev => {
+                                              const updated = prev.map(h => h.id === item.id ? { ...h, wikiGrounding: json.groundingContext } : h);
+                                              localStorage.setItem('anti_ai_history', JSON.stringify(updated));
+                                              return updated;
+                                            });
+                                          }
+                                        } catch (err) {
+                                          console.warn('Manual wiki fetch error:', err);
                                         }
-                                      } catch (err) {
-                                        console.warn('Manual wiki fetch error:', err);
-                                      }
-                                    }}
-                                    className="px-2.5 py-1 text-[11px] bg-sky-600/30 hover:bg-sky-600/50 text-sky-200 border border-sky-500/40 rounded-lg transition-all cursor-pointer font-bold active:scale-95"
-                                  >
-                                    🔍 위키피디아 즉시 조회
-                                  </button>
-                                </div>
-                              )}
+                                      }}
+                                      className="px-2.5 py-1 text-[11px] bg-sky-600/30 hover:bg-sky-600/50 text-sky-200 border border-sky-500/40 rounded-lg transition-all cursor-pointer font-bold active:scale-95"
+                                    >
+                                      🔍 위키피디아 즉시 조회
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                          </div>
 
-                          {/* 창 3: KCSC 검색사항 */}
-                          <div className="flex flex-col bg-slate-950/60 border border-emerald-500/25 rounded-xl overflow-hidden shadow-inner">
-                            <div className="flex items-center justify-between px-3.5 py-2.5 bg-emerald-950/30 border-b border-emerald-500/20">
-                              <span className="font-bold text-emerald-300 flex items-center gap-1.5 text-xs">
-                                <span>🏛️</span> 3. KCSC 검색사항
-                              </span>
-                              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-900/40 text-emerald-300 border border-emerald-500/30">
-                                KDS / KCS 기준값
-                              </span>
-                            </div>
-                            <div className="p-3 text-[11px] leading-relaxed text-slate-300 max-h-[220px] overflow-y-auto flex-1">
-                              {item.kcscGrounding ? (
-                                <div className="whitespace-pre-wrap font-sans text-emerald-200/90 text-left space-y-1">
-                                  {item.kcscGrounding}
-                                </div>
-                              ) : (
-                                <div className="flex flex-col items-center justify-center py-6 text-slate-500 space-y-2 text-center h-full">
-                                  <span className="text-xs">KCSC 국가건설기준 검색 내역이 비어 있습니다.</span>
-                                  <button
-                                    type="button"
-                                    onClick={async (e) => {
-                                      e.stopPropagation();
-                                      const q = item.topicTitle || '지반공학';
-                                      try {
-                                        const res = await fetch(`${API_BASE}/api/kcsc/grounding?q=${encodeURIComponent(q)}`);
-                                        const json = await res.json();
-                                        if (json && json.groundingContext) {
-                                          setAiHistory(prev => {
-                                            const updated = prev.map(h => h.id === item.id ? { ...h, kcscGrounding: json.groundingContext } : h);
-                                            localStorage.setItem('anti_ai_history', JSON.stringify(updated));
-                                            return updated;
-                                          });
+                            {/* 창 3: KCSC 검색사항 */}
+                            <div className="flex flex-col bg-slate-950/60 border border-emerald-500/25 rounded-xl overflow-hidden shadow-inner">
+                              <div className="flex items-center justify-between px-3.5 py-2.5 bg-emerald-950/30 border-b border-emerald-500/20">
+                                <span className="font-bold text-emerald-300 flex items-center gap-1.5 text-xs">
+                                  <span>🏛️</span> 3. KCSC 검색사항
+                                </span>
+                                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-900/40 text-emerald-300 border border-emerald-500/30">
+                                  KDS / KCS 기준값
+                                </span>
+                              </div>
+                              <div className="p-3 text-[11px] leading-relaxed text-slate-300 max-h-[220px] overflow-y-auto flex-1">
+                                {item.kcscGrounding ? (
+                                  <div className="whitespace-pre-wrap font-sans text-emerald-200/90 text-left space-y-1">
+                                    {item.kcscGrounding}
+                                  </div>
+                                ) : (
+                                  <div className="flex flex-col items-center justify-center py-6 text-slate-500 space-y-2 text-center h-full">
+                                    <span className="text-xs">KCSC 국가건설기준 검색 내역이 비어 있습니다.</span>
+                                    <button
+                                      type="button"
+                                      onClick={async (e) => {
+                                        e.stopPropagation();
+                                        const q = item.queryText || item.topicTitle || '지반공학';
+                                        try {
+                                          const res = await fetch(`${API_BASE}/api/kcsc/grounding?q=${encodeURIComponent(q)}`);
+                                          const json = await res.json();
+                                          if (json && json.groundingContext) {
+                                            setAiHistory(prev => {
+                                              const updated = prev.map(h => h.id === item.id ? { ...h, kcscGrounding: json.groundingContext } : h);
+                                              localStorage.setItem('anti_ai_history', JSON.stringify(updated));
+                                              return updated;
+                                            });
+                                          }
+                                        } catch (err) {
+                                          console.warn('Manual kcsc fetch error:', err);
                                         }
-                                      } catch (err) {
-                                        console.warn('Manual kcsc fetch error:', err);
-                                      }
-                                    }}
-                                    className="px-2.5 py-1 text-[11px] bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-200 border border-emerald-500/40 rounded-lg transition-all cursor-pointer font-bold active:scale-95"
-                                  >
-                                    🔍 KCSC 기준 즉시 조회
-                                  </button>
+                                      }}
+                                      className="px-2.5 py-1 text-[11px] bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-200 border border-emerald-500/40 rounded-lg transition-all cursor-pointer font-bold active:scale-95"
+                                    >
+                                      🔍 KCSC 기준 즉시 조회
+                                    </button>
                                 </div>
                               )}
                             </div>
