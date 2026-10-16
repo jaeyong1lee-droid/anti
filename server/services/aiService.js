@@ -7,6 +7,9 @@ import { CHART_DIAGRAM_PROMPT } from '../plugins/chartPlugin.js';
 // Global AI progress tracker map
 global.progressTracker = global.progressTracker || new Map();
 
+// 차트 지침(CHART_DIAGRAM_PROMPT)을 붙이지 않는 시나리오 (순수 텍스트/JSON 출력 전용)
+const NO_CHART_PROMPT_SCENARIOS = new Set(['grading', 'general']);
+
 export let globalPreferredModel = 'gemini-3.5-flash-lite';
 export const FALLBACK_MODELS = [
   'gemini-3.5-flash-lite',
@@ -190,7 +193,8 @@ export function stopBackendProgressTimer(progressId, percentage, message, isSucc
 export async function callLLMWithFailover(systemInstruction, userPrompt, image = null, scenario = 'default', options = {}) {
   // SVG_DIAGRAM_PROMPT는 어설픈 그림 강제 방지를 위해 문제 출제에서 제외.
   // CHART_DIAGRAM_PROMPT는 5번 인터랙티브 그래프해석 문제의 Recharts 규격 유지를 위해 문제 출제 시 필수 포함.
-  const diagramInstructions = (scenario === 'grading') ? '' : ('\n\n' + CHART_DIAGRAM_PROMPT);
+  // 단, 차트 출력이 불필요한 단순 텍스트 시나리오(grading, general)에는 붙이지 않는다.
+  const diagramInstructions = NO_CHART_PROMPT_SCENARIOS.has(scenario) ? '' : ('\n\n' + CHART_DIAGRAM_PROMPT);
   const finalSystemInstruction = (systemInstruction || '') + diagramInstructions;
   const primaryKey = process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY.trim().replace(/^['"]|['"]$/g, '') : null;
   const secondaryKey = process.env.GEMINI_API_KEY_SECONDARY ? process.env.GEMINI_API_KEY_SECONDARY.trim().replace(/^['"]|['"]$/g, '') : null;
@@ -548,7 +552,7 @@ export async function getMatchingTopicContent(queryText = '', topicId = null, ma
         );
       }
       if (target && target.extracted_text && !target.extracted_text.includes('수기로 등록한 토픽')) {
-        const text = target.extracted_text.trim().substring(0, maxChars);
+        const text = selectRelevantExcerpt(target.extracted_text, queryText, maxChars);
         return `[📚 관련 등록 토픽 본문 (${target.title})]:\n${text}`;
       }
     }
@@ -639,7 +643,7 @@ export async function getMatchingTopicContent(queryText = '', topicId = null, ma
 
     const perTopicLimit = Math.floor(maxChars / topMatches.length);
     const blocks = topMatches.map(
-      ({ row }) => `[📚 관련 등록 토픽 본문 (${row.title})]:\n${row.extracted_text.trim().substring(0, perTopicLimit)}`
+      ({ row }) => `[📚 관련 등록 토픽 본문 (${row.title})]:\n${selectRelevantExcerpt(row.extracted_text, queryText, perTopicLimit)}`
     );
     return blocks.join('\n\n');
   } catch (err) {
@@ -648,3 +652,77 @@ export async function getMatchingTopicContent(queryText = '', topicId = null, ma
   }
 }
 
+
+/**
+ * 긴 본문에서 질문과 관련된 단락을 발췌하여 maxChars 이내로 반환합니다.
+ * - 본문이 maxChars 이하이면 원문을 그대로 반환합니다.
+ * - 첫 단락(정의/개요)은 항상 포함하고, 질문 토큰과 겹치는 단락을 가중치 순으로 채웁니다.
+ * - 토큰 가중치는 문서 자체의 분포(IDF)로 계산하므로 별도 불용어 목록이 필요 없습니다.
+ * - 점수가 있는 단락을 모두 채우고도 예산이 남으면 앞쪽 단락부터 채워 기존(앞부분 절단) 동작과 호환됩니다.
+ * - 비연속 구간 사이에는 중략 표시를 넣어 발췌본임을 AI가 알 수 있게 합니다.
+ */
+const EXCERPT_GAP_MARK = '\n[…중략…]\n';
+const EXCERPT_MAX_CHUNK = 1200;
+
+export function selectRelevantExcerpt(text, queryText = '', maxChars = 5000) {
+  const full = String(text || '').trim();
+  if (full.length <= maxChars) return full;
+
+  // 1. 단락 분할 (빈 줄 → 줄바꿈 → 고정 길이 순으로 세분화)
+  const chunks = [];
+  for (const block of full.split(/\n{2,}/)) {
+    const b = block.trim();
+    if (!b) continue;
+    if (b.length <= EXCERPT_MAX_CHUNK) { chunks.push(b); continue; }
+    let buf = '';
+    for (const line of b.split('\n')) {
+      if (buf && (buf.length + line.length + 1) > EXCERPT_MAX_CHUNK) { chunks.push(buf); buf = ''; }
+      if (line.length > EXCERPT_MAX_CHUNK) {
+        for (let i = 0; i < line.length; i += EXCERPT_MAX_CHUNK) chunks.push(line.slice(i, i + EXCERPT_MAX_CHUNK));
+      } else {
+        buf = buf ? `${buf}\n${line}` : line;
+      }
+    }
+    if (buf) chunks.push(buf);
+  }
+  if (chunks.length === 0) return full.substring(0, maxChars);
+
+  // 2. 질문 토큰 추출 (조사 제거)
+  const tokens = [...new Set(
+    String(queryText || '').toLowerCase()
+      .split(/[^0-9a-z\u3131-\u318e\uac00-\ud7a3]+/)
+      .map(t => t.replace(/(에서|으로|은|는|이|가|을|를|의|에|로|과|와|별|적)$/, ''))
+      .filter(t => t.length >= 2)
+  )];
+
+  // 3. 단락별 점수 (토큰 IDF 가중 합)
+  const lowered = chunks.map(c => c.toLowerCase());
+  const weights = tokens.map(tok => {
+    const df = lowered.reduce((n, c) => n + (c.includes(tok) ? 1 : 0), 0);
+    return df === 0 ? 0 : Math.log(1 + chunks.length / df);
+  });
+  const scores = lowered.map(c => tokens.reduce((s, tok, i) => s + (weights[i] && c.includes(tok) ? weights[i] : 0), 0));
+
+  // 4. 선택: 첫 단락 필수 → 점수 높은 순 → 남는 예산은 앞쪽 단락 순
+  const selected = new Set();
+  let used = 0;
+  const tryAdd = (idx) => {
+    if (selected.has(idx)) return;
+    const cost = chunks[idx].length + 2 + EXCERPT_GAP_MARK.length;
+    if (used + cost > maxChars) return;
+    selected.add(idx);
+    used += cost;
+  };
+  tryAdd(0);
+  chunks.map((_, i) => i).filter(i => scores[i] > 0).sort((a, b) => scores[b] - scores[a]).forEach(tryAdd);
+  chunks.forEach((_, i) => tryAdd(i));
+
+  // 5. 원문 순서 복원 + 비연속 구간 중략 표시
+  const order = [...selected].sort((a, b) => a - b);
+  let out = '';
+  order.forEach((idx, n) => {
+    if (n > 0) out += (idx === order[n - 1] + 1) ? '\n\n' : EXCERPT_GAP_MARK;
+    out += chunks[idx];
+  });
+  return out.length > maxChars ? out.substring(0, maxChars) : out;
+}
