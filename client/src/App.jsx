@@ -3711,6 +3711,11 @@ export default function App() {
 
   const updateRecentQuestionsList = (q, userAnswer, gradingResult, hint) => {
     if (!q) return;
+    const score = gradingResult?.score;
+    const hasValidScore = typeof score === 'number' && !(score === 0 && gradingResult?.reason?.includes('입력되지 않았습니다'));
+    const hasAnswer = typeof userAnswer === 'string' && userAnswer.trim().length > 0;
+    if (!hasValidScore && !hasAnswer) return;
+
     const qId = q.id || (q.sessionName && q.number ? `${q.sessionName}_${q.number}` : q.question);
     setRecentLockscreenQuestions(prev => {
       const list = Array.isArray(prev) ? [...prev] : [];
@@ -3808,16 +3813,18 @@ export default function App() {
               const filtered = prev.filter(q => {
                 if (!q) return false;
                 const lid = q.lockscreen_id;
-                if (lid && String(lid).startsWith(`LOCK${todayYymmdd}_`)) {
-                  const isCur = lockscreenQuestionRef.current?.lockscreen_id === lid;
-                  const key = getLockscreenQuestionKey(q);
-                  const entry = existingMap[key];
-                  const score = entry?.gradingResult?.score;
-                  const hasScore = typeof score === 'number' && !(score === 0 && entry?.gradingResult?.reason?.includes('입력되지 않았습니다'));
-                  return isCur || hasScore;
-                }
-                return true;
+                const isCur = Boolean(lid && lockscreenQuestionRef.current?.lockscreen_id === lid);
+                const key = getLockscreenQuestionKey(q);
+                const entry = existingMap[key];
+                const score = entry?.gradingResult?.score;
+                const hasScore = typeof score === 'number' && !(score === 0 && entry?.gradingResult?.reason?.includes('입력되지 않았습니다'));
+                return isCur || hasScore;
               });
+              const clampedIdx = filtered.length > 0 ? Math.min(Math.max(0, lockscreenHistoryIndexRef.current), filtered.length - 1) : -1;
+              if (clampedIdx !== lockscreenHistoryIndexRef.current) {
+                lockscreenHistoryIndexRef.current = clampedIdx;
+                setLockscreenHistoryIndex(clampedIdx);
+              }
               try {
                 localStorage.setItem('anti_current_lockscreen_history', JSON.stringify(filtered));
               } catch (e) {}
@@ -4084,31 +4091,35 @@ export default function App() {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
-          const todayYymmdd = getClientKSTYymmdd();
           const ansMap = getLockscreenAnswersMap();
+          const curLockId = lockscreenQuestion?.lockscreen_id;
           return parsed.filter(q => {
-            const lid = q?.lockscreen_id;
-            if (lid && String(lid).startsWith(`LOCK${todayYymmdd}_`)) {
-              const k = getLockscreenQuestionKey(q);
-              const mapEntry = ansMap[k];
-              const score = mapEntry?.gradingResult?.score;
-              const hasScore = typeof score === 'number' && !(score === 0 && mapEntry?.gradingResult?.reason?.includes('입력되지 않았습니다'));
-              return hasScore;
-            }
-            return true;
+            if (!q) return false;
+            const lid = q.lockscreen_id;
+            if (curLockId && lid === curLockId) return true;
+            const k = getLockscreenQuestionKey(q);
+            const mapEntry = ansMap[k];
+            const score = mapEntry?.gradingResult?.score;
+            const hasScore = typeof score === 'number' && !(score === 0 && mapEntry?.gradingResult?.reason?.includes('입력되지 않았습니다'));
+            return hasScore;
           });
         }
       }
     } catch (e) {}
-    return [];
+    return lockscreenQuestion ? [lockscreenQuestion] : [];
   });
 
   const [lockscreenHistoryIndex, setLockscreenHistoryIndex] = useState(() => {
     try {
       const saved = localStorage.getItem('anti_current_lockscreen_history_idx');
-      if (saved !== null) return parseInt(saved, 10);
+      if (saved !== null && lockscreenHistory.length > 0) {
+        const parsedIdx = parseInt(saved, 10);
+        if (!isNaN(parsedIdx)) {
+          return Math.min(Math.max(0, parsedIdx), lockscreenHistory.length - 1);
+        }
+      }
     } catch (e) {}
-    return -1;
+    return lockscreenHistory.length > 0 ? lockscreenHistory.length - 1 : -1;
   });
 
   const lockscreenHistoryRef = useRef(lockscreenHistory);
@@ -4511,8 +4522,13 @@ export default function App() {
     // [🚨 절대 보호] 문제가 실제로 채점/풀이된 경우에만 서버에 solve를 전송하고 로컬 미해결 캐시를 정리
     const isSolved = currentRes && typeof currentRes.score === 'number' && !(currentRes.score === 0 && currentRes.reason?.includes('입력되지 않았습니다'));
     if (isSolved) {
-      localStorage.removeItem('anti_current_unsolved_lockscreen_question');
-      clearLockscreenAnswerForQuestion(currentQ);
+      saveLockscreenAnswerForQuestion(currentQ, currentAns, currentRes, currentHnt);
+      try {
+        localStorage.removeItem('anti_current_unsolved_lockscreen_question');
+        localStorage.removeItem('anti_current_lockscreen_user_answer');
+        localStorage.removeItem('anti_current_lockscreen_grading_result');
+        localStorage.removeItem('anti_current_lockscreen_qkey');
+      } catch (e) {}
       if (qId) {
         try {
           await fetch(`${API_BASE}/api/lockscreen/solve`, {
@@ -4539,39 +4555,15 @@ export default function App() {
       lockscreenSyncTimeoutRef.current = null;
     }
 
-    // Save current question state before moving to the next
-    if (lockscreenQuestionRef.current) {
-      const curQ = lockscreenQuestionRef.current;
-      saveLockscreenAnswerForQuestion(curQ, lockscreenUserAnswer, lockscreenGradingResult, lockscreenHint);
-      setRecentLockscreenQuestions(prev => {
-        const id = curQ.id || `${curQ.sessionName}_${curQ.number}` || curQ.question;
-        const exists = (prev || []).some(item => (item.id || item.question?.id || `${item.question?.sessionName}_${item.question?.number}`) === id);
-        if (exists) {
-          return (prev || []).map(item => {
-            const itemQId = item.id || item.question?.id || `${item.question?.sessionName}_${item.question?.number}`;
-            return itemQId === id ? {
-              ...item,
-              question: { ...curQ },
-              userAnswer: lockscreenUserAnswer || item.userAnswer || '',
-              gradingResult: lockscreenGradingResult || item.gradingResult || null,
-              hint: lockscreenHint || item.hint || ''
-            } : item;
-          });
-        }
-        return [{
-          id,
-          question: { ...curQ },
-          userAnswer: lockscreenUserAnswer || '',
-          gradingResult: lockscreenGradingResult || null,
-          hint: lockscreenHint || '',
-          updatedAt: Date.now()
-        }, ...(prev || [])];
-      });
-    }
-
     // [🚨 사용자 절대 철칙: "안 푼 문제가 있는데 새 문제가 계속 생기면 안 된다"]
     // 현재 배정된 문제를 다 풀어서 채점이 완료(isSolved)되기 전에는 다음 문제를 생성하거나 전진할 수 없다!
     const isCurrentSolved = lockscreenGradingResult && typeof lockscreenGradingResult.score === 'number' && !(lockscreenGradingResult.score === 0 && lockscreenGradingResult.reason?.includes('입력되지 않았습니다'));
+
+    // Save current question state if solved or attempted
+    if (lockscreenQuestionRef.current && (isCurrentSolved || (lockscreenUserAnswer && lockscreenUserAnswer.trim().length > 0))) {
+      const curQ = lockscreenQuestionRef.current;
+      saveLockscreenAnswerForQuestion(curQ, lockscreenUserAnswer, lockscreenGradingResult, lockscreenHint);
+    }
 
     // If forward history exists
     if (lockscreenHistoryIndexRef.current < lockscreenHistoryRef.current.length - 1) {

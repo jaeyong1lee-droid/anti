@@ -197,7 +197,7 @@ ${gStandards}
 ${eStandards}
 
 ${LATEX_PROMPT_INSTRUCTIONS}`;
-    const rawRes = await callLLMWithFailover(sysInst, answerGenPrompt, null, 'question', { temperature: modelAnswerTemperature });
+    const rawRes = await callLLMWithFailover(sysInst, answerGenPrompt, null, 'general', { temperature: modelAnswerTemperature });
     let cleanAnswer = (rawRes || '').trim();
     cleanAnswer = cleanAnswer.replace(/^```[a-zA-Z]*\n?/, '').replace(/\n?```$/, '').trim();
     if ((cleanAnswer.startsWith('"') && cleanAnswer.endsWith('"')) || (cleanAnswer.startsWith("'") && cleanAnswer.endsWith("'"))) {

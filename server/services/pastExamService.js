@@ -459,7 +459,7 @@ export async function updateActiveLockscreenAnswer(userAnswer, gradingResult, hi
 export async function saveRecentLockscreenSubmission({ question, userAnswer, gradingResult, hint, overwrite = false }) {
   if (!question) return [];
   // Gating: Only genuinely attempted or graded questions belong in recent submissions!
-  const hasScore = gradingResult && typeof gradingResult.score === 'number';
+  const hasScore = gradingResult && typeof gradingResult.score === 'number' && !(gradingResult.score === 0 && gradingResult.reason?.includes('입력되지 않았습니다'));
   const hasAnswer = typeof userAnswer === 'string' && userAnswer.trim().length > 0;
   if (!hasScore && !hasAnswer) {
     return [];

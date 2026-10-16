@@ -166,7 +166,7 @@ ${dynamicEngineeringStandards}`;
 [문제]
 ${sessionInfo ? `[${sessionInfo} ${numberInfo}] ` : ''}${text}`;
 
-    const responseText = await callLLM(systemInstruction, userPrompt, null, 'question');
+    const responseText = await callLLM(systemInstruction, userPrompt, null, 'general');
     const healedText = typeof healLatexFormulas === 'function' ? healLatexFormulas(responseText) : responseText;
 
     res.json({
@@ -307,7 +307,9 @@ router.post('/solve', async (req, res) => {
   try {
     const { id, question, userAnswer, gradingResult, hint } = req.body;
 
-    if (id) {
+    const isSolved = gradingResult && typeof gradingResult.score === 'number' && !(gradingResult.score === 0 && gradingResult.reason?.includes('입력되지 않았습니다'));
+
+    if (id && isSolved) {
       let history = {};
       try {
         const historyRow = await dbQuery.get("SELECT value FROM app_session WHERE key = 'lockscreen_past_exam_history'");
@@ -321,8 +323,6 @@ router.post('/solve', async (req, res) => {
       await saveSessionValue('lockscreen_past_exam_history', JSON.stringify(history));
     }
 
-    const isSolved = gradingResult && typeof gradingResult.score === 'number' && !(gradingResult.score === 0 && gradingResult.reason?.includes('입력되지 않았습니다'));
-
     if (question && isSolved) {
       await saveRecentLockscreenSubmission({
         question,
@@ -332,11 +332,11 @@ router.post('/solve', async (req, res) => {
       }).catch(() => {});
     }
 
-    // Only if solved, mark as solved and advance to next lockscreen assignment
+    // Only if solved AND it matches the currently active assignment, advance to next lockscreen assignment
     let nextAssignment;
     if (isSolved) {
-      await updateActiveLockscreenAnswer(userAnswer || '', gradingResult, hint || '', question).catch(() => {});
-      nextAssignment = await getActiveLockscreenAssignment(true);
+      const updated = await updateActiveLockscreenAnswer(userAnswer || '', gradingResult, hint || '', question).catch(() => null);
+      nextAssignment = await getActiveLockscreenAssignment(Boolean(updated));
     } else {
       nextAssignment = await getActiveLockscreenAssignment(false);
     }

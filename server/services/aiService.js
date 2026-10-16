@@ -8,7 +8,7 @@ import { CHART_DIAGRAM_PROMPT } from '../plugins/chartPlugin.js';
 global.progressTracker = global.progressTracker || new Map();
 
 // 차트 지침(CHART_DIAGRAM_PROMPT)을 붙이지 않는 시나리오 (순수 텍스트/JSON 출력 전용)
-const NO_CHART_PROMPT_SCENARIOS = new Set(['grading', 'general']);
+const NO_CHART_PROMPT_SCENARIOS = new Set(['grading', 'general', 'slides', 'ocr', 'source-search']);
 
 export let globalPreferredModel = 'gemini-3.5-flash-lite';
 export const FALLBACK_MODELS = [
@@ -258,7 +258,7 @@ export async function callLLMWithFailover(systemInstruction, userPrompt, image =
         systemInstruction: finalSystemInstruction,
         generationConfig: {
           temperature: options.temperature !== undefined ? options.temperature : (scenario === 'tutor' ? 0.7 : 0.2),
-          ...((scenario === 'grading' || scenario === 'question') ? { responseMimeType: 'application/json' } : {})
+          ...((scenario === 'grading' || scenario === 'question' || scenario === 'slides') ? { responseMimeType: 'application/json' } : {})
         }
       }, { apiVersion: 'v1beta' });
 
@@ -668,17 +668,19 @@ export function selectRelevantExcerpt(text, queryText = '', maxChars = 5000) {
   const full = String(text || '').trim();
   if (full.length <= maxChars) return full;
 
+  const chunkLimit = Math.min(EXCERPT_MAX_CHUNK, Math.max(250, Math.floor(maxChars * 0.45)));
+
   // 1. 단락 분할 (빈 줄 → 줄바꿈 → 고정 길이 순으로 세분화)
   const chunks = [];
   for (const block of full.split(/\n{2,}/)) {
     const b = block.trim();
     if (!b) continue;
-    if (b.length <= EXCERPT_MAX_CHUNK) { chunks.push(b); continue; }
+    if (b.length <= chunkLimit) { chunks.push(b); continue; }
     let buf = '';
     for (const line of b.split('\n')) {
-      if (buf && (buf.length + line.length + 1) > EXCERPT_MAX_CHUNK) { chunks.push(buf); buf = ''; }
-      if (line.length > EXCERPT_MAX_CHUNK) {
-        for (let i = 0; i < line.length; i += EXCERPT_MAX_CHUNK) chunks.push(line.slice(i, i + EXCERPT_MAX_CHUNK));
+      if (buf && (buf.length + line.length + 1) > chunkLimit) { chunks.push(buf); buf = ''; }
+      if (line.length > chunkLimit) {
+        for (let i = 0; i < line.length; i += chunkLimit) chunks.push(line.slice(i, i + chunkLimit));
       } else {
         buf = buf ? `${buf}\n${line}` : line;
       }
@@ -716,6 +718,7 @@ export function selectRelevantExcerpt(text, queryText = '', maxChars = 5000) {
   tryAdd(0);
   chunks.map((_, i) => i).filter(i => scores[i] > 0).sort((a, b) => scores[b] - scores[a]).forEach(tryAdd);
   chunks.forEach((_, i) => tryAdd(i));
+  if (selected.size === 0) return full.substring(0, maxChars);
 
   // 5. 원문 순서 복원 + 비연속 구간 중략 표시
   const order = [...selected].sort((a, b) => a - b);

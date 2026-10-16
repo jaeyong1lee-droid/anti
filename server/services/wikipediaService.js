@@ -124,8 +124,8 @@ export const GEO_CIVIL_EN_WIKI_MAP = {
   'jsp': 'Jet grouting',
   'rjm': 'Jet grouting',
   'cjp': 'Jet grouting',
-  '그라우팅': 'Grouting',
-  '약액주입': 'Grouting',
+  '그라우팅': 'Pressure grouting',
+  '약액주입': 'Pressure grouting',
   'pvd': 'Prefabricated vertical drain',
   '플라스틱드레인': 'Prefabricated vertical drain',
   '동다짐': 'Dynamic compaction',
@@ -162,7 +162,7 @@ export const GEO_CIVIL_EN_WIKI_MAP = {
   '지진액상화': 'Soil liquefaction',
   '사면안정': 'Slope stability',
   '비탈면': 'Slope stability',
-  '한계평형': 'Limit equilibrium',
+  '한계평형': 'Slope stability analysis',
   '한계상태토질역학': 'Critical state soil mechanics',
   '한계상태': 'Critical state soil mechanics',
   'cam-clay': 'Critical state soil mechanics',
@@ -170,21 +170,21 @@ export const GEO_CIVIL_EN_WIKI_MAP = {
   '토질역학': 'Soil mechanics',
 
   // 3. 압밀 및 침하 (Consolidation & Settlement)
-  '압밀': 'Consolidation (soil)',
-  '압밀시험': 'Consolidation (soil)',
-  '1차원압밀': 'Consolidation (soil)',
-  '아사오카': 'Consolidation (soil)',
-  '아사오카법': 'Consolidation (soil)',
-  'asaoka': 'Consolidation (soil)',
-  '쌍곡선법': 'Consolidation (soil)',
-  '호시노법': 'Consolidation (soil)',
-  '몬덴법': 'Consolidation (soil)',
-  '장래침하': 'Consolidation (soil)',
-  '침하예측': 'Consolidation (soil)',
-  '선행재하': 'Consolidation (soil)',
-  '선행재하공법': 'Consolidation (soil)',
-  '프리로딩': 'Consolidation (soil)',
-  '과재성토': 'Consolidation (soil)',
+  '압밀': 'Soil consolidation',
+  '압밀시험': 'Soil consolidation',
+  '1차원압밀': 'Soil consolidation',
+  '아사오카': 'Soil consolidation',
+  '아사오카법': 'Soil consolidation',
+  'asaoka': 'Soil consolidation',
+  '쌍곡선법': 'Soil consolidation',
+  '호시노법': 'Soil consolidation',
+  '몬덴법': 'Soil consolidation',
+  '장래침하': 'Soil consolidation',
+  '침하예측': 'Soil consolidation',
+  '선행재하': 'Soil consolidation',
+  '선행재하공법': 'Soil consolidation',
+  '프리로딩': 'Soil consolidation',
+  '과재성토': 'Soil consolidation',
   '테르자기': "Terzaghi's principle",
   '압밀침하': 'Settlement (structural)',
   '침하량': 'Settlement (structural)',
@@ -216,7 +216,7 @@ export const GEO_CIVIL_EN_WIKI_MAP = {
   '유선망': 'Flow net',
   '침투': 'Seepage (hydrology)',
   '파이핑': 'Piping (geology)',
-  '보일링': 'Quick sand',
+  '보일링': 'Quicksand',
   '히빙': 'Heave (soil)',
 
   // 5. 흙막이, 옹벽, 지중구조물 (Retaining Structures & Earth Pressure)
@@ -246,10 +246,9 @@ export const GEO_CIVIL_EN_WIKI_MAP = {
   '얕은기초': 'Shallow foundation',
   '말뚝': 'Deep foundation',
   '말뚝기초': 'Deep foundation',
-  '현장타설말뚝': 'Deep foundation',
   '케이슨': 'Caisson (engineering)',
   '부력': 'Buoyancy',
-  '양압력': 'Uplift (geology)',
+  '양압력': 'Buoyancy',
 
   // 7. 터널 및 암반공학 (Tunnels & Rock Mechanics)
   '터널': 'Tunnel',
@@ -436,11 +435,15 @@ export function resolveEnglishWikiTitles(query, maxTitles = 2) {
     }
   }
 
-  // 3. 한국어 지반공학 용어 매핑 (긴 키워드 우선 매칭, 부분문자열 중복 방지)
+  // 3. 한국어 지반공학 용어 및 복합 영문 키워드 매핑 (긴 키워드 우선, 영문 키는 단어 경계 일치)
   const sortedKeys = Object.keys(GEO_CIVIL_EN_WIKI_MAP).sort((a, b) => b.length - a.length);
   const matchedKoKeys = [];
   for (const koKey of sortedKeys) {
-    if (lower.includes(koKey)) {
+    const isAsciiKey = /^[a-z0-9\s_/-]+$/i.test(koKey);
+    const isHit = isAsciiKey
+      ? new RegExp(`(?<![a-z0-9])${koKey.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![a-z0-9])`).test(lower)
+      : lower.includes(koKey);
+    if (isHit) {
       if (matchedKoKeys.some(prev => prev.includes(koKey))) continue;
       matchedKoKeys.push(koKey);
       addTitle(GEO_CIVIL_EN_WIKI_MAP[koKey]);
@@ -721,11 +724,8 @@ export async function getWikipediaKnowledge(queryOrMessage, maxTotalChars = 8500
   const matchedEnTitles = resolveEnglishWikiTitles(queryStr, 2);
   for (const matchedEnTitle of matchedEnTitles) {
     const key = matchedEnTitle.toLowerCase();
-    const altKey = key === 'consolidation (soil)' ? 'soil consolidation' : (key === 'soil consolidation' ? 'consolidation (soil)' : key);
     if (dbWikiMap.has(key)) {
       addSummary(dbWikiMap.get(key));
-    } else if (dbWikiMap.has(altKey)) {
-      addSummary(dbWikiMap.get(altKey));
     } else {
       const s = await getWikiSummary(matchedEnTitle, 'en');
       if (s) addSummary(s);

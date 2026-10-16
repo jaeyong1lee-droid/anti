@@ -1389,10 +1389,12 @@ router.post('/chat', async (req, res) => {
     let topicGrounding = '';
     try {
       const rawMessage = (message || '').trim();
-      let queryText = rawMessage;
+      let queryText = rawMessage.replace(/\n\s*(?:\[답변 지침\]|반드시 다음 지침을 준수해야 합니다|필수 조건\s*:)[\s\S]*$/, '').trim();
+      let fallbackCardQuestion = '';
       const userQuestionMatch = rawMessage.match(/\[사용자 질문\]\s*\n([\s\S]*?)(?:\n\s*\[답변 지침\]|$)/);
       if (userQuestionMatch && userQuestionMatch[1].trim()) {
         queryText = userQuestionMatch[1].trim();
+        fallbackCardQuestion = rawMessage.match(/■\s*문제:\s*([^\n]+)/)?.[1]?.trim() || '';
       }
       if (queryText || topicId) {
         const [wRes, kRes, tRes] = await Promise.allSettled([
@@ -1403,6 +1405,17 @@ router.post('/chat', async (req, res) => {
         if (wRes.status === 'fulfilled') wikiGrounding = wRes.value || '';
         if (kRes.status === 'fulfilled') kcscGrounding = kRes.value || '';
         if (tRes.status === 'fulfilled') topicGrounding = tRes.value || '';
+
+        if (!wikiGrounding && !kcscGrounding && fallbackCardQuestion) {
+          const [fwRes, fkRes, ftRes] = await Promise.allSettled([
+            getWikipediaKnowledge(fallbackCardQuestion),
+            getKcscVerificationContext(fallbackCardQuestion),
+            !topicGrounding ? getMatchingTopicContent(fallbackCardQuestion, topicId, 6000) : Promise.resolve(topicGrounding)
+          ]);
+          if (fwRes.status === 'fulfilled') wikiGrounding = fwRes.value || '';
+          if (fkRes.status === 'fulfilled') kcscGrounding = fkRes.value || '';
+          if (ftRes.status === 'fulfilled' && !topicGrounding) topicGrounding = ftRes.value || '';
+        }
       }
     } catch (wErr) {
       console.warn('[Chat] Grounding lookup error:', wErr.message);

@@ -1202,7 +1202,7 @@ router.post('/topics/:id/slides/generate', async (req, res) => {
 5. [기술사 답안 차별화 결론 & 실무 제언]: 고득점 팁, 비교표, 최종 총평`;
 
       try {
-        const tutorKnowledge = await callLLMWithFailover(tutorSysPrompt, tutorUserPrompt, null, 'tutor');
+        const tutorKnowledge = await callLLMWithFailover(tutorSysPrompt, tutorUserPrompt, null, 'general');
         if (tutorKnowledge && tutorKnowledge.length > 200) {
           sourceText = tutorKnowledge;
         }
@@ -1264,7 +1264,7 @@ ${kcscGrounding ? `\n${kcscGrounding}\n` : ''}
 [AI 튜터 전문 지식 및 상세 소스 텍스트]:
 ${(sourceText || '위키피디아 및 KCSC 기준과 토목/지반 기술사 전문 지식을 종합하여 작성하십시오.').slice(0, 7000)}`;
 
-    const responseText = await callLLMWithFailover(systemPrompt, userPrompt, null, 'question', { temperature: 0.2 });
+    const responseText = await callLLMWithFailover(systemPrompt, userPrompt, null, 'slides', { temperature: 0.2 });
     let cleanDeckJson = (responseText || '').trim();
     const firstBraceIdx = cleanDeckJson.indexOf('{');
     const lastBraceIdx = cleanDeckJson.lastIndexOf('}');
