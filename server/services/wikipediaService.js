@@ -660,6 +660,23 @@ export async function refineQueryToEnglishWikiTitle(queryText) {
 }
 
 /**
+ * DB 키워드 1개가 질의 문자열(lowerQ, 소문자)에 대한 '단독 근거'가 될 수 있는지 판정
+ * - 한글 키워드: 조사 결합(예: '압밀을')을 고려해 부분 문자열 일치
+ * - 영문·숫자 키워드: 단어 경계 일치 ('nc'가 'async' 안에서 일치하는 오탐 방지)
+ * - 3자 이하 영문 약어('vs', 'cu' 등)는 일반 영어와 겹치므로 단독 근거로 인정하지 않음
+ */
+const WIKI_SHORT_ASCII_KEYWORD_MAX = 3;
+export function isWikiKeywordStrongHit(lowerQ, keyword) {
+  const k = String(keyword || '').trim().toLowerCase();
+  if (k.length < 2) return false;
+  if (/^[a-z0-9]+$/.test(k)) {
+    if (k.length <= WIKI_SHORT_ASCII_KEYWORD_MAX) return false;
+    return new RegExp(`(?<![a-z0-9])${k}(?![a-z0-9])`).test(lowerQ);
+  }
+  return lowerQ.includes(k);
+}
+
+/**
  * 📚 [핵심 함수]: 질문이나 토픽에 대해 영문 위키피디아 사전 지식을 정밀 조회하여 Grounding 블록 반환 (DB 우선 0ms 초고속)
  * - 1순위: 지반공학 한-영 매핑 딕셔너리 및 DB 표제어 캐시 즉각 추출 (최대 2개 개념 비교 대응, 0ms)
  * - 2순위: 지반 전수 DB(wiki_knowledge) 국문 키워드/제목 직통 매칭 (0ms)
@@ -701,11 +718,14 @@ export async function getWikipediaKnowledge(queryOrMessage, maxTotalChars = 8500
   }
 
   // 2. DB 내 국문 키워드(ko_keywords) 및 국문 표제어(ko_title) 직통 매칭 (0ms)
+  //    - 한글 키워드: 조사 결합을 고려해 부분 문자열 일치
+  //    - 영문·숫자 키워드: 단어 경계 일치 (예: 'nc'가 'async' 안에서 오탐되는 것 방지)
+  //    - 3자 이하 영문 약어는 일반 영어와 겹치므로 단독 근거로 쓰지 않고 3단계 AI 정제에 위임
   if (summaries.length === 0 && dbWikiKnowledgeCache && dbWikiKnowledgeCache.length > 0) {
     for (const item of dbWikiKnowledgeCache) {
       const koTitle = (item.koTitle || '').toLowerCase();
       const koKeywords = (item.koKeywords || '').toLowerCase();
-      if ((koTitle && lowerQ.includes(koTitle)) || (koKeywords && koKeywords.split(/[\s,]+/).some(k => k.length >= 2 && lowerQ.includes(k)))) {
+      if ((koTitle && lowerQ.includes(koTitle)) || (koKeywords && koKeywords.split(/[\s,]+/).some(k => isWikiKeywordStrongHit(lowerQ, k)))) {
         addSummary(item);
         if (summaries.length >= 2) break;
       }
