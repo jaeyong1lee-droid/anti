@@ -391,7 +391,8 @@ export async function searchStandards(query, docType = null, limit = 10) {
 
       // 지반 전공 핵심 동의어/약어 가중치
       if ((q.includes('dmm') || q.includes('심층혼합')) && (code === '113030' || name.includes('고결공'))) score += 70;
-      if ((q.includes('pvd') || q.includes('연직배수') || q.includes('압밀')) && (code === '113020' || code === '113005' || name.includes('연직배수'))) score += 60;
+      if ((q.includes('pvd') || q.includes('연직배수') || q.includes('압밀') || q.includes('선행재하') || q.includes('프리로딩') || q.includes('과재성토')) && (code === '113020' || code === '113005' || name.includes('연직배수') || name.includes('선행재하'))) score += 60;
+      if ((q.includes('아사오카') || q.includes('asaoka') || q.includes('쌍곡선') || q.includes('호시노') || q.includes('몬덴') || q.includes('침하예측') || q.includes('장래침하')) && (code === '111015' || code === '113020' || code === '113005' || name.includes('지반계측') || name.includes('선행재하'))) score += 70;
       if ((q.includes('scp') || q.includes('다짐말뚝')) && (code === '113035' || name.includes('다짐공'))) score += 70;
       if ((q.includes('약액주입') || q.includes('그라우팅')) && (code === '113045' || name.includes('그라우팅'))) score += 70;
       if ((q.includes('무리말뚝') || q.includes('말뚝')) && (code === '115015' || code === '115040')) score += 50;

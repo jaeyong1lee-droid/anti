@@ -173,6 +173,18 @@ export const GEO_CIVIL_EN_WIKI_MAP = {
   '압밀': 'Consolidation (soil)',
   '압밀시험': 'Consolidation (soil)',
   '1차원압밀': 'Consolidation (soil)',
+  '아사오카': 'Consolidation (soil)',
+  '아사오카법': 'Consolidation (soil)',
+  'asaoka': 'Consolidation (soil)',
+  '쌍곡선법': 'Consolidation (soil)',
+  '호시노법': 'Consolidation (soil)',
+  '몬덴법': 'Consolidation (soil)',
+  '장래침하': 'Consolidation (soil)',
+  '침하예측': 'Consolidation (soil)',
+  '선행재하': 'Consolidation (soil)',
+  '선행재하공법': 'Consolidation (soil)',
+  '프리로딩': 'Consolidation (soil)',
+  '과재성토': 'Consolidation (soil)',
   '테르자기': "Terzaghi's principle",
   '압밀침하': 'Settlement (structural)',
   '침하량': 'Settlement (structural)',
@@ -709,8 +721,11 @@ export async function getWikipediaKnowledge(queryOrMessage, maxTotalChars = 8500
   const matchedEnTitles = resolveEnglishWikiTitles(queryStr, 2);
   for (const matchedEnTitle of matchedEnTitles) {
     const key = matchedEnTitle.toLowerCase();
+    const altKey = key === 'consolidation (soil)' ? 'soil consolidation' : (key === 'soil consolidation' ? 'consolidation (soil)' : key);
     if (dbWikiMap.has(key)) {
       addSummary(dbWikiMap.get(key));
+    } else if (dbWikiMap.has(altKey)) {
+      addSummary(dbWikiMap.get(altKey));
     } else {
       const s = await getWikiSummary(matchedEnTitle, 'en');
       if (s) addSummary(s);

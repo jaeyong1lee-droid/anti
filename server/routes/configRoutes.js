@@ -1388,7 +1388,12 @@ router.post('/chat', async (req, res) => {
     let kcscGrounding = '';
     let topicGrounding = '';
     try {
-      const queryText = (message || '').trim();
+      const rawMessage = (message || '').trim();
+      let queryText = rawMessage;
+      const userQuestionMatch = rawMessage.match(/\[사용자 질문\]\s*\n([\s\S]*?)(?:\n\s*\[답변 지침\]|$)/);
+      if (userQuestionMatch && userQuestionMatch[1].trim()) {
+        queryText = userQuestionMatch[1].trim();
+      }
       if (queryText || topicId) {
         const [wRes, kRes, tRes] = await Promise.allSettled([
           getWikipediaKnowledge(queryText),

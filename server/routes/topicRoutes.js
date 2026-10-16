@@ -3,7 +3,7 @@ import multer from 'multer';
 import pdfParse from 'pdf-parse';
 import { put, del } from '@vercel/blob';
 import { dbQuery } from '../database.js';
-import { getTopicText, getMatchingTopicContent, saveSessionValue, callLLMWithFailover } from '../services/aiService.js';
+import { getTopicText, saveSessionValue, callLLMWithFailover } from '../services/aiService.js';
 import * as fileUtils from '../utils/fileUtils.js';
 import * as ocrPlugin from '../plugins/calculationPlugin.js';
 import { parseLlmJson, LATEX_PROMPT_INSTRUCTIONS } from '../utils/latexUtils.js';
@@ -1173,27 +1173,18 @@ router.post('/topics/:id/slides/generate', async (req, res) => {
       }
     }
 
-    // 📚 슬라이드 생성 시 위키피디아 사전 지식 + KCSC 국가건설기준 공식 기준값 + 관련 등록 토픽 본문 조회
+    // 📚 슬라이드 생성 시 위키피디아 사전 지식 + KCSC 국가건설기준 공식 기준값 조회
     let wikiGrounding = '';
     let kcscGrounding = '';
-    let matchedTopicGrounding = '';
     try {
-      const [wRes, kRes, tRes] = await Promise.allSettled([
+      const [wRes, kRes] = await Promise.allSettled([
         getWikipediaKnowledge(`${topic.title} ${topic.keywords || ''}`),
-        getKcscVerificationContext(`${topic.title} ${topic.keywords || ''}`, topic.category || ''),
-        (!sourceText || sourceText.length < 150 || sourceText.includes('수기로 등록한 토픽'))
-          ? getMatchingTopicContent(`${topic.title} ${topic.keywords || ''}`, topic.id, 6000)
-          : Promise.resolve('')
+        getKcscVerificationContext(`${topic.title} ${topic.keywords || ''}`, topic.category || '')
       ]);
       if (wRes.status === 'fulfilled') wikiGrounding = wRes.value || '';
       if (kRes.status === 'fulfilled') kcscGrounding = kRes.value || '';
-      if (tRes.status === 'fulfilled') matchedTopicGrounding = tRes.value || '';
     } catch (gErr) {
       console.warn('[Slide Gen] Grounding lookup error:', gErr.message);
-    }
-
-    if ((!sourceText || sourceText.length < 150 || sourceText.includes('수기로 등록한 토픽')) && matchedTopicGrounding) {
-      sourceText = matchedTopicGrounding;
     }
 
     // 💡 [사용자 특별 지침] 첨부 보고서 텍스트가 없거나 부족한 경우:
@@ -1222,7 +1213,6 @@ router.post('/topics/:id/slides/generate', async (req, res) => {
 
     const systemPrompt = `당신은 최고 권위의 대한민국 토목/지반/터널 기술사 전문 수석 프레젠테이션 엔지니어이자 슬라이드 디자이너입니다.
 주어진 토픽의 원본 소스, 영문 위키피디아 사전 지식, KCSC 국가건설기준 및 AI 튜터 지식 베이스를 면밀히 분석하여, 기술사 수험생 및 실무 기술자가 5분 만에 핵심을 완벽히 마스터할 수 있는 [서론-본론①-본론②-본론③-결론 5장 완결형 프레젠테이션 슬라이드 덱]을 JSON으로 생성하십시오.
-${ENGINEERING_STANDARDS}
 
 반드시 다음 5장의 서론-본론-결론 스토리라인을 정확히 준수하여 5장의 슬라이드를 작성해야 합니다:
 - Slide 1: category_tag: "서론 | 개요 & 핵심 정의" (토픽의 공학적 정의, 출제 빈도, 3대 핵심 키워드 배지, 발표 및 학습 목적)
@@ -1234,10 +1224,8 @@ ${ENGINEERING_STANDARDS}
 ${LATEX_PROMPT_INSTRUCTIONS}
 
 [수식 표기 절대 철칙]:
-- 모든 수식, 변수 기호, 함수(예: $F(\\mu)$, $U_r$, $T_h$, $\\sigma'$, $\\tau$)는 반드시 여는 달러와 닫는 달러 쌍($...$)을 완벽히 일치시켜 작성하십시오. 닫는 달러를 절대 누락하지 마십시오.
-- 요약 카드(visual_component.cards)의 label 및 content에 들어가는 변수나 기호(예: 하중계수 ($\\gamma_i$), 저항계수 ($\\phi$), 명목저항 ($R_n$), 설계저항 ($R_r$), 변동계수 ($V_R$), 바이어스 계수 ($\\lambda_R, \\lambda_L$) 등)도 예외 없이 반드시 달러 기호($...$)로 감싸서 표기하십시오. 괄호 표기 시 날것의 기호(\\gamma_i)를 절대 금지합니다.
-- 동적 인터랙티브 차트(visual_component.chart)의 title, xAxisLabel, yAxisLabel, lines[].name, description 등에 들어가는 모든 공학 변수, 그리스 문자, 수식(예: $\\epsilon_1$, $\\sigma_1 - \\sigma_3$, $q = \\frac{\\sigma_1 - \\sigma_3}{2}$, $E_{50}$, $E_i$ 등)도 예외 없이 반드시 달러 기호($...$)로 감싸서 표기하십시오. 날것의 LaTeX 명령어(\\frac, \\epsilon_1, E_{50})를 달러 기호 없이 노출시키는 행위를 엄격히 금지합니다.
-- 유니코드 특수문자(µ 등)를 직접 쓰지 말고 표준 LaTeX 역슬래시 명령어(\\mu 등)를 사용하십시오.
+- 본문, 요약 카드(visual_component.cards), 인터랙티브 차트(visual_component.chart)에 포함되는 모든 수식, 변수 기호, 그리스 문자는 반드시 여는 달러와 닫는 달러 쌍($...$)으로 감싸서 표준 KaTeX 수식으로 표기하십시오.
+- 날것의 LaTeX 명령어(\\frac, \\sigma 등)나 닫히지 않은 달러 기호, 유니코드 특수문자를 노출하지 말고 온전한 수식 쌍($...$)으로만 작성하십시오.
 
 반드시 아래 JSON 형식으로만 순수 JSON 객체({ ... })를 응답하십시오.
 
@@ -1259,9 +1247,9 @@ ${LATEX_PROMPT_INSTRUCTIONS}
       "visual_component": {
         "type": "summary_cards",
         "cards": [
-          { "label": "하중계수 ($\\gamma_i$)", "content": "설계하중 증대 계수", "highlight": true },
-          { "label": "명목저항 ($R_n$)", "content": "극한지지력 이론값", "highlight": false },
-          { "label": "설계저항 ($R_r$)", "content": "저항계수 곱한 값 ($R_r = \\phi R_n$)", "highlight": false }
+          { "label": "핵심 파라미터 ($C_c$)", "content": "파라미터 정의 및 물리적 의미 설명", "highlight": true },
+          { "label": "지배 수식 ($q_u$)", "content": "수식 및 적용 조건 설명", "highlight": false },
+          { "label": "판정 기준 ($F_s$)", "content": "설계 기준값 및 안전율 판정 요건", "highlight": false }
         ]
       },
       "engineer_note": "기술사 답안 작성 시 1단락 개요 서술 요령"
