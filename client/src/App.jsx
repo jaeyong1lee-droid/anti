@@ -4522,7 +4522,15 @@ export default function App() {
       return;
     }
 
-    // 사용자가 '다른 문제 보기'를 클릭한 경우: 현재 문제와 작성 중인 답안을 안전하게 보존한 후 다음 문제로 즉시 전환
+    // [🚨 사용자 절대 철칙: "안 푼 문제가 있는데 새 문제가 계속 생기면 안 된다"]
+    // 현재 배정된 문제를 다 풀어서 채점이 완료(isSolved)되기 전에는 다음 문제를 생성할 수 없다!
+    const isCurrentSolved = lockscreenGradingResult && typeof lockscreenGradingResult.score === 'number' && !(lockscreenGradingResult.score === 0 && lockscreenGradingResult.reason?.includes('입력되지 않았습니다'));
+    if (!isCurrentSolved) {
+      showNotification('현재 문제의 풀이 및 채점이 완료되어야 다음 문제를 받을 수 있습니다. 🔒', 'info');
+      return;
+    }
+
+    // 풀이가 완료된 경우에만 다음 문제 요청
     setLockscreenLoading(true);
     setLockscreenUserAnswer('');
     setLockscreenGradingResult(null);

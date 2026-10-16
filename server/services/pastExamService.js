@@ -256,15 +256,22 @@ async function _getActiveLockscreenAssignmentCore(forceNew = false) {
 
     // Case 1: 오늘 날짜(yymmdd)에 배정된 문제인 경우
     if (isToday) {
-      // 사용자가 명시적으로 '다른 문제 보기'(forceNew === true)를 요청하지 않은 경우:
-      // - 아직 안 풀었으면(!isSolved): 풀던 중 새로고침/포커스/탭전환에도 현재 문제를 안전하게 유지
-      // - 이미 풀었으면(isSolved): 채점 결과 확인을 위해 유지
+      // [🚨 사용자 절대 철칙: "다음부터는 다 풀면 문제를 만들어"]
+      // 안 푼 문제가 있는데 새 문제가 계속 생기면 안 됨!
+      // 현재 배정된 문제가 아직 풀리지 않은 경우(!isSolved):
+      // 사용자가 새로고침하든 다음 문제를 누르든 절대로 새로운 문제를 추가 생성하지 않고 현재 미해결 문제를 엄격히 유지!
+      if (!isSolved) {
+        console.log(`[pastExamService] Today's assignment ${activeAssignment.lockscreen_id} is UNSOLVED. Rejecting progression and retaining current question.`);
+        return activeAssignment;
+      }
+
+      // 이미 풀린 문제(isSolved === true)인 경우:
+      // 사용자가 다음 문제를 요청하지 않았으면(forceNew === false) 기존에 푼 결과 확인을 위해 유지
       if (!forceNew) {
         return activeAssignment;
       }
-      // 사용자가 명시적으로 '다른 문제 보기'(forceNew === true)를 클릭한 경우:
-      // 아래 2번으로 내려가서 현재 문제를 아카이빙하고 오늘의 다음 문제(LOCK{yymmdd}_{nextSeq})를 생성!
-      console.log(`[pastExamService] '다른 문제 보기' (forceNew=true) requested for today's assignment. Archiving and generating next question.`);
+      // 사용자가 다음 문제를 요청했고(forceNew === true) 이미 풀렸다면, 비로소 다음 문제 생성 진행!
+      console.log(`[pastExamService] Today's assignment ${activeAssignment.lockscreen_id} was SOLVED. User requested next question. Generating next.`);
     } else {
       // Case 2: 과거 날짜의 문제인 경우 (날짜 변경!)
       // 오늘 접속했으면 무조건 오늘 날짜의 첫 문제(LOCK{yymmdd}_1)를 배정해야 함!
