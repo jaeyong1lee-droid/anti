@@ -3752,7 +3752,13 @@ export default function App() {
         if (contentType.includes('application/json')) {
           const data = await res.json();
           if (data && data.success && Array.isArray(data.recent)) {
-            const validRecent = data.recent.filter(item => item && item.question);
+            const validRecent = data.recent.filter(item => {
+              if (!item || !item.question) return false;
+              const score = item.gradingResult?.score;
+              const hasValidScore = typeof score === 'number' && !(score === 0 && item.gradingResult?.reason?.includes('입력되지 않았습니다'));
+              const hasAnswer = typeof item.userAnswer === 'string' && item.userAnswer.trim().length > 0;
+              return hasValidScore || hasAnswer;
+            });
             const existingMap = getLockscreenAnswersMap();
             validRecent.forEach(item => {
               const key = getLockscreenQuestionKey(item.question);
@@ -3777,9 +3783,47 @@ export default function App() {
                 };
               }
             });
+
+            // Purge unsubmitted today's assignments from existingMap and lockscreenHistory
+            const todayYymmdd = getClientKSTYymmdd();
+            Object.keys(existingMap).forEach(k => {
+              const entry = existingMap[k];
+              const lid = entry?.question?.lockscreen_id;
+              if (lid && String(lid).startsWith(`LOCK${todayYymmdd}_`)) {
+                const isCur = lockscreenQuestionRef.current?.lockscreen_id === lid;
+                const score = entry?.gradingResult?.score;
+                const hasScore = typeof score === 'number' && !(score === 0 && entry?.gradingResult?.reason?.includes('입력되지 않았습니다'));
+                if (!isCur && !hasScore) {
+                  delete existingMap[k];
+                }
+              }
+            });
+
             try {
               localStorage.setItem('anti_lockscreen_answers_map', JSON.stringify(existingMap));
             } catch (e) {}
+
+            setLockscreenHistory(prev => {
+              if (!Array.isArray(prev)) return prev;
+              const filtered = prev.filter(q => {
+                if (!q) return false;
+                const lid = q.lockscreen_id;
+                if (lid && String(lid).startsWith(`LOCK${todayYymmdd}_`)) {
+                  const isCur = lockscreenQuestionRef.current?.lockscreen_id === lid;
+                  const key = getLockscreenQuestionKey(q);
+                  const entry = existingMap[key];
+                  const score = entry?.gradingResult?.score;
+                  const hasScore = typeof score === 'number' && !(score === 0 && entry?.gradingResult?.reason?.includes('입력되지 않았습니다'));
+                  return isCur || hasScore;
+                }
+                return true;
+              });
+              try {
+                localStorage.setItem('anti_current_lockscreen_history', JSON.stringify(filtered));
+              } catch (e) {}
+              return filtered;
+            });
+
             setRecentLockscreenQuestions(validRecent.slice(0, 10));
           }
         }
@@ -4037,7 +4081,24 @@ export default function App() {
   const [lockscreenHistory, setLockscreenHistory] = useState(() => {
     try {
       const saved = localStorage.getItem('anti_current_lockscreen_history');
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          const todayYymmdd = getClientKSTYymmdd();
+          const ansMap = getLockscreenAnswersMap();
+          return parsed.filter(q => {
+            const lid = q?.lockscreen_id;
+            if (lid && String(lid).startsWith(`LOCK${todayYymmdd}_`)) {
+              const k = getLockscreenQuestionKey(q);
+              const mapEntry = ansMap[k];
+              const score = mapEntry?.gradingResult?.score;
+              const hasScore = typeof score === 'number' && !(score === 0 && mapEntry?.gradingResult?.reason?.includes('입력되지 않았습니다'));
+              return hasScore;
+            }
+            return true;
+          });
+        }
+      }
     } catch (e) {}
     return [];
   });
@@ -4508,12 +4569,22 @@ export default function App() {
       });
     }
 
+    // [🚨 사용자 절대 철칙: "안 푼 문제가 있는데 새 문제가 계속 생기면 안 된다"]
+    // 현재 배정된 문제를 다 풀어서 채점이 완료(isSolved)되기 전에는 다음 문제를 생성하거나 전진할 수 없다!
+    const isCurrentSolved = lockscreenGradingResult && typeof lockscreenGradingResult.score === 'number' && !(lockscreenGradingResult.score === 0 && lockscreenGradingResult.reason?.includes('입력되지 않았습니다'));
+
     // If forward history exists
     if (lockscreenHistoryIndexRef.current < lockscreenHistoryRef.current.length - 1) {
       const nextIdx = lockscreenHistoryIndexRef.current + 1;
+      const q = lockscreenHistoryRef.current[nextIdx];
+      const todayYymmdd = getClientKSTYymmdd();
+      const isForwardToday = q?.lockscreen_id && String(q.lockscreen_id).startsWith(`LOCK${todayYymmdd}_`);
+      if (isForwardToday && !isCurrentSolved) {
+        showNotification('현재 문제의 풀이 및 채점이 완료되어야 다음 문제를 받을 수 있습니다. 🔒', 'info');
+        return;
+      }
       lockscreenHistoryIndexRef.current = nextIdx;
       setLockscreenHistoryIndex(nextIdx);
-      const q = lockscreenHistoryRef.current[nextIdx];
       setLockscreenQuestion(q);
       try {
         localStorage.setItem('anti_current_unsolved_lockscreen_question', JSON.stringify(q));
@@ -4522,9 +4593,6 @@ export default function App() {
       return;
     }
 
-    // [🚨 사용자 절대 철칙: "안 푼 문제가 있는데 새 문제가 계속 생기면 안 된다"]
-    // 현재 배정된 문제를 다 풀어서 채점이 완료(isSolved)되기 전에는 다음 문제를 생성할 수 없다!
-    const isCurrentSolved = lockscreenGradingResult && typeof lockscreenGradingResult.score === 'number' && !(lockscreenGradingResult.score === 0 && lockscreenGradingResult.reason?.includes('입력되지 않았습니다'));
     if (!isCurrentSolved) {
       showNotification('현재 문제의 풀이 및 채점이 완료되어야 다음 문제를 받을 수 있습니다. 🔒', 'info');
       return;
@@ -19226,13 +19294,29 @@ ${itemsStr}
                               });
 
                               // 4. Sort: Today's LOCK assignments first (sorted descending by sequence), then other past questions
+                              // 🚨 철칙: 드롭다운("최근 푼 문제")에는 현재 풀고 있는 활성 문제(isCurrent)와
+                              // 실제로 채점 완료된(isSolved) 문제만 표출한다. 미제출 상태의 유령 문제는 100% 제거한다.
                               const allItems = Array.from(map.values());
 
-                              const lockItems = allItems.filter(it => {
+                              const validItems = allItems.filter(it => {
+                                const q = it.question;
+                                if (!q) return false;
+                                const isCurrent = (q.id && q.id === lockscreenQuestion?.id) ||
+                                  (q.sessionName === lockscreenQuestion?.sessionName && q.number === lockscreenQuestion?.number) ||
+                                  (q.lockscreen_id && q.lockscreen_id === lockscreenQuestion?.lockscreen_id);
+                                if (isCurrent) return true;
+
+                                const score = it.gradingResult?.score;
+                                const hasValidScore = typeof score === 'number' && !(score === 0 && it.gradingResult?.reason?.includes('입력되지 않았습니다'));
+                                const isSolved = it.isSolved || hasValidScore;
+                                return Boolean(isSolved);
+                              });
+
+                              const lockItems = validItems.filter(it => {
                                 const lId = it.question?.lockscreen_id;
                                 return lId && String(lId).startsWith('LOCK');
                               });
-                              const otherItems = allItems.filter(it => !it.question?.lockscreen_id || !String(it.question.lockscreen_id).startsWith('LOCK'));
+                              const otherItems = validItems.filter(it => !it.question?.lockscreen_id || !String(it.question.lockscreen_id).startsWith('LOCK'));
 
                               // Sort lock items descending by lockscreen_id (e.g. LOCK260927_2, LOCK260927_1, LOCK260927_0...)
                               lockItems.sort((a, b) => {

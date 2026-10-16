@@ -300,9 +300,9 @@ async function _getActiveLockscreenAssignmentCore(forceNew = false) {
     console.warn('[pastExamService] Failed to determine nextSeq from recent list:', seqErr.message);
   }
 
-  // Archive previous assignment into lockscreen_recent_questions so it is never lost
+  // Archive previous assignment into lockscreen_recent_questions only if it was actually solved/attempted
   let prevAssignment = activeAssignment;
-  if (prevAssignment && prevAssignment.question) {
+  if (prevAssignment && prevAssignment.question && (prevAssignment.gradingResult || prevAssignment.userAnswer)) {
     try {
       await saveRecentLockscreenSubmission({
         question: prevAssignment.question,
@@ -335,14 +335,6 @@ async function _getActiveLockscreenAssignmentCore(forceNew = false) {
 
   try {
     await saveSessionValue('current_lockscreen_assignment', JSON.stringify(newAssignment));
-    // Immediately register new assignment to recent questions with overwrite: true so old answers never leak
-    await saveRecentLockscreenSubmission({
-      question: newAssignment.question,
-      userAnswer: '',
-      gradingResult: null,
-      hint: '',
-      overwrite: true
-    });
     console.log(`[pastExamService] Synchronized lockscreen assignment active (solved-first gate passed): ${lockscreenId} - [${newQuestion.sessionName} 제1교시 ${newQuestion.number}번]`);
   } catch (saveErr) {
     console.warn('[pastExamService] Failed to save active assignment:', saveErr.message);
@@ -388,12 +380,14 @@ export async function selectActiveLockscreenAssignment(targetQuestion, userAnswe
 
   try {
     await saveSessionValue('current_lockscreen_assignment', JSON.stringify(assignment));
-    await saveRecentLockscreenSubmission({
-      question: assignment.question,
-      userAnswer: assignment.userAnswer,
-      gradingResult: assignment.gradingResult,
-      hint: assignment.hint
-    });
+    if (assignment.gradingResult || (typeof assignment.userAnswer === 'string' && assignment.userAnswer.trim().length > 0)) {
+      await saveRecentLockscreenSubmission({
+        question: assignment.question,
+        userAnswer: assignment.userAnswer,
+        gradingResult: assignment.gradingResult,
+        hint: assignment.hint
+      });
+    }
     console.log(`[pastExamService] Selected lockscreen assignment now active: ${assignment.lockscreen_id} - [${assignment.question.sessionName} 제1교시 ${assignment.question.number}번]`);
   } catch (err) {
     console.warn('[pastExamService] Failed to save selected assignment:', err.message);
@@ -464,6 +458,12 @@ export async function updateActiveLockscreenAnswer(userAnswer, gradingResult, hi
  */
 export async function saveRecentLockscreenSubmission({ question, userAnswer, gradingResult, hint, overwrite = false }) {
   if (!question) return [];
+  // Gating: Only genuinely attempted or graded questions belong in recent submissions!
+  const hasScore = gradingResult && typeof gradingResult.score === 'number';
+  const hasAnswer = typeof userAnswer === 'string' && userAnswer.trim().length > 0;
+  if (!hasScore && !hasAnswer) {
+    return [];
+  }
   try {
     const row = await dbQuery.get("SELECT value FROM app_session WHERE key = 'lockscreen_recent_questions'");
     let list = [];
@@ -542,7 +542,15 @@ export async function getRecentLockscreenSubmissions() {
     const row = await dbQuery.get("SELECT value FROM app_session WHERE key = 'lockscreen_recent_questions'");
     if (row && row.value) {
       const parsed = JSON.parse(row.value);
-      if (Array.isArray(parsed)) return parsed.slice(0, 10);
+      if (Array.isArray(parsed)) {
+        return parsed.filter(item => {
+          if (!item || !item.question) return false;
+          const score = item.gradingResult?.score;
+          const hasScore = typeof score === 'number' && !(score === 0 && item.gradingResult?.reason?.includes('입력되지 않았습니다'));
+          const hasAnswer = typeof item.userAnswer === 'string' && item.userAnswer.trim().length > 0;
+          return hasScore || hasAnswer;
+        }).slice(0, 10);
+      }
     }
   } catch (e) {
     console.warn('[pastExamService] Failed to read recent lockscreen submissions:', e.message);

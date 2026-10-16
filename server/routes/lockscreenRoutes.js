@@ -323,7 +323,7 @@ router.post('/solve', async (req, res) => {
 
     const isSolved = gradingResult && typeof gradingResult.score === 'number' && !(gradingResult.score === 0 && gradingResult.reason?.includes('입력되지 않았습니다'));
 
-    if (question) {
+    if (question && isSolved) {
       await saveRecentLockscreenSubmission({
         question,
         userAnswer: userAnswer || '',
