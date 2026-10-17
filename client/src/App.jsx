@@ -161,22 +161,49 @@ export function getSanitizedMcAnswer(q) {
   if (!q) return '';
   if (!q.options || q.options.length === 0) return q.answer || '';
 
+  const options = q.options;
+  const exp = String(q.explanation || '');
+
+  // 해설 본문에 명시적 보기 지칭(예: "(네 번째 보기)가 정답")이 있는 경우 최우선 정합성 일치
+  if (exp) {
+    const ordinalPatterns = [
+      { idx: 0, regex: /(?:첫\s*번째\s*보기|1번\s*보기|①번?\s*보기)\s*\)*\s*(?:가|이)\s*정답/i },
+      { idx: 1, regex: /(?:두\s*번째\s*보기|2번\s*보기|②번?\s*보기)\s*\)*\s*(?:가|이)\s*정답/i },
+      { idx: 2, regex: /(?:세\s*번째\s*보기|3번\s*보기|③번?\s*보기)\s*\)*\s*(?:가|이)\s*정답/i },
+      { idx: 3, regex: /(?:네\s*번째\s*보기|4번\s*보기|④번?\s*보기)\s*\)*\s*(?:가|이)\s*정답/i }
+    ];
+    for (const pat of ordinalPatterns) {
+      if (pat.idx < options.length && pat.regex.test(exp)) {
+        return options[pat.idx];
+      }
+    }
+  }
+
   let currentAns = (q.answer !== undefined && q.answer !== null) ? String(q.answer).trim() : '';
-  if (!currentAns && typeof q.correctIndex === 'number' && q.options[q.correctIndex]) {
-    currentAns = String(q.options[q.correctIndex]).trim();
+  if (!currentAns && typeof q.correctIndex === 'number' && options[q.correctIndex]) {
+    currentAns = String(options[q.correctIndex]).trim();
   }
   if (!currentAns) return '';
 
-  const options = q.options;
+  // 1. 보기 중 정확히 일치하는 항목 확인
+  let matchedIdx = options.findIndex(opt => String(opt).trim() === currentAns);
+  if (matchedIdx === -1) {
+    const normAns = normalizeMcText(currentAns);
+    matchedIdx = options.findIndex(opt => normalizeMcText(opt) === normAns);
+  }
 
-  // 1. 보기 중 정확히 일치하는 항목이 있으면 그대로 반환
-  const exactMatch = options.find(opt => String(opt).trim() === currentAns);
-  if (exactMatch) return exactMatch;
+  // answer와 correctIndex가 충돌할 때 해설 결론부에 등장하는 보기로 교정
+  const cIdx = (typeof q.correctIndex === 'number' && q.correctIndex >= 0 && q.correctIndex < options.length) ? q.correctIndex : -1;
+  if (cIdx !== -1 && matchedIdx !== -1 && cIdx !== matchedIdx && exp) {
+    const expTail = normalizeMcText(exp.slice(Math.floor(exp.length * 0.4)));
+    const normOptC = normalizeMcText(options[cIdx]);
+    const normOptM = normalizeMcText(options[matchedIdx]);
+    if (normOptC && normOptC.length >= 3 && expTail.includes(normOptC) && !(normOptM && expTail.includes(normOptM))) {
+      return options[cIdx];
+    }
+  }
 
-  // 2. 공백·특수문자 및 라텍스 태그 제거 후 매칭
-  const normAns = normalizeMcText(currentAns);
-  const normMatch = options.find(opt => normalizeMcText(opt) === normAns);
-  if (normMatch) return normMatch;
+  if (matchedIdx !== -1) return options[matchedIdx];
 
   return currentAns || q.answer;
 }
@@ -22025,7 +22052,11 @@ ${itemsStr}
                                     }, opt);
 
                                     if (jitResult && (typeof jitResult.correctIndex === 'number' && jitResult.correctIndex >= 0 || jitResult.correctAnswer)) {
-                                      const freshExplanation = jitResult.explanation || q.explanation;
+                                      let freshExplanation = jitResult.explanation || q.explanation;
+                                      if (q.explanation && freshExplanation && !freshExplanation.includes('📚') && q.explanation.includes('📚')) {
+                                        const refIdx = q.explanation.indexOf('📚');
+                                        freshExplanation = `${freshExplanation.trim()}\n\n${q.explanation.slice(refIdx).trim()}`;
+                                      }
                                       let matchedOpt = q.answer;
 
                                       // 1. AI가 지정한 correctIndex 기반으로 100% 정확한 보기 텍스트 직접 추출
@@ -22038,7 +22069,11 @@ ${itemsStr}
                                                       || jitAns;
                                       }
 
+                                      const matchedOptIdx = (q.options || []).indexOf(matchedOpt);
+                                      const nextCorrectIndex = matchedOptIdx >= 0 ? matchedOptIdx : q.correctIndex;
+
                                       q.answer = matchedOpt;
+                                      q.correctIndex = nextCorrectIndex;
                                       q.explanation = freshExplanation;
 
                                       setAiQuestions(prev => {
@@ -22047,6 +22082,7 @@ ${itemsStr}
                                           updated[idx] = {
                                             ...updated[idx],
                                             answer: matchedOpt,
+                                            correctIndex: nextCorrectIndex,
                                             explanation: freshExplanation
                                           };
                                         }

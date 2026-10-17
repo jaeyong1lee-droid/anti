@@ -1444,15 +1444,15 @@ router.post('/evaluate-answer', async (req, res) => {
 [검증 및 연산 수칙]:
 1. 문제를 분석하여 제시된 보기 중 가장 적절한 정답을 찾으십시오.
 ${isCalc ? `2. 지문의 모든 단위를 정확히 환산하여 대입하고, "mathExpression" 필드에 최종 계산할 순수 산술 수식(예: "(4 * 0.0728) / (9810 * 0.00008)")을 작성하십시오.` : ''}
-3. "correctAnswer" 필드는 제시된 보기 목록(Options) 중 정답에 해당하는 보기 문자열 그대로 지정하십시오.
-4. 해설(explanation) 작성 시, 절대 "0번 보기", "1번 보기" 와 같이 개발자용 0-based 인덱스 번호를 해설 텍스트에 출력하지 마십시오. 반드시 "첫 번째 보기", "①번 보기" 또는 보기의 내용을 직접 인용하여 설명하십시오.
+3. 반드시 "explanation"(해설) 필드를 가장 먼저 작성하여 공식 대입과 수치 계산을 끝까지 완료한 후, 그 최종 결론과 100% 일치하는 보기를 "correctIndex"와 "correctAnswer"로 지정하십시오. 해설 내에 '잠시 계산을 검토합니다'와 같은 독백이나 자기모순 문구를 절대 출력하지 마십시오.
+4. 해설(explanation) 작성 시, 절대 "0번 보기", "1번 보기", "네 번째 보기"와 같이 보기 번호나 순번을 지칭하지 말고 보기의 수식/내용 자체를 직접 인용하여 설명하십시오. 해설 하단에는 줄바꿈 후 '💡 **직관적 의미**: [핵심 공학적 의미 1~2문장]'을 포함하십시오.
 
-[반환 JSON 응답 규격]:
+[반환 JSON 응답 규격 (필드 순서 엄수: explanation -> correctIndex -> correctAnswer)]:
 {
+  "explanation": "LaTeX 수식이 포함된 명확하고 수려한 정밀 풀이 해설\\n\\n💡 **직관적 의미**: 정답이 내포하는 핵심 공학적 본질 1~2문장",
   ${isCalc ? `"mathExpression": "(4 * 0.0728) / (9810 * 0.00008)",` : ''}
   "correctIndex": 0,
-  "correctAnswer": "제시된 보기(Options) 배열 중 정답에 해당하는 항목의 전체 문자열 그대로",
-  "explanation": "LaTeX 수식이 포함된 명확하고 수려한 정밀 풀이 해설"
+  "correctAnswer": "제시된 보기(Options) 배열 중 정답에 해당하는 항목의 전체 문자열 그대로"
 }
 `;
 
@@ -1470,7 +1470,9 @@ ${isCalc ? `2. 지문의 모든 단위를 정확히 환산하여 대입하고, "
       );
       const parsed = parseLlmJson(llmResult);
       if (parsed) {
-        // 1. AI가 직접 지정한 correctIndex 및 correctAnswer를 최우선(#1) 정답으로 채택
+        explanation = parsed.explanation || '';
+
+        // 1. AI가 직접 지정한 correctIndex 및 correctAnswer를 1차 채택
         if (typeof parsed.correctIndex === 'number' && parsed.correctIndex >= 0 && parsed.correctIndex < (options || []).length) {
           finalCorrectIndex = parsed.correctIndex;
           finalCorrectAnswer = options[parsed.correctIndex];
@@ -1479,6 +1481,23 @@ ${isCalc ? `2. 지문의 모든 단위를 정확히 환산하여 대입하고, "
           if (Array.isArray(options)) {
             const idx = options.findIndex(o => String(o).trim() === String(parsed.correctAnswer).trim());
             if (idx >= 0) finalCorrectIndex = idx;
+          }
+        }
+
+        // 1-1. 해설(explanation) 결론부와 correctIndex/correctAnswer 간의 정합성 교차 검증
+        if (explanation && Array.isArray(options) && options.length > 0) {
+          const ordinalPatterns = [
+            { idx: 0, regex: /(?:첫\s*번째\s*보기|1번\s*보기|①번?\s*보기)\s*\)*\s*(?:가|이)\s*정답/i },
+            { idx: 1, regex: /(?:두\s*번째\s*보기|2번\s*보기|②번?\s*보기)\s*\)*\s*(?:가|이)\s*정답/i },
+            { idx: 2, regex: /(?:세\s*번째\s*보기|3번\s*보기|③번?\s*보기)\s*\)*\s*(?:가|이)\s*정답/i },
+            { idx: 3, regex: /(?:네\s*번째\s*보기|4번\s*보기|④번?\s*보기)\s*\)*\s*(?:가|이)\s*정답/i }
+          ];
+          for (const pat of ordinalPatterns) {
+            if (pat.idx < options.length && pat.regex.test(explanation)) {
+              finalCorrectIndex = pat.idx;
+              finalCorrectAnswer = options[pat.idx];
+              break;
+            }
           }
         }
 
@@ -1505,8 +1524,6 @@ ${isCalc ? `2. 지문의 모든 단위를 정확히 환산하여 대입하고, "
             }
           }
         }
-
-        explanation = parsed.explanation || '';
       }
     } catch (llmErr) {
       console.warn('[JIT Evaluator] LLM call failed:', llmErr);

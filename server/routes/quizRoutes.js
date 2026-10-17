@@ -166,6 +166,36 @@ function sanitizeMultipleChoiceAnswer(q) {
     matchedIndex = options.findIndex(opt => normalizeMcText(opt) === normCurrent);
   }
 
+  // 1-1. 해설(explanation) 결론부에 명시된 보기 지칭이나 correctIndex와의 충돌(자기모순) 교차 검증
+  if (exp) {
+    const ordinalPatterns = [
+      { idx: 0, regex: /(?:첫\s*번째\s*보기|1번\s*보기|①번?\s*보기)\s*\)*\s*(?:가|이)\s*정답/i },
+      { idx: 1, regex: /(?:두\s*번째\s*보기|2번\s*보기|②번?\s*보기)\s*\)*\s*(?:가|이)\s*정답/i },
+      { idx: 2, regex: /(?:세\s*번째\s*보기|3번\s*보기|③번?\s*보기)\s*\)*\s*(?:가|이)\s*정답/i },
+      { idx: 3, regex: /(?:네\s*번째\s*보기|4번\s*보기|④번?\s*보기)\s*\)*\s*(?:가|이)\s*정답/i }
+    ];
+    for (const pat of ordinalPatterns) {
+      if (pat.idx < options.length && pat.regex.test(exp)) {
+        matchedIndex = pat.idx;
+        break;
+      }
+    }
+
+    const cIdx = (typeof cleanedQ.correctIndex === 'number' && cleanedQ.correctIndex >= 0 && cleanedQ.correctIndex < options.length)
+      ? cleanedQ.correctIndex
+      : -1;
+    if (cIdx !== -1 && matchedIndex !== -1 && cIdx !== matchedIndex) {
+      const expTail = normalizeMcText(exp.slice(Math.floor(exp.length * 0.4)));
+      const normOptC = normalizeMcText(options[cIdx]);
+      const normOptM = normalizeMcText(options[matchedIndex]);
+      const cInTail = normOptC && normOptC.length >= 3 && expTail.includes(normOptC);
+      const mInTail = normOptM && normOptM.length >= 3 && expTail.includes(normOptM);
+      if (cInTail && !mInTail) {
+        matchedIndex = cIdx;
+      }
+    }
+  }
+
   // 만약 currentAns가 보기 중 하나와 정상 일치한다면, 그 정답을 그대로 신뢰하고 유지 (단어 중복 점수 등에 의한 하이재킹 원천 차단)
   if (matchedIndex !== -1) {
     return {
@@ -1149,7 +1179,7 @@ ${kcscGrounding ? `\n${kcscGrounding}\n` : ''}
 - "type" 값: 반드시 "객관식 (4지선다)"
 - [계산문제 비중 조건 - 매우 중요]: 전체 3개의 객관식 문제 중, 반드시 정확히 1개의 문제는 공학적 수치 판단이나 정량적 분석 능력을 평가하는 문제로 출제하십시오. 단, 질문 지문에 공식이나 수치를 미리 제시한 뒤 "이 값을 대입하여 계산하시오" 식의 기계적 계산 문제는 절대로 출제하지 마십시오.
 - [핵심 관통 질문 원칙]: 모든 객관식 문제는 해당 토픽의 가장 본질적인 공학적 메커니즘, 거동 원리, 설계 판단 근거를 관통하는 질문이어야 합니다.
-- 🚨 [객관식 정밀성 및 정답 일치 조건 - 극도로 중요!]: 모든 객관식 계산 문제나 수치/공학적 판단 문제를 출제할 때, 계산으로 도출된 정확한 정답 수치나 조건이 4개의 보기(options) 중 반드시 정확히 1개로 존재해야 합니다.
+- 🚨 [객관식 정밀성 및 선(先) 해설 계산 · 후(後) 보기/정답 확정 철칙 - 극도로 중요!]: 모든 객관식 계산 문제나 수치/공학적 판단 문제를 출제할 때는 반드시 "explanation"(해설) 필드를 먼저 작성하여 지문의 단위 환산(예: $\\text{cm/sec} \\leftrightarrow \\text{m/sec}$ 등)과 수식 대입 계산을 끝까지 완료한 뒤, 그 최종 계산 결과와 100% 일치하는 수치를 "options" 및 "answer", "correctIndex"에 배치하십시오. 해설에 '잠시 계산을 검토합니다', '오기를 감안하여' 같은 자기모순/변명 문구를 적거나, 화면에서 보기가 무작위로 섞이는데도 해설 본문에 '첫 번째 보기', '네 번째 보기'처럼 보기 순번을 지칭하는 행위를 절대 금지합니다.
 - 🚨 [공식 및 공식 수치 범위 노출 절대 금지 규칙 - 극도로 중요!]: 문제 질문(question) 본문 내에 문제를 해결하는 데 필요한 공학 수식 자체나 수식의 특정 수치 범위를 **절대로 직접 텍스트로 적어 제공하지 마십시오.**
 - 🚨 [유사/중복 질문 출제 절대 금지 - 매우 중요!]: 하나의 공식이나 거동 특성에서 파생되는 변수만 바꾼 형태의 유사한 비례/반비례 질문은 **절대로 중복하여 출제하지 마십시오.**
 - 🚨 [해설 하단 직관적 의미 필수 표기 철칙 - 극도로 중요!]: 모든 객관식 문제의 "explanation"(해설) 본문 맨 아래(📚 참조 문헌 바로 앞)에 반드시 줄을 바꾼 뒤 다음 형식으로 직관적 의미를 1~2문장으로 필수 기재하십시오:
@@ -1161,15 +1191,15 @@ ${topicInstructionsPrompt}
 ${LATEX_PROMPT_INSTRUCTIONS}
 
 [응답 JSON 포맷]:
-반드시 아래 지정된 JSON 배열 포맷으로만 정확히 반환하십시오. 마크다운의 \`\`\`json 코드 블록이나 추가적인 텍스트 설명은 배제하고 순수한 JSON 데이터만 제공해 주십시오.
+반드시 아래 지정된 JSON 배열 포맷(필드 순서: type -> question -> explanation -> options -> answer -> correctIndex)으로만 정확히 반환하십시오. 마크다운의 \`\`\`json 코드 블록이나 추가적인 텍스트 설명은 배제하고 순수한 JSON 데이터만 제공해 주십시오.
 [
   {
     "type": "객관식 (4지선다)",
     "question": "질문 내용",
+    "explanation": "상세한 공학적 해설 (단위 환산 및 단계별 수식 계산을 먼저 수행하여 최종 정답 확정)...\n\n💡 **직관적 의미**: 정답의 핵심 직관적 설명 1~2문장\n\n📚 참조 문헌(Standards & Literature): 출처 2~3개",
     "options": ["$수식 또는 보기 1$", "$수식 또는 보기 2$", "$수식 또는 보기 3$", "$수식 또는 보기 4$"],
     "answer": "$수식 또는 보기 1$",
-    "correctIndex": 0,
-    "explanation": "상세한 공학적 해설...\n\n💡 **직관적 의미**: 정답의 핵심 직관적 설명 1~2문장\n\n📚 참조 문헌(Standards & Literature): 출처 2~3개"
+    "correctIndex": 0
   }
 ]
 `;
