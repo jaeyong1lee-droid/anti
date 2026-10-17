@@ -891,7 +891,9 @@ export default function TopicSlidePlugin({
                         ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
                         : 'bg-amber-500/20 text-amber-300 border-amber-500/40'
                     }`}>
-                      {currentAiSlide.category_tag || `SLIDE ${formatAiSlideNum(currentSlideIndex)}`}
+                      {isCurrentIntuitiveSlide
+                        ? '직관적 설명'
+                        : (currentAiSlide.category_tag || `SLIDE ${formatAiSlideNum(currentSlideIndex)}`)}
                     </span>
                     <span className="text-[10px] text-slate-400 font-mono">
                       SLIDE {formatAiSlideNum(currentSlideIndex)} ({currentSlideIndex + 1} OF {aiSlides.length})
@@ -912,7 +914,7 @@ export default function TopicSlidePlugin({
                               ? (idx === 0 && hasIntuitiveZeroSlide ? 'bg-emerald-400 text-slate-950 font-black shadow-sm' : 'bg-amber-400 text-slate-950 font-black shadow-sm')
                               : 'bg-slate-800/80 text-slate-400 hover:text-white hover:bg-slate-700'
                           }`}
-                          title={`Slide ${formatAiSlideNum(idx)}: ${slide.title || ''}`}
+                          title={`Slide ${formatAiSlideNum(idx)}`}
                         >
                           {pillLabel}
                         </button>
@@ -921,128 +923,114 @@ export default function TopicSlidePlugin({
                   </div>
                 </div>
 
-                {/* 슬라이드 헤더 */}
-                <div className="border-b border-slate-800 pb-2.5 mb-2.5 shrink-0">
-                  <h1 className="text-base sm:text-lg md:text-xl font-black text-white tracking-tight flex items-center gap-2">
-                    <span className={`font-mono ${isCurrentIntuitiveSlide ? 'text-emerald-400' : 'text-amber-400'}`}>
-                      {formatAiSlideNum(currentSlideIndex)}.
-                    </span>
-                    <span><SlideLatex text={currentAiSlide.title} /></span>
-                  </h1>
-                  {currentAiSlide.key_takeaway && (
-                    <p className={`text-xs sm:text-sm font-medium mt-1 pl-4 border-l-2 leading-relaxed ${
-                      isCurrentIntuitiveSlide
-                        ? 'text-emerald-300/95 border-emerald-500/60'
-                        : 'text-amber-300/90 border-amber-500/60'
-                    }`}>
-                      💡 <SlideLatex text={currentAiSlide.key_takeaway} />
-                    </p>
-                  )}
-                </div>
+                {/* 슬라이드 헤더 (00번 직관 시트는 불필요한 슬로건 제목 문구를 제거하고 본문에서 바로 직관 요약 표출) */}
+                {!isCurrentIntuitiveSlide && (
+                  <div className="border-b border-slate-800 pb-2.5 mb-2.5 shrink-0">
+                    <h1 className="text-base sm:text-lg md:text-xl font-black text-white tracking-tight flex items-center gap-2">
+                      <span className="font-mono text-amber-400">
+                        {formatAiSlideNum(currentSlideIndex)}.
+                      </span>
+                      <span><SlideLatex text={currentAiSlide.title} /></span>
+                    </h1>
+                    {currentAiSlide.key_takeaway && (
+                      <p className="text-xs sm:text-sm font-medium mt-1 pl-4 border-l-2 text-amber-300/90 border-amber-500/60 leading-relaxed">
+                        💡 <SlideLatex text={currentAiSlide.key_takeaway} />
+                      </p>
+                    )}
+                  </div>
+                )}
 
-                {/* 슬라이드 본문: 00번(직관적 설명) 자유형 스토리텔링 레이아웃 vs 01~05번 2컬럼 공학 레이아웃 */}
+                {/* 슬라이드 본문: 00번(직관적 설명) 간결형 동적 레이아웃 vs 01~05번 2컬럼 공학 레이아웃 */}
                 {isCurrentIntuitiveSlide ? (
-                  <div className="flex-1 min-h-0 flex flex-col justify-between gap-3">
-                    {/* 상단: 호기심 질문 + 일상 비유 히어로 배너 */}
-                    <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-emerald-950/70 via-teal-950/60 to-sky-950/70 border border-emerald-500/40 shadow-lg">
-                      <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
-                        <div className="md:col-span-5 p-3 rounded-xl bg-slate-950/60 border border-emerald-500/30">
-                          <div className="text-[10px] font-black text-emerald-400 uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                            <span>🧒 호기심 질문 (Why?)</span>
-                          </div>
-                          <p className="text-xs sm:text-sm font-extrabold text-white leading-snug">
-                            <SlideLatex text={currentAiSlide.why_question || currentAiSlide.key_takeaway || '왜 공사 현장에서는 이 원리가 꼭 필요할까요?'} />
-                          </p>
+                  <div className="flex-1 min-h-0 flex flex-col justify-center gap-4 py-1">
+                    {/* 1. 상단 핵심 직관 요약 배너 (중첩 박스 없이 깔끔한 단일 영역) */}
+                    <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-emerald-950/50 via-slate-900/90 to-slate-900/90 border border-emerald-500/35 shadow-md">
+                      {currentAiSlide.key_takeaway && (
+                        <div className="text-sm sm:text-base font-extrabold text-emerald-300 leading-snug mb-2 flex items-start gap-2">
+                          <span className="shrink-0">💡</span>
+                          <span><SlideLatex text={currentAiSlide.key_takeaway} /></span>
                         </div>
-                        <div className="md:col-span-7 p-3 rounded-xl bg-emerald-950/40 border border-teal-400/30">
-                          <div className="text-[10px] font-black text-teal-300 uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                            <span>🎈 초등학생도 단번에 이해하는 일상 비유</span>
-                          </div>
-                          <p className="text-xs sm:text-[13px] text-emerald-100 font-medium leading-relaxed">
-                            <SlideLatex text={currentAiSlide.story_analogy || currentAiSlide.key_takeaway || ''} />
-                          </p>
-                        </div>
-                      </div>
+                      )}
+                      {currentAiSlide.story_analogy && (
+                        <p className="text-xs sm:text-sm text-slate-200 leading-relaxed pl-6">
+                          <SlideLatex text={currentAiSlide.story_analogy} />
+                        </p>
+                      )}
                     </div>
 
-                    {/* 중단: 3단계 그림책형 스토리 카드 (가로 3열 배치) */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                      {(currentAiSlide.bullet_points || []).map((b, bIdx) => {
-                        const stepColors = [
-                          'border-emerald-500/40 bg-emerald-950/25 text-emerald-300',
-                          'border-sky-500/40 bg-sky-950/25 text-sky-300',
-                          'border-amber-500/40 bg-amber-950/25 text-amber-300'
-                        ];
-                        const stepIcons = ['1️⃣ 첫째, 상황 상상하기', '2️⃣ 둘째, 원리 깨닫기', '3️⃣ 셋째, 현장에 적용하기'];
+                    {/* 2. 중앙 동적 메인 영역: 비교/정리 표(Table)가 있으면 깔끔한 표 1개, 없으면 핵심 3단계 카드만 표출 */}
+                    {(() => {
+                      const tableData = currentAiSlide.visual_component?.table || currentAiSlide.visual_component?.matrix;
+                      const headers = tableData?.headers || tableData?.columns;
+                      const rows = tableData?.rows || tableData?.data;
+                      const hasValidTable = Array.isArray(headers) && Array.isArray(rows) && rows.length > 0;
+
+                      if (hasValidTable) {
                         return (
-                          <div
-                            key={bIdx}
-                            className="p-3.5 rounded-2xl bg-[#101929]/90 border border-slate-800 hover:border-emerald-500/50 transition-all shadow-md flex flex-col justify-between gap-2"
-                          >
-                            <div>
-                              <div className="flex items-center justify-between gap-2 mb-1.5">
-                                <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${stepColors[bIdx % 3]}`}>
-                                  <SlideLatex text={b.badge || stepIcons[bIdx % 3]} />
-                                </span>
-                                <span className="text-[10px] font-mono text-slate-500 font-bold">STEP 0{bIdx + 1}</span>
-                              </div>
-                              <h4 className="text-xs sm:text-sm font-black text-white mb-1.5 leading-snug">
-                                <SlideLatex text={b.title} />
-                              </h4>
-                              <p className="text-[11px] sm:text-xs text-slate-200 leading-relaxed">
-                                <SlideLatex text={b.desc || ''} />
-                              </p>
+                          <div className="rounded-2xl border border-slate-700/80 bg-[#0E1626]/95 overflow-hidden shadow-lg">
+                            <div className="overflow-x-auto">
+                              <table className="w-full text-left border-collapse">
+                                <thead>
+                                  <tr className="bg-slate-800/90 border-b border-slate-700 text-emerald-300 text-xs sm:text-sm font-extrabold">
+                                    {headers.map((h, i) => (
+                                      <th
+                                        key={i}
+                                        className={`py-3 px-4 ${i === 0 ? 'w-[22%] text-slate-300' : ''}`}
+                                      >
+                                        <SlideLatex text={String(h)} />
+                                      </th>
+                                    ))}
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-800/80">
+                                  {rows.map((row, rIdx) => (
+                                    <tr key={rIdx} className="hover:bg-slate-800/30 transition-colors">
+                                      {(Array.isArray(row) ? row : Object.values(row)).map((cell, cIdx) => (
+                                        <td
+                                          key={cIdx}
+                                          className={`py-3.5 px-4 text-xs sm:text-sm leading-relaxed ${
+                                            cIdx === 0
+                                              ? 'font-extrabold text-amber-300/95 bg-slate-900/50 whitespace-nowrap'
+                                              : 'text-slate-200 font-medium'
+                                          }`}
+                                        >
+                                          <SlideLatex text={String(cell)} />
+                                        </td>
+                                      ))}
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
                             </div>
                           </div>
                         );
-                      })}
-                    </div>
+                      }
 
-                    {/* 하단: 일상 비유 vs 실제 토목 기술 매칭 카드 + 01. 서론 연결 브릿지 */}
-                    <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-stretch">
-                      <div className="md:col-span-8 p-3 rounded-2xl bg-[#0E1626] border border-slate-800 flex flex-col justify-center">
-                        <div className="text-[10px] font-black text-sky-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                          <span>🔍 한눈에 비교하는 직관 매칭 카드</span>
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                          {(currentAiSlide.visual_component?.cards || currentAiSlide.visual_component?.summary_cards || []).map((card, cIdx) => (
+                      return (
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+                          {(currentAiSlide.bullet_points || []).map((b, bIdx) => (
                             <div
-                              key={cIdx}
-                              className={`p-2.5 rounded-xl border flex flex-col gap-1 ${
-                                card.highlight
-                                  ? 'bg-emerald-950/40 border-emerald-500/50 text-emerald-200'
-                                  : 'bg-slate-900/80 border-slate-800 text-slate-200'
-                              }`}
+                              key={bIdx}
+                              className="p-4 rounded-2xl bg-[#101929]/95 border border-slate-800 flex flex-col justify-between gap-2 shadow-md"
                             >
-                              <span className="text-[10px] font-bold text-emerald-400">
-                                <SlideLatex text={card.label || card.title || `핵심 ${cIdx + 1}`} />
-                              </span>
-                              <span className="text-[11px] font-semibold leading-snug">
-                                <SlideLatex text={card.content || card.desc || card.value || ''} />
-                              </span>
+                              <div>
+                                {b.badge && (
+                                  <span className="inline-block text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border border-emerald-500/40 bg-emerald-950/30 text-emerald-300 mb-2">
+                                    <SlideLatex text={b.badge} />
+                                  </span>
+                                )}
+                                <h4 className="text-sm sm:text-base font-black text-white mb-1.5 leading-snug">
+                                  <SlideLatex text={b.title} />
+                                </h4>
+                                <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                                  <SlideLatex text={b.desc || ''} />
+                                </p>
+                              </div>
                             </div>
                           ))}
                         </div>
-                      </div>
-                      <div className="md:col-span-4 p-3 rounded-2xl bg-gradient-to-br from-indigo-950/60 to-slate-900 border border-indigo-500/40 flex flex-col justify-between">
-                        <div>
-                          <div className="text-[10px] font-black text-indigo-300 flex items-center gap-1 mb-1">
-                            <span>🌉 01. 서론(전문가 과정) 연결 다리</span>
-                          </div>
-                          <p className="text-[11px] text-indigo-100 leading-relaxed font-medium">
-                            <SlideLatex text={currentAiSlide.engineer_note || '이 쉬운 원리를 이제 기술사 답안지의 전문 공학 용어와 KDS 기준으로 만나볼까요?'} />
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setCurrentSlideIndex(1)}
-                          className="mt-2 w-full py-1.5 px-3 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-[11px] font-extrabold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-                        >
-                          <span>다음 시트: 01. 서론 | 정의 보러가기</span>
-                          <ChevronRight size={13} />
-                        </button>
-                      </div>
-                    </div>
+                      );
+                    })()}
                   </div>
                 ) : (
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-4 flex-1 min-h-0 items-stretch">
