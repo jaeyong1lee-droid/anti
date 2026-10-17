@@ -3471,7 +3471,7 @@ export default function App() {
     }
 
     setGeneratingSlideTopicIds(prev => ({ ...prev, [topicKey]: true, [titleKey]: true }));
-    showNotification(`⚡ [${finalTitle || topicTitle}] 5장 슬라이드 작성을 백그라운드에서 시작했습니다. 창을 닫고 다른 작업을 계속하실 수 있습니다.`, 'info');
+    showNotification(`⚡ [${finalTitle || topicTitle}] 6장 슬라이드 작성을 백그라운드에서 시작했습니다. 창을 닫고 다른 작업을 계속하실 수 있습니다.`, 'info');
 
     try {
       const maxRetries = 2;
@@ -3505,9 +3505,9 @@ export default function App() {
       }
 
       if (res.ok) {
-        showNotification(`🎉 [${finalTitle || topicTitle}] 5장 프레젠테이션 슬라이드(PPT) 완성이 완료되었습니다!`, 'success');
+        showNotification(`🎉 [${finalTitle || topicTitle}] 6장 프레젠테이션 슬라이드(PPT) 완성이 완료되었습니다!`, 'success');
         setSlideRefreshTick(t => t + 1);
-        // ✨ 생성이 완료되면 사용자 화면에 완성된 5장 슬라이드 덱 팝업을 즉시 오픈!
+        // ✨ 생성이 완료되면 사용자 화면에 완성된 6장 슬라이드 덱 팝업을 즉시 오픈!
         setTopicSlideModalId(finalTopicId);
         setTopicSlideModalTitle(finalTitle || topicTitle);
         setShowTopicSlideModal(true);
@@ -3584,7 +3584,7 @@ export default function App() {
 
       // 1. 이미 백그라운드에서 작성 중인 경우: 팝업을 띄우지 않고 토스트 알림으로만 상태 안내
       if (generatingSlideTopicIds[topicKey] || generatingSlideTopicIds[titleKey]) {
-        showNotification(`⏳ [${finalTitle}] 현재 5장 PPT 슬라이드를 작성 중입니다. 완성이 끝나면 알림과 함께 버튼으로 바로 열어보실 수 있습니다.`, 'info');
+        showNotification(`⏳ [${finalTitle}] 현재 6장 PPT 슬라이드를 작성 중입니다. 완성이 끝나면 알림과 함께 버튼으로 바로 열어보실 수 있습니다.`, 'info');
         return;
       }
 

@@ -866,8 +866,13 @@ const MAX_RECENT_LOCKSCREEN_SLIDES = 10;
 
 function normalizeSlideDeck(deck) {
   if (!deck || !Array.isArray(deck.slides)) return deck;
-  deck.slides.forEach(slide => {
-    if (slide && slide.visual_component) {
+  const isSixSlideDeck = deck.slides.length >= 6 || deck.slides[0]?.slide_no === 0 || String(deck.slides[0]?.category_tag || '').includes('직관');
+  deck.slides.forEach((slide, idx) => {
+    if (!slide) return;
+    if (isSixSlideDeck && slide.slide_no === undefined) {
+      slide.slide_no = idx;
+    }
+    if (slide.visual_component) {
       if (slide.visual_component.summary_cards && !slide.visual_component.cards) {
         slide.visual_component.cards = slide.visual_component.summary_cards;
         slide.visual_component.type = slide.visual_component.type || 'summary_cards';
@@ -884,6 +889,7 @@ function normalizeSlideDeck(deck) {
       }
     }
   });
+  deck.total_slides = deck.slides.length;
   return deck;
 }
 
@@ -1212,14 +1218,23 @@ router.post('/topics/:id/slides/generate', async (req, res) => {
     }
 
     const systemPrompt = `당신은 최고 권위의 대한민국 토목/지반/터널 기술사 전문 수석 프레젠테이션 엔지니어이자 슬라이드 디자이너입니다.
-주어진 토픽의 원본 소스, 영문 위키피디아 사전 지식, KCSC 국가건설기준 및 AI 튜터 지식 베이스를 면밀히 분석하여, 기술사 수험생 및 실무 기술자가 5분 만에 핵심을 완벽히 마스터할 수 있는 [서론-본론①-본론②-본론③-결론 5장 완결형 프레젠테이션 슬라이드 덱]을 JSON으로 생성하십시오.
+주어진 토픽의 원본 소스, 영문 위키피디아 사전 지식, KCSC 국가건설기준 및 AI 튜터 지식 베이스를 면밀히 분석하여, 초보자부터 기술사 수험생 및 실무 기술자까지 단번에 핵심을 완벽히 마스터할 수 있는 [0.직관적설명 - 1.서론 - 2.본론① - 3.본론② - 4.본론③ - 5.결론 총 6장 완결형 프레젠테이션 슬라이드 덱]을 JSON으로 생성하십시오.
 
-반드시 다음 5장의 서론-본론-결론 스토리라인을 정확히 준수하여 5장의 슬라이드를 작성해야 합니다:
-- Slide 1: category_tag: "서론 | 개요 & 핵심 정의" (토픽의 공학적 정의, 출제 빈도, 3대 핵심 키워드 배지, 발표 및 학습 목적)
-- Slide 2: category_tag: "본론 ① | 거동 메커니즘 & 작도 원리" (물리적 거동 원리. 하중-침하, 응력-변형률, GRC/SCC, t-z 등 역학적 곡선 거동이 핵심인 토픽인 경우 visual_component에 동적 인터랙티브 차트("type": "chart", "chart": { "title": "...", "xAxisLabel": "...", "yAxisLabel": "...", "description": "...", "lines": [{"name": "...", "dataKey": "y1", "stroke": "#38bdf8"}], "data": [{"x": "0", "y1": 0}, ...] }) 형식을 적극 생성하십시오. 그래프보다 텍스트 비교가 적합한 경우 3단 카드("type": "summary_cards", "cards": [...])를 사용하십시오.)
-- Slide 3: category_tag: "본론 ② | KDS 설계기준 & 핵심 지배공식" (국가건설기준 KDS 조항, 핵심 공식 수식 KaTeX 포맷($...$), 매개변수 정의 및 물리적 의미)
-- Slide 4: category_tag: "본론 ③ | 실무 해석 및 현장 시공·품질관리" (단계별 시공 절차 플로우, 문제 발생 시 대책 및 한계동수경사/안전율 기준, 현장 체크포인트)
-- Slide 5: category_tag: "결론 | 기술사 답안 결론 & 실무 제언" (고득점 차별화 포인트, 핵심 비교 매트릭스 표, 최종 총평 및 실무 제언)
+반드시 다음 6장의 스토리라인을 정확히 준수하여 총 6장의 슬라이드(slide_no: 0 ~ 5)를 순서대로 작성해야 합니다:
+- Slide 0 (slide_no: 0): category_tag: "직관적 설명 | 초등학생도 이해하는 쉬운 원리"
+  * 목적: 본격적인 공학 정의(Slide 1)에 들어가기 전, **초등학생이나 비전공자도 단 30초 만에 "아하! 이게 이런 뜻이구나!" 하고 무릎을 탁 칠 수 있도록 일상생활의 친숙한 비유(예: 옷감/천 당기기, 스펀지 물 짜기, 빨대로 주스 마시기, 찰흙 누르기, 시소, 모래성 등)로 아주 쉽고 재미있게 풀어주는 도입 시트**입니다.
+  * 필수 작성 요령:
+    - 어려운 한자어나 복잡한 수식을 나열하지 말고, 누구나 겪어본 일상 속 경험과 그림이 그려지는 쉬운 비유로 설명하십시오.
+    - "why_question": 호기심을 자극하는 쉬운 질문 1문장 (예: "천이 얼마나 튼튼한지 알아볼 때, 손가락으로 꼬집어 당기는 것과 양손으로 넓게 잡고 당기는 것은 어떻게 다를까요?")
+    - "story_analogy": 초등학생 눈높이에서 일상생활 비유로 현상의 본질을 명쾌하게 풀어주는 스토리텔링 설명 (2~3문장, 친절하고 쉬운 어조)
+    - "bullet_points": 3단계로 쉽게 풀어쓴 원리 ([STEP 1 일상 속 상황 비유] -> [STEP 2 그 안에서 일어나는 변화] -> [STEP 3 실제 공사 현장에서의 역할])
+    - "visual_component": { "type": "summary_cards", "cards": [일상 비유와 실제 공학 현상을 직관적으로 대비/요약한 3개의 쉬운 카드] }
+    - "engineer_note": 방금 이해한 쉬운 일상 비유가 다음 장(01. 서론)부터 나올 기술사 핵심 공학 용어와 어떻게 1:1로 연결되는지 이어주는 징검다리 한 줄 정리
+- Slide 1 (slide_no: 1): category_tag: "서론 | 개요 & 핵심 정의" (토픽의 공학적 정의, 출제 빈도, 3대 핵심 키워드 배지, 발표 및 학습 목적)
+- Slide 2 (slide_no: 2): category_tag: "본론 ① | 거동 메커니즘 & 작도 원리" (물리적 거동 원리. 하중-침하, 응력-변형률, GRC/SCC, t-z 등 역학적 곡선 거동이 핵심인 토픽인 경우 visual_component에 동적 인터랙티브 차트("type": "chart", "chart": { "title": "...", "xAxisLabel": "...", "yAxisLabel": "...", "description": "...", "lines": [{"name": "...", "dataKey": "y1", "stroke": "#38bdf8"}], "data": [{"x": "0", "y1": 0}, ...] }) 형식을 적극 생성하십시오. 그래프보다 텍스트 비교가 적합한 경우 3단 카드("type": "summary_cards", "cards": [...])를 사용하십시오.)
+- Slide 3 (slide_no: 3): category_tag: "본론 ② | KDS 설계기준 & 핵심 지배공식" (국가건설기준 KDS 조항, 핵심 공식 수식 KaTeX 포맷($...$), 매개변수 정의 및 물리적 의미)
+- Slide 4 (slide_no: 4): category_tag: "본론 ③ | 실무 해석 및 현장 시공·품질관리" (단계별 시공 절차 플로우, 문제 발생 시 대책 및 한계동수경사/안전율 기준, 현장 체크포인트)
+- Slide 5 (slide_no: 5): category_tag: "결론 | 기술사 답안 결론 & 실무 제언" (고득점 차별화 포인트, 핵심 비교 매트릭스 표, 최종 총평 및 실무 제언)
 
 ${LATEX_PROMPT_INSTRUCTIONS}
 
@@ -1232,8 +1247,30 @@ ${LATEX_PROMPT_INSTRUCTIONS}
 {
   "deck_title": "${topic.title}",
   "topic_category": "${topic.category || '토목공학'}",
-  "total_slides": 5,
+  "total_slides": 6,
   "slides": [
+    {
+      "slide_no": 0,
+      "category_tag": "직관적 설명 | 초등학생도 이해하는 쉬운 원리",
+      "title": "초등학생도 단번에 이해하는 비유 제목",
+      "key_takeaway": "어려운 공학 원리를 일상 비유 한 줄로 명쾌하게 요약",
+      "why_question": "왜 이런 현상이 생길까요? 호기심을 자극하는 일상 질문",
+      "story_analogy": "일상생활 속 친숙한 소재(스펀지, 옷감, 빨대 등)에 빗대어 초등학생도 머릿속에 그림을 그릴 수 있도록 풀어쓴 쉬운 이야기 설명",
+      "bullet_points": [
+        { "title": "일상 속 비유 상황", "desc": "누구나 아는 친숙한 상황으로 비유...", "badge": "STEP 1 · 비유" },
+        { "title": "무슨 일이 일어날까?", "desc": "힘이나 물이 어떻게 움직이는지 쉽게 설명...", "badge": "STEP 2 · 원리" },
+        { "title": "실제 공사 현장에서는?", "desc": "이 원리가 실제 지반/구조물에서 어떻게 쓰이는지...", "badge": "STEP 3 · 적용" }
+      ],
+      "visual_component": {
+        "type": "summary_cards",
+        "cards": [
+          { "label": "일상 비유 핵심 1", "content": "쉬운 비유로 본 첫 번째 특징", "highlight": true },
+          { "label": "일상 비유 핵심 2", "content": "쉬운 비유로 본 두 번째 특징", "highlight": false },
+          { "label": "한눈에 보는 차이", "content": "왜 이 원리가 중요한지 핵심 요약", "highlight": false }
+        ]
+      },
+      "engineer_note": "이 일상 비유를 공학 용어로 바꾸면 바로 [핵심 개념]입니다. 다음 장(01. 서론)에서 정확한 공학적 정의와 수식으로 연결됩니다."
+    },
     {
       "slide_no": 1,
       "category_tag": "서론 | 개요 & 핵심 정의",

@@ -484,6 +484,18 @@ export default function TopicSlidePlugin({
 
   const aiSlides = slideMeta?.slide_deck?.type !== 'jpg_deck' ? (slideMeta?.slide_deck?.slides || []) : [];
   const currentAiSlide = aiSlides[currentSlideIndex] || null;
+  const hasIntuitiveZeroSlide = aiSlides.length >= 6 || aiSlides[0]?.slide_no === 0 || String(aiSlides[0]?.category_tag || '').includes('직관');
+  const isCurrentIntuitiveSlide = Boolean(
+    currentAiSlide && (
+      currentAiSlide.slide_no === 0 ||
+      String(currentAiSlide.category_tag || '').includes('직관') ||
+      (hasIntuitiveZeroSlide && currentSlideIndex === 0)
+    )
+  );
+  const formatAiSlideNum = (idx) => {
+    if (hasIntuitiveZeroSlide) return String(idx).padStart(2, '0');
+    return String(idx + 1).padStart(2, '0');
+  };
 
   const totalSlideCount = viewMode === 'jpg'
     ? jpgSlides.length
@@ -552,13 +564,13 @@ export default function TopicSlidePlugin({
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40">
-                  {activeView === 'jpg' ? '16:9 이미지 슬라이드' : '5장 프레젠테이션 덱'}
+                  {activeView === 'jpg' ? '16:9 이미지 슬라이드' : `${aiSlides.length || 6}장 프레젠테이션 덱`}
                 </span>
                 <span className="text-[11px] text-slate-400 font-mono hidden sm:inline">
                   {activeView === 'jpg'
                     ? `Slide ${currentSlideIndex + 1} / ${jpgSlides.length} (경량 JPG)`
                     : activeView === 'ai'
-                    ? `Slide ${currentSlideIndex + 1} / ${aiSlides.length} (서론-본론-결론)`
+                    ? `Slide ${currentSlideIndex + 1} / ${aiSlides.length} (직관-서론-본론-결론)`
                     : '프레젠테이션'}
                 </span>
               </div>
@@ -568,7 +580,7 @@ export default function TopicSlidePlugin({
             </div>
           </div>
 
-          {/* 중앙: 뷰 모드 탭 (경량 JPG 슬라이드 vs 5장 프레젠테이션 vs 웹) */}
+          {/* 중앙: 뷰 모드 탭 (경량 JPG 슬라이드 vs 6장 프레젠테이션 vs 웹) */}
           <div className="hidden md:flex items-center gap-1 bg-[#162138] p-1 rounded-xl border border-slate-700/60">
             {hasJpgSlides && (
               <button
@@ -591,7 +603,7 @@ export default function TopicSlidePlugin({
                 }`}
               >
                 <Sparkles size={13} />
-                <span>5장 프레젠테이션 덱</span>
+                <span>{aiSlides.length || 6}장 프레젠테이션 덱</span>
               </button>
             )}
             {hasWebUrl && (
@@ -651,15 +663,15 @@ export default function TopicSlidePlugin({
               onClick={handleGenerateAiDeck}
               disabled={isGeneratingDeck}
               className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 disabled:opacity-50 text-white text-xs font-bold transition-all cursor-pointer active:scale-95 shadow-md"
-              title="토픽 소스 기반 5장 비주얼 슬라이드 AI 실시간 재생성 (백그라운드 실행)"
+              title="토픽 소스 기반 6장 비주얼 슬라이드 AI 실시간 재생성 (백그라운드 실행)"
             >
               <RefreshCw size={13} className={isGeneratingDeck ? 'animate-spin' : ''} />
               <span className="hidden sm:inline">
                 {isGeneratingDeck
                   ? '작성 중...'
                   : hasAiDeck
-                  ? '5장 덱 재생성'
-                  : '5장 덱 생성'}
+                  ? '6장 덱 재생성'
+                  : '6장 덱 생성'}
               </span>
             </button>
 
@@ -704,7 +716,7 @@ export default function TopicSlidePlugin({
             <div className="flex items-center gap-2">
               <RefreshCw size={13} className="animate-spin text-amber-400 shrink-0" />
               <span className="font-medium">
-                ⚡ 새로운 5장 프레젠테이션 덱을 백그라운드에서 작성 중입니다 (약 30초~1분 소요)... 완성이 끝나면 자동으로 새 덱으로 갱신됩니다.
+                ⚡ 새로운 6장 프레젠테이션 덱을 백그라운드에서 작성 중입니다 (약 30초~1분 소요)... 완성이 끝나면 자동으로 새 덱으로 갱신됩니다.
               </span>
             </div>
             <button
@@ -736,7 +748,7 @@ export default function TopicSlidePlugin({
                   <span>백그라운드 AI 슬라이드 작성 진행 중</span>
                 </div>
                 <h3 className="text-base sm:text-lg font-black text-white">
-                  NotebookLM 5장 프레젠테이션 덱을 작성하고 있습니다
+                  NotebookLM 6장 프레젠테이션 덱을 작성하고 있습니다
                 </h3>
                 <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-md">
                   토픽의 핵심 원문, 역학 메커니즘, KDS 설계기준, 현장 시공 포인트를 집약한 16:9 비주얼 슬라이드를 백그라운드에서 안전하게 구성 중입니다 (약 30초~1분 소요).
@@ -867,23 +879,29 @@ export default function TopicSlidePlugin({
               </div>
             </div>
           ) : activeView === 'ai' && currentAiSlide ? (
-            /* 모드 2: AI 5-Slide Visual Presentation Deck */
+            /* 모드 2: AI 6-Slide Visual Presentation Deck (00 직관적 설명 + 01~05 서론/본론/결론) */
             <div className="w-full h-full flex flex-col justify-between relative overflow-hidden">
               {/* 메인 슬라이드 스테이지 */}
               <div className="flex-1 min-h-0 w-full max-w-5xl mx-auto p-3 sm:p-5 md:p-6 flex flex-col justify-between overflow-y-auto scrollbar-none animate-fade-in relative">
                 {/* 슬라이드 상단 진행 바 */}
                 <div className="w-full flex items-center justify-between gap-3 mb-2 shrink-0">
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-extrabold uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40">
-                      {currentAiSlide.category_tag || `SLIDE 0${currentSlideIndex + 1}`}
+                    <span className={`text-[10px] font-extrabold uppercase tracking-widest px-2.5 py-0.5 rounded-full border ${
+                      isCurrentIntuitiveSlide
+                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                        : 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                    }`}>
+                      {currentAiSlide.category_tag || `SLIDE ${formatAiSlideNum(currentSlideIndex)}`}
                     </span>
                     <span className="text-[10px] text-slate-400 font-mono">
-                      PART {currentSlideIndex + 1} OF {aiSlides.length}
+                      SLIDE {formatAiSlideNum(currentSlideIndex)} ({currentSlideIndex + 1} OF {aiSlides.length})
                     </span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     {aiSlides.map((slide, idx) => {
-                      const stages = ['서론', '본론①', '본론②', '본론③', '결론'];
+                      const stages6 = ['00 직관', '01 서론', '02 본론①', '03 본론②', '04 본론③', '05 결론'];
+                      const stages5 = ['서론', '본론①', '본론②', '본론③', '결론'];
+                      const pillLabel = hasIntuitiveZeroSlide ? (stages6[idx] || formatAiSlideNum(idx)) : (stages5[idx] || `0${idx + 1}`);
                       return (
                         <button
                           key={idx}
@@ -891,12 +909,12 @@ export default function TopicSlidePlugin({
                           onClick={() => setCurrentSlideIndex(idx)}
                           className={`px-2 py-0.5 text-[10px] font-bold transition-all rounded-md cursor-pointer ${
                             idx === currentSlideIndex 
-                              ? 'bg-amber-400 text-slate-950 font-black shadow-sm' 
+                              ? (idx === 0 && hasIntuitiveZeroSlide ? 'bg-emerald-400 text-slate-950 font-black shadow-sm' : 'bg-amber-400 text-slate-950 font-black shadow-sm')
                               : 'bg-slate-800/80 text-slate-400 hover:text-white hover:bg-slate-700'
                           }`}
-                          title={`Slide ${idx + 1}: ${slide.title || ''}`}
+                          title={`Slide ${formatAiSlideNum(idx)}: ${slide.title || ''}`}
                         >
-                          {stages[idx] || `0${idx + 1}`}
+                          {pillLabel}
                         </button>
                       );
                     })}
@@ -906,17 +924,127 @@ export default function TopicSlidePlugin({
                 {/* 슬라이드 헤더 */}
                 <div className="border-b border-slate-800 pb-2.5 mb-2.5 shrink-0">
                   <h1 className="text-base sm:text-lg md:text-xl font-black text-white tracking-tight flex items-center gap-2">
-                    <span className="text-amber-400 font-mono">0{currentSlideIndex + 1}.</span>
+                    <span className={`font-mono ${isCurrentIntuitiveSlide ? 'text-emerald-400' : 'text-amber-400'}`}>
+                      {formatAiSlideNum(currentSlideIndex)}.
+                    </span>
                     <span><SlideLatex text={currentAiSlide.title} /></span>
                   </h1>
                   {currentAiSlide.key_takeaway && (
-                    <p className="text-xs sm:text-sm text-amber-300/90 font-medium mt-1 pl-4 border-l-2 border-amber-500/60 leading-relaxed">
+                    <p className={`text-xs sm:text-sm font-medium mt-1 pl-4 border-l-2 leading-relaxed ${
+                      isCurrentIntuitiveSlide
+                        ? 'text-emerald-300/95 border-emerald-500/60'
+                        : 'text-amber-300/90 border-amber-500/60'
+                    }`}>
                       💡 <SlideLatex text={currentAiSlide.key_takeaway} />
                     </p>
                   )}
                 </div>
 
-                {/* 슬라이드 본문: 2컬럼 레이아웃 */}
+                {/* 슬라이드 본문: 00번(직관적 설명) 자유형 스토리텔링 레이아웃 vs 01~05번 2컬럼 공학 레이아웃 */}
+                {isCurrentIntuitiveSlide ? (
+                  <div className="flex-1 min-h-0 flex flex-col justify-between gap-3">
+                    {/* 상단: 호기심 질문 + 일상 비유 히어로 배너 */}
+                    <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-emerald-950/70 via-teal-950/60 to-sky-950/70 border border-emerald-500/40 shadow-lg">
+                      <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+                        <div className="md:col-span-5 p-3 rounded-xl bg-slate-950/60 border border-emerald-500/30">
+                          <div className="text-[10px] font-black text-emerald-400 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                            <span>🧒 호기심 질문 (Why?)</span>
+                          </div>
+                          <p className="text-xs sm:text-sm font-extrabold text-white leading-snug">
+                            <SlideLatex text={currentAiSlide.why_question || currentAiSlide.key_takeaway || '왜 공사 현장에서는 이 원리가 꼭 필요할까요?'} />
+                          </p>
+                        </div>
+                        <div className="md:col-span-7 p-3 rounded-xl bg-emerald-950/40 border border-teal-400/30">
+                          <div className="text-[10px] font-black text-teal-300 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                            <span>🎈 초등학생도 단번에 이해하는 일상 비유</span>
+                          </div>
+                          <p className="text-xs sm:text-[13px] text-emerald-100 font-medium leading-relaxed">
+                            <SlideLatex text={currentAiSlide.story_analogy || currentAiSlide.key_takeaway || ''} />
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 중단: 3단계 그림책형 스토리 카드 (가로 3열 배치) */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      {(currentAiSlide.bullet_points || []).map((b, bIdx) => {
+                        const stepColors = [
+                          'border-emerald-500/40 bg-emerald-950/25 text-emerald-300',
+                          'border-sky-500/40 bg-sky-950/25 text-sky-300',
+                          'border-amber-500/40 bg-amber-950/25 text-amber-300'
+                        ];
+                        const stepIcons = ['1️⃣ 첫째, 상황 상상하기', '2️⃣ 둘째, 원리 깨닫기', '3️⃣ 셋째, 현장에 적용하기'];
+                        return (
+                          <div
+                            key={bIdx}
+                            className="p-3.5 rounded-2xl bg-[#101929]/90 border border-slate-800 hover:border-emerald-500/50 transition-all shadow-md flex flex-col justify-between gap-2"
+                          >
+                            <div>
+                              <div className="flex items-center justify-between gap-2 mb-1.5">
+                                <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${stepColors[bIdx % 3]}`}>
+                                  <SlideLatex text={b.badge || stepIcons[bIdx % 3]} />
+                                </span>
+                                <span className="text-[10px] font-mono text-slate-500 font-bold">STEP 0{bIdx + 1}</span>
+                              </div>
+                              <h4 className="text-xs sm:text-sm font-black text-white mb-1.5 leading-snug">
+                                <SlideLatex text={b.title} />
+                              </h4>
+                              <p className="text-[11px] sm:text-xs text-slate-200 leading-relaxed">
+                                <SlideLatex text={b.desc || ''} />
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* 하단: 일상 비유 vs 실제 토목 기술 매칭 카드 + 01. 서론 연결 브릿지 */}
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-stretch">
+                      <div className="md:col-span-8 p-3 rounded-2xl bg-[#0E1626] border border-slate-800 flex flex-col justify-center">
+                        <div className="text-[10px] font-black text-sky-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                          <span>🔍 한눈에 비교하는 직관 매칭 카드</span>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                          {(currentAiSlide.visual_component?.cards || currentAiSlide.visual_component?.summary_cards || []).map((card, cIdx) => (
+                            <div
+                              key={cIdx}
+                              className={`p-2.5 rounded-xl border flex flex-col gap-1 ${
+                                card.highlight
+                                  ? 'bg-emerald-950/40 border-emerald-500/50 text-emerald-200'
+                                  : 'bg-slate-900/80 border-slate-800 text-slate-200'
+                              }`}
+                            >
+                              <span className="text-[10px] font-bold text-emerald-400">
+                                <SlideLatex text={card.label || card.title || `핵심 ${cIdx + 1}`} />
+                              </span>
+                              <span className="text-[11px] font-semibold leading-snug">
+                                <SlideLatex text={card.content || card.desc || card.value || ''} />
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="md:col-span-4 p-3 rounded-2xl bg-gradient-to-br from-indigo-950/60 to-slate-900 border border-indigo-500/40 flex flex-col justify-between">
+                        <div>
+                          <div className="text-[10px] font-black text-indigo-300 flex items-center gap-1 mb-1">
+                            <span>🌉 01. 서론(전문가 과정) 연결 다리</span>
+                          </div>
+                          <p className="text-[11px] text-indigo-100 leading-relaxed font-medium">
+                            <SlideLatex text={currentAiSlide.engineer_note || '이 쉬운 원리를 이제 기술사 답안지의 전문 공학 용어와 KDS 기준으로 만나볼까요?'} />
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setCurrentSlideIndex(1)}
+                          className="mt-2 w-full py-1.5 px-3 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-[11px] font-extrabold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                        >
+                          <span>다음 시트: 01. 서론 | 정의 보러가기</span>
+                          <ChevronRight size={13} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-4 flex-1 min-h-0 items-stretch">
                   {/* 좌측 6컬럼: 핵심 불릿 카드 */}
                   <div className="md:col-span-6 space-y-2 flex flex-col justify-center">
@@ -1117,15 +1245,20 @@ export default function TopicSlidePlugin({
                     </div>
                   </div>
                 </div>
+                )}
 
               </div>
 
-              {/* 하단 5장 서론-본론-결론 네비게이션 스트립 */}
+              {/* 하단 6장(00 직관적 설명 ~ 05 결론) 네비게이션 스트립 */}
               <div className="w-full bg-[#0B101D] border-t border-slate-800/90 px-4 py-2 flex items-center justify-between gap-3 shrink-0">
                 <div className="flex items-center gap-2 overflow-x-auto scrollbar-none py-0.5 max-w-full">
                   {aiSlides.map((slide, sIdx) => {
-                    const stageNames = ['서론 | 정의', '본론 ① | 메커니즘', '본론 ② | KDS 수식', '본론 ③ | 실무 시공', '결론 | 고득점 제언'];
-                    const stageLabel = stageNames[sIdx] || `Slide 0${sIdx + 1}`;
+                    const stageNames6 = ['직관적 설명', '서론 | 정의', '본론 ① | 메커니즘', '본론 ② | KDS 수식', '본론 ③ | 실무 시공', '결론 | 고득점 제언'];
+                    const stageNames5 = ['서론 | 정의', '본론 ① | 메커니즘', '본론 ② | KDS 수식', '본론 ③ | 실무 시공', '결론 | 고득점 제언'];
+                    const stageLabel = hasIntuitiveZeroSlide
+                      ? (stageNames6[sIdx] || `Slide ${formatAiSlideNum(sIdx)}`)
+                      : (stageNames5[sIdx] || `Slide 0${sIdx + 1}`);
+                    const isZeroTab = hasIntuitiveZeroSlide && sIdx === 0;
                     return (
                       <button
                         key={sIdx}
@@ -1133,19 +1266,23 @@ export default function TopicSlidePlugin({
                         onClick={() => setCurrentSlideIndex(sIdx)}
                         className={`relative flex items-center gap-2 px-3 py-1.5 rounded-xl transition-all cursor-pointer group shrink-0 ${
                           sIdx === currentSlideIndex
-                            ? 'ring-2 ring-amber-400 bg-amber-500/25 text-amber-300 font-black shadow-md'
+                            ? (isZeroTab
+                                ? 'ring-2 ring-emerald-400 bg-emerald-500/25 text-emerald-300 font-black shadow-md'
+                                : 'ring-2 ring-amber-400 bg-amber-500/25 text-amber-300 font-black shadow-md')
                             : 'opacity-60 hover:opacity-100 hover:bg-slate-800/60 text-slate-400'
                         }`}
-                        title={`Slide ${sIdx + 1}: ${slide.title || ''}`}
+                        title={`Slide ${formatAiSlideNum(sIdx)}: ${slide.title || ''}`}
                       >
-                        <span className="font-mono text-xs font-bold text-amber-400">0{sIdx + 1}</span>
+                        <span className={`font-mono text-xs font-bold ${isZeroTab ? 'text-emerald-400' : 'text-amber-400'}`}>
+                          {formatAiSlideNum(sIdx)}
+                        </span>
                         <span className="text-xs font-bold">{stageLabel}</span>
                       </button>
                     );
                   })}
                 </div>
                 <div className="flex items-center gap-2 shrink-0 text-slate-400 text-[11px] font-mono hidden sm:flex">
-                  <span className="px-2 py-0.5 rounded bg-slate-800/80 border border-slate-700 text-amber-400">5장 완결 덱</span>
+                  <span className="px-2 py-0.5 rounded bg-slate-800/80 border border-slate-700 text-amber-400">{aiSlides.length || 6}장 완결 덱</span>
                   <span>(방향키 ◀ ▶ 넘김)</span>
                 </div>
               </div>
@@ -1180,7 +1317,7 @@ export default function TopicSlidePlugin({
                   className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all shadow-lg cursor-pointer active:scale-95"
                 >
                   <Sparkles size={14} className={isGeneratingDeck ? 'animate-spin' : ''} />
-                  <span>{isGeneratingDeck ? 'AI 슬라이드 백그라운드 작성 중...' : 'AI 5장 슬라이드 생성 (백그라운드)'}</span>
+                  <span>{isGeneratingDeck ? 'AI 슬라이드 백그라운드 작성 중...' : 'AI 6장 슬라이드 생성 (백그라운드)'}</span>
                 </button>
                 <button
                   type="button"
