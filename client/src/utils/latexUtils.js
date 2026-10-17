@@ -466,9 +466,30 @@ export function healQuizQuestionObject(q) {
       }
     }
 
-    if (q.options && Array.isArray(q.options) && q.answer) {
+    if (q.options && Array.isArray(q.options)) {
+      q.options = q.options.map(opt => {
+        if (typeof opt !== 'string') return opt;
+        const trimmed = opt.trim();
+        if (!trimmed.includes('$') && !/[가-힣]/.test(trimmed)) {
+          const hasMathCommands = /\\(?:frac|sqrt|gamma|sigma|tau|alpha|beta|phi|theta|mu|nu|rho|Delta|omega|epsilon|tan|sin|cos|approx|le|ge|times|cdot)\b|[_\^]\{?[a-zA-Z0-9]+/;
+          if (hasMathCommands.test(trimmed) && /^[a-zA-Z0-9_\\^=\s+\-*/(){},.:;'"\\]+$/.test(trimmed)) {
+            return `$${trimmed}$`;
+          }
+        }
+        return opt;
+      });
+      if (typeof q.answer === 'string') {
+        const trimmedAns = q.answer.trim();
+        if (!trimmedAns.includes('$') && !/[가-힣]/.test(trimmedAns)) {
+          const hasMathCommands = /\\(?:frac|sqrt|gamma|sigma|tau|alpha|beta|phi|theta|mu|nu|rho|Delta|omega|epsilon|tan|sin|cos|approx|le|ge|times|cdot)\b|[_\^]\{?[a-zA-Z0-9]+/;
+          if (hasMathCommands.test(trimmedAns) && /^[a-zA-Z0-9_\\^=\s+\-*/(){},.:;'"\\]+$/.test(trimmedAns)) {
+            q.answer = `$${trimmedAns}$`;
+          }
+        }
+      }
+
       let matchedIndex = -1;
-      const cleanAns = String(q.answer).trim().toLowerCase();
+      const cleanAns = String(q.answer || '').trim().toLowerCase();
       if (['1번', '①', '보기1', '보기 1'].includes(cleanAns)) {
         matchedIndex = 0;
       } else if (['2번', '②', '보기2', '보기 2'].includes(cleanAns)) {

@@ -2139,7 +2139,15 @@ const API_BASE = import.meta.env.VITE_API_URL || '';
 
 const cleanOptionText = (text) => {
   if (typeof text !== 'string') return text;
-  return text.replace(/^(?:\d+\.(?!\d)\s*|\d+\)\s*|[①-④]\.?\s*)/g, '').trim();
+  let cleaned = text.replace(/^(?:\d+\.(?!\d)\s*|\d+\)\s*|[①-④]\.?\s*)/g, '').trim();
+  // 순수 공학 수식/기호/공식 문자열(한글 0건, $ 미포함, LaTeX 명령어 포함)인 경우에만 온전한 KaTeX 수식 블록($...$)으로 감싸기
+  if (!cleaned.includes('$') && !/[가-힣]/.test(cleaned)) {
+    const hasMathCommands = /\\(?:frac|sqrt|gamma|sigma|tau|alpha|beta|phi|theta|mu|nu|rho|Delta|omega|epsilon|tan|sin|cos|approx|le|ge|times|cdot)\b|[_\^]\{?[a-zA-Z0-9]+/;
+    if (hasMathCommands.test(cleaned) && /^[a-zA-Z0-9_\\^=\s+\-*/(){},.:;'"\\]+$/.test(cleaned)) {
+      return `$${cleaned}$`;
+    }
+  }
+  return cleaned;
 };
 
 const safeFetchJson = async (url, options) => {
@@ -22085,7 +22093,7 @@ ${itemsStr}
                                 <span className="font-black">{isCorrect ? '✅ 정답!' : '❌ 오답'}</span>
                                 {!isCorrect && (
                                   <span className="ml-2 inline-flex items-center gap-1">
-                                    정답: <strong className="inline-block"><LatexRenderer text={q.answer} katexLoaded={katexLoaded} className="inline" enableAddFormula={true} /></strong>
+                                    정답: <strong className="inline-block"><LatexRenderer text={cleanOptionText(q.answer)} katexLoaded={katexLoaded} className="inline" enableAddFormula={true} /></strong>
                                   </span>
                                 )}
                                 {q.explanation && <div className="mt-1.5 text-[14px] sm:text-[16px] text-slate-300"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} isExplanation={true} formulaSource="tutor" /></div>}
@@ -25776,7 +25784,7 @@ ${itemsStr}
                               <span className="font-black">{isCorrect ? '✅ 정답!' : '❌ 오답'}</span>
                               {!isCorrect && (
                                 <span className="ml-2 inline-flex items-center gap-1">
-                                  정답: <strong className="inline-block"><LatexRenderer text={q.answer} katexLoaded={katexLoaded} className="inline" enableAddFormula={true} /></strong>
+                                  정답: <strong className="inline-block"><LatexRenderer text={cleanOptionText(q.answer)} katexLoaded={katexLoaded} className="inline" enableAddFormula={true} /></strong>
                                 </span>
                               )}
                                 {q.explanation && <div className="mt-1.5 text-[14px] sm:text-[16px] text-slate-300"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} isExplanation={true} formulaSource="tutor" /></div>}
