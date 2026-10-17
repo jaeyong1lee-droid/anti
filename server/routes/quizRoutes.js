@@ -397,7 +397,7 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
   const finalGraph = graphs[0];
 
   // Fixed 13 questions returned list layout
-  return [
+  const slotList = [
     qIntro,                     // 1번 주관식 (index 0)
     qFormula,                   // 2번 주관식 (index 1)
     shuffledMcs[0],             // 3번 객관식 (index 2)
@@ -411,7 +411,31 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
     shuffledMcs[2],             // 11번 객관식 (index 10)
     finalShorts4[2],            // 12번 주관식 (index 11) -> Short Subjective 3 (Concept 3)
     finalShorts4[3]             // 13번 주관식 (index 12) -> Short Subjective 4 (Field/Countermeasure)
-  ].filter(Boolean);
+  ];
+
+  // Backfill any missing slot from remaining questions pool to guarantee 13 questions
+  const usedSet = new Set(slotList.filter(Boolean));
+  const remainingPool = (questions || []).filter(q => q && !usedSet.has(q));
+
+  const filledSlots = slotList.map(slot => {
+    if (slot) return slot;
+    if (remainingPool.length > 0) {
+      const fallbackQ = remainingPool.shift();
+      usedSet.add(fallbackQ);
+      return fallbackQ;
+    }
+    return null;
+  }).filter(Boolean);
+
+  while (filledSlots.length < 13 && remainingPool.length > 0) {
+    const extraQ = remainingPool.shift();
+    if (!usedSet.has(extraQ)) {
+      usedSet.add(extraQ);
+      filledSlots.push(extraQ);
+    }
+  }
+
+  return filledSlots;
 }
 
 
@@ -557,8 +581,9 @@ router.post('/topics/:id/ai-questions', async (req, res) => {
         };
       }
 
+      const expectedQuestionCount = (topic.category === '계산') ? 4 : 13;
       if (cachedQuestions && cachedQuestions.length > 0) {
-        if (!(topic.category === '계산' && cachedQuestions.length !== 4)) {
+        if (cachedQuestions.length === expectedQuestionCount) {
           const healed = cachedQuestions.map(q => ({ ...q, category: topic.category }));
           isCacheHit = true;
           cachedResponseData = {
@@ -570,7 +595,8 @@ router.post('/topics/:id/ai-questions', async (req, res) => {
             scheduleId: resolvedScheduleId
           };
         } else {
-          // Calculation topic must have exactly 4 questions, otherwise discard cache
+          // Incomplete cache: does not have expected question count (e.g. 10 instead of 13), discard cache so full 13 questions are generated
+          console.log(`[Quiz Cache] Incomplete question set (${cachedQuestions.length}/${expectedQuestionCount}) for topic ${topicId}. Discarding stale cache to ensure full ${expectedQuestionCount} questions.`);
           const staleKey = cached.key || primaryKey;
           await dbQuery.run('DELETE FROM app_session WHERE key = ?', [staleKey]);
         }
@@ -1190,6 +1216,8 @@ let parsedArray = null;
         if (text.startsWith('```')) {
           text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
         }
+        // Sanitize trailing commas before } or ] which causes JSON.parse syntax error
+        text = text.replace(/,(\s*[}\]])/g, '$1');
         let parsed = null;
         try {
           parsed = parseLlmJson(sanitizeJsonControlChars(text));
@@ -1202,12 +1230,32 @@ let parsedArray = null;
             parsed = [];
           }
         }
+        if (parsed && !Array.isArray(parsed) && typeof parsed === 'object') {
+          const arrayProp = parsed.questions || parsed.items || parsed.problems || parsed.mcqs || parsed.data || Object.values(parsed).find(v => Array.isArray(v));
+          if (Array.isArray(arrayProp)) {
+            parsed = arrayProp;
+          }
+        }
         return Array.isArray(parsed) ? parsed : [];
       };
 
-      const q1 = parseBatch(batch1Text, '1 (주관식 개요/공식/단답)');
-      const q2 = parseBatch(batch2Text, '2 (주관식 표채우기)');
-      const q3 = parseBatch(batch3Text, '3 (객관식)');
+      let q1 = parseBatch(batch1Text, '1 (주관식 개요/공식/단답)');
+      let q2 = parseBatch(batch2Text, '2 (주관식 표채우기)');
+      let q3 = parseBatch(batch3Text, '3 (객관식)');
+
+      // 🚨 [객관식 누락 방지]: 만약 Batch 3(객관식) 결과가 3개 미만이면 즉시 단독 재시도 보충
+      if (q3.length < 3) {
+        console.warn(`[Quiz Gen] Batch 3 (객관식) 부족 감지 (${q3.length}/3). 단독 보충 호출 시작...`);
+        try {
+          const retryBatch3Text = await localCallLLM(systemInstruction, promptBatch3, null, 'question', { temperature: 0.7, preferredModel: targetModel });
+          const retryQ3 = parseBatch(retryBatch3Text, '3 (객관식 보충)');
+          if (Array.isArray(retryQ3) && retryQ3.length > 0) {
+            q3 = [...q3, ...retryQ3];
+          }
+        } catch (retryErr) {
+          console.warn('[Quiz Gen] Batch 3 retry failed:', retryErr.message);
+        }
+      }
 
       parsedArray = [...q1, ...q2, ...q3];
     }
@@ -1281,7 +1329,45 @@ let parsedArray = null;
       question: cleanQuizQuestion(q.question)
     }));
 
-    const deduplicated = deduplicateQuestions(cleanedQuestions);
+    let deduplicated = deduplicateQuestions(cleanedQuestions);
+
+    // 🚨 [13문제 완결 보장 검증]: 만약 일반 토픽인데 최종 문항 수가 13문항에 미달하는 경우, 부족한 수만큼 즉시 보충 생성
+    if (topic.category !== '계산' && deduplicated.length < 13) {
+      const missingCount = 13 - deduplicated.length;
+      console.warn(`[Quiz Gen] 최종 문항 수 미달 (${deduplicated.length}/13). 부족한 ${missingCount}문항 보충 생성 시작...`);
+      try {
+        const backfillPrompt = `
+[문제 보충 생성 태스크]:
+현재 토픽 [${topic.title}]에 대한 13개 문제 세트 중 ${missingCount}개 문제가 부족합니다.
+아래 핵심 주제에 관해 다른 문제와 중복되지 않는 새로운 주관식 단답형 또는 객관식 문제 ${missingCount}개를 정확히 생성하십시오.
+[토픽 핵심 주제]: ${coreSubject}
+반드시 아래 JSON 배열 형식으로만 응답하십시오:
+[
+  {
+    "type": "주관식 (단답형)",
+    "question": "핵심 공학 질문...",
+    "answer": "서술형 모범 답안...\\n\\n💡 **직관적 의미**: 직관적 설명",
+    "explanation": "상세 해설...\\n\\n📚 참조 문헌(Standards & Literature): 출처"
+  }
+]
+`;
+        const backfillRaw = await localCallLLM(systemInstruction, backfillPrompt, null, 'question', { temperature: 0.7, preferredModel: targetModel });
+        const backfillList = parseBatch(backfillRaw, '보충 문항');
+        for (const bq of backfillList) {
+          if (deduplicated.length >= 13) break;
+          const healedBq = healQuizQuestionObject({
+            ...bq,
+            topic_id: Number(topicId),
+            category: topic.category,
+            question: cleanQuizQuestion(bq.question)
+          });
+          deduplicated.push(healedBq);
+        }
+      } catch (bfErr) {
+        console.warn('[Quiz Gen] 문항 보충 생성 실패:', bfErr.message);
+      }
+    }
+
     const rawSid = String(req.query.sessionId || '').trim();
     let cleanSid = rawSid;
     if (cleanSid.startsWith('sess_')) cleanSid = cleanSid.substring(5);
