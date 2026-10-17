@@ -575,7 +575,7 @@ export default function TopicSlidePlugin({
                 </span>
               </div>
               <h2 className="text-xs sm:text-sm font-black text-white truncate max-w-md" title={topicTitle}>
-                {topicTitle}
+                <SlideLatex text={topicTitle} />
               </h2>
             </div>
           </div>
@@ -893,7 +893,7 @@ export default function TopicSlidePlugin({
                     }`}>
                       {isCurrentIntuitiveSlide
                         ? '직관적 설명'
-                        : (currentAiSlide.category_tag || `SLIDE ${formatAiSlideNum(currentSlideIndex)}`)}
+                        : <SlideLatex text={currentAiSlide.category_tag || `SLIDE ${formatAiSlideNum(currentSlideIndex)}`} />}
                     </span>
                     <span className="text-[10px] text-slate-400 font-mono">
                       SLIDE {formatAiSlideNum(currentSlideIndex)} ({currentSlideIndex + 1} OF {aiSlides.length})

@@ -19389,7 +19389,7 @@ ${itemsStr}
                                       )}
                                     </div>
                                     <div className="text-xs text-slate-200 font-semibold truncate">
-                                      {q.question || q.fullTitle}
+                                      <LatexRenderer text={q.question || q.fullTitle} katexLoaded={katexLoaded} className="inline" forceInline={true} />
                                     </div>
                                   </button>
                                 );
