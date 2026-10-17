@@ -1516,7 +1516,6 @@ router.post('/chat', async (req, res) => {
      * 2수준 (중위 세부 설명/원리/상황): 작은 빈 불릿 ('◦ ')
      * 3수준 (하위 부가 요소/소항목): 그냥 일반 점 ('· ')
      * 4수준 (세부 설명/추가 보충): 대시 ('- ') 또는 별표 ('* ')
-   - 하위 항목은 스페이스 2칸 들여쓰기를 적용하여 위계를 명확히 구분하십시오.
 ${ENGINEERING_STANDARDS}
 ${SVG_DIAGRAM_PROMPT}
 ${CHART_DIAGRAM_PROMPT}
