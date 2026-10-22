@@ -3037,4 +3037,1406 @@ body.view-mode-landscape .touch-jump-btn {
 .dash-bonus-summary-bar {
   display: flex;
   align-items: center;
-  justify-content: space
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  border-radius: 12px;
+  background: linear-gradient(90deg, rgba(255, 204, 0, 0.14), rgba(0, 245, 255, 0.1));
+  border: 1px solid rgba(255, 204, 0, 0.45);
+}
+
+.dash-bonus-summary-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.dash-bonus-summary-title {
+  font-size: 13px;
+  font-weight: 900;
+  color: var(--neon-gold);
+}
+
+.dash-bonus-summary-sub {
+  font-size: 11px;
+  color: var(--text-sub);
+}
+
+.dash-bonus-summary-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dash-total-bonus-pill {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #e2e8f0;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.dash-total-bonus-pill.has-bonus {
+  background: linear-gradient(135deg, #ffcc00, #ff5500);
+  border-color: #fff;
+  color: #090614;
+  box-shadow: 0 0 14px rgba(255, 204, 0, 0.65);
+}
+
+.btn-dash-parent-mini {
+  padding: 4px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 204, 0, 0.6);
+  background: rgba(15, 18, 42, 0.9);
+  color: var(--neon-gold);
+  font-family: var(--font-kr);
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.dash-bonus-count-badge {
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: #cbd5e1;
+  font-size: 11px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.dash-bonus-count-badge.has-bonus {
+  background: linear-gradient(135deg, #00ff88, #00d4ff);
+  border-color: #ffffff;
+  color: #041814;
+  box-shadow: 0 0 12px rgba(0, 255, 136, 0.6);
+}
+
+.btn-parent-secondary {
+  border-color: rgba(255, 204, 0, 0.55) !important;
+  color: #ffe885 !important;
+}
+
+/* Parent Modal Styles */
+.parent-card {
+  width: min(820px, 96vw);
+}
+
+.parent-pin-view {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 22px 16px;
+  background: rgba(8, 10, 28, 0.85);
+  border: 1.5px solid rgba(255, 204, 0, 0.4);
+  border-radius: 16px;
+  text-align: center;
+}
+
+.parent-pin-desc {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text-sub);
+}
+
+.parent-pin-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: min(380px, 100%);
+}
+
+.parent-pin-input {
+  flex: 1;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1.5px solid var(--border-cyan);
+  background: rgba(4, 6, 18, 0.95);
+  color: #ffffff;
+  font-family: var(--font-arcade);
+  font-size: 16px;
+  font-weight: 800;
+  text-align: center;
+  letter-spacing: 3px;
+}
+
+.parent-pin-input-sm {
+  max-width: 180px;
+  padding: 8px 10px;
+  font-size: 13px;
+  letter-spacing: 1px;
+}
+
+.btn-pin-submit {
+  width: auto !important;
+  padding: 12px 20px !important;
+  font-size: 15px !important;
+  white-space: nowrap;
+}
+
+.parent-pin-error {
+  color: #ff6b8b;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.parent-settings-view {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.parent-section {
+  background: rgba(7, 9, 26, 0.85);
+  border: 1px solid rgba(0, 245, 255, 0.28);
+  border-radius: 14px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.parent-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.parent-section-title {
+  font-size: 15px;
+  font-weight: 900;
+  color: #ffffff;
+}
+
+.parent-section-desc {
+  font-size: 12px;
+  color: var(--text-sub);
+  line-height: 1.45;
+}
+
+.parent-status-pill {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(0, 245, 255, 0.16);
+  border: 1px solid var(--neon-cyan);
+  color: var(--neon-cyan);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.parent-status-pill.pill-gold {
+  background: rgba(255, 204, 0, 0.2);
+  border-color: var(--neon-gold);
+  color: var(--neon-gold);
+}
+
+.parent-bonus-list-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.parent-bonus-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(12, 15, 38, 0.9);
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
+}
+
+.parent-bonus-card.has-unpaid-bonus {
+  border-color: rgba(0, 255, 136, 0.65);
+  background: linear-gradient(90deg, rgba(0, 255, 136, 0.12), rgba(12, 15, 38, 0.95));
+}
+
+.parent-bonus-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.parent-bonus-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.parent-bonus-name {
+  font-size: 14px;
+  font-weight: 900;
+  color: #ffffff;
+}
+
+.parent-bonus-count-pill {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #cbd5e1;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.parent-bonus-count-pill.active-bonus {
+  background: linear-gradient(135deg, #00ff88, #00f5ff);
+  color: #041418;
+  font-weight: 900;
+}
+
+.parent-bonus-meta {
+  font-size: 11px;
+  color: var(--text-sub);
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.parent-bonus-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.parent-select-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-sub);
+}
+
+.parent-payout-select {
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 245, 255, 0.45);
+  background: #070a1e;
+  color: #ffffff;
+  font-family: var(--font-kr);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.btn-parent-mark-paid {
+  padding: 7px 12px;
+  border-radius: 8px;
+  border: none;
+  background: linear-gradient(135deg, #00ff88, #00c8ff);
+  color: #041218;
+  font-family: var(--font-kr);
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.btn-parent-mark-paid:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.btn-parent-undo-paid {
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 204, 0, 0.5);
+  background: rgba(255, 204, 0, 0.14);
+  color: var(--neon-gold);
+  font-family: var(--font-kr);
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.parent-section-bottom {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.parent-pin-change-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.parent-pin-label {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--text-sub);
+}
+
+.btn-sm-action {
+  flex: 0 0 auto !important;
+  padding: 8px 12px !important;
+  font-size: 12px !important;
+}
+
+/* ==========================================================================
+   GAME-STYLE SINGLE-SCREEN MAIN LOBBY (#start-screen.main-lobby-backdrop)
+   Zero-scroll 100dvh layout with Live 3D Game Animation, Compact Bonus Status,
+   Big Start CTA, and Small Bottom-Right Parent Window Button (PIN 1508)
+   ========================================================================== */
+body.start-screen-active #hud-layer,
+body.start-screen-active #utility-bar,
+body.start-screen-active #roblox-chat-box,
+body.start-screen-active #mobile-touch-pad,
+body.start-screen-active #lane-controls,
+body.start-screen-active #hud-reward-gauges-box {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+}
+
+#parent-modal {
+  z-index: 1100;
+}
+
+#review-modal {
+  z-index: 1200;
+}
+
+#start-screen.main-lobby-backdrop {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  max-height: 100dvh;
+  padding: env(safe-area-inset-top, 8px) 12px env(safe-area-inset-bottom, 10px);
+  overflow: hidden !important;
+  background: linear-gradient(
+    180deg,
+    rgba(6, 4, 20, 0.72) 0%,
+    rgba(6, 4, 20, 0.06) 22%,
+    rgba(6, 4, 20, 0.08) 60%,
+    rgba(6, 4, 22, 0.88) 100%
+  );
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+}
+
+.main-lobby-container {
+  width: min(920px, 100%);
+  height: 100%;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 8px;
+  overflow: hidden !important;
+  position: relative;
+  padding-bottom: 4px;
+}
+
+/* 1. Top Game Logo Header */
+.main-lobby-header {
+  flex: 0 0 auto;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border-radius: 16px;
+  background: rgba(8, 10, 30, 0.78);
+  border: 1.5px solid rgba(0, 245, 255, 0.42);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.55);
+}
+
+.main-lobby-badges {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.main-stage-pill,
+.main-pet-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.main-stage-pill {
+  background: rgba(255, 204, 0, 0.22);
+  border: 1px solid var(--neon-gold);
+  color: var(--neon-gold);
+}
+
+.main-pet-pill {
+  background: rgba(0, 255, 136, 0.18);
+  border: 1px solid #00ff88;
+  color: #7effc1;
+}
+
+.main-lobby-title {
+  font-size: clamp(18px, 4.3vw, 28px);
+  font-weight: 900;
+  line-height: 1.15;
+  margin: 0;
+  text-shadow: 0 2px 14px rgba(0, 245, 255, 0.55);
+}
+
+/* 2. Center Live 3D Game Animation Showcase */
+.main-game-showcase {
+  flex: 1 1 auto;
+  min-height: 120px;
+  position: relative;
+  border-radius: 20px;
+  border: 2px solid rgba(0, 245, 255, 0.55);
+  box-shadow:
+    0 0 28px rgba(0, 245, 255, 0.25),
+    inset 0 0 32px rgba(255, 42, 133, 0.18);
+  background: radial-gradient(circle at 50% 55%, rgba(0, 245, 255, 0.03) 0%, rgba(8, 6, 26, 0.22) 100%);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 10px 12px;
+  pointer-events: none;
+}
+
+.showcase-speed-lines {
+  position: absolute;
+  inset: 0;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      transparent 0%,
+      transparent 18%,
+      rgba(0, 245, 255, 0.06) 18.5%,
+      transparent 19%
+    );
+  animation: showcasePulseGlow 2.4s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+@keyframes showcasePulseGlow {
+  0% { opacity: 0.35; transform: scale(1); }
+  100% { opacity: 0.85; transform: scale(1.03); }
+}
+
+.showcase-top-bar {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.showcase-live-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(8, 12, 34, 0.82);
+  border: 1px solid rgba(0, 255, 136, 0.65);
+  color: #5bffb0;
+  font-family: var(--font-arcade);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+
+.showcase-live-pill .live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #00ff88;
+  box-shadow: 0 0 8px #00ff88;
+  animation: liveDotBlink 1s infinite alternate;
+}
+
+@keyframes liveDotBlink {
+  0% { opacity: 0.4; transform: scale(0.85); }
+  100% { opacity: 1; transform: scale(1.2); }
+}
+
+.showcase-vip-pill {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(255, 42, 133, 0.25);
+  border: 1px solid rgba(255, 102, 178, 0.7);
+  color: #ffd1ea;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.showcase-character-stage {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  width: 100%;
+  margin-top: auto;
+}
+
+.showcase-hero-float,
+.showcase-boss-float {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.showcase-hero-float {
+  animation: heroFloatAnim 2.2s ease-in-out infinite alternate;
+}
+
+.showcase-boss-float {
+  animation: bossFloatAnim 1.9s ease-in-out infinite alternate;
+}
+
+@keyframes heroFloatAnim {
+  0% { transform: translateY(0px) rotate(-2deg); }
+  100% { transform: translateY(-8px) rotate(3deg); }
+}
+
+@keyframes bossFloatAnim {
+  0% { transform: translateY(-6px) scale(0.96); }
+  100% { transform: translateY(2px) scale(1.04); }
+}
+
+.showcase-hero-img,
+.showcase-boss-img {
+  width: clamp(54px, 12vw, 84px);
+  height: clamp(54px, 12vw, 84px);
+  object-fit: cover;
+  border-radius: 16px;
+  border: 2px solid var(--neon-cyan);
+  background: rgba(10, 12, 32, 0.85);
+  box-shadow: 0 6px 18px rgba(0, 245, 255, 0.4);
+}
+
+.showcase-boss-img {
+  border-color: var(--neon-magenta);
+  box-shadow: 0 6px 18px rgba(255, 42, 133, 0.45);
+}
+
+.showcase-hero-tag,
+.showcase-boss-tag {
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-family: var(--font-arcade);
+  font-size: 9px;
+  font-weight: 800;
+  background: rgba(6, 10, 28, 0.9);
+  border: 1px solid var(--neon-cyan);
+  color: var(--neon-cyan);
+}
+
+.showcase-boss-tag {
+  border-color: var(--neon-magenta);
+  color: #ff85c0;
+}
+
+.showcase-center-fx {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.showcase-Action-badge {
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: rgba(6, 10, 28, 0.82);
+  border: 1.5px solid rgba(255, 204, 0, 0.75);
+  color: #ffe66d;
+  font-family: var(--font-arcade);
+  font-size: clamp(9px, 2.3vw, 12px);
+  font-weight: 900;
+  box-shadow: 0 0 16px rgba(255, 204, 0, 0.35);
+  animation: actionBadgeBounce 1.4s ease-in-out infinite alternate;
+}
+
+@keyframes actionBadgeBounce {
+  0% { transform: scale(0.97); }
+  100% { transform: scale(1.04); }
+}
+
+/* 3. Bottom Dock: Bonus Achievement Status + Big Start Button */
+.main-lobby-bottom-dock {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.main-bonus-panel {
+  background: rgba(8, 10, 30, 0.9);
+  border: 1.5px solid rgba(255, 204, 0, 0.48);
+  border-radius: 16px;
+  padding: 8px 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.65);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.main-bonus-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.main-bonus-title {
+  font-size: clamp(12px, 3.1vw, 15px);
+  font-weight: 900;
+  color: var(--neon-gold);
+}
+
+.main-bonus-title small {
+  font-size: 11px;
+  font-weight: 700;
+  color: #cbd5e1;
+}
+
+.main-bonus-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.main-bonus-grid .dash-reward-card {
+  padding: 6px 8px;
+  border-radius: 11px;
+  gap: 4px;
+}
+
+.main-bonus-grid .dash-reward-top {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.main-bonus-grid .dash-reward-title {
+  font-size: clamp(11px, 2.7vw, 13px);
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.main-bonus-grid .dash-bonus-count-badge {
+  font-size: clamp(10px, 2.5vw, 11px);
+  padding: 2px 6px;
+}
+
+.main-bonus-grid .dash-track {
+  height: 8px;
+}
+
+.main-bonus-grid .dash-reward-bottom {
+  font-size: clamp(9px, 2.3vw, 11px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.main-bonus-grid .dash-reward-bottom span {
+  display: none;
+}
+
+/* Primary Start Button Row (leaves room on right for small Parent Corner Button on mobile) */
+.main-start-row {
+  display: flex;
+  align-items: center;
+  padding-right: 98px;
+}
+
+.main-start-btn {
+  width: 100%;
+  padding: 14px 18px !important;
+  font-size: clamp(16px, 4.2vw, 22px) !important;
+  font-weight: 900 !important;
+  border-radius: 16px !important;
+  letter-spacing: 0.3px;
+  box-shadow: 0 8px 26px rgba(0, 245, 255, 0.5) !important;
+}
+
+/* 4. Small Parent Window Button at Bottom-Right Corner */
+.btn-parent-corner {
+  position: fixed;
+  right: 12px;
+  bottom: max(12px, env(safe-area-inset-bottom, 12px));
+  z-index: 950;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1.5px solid rgba(255, 204, 0, 0.65);
+  background: rgba(12, 15, 38, 0.92);
+  color: #ffe680;
+  font-family: var(--font-kr);
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.65);
+  transition: transform 0.15s ease, border-color 0.15s ease;
+  white-space: nowrap;
+}
+
+.btn-parent-corner:hover,
+.btn-parent-corner:active {
+  transform: translateY(-1px);
+  border-color: #00f5ff;
+  color: #ffffff;
+}
+
+/* Extra-Compact Mobile Landscape & Short Viewport Tuning (Zero Scroll Guaranteed) */
+@media (max-height: 600px) {
+  .main-lobby-header {
+    padding: 4px 10px;
+    flex-direction: row;
+    justify-content: space-between;
+  }
+  .main-lobby-title {
+    font-size: 16px;
+  }
+  .main-game-showcase {
+    min-height: 75px;
+    padding: 6px 10px;
+  }
+  .showcase-hero-img,
+  .showcase-boss-img {
+    width: 44px;
+    height: 44px;
+  }
+  .main-bonus-panel {
+    padding: 5px 8px;
+    gap: 4px;
+  }
+  .main-start-btn {
+    padding: 10px 14px !important;
+    font-size: 16px !important;
+  }
+}
+
+/* ==========================================================================
+   Parent Modal: Editable Bonus Name & Bonus Achieved Count Controls
+   ========================================================================== */
+.parent-bonus-card {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.parent-bonus-type-tag {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(0, 245, 255, 0.16);
+  border: 1px solid rgba(0, 245, 255, 0.45);
+  color: var(--neon-cyan);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.parent-bonus-edit-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(5, 7, 20, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.parent-edit-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.parent-edit-label {
+  font-size: 11px;
+  font-weight: 800;
+  color: #cbd5e1;
+}
+
+.parent-edit-input-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.parent-bonus-name-input {
+  flex: 1;
+  min-width: 0;
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 245, 255, 0.45);
+  background: #070a1e;
+  color: #ffffff;
+  font-family: var(--font-kr);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.parent-bonus-count-input {
+  width: 68px;
+  padding: 7px 6px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 204, 0, 0.55);
+  background: #070a1e;
+  color: #ffe66d;
+  font-family: var(--font-arcade);
+  font-size: 14px;
+  font-weight: 900;
+  text-align: center;
+}
+
+.btn-parent-step {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-parent-step:hover,
+.btn-parent-step:active {
+  background: rgba(0, 245, 255, 0.22);
+  border-color: var(--neon-cyan);
+}
+
+.btn-parent-save-field {
+  padding: 7px 11px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 245, 255, 0.6);
+  background: rgba(0, 245, 255, 0.18);
+  color: #7ef9ff;
+  font-family: var(--font-kr);
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-parent-save-field:hover,
+.btn-parent-save-field:active {
+  background: var(--neon-cyan);
+  color: #050818;
+}
+
+/* ==========================================================================
+   1. Round Arcade Buttons on Road Sides:
+      - Left of Road: Pause Button (#utility-bar -> #btn-pause, icon only)
+      - Right of Road: Jump Button (#mobile-touch-pad -> #btn-jump-action, icon only)
+   2. Bottom 1-Row Frameless Bonus Gauge Bars (#hud-reward-gauges-box & .main-bonus-panel)
+   ========================================================================== */
+#utility-bar {
+  position: fixed !important;
+  top: auto !important;
+  right: auto !important;
+  left: 14px !important;
+  bottom: calc(40px + env(safe-area-inset-bottom, 0px)) !important;
+  z-index: 65 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: auto !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+#mobile-touch-pad {
+  position: fixed !important;
+  top: auto !important;
+  left: auto !important;
+  right: 14px !important;
+  bottom: calc(40px + env(safe-area-inset-bottom, 0px)) !important;
+  transform: none !important;
+  z-index: 65 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: auto !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  pointer-events: auto !important;
+}
+
+#utility-bar #btn-pause,
+#mobile-touch-pad #btn-jump-action,
+.arcade-circle-btn {
+  width: 48px !important;
+  height: 48px !important;
+  min-width: 48px !important;
+  min-height: 48px !important;
+  max-width: 48px !important;
+  max-height: 48px !important;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  touch-action: manipulation !important;
+  user-select: none !important;
+  transition: transform 0.1s ease, box-shadow 0.15s ease !important;
+}
+
+/* Left Road Round Pause Button */
+#utility-bar #btn-pause {
+  background: radial-gradient(circle at 32% 28%, #ffe066 0%, #f59e0b 65%, #b45309 100%) !important;
+  border: 2.5px solid #ffffff !important;
+  box-shadow:
+    0 4px 0 #78350f,
+    0 6px 16px rgba(245, 158, 11, 0.65),
+    inset 0 2px 3px rgba(255, 255, 255, 0.65) !important;
+}
+
+/* Right Road Round Jump Button */
+#mobile-touch-pad #btn-jump-action {
+  background: radial-gradient(circle at 32% 28%, #5effb3 0%, #00d4ff 68%, #0284c7 100%) !important;
+  border: 2.5px solid #ffffff !important;
+  box-shadow:
+    0 4px 0 #0369a1,
+    0 6px 16px rgba(0, 245, 255, 0.65),
+    inset 0 2px 3px rgba(255, 255, 255, 0.65) !important;
+}
+
+#utility-bar #btn-pause:active,
+#mobile-touch-pad #btn-jump-action:active {
+  transform: translateY(3px) scale(0.94) !important;
+}
+
+#utility-bar #btn-pause .util-icon,
+#mobile-touch-pad #btn-jump-action .jump-icon {
+  font-size: 21px !important;
+  line-height: 1 !important;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.45));
+}
+
+/* Frameless Bottom 1-Row Bonus Gauge Bar (별도 창 없이 1행 게이지 안에 글자 1줄 표시) */
+#hud-reward-gauges-box.hud-bottom-bonus-bar {
+  position: fixed !important;
+  left: 8px !important;
+  right: 8px !important;
+  bottom: max(5px, env(safe-area-inset-bottom, 5px)) !important;
+  z-index: 45 !important;
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 6px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  pointer-events: none;
+}
+
+.main-bonus-panel {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.main-bonus-grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 6px !important;
+}
+
+/* Single 1-Line Gauge Bar with Text Inside */
+#hud-reward-gauges-box.hud-bottom-bonus-bar .reward-gauge-item,
+.main-bonus-grid .reward-gauge-item {
+  position: relative !important;
+  height: 26px !important;
+  min-height: 26px !important;
+  max-height: 26px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border-radius: 999px !important;
+  background: rgba(8, 12, 32, 0.86) !important;
+  border: 1.5px solid rgba(0, 245, 255, 0.48) !important;
+  overflow: hidden !important;
+  display: flex !important;
+  align-items: center !important;
+  min-width: 0 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.55) !important;
+}
+
+#hud-reward-gauges-box.hud-bottom-bonus-bar .reward-gauge-pocket,
+.main-bonus-grid .reward-gauge-pocket {
+  border-color: rgba(0, 255, 136, 0.65) !important;
+}
+
+#hud-reward-gauges-box.hud-bottom-bonus-bar .reward-gauge-ashley,
+.main-bonus-grid .reward-gauge-ashley {
+  border-color: rgba(255, 42, 133, 0.65) !important;
+}
+
+#hud-reward-gauges-box.hud-bottom-bonus-bar .reward-gauge-jackpot,
+.main-bonus-grid .reward-gauge-jackpot {
+  border-color: rgba(255, 204, 0, 0.72) !important;
+}
+
+#hud-reward-gauges-box.hud-bottom-bonus-bar .reward-gauge-fill,
+.main-bonus-grid .reward-gauge-fill {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  bottom: 0 !important;
+  height: 100% !important;
+  z-index: 1 !important;
+  border-radius: 999px !important;
+  opacity: 0.75 !important;
+  transition: width 0.3s ease !important;
+}
+
+#hud-reward-gauges-box.hud-bottom-bonus-bar .reward-gauge-labels,
+.main-bonus-grid .reward-gauge-labels {
+  position: relative !important;
+  z-index: 2 !important;
+  width: 100% !important;
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 0 9px !important;
+  gap: 4px !important;
+  min-width: 0 !important;
+}
+
+#hud-reward-gauges-box.hud-bottom-bonus-bar .reward-gauge-name,
+.main-bonus-grid .reward-gauge-name {
+  font-size: clamp(10px, 2.6vw, 12px) !important;
+  font-weight: 900 !important;
+  color: #ffffff !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.95), 0 0 6px rgba(0, 0, 0, 0.85) !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+#hud-reward-gauges-box.hud-bottom-bonus-bar .hud-bonus-count-pill,
+.main-bonus-grid .hud-bonus-count-pill {
+  font-size: clamp(10px, 2.5vw, 12px) !important;
+  font-weight: 900 !important;
+  color: #ffe66d !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.95) !important;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+}
+
+/* Clean Top HUD Positioning now that Right HUD Panel is removed */
+@media (max-width: 640px) {
+  .hud-panel-left {
+    top: max(6px, env(safe-area-inset-top, 6px)) !important;
+    left: 8px !important;
+    right: 8px !important;
+    width: auto !important;
+    max-width: none !important;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 8px !important;
+    padding: 5px 10px !important;
+  }
+
+  .hud-panel-left .hud-stage-box {
+    flex: 1 !important;
+    padding-top: 0 !important;
+    border-top: none !important;
+  }
+
+  .hud-center-panel,
+  body.view-mode-portrait .hud-center-panel {
+    top: calc(max(6px, env(safe-area-inset-top, 6px)) + 138px) !important;
+    width: 96vw !important;
+  }
+}
+
+/* ==========================================================================
+   Compact 3-Tab Parent Control Modal (No Long Scrolling!)
+   ========================================================================== */
+.parent-card {
+  padding: 12px 14px !important;
+  gap: 8px !important;
+  max-height: 94dvh !important;
+}
+
+.parent-settings-view {
+  gap: 8px !important;
+}
+
+.parent-tab-nav {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  background: rgba(5, 7, 22, 0.9);
+  padding: 4px;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 245, 255, 0.3);
+}
+
+.parent-tab-btn {
+  padding: 8px 6px;
+  border-radius: 9px;
+  border: none;
+  background: transparent;
+  color: var(--text-sub);
+  font-family: var(--font-kr);
+  font-size: clamp(11px, 2.8vw, 13px);
+  font-weight: 900;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.parent-tab-btn.active {
+  background: linear-gradient(135deg, rgba(0, 245, 255, 0.25), rgba(0, 255, 136, 0.22));
+  color: #ffffff;
+  border: 1px solid var(--neon-cyan);
+  box-shadow: 0 0 12px rgba(0, 245, 255, 0.35);
+}
+
+.parent-tab-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.parent-tab-pane.hidden {
+  display: none !important;
+}
+
+.parent-section {
+  padding: 9px 10px !important;
+  gap: 6px !important;
+}
+
+.parent-section-title {
+  font-size: 13px !important;
+}
+
+.compact-bonus-card {
+  padding: 7px 9px !important;
+  gap: 6px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+}
+
+.compact-bonus-row1,
+.compact-bonus-row2 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  flex-wrap: nowrap;
+}
+
+.compact-bonus-row1 .parent-bonus-name-input {
+  flex: 1;
+  min-width: 80px;
+  padding: 5px 8px;
+  font-size: 12px;
+}
+
+.compact-gauge-pill {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--text-sub);
+  white-space: nowrap;
+}
+
+.compact-count-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.compact-count-label {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--text-sub);
+  white-space: nowrap;
+}
+
+.compact-bonus-row2 .parent-bonus-count-input {
+  width: 52px;
+  padding: 4px 4px;
+  font-size: 13px;
+}
+
+.compact-bonus-row2 .btn-parent-step {
+  width: 28px;
+  height: 28px;
+  font-size: 11px;
+}
+
+.compact-bonus-row1 .btn-parent-save-field,
+.compact-bonus-row2 .btn-parent-save-field,
+.compact-bonus-row2 .btn-parent-mark-paid {
+  padding: 5px 8px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+/* ==========================================================================
+   🎙️ Stage 3+ English Pronunciation (Speaking) Microphone HUD Panel
+   ========================================================================== */
+.speech-hud-panel {
+  margin-top: 6px;
+  padding: 6px 10px;
+  border-radius: 12px;
+  background: rgba(8, 12, 34, 0.88);
+  border: 2px solid rgba(0, 245, 255, 0.75);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.7), 0 0 14px rgba(0, 245, 255, 0.35);
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  pointer-events: auto !important;
+  max-width: 96vw;
+}
+
+.speech-hud-panel.hidden {
+  display: none !important;
+}
+
+.speech-mic-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.speech-mic-indicator {
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 900;
+  background: rgba(255, 42, 133, 0.25);
+  border: 1.5px solid #ff2a85;
+  color: #ffffff;
+  white-space: nowrap;
+}
+
+.speech-mic-indicator.listening {
+  background: linear-gradient(135deg, #ff0055, #ff5500);
+  border-color: #ffe600;
+  animation: micPulseGlow 1s infinite alternate;
+}
+
+.speech-mic-indicator.matched {
+  background: linear-gradient(135deg, #00ff88, #00c8ff);
+  border-color: #ffffff;
+  color: #041218;
+  animation: none;
+}
+
+@keyframes micPulseGlow {
+  0% { transform: scale(1); box-shadow: 0 0 6px rgba(255, 0, 85, 0.6); }
+  100% { transform: scale(1.06); box-shadow: 0 0 16px rgba(255, 230, 0, 0.95); }
+}
+
+.speech-heard-text {
+  font-size: 13px;
+  font-weight: 900;
+  color: #ffe600;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.95);
+}
+
+.speech-action-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.speech-action-btn {
+  padding: 4px 10px;
+  border-radius: 8px;
+  border: 1.5px solid rgba(255, 255, 255, 0.45);
+  background: rgba(20, 28, 68, 0.92);
+  color: #ffffff;
+  font-family: var(--font-kr);
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+  pointer-events: auto !important;
+}
+
+.speech-tts-btn {
+  border-color: #00f5ff;
+  color: #00f5ff;
+}
+
+.speech-mic-btn {
+  border-color: #ffe600;
+  color: #ffe600;
+}
+
+/* ==========================================================================
+   👾 Boss Battle Top HUD Swap:
+   Hide #hud-left-panel (첨부2) and place #boss-hud (첨부3) in that exact top position
+   so the question text (#question-banner) never drops down!
+   ========================================================================== */
+body.boss-phase-hud-active #hud-left-panel {
+  display: none !important;
+}
+
+#boss-hud.boss-hud:not(.hidden) {
+  position: fixed !important;
+  top: max(6px, env(safe-area-inset-top, 6px)) !important;
+  left: 8px !important;
+  right: 8px !important;
+  width: auto !important;
+  max-width: 720px !important;
+  margin: 0 auto !important;
+  z-index: 50 !important;
+}
+
+
+
+
+
+
+
+

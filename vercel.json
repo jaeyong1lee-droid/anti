@@ -22,7 +22,14 @@
       "dest": "server/index.js"
     },
     {
-      "src": "^/game/?$",
+      "src": "^/game$",
+      "status": 308,
+      "headers": {
+        "Location": "/game/index.html"
+      }
+    },
+    {
+      "src": "^/game/$",
       "dest": "client/game/index.html"
     },
     {

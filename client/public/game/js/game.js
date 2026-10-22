@@ -1700,4 +1700,588 @@
             break;
           case 'ArrowRight':
           case 'KeyD':
- 
+            e.preventDefault();
+            self.moveRight();
+            break;
+          case 'Digit1':
+          case 'Numpad1':
+            e.preventDefault();
+            self.selectLane(0);
+            break;
+          case 'Digit2':
+          case 'Numpad2':
+          case 'KeyS':
+          case 'ArrowDown':
+            e.preventDefault();
+            self.selectLane(1);
+            break;
+          case 'Space':
+          case 'ArrowUp':
+          case 'KeyW':
+            e.preventDefault();
+            self.triggerJump();
+            break;
+          case 'Digit3':
+          case 'Numpad3':
+            e.preventDefault();
+            self.selectLane(2);
+            break;
+          default:
+            break;
+        }
+      });
+
+      // Click / Touch / Swipe directly on the 3D Viewport:
+      // 1) Instant 3-Zone Tap (Left 1/3 = Lane 0, Center 1/3 = Lane 1, Right 1/3 = Lane 2)
+      // 2) Horizontal Swipe Gesture (Swipe Left = moveLeft(), Swipe Right = moveRight())
+      // 3) Upward Swipe Gesture (Swipe Up = triggerJump() over Roblox Obby lava hurdles!)
+      const canvasContainer = document.getElementById('game-canvas-container');
+      if (canvasContainer) {
+        let touchStartX = null;
+        let touchStartY = null;
+        let touchSwiped = false;
+
+        canvasContainer.addEventListener('pointerdown', function (e) {
+          if (!state.isPlaying || state.isGameOver) return;
+          touchStartX = e.clientX;
+          touchStartY = e.clientY;
+          touchSwiped = false;
+
+          const width = window.innerWidth || 1280;
+          const x = e.clientX;
+          if (x < width / 3) {
+            self.selectLane(0);
+          } else if (x > (width * 2) / 3) {
+            self.selectLane(2);
+          } else {
+            self.selectLane(1);
+          }
+        });
+
+        canvasContainer.addEventListener('pointermove', function (e) {
+          if (!state.isPlaying || state.isGameOver) return;
+          if (touchStartX === null || touchSwiped) return;
+          const dx = e.clientX - touchStartX;
+          const dy = e.clientY - touchStartY;
+          if (dy <= -28 && Math.abs(dy) > Math.abs(dx) * 1.1) {
+            touchSwiped = true;
+            self.triggerJump();
+          } else if (Math.abs(dx) >= 32 && Math.abs(dx) > Math.abs(dy) * 1.2) {
+            touchSwiped = true;
+            if (dx < 0) {
+              self.moveLeft();
+            } else {
+              self.moveRight();
+            }
+          }
+        });
+
+        const clearTouch = function () {
+          touchStartX = null;
+          touchStartY = null;
+          touchSwiped = false;
+        };
+        canvasContainer.addEventListener('pointerup', clearTouch);
+        canvasContainer.addEventListener('pointercancel', clearTouch);
+      }
+
+      // Roblox Obby Jump Button (#btn-jump-action)
+      const btnJump = document.getElementById('btn-jump-action');
+      if (btnJump) {
+        btnJump.addEventListener('pointerdown', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          self.triggerJump();
+        });
+        btnJump.addEventListener('click', function (e) {
+          e.preventDefault();
+          self.triggerJump();
+        });
+      }
+
+      // Quick Trigger Button for 2x Speed Roblox Obby Mini-Game (#btn-trigger-obby)
+      const btnTriggerObby = document.getElementById('btn-trigger-obby');
+      if (btnTriggerObby) {
+        btnTriggerObby.addEventListener('click', function () {
+          if (window.SoundEngine) window.SoundEngine.playClick();
+          if (!state.isPlaying || state.isGameOver) {
+            self.startGame(state.selectedDashboardStage);
+          }
+          if (state.isObbyMode) {
+            self.endObbyMinigame();
+          } else {
+            self.startObbyMinigame();
+          }
+        });
+      }
+
+      // Orientation Mode Button in Utility Bar (#btn-orientation-mode)
+      const btnOrient = document.getElementById('btn-orientation-mode');
+      if (btnOrient) {
+        btnOrient.addEventListener('click', function () {
+          self.cycleOrientationMode();
+        });
+      }
+
+      // Orientation Mode Selector on Start Dashboard (#dashboard-orientation-selector)
+      const dashOrientContainer = document.getElementById('dashboard-orientation-selector');
+      if (dashOrientContainer) {
+        dashOrientContainer.addEventListener('click', function (e) {
+          const btn = e.target.closest('[data-orient]');
+          if (!btn) return;
+          const orient = btn.getAttribute('data-orient');
+          if (orient) {
+            if (window.SoundEngine) window.SoundEngine.playClick();
+            self.setOrientationMode(orient);
+          }
+        });
+      }
+
+      // Fullscreen Toggle Button for Mobile / Tablet / PC
+      const btnFullscreen = document.getElementById('btn-fullscreen');
+      if (btnFullscreen) {
+        btnFullscreen.addEventListener('click', function () {
+          if (window.SoundEngine) window.SoundEngine.playClick();
+          const docEl = document.documentElement;
+          if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+            if (docEl.requestFullscreen) {
+              docEl.requestFullscreen().catch(function () {});
+            } else if (docEl.webkitRequestFullscreen) {
+              docEl.webkitRequestFullscreen();
+            }
+          } else {
+            if (document.exitFullscreen) {
+              document.exitFullscreen().catch(function () {});
+            } else if (document.webkitExitFullscreen) {
+              document.webkitExitFullscreen();
+            }
+          }
+        });
+      }
+
+      // Parent Modal Speed Multiplier Preset Selector (#dashboard-speed-selector inside #parent-modal)
+      const dashSpeedContainer = document.getElementById('dashboard-speed-selector');
+      if (dashSpeedContainer) {
+        dashSpeedContainer.addEventListener('click', function (e) {
+          const btn = e.target.closest('.speed-preset-pill');
+          if (!btn) return;
+          const mult = parseFloat(btn.getAttribute('data-mult'));
+          if (!isNaN(mult)) {
+            if (window.SoundEngine) window.SoundEngine.playClick();
+            self.setSpeedMultiplier(mult);
+            if (window.UIManager && window.SaveManager) {
+              window.UIManager.renderParentModal(window.SaveManager.getState());
+            }
+          }
+        });
+      }
+
+      // Parent Modal Open / Close / PIN / Bonus Payout Events
+      const btnOpenParent = document.getElementById('btn-open-parent-modal');
+      if (btnOpenParent) {
+        btnOpenParent.addEventListener('click', function () {
+          self.openParentModal();
+        });
+      }
+      const btnDashParentShortcut = document.getElementById('btn-dash-parent-shortcut');
+      if (btnDashParentShortcut) {
+        btnDashParentShortcut.addEventListener('click', function () {
+          self.openParentModal();
+        });
+      }
+      const btnDashParentSecondary = document.getElementById('btn-dashboard-parent');
+      if (btnDashParentSecondary) {
+        btnDashParentSecondary.addEventListener('click', function () {
+          self.openParentModal();
+        });
+      }
+      const btnCloseParent = document.getElementById('btn-close-parent');
+      if (btnCloseParent) {
+        btnCloseParent.addEventListener('click', function () {
+          self.closeParentModal();
+        });
+      }
+      const btnCloseParentBottom = document.getElementById('btn-close-parent-bottom');
+      if (btnCloseParentBottom) {
+        btnCloseParentBottom.addEventListener('click', function () {
+          self.closeParentModal();
+        });
+      }
+
+      const verifyPinAction = function () {
+        const pinInput = document.getElementById('parent-pin-input');
+        const pinErr = document.getElementById('parent-pin-error');
+        const val = pinInput ? pinInput.value : '';
+        const isOk = window.SaveManager && typeof window.SaveManager.verifyParentPin === 'function'
+          ? window.SaveManager.verifyParentPin(val)
+          : (String(val).trim() === '1508');
+
+        if (isOk) {
+          state.parentUnlocked = true;
+          if (window.SoundEngine) window.SoundEngine.playCorrect(1);
+          if (pinErr) pinErr.classList.add('hidden');
+          if (window.UIManager && window.SaveManager) {
+            window.UIManager.showParentModal(window.SaveManager.getState(), true);
+          }
+        } else {
+          if (window.SoundEngine) window.SoundEngine.playWrong();
+          if (pinErr) pinErr.classList.remove('hidden');
+        }
+      };
+
+      const btnVerifyPin = document.getElementById('btn-verify-parent-pin');
+      if (btnVerifyPin) {
+        btnVerifyPin.addEventListener('click', verifyPinAction);
+      }
+      const parentPinInput = document.getElementById('parent-pin-input');
+      if (parentPinInput) {
+        parentPinInput.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            verifyPinAction();
+          }
+        });
+      }
+
+      const btnSaveParentPin = document.getElementById('btn-save-parent-pin');
+      if (btnSaveParentPin) {
+        btnSaveParentPin.addEventListener('click', function () {
+          const newPinInput = document.getElementById('parent-new-pin-input');
+          const newVal = newPinInput ? newPinInput.value.trim() : '';
+          if (newVal.length < 4) {
+            window.alert('새 비밀번호는 4자리 이상 입력해 주세요.');
+            return;
+          }
+          if (window.SaveManager && typeof window.SaveManager.setParentPin === 'function') {
+            window.SaveManager.setParentPin(newVal);
+            if (newPinInput) newPinInput.value = '';
+            if (window.UIManager) {
+              window.UIManager.showFeedbackToast(true, '🔑 보호자 비밀번호가 변경되었습니다!');
+            }
+          }
+        });
+      }
+
+      const parentTabNav = document.getElementById('parent-tab-nav');
+      if (parentTabNav) {
+        parentTabNav.addEventListener('click', function (e) {
+          const tabBtn = e.target.closest('[data-parent-tab]');
+          if (!tabBtn) return;
+          if (window.SoundEngine) window.SoundEngine.playClick();
+          const targetTab = tabBtn.getAttribute('data-parent-tab');
+          parentTabNav.querySelectorAll('[data-parent-tab]').forEach(function (b) {
+            const isAct = b.getAttribute('data-parent-tab') === targetTab;
+            b.classList.toggle('active', isAct);
+            b.setAttribute('aria-selected', isAct ? 'true' : 'false');
+          });
+          ['bonus', 'settings', 'reset'].forEach(function (tabName) {
+            const pane = document.getElementById('parent-tab-' + tabName);
+            if (pane) {
+              pane.classList.toggle('hidden', tabName !== targetTab);
+              pane.classList.toggle('active', tabName === targetTab);
+            }
+          });
+        });
+      }
+
+      const parentBonusContainer = document.getElementById('parent-bonus-list-container');
+      if (parentBonusContainer) {
+        parentBonusContainer.addEventListener('click', function (e) {
+          const saveNameBtn = e.target.closest('[data-action="save-bonus-name"]');
+          if (saveNameBtn) {
+            const key = saveNameBtn.getAttribute('data-bonus-key');
+            const card = saveNameBtn.closest('.parent-bonus-card');
+            const input = card ? card.querySelector('.parent-bonus-name-input') : null;
+            if (key && input) {
+              self.setBonusName(key, input.value);
+            }
+            return;
+          }
+
+          const stepBtn = e.target.closest('[data-action="step-bonus-count"]');
+          if (stepBtn) {
+            const key = stepBtn.getAttribute('data-bonus-key');
+            const step = parseInt(stepBtn.getAttribute('data-step'), 10) || 0;
+            if (key && step !== 0) {
+              self.stepBonusAchievedCount(key, step);
+            }
+            return;
+          }
+
+          const saveCountBtn = e.target.closest('[data-action="save-bonus-count"]');
+          if (saveCountBtn) {
+            const key = saveCountBtn.getAttribute('data-bonus-key');
+            const card = saveCountBtn.closest('.parent-bonus-card');
+            const input = card ? card.querySelector('.parent-bonus-count-input') : null;
+            if (key && input) {
+              self.setBonusAchievedCount(key, input.value);
+            }
+            return;
+          }
+
+          const markBtn = e.target.closest('[data-action="mark-paid"]');
+          if (markBtn && !markBtn.disabled) {
+            const key = markBtn.getAttribute('data-bonus-key');
+            if (key) self.markBonusPaid(key);
+            return;
+          }
+
+          const undoBtn = e.target.closest('[data-action="undo-paid"]');
+          if (undoBtn) {
+            const key = undoBtn.getAttribute('data-bonus-key');
+            if (key) self.undoBonusPaid(key);
+          }
+        });
+
+        parentBonusContainer.addEventListener('keydown', function (e) {
+          if (e.key !== 'Enter') return;
+          const nameInput = e.target.closest('.parent-bonus-name-input');
+          if (nameInput) {
+            e.preventDefault();
+            const key = nameInput.getAttribute('data-bonus-key');
+            if (key) self.setBonusName(key, nameInput.value);
+            return;
+          }
+          const countInput = e.target.closest('.parent-bonus-count-input');
+          if (countInput) {
+            e.preventDefault();
+            const key = countInput.getAttribute('data-bonus-key');
+            if (key) self.setBonusAchievedCount(key, countInput.value);
+          }
+        });
+
+        parentBonusContainer.addEventListener('change', function (e) {
+          const sel = e.target.closest('.parent-payout-select');
+          if (!sel) return;
+          const key = sel.getAttribute('data-bonus-key');
+          if (!key) return;
+          if (sel.value === 'paid') {
+            self.markBonusPaid(key);
+          } else if (sel.value === 'paid_all') {
+            self.setBonusAchievedCount(key, 0);
+          }
+        });
+      }
+
+      // Bottom 3-Lane Buttons, Mobile Touch Steering Pad & Top Choice Preview Pills
+      [0, 1, 2].forEach(function (laneIdx) {
+        const laneBtn = document.getElementById(`btn-lane-${laneIdx}`);
+        if (laneBtn) {
+          laneBtn.addEventListener('click', function () {
+            self.selectLane(laneIdx);
+          });
+        }
+        const steerBtn = document.getElementById(`touch-steer-${laneIdx}`);
+        if (steerBtn) {
+          steerBtn.addEventListener('pointerdown', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            self.selectLane(laneIdx);
+          });
+          steerBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            self.selectLane(laneIdx);
+          });
+        }
+        const choicePill = document.getElementById(`choice-pill-${laneIdx}`);
+        if (choicePill) {
+          choicePill.addEventListener('click', function () {
+            self.selectLane(laneIdx);
+          });
+        }
+      });
+
+      // Start Dashboard Primary CTA
+      const btnStart = document.getElementById('btn-start-game');
+      if (btnStart) {
+        btnStart.addEventListener('click', function () {
+          self.startGame(state.selectedDashboardStage);
+        });
+      }
+
+      // Subject Mode Selector
+      const modeContainer = document.getElementById('subject-mode-selector');
+      if (modeContainer) {
+        modeContainer.addEventListener('click', function (e) {
+          const btn = e.target.closest('.mode-pill');
+          if (!btn) return;
+          const mode = btn.getAttribute('data-mode');
+          if (mode) {
+            if (window.SoundEngine) window.SoundEngine.playClick();
+            self.setSubjectMode(mode);
+          }
+        });
+      }
+
+      // Stage Selector Pill Bar
+      const stageBar = document.getElementById('stage-selector-bar');
+      if (stageBar) {
+        stageBar.addEventListener('click', function (e) {
+          const btn = e.target.closest('.stage-pill');
+          if (!btn || btn.disabled) return;
+          const stg = parseInt(btn.getAttribute('data-stage'), 10);
+          if (!isNaN(stg) && stg >= 1) {
+            if (window.SoundEngine) window.SoundEngine.playClick();
+            state.selectedDashboardStage = stg;
+            if (window.UIManager && window.SaveManager) {
+              window.UIManager.renderDashboard(window.SaveManager.getState(), state.selectedDashboardStage);
+            }
+          }
+        });
+      }
+
+      // Reset Progress Button
+      const btnReset = document.getElementById('btn-reset-progress');
+      if (btnReset) {
+        btnReset.addEventListener('click', function () {
+          self.resetAllProgress(false);
+        });
+      }
+
+      // Utility Bar Buttons
+      const btnOpenReview = document.getElementById('btn-open-review');
+      if (btnOpenReview) {
+        btnOpenReview.addEventListener('click', function () {
+          self.openReviewModal();
+        });
+      }
+
+      const btnDashReview = document.getElementById('btn-dashboard-review');
+      if (btnDashReview) {
+        btnDashReview.addEventListener('click', function () {
+          self.openReviewModal();
+        });
+      }
+
+      const btnGameoverReview = document.getElementById('btn-gameover-review');
+      if (btnGameoverReview) {
+        btnGameoverReview.addEventListener('click', function () {
+          self.openReviewModal();
+        });
+      }
+
+      const btnPauseReview = document.getElementById('btn-pause-review');
+      if (btnPauseReview) {
+        btnPauseReview.addEventListener('click', function () {
+          self.openReviewModal();
+        });
+      }
+
+      const btnCloseReview = document.getElementById('btn-close-review');
+      if (btnCloseReview) {
+        btnCloseReview.addEventListener('click', function () {
+          self.closeReviewModal();
+        });
+      }
+
+      const btnCloseReviewBottom = document.getElementById('btn-close-review-bottom');
+      if (btnCloseReviewBottom) {
+        btnCloseReviewBottom.addEventListener('click', function () {
+          self.closeReviewModal();
+        });
+      }
+
+      const btnToggleSound = document.getElementById('btn-toggle-sound');
+      if (btnToggleSound) {
+        btnToggleSound.addEventListener('click', function () {
+          self.toggleSound();
+        });
+      }
+
+      const btnPause = document.getElementById('btn-pause');
+      if (btnPause) {
+        btnPause.addEventListener('click', function () {
+          self.togglePause();
+        });
+      }
+
+      const pauseInlineBanner = document.getElementById('pause-inline-banner');
+      if (pauseInlineBanner) {
+        pauseInlineBanner.addEventListener('click', function () {
+          if (state.isPaused) {
+            self.resumeGame();
+          }
+        });
+      }
+
+      const btnGoDash = document.getElementById('btn-go-dashboard');
+      if (btnGoDash) {
+        btnGoDash.addEventListener('click', function () {
+          if (window.SoundEngine) window.SoundEngine.playClick();
+          self.returnToDashboard();
+        });
+      }
+
+      // Pause Modal Buttons
+      const btnResume = document.getElementById('btn-resume-game');
+      if (btnResume) {
+        btnResume.addEventListener('click', function () {
+          self.resumeGame();
+        });
+      }
+
+      const btnPauseDash = document.getElementById('btn-pause-dashboard');
+      if (btnPauseDash) {
+        btnPauseDash.addEventListener('click', function () {
+          self.returnToDashboard();
+        });
+      }
+
+      // Game Over / Stage Retry Modal Buttons
+      const btnRetryStage = document.getElementById('btn-retry-stage');
+      if (btnRetryStage) {
+        btnRetryStage.addEventListener('click', function () {
+          self.retryCurrentStage();
+        });
+      }
+
+      const btnGameoverDash = document.getElementById('btn-gameover-dashboard');
+      if (btnGameoverDash) {
+        btnGameoverDash.addEventListener('click', function () {
+          self.returnToDashboard();
+        });
+      }
+
+      // Speech / Pronunciation HUD Buttons (Stage 3+ Speaking Quiz)
+      const btnSpeechTts = document.getElementById('btn-speech-listen-tts');
+      if (btnSpeechTts) {
+        btnSpeechTts.addEventListener('click', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (state.currentQuestion && state.currentQuestion.targetWord) {
+            speakTargetWordTTS(state.currentQuestion.targetWord);
+          }
+        });
+      }
+
+      const btnSpeechMic = document.getElementById('btn-speech-retry-mic');
+      if (btnSpeechMic) {
+        btnSpeechMic.addEventListener('click', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (!state.currentQuestion || !state.currentQuestion.isSpeech) return;
+          const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+          if (!SpeechRecognition) {
+            state.currentQuestion.speechPassed = true;
+            state.currentQuestion.spokenText = state.currentQuestion.targetWord;
+            if (window.Engine3D && typeof window.Engine3D.resolveSpeechGatePass === 'function') {
+              window.Engine3D.resolveSpeechGatePass(state.currentQuestion.targetWord);
+            }
+            return;
+          }
+          startSpeechListening(state.currentQuestion);
+        });
+      }
+    }
+  };
+
+  window.GameController = GameController;
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function () {
+      GameController.init();
+    });
+  } else {
+    GameController.init();
+  }
+})(window);
