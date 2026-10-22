@@ -3279,8 +3279,8 @@
         const followFactor = 0.36 + pf * 0.24;
         const targetCamX = this.carGroup.position.x * followFactor;
         this.camera.position.x += (targetCamX - this.camera.position.x) * Math.min(1, dt * 8);
-        this.camera.position.y = 4.4 + pf * 1.1;
-        this.camera.position.z = 16.5 + pf * 5.2;
+        this.camera.position.y = 4.5 + pf * 1.1;
+        this.camera.position.z = 16.5 + pf * 5.0;
 
         if (this.shakeTimer > 0) {
           this.shakeTimer -= dt;
@@ -3295,7 +3295,7 @@
           this.cameraZoomPunch = 0;
         }
 
-        const baseFov = 60 + pf * 23;
+        const baseFov = 50 + pf * 12;
         const targetFov =
           baseFov +
           Math.max(0, Math.min(16, (this.currentSpeed - 110) * 0.075)) +
