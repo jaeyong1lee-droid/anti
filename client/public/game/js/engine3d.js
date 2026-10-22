@@ -3098,12 +3098,16 @@
       const gateSpeedUnitsPerSec = this.currentSpeed * 0.24;
       const worldUnitsPerSec = gateSpeedUnitsPerSec * 2.1;
 
-      // 1. Scroll Road Lane Dashes, Studded Curbs & Roadside Obby Scenery
+      // 1. Scroll Road Lane Dashes, Studded Curbs & Roadside Obby Scenery (with tapered road width!)
       for (let i = 0; i < this.laneDashMeshes.length; i++) {
         const dash = this.laneDashMeshes[i];
         dash.position.z += worldUnitsPerSec * dt;
         if (dash.position.z > 28) {
           dash.position.z -= 240;
+        }
+        if (dash.userData && typeof dash.userData.baseX === 'number') {
+          const wf = 1 + Math.max(0, (8 - dash.position.z) * 0.0175);
+          dash.position.x = dash.userData.baseX * wf;
         }
       }
 
@@ -3112,6 +3116,10 @@
         curb.position.z += worldUnitsPerSec * dt;
         if (curb.position.z > 28) {
           curb.position.z -= 240;
+        }
+        if (curb.userData && typeof curb.userData.baseX === 'number') {
+          const wf = 1 + Math.max(0, (8 - curb.position.z) * 0.0175);
+          curb.position.x = curb.userData.baseX * wf;
         }
       }
 
