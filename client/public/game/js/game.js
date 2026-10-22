@@ -382,12 +382,10 @@
       state.stage = targetStage;
       state.selectedDashboardStage = targetStage;
       state.stageConfig = getStageCfg(targetStage);
-      const qToBoss = state.stageConfig.questionsToBoss || 15;
-      state.stageProgress = (targetStage === prevStage && savedStageProgress > 0 && savedStageProgress < qToBoss)
-        ? savedStageProgress
-        : 0;
+      // 게임을 다시 시작하면 해당 단계는 항상 처음(0 / 15)부터 시작!
+      state.stageProgress = 0;
       if (window.SaveManager && typeof window.SaveManager.setStageProgress === 'function') {
-        window.SaveManager.setStageProgress(state.stageProgress);
+        window.SaveManager.setStageProgress(0);
       }
       state.isBossPhase = false;
       state.bossMaxHp = state.stageConfig.bossHp || 9;
