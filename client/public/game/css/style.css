@@ -1283,7 +1283,7 @@ body.is-time-paused::before {
 }
 
 .question-prompt {
-  font-size: clamp(39px, 4.65vw, 57px) !important;
+  font-size: clamp(31px, 3.7vw, 45px) !important;
   font-weight: 900;
   color: #ffffff;
   letter-spacing: -0.02em;
@@ -2656,7 +2656,7 @@ body.obby-mode-active .touch-jump-btn {
   }
 
   .question-prompt {
-    font-size: clamp(30px, 8.25vw, 42px) !important;
+    font-size: clamp(24px, 6.6vw, 33px) !important;
     padding: 2px 6px;
     line-height: 1.18;
   }
@@ -2816,7 +2816,7 @@ body.obby-mode-active .touch-jump-btn {
   }
 
   .question-prompt {
-    font-size: clamp(27px, 4.5vw, 38px) !important;
+    font-size: clamp(21px, 3.6vw, 30px) !important;
     padding: 2px 6px;
   }
 
