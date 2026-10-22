@@ -4413,6 +4413,27 @@ body.start-screen-active #hud-reward-gauges-box {
   color: #ffe600;
 }
 
+/* ==========================================================================
+   👾 Boss Battle Top HUD Swap:
+   Hide #hud-left-panel (첨부2) and place #boss-hud (첨부3) in that exact top position
+   so the question text (#question-banner) never drops down!
+   ========================================================================== */
+body.boss-phase-hud-active #hud-left-panel {
+  display: none !important;
+}
+
+#boss-hud.boss-hud:not(.hidden) {
+  position: fixed !important;
+  top: max(6px, env(safe-area-inset-top, 6px)) !important;
+  left: 8px !important;
+  right: 8px !important;
+  width: auto !important;
+  max-width: 720px !important;
+  margin: 0 auto !important;
+  z-index: 50 !important;
+}
+
+
 
 
 
