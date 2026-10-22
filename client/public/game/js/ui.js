@@ -801,7 +801,7 @@
     showBossHUD: function (stageConfig, bossCurrentHp, bossMaxHp) {
       const bossHud = byId('boss-hud');
       if (bossHud) {
-        bossHud.classList.remove('hidden');
+        bossHud.classList.remove('hidden'); document.body.classList.add('boss-phase-hud-active'); const _lp = byId('hud-left-panel'); if (_lp) _lp.classList.add('hidden');
       }
       const elName = byId('boss-name');
       if (elName && stageConfig) {
@@ -840,7 +840,7 @@
     hideBossHUD: function () {
       const bossHud = byId('boss-hud');
       if (bossHud) {
-        bossHud.classList.add('hidden');
+        bossHud.classList.add('hidden'); document.body.classList.remove('boss-phase-hud-active'); const _lp = byId('hud-left-panel'); if (_lp) _lp.classList.remove('hidden');
       }
     },
 
