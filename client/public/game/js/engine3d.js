@@ -2093,59 +2093,90 @@
       roundRectPath(ctx, 14, 14, canvas.width - 28, canvas.height - 28, 24);
       ctx.stroke();
 
-      // Compact lane number pill in top-left corner so 90% of board is the BIG Answer!
+      // Only show top badge for Speech Microphone sign; normal 3-lane boards use 100% of board for HUGE Answer text!
       const rawChoiceStr = String(choiceText !== undefined && choiceText !== null ? choiceText : '');
       const isSpeechSign = rawChoiceStr.startsWith('🎤');
-      ctx.fillStyle = borderColor;
-      roundRectPath(ctx, 28, 26, isSpeechSign ? 148 : 92, 54, 14);
-      ctx.fill();
+      if (isSpeechSign) {
+        ctx.fillStyle = borderColor;
+        roundRectPath(ctx, 24, 22, 148, 52, 14);
+        ctx.fill();
 
-      ctx.fillStyle = '#050614';
-      ctx.font = '900 32px "Malgun Gothic", "Orbitron", sans-serif';
+        ctx.fillStyle = '#050614';
+        ctx.font = '900 30px "Malgun Gothic", "Orbitron", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('🎤 말하기', 98, 49);
+      }
+
+      // Giant Answer Text filling 100% of the signboard
+      const text = rawChoiceStr.trim();
+      const maxWidth = canvas.width - 36;
+      const fontFamily = '"Malgun Gothic", "Pretendard", "Apple SD Gothic Neo", "Orbitron", sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(isSpeechSign ? '🎤 말하기' : `${laneIndex + 1}번`, isSpeechSign ? 102 : 74, 54);
-
-      // Giant Answer Text filling the center of the signboard
-      const text = rawChoiceStr;
-      let fontSize = 256;
-      if (text.length > 18) fontSize = 102;
-      else if (text.length > 14) fontSize = 118;
-      else if (text.length > 10) fontSize = 136;
-      else if (text.length > 7) fontSize = 160;
-      else if (text.length > 5) fontSize = 186;
-      else if (text.length > 3) fontSize = 216;
-      else if (text.length === 3) fontSize = 236;
-
-      ctx.font = `900 ${fontSize}px "Malgun Gothic", "Pretendard", "Apple SD Gothic Neo", "Orbitron", sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-
-      const maxWidth = canvas.width - 44;
-      const measured = ctx.measureText(text).width;
-
       ctx.lineJoin = 'round';
-      ctx.lineWidth = 18;
       ctx.strokeStyle = '#040614';
       ctx.fillStyle = '#ffffff';
       ctx.shadowColor = borderColor;
       ctx.shadowBlur = 22;
 
-      if (measured > maxWidth && text.length > 4) {
+      // Determine whether 2-line split gives much larger text (e.g. multi-word English or Korean > 4 chars)
+      const hasSpaceOrSlash = text.indexOf(' ') > 0 || text.indexOf('/') > 0;
+      const shouldSplitTwoLines = (hasSpaceOrSlash && text.length >= 6) || text.length >= 6;
+
+      if (shouldSplitTwoLines) {
         const mid = Math.ceil(text.length / 2);
         let splitIdx = text.lastIndexOf('/', mid + 2);
-        if (splitIdx <= 0) splitIdx = text.lastIndexOf(' ', mid + 3);
+        if (splitIdx <= 0) splitIdx = text.lastIndexOf(' ', mid + 4);
+        if (splitIdx <= 0) splitIdx = text.indexOf(' ');
         if (splitIdx <= 0) splitIdx = mid;
         else splitIdx += 1;
+
         const line1 = text.slice(0, splitIdx).trim();
         const line2 = text.slice(splitIdx).trim();
-        ctx.strokeText(line1, canvas.width / 2, 178, maxWidth);
-        ctx.fillText(line1, canvas.width / 2, 178, maxWidth);
-        ctx.strokeText(line2, canvas.width / 2, 312, maxWidth);
-        ctx.fillText(line2, canvas.width / 2, 312, maxWidth);
+
+        if (line1 && line2) {
+          let fontSize = isSpeechSign ? 176 : 212;
+          while (fontSize > 96) {
+            ctx.font = `900 ${fontSize}px ${fontFamily}`;
+            const w1 = ctx.measureText(line1).width;
+            const w2 = ctx.measureText(line2).width;
+            if (Math.max(w1, w2) <= maxWidth) break;
+            fontSize -= 6;
+          }
+          ctx.font = `900 ${fontSize}px ${fontFamily}`;
+          ctx.lineWidth = Math.max(14, Math.round(fontSize * 0.095));
+          const y1 = isSpeechSign ? 166 : 126;
+          const y2 = isSpeechSign ? 314 : 302;
+          ctx.strokeText(line1, canvas.width / 2, y1, maxWidth);
+          ctx.fillText(line1, canvas.width / 2, y1, maxWidth);
+          ctx.strokeText(line2, canvas.width / 2, y2, maxWidth);
+          ctx.fillText(line2, canvas.width / 2, y2, maxWidth);
+        } else {
+          let fontSize = 286;
+          while (fontSize > 110) {
+            ctx.font = `900 ${fontSize}px ${fontFamily}`;
+            if (ctx.measureText(text).width <= maxWidth) break;
+            fontSize -= 8;
+          }
+          ctx.font = `900 ${fontSize}px ${fontFamily}`;
+          ctx.lineWidth = Math.max(16, Math.round(fontSize * 0.095));
+          const cy = isSpeechSign ? 242 : 214;
+          ctx.strokeText(text, canvas.width / 2, cy, maxWidth);
+          ctx.fillText(text, canvas.width / 2, cy, maxWidth);
+        }
       } else {
-        ctx.strokeText(text, canvas.width / 2, 242, maxWidth);
-        ctx.fillText(text, canvas.width / 2, 242, maxWidth);
+        let fontSize = 292;
+        while (fontSize > 120) {
+          ctx.font = `900 ${fontSize}px ${fontFamily}`;
+          if (ctx.measureText(text).width <= maxWidth) break;
+          fontSize -= 8;
+        }
+        ctx.font = `900 ${fontSize}px ${fontFamily}`;
+        ctx.lineWidth = Math.max(16, Math.round(fontSize * 0.095));
+        const cy = isSpeechSign ? 242 : 214;
+        ctx.strokeText(text, canvas.width / 2, cy, maxWidth);
+        ctx.fillText(text, canvas.width / 2, cy, maxWidth);
       }
 
       ctx.shadowBlur = 0;
