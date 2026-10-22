@@ -904,8 +904,20 @@
       this.roadGroup.add(gridHelper);
       this.synthGridHelper = gridHelper;
 
-      // 3. Main 3-Lane Asphalt Highway Surface (width = 14.4)
-      const roadGeo = new THREE.PlaneGeometry(14.4, 260);
+      // 3. Main 3-Lane Asphalt Highway Surface (Widened in distance so road narrows much less!)
+      const roadGeo = new THREE.PlaneGeometry(14.4, 260, 1, 48);
+      const roadPos = roadGeo.attributes.position;
+      for (let v = 0; v < roadPos.count; v++) {
+        const vx = roadPos.getX(v);
+        const vy = roadPos.getY(v);
+        // After rotation.x = -PI/2 and position.z = -85, worldZ = -85 - vy
+        const worldZ = -85 - vy;
+        const wf = 1 + Math.max(0, (8 - worldZ) * 0.0175);
+        roadPos.setX(v, vx * wf);
+      }
+      roadPos.needsUpdate = true;
+      roadGeo.computeVertexNormals();
+
       const roadMat = new THREE.MeshStandardMaterial({
         color: this.currentTheme.road,
         roughness: 0.4,
@@ -917,18 +929,22 @@
       this.roadGroup.add(roadMesh);
       this.roadSurfaceMat = roadMat;
 
-      // 4. Continuous Neon Edge Rails at x = -7.2 and x = +7.2
-      const railGeo = new THREE.BoxGeometry(0.18, 0.16, 260);
+      // 4. Continuous Neon Edge Rails following the less-narrowing road edges
+      const railGeo = new THREE.BoxGeometry(0.24, 0.18, 265);
       this.edgeRailMat = new THREE.MeshBasicMaterial({ color: this.currentTheme.primary });
+      const midWf = 1 + Math.max(0, (8 - (-85)) * 0.0175);
+      const railAngle = Math.atan(7.2 * 0.0175);
       const leftRail = new THREE.Mesh(railGeo, this.edgeRailMat);
-      leftRail.position.set(-7.2, 0.08, -85);
+      leftRail.position.set(-7.2 * midWf, 0.09, -85);
+      leftRail.rotation.y = railAngle;
       const rightRail = new THREE.Mesh(railGeo, this.edgeRailMat);
-      rightRail.position.set(7.2, 0.08, -85);
+      rightRail.position.set(7.2 * midWf, 0.09, -85);
+      rightRail.rotation.y = -railAngle;
       this.roadGroup.add(leftRail, rightRail);
 
       // 5. Scrolling Lane Divider Dashes
       this.laneDashMeshes = [];
-      const dashGeo = new THREE.PlaneGeometry(0.24, 4.2);
+      const dashGeo = new THREE.PlaneGeometry(0.28, 4.2);
       this.dashMaterial = new THREE.MeshBasicMaterial({
         color: this.currentTheme.primary,
         side: THREE.DoubleSide
@@ -938,10 +954,13 @@
       const spacing = 10;
       for (let i = 0; i < numRows; i++) {
         const zPos = 24 - i * spacing;
+        const wf = 1 + Math.max(0, (8 - zPos) * 0.0175);
         [-2.25, 2.25].forEach((xPos) => {
           const dash = new THREE.Mesh(dashGeo, this.dashMaterial);
           dash.rotation.x = -Math.PI / 2;
-          dash.position.set(xPos, 0.02, zPos);
+          dash.rotation.z = -Math.atan(xPos * 0.0175);
+          dash.position.set(xPos * wf, 0.02, zPos);
+          dash.userData = { baseX: xPos };
           this.roadGroup.add(dash);
           this.laneDashMeshes.push(dash);
         });
@@ -955,10 +974,13 @@
 
       for (let i = 0; i < 32; i++) {
         const zPos = 24 - i * 7.5;
+        const wf = 1 + Math.max(0, (8 - zPos) * 0.0175);
         const mat = (i % 2 === 0) ? this.curbMatA : this.curbMatB;
         [-7.55, 7.55].forEach((cx) => {
           const curbGroup = new THREE.Group();
-          curbGroup.position.set(cx, 0.16, zPos);
+          curbGroup.position.set(cx * wf, 0.16, zPos);
+          curbGroup.rotation.y = -Math.atan(cx * 0.0175);
+          curbGroup.userData = { baseX: cx };
           const brick = new THREE.Mesh(curbGeo, mat);
           curbGroup.add(brick);
 
