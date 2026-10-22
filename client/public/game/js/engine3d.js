@@ -2086,29 +2086,30 @@
 
       // Giant Answer Text filling the center of the signboard
       const text = rawChoiceStr;
-      let fontSize = 196;
-      if (text.length > 20) fontSize = 64;
-      else if (text.length > 15) fontSize = 74;
-      else if (text.length > 12) fontSize = 86;
-      else if (text.length > 8) fontSize = 108;
-      else if (text.length > 5) fontSize = 138;
-      else if (text.length > 3) fontSize = 168;
+      let fontSize = 256;
+      if (text.length > 18) fontSize = 102;
+      else if (text.length > 14) fontSize = 118;
+      else if (text.length > 10) fontSize = 136;
+      else if (text.length > 7) fontSize = 160;
+      else if (text.length > 5) fontSize = 186;
+      else if (text.length > 3) fontSize = 216;
+      else if (text.length === 3) fontSize = 236;
 
       ctx.font = `900 ${fontSize}px "Malgun Gothic", "Pretendard", "Apple SD Gothic Neo", "Orbitron", sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
 
-      const maxWidth = canvas.width - 56;
+      const maxWidth = canvas.width - 44;
       const measured = ctx.measureText(text).width;
 
       ctx.lineJoin = 'round';
-      ctx.lineWidth = 16;
+      ctx.lineWidth = 18;
       ctx.strokeStyle = '#040614';
       ctx.fillStyle = '#ffffff';
       ctx.shadowColor = borderColor;
-      ctx.shadowBlur = 20;
+      ctx.shadowBlur = 22;
 
-      if (measured > maxWidth && text.length > 5) {
+      if (measured > maxWidth && text.length > 4) {
         const mid = Math.ceil(text.length / 2);
         let splitIdx = text.lastIndexOf('/', mid + 2);
         if (splitIdx <= 0) splitIdx = text.lastIndexOf(' ', mid + 3);
@@ -2116,13 +2117,13 @@
         else splitIdx += 1;
         const line1 = text.slice(0, splitIdx).trim();
         const line2 = text.slice(splitIdx).trim();
-        ctx.strokeText(line1, canvas.width / 2, 185);
-        ctx.fillText(line1, canvas.width / 2, 185);
-        ctx.strokeText(line2, canvas.width / 2, 298);
-        ctx.fillText(line2, canvas.width / 2, 298);
+        ctx.strokeText(line1, canvas.width / 2, 178, maxWidth);
+        ctx.fillText(line1, canvas.width / 2, 178, maxWidth);
+        ctx.strokeText(line2, canvas.width / 2, 312, maxWidth);
+        ctx.fillText(line2, canvas.width / 2, 312, maxWidth);
       } else {
-        ctx.strokeText(text, canvas.width / 2, 236);
-        ctx.fillText(text, canvas.width / 2, 236);
+        ctx.strokeText(text, canvas.width / 2, 242, maxWidth);
+        ctx.fillText(text, canvas.width / 2, 242, maxWidth);
       }
 
       ctx.shadowBlur = 0;
@@ -2206,8 +2207,8 @@
       topBeam.position.set(0, 6.1, 0);
       gateGroup.add(topBeam);
 
-      // 2. Three Lane Choice Signboards (LARGE 4.48 x 3.45 boards!) + Smashable Blocky Energy Curtains
-      const signGeo = new THREE.PlaneGeometry(4.48, 3.45);
+      // 2. Three Lane Choice Signboards (LARGE 4.62 x 3.95 boards!) + Smashable Blocky Energy Curtains
+      const signGeo = new THREE.PlaneGeometry(4.62, 3.95);
       const curtainGeo = new THREE.PlaneGeometry(4.1, 2.7);
       disposables.geometries.push(signGeo, curtainGeo);
 
@@ -2943,8 +2944,8 @@
     _getAdaptiveGateScale: function (progress) {
       const p = Math.max(0, Math.min(1, Number(progress) || 0));
       const pf = this._getPortraitFactor();
-      const initScale = Math.max(1.38, 2.15 - pf * 0.72);
-      const endScale = Math.max(0.84, 1.0 - pf * 0.14);
+      const initScale = Math.max(1.62, 2.25 - pf * 0.55);
+      const endScale = Math.max(0.95, 1.05 - pf * 0.08);
       return initScale - p * (initScale - endScale);
     },
 
