@@ -2997,8 +2997,8 @@
     _getAdaptiveGateScale: function (progress) {
       const p = Math.max(0, Math.min(1, Number(progress) || 0));
       const pf = this._getPortraitFactor();
-      const initScale = Math.max(1.62, 2.25 - pf * 0.55);
-      const endScale = Math.max(0.95, 1.05 - pf * 0.08);
+      const initScale = Math.max(2.26, 2.44 - pf * 0.14);
+      const endScale = Math.max(0.98, 1.05 - pf * 0.06);
       return initScale - p * (initScale - endScale);
     },
 
@@ -3011,9 +3011,9 @@
       const height = this.container.clientHeight || global.innerHeight || 720;
       this.camera.aspect = width / Math.max(1, height);
       const pf = this._getPortraitFactor();
-      this.camera.fov = 60 + pf * 23;
-      this.camera.position.y = 4.4 + pf * 1.1;
-      this.camera.position.z = 16.5 + pf * 5.2;
+      this.camera.fov = 50 + pf * 12;
+      this.camera.position.y = 4.5 + pf * 1.1;
+      this.camera.position.z = 16.5 + pf * 5.0;
       this.camera.updateProjectionMatrix();
       if (this.renderer) {
         this.renderer.setSize(width, height);
