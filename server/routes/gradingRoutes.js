@@ -839,8 +839,9 @@ ${otherQs.map((q, i) => `기존 문제 ${i + 1}: ${q.question || '없음'}`).joi
         typeRequirement = `[주관식 (단답형) ${targetSubtype} 유형으로 생성하십시오]${subtypeInstruction}`;
         formatRequirement = `{"type": "주관식 (단답형)", "question": "질문", "answer": "답안", "explanation": "해설 (🚨 반드시 마지막에 📚 참조 문헌(Standards & Literature) 출처 2~3개 명시)"}`;
       } else {
-        typeRequirement = `[객관식 4지선다 유형으로 생성하십시오]`;
-        formatRequirement = `{"type": "객관식 (4지선다)", "question": "질문", "tableData": null, "options": ["보기1", "보기2", "보기3", "보기4"], "answer": "보기1", "correctIndex": 0, "explanation": "해설 (🚨 반드시 마지막에 📚 참조 문헌(Standards & Literature) 출처 2~3개 명시)"}`;
+        typeRequirement = `[객관식 4지선다 유형으로 생성하십시오]
+- 🚨 [CoT-First 정답 일관성 철칙]: 반드시 "explanation"(해설) 필드를 가장 먼저 작성하여 수식 대입 및 논리 검증을 끝까지 완료한 뒤, 그 결론과 100% 일치하는 보기를 "options", "answer", "correctIndex"에 배치하십시오.`;
+        formatRequirement = `{"type": "객관식 (4지선다)", "question": "질문", "tableData": null, "explanation": "해설 (🚨 반드시 마지막에 📚 참조 문헌(Standards & Literature) 출처 2~3개 명시)", "options": ["보기1", "보기2", "보기3", "보기4"], "answer": "보기1", "correctIndex": 0}`;
       }
 
       let flowchartDuplicationPrompt = '';
@@ -1423,18 +1424,36 @@ function evaluateMathExpression(expr) {
 
 router.post('/evaluate-answer', async (req, res) => {
   try {
-    const { questionText, options, userSelectedOption, category = '', topicTitle = '' } = req.body;
+    const { questionText, options, userSelectedOption, category = '', topicTitle = '', topicId = null } = req.body;
     if (!questionText) {
       return res.status(400).json({ error: 'questionText is required' });
     }
+
+    const gQuery = `${topicTitle || ''} ${questionText} ${Array.isArray(options) ? options.join(' ') : ''}`.trim();
+    let topicGrounding = '';
+    let kcscGrounding = '';
+    let wikiGrounding = '';
+    try {
+      const [tRes, kRes, wRes] = await Promise.allSettled([
+        getMatchingTopicContent(gQuery, topicId || null, 4500),
+        getKcscVerificationContext(gQuery, category || ''),
+        getWikipediaKnowledge(gQuery)
+      ]);
+      if (tRes.status === 'fulfilled') topicGrounding = tRes.value || '';
+      if (kRes.status === 'fulfilled') kcscGrounding = kRes.value || '';
+      if (wRes.status === 'fulfilled') wikiGrounding = wRes.value || '';
+    } catch (gErr) {
+      console.warn('[evaluate-answer] Grounding lookup warning:', gErr.message);
+    }
+    const groundingBlock = [topicGrounding, kcscGrounding, wikiGrounding].filter(Boolean).join('\n\n');
 
     const isCalc = (category !== '믹스' && category !== '일반' && category !== '이론' && category !== '서술') && (category === '계산' || questionText.includes('계산') || questionText.includes('구하시오') || questionText.includes('값은'));
     const prompt = `
 [🚨 공학 문제 및 정답/해설 정밀 분석 튜터 🚨]
 당신은 국가기술자격(토목기사, 건축기사, 기술사 등) 및 공학 시험의 문제 분석 및 정답 검증 전문가입니다.
 
-아래 문제의 질문 지문과 보기를 정밀 분석하여, 올바른 정답을 도출하고 해설을 작성하십시오.
-
+아래 제공된 [공학 표준 근거 자료]와 문제의 질문 지문 및 보기를 정밀 분석하여, 올바른 정답을 도출하고 해설을 작성하십시오.
+${groundingBlock ? `\n[🔍 공학 표준 근거 자료 (원보고서 · KCSC 국가건설기준 · Wikipedia)]:\n${groundingBlock}\n` : ''}
 [문제 정보]:
 - 토픽/분야: ${topicTitle || category || '공학 퀴즈'}
 - 질문 지문: ${questionText}

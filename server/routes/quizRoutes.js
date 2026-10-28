@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { dbQuery, isPostgres } from '../database.js';
-import { callLLMWithFailover, searchSourceDocumentWithGeminiLite, analyzeStandardsBeforeTask, saveSessionValue, getTopicText, startBackendProgressTimer, updateProgress, globalPreferredModel } from '../services/aiService.js';
+import { callLLMWithFailover, searchSourceDocumentWithGeminiLite, analyzeStandardsBeforeTask, saveSessionValue, getTopicText, getMatchingTopicContent, startBackendProgressTimer, updateProgress, globalPreferredModel } from '../services/aiService.js';
 import { healLatexFormulas, healQuizQuestionObject, healAnswersheetQuestionObject, parseLlmJson, LATEX_PROMPT_INSTRUCTIONS, LATEX_CHAT_PROMPT_INSTRUCTIONS } from '../utils/latexUtils.js';
 import * as fileUtils from '../utils/fileUtils.js';
 import { GENERATION_STANDARDS, generationStandardsList } from '../plugins/generationStandards.js';
@@ -3380,7 +3380,7 @@ ${theoriesText || '인용된 내용 없음'}
 3. 오답 보기 구성 주의사항 (매우 중요):
    - 오답 보기(options) 구성 시 **절대로 터무니없거나 극단적인 표현, 혹은 비현실적인 공학적 가정(예: '무한대로 상승시킴', '실시간으로 기하급수적으로 증가함', '영원히 변하지 않음', '아예 발생하지 않음', '폭발함' 등)은 절대로 사용하지 마십시오**. 
    - 실제 전공 서적이나 실무 기술 기준에 부합하는 **고도로 타당성 있고 그럴듯한 오답(plausible engineering distractors)**으로 구성해 주십시오. 모든 보기는 반드시 원본 소스 및 공학적 상식선에 긴밀히 결합되어야 합니다.
-- **🚨 [객관식 정밀성 및 정답 일치 조건 - 극도로 중요!]**: 모든 객관식(4지선다형) 계산 문제나 수치/공학적 판단 문제를 출제할 때, 계산으로 도출된 정확한 정답 수치나 조건이 4개의 보기(options) 중 반드시 정확히 1개로 존재해야 합니다. 절대로 실제 계산 결과와 보기의 수치가 불일치하여, 해설에서 '실제 계산값은 XX이나 보기 중 가장 가까운 YY를 선택합니다'와 같은 어처구니없는 변명을 적는 출제 오류를 범하지 마십시오. 문제를 생성하기 전에 실제 수식을 대입하여 정답을 한 번 더 직접 엄밀하게 계산하고 검증한 후, 그 결과값(토씨 하나 틀리지 않는 정확한 정답)을 보기와 'answer' 필드에 완벽히 일치하도록 기재하십시오.
+- **🚨 [객관식 정밀성 및 CoT-First 정답 일치 조건 - 극도로 중요!]**: 모든 객관식(4지선다형) 문제를 출제할 때는 반드시 "explanation"(해설) 필드를 가장 먼저 작성하여 공식 대입과 수치/논리 검증을 끝까지 완료한 후, 그 최종 결론과 100% 일치하는 보기를 "options", "answer", "correctIndex"에 배치하십시오. 계산으로 도출된 정확한 정답 수치나 조건이 4개의 보기(options) 중 반드시 정확히 1개로 존재해야 하며, 해설에서 '실제 계산값은 XX이나 보기 중 가장 가까운 YY를 선택합니다'와 같은 변명을 적는 출제 오류를 절대 범하지 마십시오.
     4. 소스 텍스트의 숨겨진 공학적 개념과 실무 기전을 포착하여 고품격 질문을 던지십시오.
 
 [환각 방지 철칙 (Anti-Hallucination Constraints)]:
@@ -3407,10 +3407,10 @@ ${ENGINEERING_STANDARDS}
     "topic_title": "이 문제의 출제 근거가 되는 토픽 목록 내의 정확한 토픽명 (예: 락볼트 인발시험)",
     "question": "공학적 현상 분석 질문",
     "tableData": null,
+    "explanation": "이유와 오답 정밀 해설\n\n💡 **직관적 의미**: 정답의 핵심 직관적 설명 1~2문장\n\n📚 참조 문헌(Standards & Literature) 출처 2~3개 명시",
     "options": ["보기1", "보기2", "보기3", "보기4"],
     "answer": "보기1",
-    "correctIndex": 0,
-    "explanation": "이유와 오답 정밀 해설\n\n💡 **직관적 의미**: 정답의 핵심 직관적 설명 1~2문장\n\n📚 참조 문헌(Standards & Literature) 출처 2~3개 명시"
+    "correctIndex": 0
   }
 ] (※ 만약 표가 필요한 질문이라면 "tableData": {"headers": ["구분", "지반 X", "지반 Y"], "rows": [["퇴적 환경", "해수", "담수"]]} 처럼 구조화된 표 객체를 작성하고, 그렇지 않은 일반 질문이면 "tableData": null 로 설정하십시오.)
 `;
@@ -4018,7 +4018,7 @@ router.post('/exam/detailed-answer', async (req, res) => {
   }
 
   try {
-    const { question, answer } = req.body;
+    const { question, answer, topicId, topicTitle, category } = req.body;
     const hasAnyAiKey = !!(
       process.env.GEMINI_API_KEY ||
       process.env.GEMINI_API_KEY_SECONDARY ||
@@ -4031,16 +4031,35 @@ router.post('/exam/detailed-answer', async (req, res) => {
       return res.status(400).json({ error: '등록된 AI API 키가 존재하지 않습니다.' });
     }
 
+    const gQuery = `${topicTitle || ''} ${question || ''} ${answer || ''}`.trim();
+    let topicGrounding = '';
+    let kcscGrounding = '';
+    let wikiGrounding = '';
+    try {
+      const [tRes, kRes, wRes] = await Promise.allSettled([
+        getMatchingTopicContent(gQuery, topicId || null, 4500),
+        getKcscVerificationContext(gQuery, category || ''),
+        getWikipediaKnowledge(gQuery)
+      ]);
+      if (tRes.status === 'fulfilled') topicGrounding = tRes.value || '';
+      if (kRes.status === 'fulfilled') kcscGrounding = kRes.value || '';
+      if (wRes.status === 'fulfilled') wikiGrounding = wRes.value || '';
+    } catch (gErr) {
+      console.warn('[detailed-answer] Grounding lookup warning:', gErr.message);
+    }
+    const groundingBlock = [topicGrounding, kcscGrounding, wikiGrounding].filter(Boolean).join('\n\n');
+
     const prompt = `
 당신은 대한민국 국가기술자격 기술사 시험 출제위원 및 최고 권위자입니다.
 수험생이 종합평가를 풀던 중 다음 문제에 대해 '답안 전문보기(심층 해설)'를 요청했습니다.
-
+${groundingBlock ? `\n[🔍 공학 표준 근거 자료 (원보고서 · KCSC 국가건설기준 · Wikipedia)]:\n${groundingBlock}\n` : ''}
 [문제]: ${question}
 [기존 간략 정답/해설]: ${answer || '없음'}
 
-위 내용을 바탕으로, 이 문제와 관련된 기술적 배경, 핵심 메커니즘, 그리고 실무적 시사점을 포함하여 완벽한 기술사 모범 답안(또는 심층 해설)을 작성해 주십시오.
+위 내용과 제공된 [공학 표준 근거 자료]를 바탕으로, 이 문제와 관련된 기술적 배경, 핵심 메커니즘, 그리고 실무적 시사점을 포함하여 완벽한 기술사 모범 답안(또는 심층 해설)을 작성해 주십시오.
 다음 규칙을 엄격히 따르십시오:
 1. 보기 편한 Markdown 형식(적절한 굵은 글씨, 글머리 기호 등)을 사용하되, 마크다운 코드블록(\`\`\`markdown)으로 전체를 감싸지 말고 바로 텍스트로 출력하십시오.
+2. 제공된 [공학 표준 근거 자료]에 명시된 공식·수치·기준을 최우선으로 준수하며, 존재하지 않는 가상의 공식이나 허위 KDS 번호를 날조하지 마십시오.
 
 ${ENGINEERING_STANDARDS}
 ${LATEX_CHAT_PROMPT_INSTRUCTIONS}
@@ -4083,7 +4102,7 @@ router.post('/hint', async (req, res) => {
   }
 
   try {
-    const { questionText } = req.body;
+    const { questionText, topicId, topicTitle, category } = req.body;
     if (!questionText) {
       if (progressTimer) clearInterval(progressTimer);
       return res.status(400).json({ error: '질문(문제) 텍스트가 제공되지 않았습니다.' });
@@ -4092,22 +4111,43 @@ router.post('/hint', async (req, res) => {
     const hasAnyAiKey = !!(
       process.env.GEMINI_API_KEY ||
       process.env.GEMINI_API_KEY_SECONDARY ||
-      process.env.GEMINI_API_KEY_TERTIARY
+      process.env.GEMINI_API_KEY_TERTIARY ||
+      process.env.ANTHROPIC_API_KEY ||
+      process.env.OPENAI_API_KEY
     );
     if (!hasAnyAiKey) {
       if (progressTimer) clearInterval(progressTimer);
       return res.status(400).json({ error: '등록된 AI API 키가 존재하지 않습니다.' });
     }
 
+    const gQuery = `${topicTitle || ''} ${questionText}`.trim();
+    let topicGrounding = '';
+    let kcscGrounding = '';
+    let wikiGrounding = '';
+    try {
+      const [tRes, kRes, wRes] = await Promise.allSettled([
+        getMatchingTopicContent(gQuery, topicId || null, 3500),
+        getKcscVerificationContext(gQuery, category || ''),
+        getWikipediaKnowledge(gQuery)
+      ]);
+      if (tRes.status === 'fulfilled') topicGrounding = tRes.value || '';
+      if (kRes.status === 'fulfilled') kcscGrounding = kRes.value || '';
+      if (wRes.status === 'fulfilled') wikiGrounding = wRes.value || '';
+    } catch (gErr) {
+      console.warn('[hint] Grounding lookup warning:', gErr.message);
+    }
+    const groundingBlock = [topicGrounding, kcscGrounding, wikiGrounding].filter(Boolean).join('\n\n');
+
     const systemInstruction = `당신은 대한민국 기술사 시험 전문 튜터입니다.
-수험생이 풀고 있는 주관식 또는 객관식 문제에 대해 **매우 쉽고 직관적이며 간단한 힌트**를 한 문단(3줄 이내)으로 제공해 주십시오.
+수험생이 풀고 있는 주관식 또는 객관식 문제에 대해 아래 제공된 [공학 표준 근거 자료]에 기반하여 **매우 쉽고 직관적이며 간단한 힌트**를 한 문단(3줄 이내)으로 제공해 주십시오.
 
 [지침]:
 1. 복잡한 공식이나 유도 과정을 설명하지 말고, 이 문제를 해결하기 위해 가장 핵심적으로 생각해야 하는 개념이나 물리적 거동을 일상적이고 직관적인 비유로 설명하십시오.
 2. 수험생이 스스로 문제를 풀 수 있도록 유도해야 하며, 직접적인 해답이나 최종 정답 수치를 제공해서는 절대 안 됩니다.
-3. 친절하고 부드러운 튜터의 말투를 사용하십시오.
+3. 제공된 [공학 표준 근거 자료]와 모순되는 물리적 거동이나 가상의 개념을 환각으로 설명하지 마십시오.
+4. 친절하고 부드러운 튜터의 말투를 사용하십시오.
 ${ENGINEERING_STANDARDS}`;
-    const userPrompt = `다음 문제에 대한 쉽고 직관적인 힌트를 간단히 적어주세요:\n\n[문제 본문]\n${questionText}`;
+    const userPrompt = `${groundingBlock ? `[🔍 공학 표준 근거 자료 (원보고서 · KCSC 국가건설기준 · Wikipedia)]:\n${groundingBlock}\n\n` : ''}다음 문제에 대한 쉽고 직관적인 힌트를 간단히 적어주세요:\n\n[문제 본문]\n${questionText}`;
     
     const responseText = await localCallLLM(systemInstruction, userPrompt, null, 'question');
     const healedText = healLatexFormulas(responseText);
@@ -4366,9 +4406,36 @@ router.delete('/session/exam', async (req, res) => {
 // POST /api/search-source -> Dedicated Source Search API assigned to gemini-3.1-flash-lite
 router.post('/search-source', async (req, res) => {
   try {
-    const { query, topicTitle, documentText, progressId } = req.body;
-    const sysPrompt = `당신은 대한민국 국가설계기준(KDS/KCS) 및 국토교통부 설계시공지침, 원보고서 출처 전문 검색 AI입니다. gemini-3.1-flash-lite 초고속 엔진으로 주어진 조회 요청에 대해 정확한 출처 문헌, 조항 번호 및 핵심 규정 수치 데이터를 찾아 반환하십시오.`;
-    const userPrompt = `[출처 검색 질의]: ${query || topicTitle || '국가 건설기준 KDS/KCS 및 원보고서 지침'}\n[참조 문서 텍스트]:\n${documentText || (topicTitle ? `KDS / KCS 국가 건설기준 및 원보고서: ${topicTitle}` : '국가 건설기준 및 원보고서 지침')}`;
+    const { query, topicTitle, topicId, category, documentText, progressId } = req.body;
+    const gQuery = `${topicTitle || ''} ${query || ''}`.trim();
+
+    let topicGrounding = '';
+    let kcscGrounding = '';
+    let wikiGrounding = '';
+    try {
+      const [tRes, kRes, wRes] = await Promise.allSettled([
+        documentText ? Promise.resolve('') : getMatchingTopicContent(gQuery, topicId || null, 4500),
+        getKcscVerificationContext(gQuery, category || ''),
+        getWikipediaKnowledge(gQuery)
+      ]);
+      if (tRes.status === 'fulfilled') topicGrounding = tRes.value || '';
+      if (kRes.status === 'fulfilled') kcscGrounding = kRes.value || '';
+      if (wRes.status === 'fulfilled') wikiGrounding = wRes.value || '';
+    } catch (gErr) {
+      console.warn('[search-source] Grounding lookup warning:', gErr.message);
+    }
+
+    const groundingBlock = [
+      documentText ? `[📄 전달된 원문 텍스트]:\n${documentText}` : '',
+      topicGrounding,
+      kcscGrounding,
+      wikiGrounding
+    ].filter(Boolean).join('\n\n');
+
+    const sysPrompt = `당신은 대한민국 국가설계기준(KDS/KCS) 및 국토교통부 설계시공지침, 원보고서 출처 전문 검색 AI입니다.
+제공된 [실제 조회된 표준 근거 자료 (원보고서·KCSC·Wikipedia)]를 최우선 근거로 삼아 정확한 출처 문헌, 실제 존재하는 조항 번호 및 핵심 규정 수치 데이터를 찾아 반환하십시오.
+🚨 [환각 방지 철칙]: 제공된 근거 자료에 명시되지 않은 가짜 KDS/KCS 6자리 번호(예: KDS 11 10 00, KDS 11 34 00 등 실존하지 않는 번호)를 절대로 임의 창작하거나 날조하지 마십시오.`;
+    const userPrompt = `[출처 검색 질의]: ${query || topicTitle || '국가 건설기준 KDS/KCS 및 원보고서 지침'}\n[실제 조회된 표준 근거 자료]:\n${groundingBlock || (topicTitle ? `KDS / KCS 국가 건설기준 및 원보고서: ${topicTitle}` : '국가 건설기준 및 원보고서 지침')}`;
     
     const result = await searchSourceDocumentWithGeminiLite(sysPrompt, userPrompt, null, { progressId });
     return res.json({ success: true, model: 'gemini-3.1-flash-lite', result });
