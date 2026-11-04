@@ -59,7 +59,7 @@ function mergeStandards(fileList, dbList, fileIsNewer = false) {
 
     const fileIds = new Set(fileList.map(item => item.id));
     for (const dbItem of dbList || []) {
-      if (!fileIds.has(dbItem.id)) {
+      if (!fileIds.has(dbItem.id) && String(dbItem.id || '').startsWith('user_')) {
         merged.push(dbItem);
       }
     }
@@ -130,7 +130,7 @@ export function updateLiveLockscreenStandards(newList) {
 }
 `;
     } else if (fileName === 'engineeringStandards.js') {
-      codeContent += `export let standardsList = ${JSON.stringify(list, null, 2)};
+      codeContent += `export let standardsList = ${JSON.stringify(list, null, 2)};\n\nexport let engineeringStandardsList = standardsList;
 
 export let ENGINEERING_STANDARDS = standardsList.map(s => s.content).join('\\n\\n');
 

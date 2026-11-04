@@ -3,7 +3,7 @@ export let lockscreenStandardsList = [
   {
     "id": "source_report_review_first",
     "title": "1단계: 출처 사전 학습 및 출처 기반 질문/답변 연계 문제 출제 철칙",
-    "content": "🚨 [1단계: 출처 사전 학습 및 출처 기반 질문/답변 연계 문제 출제 철칙 - 극도로 중요!]: AI는 락스크린 퀴즈 문제를 출제할 때, 가장 첫번째 단계에서 반드시 관련 출처 보고서 및 국가기준/학술문헌(KDS/KCS, 원보고서 본문, Wikipedia Soil Mechanics)의 원문 내용과 핵심 지침을 직접 사전에 학습해야 합니다. 하드코딩되거나 무관한 찌꺼기 더미 문구(K0, Kirsch, Terzaghi 등)를 절대 사용하지 말고, 해당 토픽의 실제 공학 현상 및 정론 지침에 근거하여 문제를 출제하십시오.",
+    "content": "🚨 [1단계: 출처 사전 학습 및 출처 기반 질문/답변 연계 문제 출제 철칙 - 극도로 중요!]: AI는 락스크린 퀴즈 문제를 출제할 때, 가장 첫번째 단계에서 반드시 관련 출처 보고서 및 국가기준/학술문헌(KDS/KCS, 원보고서 본문, 학술 사전 지식)의 원문 내용과 핵심 지침을 직접 사전에 학습해야 합니다. 현재 토픽과 무관한 타 토픽의 수식이나 더미 문구를 절대 혼합하지 말고, 해당 토픽의 실제 공학 현상 및 정론 지침에 근거하여 문제를 출제하십시오.",
     "updatedAt": new Date().toISOString()
   },
   {
@@ -21,15 +21,15 @@ export let lockscreenStandardsList = [
   {
     "id": "user_lockscreen_eooum7e",
     "title": "공식의 각 항목이 가지는 의미를 묻기",
-    "content": "이런식의 문제도 좋아 : 공식의 각 항목이 가지는 의미\n예시)\n- 변수위 투수계수 공식\n$$k = 2.303 \\dfrac{aL}{At} \\log_{10} \\left( \\dfrac{h_1}{h_2} \\right)$$\n\n분자 dfrac{aL}{At}가 가지는 직관적의미는?",
-    "updatedAt": "2026-06-28T03:50:02.745Z"
+    "content": "공식을 다루는 문제를 출제할 때는 단순 공식 암기뿐만 아니라, 해당 토픽의 핵심 공식에서 분자·분모의 각 항이나 변수가 가지는 물리적·공학적·직관적 의미와 역할이 무엇인지 묻는 문제를 적극 출제하십시오. (단, 반드시 현재 출제 대상 토픽의 실제 공식만을 사용하며 타 토픽의 공식을 가져오지 마십시오.)",
+    "updatedAt": new Date().toISOString()
   },
   {
     "id": "user_lockscreen_interval_10min",
     "title": "웹 시스템 사용 종료 후 10분 경과 시 락스크린 제공 지침",
     "content": "락스크린 주기는 웹 시스템 사용 종료 후 10분이 경과되었을 때 제공하며, 10분 이내로 재접속 시에는 등장하지 않습니다.",
     "updatedAt": new Date().toISOString()
-  },
+  }
 ];
 
 export let LOCKSCREEN_STANDARDS = assembleLockscreenStandardsPrompt(lockscreenStandardsList);
