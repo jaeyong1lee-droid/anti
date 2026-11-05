@@ -15,6 +15,7 @@ import * as itemQuizPlugin from '../plugins/formulaItemQuizPlugin.js';
 import pdfParse from 'pdf-parse';
 import { getWikipediaKnowledge } from '../services/wikipediaService.js';
 import { getKcscVerificationContext } from '../services/kcscService.js';
+import { getNotebookLmGroundedPromptBlock, verifyQuizQuestionsGrounding } from '../services/quoteVerifierService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -888,7 +889,8 @@ ${kcscGrounding ? `\n${kcscGrounding}\n` : ''}
 `;
 
     const systemInstruction = `당신은 대한민국 국가건설기준설계코드(KDS) 및 지반공학 기술사 시험 출제위원입니다.
-JSON 배열 형식으로만 문제를 출력하십시오.`;
+JSON 배열 형식으로만 문제를 출력하십시오.
+${getNotebookLmGroundedPromptBlock('quiz')}`;
 
     const enrichedGenerationPrompt = `${prompt}
 
@@ -1360,7 +1362,10 @@ let parsedArray = null;
       question: cleanQuizQuestion(q.question)
     }));
 
-    let deduplicated = deduplicateQuestions(cleanedQuestions);
+    let deduplicated = verifyQuizQuestionsGrounding(
+      deduplicateQuestions(cleanedQuestions),
+      { fileText, kcscGrounding, wikiGrounding }
+    );
 
     // 🚨 [13문제 완결 보장 검증]: 만약 일반 토픽인데 최종 문항 수가 13문항에 미달하는 경우, 부족한 수만큼 즉시 보충 생성
     if (topic.category !== '계산' && deduplicated.length < 13) {
@@ -2367,154 +2372,7 @@ router.post('/schedules/bonus/complete', async (req, res) => {
   }
 });
 
-export const LOCAL_FORMULA_DICTIONARY = [
-  {
-    keywords: ['C_v', 'm_v', '\\gamma_w', 'u', 'z', 't', '\\partial'],
-    title: '테르자기 1차 압밀방정식(Terzaghi 1D Consolidation, $C_v$)',
-    concept: '외부 점진/순간 하중 재하 시 시간이 경과함에 따라 과잉간극수압이 상하 배수층을 통해 소산되어 나가는 속도를 규정한 1차원 미분방정식',
-    formula: `1) 압밀방정식 (Governing Equation):
-$$\\frac{\\partial u}{\\partial t} = C_v \\frac{\\partial^2 u}{\\partial z^2}$$
-
-- $u$: 과잉간극수압 (Excess Pore Water Pressure)
-- $t$: 압밀 경과 시간 (Time)
-- $z$: 점토층 내의 배수 거리 방향 깊이
-- $C_v$: 압밀계수 (Coefficient of Consolidation)
-
-2) 압밀계수 ($C_v$)의 정의:
-$$C_v = \\frac{k}{m_v \\gamma_w} = \\frac{k(1+e_0)}{a_v \\gamma_w}$$
-
-- $k$: 점토의 투수계수 (Coefficient of Permeability)
-- $m_v$: 체적압축계수(체적변화계수) (Coefficient of Volume Compressibility)
-- $\\gamma_w$: 물의 단위중량 (Unit Weight of Water)`,
-    structure: `- $u$: 과잉간극수압\n- $t$: 압밀 경과 시간\n- $z$: 배수 거리 깊이\n- $C_v$: 압밀계수`
-  },
-  {
-    keywords: ['q_{ult}', 'N_c', 'N_q', 'N_{\\gamma}', 'c', 'B', 'D_f'],
-    title: '테르자기 극한지지력(Terzaghi Ultimate Bearing Capacity, $q_{ult}$)',
-    concept: '흙의 전단파괴 형상을 대수나선 등으로 모델화하여 기초 저면 아래 지반이 전단 파괴 없이 지탱할 수 있는 최대 하중 강도 식',
-    formula: `Terzaghi 극한 지지력:
-$$q_{ult} = c N_c + q N_q + 0.5 \\gamma B N_{\\gamma}$$
-
-- $q_{ult}$: 극한 지지력
-- $c$: 흙의 점착력
-- $q$: 기초 저면의 유효상재하중 ($\\gamma D_f$)
-- $\\gamma$: 기초 저면 아래 흙의 단위중량
-- $B$: 기초의 폭 (단변 길이)
-- $N_c, N_q, N_{\\gamma}$: 지반 지지력 계수`,
-    structure: `- $q_{ult}$: 극한 지지력\n- $c$: 흙의 점착력\n- $q$: 기초 저면의 유효상재하중 ($\\gamma D_f$)\n- $\\gamma$: 기초 저면 아래 흙의 단위중량\n- $B$: 기초의 폭 (단변 길이)\n- $N_c, N_q, N_{\\gamma}$: 지반 지지력 계수`
-  },
-  {
-    keywords: ['Q', 'RQD', 'J_n', 'J_r', 'J_a', 'J_w', 'SRF'],
-    title: '바톤 암반 Q분류(Barton Q-system, $Q$)',
-    concept: '암반의 공학적 특성을 6가지 독립된 변수를 통해 정량화하여 터널 1차 지보 설계를 설계하는 지수 공식',
-    formula: `암반 등급 Q지수 식:
-$$Q = \\frac{RQD}{J_n} \\times \\frac{J_r}{J_a} \\times \\frac{J_w}{SRF}$$
-
-- $Q$: 암반 등급 지수
-- $RQD$: 암질지수 (Rock Quality Designation)
-- $J_n$: 절리군 수 (Joint set number)
-- $J_r$: 절리면 거칠기 계수 (Joint roughness number)
-- $J_a$: 절리면 변질 계수 (Joint alteration number)
-- $J_w$: 절리수 보정 계수 (Joint water reduction factor)
-- $SRF$: 응력 감소 계수 (Stress Reduction Factor)`,
-    structure: `- $Q$: 암반 등급 지수\n- $RQD$: 암질지수 (Rock Quality Designation)\n- $J_n$: 절리군 수 (Joint set number)\n- $J_r$: 절리면 거칠기 계수 (Joint roughness number)\n- $J_a$: 절리면 변질 계수 (Joint alteration number)\n- $J_w$: 절리수 보정 계수 (Joint water reduction factor)\n- $SRF$: 응력 감소 계수 (Stress Reduction Factor)`
-  },
-  {
-    keywords: ['H', 'q', 'q_a', '\\tan\\theta'],
-    title: '연약지반 샌드매트 최소두께(Sand Mat Minimum Thickness, $H$)',
-    concept: '표층 개량 및 연약지반 상부에 무거운 주행성 장비(Trafficability)를 얹기 위한 하중 지지 소요 두께식',
-    formula: `샌드매트 최소 두께 식:
-$$H = \\sqrt{\\frac{q - q_a}{\\gamma \\tan \\theta}}$$
-
-- $H$: 샌드매트의 소요 최소 두께
-- $q$: 포설 장비의 접지압
-- $q_a$: 지반의 허용 지지력
-- $\\gamma$: 모래의 단위중량
-- $\\theta$: 하중 분산각 (일반적으로 $45^\\circ$ 적용)`,
-    structure: `- $H$: 샌드매트의 소요 최소 두께\n- $q$: 포설 장비의 접지압\n- $q_a$: 지반의 허용 지지력\n- $\\gamma$: 모래의 단위중량\n- $\\theta$: 하중 분산각 (일반적으로 $45^\\circ$ 적용)`
-  },
-  {
-    keywords: ['r', 'R', '\\alpha', 'sin', '45'],
-    title: '슈미트네트 극점반경(Schmidt Net Pole Radius, $r$)',
-    concept: '통계적 밀도 보정을 위해 면적 왜곡을 줄인 슈미트 네트(Schmidt Net) 평면 변환 투영식',
-    formula: `극점 반경 식:
-$$r = \\sqrt{2} R \\sin\\left(45^\\circ - \\frac{\\alpha}{2}\\right)$$
-
-- $r$: 투영원 중심으로부터 극점(Pole)까지의 평면 거리
-- $R$: 투영구(Sphere)의 반경
-- $\\alpha$: 불연속면의 경사각 (Dip angle)`,
-    structure: `- $r$: 투영원 중심으로부터 극점(Pole)까지의 평면 거리\n- $R$: 투영구(Sphere)의 반경\n- $\\alpha$: 불연속면의 경사각 (Dip angle)`
-  },
-  {
-    keywords: ['P', '\\tau_{allow}', 'd', 'L', '\\pi'],
-    title: '락볼트 고착력 계산식(Rockbolt Bond Strength, $P$)',
-    concept: '인발 하중 재하 시 천공홀 배면의 마찰 부착 면적을 기반으로 볼트 탈락에 지탱하는 한계 고착력 식',
-    formula: `락볼트 허용 지지력 식:
-$$P = \\pi d L \\tau_{allow}$$
-
-- $P$: 락볼트의 최대 허용 인발 저항력 (인발 하중)
-- $d$: 락볼트 천공 구멍의 직경
-- $L$: 그라우팅 정착 길이 (고착 영역)
-- $\\tau_{allow}$: 지반과 그라우팅재 간의 허용 부착 전단강도`,
-    structure: `- $P$: 락볼트의 최대 허용 인발 저항력 (인발 하중)\n- $d$: 락볼트 천공 구멍의 직경\n- $L$: 그라우팅 정착 길이 (고착 영역)\n- $\\tau_{allow}$: 지반과 그라우팅재 간의 허용 부착 전단강도`
-  },
-  {
-    keywords: ['K_a', 'K_p', 'p_a', '\\phi', '\\sin\\phi'],
-    title: '랭킹 주동토압계수(Rankine Active Earth Pressure Coefficient, $K_a$)',
-    concept: '지반이 인장 변형을 일으켜 한계 주동 소성 평형 상태에 도달할 때 가설 옹벽 배면에 수평으로 밀어내는 토압식',
-    formula: `랭킹 주동토압계수 식:
-$$K_a = \\tan^2\\left(45^\\circ - \\frac{\\phi}{2}\\right) = \\frac{1 - \\sin\\phi}{1 + \\sin\\phi}$$
-
-- $K_a$: 주동토압 계수
-- $K_p$: 수동토압 계수
-- $\\phi$: 흙의 내부마찰각
-- $p_a$: 주동토압 강도
-- $c$: 흙의 점착력
-- $\\gamma$: 흙의 단위중량
-- $z$: 검토 단면 깊이`,
-    structure: `- $K_a$: 주동토압 계수\n- $K_p$: 수동토압 계수\n- $\\phi$: 흙의 내부마찰각\n- $p_a$: 주동토압 강도\n- $c$: 흙의 점착력\n- $\\gamma$: 흙의 단위중량\n- $z$: 검토 단면 깊이`
-  },
-  {
-    keywords: ['C', 'D_f', 'q_{net}'],
-    title: '보상기초 보상도(Compensated Foundation Safety Factor, $C$)',
-    concept: '구조물 자중을 굴착한 흙의 총 중량으로 완벽히 치환 상쇄하여 순 침하 하중을 Zero로 수렴시키는 평가 공식',
-    formula: `보상기초 보상도 식:
-$$C = \\frac{\\gamma D_f}{q}$$
-
-- $C$: 보상도 ($C = 1.0$ 이면 완전 보상)
-- $\\gamma$: 굴착하여 배출한 흙의 단위중량
-- $D_f$: 기초의 굴착 깊이
-- $q$: 상부 구조물 총 자중 및 하중 합산값
-- $q_{net}$: 지반이 추가로 받는 순하중 ($q_{net} = q - \\gamma D_f$)`,
-    structure: `- $C$: 보상도 ($C = 1.0$ 이면 완전 보상)\n- $\\gamma$: 굴착하여 배출한 흙의 단위중량\n- $D_f$: 기초의 굴착 깊이\n- $q$: 상부 구조물 총 자중 및 하중 합산값\n- $q_{net}$: 지반이 추가로 받는 순하중 ($q_{net} = q - \\gamma D_f$)`
-  },
-  {
-    keywords: ['p_w', '\\gamma_w', 'H'],
-    title: '싱글쉘 터널 설계수압(Single Shell Tunnel Design Water Pressure, $p_w$)',
-    concept: '방수가 완벽히 차단된 비배수 터널 아치 배면에 상부 수위 높이에 비례하여 수직으로 가해지는 정수압식',
-    formula: `설계수압 식:
-$$p_w = \\gamma_w H$$
-
-- $p_w$: 라이닝 배면 작용 설계 수압
-- $\\gamma_w$: 지하수(물)의 단위중량 ($9.81\\,\\text{kN/m}^3$)
-- $H$: 설계 지하수위 면으로부터 터널 아치 정상까지의 수직 거리 (수두 높이)`,
-    structure: `- $p_w$: 라이닝 배면 작용 설계 수압\n- $\\gamma_w$: 지하수(물)의 단위중량 ($9.81\\,\\text{kN/m}^3$)\n- $H$: 설계 지하수위 면으로부터 터널 아치 정상까지의 수직 거리 (수두 높이)`
-  },
-  {
-    keywords: ['k_h', 'k_{h0}', 'B_H', 'E_0', 'N', '2800'],
-    title: '가설흙막이 수평지반반력계수(Temporary Retaining Wall Horizontal Subgrade Reaction Coefficient, $k_h$)',
-    concept: '벽체 배면의 지반 탄소성 반응을 등가의 선형 탄성 연속 압축 스프링 강성값으로 치환하는 반력 산정식',
-    formula: `수평 지반반력계수 식:
-$$k_h = k_{h0} \\left(\\frac{B_H}{0.3}\\right)^{-3/4}$$
-
-- $k_h$: 설계 수평 지반반력계수 (탄성 스프링 상수)
-- $k_{h0}$: 표준 수평 지반반력계수
-- $B_H$: 가상의 기초 환산폭
-- $E_0$: 지반의 탄성계수 ($E_0 = 2800 N$)
-- $N$: 표준관입시험 N치`,
-    structure: `- $k_h$: 설계 수평 지반반력계수 (탄성 스프링 상수)\n- $k_{h0}$: 표준 수평 지반반력계수\n- $B_H$: 가상의 기초 환산폭\n- $E_0$: 지반의 탄성계수 ($E_0 = 2800 N$)\n- $N$: 표준관입시험 N치`
-  }
-];
+export const LOCAL_FORMULA_DICTIONARY = [];
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -2842,7 +2700,7 @@ ${adjustmentsPrompt}
    - 주관식 (type: "주관식", subtype: "단답형"): 1문제 (구체적인 실무 문제점/시나리오를 질문으로 제시하고 핵심 키워드 강조가 들어간 1줄 서술형 모범답안으로 답하는 단답형 문제)
    - 주관식 (type: "주관식 (그래프해석)"): 1문제 (기술사 시험에 도움이 될 수 있도록 토픽의 공학적 거동이나 상관관계를 꿰뚫어 보여주는 분석적 인터랙티브 차트(Chart Plugin) JSON 블록(\`\`\`chart ... \`\`\`)을 질문(question) 텍스트의 **맨 마지막**에 반드시 포함하고, 수험생이 이 그래프를 분석하여 서술형으로 답하게 하는 고품격 그래프 해석 주관식 문제)
 2. 그래프 해석 주관식 출제 지침 (극도로 중요):
-   - 해당 토픽의 핵심을 가장 잘 보여줄 수 있는 유의미한 변수 간의 관계(예: 심도별 응력 분포, 하중-침하 곡선, 응력 경로 등)를 동적 인터랙티브 차트로 도출하십시오.
+   - 해당 토픽의 핵심을 가장 잘 보여줄 수 있는 유의미한 변수 간의 관계를 동적 인터랙티브 차트로 도출하십시오.
    - 🚨 [데이터 조밀도 2배 증가 지침]: 차트 데이터 배열(data)을 생성할 때 X축의 간격을 2배 이상 촘촘하게(조밀하게) 쪼개어 구성하십시오. 점(Data point)의 개수를 최소 8개 이상으로 생성하여, 곡선의 경향성이 훨씬 부드럽고 정밀하게 표현되도록 하십시오.
    - 차트 작성 시 Chart Plugin의 마크다운 블록 문법(\`\`\`chart JSON... \`\`\`)을 정확히 준수하여 "question" 필드 내용의 마지막에 삽입하십시오.
    - 모범답안(answer)은 단순 수치 나열이 아닌, 그래프가 시사하는 공학적 의미나 설계/시공 시 주의사항을 기술사 수준으로 서술해야 합니다.
@@ -2854,7 +2712,7 @@ ${adjustmentsPrompt}
 
 [환각 방지 철칙 (Anti-Hallucination Constraints)]:
 1. 제공된 소스 문서 텍스트(<Source_Document>) 내에 명시적 수치, 허용 안전율, 설계기준(KDS/KCS) 조항 번호나 공식이 없는 경우, 임의로 수식을 유도하거나 외부 시방서 수치 한계를 날조(Hallucination)하지 마십시오.
-2. 문서 범위를 벗어나는 역학적 수치나 비물리적 수치(예: 내부마찰각 60도 이상 등)를 창작하여 모순을 발생시키면 안 됩니다. 수치가 부족하다면 정량 계산 문제 출제를 즉시 우회하고 개념 이해형 문제로 대체하십시오.
+2. 문서 범위를 벗어나는 역학적 수치나 비물리적 수치를 창작하여 모순을 발생시키면 안 됩니다. 수치가 부족하다면 정량 계산 문제 출제를 즉시 우회하고 개념 이해형 문제로 대체하십시오.
 
 ${LATEX_PROMPT_INSTRUCTIONS}
 ${GENERATION_STANDARDS}
@@ -3066,26 +2924,7 @@ ${ENGINEERING_STANDARDS}
       console.warn('Error reading theory sessions for comprehensive exam:', dbErr);
     }
 
-    // Load defaults if empty
-    if (customTheories.length === 0) {
-      customTheories = [
-        {
-          title: "Terzaghi 1차원 압밀 지배방정식 유도",
-          concept: "점토층 내 과잉간극수압의 소산 및 침하 시간적 추이를 물리적으로 정밀 묘사하는 지배방정식",
-          formula: "지배 미분방정식:\n$$\\frac{\\partial u}{\\partial t} = C_v \\frac{\\partial^2 u}{\\partial z^2}$$\n\n[주요 유도 가정]:\n1. 흙입자와 물은 압축성이 없음(비압축성)\n2. 흙 속 물의 흐름은 Darcy 법칙을 따름 ($v = k i$)\n3. 압밀은 1차원으로만 진행되며 흙의 공극비 변화는 유효응력 증가에 선형 비례함 ($a_v$ 일정)"
-        },
-        {
-          title: "Terzaghi 얕은기초 극한지지력 공식의 유도",
-          concept: "기초 저면 아래 지반의 전단 전파 거동(일반 전단 파괴)을 극한 상태 한계 평형으로 수치화한 지지력 공식",
-          formula: "Terzaghi 극한 지지력:\n$$q_{ult} = c N_c + q N_q + 0.5 \\gamma B N_{\\gamma}$$\n\n[유도 메커니즘]:\n- 지반 파괴 영역을 3개 zone(Zone I: 탄성 쐐기, Zone II: 대수나선 방사형 전단 영역, Zone III: Rankine 수동 수평 지반 영역)으로 분할하여 상부 하중 벡터와 전단 저항 한계선 결합"
-        },
-        {
-          title: "Rankine 주동토압 공식의 이론적 유도",
-          concept: "지반이 가설 벽체 배면 방향으로 팽창 변형을 일으켜 한계 인장 소성 상태에 도달할 때의 수평 응력",
-          formula: "주동토압 강도 식:\n$$p_a = \\gamma z K_a - 2 c \\sqrt{K_a}$$\n\n[주요 유도 공식]:\n- Mohr-Coulomb 파괴 포락선과 Mohr 응력원의 접점 기하학적 분석을 통하여 $K_a = \\tan^2(45^\\circ - \\phi/2)$ 수식 도출"
-        }
-      ];
-    }
+    // Do not inject hardcoded fallback theories when DB theory_questions is empty
 
     // Shuffle and select formula questions and theory questions based on limits
     const shuffledFormulas = [...customFormulas].sort(() => 0.5 - Math.random());
@@ -3246,26 +3085,7 @@ router.post('/exam/additional', async (req, res) => {
       console.warn('Error reading theory sessions for comprehensive exam refresh:', dbErr);
     }
 
-    // Load defaults if empty
-    if (customTheories.length === 0) {
-      customTheories = [
-        {
-          title: "Terzaghi 1차원 압밀 지배방정식 유도",
-          concept: "점토층 내 과잉간극수압의 소산 및 침하 시간적 추이를 물리적으로 정밀 묘사하는 지배방정식",
-          formula: "지배 미분방정식:\n$$\\frac{\\partial u}{\\partial t} = C_v \\frac{\\partial^2 u}{\\partial z^2}$$\n\n[주요 유도 가정]:\n1. 흙입자와 물은 압축성이 없음(비압축성)\n2. 흙 속 물의 흐름은 Darcy 법칙을 따름 ($v = k i$)\n3. 압밀은 1차원으로만 진행되며 흙의 공극비 변화는 유효응력 증가에 선형 비례함 ($a_v$ 일정)"
-        },
-        {
-          title: "Terzaghi 얕은기초 극한지지력 공식의 유도",
-          concept: "기초 저면 아래 지반의 전단 전파 거동(일반 전단 파괴)을 극한 상태 한계 평형으로 수치화한 지지력 공식",
-          formula: "Terzaghi 극한 지지력:\n$$q_{ult} = c N_c + q N_q + 0.5 \\gamma B N_{\\gamma}$$\n\n[유도 메커니즘]:\n- 지반 파괴 영역을 3개 zone(Zone I: 탄성 쐐기, Zone II: 대수나선 방사형 전단 영역, Zone III: Rankine 수동 수평 지반 영역)으로 분할하여 상부 하중 벡터와 전단 저항 한계선 결합"
-        },
-        {
-          title: "Rankine 주동토압 공식의 이론적 유도",
-          concept: "지반이 가설 벽체 배면 방향으로 팽창 변형을 일으켜 한계 인장 소성 상태에 도달할 때의 수평 응력",
-          formula: "주동토압 강도 식:\n$$p_a = \\gamma z K_a - 2 c \\sqrt{K_a}$$\n\n[주요 유도 공식]:\n- Mohr-Coulomb 파괴 포락선과 Mohr 응력원의 접점 기하학적 분석을 통하여 $K_a = \\tan^2(45^\\circ - \\phi/2)$ 수식 도출"
-        }
-      ];
-    }
+    // Do not inject hardcoded fallback theories when DB theory_questions is empty
 
     // Select 1 formula and 1 theory randomly
     const shuffledFormulas = [...customFormulas].sort(() => 0.5 - Math.random());
@@ -3385,7 +3205,7 @@ ${theoriesText || '인용된 내용 없음'}
 
 [환각 방지 철칙 (Anti-Hallucination Constraints)]:
 1. 제공된 소스 문서 텍스트(<Source_Document>) 내에 명시적 수치, 허용 안전율, 설계기준(KDS/KCS) 조항 번호나 공식이 없는 경우, 임의로 수식을 유도하거나 외부 시방서 수치 한계를 날조(Hallucination)하지 마십시오.
-2. 문서 범위를 벗어나는 역학적 수치나 비물리적 수치(예: 내부마찰각 60도 이상 등)를 창작하여 모순을 발생시키면 안 됩니다. 수치가 부족하다면 정량 계산 문제 출제를 즉시 우회하고 개념 이해형 문제로 대체하십시오.
+2. 문서 범위를 벗어나는 역학적 수치나 비물리적 수치를 창작하여 모순을 발생시키면 안 됩니다. 수치가 부족하다면 정량 계산 문제 출제를 즉시 우회하고 개념 이해형 문제로 대체하십시오.
 
 ${LATEX_PROMPT_INSTRUCTIONS}
 ${GENERATION_STANDARDS}
@@ -3442,22 +3262,7 @@ ${ENGINEERING_STANDARDS}
       }
     }
 
-    if (aggregatedAiQuestions.length === 0) {
-      aggregatedAiQuestions = [
-        {
-          type: "객관식",
-          question: "점성토 지반의 압밀 시험에서 하중 압력 변화에 따른 공극비($e$)와 대수 유효 압력($\\log \\sigma'$) 곡선(e-log p 곡선) 상의 주요 거동 특성에 대한 설명으로 가장 적절하지 않은 것은?",
-          options: [
-            "압축지수($C_c$)는 규정 압축 영역에서의 직선 기울기로 정의되며, 지반의 소성 활성도가 높을수록 감소한다.",
-            "선행압밀하중($p_c$)은 흙이 과거에 받았던 최대 유효 연직응력이다.",
-            "재압축지수($C_r$)는 팽창 및 재압축 구간의 평균 기울기로, 일반적으로 압축지수의 1/5 ~ 1/10 정도 수준이다.",
-            "과압밀비(OCR)가 1보다 큰 점토는 전단 시험 시 전단 변형에 의한 체적 팽창(Dilatancy) 거동을 보일 수 있다."
-          ],
-          answer: "압축지수($C_c$)는 규정 압축 영역에서의 직선 기울기로 정의되며, 지반의 소성 활성도가 높을수록 감소한다.",
-          explanation: "지반의 소성 활성도가 높고 압축성이 클수록 압축지수($C_c$)는 오히려 증가합니다."
-        }
-      ];
-    }
+    // Do not inject hardcoded consolidation fallback questions when AI generation returns empty
 
     const topicMap = {};
     topics.forEach(t => {

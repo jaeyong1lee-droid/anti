@@ -11,6 +11,7 @@ import { FLOWCHART_QUIZ_GENERATION_PROMPT } from '../plugins/flowchartQuizPlugin
 import * as ocrPlugin from '../plugins/calculationPlugin.js';
 import { getKcscVerificationContext } from '../services/kcscService.js';
 import { getWikipediaKnowledge } from '../services/wikipediaService.js';
+import { verifyQuote, detectMultipleCandidates, verifyGroundedGradingResult, buildFactDossier } from '../services/quoteVerifierService.js';
 
 const router = express.Router();
 const BT = '```';
@@ -30,9 +31,9 @@ function getActiveEngineeringStandards() {
 const LATEX_PROMPT_INSTRUCTIONS = `
 [수학 공식/특수문자 표기 규칙 - 극도로 중요]:
 1. 인라인(글 중간)에 수학 공식이나 물리적 변수(예: kh, kv 등)를 적을 때는 반드시 단일 달러 기호 하나로 감싸서 LaTeX 형식으로 작성하십시오. (예: $k_h$, $k_v$, $\\beta$ 등)
-2. 디스플레이(독립된 단락) 수학 공식을 작성할 때는 반드시 이중 달러 기호로 감싸서 작성하십시오. (예: $$k_e = \\sqrt{k_h k_v}$$)
+2. 디스플레이(독립된 단락) 수학 공식을 작성할 때는 반드시 이중 달러 기호($...$)로 감싸서 작성하십시오.
 3. 역슬래시 문자는 이스케이프가 중복 처리되지 않도록 한 번만 적어 전달되도록 주의하십시오.
-4. 이중 아래첨자(예: \\Delta_h_w, \\sigma_v_0) 절대 금지: $\\Delta h_w$ (공백 분리) 또는 $\\Delta_{hw}$처럼 중괄호({})로 묶거나 공백으로 분리하십시오.
+4. 이중 아래첨자 표기는 절대 금지하며, 중괄호({})로 묶거나 공백으로 분리하여 작성하십시오.
 `;
 
 function cleanQuizQuestion(q) {
@@ -181,6 +182,61 @@ router.post('/grade-subjective', async (req, res) => {
   } catch (outerErr) {
     console.error('Outer AI grading error:', outerErr);
     res.status(500).json({ error: '서버 오류로 채점을 수행하지 못했습니다.' });
+  }
+});
+
+// POST /api/verify-grounding -> NotebookLM 방식 원문 1:1 인용 검증기 (Option B - Mobile/Cloud Native)
+router.post('/verify-grounding', async (req, res) => {
+  try {
+    const {
+      quote = '',
+      targetText = '',
+      question = '',
+      correctAnswer = '',
+      explanation = '',
+      topicId = null,
+      category = ''
+    } = req.body || {};
+
+    const searchQuery = `${question || ''} ${quote || targetText || ''}`.trim();
+    const [topicRes, kcscRes, wikiRes] = await Promise.allSettled([
+      topicId ? getMatchingTopicContent(searchQuery, topicId, 5000) : Promise.resolve(''),
+      getKcscVerificationContext(searchQuery, category),
+      getWikipediaKnowledge(searchQuery)
+    ]);
+
+    const topicGrounding = topicRes.status === 'fulfilled' ? (topicRes.value || '') : '';
+    const kcscContext = kcscRes.status === 'fulfilled' ? (kcscRes.value || '') : '';
+    const wikiGrounding = wikiRes.status === 'fulfilled' ? (wikiRes.value || '') : '';
+    const combinedExplanation = [explanation, topicGrounding].filter(Boolean).join('\n\n');
+
+    const dossier = buildFactDossier({
+      explanation: combinedExplanation,
+      kcscContext,
+      wikiGrounding
+    });
+
+    const directQuoteCheck = quote ? verifyQuote(quote, dossier.fullText) : null;
+    const multiCandidateCheck = quote ? detectMultipleCandidates(quote, dossier.fullText) : null;
+    const fullGradingCheck = verifyGroundedGradingResult({
+      question,
+      correctAnswer,
+      authoritativeModelAnswer: targetText || quote,
+      explanation: combinedExplanation,
+      kcscContext,
+      wikiGrounding
+    });
+
+    return res.json({
+      success: true,
+      directQuoteCheck,
+      multiCandidateCheck,
+      groundingVerification: fullGradingCheck.groundingVerification,
+      sanitizedText: fullGradingCheck.sanitizedModelAnswer
+    });
+  } catch (err) {
+    console.error('POST /api/verify-grounding error:', err);
+    return res.status(500).json({ error: err.message });
   }
 });
 
@@ -812,7 +868,7 @@ ${otherQs.map((q, i) => `기존 문제 ${i + 1}: ${q.question || '없음'}`).joi
                             
         if (isCalcTable) {
           typeRequirement = `[수치 계산용 2열 표채우기 유형으로 생성하십시오]
-- 🚨 **[기계적 파서 철칙]**: AI는 임의로 공학적 분석이나 새로운 지문을 창작하지 마십시오. 오직 첨부된 이미지/지문에서 "구하시오" 또는 "나타내시오"로 요구한 항목들만 있는 그대로 각각의 행과 \`[INPUT_N]\`으로 분리하십시오. 지문에 없는 용어(간극비, 포화도, 유효응력, 침투수량 등)를 절대로 지어내지 마십시오.`;
+- 🚨 **[기계적 파서 철칙]**: AI는 임의로 공학적 분석이나 새로운 지문을 창작하지 마십시오. 오직 첨부된 이미지/지문에서 "구하시오" 또는 "나타내시오"로 요구한 항목들만 있는 그대로 각각의 행과 \`[INPUT_N]\`으로 분리하십시오. 지문에 없는 용어를 절대로 지어내지 마십시오.`;
           formatRequirement = `{"type": "주관식 (표채우기)", "question": "실제 문제 지문 그대로 복사", "tableData": {"headers": ["구하는 항목", "계산 결과 및 답안"], "rows": [["(1) 지문에서 요구한 첫번째 항목명", "[INPUT_1]"], ["(2) 지문에서 요구한 두번째 항목명", "[INPUT_2]"]]}, "answers": {"INPUT_1": "정답 풀이 1", "INPUT_2": "정답 풀이 2"}, "explanation": "해설 (🚨 반드시 마지막에 📚 참조 문헌(Standards & Literature) 출처 2~3개 명시)"}`;
         } else {
           typeRequirement = `[주관식 (표채우기) 비교용 다열 표 유형으로 생성하십시오]
@@ -1462,14 +1518,14 @@ ${groundingBlock ? `\n[🔍 공학 표준 근거 자료 (원보고서 · KCSC �
 
 [검증 및 연산 수칙]:
 1. 문제를 분석하여 제시된 보기 중 가장 적절한 정답을 찾으십시오.
-${isCalc ? `2. 지문의 모든 단위를 정확히 환산하여 대입하고, "mathExpression" 필드에 최종 계산할 순수 산술 수식(예: "(4 * 0.0728) / (9810 * 0.00008)")을 작성하십시오.` : ''}
+${isCalc ? `2. 지문의 모든 단위를 정확히 환산하여 대입하고, "mathExpression" 필드에 최종 계산할 순수 사칙연산 수식 문자열을 작성하십시오.` : ''}
 3. 반드시 "explanation"(해설) 필드를 가장 먼저 작성하여 공식 대입과 수치 계산을 끝까지 완료한 후, 그 최종 결론과 100% 일치하는 보기를 "correctIndex"와 "correctAnswer"로 지정하십시오. 해설 내에 '잠시 계산을 검토합니다'와 같은 독백이나 자기모순 문구를 절대 출력하지 마십시오.
 4. 해설(explanation) 작성 시, 절대 "0번 보기", "1번 보기", "네 번째 보기"와 같이 보기 번호나 순번을 지칭하지 말고 보기의 수식/내용 자체를 직접 인용하여 설명하십시오. 해설 하단에는 줄바꿈 후 '💡 **직관적 의미**: [핵심 공학적 의미 1~2문장]'을 포함하십시오.
 
 [반환 JSON 응답 규격 (필드 순서 엄수: explanation -> correctIndex -> correctAnswer)]:
 {
   "explanation": "LaTeX 수식이 포함된 명확하고 수려한 정밀 풀이 해설\\n\\n💡 **직관적 의미**: 정답이 내포하는 핵심 공학적 본질 1~2문장",
-  ${isCalc ? `"mathExpression": "(4 * 0.0728) / (9810 * 0.00008)",` : ''}
+  ${isCalc ? `"mathExpression": "순수 사칙연산 수식 문자열",` : ''}
   "correctIndex": 0,
   "correctAnswer": "제시된 보기(Options) 배열 중 정답에 해당하는 항목의 전체 문자열 그대로"
 }

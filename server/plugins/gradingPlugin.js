@@ -3,6 +3,11 @@
  */
 import { ENGINEERING_STANDARDS } from './engineeringStandards.js';
 import { LATEX_PROMPT_INSTRUCTIONS, parseLlmJson, healLatexFormulas } from '../utils/latexUtils.js';
+import {
+  getNotebookLmGroundedPromptBlock,
+  verifyGroundedGradingResult,
+  sanitizeUnfoundedBlockFormulas
+} from '../services/quoteVerifierService.js';
 
 export const baseSystemInstruction = `당신은 지반공학 및 토목공학 전문 채점관입니다.
 주어진 문제 맥락(question), 모범 답안(correctAnswer), 그리고 사용자가 입력한 답(userAnswer)을 비교하여 정답 여부(isCorrect) 및 부분점수(score, 0~10점)를 판정하십시오.
@@ -173,7 +178,7 @@ ${isReevaluation ? `🚨 **[심층 모범 답안 도출 철칙]**:
 6. 💡 **[정답 하단 직관적 의미 필수 추가 철칙 - 극도로 중요!]**: 모범 답안 맨 마지막 줄(공학적 설명 하단)에 **반드시 빈 줄(엔터 2번)을 띄운 뒤** 다음 형식으로 직관적 의미를 1~2문장으로 명시하십시오:
 
 💡 **직관적 의미**: [해당 원리나 개념의 물리적 본질, 핵심 메커니즘 또는 실무적 의미를 한눈에 직관적으로 단번에 이해할 수 있는 명쾌하고 쉬운 비유나 설명 1~2문장]
-`;
+${getNotebookLmGroundedPromptBlock('grading')}`;
 
   try {
     const gStandards = gradingStandards || GRADING_STANDARDS;
@@ -252,6 +257,15 @@ ${LATEX_PROMPT_INSTRUCTIONS}`;
       cleanAnswer = healLatexFormulas(cleanAnswer);
     }
 
+    // 4) 🛡️ NotebookLM 방식 사료 번들(Fact Dossier) 대조: 무관한 블록 수식 환각 즉시 정제
+    const dossierCombined = [explanation, kcscContext, wikiGrounding].filter(Boolean).join('\n\n');
+    const formulaSanitized = sanitizeUnfoundedBlockFormulas(cleanAnswer, {
+      dossierText: dossierCombined,
+      question,
+      correctAnswer
+    });
+    cleanAnswer = formulaSanitized.sanitizedText;
+
     if (cleanAnswer.length > 0 && !/^(success|ok|true|false)$/i.test(cleanAnswer)) {
       return cleanAnswer;
     }
@@ -279,11 +293,26 @@ export async function gradeSubjective({ question, correctAnswer, userAnswer, row
       kcscContext,
       wikiGrounding
     });
-    return { isCorrect: true, score: 10, reason: '텍스트가 모범 답안과 정확히 일치합니다.', suggestedModelAnswer: richModelAnswer };
+    const groundedCheck = verifyGroundedGradingResult({
+      question,
+      correctAnswer,
+      authoritativeModelAnswer: richModelAnswer,
+      reason: '텍스트가 모범 답안과 정확히 일치합니다.',
+      explanation,
+      kcscContext,
+      wikiGrounding
+    });
+    return {
+      isCorrect: true,
+      score: 10,
+      reason: '텍스트가 모범 답안과 정확히 일치합니다.',
+      suggestedModelAnswer: groundedCheck.sanitizedModelAnswer,
+      groundingVerification: groundedCheck.groundingVerification
+    };
   }
 
   // 1. Generate Authoritative Model Answer (userAnswer is COMPLETELY ISOLATED from prompt)
-  const authoritativeModelAnswer = await generateAuthoritativeModelAnswer({
+  const rawAuthoritativeModelAnswer = await generateAuthoritativeModelAnswer({
     question,
     correctAnswer,
     rowHeader,
@@ -297,6 +326,17 @@ export async function gradeSubjective({ question, correctAnswer, userAnswer, row
     kcscContext,
     wikiGrounding
   });
+
+  // 🛡️ 1-B. NotebookLM 방식 1:1 원문 인용 및 수식 환각 검증 (QuoteVerifier & GroundingVerifier)
+  const groundedVerificationResult = verifyGroundedGradingResult({
+    question,
+    correctAnswer,
+    authoritativeModelAnswer: rawAuthoritativeModelAnswer,
+    explanation,
+    kcscContext,
+    wikiGrounding
+  });
+  const authoritativeModelAnswer = groundedVerificationResult.sanitizedModelAnswer;
 
   // 2. Grade User Answer against the Authoritative Model Answer
   const userPrompt = `
@@ -391,7 +431,8 @@ ${((colHeader && colHeader.includes('수치 계산 답안')) || category === '�
       isCorrect: finalIsCorrect,
       score: finalScore,
       reason: finalReason,
-      suggestedModelAnswer: authoritativeModelAnswer
+      suggestedModelAnswer: authoritativeModelAnswer,
+      groundingVerification: groundedVerificationResult.groundingVerification
     };
   } catch (parseErr) {
     console.error('All JSON parsing attempts failed in AI grading. Raw text:', text, parseErr);
