@@ -1204,7 +1204,7 @@ router.post('/topics/:id/slides/generate', async (req, res) => {
 1. [개요 및 정의]: 학술적 정의, 출제 빈도, 3대 핵심 키워드, 공학적 의미
 2. [거동 메커니즘 및 역학적 원리]: 물리적 메커니즘, 원리 및 거동 모식
 3. [KDS 설계기준 및 핵심 지배공식]: 관련 국가건설기준(KDS) 조항, 핵심 지배 수식 및 변수 기호 정의
-4. [현장 시공·시험 및 품질관리 착안점]: 현장 시공 절차, 파이핑/보일링 방지 및 계측 관리, 문제 발생 시 대책
+4. [현장 시공·시험 및 품질관리 착안점]: 현장 시공·시험 절차, 계측 및 품질관리 기준, 문제 발생 시 대책
 5. [기술사 답안 차별화 결론 & 실무 제언]: 고득점 팁, 비교표, 최종 총평`;
 
       try {
@@ -1233,9 +1233,9 @@ router.post('/topics/:id/slides/generate', async (req, res) => {
     - **단일 원리·공법·메커니즘 토픽인 경우**:
       주제 특성에 맞춰 visual_component.table (구분 | 직관적 비유 | 실제 공학적 의미 비교표) 또는 bullet_points (원인/상황 → 작동 원리 → 현장 적용 효과의 간결한 3단계 핵심 정리)로 군더더기 없이 구성하십시오.
 - Slide 1 (slide_no: 1): category_tag: "서론 | 개요 & 핵심 정의" (토픽의 공학적 정의, 출제 빈도, 3대 핵심 키워드 배지, 발표 및 학습 목적)
-- Slide 2 (slide_no: 2): category_tag: "본론 ① | 거동 메커니즘 & 작도 원리" (물리적 거동 원리. 하중-침하, 응력-변형률, GRC/SCC, t-z 등 역학적 곡선 거동이 핵심인 토픽인 경우 visual_component에 동적 인터랙티브 차트("type": "chart", "chart": { "title": "...", "xAxisLabel": "...", "yAxisLabel": "...", "description": "...", "lines": [{"name": "...", "dataKey": "y1", "stroke": "#38bdf8"}], "data": [{"x": "0", "y1": 0}, ...] }) 형식을 적극 생성하십시오. 그래프보다 텍스트 비교가 적합한 경우 3단 카드("type": "summary_cards", "cards": [...])를 사용하십시오.)
+- Slide 2 (slide_no: 2): category_tag: "본론 ① | 거동 메커니즘 & 작도 원리" (물리적 거동 원리. 물리적·역학적 곡선 거동이나 변수 간 상관관계가 핵심인 토픽인 경우 visual_component에 동적 인터랙티브 차트("type": "chart", "chart": { "title": "...", "xAxisLabel": "...", "yAxisLabel": "...", "description": "...", "lines": [{"name": "...", "dataKey": "y1", "stroke": "#38bdf8"}], "data": [{"x": "0", "y1": 0}, ...] }) 형식을 적극 생성하십시오. 그래프보다 텍스트 비교가 적합한 경우 3단 카드("type": "summary_cards", "cards": [...])를 사용하십시오.)
 - Slide 3 (slide_no: 3): category_tag: "본론 ② | KDS 설계기준 & 핵심 지배공식" (국가건설기준 KDS 조항, 핵심 공식 수식 KaTeX 포맷($...$), 매개변수 정의 및 물리적 의미)
-- Slide 4 (slide_no: 4): category_tag: "본론 ③ | 실무 해석 및 현장 시공·품질관리" (단계별 시공 절차 플로우, 문제 발생 시 대책 및 한계동수경사/안전율 기준, 현장 체크포인트)
+- Slide 4 (slide_no: 4): category_tag: "본론 ③ | 실무 해석 및 현장 시공·품질관리" (단계별 시공 절차 플로우, 문제 발생 시 대책 및 허용 기준/안전율, 현장 체크포인트)
 - Slide 5 (slide_no: 5): category_tag: "결론 | 기술사 답안 결론 & 실무 제언" (고득점 차별화 포인트, 핵심 비교 매트릭스 표, 최종 총평 및 실무 제언)
 
 ${LATEX_PROMPT_INSTRUCTIONS}
@@ -1287,9 +1287,9 @@ ${LATEX_PROMPT_INSTRUCTIONS}
       "visual_component": {
         "type": "summary_cards",
         "cards": [
-          { "label": "핵심 파라미터 ($C_c$)", "content": "파라미터 정의 및 물리적 의미 설명", "highlight": true },
-          { "label": "지배 수식 ($q_u$)", "content": "수식 및 적용 조건 설명", "highlight": false },
-          { "label": "판정 기준 ($F_s$)", "content": "설계 기준값 및 안전율 판정 요건", "highlight": false }
+          { "label": "핵심 파라미터", "content": "파라미터 정의 및 물리적 의미 설명", "highlight": true },
+          { "label": "지배 수식", "content": "수식 및 적용 조건 설명", "highlight": false },
+          { "label": "판정 기준", "content": "설계 기준값 및 안전율 판정 요건", "highlight": false }
         ]
       },
       "engineer_note": "기술사 답안 작성 시 1단락 개요 서술 요령"
@@ -1606,10 +1606,7 @@ router.post('/recommend-topics', async (req, res) => {
 2. 제외 항목: 제공되는 [기존 암기 리스트]에 이미 포함된 주제는 절대 중복하여 추천하지 마십시오.
 3. 다양성: 매번 비슷한 주제만 반복하지 말고, 토질역학/기초공학/사면공학/터널 및 지하공간/토류벽/연약지반 개량 등 다양한 세부 분야에서 완전히 새롭고 다양한 주제를 고르게 무작위 추천해 주십시오.
 4. 형식: 오직 추천할 단어 3개만을 줄바꿈(\\n)으로 구분하여 깔끔하게 한글로 출력하십시오. 서론, 부연 설명, 숫자 번호(예: 1., 2.), 특수문자, 따옴표 등은 절대 포함하지 마십시오.
-5. 예시 출력 형태:
-과잉간극수압 소산 메커니즘
-사면 쐐기파괴 안정해석
-테르자기 극한지지력`;
+5. 출력 형태: 각 줄에 추천 주제명 1개씩 총 3줄만 출력하십시오.`;
 
     const userPrompt = `[기존 암기 리스트]:
 ${Array.isArray(existingTitles) ? existingTitles.join('\n') : '없음'}

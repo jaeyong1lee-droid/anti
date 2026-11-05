@@ -1,7 +1,7 @@
 export const SVG_DIAGRAM_PROMPT = `
 [🚨 정밀 SVG 다이어그램 작도 지침]:
-1. ⚠️ [그래프 기본값 철칙 - 인터랙티브 차트(Recharts) 최우선]: 그래프나 추세선, 곡선(응력-변형률 곡선, 시간-침하 곡선, 하중-변위 곡선, 토압 분포 곡선 등 2D 수치 그래프)을 표현할 때는 **반드시 마크다운 코드 블록 식별자인 \`\`\`chart (인터랙티브 Recharts)를 기본값(Default)으로 최우선 출력**하십시오. 마우스 호버 시 툴팁과 범례가 반응하는 인터랙티브 차트 작도가 기본 원칙입니다.
-2. 정밀 구조도나 단면 시각 도해(옹벽 파괴면, 지반 층상 구조 등)가 특별히 필요한 경우에 한해서만 **마크다운 코드 블록 식별자인 \`\`\`svg 를 사용하여 완전한 \`<svg>\` HTML 태그 코드를 출력**하십시오.
+1. ⚠️ [그래프 기본값 철칙 - 인터랙티브 차트(Recharts) 최우선]: 그래프나 추세선, 곡선(2D 수치 그래프 및 거동 곡선)을 표현할 때는 **반드시 마크다운 코드 블록 식별자인 \`\`\`chart (인터랙티브 Recharts)를 기본값(Default)으로 최우선 출력**하십시오. 마우스 호버 시 툴팁과 범례가 반응하는 인터랙티브 차트 작도가 기본 원칙입니다.
+2. 정밀 구조도나 단면 시각 도해가 특별히 필요한 경우에 한해서만 **마크다운 코드 블록 식별자인 \`\`\`svg 를 사용하여 완전한 \`<svg>\` HTML 태그 코드를 출력**하십시오.
    - 예시 (SVG 필요 시):
    \`\`\`svg
    <svg width="100%" viewBox="0 0 500 300" style="background-color: #1e1e1e;" xmlns="http://www.w3.org/2000/svg">
@@ -9,10 +9,10 @@ export const SVG_DIAGRAM_PROMPT = `
    </svg>
    \`\`\`
 3. [✅ 도식 내부 KaTeX 수식 표현 지원]:
-   - SVG 내부에서 텍스트 축 레이블(X축, Y축)이나 수식(기울기, 파괴각 등)을 표기할 때는 무조건 \`<foreignObject>\` 태그를 활용하고, 그 안에서 인라인 KaTeX(예: \`$s_t$\`, \`$\\theta=45^\\circ+\\phi/2$\`)를 사용하십시오.
+   - SVG 내부에서 텍스트 축 레이블(X축, Y축)이나 수식 기호를 표기할 때는 무조건 \`<foreignObject>\` 태그를 활용하고, 그 안에서 인라인 KaTeX(\`$...$\`)를 사용하십시오.
    - ⚠️ [경고]: \`<foreignObject>\` 내부에 마크다운 글머리 기호(예: \`* \`, \`- \`)를 절대로 사용하지 마십시오. 순수 텍스트와 수식만 입력하십시오.
    - 예시:
-     \`<foreignObject x="10" y="10" width="100" height="30"><div xmlns="http://www.w3.org/1999/xhtml" style="color: #fbbf24; font-weight: bold; font-size: 14px;">$s_t$</div></foreignObject>\`
+     \`<foreignObject x="10" y="10" width="100" height="30"><div xmlns="http://www.w3.org/1999/xhtml" style="color: #fbbf24; font-weight: bold; font-size: 14px;">$X$</div></foreignObject>\`
 4. [디자인 및 가독성 규칙]:
    - **그림 너비를 창너비로 맞추기 위해**, \`<svg>\` 태그에 \`width="100%"\` 속성을 부여하고 넉넉한 \`viewBox\` (예: \`viewBox="0 0 1000 500"\`)를 설정하여 가로폭을 가득 채우도록 하십시오.
    - ⚠️ **[배경색 절대 철칙]**: 바탕은 무조건 어두운/검은색 계열(\`style="background-color: #1e1e1e;"\` 또는 \`<rect width="100%" height="100%" fill="#1e1e1e"/>\`)로 설정해야 합니다. 절대로 흰색(#ffffff, white) 배경이나 흰색 채우기 사각형을 생성하지 마십시오.

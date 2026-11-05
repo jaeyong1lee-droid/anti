@@ -994,156 +994,6 @@ router.post('/formula/generate-memorization-tip', async (req, res) => {
   }
 });
 
-// LOCAL_FORMULA_DICTIONARY defined locally to prevent ESM circular dependency/order errors
-const LOCAL_FORMULA_DICTIONARY = [
-  {
-    keywords: ['C_v', 'm_v', '\\gamma_w', 'u', 'z', 't', '\\partial'],
-    title: '테르자기 1차 압밀방정식(Terzaghi 1D Consolidation, $C_v$)',
-    concept: '외부 점진/순간 하중 재하 시 시간이 경과함에 따라 과잉간극수압이 상하 배수층을 통해 소산되어 나가는 속도를 규정한 1차원 미분방정식',
-    formula: `1) 압밀방정식 (Governing Equation):
-$$\\frac{\\partial u}{\\partial t} = C_v \\frac{\\partial^2 u}{\\partial z^2}$$
-
-- $u$: 과잉간극수압 (Excess Pore Water Pressure)
-- $t$: 압밀 경과 시간 (Time)
-- $z$: 점토층 내의 배수 거리 방향 깊이
-- $C_v$: 압밀계수 (Coefficient of Consolidation)
-
-2) 압밀계수 ($C_v$)의 정의:
-$$C_v = \\frac{k}{m_v \\gamma_w} = \\frac{k(1+e_0)}{a_v \\gamma_w}$$
-
-- $k$: 점토의 투수계수 (Coefficient of Permeability)
-- $m_v$: 체적압축계수(체적변화계수) (Coefficient of Volume Compressibility)
-- $\\gamma_w$: 물의 단위중량 (Unit Weight of Water)`,
-    structure: `- $u$: 과잉간극수압\n- $t$: 압밀 경과 시간\n- $z$: 배수 거리 깊이\n- $C_v$: 압밀계수`
-  },
-  {
-    keywords: ['q_{ult}', 'N_c', 'N_q', 'N_{\\gamma}', 'c', 'B', 'D_f'],
-    title: '테르자기 극한지지력(Terzaghi Ultimate Bearing Capacity, $q_{ult}$)',
-    concept: '흙의 전단파괴 형상을 대수나선 등으로 모델화하여 기초 저면 아래 지반이 전단 파괴 없이 지탱할 수 있는 최대 하중 강도 식',
-    formula: `Terzaghi 극한 지지력:
-$$q_{ult} = c N_c + q N_q + 0.5 \\gamma B N_{\\gamma}$$
-
-- $q_{ult}$: 극한 지지력
-- $c$: 흙의 점착력
-- $q$: 기초 저면의 유효상재하중 ($\\gamma D_f$)
-- $\\gamma$: 기초 저면 아래 흙의 단위중량
-- $B$: 기초의 폭 (단변 길이)
-- $N_c, N_q, N_{\\gamma}$: 지반 지지력 계수`,
-    structure: `- $q_{ult}$: 극한 지지력\n- $c$: 흙의 점착력\n- $q$: 기초 저면의 유효상재하중 ($\\gamma D_f$)\n- $\\gamma$: 기초 저면 아래 흙의 단위중량\n- $B$: 기초의 폭 (단변 길이)\n- $N_c, N_q, N_{\\gamma}$: 지반 지지력 계수`
-  },
-  {
-    keywords: ['Q', 'RQD', 'J_n', 'J_r', 'J_a', 'J_w', 'SRF'],
-    title: '바톤 암반 Q분류(Barton Q-system, $Q$)',
-    concept: '암반의 공학적 특성을 6가지 독립된 변수를 통해 정량화하여 터널 1차 지보 설계를 설계하는 지수 공식',
-    formula: `암반 등급 Q지수 식:
-$$Q = \\frac{RQD}{J_n} \\times \\frac{J_r}{J_a} \\times \\frac{J_w}{SRF}$$
-
-- $Q$: 암반 등급 지수
-- $RQD$: 암질지수 (Rock Quality Designation)
-- $J_n$: 절리군 수 (Joint set number)
-- $J_r$: 절리면 거칠기 계수 (Joint roughness number)
-- $J_a$: 절리면 변질 계수 (Joint alteration number)
-- $J_w$: 절리수 보정 계수 (Joint water reduction factor)
-- $SRF$: 응력 감소 계수 (Stress Reduction Factor)`,
-    structure: `- $Q$: 암반 등급 지수\n- $RQD$: 암질지수 (Rock Quality Designation)\n- $J_n$: 절리군 수 (Joint set number)\n- $J_r$: 절리면 거칠기 계수 (Joint roughness number)\n- $J_a$: 절리면 변질 계수 (Joint alteration number)\n- $J_w$: 절리수 보정 계수 (Joint water reduction factor)\n- $SRF$: 응력 감소 계수 (Stress Reduction Factor)`
-  },
-  {
-    keywords: ['H', 'q', 'q_a', '\\tan\\theta'],
-    title: '연약지반 샌드매트 최소두께(Sand Mat Minimum Thickness, $H$)',
-    concept: '표층 개량 및 연약지반 상부에 무거운 주행성 장비(Trafficability)를 얹기 위한 하중 지지 소요 두께식',
-    formula: `샌드매트 최소 두께 식:
-$$H = \\sqrt{\\frac{q - q_a}{\\gamma \\tan \\theta}}$$
-
-- $H$: 샌드매트의 소요 최소 두께
-- $q$: 포설 장비의 접지압
-- $q_a$: 지반의 허용 지지력
-- $\\gamma$: 모래의 단위중량
-- $\\theta$: 하중 분산각 (일반적으로 $45^\\circ$ 적용)`,
-    structure: `- $H$: 샌드매트의 소요 최소 두께\n- $q$: 포설 장비의 접지압\n- $q_a$: 지반의 허용 지지력\n- $\\gamma$: 모래의 단위중량\n- $\\theta$: 하중 분산각 (일반적으로 $45^\\circ$ 적용)`
-  },
-  {
-    keywords: ['r', 'R', '\\alpha', 'sin', '45'],
-    title: '슈미트네트 극점반경(Schmidt Net Pole Radius, $r$)',
-    concept: '통계적 밀도 보정을 위해 면적 왜곡을 줄인 슈미트 네트(Schmidt Net) 평면 변환 투영식',
-    formula: `극점 반경 식:
-$$r = \\sqrt{2} R \\sin\\left(45^\\circ - \\frac{\\alpha}{2}\\right)$$
-
-- $r$: 투영원 중심으로부터 극점(Pole)까지의 평면 거리
-- $R$: 투영구(Sphere)의 반경
-- $\\alpha$: 불연속면의 경사각 (Dip angle)`,
-    structure: `- $r$: 투영원 중심으로부터 극점(Pole)까지의 평면 거리\n- $R$: 투영구(Sphere)의 반경\n- $\\alpha$: 불연속면의 경사각 (Dip angle)`
-  },
-  {
-    keywords: ['P', '\\tau_{allow}', 'd', 'L', '\\pi'],
-    title: '락볼트 고착력 계산식(Rockbolt Bond Strength, $P$)',
-    concept: '인발 하중 재하 시 천공홀 배면의 마찰 부착 면적을 기반으로 볼트 탈락에 지탱하는 한계 고착력 식',
-    formula: `락볼트 허용 지지력 식:
-$$P = \\pi d L \\tau_{allow}$$
-
-- $P$: 락볼트의 최대 허용 인발 저항력 (인발 하중)
-- $d$: 락볼트 천공 구멍의 직경
-- $L$: 그라우팅 정착 길이 (고착 영역)
-- $\\tau_{allow}$: 지반과 그라우팅재 간의 허용 부착 전단강도`,
-    structure: `- $P$: 락볼트의 최대 허용 인발 저항력 (인발 하중)\n- $d$: 락볼트 천공 구멍의 직경\n- $L$: 그라우팅 정착 길이 (고착 영역)\n- $\\tau_{allow}$: 지반과 그라우팅재 간의 허용 부착 전단강도`
-  },
-  {
-    keywords: ['K_a', 'K_p', 'p_a', '\\phi', '\\sin\\phi'],
-    title: '랭킹 주동토압계수(Rankine Active Earth Pressure Coefficient, $K_a$)',
-    concept: '지반이 인장 변형을 일으켜 한계 주동 소성 평형 상태에 도달할 때 가설 옹벽 배면에 수평으로 밀어내는 토압식',
-    formula: `랭킹 주동토압계수 식:
-$$K_a = \\tan^2\\left(45^\\circ - \\frac{\\phi}{2}\\right) = \\frac{1 - \\sin\\phi}{1 + \\sin\\phi}$$
-
-- $K_a$: 주동토압 계수
-- $K_p$: 수동토압 계수
-- $\\phi$: 흙의 내부마찰각
-- $p_a$: 주동토압 강도
-- $c$: 흙의 점착력
-- $\\gamma$: 흙의 단위중량
-- $z$: 검토 단면 깊이`,
-    structure: `- $K_a$: 주동토압 계수\n- $K_p$: 수동토압 계수\n- $\\phi$: 흙의 내부마찰각\n- $p_a$: 주동토압 강도\n- $c$: 흙의 점착력\n- $\\gamma$: 흙의 단위중량\n- $z$: 검토 단면 깊이`
-  },
-  {
-    keywords: ['C', 'D_f', 'q_{net}'],
-    title: '보상기초 보상도(Compensated Foundation Safety Factor, $C$)',
-    concept: '구조물 자중을 굴착한 흙의 총 중량으로 완벽히 치환 상쇄하여 순 침하 하중을 Zero로 수렴시키는 평가 공식',
-    formula: `보상기초 보상도 식:
-$$C = \\frac{\\gamma D_f}{q}$$
-
-- $C$: 보상도 ($C = 1.0$ 이면 완전 보상)
-- $\\gamma$: 굴착하여 배출한 흙의 단위중량
-- $D_f$: 기초의 굴착 깊이
-- $q$: 상부 구조물 총 자중 및 하중 합산값
-- $q_{net}$: 지반이 추가로 받는 순하중 ($q_{net} = q - \\gamma D_f$)`,
-    structure: `- $C$: 보상도 ($C = 1.0$ 이면 완전 보상)\n- $\\gamma$: 굴착하여 배출한 흙의 단위중량\n- $D_f$: 기초의 굴착 깊이\n- $q$: 상부 구조물 총 자중 및 하중 합산값\n- $q_{net}$: 지반이 추가로 받는 순하중 ($q_{net} = q - \\gamma D_f$)`
-  },
-  {
-    keywords: ['p_w', '\\gamma_w', 'H'],
-    title: '싱글쉘 터널 설계수압(Single Shell Tunnel Design Water Pressure, $p_w$)',
-    concept: '방수가 완벽히 차단된 비배수 터널 아치 배면에 상부 수위 높이에 비례하여 수직으로 가해지는 정수압식',
-    formula: `설계수압 식:
-$$p_w = \\gamma_w H$$
-
-- $p_w$: 라이닝 배면 작용 설계 수압
-- $\\gamma_w$: 지하수(물)의 단위중량 ($9.81\\,\\text{kN/m}^3$)
-- $H$: 설계 지하수위 면으로부터 터널 아치 정상까지의 수직 거리 (수두 높이)`,
-    structure: `- $p_w$: 라이닝 배면 작용 설계 수압\n- $\\gamma_w$: 지하수(물)의 단위중량 ($9.81\\,\\text{kN/m}^3$)\n- $H$: 설계 지하수위 면으로부터 터널 아치 정상까지의 수직 거리 (수두 높이)`
-  },
-  {
-    keywords: ['k_h', 'k_{h0}', 'B_H', 'E_0', 'N', '2800'],
-    title: '가설흙막이 수평지반반력계수(Temporary Retaining Wall Horizontal Subgrade Reaction Coefficient, $k_h$)',
-    concept: '벽체 배면의 지반 탄소성 반응을 등가의 선형 탄성 연속 압축 스프링 강성값으로 치환하는 반력 산정식',
-    formula: `수평 지반반력계수 식:
-$$k_h = k_{h0} \\left(\\frac{B_H}{0.3}\\right)^{-3/4}$$
-
-- $k_h$: 설계 수평 지반반력계수 (탄성 스프링 상수)
-- $k_{h0}$: 표준 수평 지반반력계수
-- $B_H$: 가상의 기초 환산폭
-- $E_0$: 지반의 탄성계수 ($E_0 = 2800 N$)
-- $N$: 표준관입시험 N치`,
-    structure: `- $k_h$: 설계 수평 지반반력계수 (탄성 스프링 상수)\n- $k_{h0}$: 표준 수평 지반반력계수\n- $B_H$: 가상의 기초 환산폭\n- $E_0$: 지반의 탄성계수 ($E_0 = 2800 N$)\n- $N$: 표준관입시험 N치`
-  }
-];
-
 // POST /api/formula/suggest-title
 router.post('/formula/suggest-title', async (req, res) => {
   try {
@@ -1157,9 +1007,9 @@ router.post('/formula/suggest-title', async (req, res) => {
 
 JSON 반환 포맷:
 {
-  "title": "공식의 가장 적절하고 널리 쓰이는 표준 전공 명칭 (예: 'Terzaghi 극한 지지력 공식', '모세관 상승고 산정식' 등, 20자 이내)",
+  "title": "공식의 가장 적절하고 널리 쓰이는 표준 전공 명칭 (20자 이내)",
   "concept": "이 공식의 핵심 공학적 정의와 쓰임새를 설명하는 짧은 글 (2문장 이내)",
-  "structure": "이 공식에 사용된 각 기호(변수)들의 정의. 반드시 각 변수 기호는 $로 감싸고 '- $기호$: 정의' 형태의 마크다운 불릿 목록으로 줄바꿈하여 작성하십시오 (예: '- $t$: 계측 경과 시간\\n- $t_0$: 기준 시간\\n- $\\alpha$: 초기 접선 기울기 역수 상수').",
+  "structure": "이 공식에 사용된 각 기호(변수)들의 정의. 반드시 각 변수 기호는 $로 감싸고 '- $기호$: 정의' 형태의 마크다운 불릿 목록으로 줄바꿈하여 작성하십시오.",
   "memorizationTip": "이 공식이 내포하는 물리적 거동 메커니즘과 직관적인 공학적 해석/의미를 설명하십시오. 절대로 암기 가사나 유치한 말장난 식의 암기 팁을 적지 말고, 수식의 분모/분자가 가지는 물리적 의미나 물성 관계를 기술사 답안지 수준의 전문적이고 직관적인 문장으로 2~3문장 서술하십시오."
 }`;
 
@@ -1252,18 +1102,17 @@ router.post('/image-standards/analyze', async (req, res) => {
 
     const systemInstruction = `당신은 대한민국 토질및기초 기술사 자격시험 전문 채점위원이자 튜터입니다.
 사용자가 첨부한 공학 그림/그래프/도표를 시각적으로 직접 판독하여 아래 지정된 JSON 규격으로 응답하십시오.
-그림이 수치 공식식인지 경험적 경향 도표(예: RMR-자립시간 도표)인지를 정확히 구분하여, 도표에 포함된 핵심 공식/경험식과 주요 인자/기호 정의를 시각적 판독 결과로부터 직접 추출하십시오.
+그림이 수치 공식식인지 경험적 경향 도표인지를 정확히 구분하여, 도표에 포함된 핵심 공식/경험식과 주요 인자/기호 정의를 시각적 판독 결과로부터 직접 추출하십시오.
 
 JSON 포맷 규격:
 {
   "title": "이 그림/그래프가 무엇을 뜻하는지 가장 명확하고 간결한 핵심 전공 주제명으로 제안(공백 포함 25자 이내)",
   "analysis": "해당 그림/그래프에 표현된 다양한 구성 요소, 변수 관계, 공학적 의미 및 거동 메커니즘을 상세히 설명하십시오.",
   "intuitive": "이 복잡한 공학 도표나 그림이 궁극적으로 설명하고자 하는 핵심 본질을 일상생활의 비유나 아주 직관적이고 쉬운 비유적 설명으로 풀어내어 작성하십시오. (최대 2~3문장)",
-  "formulaTitle": "그림/그래프의 핵심 공식 또는 경험적 관계 제목 (예: RMR 및 무지보 천장폭 대 자립시간 경험적 관계)",
-  "formulaText": "해당 그림의 대표 핵심 수식 또는 경험식 (모든 수식은 반드시 $ 기호로 감싸서 표기, 예: $W = B + H$ 또는 $\\text{Stand-up Time} = f(RMR, \\text{Span})$)",
+  "formulaTitle": "그림/그래프의 핵심 공식 또는 경험적 관계 제목",
+  "formulaText": "해당 그림의 대표 핵심 수식 또는 경험식 (모든 수식은 반드시 $ 기호로 감싸서 표기)",
   "params": [
-    { "symbol": "$RMR$", "desc": "암질 평가 지수 (Rock Mass Rating)" },
-    { "symbol": "$\\text{Span (m)}$", "desc": "터널 무지보 천장폭 (m)" }
+    { "symbol": "$기호$", "desc": "기호 정의 및 물리적 의미" }
   ]
 }`;
 
@@ -1526,10 +1375,10 @@ router.post('/chat', async (req, res) => {
 4. 겸손하고 전문적인 튜터 태도 유지.
 5. 고품질 학술 구조 및 직관적 설명 보완:
    - 공인된 전공 교재의 품질에 걸맞도록 체계적인 개요를 지반공학 정보에 입각하여 자연스럽게 구성하십시오.
-   - 개별 이론이나 공법, 개념을 비교 설명할 때는 불필요한 공백 라인을 줄이고 중제목(###)으로 구조를 명확히 분할하십시오 (예: ### 1. 테르자기의 1차원 압밀이론 등).
+   - 개별 이론이나 공법, 개념을 비교 설명할 때는 불필요한 공백 라인을 줄이고 중제목(###)으로 구조를 명확히 분할하십시오 (예: ### 1. 핵심 개념 및 원리 등).
    - 표(Table)를 사용할 경우 반드시 마크다운 테이블 표준 포맷(| 구분 | 공법 A | 공법 B |)만을 이용해 작성하십시오.
 6. [중요 키워드 강조 및 볼드 포맷 규칙]:
-   - 답변 작성 시 지반역학 및 토목공학의 핵심 용어, 파괴 영역/존 명칭, 중요 공학 기전, 핵심 물리량 및 설계 조치 등의 중요 키워드들은 수험생이 한눈에 파악할 수 있도록 반드시 **더블 별표**(**키워드**)로 감싸서 작성해 주십시오. (예: **아칭 효과**, **제1존 (탄성쐐기 영역)**, **상대적 변위**, **테르자기 트랩도어** 등)
+   - 답변 작성 시 지반역학 및 토목공학의 핵심 용어, 파괴 영역/존 명칭, 중요 공학 기전, 핵심 물리량 및 설계 조치 등의 중요 키워드들은 수험생이 한눈에 파악할 수 있도록 반드시 **더블 별표**(**키워드**)로 감싸서 작성해 주십시오.
 7. [문장 수준별 머리기호 불릿 계층화 규칙]:
    - 답변 작성 시 동일한 별표(*)를 모든 레벨에 무분별하게 남발하지 말고, 문장 수준(계층 구조/Depth)에 따라 머리기호 불릿을 엄격히 구분하여 작성하십시오:
      * 1수준 (상위 대항목/핵심 질문/대주제): 작은 크기 불릿 ('• ')
