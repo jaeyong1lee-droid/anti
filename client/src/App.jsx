@@ -108,7 +108,10 @@ const MODEL_DISPLAY_NAMES = {
   'gemini-3.1-flash-lite': '3.1 Lite',
   'gemini-3.5-flash': '3.5 Flash',
   'gemini-3.0-flash': '3.0 Flash',
-  'gemini-2.5-flash': '2.5 Flash'
+  'gemini-2.5-flash': '2.5 Flash',
+  'claude-sonnet-5-5': 'Claude 5.5 Sonnet',
+  'claude-haiku-5-5': 'Claude 5.5 Haiku',
+  'claude-opus-5-5': 'Claude 5.5 Opus'
 };
 
 function getModelDisplayName(modelName) {
@@ -24826,7 +24829,7 @@ ${itemsStr}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="p-1.5 flex flex-col gap-0.5 max-h-[60vh] overflow-y-auto">
-              {['gemini-3.5-flash-lite', 'gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.1-flash-lite', 'gemini-3.6-flash', 'gemini-3.5-flash'].map((m) => (
+              {['gemini-3.5-flash-lite', 'gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.1-flash-lite', 'gemini-3.6-flash', 'gemini-3.5-flash', 'claude-sonnet-5-5', 'claude-haiku-5-5', 'claude-opus-5-5'].map((m) => (
                 <button
                   key={m}
                   onClick={() => handleModelSelect(m)}

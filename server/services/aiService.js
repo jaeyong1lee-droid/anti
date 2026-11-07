@@ -11,17 +11,34 @@ global.progressTracker = global.progressTracker || new Map();
 const NO_CHART_PROMPT_SCENARIOS = new Set(['grading', 'general', 'slides', 'ocr', 'source-search']);
 
 export let globalPreferredModel = 'gemini-3.5-flash-lite';
+export let globalAnthropicApiKey = null;
 export const FALLBACK_MODELS = [
   'gemini-3.5-flash-lite',
   'gemini-3.8-flash',
   'gemini-3.7-flash',
   'gemini-3.1-flash-lite',
   'gemini-3.6-flash',
-  'gemini-3.5-flash'
+  'gemini-3.5-flash',
+  'claude-sonnet-5-5',
+  'claude-haiku-5-5',
+  'claude-opus-5-5'
 ];
 
 export async function loadPreferredModel() {
   try {
+    // Sync ANTHROPIC_API_KEY between env and DB so both local and Vercel production work seamlessly
+    const envClaudeKey = process.env.ANTHROPIC_API_KEY ? process.env.ANTHROPIC_API_KEY.trim().replace(/^['"]|['"]$/g, '') : '';
+    const keyRow = await dbQuery.get("SELECT value FROM app_session WHERE key = 'anthropic_api_key'");
+    if (envClaudeKey && envClaudeKey.startsWith('sk-ant-')) {
+      globalAnthropicApiKey = envClaudeKey;
+      if (!keyRow || keyRow.value !== envClaudeKey) {
+        await saveSessionValue('anthropic_api_key', envClaudeKey);
+      }
+    } else if (keyRow && keyRow.value && keyRow.value.startsWith('sk-ant-')) {
+      globalAnthropicApiKey = keyRow.value.trim();
+      process.env.ANTHROPIC_API_KEY = globalAnthropicApiKey;
+    }
+
     const row = await dbQuery.get("SELECT value FROM app_session WHERE key = 'preferred_model'");
     if (row && row.value) {
       if (row.value === 'gemini-3.89-flash') {
@@ -190,6 +207,13 @@ export function stopBackendProgressTimer(progressId, percentage, message, isSucc
   updateProgress(progressId, 2, message, percentage);
 }
 
+export function normalizeClaudeModel(modelName) {
+  if (!modelName || typeof modelName !== 'string') return 'claude-sonnet-5-5';
+  const name = modelName.trim().toLowerCase();
+  if (name.startsWith('claude-')) return name;
+  return 'claude-sonnet-5-5';
+}
+
 export async function callLLMWithFailover(systemInstruction, userPrompt, image = null, scenario = 'default', options = {}) {
   // SVG_DIAGRAM_PROMPT는 어설픈 그림 강제 방지를 위해 문제 출제에서 제외.
   // CHART_DIAGRAM_PROMPT는 5번 인터랙티브 그래프해석 문제의 Recharts 규격 유지를 위해 문제 출제 시 필수 포함.
@@ -199,6 +223,17 @@ export async function callLLMWithFailover(systemInstruction, userPrompt, image =
   const primaryKey = process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY.trim().replace(/^['"]|['"]$/g, '') : null;
   const secondaryKey = process.env.GEMINI_API_KEY_SECONDARY ? process.env.GEMINI_API_KEY_SECONDARY.trim().replace(/^['"]|['"]$/g, '') : null;
   const tertiaryKey = process.env.GEMINI_API_KEY_TERTIARY ? process.env.GEMINI_API_KEY_TERTIARY.trim().replace(/^['"]|['"]$/g, '') : null;
+  let anthropicKey = (process.env.ANTHROPIC_API_KEY || globalAnthropicApiKey || '').trim().replace(/^['"]|['"]$/g, '');
+  if (!anthropicKey) {
+    try {
+      const keyRow = await dbQuery.get("SELECT value FROM app_session WHERE key = 'anthropic_api_key'");
+      if (keyRow && keyRow.value && keyRow.value.startsWith('sk-ant-')) {
+        anthropicKey = keyRow.value.trim();
+        globalAnthropicApiKey = anthropicKey;
+        process.env.ANTHROPIC_API_KEY = anthropicKey;
+      }
+    } catch (e) {}
+  }
 
   const keyErrors = [];
   const hasImage = Array.isArray(image)
@@ -207,30 +242,59 @@ export async function callLLMWithFailover(systemInstruction, userPrompt, image =
 
   const executionList = [];
 
-  const keys = [];
-  if (primaryKey && !primaryKey.startsWith('gsk_')) keys.push({ key: primaryKey, label: 'Key #1' });
-  if (secondaryKey && !secondaryKey.startsWith('gsk_') && secondaryKey !== primaryKey) keys.push({ key: secondaryKey, label: 'Key #2' });
-  if (tertiaryKey && !tertiaryKey.startsWith('gsk_') && tertiaryKey !== primaryKey && tertiaryKey !== secondaryKey) keys.push({ key: tertiaryKey, label: 'Key #3' });
+  const targetPref = options.preferredModel || globalPreferredModel || 'gemini-3.5-flash-lite';
+  if (options.preferredModel && options.preferredModel !== globalPreferredModel) {
+    globalPreferredModel = options.preferredModel;
+  }
+  const isClaudePreferred = targetPref.trim().toLowerCase().startsWith('claude-');
 
-  for (const k of keys) {
-    const targetPref = options.preferredModel || globalPreferredModel || 'gemini-3.5-flash-lite';
-    if (options.preferredModel && options.preferredModel !== globalPreferredModel) {
-      globalPreferredModel = options.preferredModel;
+  const addClaudeTasks = () => {
+    if (!anthropicKey || !anthropicKey.startsWith('sk-ant-')) return;
+    const claudeModels = isClaudePreferred
+      ? [...new Set([targetPref, 'claude-sonnet-5-5', 'claude-haiku-5-5', 'claude-opus-5-5'])]
+      : ['claude-sonnet-5-5', 'claude-haiku-5-5'];
+    for (const cm of claudeModels) {
+      executionList.push({
+        key: anthropicKey,
+        label: 'Claude Key',
+        model: cm,
+        actualModel: normalizeClaudeModel(cm),
+        type: 'claude'
+      });
     }
-    const rawFallbacks = [
-      targetPref,
-      'gemini-3.5-flash-lite',
-      'gemini-3.8-flash',
-      'gemini-3.7-flash',
-      'gemini-3.1-flash-lite',
-      'gemini-3.6-flash',
-      'gemini-3.5-flash'
-    ];
-    const uniqueRaw = [...new Set(rawFallbacks.filter(Boolean))];
-    for (const modelName of uniqueRaw) {
-      const actual = normalizeGeminiModel(modelName);
-      executionList.push({ key: k.key, label: k.label, model: modelName, actualModel: actual, type: 'gemini' });
+  };
+
+  const addGeminiTasks = () => {
+    const keys = [];
+    if (primaryKey && !primaryKey.startsWith('gsk_')) keys.push({ key: primaryKey, label: 'Key #1' });
+    if (secondaryKey && !secondaryKey.startsWith('gsk_') && secondaryKey !== primaryKey) keys.push({ key: secondaryKey, label: 'Key #2' });
+    if (tertiaryKey && !tertiaryKey.startsWith('gsk_') && tertiaryKey !== primaryKey && tertiaryKey !== secondaryKey) keys.push({ key: tertiaryKey, label: 'Key #3' });
+
+    for (const k of keys) {
+      const geminiPref = isClaudePreferred ? 'gemini-3.5-flash-lite' : targetPref;
+      const rawFallbacks = [
+        geminiPref,
+        'gemini-3.5-flash-lite',
+        'gemini-3.8-flash',
+        'gemini-3.7-flash',
+        'gemini-3.1-flash-lite',
+        'gemini-3.6-flash',
+        'gemini-3.5-flash'
+      ];
+      const uniqueRaw = [...new Set(rawFallbacks.filter(Boolean))];
+      for (const modelName of uniqueRaw) {
+        const actual = normalizeGeminiModel(modelName);
+        executionList.push({ key: k.key, label: k.label, model: modelName, actualModel: actual, type: 'gemini' });
+      }
     }
+  };
+
+  if (isClaudePreferred) {
+    addClaudeTasks();
+    addGeminiTasks();
+  } else {
+    addGeminiTasks();
+    addClaudeTasks();
   }
 
   let attemptedAny = false;
@@ -246,9 +310,89 @@ export async function callLLMWithFailover(systemInstruction, userPrompt, image =
 
     const maskedKey = `${key.substring(0, 8)}...${key.substring(key.length - 4)}`;
     const modelName = task.model;
-    const actualModelName = task.actualModel || normalizeGeminiModel(modelName);
+    const actualModelName = task.actualModel || (task.type === 'claude' ? normalizeClaudeModel(modelName) : normalizeGeminiModel(modelName));
 
     attemptedAny = true;
+
+    if (task.type === 'claude') {
+      try {
+        console.log(`[Claude 시도] ${task.label} (${maskedKey}), 모델: ${modelName} -> ${actualModelName}`);
+        reportLlmProgress(options, scenario, modelName);
+
+        const contentParts = [];
+        if (Array.isArray(image)) {
+          image.forEach(img => {
+            if (img && img.data && img.mimeType) {
+              contentParts.push({
+                type: 'image',
+                source: { type: 'base64', media_type: img.mimeType, data: img.data }
+              });
+            }
+          });
+        } else if (image && image.data && image.mimeType) {
+          contentParts.push({
+            type: 'image',
+            source: { type: 'base64', media_type: image.mimeType, data: image.data }
+          });
+        }
+        contentParts.push({ type: 'text', text: String(userPrompt || '') });
+
+        const jsonInstruction = (scenario === 'grading' || scenario === 'question' || scenario === 'slides')
+          ? '\n\n[CRITICAL JSON RULE]: 반드시 마크다운 코드블록(```json)이나 부연 설명 없이 순수 유효 JSON만 출력하십시오.'
+          : '';
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 55000);
+        let response;
+        try {
+          response = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+              'x-api-key': key,
+              'anthropic-version': '2023-06-01',
+              'content-type': 'application/json'
+            },
+            body: JSON.stringify({
+              model: actualModelName,
+              max_tokens: 8192,
+              system: (finalSystemInstruction || '') + jsonInstruction,
+              messages: [{ role: 'user', content: contentParts }]
+            }),
+            signal: controller.signal
+          });
+        } finally {
+          clearTimeout(timeoutId);
+        }
+
+        if (!response.ok) {
+          const errText = await response.text();
+          const errObj = new Error(`Claude HTTP ${response.status}: ${errText}`);
+          errObj.status = response.status;
+          throw errObj;
+        }
+
+        const data = await response.json();
+        let text = (data.content || [])
+          .filter(part => part && part.type === 'text')
+          .map(part => part.text)
+          .join('\n')
+          .trim();
+        text = text.replace(/^[ \t]*#[ \t]*$/gm, '');
+        if (text) {
+          console.log(`[Claude 성공] ${task.label} (${maskedKey}), 모델: ${modelName} (${actualModelName})`);
+          return text;
+        } else {
+          throw new Error('Claude response empty');
+        }
+      } catch (err) {
+        console.warn(`[Claude 시도 실패] ${task.label} (${maskedKey}), 모델: ${task.model}: ${err.message?.substring(0, 120)}`);
+        keyErrors.push(`${task.label} (${task.model}): ${err.message?.substring(0, 120)}`);
+        if (err.status === 401 || err.status === 403 || err.message?.includes('authentication_error')) {
+          failedKeys.add(key);
+        }
+        continue;
+      }
+    }
 
     try {
       console.log(`[Gemini 시도] ${task.label} (${maskedKey}), 모델: ${modelName} -> ${actualModelName}`);
