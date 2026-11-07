@@ -378,6 +378,52 @@ export function sanitizeUnfoundedBlockFormulas(targetText, { dossierText = '', q
 }
 
 /**
+ * 사료 번들(Fact Dossier) 내에 존재하지 않는 가짜 KDS/KCS 6자리 코드 번호(예: KDS 11 10 00, KDS 11 34 00 등)를
+ * 탐지하여 정제합니다. 사료 번들에 실제 등장한 KDS/KCS 코드만 그대로 보존합니다.
+ */
+export function sanitizeHallucinatedKdsCodes(targetText, dossierText = '') {
+  if (!targetText || typeof targetText !== 'string') {
+    return { sanitizedText: targetText, removedCodes: [] };
+  }
+  const hasKdsPattern = /\b(?:KDS|KCS)\s*\d{2}\s*\d{2}\s*\d{2}\b/i.test(targetText);
+  if (!hasKdsPattern) {
+    return { sanitizedText: targetText, removedCodes: [] };
+  }
+
+  const allowedCompactCodes = new Set();
+  const dossierStr = String(dossierText || '');
+  const dossierMatches = dossierStr.matchAll(/\b(KDS|KCS)\s*(\d{2})\s*(\d{2})\s*(\d{2})\b/gi);
+  for (const m of dossierMatches) {
+    const compact = `${m[1].toUpperCase()}${m[2]}${m[3]}${m[4]}`;
+    allowedCompactCodes.add(compact);
+  }
+  // 6자리 숫자만 붙어 있는 형태(예: 115005)도 사료에 있으면 허용
+  const sixDigitMatches = dossierStr.matchAll(/\b(11|14|17|21|24|27|29|31|34|41|44|47|51|54|57)\d{4}\b/g);
+  for (const m of sixDigitMatches) {
+    allowedCompactCodes.add(`KDS${m[0]}`);
+    allowedCompactCodes.add(`KCS${m[0]}`);
+  }
+
+  const removedCodes = [];
+  const sanitizedText = targetText.replace(
+    /\b(KDS|KCS)\s*(\d{2})\s*(\d{2})\s*(\d{2})\b/gi,
+    (fullMatch, prefix, p1, p2, p3) => {
+      const upperPrefix = prefix.toUpperCase();
+      const compact = `${upperPrefix}${p1}${p2}${p3}`;
+      // 사료에 실제로 존재하는 코드이거나, 끝 2자리가 '00'이 아닌 실존 세부코드가 사료에 매칭된 경우 보존
+      if (allowedCompactCodes.has(compact)) {
+        return `${upperPrefix} ${p1} ${p2} ${p3}`;
+      }
+      // 대표적 날조 패턴(00 00 또는 사료 미등장 번호)은 코드 번호를 제거하고 정식 분야 명칭으로 치환
+      removedCodes.push(fullMatch);
+      return upperPrefix === 'KDS' ? '국가건설기준(KDS 설계기준)' : '국가건설기준(KCS 표준시방서)';
+    }
+  );
+
+  return { sanitizedText, removedCodes };
+}
+
+/**
  * NotebookLM 방식 원문 근거 기반(Grounded) 프롬프트 지침 블록 생성
  * - 하드코딩된 예시 없이 동적 사료 번들(Fact Dossier) 준수만 강제
  */
@@ -420,7 +466,8 @@ export function verifyGroundedGradingResult({
     correctAnswer
   });
 
-  const cleanModelAnswer = formulaCheck.sanitizedText;
+  const kdsCheck = sanitizeHallucinatedKdsCodes(formulaCheck.sanitizedText, dossier.fullText);
+  const cleanModelAnswer = kdsCheck.sanitizedText;
 
   // 2. 사료 번들 대비 원문 인용/근거 문장(>=12자) 매칭 검증
   const quoteExtraction = extractBestGroundedQuote(cleanModelAnswer, dossier, MIN_QUOTE_CHARS);
@@ -467,25 +514,43 @@ export function verifyQuizQuestionsGrounding(questions = [], { fileText = '', kc
   if (!dossier.hasSource) return questions;
 
   return questions.map(q => {
-    const targetContent = [q.answer, q.explanation, q.concept].filter(Boolean).join(' ');
     const formulaCheck = sanitizeUnfoundedBlockFormulas(q.answer || '', {
       dossierText: dossier.fullText,
       question: q.question || '',
       correctAnswer: q.explanation || ''
     });
+    const ansKdsCheck = sanitizeHallucinatedKdsCodes(formulaCheck.sanitizedText || q.answer || '', dossier.fullText);
+    const expKdsCheck = sanitizeHallucinatedKdsCodes(q.explanation || '', dossier.fullText);
 
+    const targetContent = [ansKdsCheck.sanitizedText, expKdsCheck.sanitizedText, q.concept].filter(Boolean).join(' ');
     const quoteRes = extractBestGroundedQuote(targetContent, dossier, MIN_QUOTE_CHARS);
 
     return {
       ...q,
-      answer: formulaCheck.sanitizedText || q.answer,
+      answer: ansKdsCheck.sanitizedText || q.answer,
+      explanation: expKdsCheck.sanitizedText || q.explanation,
       groundingVerification: {
         verified: quoteRes.verified,
         matchedSource: quoteRes.matchedSource,
         verifiedQuote: quoteRes.bestQuote ? quoteRes.bestQuote.slice(0, 140) : null,
         confidence: quoteRes.confidence,
-        hallucinatedFormulaRemoved: formulaCheck.hadHallucinatedFormula
+        hallucinatedFormulaRemoved: formulaCheck.hadHallucinatedFormula,
+        removedKdsCodes: [...ansKdsCheck.removedCodes, ...expKdsCheck.removedCodes]
       }
     };
   });
+}
+
+/**
+ * 단일 문항(재생성/조정/종합평가 개별 문항)에 대한 실시간 Grounding & 정합성 검증 및 치유 엔진
+ * - 빈 껍데기(No-op)였던 validateAndHealQuestion을 대체하여 실제 사료 번들 대조 및 가짜 KDS/무관 수식 정제를 수행합니다.
+ */
+export function verifyAndHealSingleQuestionGrounding(question, { topicTitle = '', topicKeywords = '', fileText = '', kcscGrounding = '', wikiGrounding = '' } = {}) {
+  if (!question || typeof question !== 'object') return question;
+  const verifiedArr = verifyQuizQuestionsGrounding([question], {
+    fileText: `${topicTitle}\n${topicKeywords}\n${fileText}`.trim(),
+    kcscGrounding,
+    wikiGrounding
+  });
+  return verifiedArr[0] || question;
 }

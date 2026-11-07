@@ -349,7 +349,7 @@ export async function searchStandards(query, docType = null, limit = 10) {
   // 1. 지반·터널 전수 DB(kcsc_standards) 인메모리 캐시 우선 확인 (0ms)
   const dbStandards = await ensureKcscDbLoaded();
   if (Array.isArray(dbStandards) && dbStandards.length > 0) {
-    const targetDocType = docType ? docType.toUpperCase() : null;
+    const targetDocType = typeof docType === 'string' ? docType.toUpperCase() : null;
     const candidates = targetDocType ? dbStandards.filter(s => s.docType === targetDocType) : dbStandards;
     const scored = [];
 
@@ -389,14 +389,29 @@ export async function searchStandards(query, docType = null, limit = 10) {
         }
       }
 
-      // 지반 전공 핵심 동의어/약어 가중치
+      // 지반 전공 핵심 동의어/약어 가중치 (7대 기본 + 6대 지반/터널 핵심 영역 전면 확장)
       if ((q.includes('dmm') || q.includes('심층혼합')) && (code === '113030' || name.includes('고결공'))) score += 70;
       if ((q.includes('pvd') || q.includes('연직배수') || q.includes('압밀') || q.includes('선행재하') || q.includes('프리로딩') || q.includes('과재성토')) && (code === '113020' || code === '113005' || name.includes('연직배수') || name.includes('선행재하'))) score += 60;
       if ((q.includes('아사오카') || q.includes('asaoka') || q.includes('쌍곡선') || q.includes('호시노') || q.includes('몬덴') || q.includes('침하예측') || q.includes('장래침하')) && (code === '111015' || code === '113020' || code === '113005' || name.includes('지반계측') || name.includes('선행재하'))) score += 70;
       if ((q.includes('scp') || q.includes('다짐말뚝')) && (code === '113035' || name.includes('다짐공'))) score += 70;
       if ((q.includes('약액주입') || q.includes('그라우팅')) && (code === '113045' || name.includes('그라우팅'))) score += 70;
-      if ((q.includes('무리말뚝') || q.includes('말뚝')) && (code === '115015' || code === '115040')) score += 50;
-      if ((q.includes('불교란') || q.includes('시료') || q.includes('다운홀') || q.includes('탄성파')) && (code === '111010' || code === '102020')) score += 60;
+      if ((q.includes('무리말뚝') || q.includes('말뚝') || q.includes('주주면마찰') || q.includes('부의주변마찰')) && (code === '115015' || code === '115040' || code === '115020')) score += 60;
+      if ((q.includes('불교란') || q.includes('시료') || q.includes('다운홀') || q.includes('탄성파') || q.includes('삼축압축') || q.includes('전단강도') || q.includes('간극수압') || q.includes('응력경로') || q.includes('다짐') || q.includes('CBR') || q.includes('cbr')) && (code === '111010' || code === '111015' || code === '102020' || code === '112020')) score += 70;
+
+      // ① 침투/유선망/파이핑/보일링/히빙/동수경사/투수
+      if ((/침투|유선망|침윤선|파이핑|보일링|히빙|동수경사|투수|지하수|양압력|부력/.test(q)) && (code === '111015' || code === '118005' || code === '113000' || code === '117005' || code === '111010' || name.includes('지반조사') || name.includes('흙막이') || name.includes('비탈면'))) score += 70;
+      // ② 액상화/내진설계/전단파속도
+      if ((/액상화|반복삼축|간극수압비|내진|지반가속도|지진|전단탄성계수/.test(q)) && (code === '171000' || code === '111010' || code === '112015' || name.includes('내진') || name.includes('지반조사'))) score += 70;
+      // ③ 얕은기초/지지력(테르자기, 프란틀, 메이어호프, 한센)/접지압/기초침하
+      if ((/얕은기초|직접기초|확대기초|테르자기|terzaghi|프란틀|prandtl|지지력|평판재하|메이어호프|meyerhof|한센|hansen|접지압|극한하중|침하/.test(q)) && (code === '115005' || code === '115010' || code === '111010' || name.includes('얕은기초') || name.includes('기초'))) score += 70;
+      // ④ 암반분류(RMR, Q-system, GSI, RQD)/절리/평사투영/터널/NATM/락볼트/숏크리트
+      if ((/rmr|q-system|q시스템|gsi|rqd|암반분류|절리|불연속면|평사투영|터널|natm|락볼트|록볼트|숏크리트|지보재|내공변위/.test(q)) && (code === '111010' || code === '271005' || code === '271010' || code === '272005' || code === '273000' || code.startsWith('27') || name.includes('터널') || name.includes('지보'))) score += 70;
+      // ⑤ 사면안정/비탈면/한계평형(비숍, 펠레니우스, 야부, 스펜서)/산사태/억지말뚝/쏘일네일링
+      if ((/사면|비탈면|한계평형|간편법|비숍|bishop|펠레니우스|야부|janbu|스펜서|산사태|억지말뚝|쏘일네일|네일링/.test(q)) && (code === '117005' || code === '117010' || code === '117015' || name.includes('비탈면'))) score += 70;
+      // ⑥ 흙막이/토압(랭킨, 쿨롱, 트랩도어, 아칭)/옹벽/어스앵커/버팀보/매설관
+      if ((/흙막이|가시설|strut|버팀보|어스앵커|앵커|토압|랭킨|rankine|쿨롱|coulomb|옹벽|아칭|트랩도어|굴착|매설|지중관/.test(q)) && (code === '111015' || code === '118005' || code === '116000' || code === '116005' || code === '116010' || name.includes('옹벽') || name.includes('흙막이') || name.includes('앵커'))) score += 70;
+      // ⑦ 지반 물성/실내시험/역학정수/점토광물/소성지수/활성도/탄성모델/포아송비/모어원/모관/지하안전/필댐/동결융해
+      if ((/점토|소성지수|활성도|탄성모델|포아송|모어|mohr|파괴포락선|코어|실내시험|역학정수|응력|변형률|모관|표면장력|유선|지하안전|필댐|시험성토|동결|융해|노상/.test(q)) && (code === '111010' || code === '111015' || code === '112020' || code === '102020' || name.includes('지반조사') || name.includes('지반계측') || name.includes('필댐') || name.includes('성토'))) score += 70;
 
       // 지반(11xxxx)·터널(27xxxx) 본류 코드 우선순위 부여 (수로터널/농업시설 등 지엽적 타공종 역전 방지)
       if (score >= 40 && (code.startsWith('11') || code.startsWith('27') || code === '102020')) {

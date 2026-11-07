@@ -15,7 +15,7 @@ import * as itemQuizPlugin from '../plugins/formulaItemQuizPlugin.js';
 import pdfParse from 'pdf-parse';
 import { getWikipediaKnowledge } from '../services/wikipediaService.js';
 import { getKcscVerificationContext } from '../services/kcscService.js';
-import { getNotebookLmGroundedPromptBlock, verifyQuizQuestionsGrounding } from '../services/quoteVerifierService.js';
+import { getNotebookLmGroundedPromptBlock, verifyQuizQuestionsGrounding, verifyAndHealSingleQuestionGrounding } from '../services/quoteVerifierService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -644,7 +644,7 @@ router.post('/topics/:id/ai-questions', async (req, res) => {
   let progressTimer = null;
   try {
     const progressId = req.query.progressId || req.body.progressId;
-    const targetModel = (req.body && req.body.preferredModel) || req.query.preferredModel || globalPreferredModel || 'gemini-3.5-flash-lite';
+    const targetModel = (req.body && req.body.preferredModel) || req.query.preferredModel || globalPreferredModel || 'claude-hybrid';
     let standardsAnalysis = '';
     const localCallLLM = (sys, prompt, img, scenario, opts) => {
       const enrichedPrompt = standardsAnalysis ? `${standardsAnalysis}\n\n${prompt}` : prompt;
@@ -844,7 +844,7 @@ ${kcscGrounding ? `\n${kcscGrounding}\n` : ''}
     "question": "1번 문항: 수치 계산 결과 분석...",
     "tableData": { "headers": ["구하는 항목", "계산 결과"], "rows": [["항목1", "[INPUT_1]"]] },
     "answers": { "INPUT_1": "정답" },
-    "explanation": "해설 (🚨 반드시 마지막에 📚 참조 문헌(Standards & Literature) 출처 2~3개 명시)"
+    "explanation": "해설 (📚 참조 문헌: [🏛️ 국가건설기준(KCSC)] 또는 [원보고서]에 실제 KDS/KCS 코드가 명시된 경우에만 해당 정식 코드를 표기하고, 제공되지 않은 경우 절대로 가짜 KDS/KCS 코드 번호를 임의 창작하지 말고 '원보고서 본문 및 지반공학 표준 이론'으로만 표기할 것)"
   },
   {
     "type": "주관식 (표채우기)",
@@ -864,19 +864,19 @@ ${kcscGrounding ? `\n${kcscGrounding}\n` : ''}
       "INPUT_5": "비교대상 2 두번째 서술",
       "INPUT_6": "비교대상 3 두번째 서술"
     },
-    "explanation": "해설 (🚨 반드시 마지막에 📚 참조 문헌(Standards & Literature) 출처 2~3개 명시)"
+    "explanation": "해설 (📚 참조 문헌: [🏛️ 국가건설기준(KCSC)] 또는 [원보고서]에 실제 KDS/KCS 코드가 명시된 경우에만 해당 정식 코드를 표기하고, 제공되지 않은 경우 절대로 가짜 KDS/KCS 코드 번호를 임의 창작하지 말고 '원보고서 본문 및 지반공학 표준 이론'으로만 표기할 것)"
   },
   {
     "type": "주관식 (단답형)",
     "question": "3번 문항: 공학적 의미 질문...",
     "answer": "정답 서술",
-    "explanation": "해설 (🚨 반드시 마지막에 📚 참조 문헌(Standards & Literature) 출처 2~3개 명시)"
+    "explanation": "해설 (📚 참조 문헌: [🏛️ 국가건설기준(KCSC)] 또는 [원보고서]에 실제 KDS/KCS 코드가 명시된 경우에만 해당 정식 코드를 표기하고, 제공되지 않은 경우 절대로 가짜 KDS/KCS 코드 번호를 임의 창작하지 말고 '원보고서 본문 및 지반공학 표준 이론'으로만 표기할 것)"
   },
   {
     "type": "주관식 (단답형)",
     "question": "4번 문항: 대책 질문...",
     "answer": "정답 서술",
-    "explanation": "해설 (🚨 반드시 마지막에 📚 참조 문헌(Standards & Literature) 출처 2~3개 명시)"
+    "explanation": "해설 (📚 참조 문헌: [🏛️ 국가건설기준(KCSC)] 또는 [원보고서]에 실제 KDS/KCS 코드가 명시된 경우에만 해당 정식 코드를 표기하고, 제공되지 않은 경우 절대로 가짜 KDS/KCS 코드 번호를 임의 창작하지 말고 '원보고서 본문 및 지반공학 표준 이론'으로만 표기할 것)"
   }
 ]
 \`\`\`
@@ -933,9 +933,9 @@ ${flowchartSpecificInstruction}
 ${wikiGrounding ? `\n${wikiGrounding}\n` : ''}
 ${kcscGrounding ? `\n${kcscGrounding}\n` : ''}
 
-[🚨 토픽 범위 엄격 제한 및 출제 범위 확충 — 최우선 준수사항]:
-- **맹목적으로 [첨부파일 본문 텍스트]의 지엽적인 자구에만 국한하여 문제를 출제하지 마십시오.** 
-- 만약 첨부파일 내용이 좁거나 단편적이더라도, 해당 **[토픽 핵심 주제]**가 다루는 전반적인 표준 학술 이론 및 기술사 시험 범위의 표준 개념에 대해 AI의 풍부한 공학 지식을 활용하여 문제를 적극적이고 넓게 출제하십시오.
+[🚨 토픽 범위 엄격 제한 및 사료(Fact Dossier) 그라운딩 철칙 — 최우선 준수사항]:
+- **반드시 위 제공된 [핵심 소스 텍스트(원보고서)], [🏛️ 국가건설기준(KCSC)], [🌐 위키피디아]의 3대 사료 번들(Fact Dossier) 내에 명시된 사실·공식·수치 범위 내에서만 철저히 출제하십시오.**
+- 사료에 직접 기재되지 않은 외부 지식, 임의 수식, 가상 수치 또는 검증되지 않은 KDS/KCS 코드 번호를 임의로 창작·주입하는 행위를 엄격히 금지합니다.
 - 단, 다른 대주제 토픽의 개념이나 수식으로 완전히 넘어가 출제하는 것은 여전히 **절대 금지**이며, 모든 질문/정답/해설은 오직 현재 **[토픽 핵심 주제]** 범위 내에 머물러야 합니다.
 - **🚨 [토픽 명칭 정제 및 찌꺼기 제거 철칙]**: 문제를 출제할 때 질문 지문에 "공학 해석 보고서", "공부노트", "요약본" 같은 문서 형태를 가리키는 군더되기 찌꺼기 명칭을 그대로 주어로 사용하지 마십시오. 문제 지문에는 오직 순수한 공학 핵심 주제인 **"${coreSubject}"** 명칭만을 활용하여 질문 문장을 다듬으십시오. (예: "~~ 보고서의 장단점을..." (X) -> "~~ 이론의 장단점을..." (O))
 
@@ -1013,31 +1013,31 @@ ${LATEX_PROMPT_INSTRUCTIONS}
     "type": "주관식 (단답형)",
     "question": "토픽의 가장 중요하고 핵심적인 공학적 정의, 기본 가정, 또는 주요 공학적 의미를 묻는 서술형 질문 1",
     "answer": "핵심 개념이나 거동 특성을 요약한 1줄 서술형 답안 문구 1",
-    "explanation": "해당 개념의 학술적/공학적 의미에 대한 상세 설명 1 (🚨 반드시 마지막에 📚 참조 문헌(Standards & Literature) 출처 2~3개 명시)"
+    "explanation": "해당 개념의 학술적/공학적 의미에 대한 상세 설명 1 (📚 참조 문헌: [🏛️ 국가건설기준(KCSC)] 또는 [원보고서]에 실제 KDS/KCS 코드가 명시된 경우에만 해당 정식 코드를 표기하고, 제공되지 않은 경우 절대로 가짜 KDS/KCS 코드 번호를 임의 창작하지 말고 '원보고서 본문 및 지반공학 표준 이론'으로만 표기할 것)"
   },
   {
     "type": "주관식 (단답형)",
     "question": "토픽의 가장 중요하고 핵심적인 공학적 정의, 기본 가정, 또는 주요 공학적 의미를 묻는 서술형 질문 2",
     "answer": "핵심 개념이나 거동 특성을 요약한 1줄 서술형 답안 문구 2",
-    "explanation": "해당 개념의 학술적/공학적 의미에 대한 상세 설명 2 (🚨 반드시 마지막에 📚 참조 문헌(Standards & Literature) 출처 2~3개 명시)"
+    "explanation": "해당 개념의 학술적/공학적 의미에 대한 상세 설명 2 (📚 참조 문헌: [🏛️ 국가건설기준(KCSC)] 또는 [원보고서]에 실제 KDS/KCS 코드가 명시된 경우에만 해당 정식 코드를 표기하고, 제공되지 않은 경우 절대로 가짜 KDS/KCS 코드 번호를 임의 창작하지 말고 '원보고서 본문 및 지반공학 표준 이론'으로만 표기할 것)"
   },
   {
     "type": "주관식 (단답형)",
     "question": "토픽의 또 다른 중요 세부 개념, 원리 또는 장단점을 묻는 서술형 질문 3",
     "answer": "세부 개념이나 거동 특성을 요약한 1줄 서술형 답안 문구 3",
-    "explanation": "해당 개념의 학술적/공학적 의미에 대한 상세 설명 3 (🚨 반드시 마지막에 📚 참조 문헌(Standards & Literature) 출처 2~3개 명시)"
+    "explanation": "해당 개념의 학술적/공학적 의미에 대한 상세 설명 3 (📚 참조 문헌: [🏛️ 국가건설기준(KCSC)] 또는 [원보고서]에 실제 KDS/KCS 코드가 명시된 경우에만 해당 정식 코드를 표기하고, 제공되지 않은 경우 절대로 가짜 KDS/KCS 코드 번호를 임의 창작하지 말고 '원보고서 본문 및 지반공학 표준 이론'으로만 표기할 것)"
   },
   {
     "type": "주관식 (단답형)",
     "question": "실무 적용 시 주요 단점, 대책, 또는 현장 한계점을 묻는 서술형 질문 4",
     "answer": "해당 대책이나 한계점을 명료하게 제시한 1줄 서술형 답안 문구 4",
-    "explanation": "해당 대책의 학술적/공학적 근거에 대한 상세 설명 4 (🚨 반드시 마지막에 📚 참조 문헌(Standards & Literature) 출처 2~3개 명시)"
+    "explanation": "해당 대책의 학술적/공학적 근거에 대한 상세 설명 4 (📚 참조 문헌: [🏛️ 국가건설기준(KCSC)] 또는 [원보고서]에 실제 KDS/KCS 코드가 명시된 경우에만 해당 정식 코드를 표기하고, 제공되지 않은 경우 절대로 가짜 KDS/KCS 코드 번호를 임의 창작하지 말고 '원보고서 본문 및 지반공학 표준 이론'으로만 표기할 것)"
   },
   {
     "type": "주관식 (그래프해석)",
     "question": "공학적 현상 분석 질문 텍스트\\n\\n\`\`\`chart\\n{ \\\"type\\\": \\\"line\\\", ... }\\n\`\`\`",
     "answer": "그래프에 대한 기술사급 분석 및 공학적 의미 서술 모범답안",
-    "explanation": "관련 메커니즘, 상세 해설 등 (🚨 반드시 마지막에 📚 참조 문헌(Standards & Literature) 출처 2~3개 명시)"
+    "explanation": "관련 메커니즘, 상세 해설 등 (📚 참조 문헌: [🏛️ 국가건설기준(KCSC)] 또는 [원보고서]에 실제 KDS/KCS 코드가 명시된 경우에만 해당 정식 코드를 표기하고, 제공되지 않은 경우 절대로 가짜 KDS/KCS 코드 번호를 임의 창작하지 말고 '원보고서 본문 및 지반공학 표준 이론'으로만 표기할 것)"
   },
   {
     "type": "주관식 (표채우기)",
@@ -1122,7 +1122,7 @@ ${LATEX_PROMPT_INSTRUCTIONS}
       "INPUT_5": "비교대상 2 두번째 서술",
       "INPUT_6": "비교대상 3 두번째 서술"
     },
-    "explanation": "표 내용 및 빈칸에 대한 공학적 상세 해설 (🚨 반드시 마지막에 📚 참조 문헌(Standards & Literature) 출처 2~3개 명시)"
+    "explanation": "표 내용 및 빈칸에 대한 공학적 상세 해설 (📚 참조 문헌: [🏛️ 국가건설기준(KCSC)] 또는 [원보고서]에 실제 KDS/KCS 코드가 명시된 경우에만 해당 정식 코드를 표기하고, 제공되지 않은 경우 절대로 가짜 KDS/KCS 코드 번호를 임의 창작하지 말고 '원보고서 본문 및 지반공학 표준 이론'으로만 표기할 것)"
   },
   {
     "type": "주관식 (표채우기)",
@@ -1138,7 +1138,7 @@ ${LATEX_PROMPT_INSTRUCTIONS}
       "INPUT_1": "비교대상 1의 공학적 메커니즘을 설명하는 40~80자 서술형 문장",
       "INPUT_2": "비교대상 2의 공학적 메커니즘을 설명하는 40~80자 서술형 문장"
     },
-    "explanation": "표 내용 및 빈칸에 대한 공학적 상세 해설 (🚨 반드시 마지막에 📚 참조 문헌(Standards & Literature) 출처 2~3개 명시)"
+    "explanation": "표 내용 및 빈칸에 대한 공학적 상세 해설 (📚 참조 문헌: [🏛️ 국가건설기준(KCSC)] 또는 [원보고서]에 실제 KDS/KCS 코드가 명시된 경우에만 해당 정식 코드를 표기하고, 제공되지 않은 경우 절대로 가짜 KDS/KCS 코드 번호를 임의 창작하지 말고 '원보고서 본문 및 지반공학 표준 이론'으로만 표기할 것)"
   }
 ]
 `;
@@ -1198,7 +1198,7 @@ ${LATEX_PROMPT_INSTRUCTIONS}
   {
     "type": "객관식 (4지선다)",
     "question": "질문 내용",
-    "explanation": "상세한 공학적 해설 (단위 환산 및 단계별 수식 계산을 먼저 수행하여 최종 정답 확정)...\n\n💡 **직관적 의미**: 정답의 핵심 직관적 설명 1~2문장\n\n📚 참조 문헌(Standards & Literature): 출처 2~3개",
+    "explanation": "상세한 공학적 해설 (단위 환산 및 단계별 수식 계산을 먼저 수행하여 최종 정답 확정)...\n\n💡 **직관적 의미**: 정답의 핵심 직관적 설명 1~2문장\n\n📚 참조 문헌(Standards & Literature): [🏛️ 국가건설기준(KCSC)] 또는 [원보고서]에 실제 KDS/KCS 코드가 명시된 경우에만 해당 정식 코드를 표기하고, 제공되지 않은 경우 절대로 가짜 KDS/KCS 코드 번호를 임의 창작하지 말고 '원보고서 본문 및 지반공학 표준 이론'으로만 표기할 것",
     "options": ["$수식 또는 보기 1$", "$수식 또는 보기 2$", "$수식 또는 보기 3$", "$수식 또는 보기 4$"],
     "answer": "$수식 또는 보기 1$",
     "correctIndex": 0
@@ -2476,14 +2476,18 @@ function extractJsonArray(str) {
   return null;
 }
 
-async function validateAndHealQuestion(question, callLLMWithFailover, topicTitle = '', topicKeywords = '', fileText = '') {
+async function validateAndHealQuestion(question, callLLMWithFailover, topicTitle = '', topicKeywords = '', fileText = '', kcscGrounding = '', wikiGrounding = '') {
+  if (!question || typeof question !== 'object') return question;
+  return verifyAndHealSingleQuestionGrounding(healQuizQuestionObject(question), { topicTitle, topicKeywords, fileText, kcscGrounding, wikiGrounding });
+}
+function _noopUnused(question) {
   return question;
 }
 
 // POST /api/exam/all
 router.post('/exam/all', async (req, res) => {
   const progressId = req.query.progressId || req.body.progressId;
-  const targetModel = (req.body && req.body.preferredModel) || req.query.preferredModel || globalPreferredModel || 'gemini-3.5-flash-lite';
+  const targetModel = (req.body && req.body.preferredModel) || req.query.preferredModel || globalPreferredModel || 'claude-hybrid';
   let progressTimer = null;
   let standardsAnalysis = '';
   if (progressId) {
@@ -2739,14 +2743,14 @@ ${ENGINEERING_STANDARDS}
     "tableData": null,
     "options": [],
     "answer": "그래프에 대한 기술사급 분석 및 공학적 의미 서술 모범답안",
-    "explanation": "관련 메커니즘, 상세 해설 등 (🚨 반드시 마지막에 📚 참조 문헌(Standards & Literature) 출처 2~3개 명시)"
+    "explanation": "관련 메커니즘, 상세 해설 등 (📚 참조 문헌: [🏛️ 국가건설기준(KCSC)] 또는 [원보고서]에 실제 KDS/KCS 코드가 명시된 경우에만 해당 정식 코드를 표기하고, 제공되지 않은 경우 절대로 가짜 KDS/KCS 코드 번호를 임의 창작하지 말고 '원보고서 본문 및 지반공학 표준 이론'으로만 표기할 것)"
   }
 ] (※ 만약 표가 필요한 질문이라면 "tableData": {"headers": ["구분", "비교대상 A", "비교대상 B"], "rows": [["항목 1", "내용 A", "내용 B"]]} 처럼 구조화된 표 객체를 작성하고, 그렇지 않은 일반 질문이면 "tableData": null 로 설정하십시오.)
 `;
       try {
         console.log(`[종합평가 병렬 생성] #${idx + 1}번째 배치 전송 시작...`);
         const enrichedPrompt = standardsAnalysis ? `${standardsAnalysis}\n\n${batchPrompt}` : batchPrompt;
-        const rawText = await callLLMWithFailover(null, enrichedPrompt, null, 'question', { temperature: 1.0 });
+        const rawText = await callLLMWithFailover(null, enrichedPrompt, null, 'question', { temperature: 1.0, preferredModel: targetModel, hybridRole: 'deep' });
         let text = rawText.trim();
         if (text.startsWith('```')) {
           text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
@@ -3230,7 +3234,7 @@ ${ENGINEERING_STANDARDS}
     "topic_title": "이 문제의 출제 근거가 되는 토픽 목록 내의 정확한 토픽명",
     "question": "공학적 현상 분석 질문",
     "tableData": null,
-    "explanation": "이유와 오답 정밀 해설\n\n💡 **직관적 의미**: 정답의 핵심 직관적 설명 1~2문장\n\n📚 참조 문헌(Standards & Literature) 출처 2~3개 명시",
+    "explanation": "이유와 오답 정밀 해설\n\n💡 **직관적 의미**: 정답의 핵심 직관적 설명 1~2문장\n\n📚 참조 문헌(Standards & Literature): [🏛️ 국가건설기준(KCSC)] 또는 [원보고서]에 실제 KDS/KCS 코드가 명시된 경우에만 해당 정식 코드를 표기하고, 제공되지 않은 경우 절대로 가짜 KDS/KCS 코드 번호를 임의 창작하지 말고 '원보고서 본문 및 지반공학 표준 이론'으로만 표기할 것",
     "options": ["보기1", "보기2", "보기3", "보기4"],
     "answer": "보기1",
     "correctIndex": 0
@@ -3239,7 +3243,7 @@ ${ENGINEERING_STANDARDS}
 `;
       try {
         console.log(`[종합평가 추가 생성] (${i + 1}/${TOTAL_BATCHES}) 회차 프롬프트 전송 시작...`);
-        const rawText = await callLLMWithFailover(null, batchPrompt, null, 'question', { temperature: 1.0 });
+        const rawText = await callLLMWithFailover(null, batchPrompt, null, 'question', { temperature: 1.0, preferredModel: (req.body && req.body.preferredModel) || req.query.preferredModel || globalPreferredModel || 'claude-hybrid', hybridRole: 'deep' });
         let text = rawText.trim();
         if (text.startsWith('```')) {
           text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();

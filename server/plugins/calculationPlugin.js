@@ -439,8 +439,8 @@ ${commonInfoPrompt}
 
   // --- 3. Call LLM Concurrently ---
   const imagePayload = calcImageBase64 ? { data: calcImageBase64, mimeType: calcImageMime } : null;
-  const p1 = callLLM(systemInstruction, generationPromptQ1, imagePayload, 'calc_question_q1', { temperature: 0.1 });
-  const p2 = callLLM(systemInstruction, generationPromptQ234, imagePayload, 'calc_question_q234', { temperature: 1.0 });
+  const p1 = callLLM(systemInstruction, generationPromptQ1, imagePayload, 'calc_question_q1', { temperature: 0.1, hybridRole: 'deep' });
+  const p2 = callLLM(systemInstruction, generationPromptQ234, imagePayload, 'calc_question_q234', { temperature: 1.0, hybridRole: 'deep' });
   
   const [rawTextQ1, rawTextQ234] = await Promise.all([p1, p2]);
 

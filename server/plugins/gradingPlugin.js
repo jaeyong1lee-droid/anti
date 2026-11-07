@@ -6,7 +6,8 @@ import { LATEX_PROMPT_INSTRUCTIONS, parseLlmJson, healLatexFormulas } from '../u
 import {
   getNotebookLmGroundedPromptBlock,
   verifyGroundedGradingResult,
-  sanitizeUnfoundedBlockFormulas
+  sanitizeUnfoundedBlockFormulas,
+  sanitizeHallucinatedKdsCodes
 } from '../services/quoteVerifierService.js';
 
 export const baseSystemInstruction = `당신은 지반공학 및 토목공학 전문 채점관입니다.
@@ -264,7 +265,7 @@ ${LATEX_PROMPT_INSTRUCTIONS}`;
       question,
       correctAnswer
     });
-    cleanAnswer = formulaSanitized.sanitizedText;
+    cleanAnswer = sanitizeHallucinatedKdsCodes(formulaSanitized.sanitizedText, dossierCombined).sanitizedText;
 
     if (cleanAnswer.length > 0 && !/^(success|ok|true|false)$/i.test(cleanAnswer)) {
       return cleanAnswer;

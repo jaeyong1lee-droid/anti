@@ -2,7 +2,7 @@ import express from 'express';
 import pdfParse from 'pdf-parse';
 import { dbQuery } from '../database.js';
 import { callLLMWithFailover, analyzeStandardsBeforeTask, getTopicText, getMatchingTopicContent, startBackendProgressTimer, updateProgress, stopBackendProgressTimer, globalPreferredModel } from '../services/aiService.js';
-import { healQuizQuestionObject, parseLlmJson, healLatexFormulas, validateAndHealQuestion } from '../utils/latexUtils.js';
+import { healQuizQuestionObject, parseLlmJson, healLatexFormulas } from '../utils/latexUtils.js';
 import * as fileUtils from '../utils/fileUtils.js';
 import { gradeSubjective, GRADING_STANDARDS, gradingStandardsList } from '../plugins/gradingPlugin.js';
 import { ENGINEERING_STANDARDS, standardsList as engineeringStandardsList } from '../plugins/engineeringStandards.js';
@@ -11,7 +11,18 @@ import { FLOWCHART_QUIZ_GENERATION_PROMPT } from '../plugins/flowchartQuizPlugin
 import * as ocrPlugin from '../plugins/calculationPlugin.js';
 import { getKcscVerificationContext } from '../services/kcscService.js';
 import { getWikipediaKnowledge } from '../services/wikipediaService.js';
-import { verifyQuote, detectMultipleCandidates, verifyGroundedGradingResult, buildFactDossier } from '../services/quoteVerifierService.js';
+import { verifyQuote, detectMultipleCandidates, verifyGroundedGradingResult, buildFactDossier, verifyAndHealSingleQuestionGrounding } from '../services/quoteVerifierService.js';
+
+async function validateAndHealQuestion(question, callLLM, topicTitle = '', topicKeywords = '', fileText = '', kcscGrounding = '', wikiGrounding = '') {
+  if (!question || typeof question !== 'object') return question;
+  return verifyAndHealSingleQuestionGrounding(healQuizQuestionObject(question), {
+    topicTitle,
+    topicKeywords,
+    fileText,
+    kcscGrounding,
+    wikiGrounding
+  });
+}
 
 const router = express.Router();
 const BT = '```';
@@ -875,11 +886,11 @@ ${otherQs.map((q, i) => `기존 문제 ${i + 1}: ${q.question || '없음'}`).joi
         if (isCalcTable) {
           typeRequirement = `[수치 계산용 2열 표채우기 유형으로 생성하십시오]
 - 🚨 **[기계적 파서 철칙]**: AI는 임의로 공학적 분석이나 새로운 지문을 창작하지 마십시오. 오직 첨부된 이미지/지문에서 "구하시오" 또는 "나타내시오"로 요구한 항목들만 있는 그대로 각각의 행과 \`[INPUT_N]\`으로 분리하십시오. 지문에 없는 용어를 절대로 지어내지 마십시오.`;
-          formatRequirement = `{"type": "주관식 (표채우기)", "question": "실제 문제 지문 그대로 복사", "tableData": {"headers": ["구하는 항목", "계산 결과 및 답안"], "rows": [["(1) 지문에서 요구한 첫번째 항목명", "[INPUT_1]"], ["(2) 지문에서 요구한 두번째 항목명", "[INPUT_2]"]]}, "answers": {"INPUT_1": "정답 풀이 1", "INPUT_2": "정답 풀이 2"}, "explanation": "해설 (🚨 반드시 마지막에 📚 참조 문헌(Standards & Literature) 출처 2~3개 명시)"}`;
+          formatRequirement = `{"type": "주관식 (표채우기)", "question": "실제 문제 지문 그대로 복사", "tableData": {"headers": ["구하는 항목", "계산 결과 및 답안"], "rows": [["(1) 지문에서 요구한 첫번째 항목명", "[INPUT_1]"], ["(2) 지문에서 요구한 두번째 항목명", "[INPUT_2]"]]}, "answers": {"INPUT_1": "정답 풀이 1", "INPUT_2": "정답 풀이 2"}, "explanation": "해설 (📚 참조 문헌: [🏛️ 국가건설기준(KCSC)] 또는 [원보고서]에 실제 KDS/KCS 코드가 명시된 경우에만 해당 정식 코드를 표기하고, 제공되지 않은 경우 절대로 가짜 KDS/KCS 코드 번호를 임의 창작하지 말고 '원보고서 본문 및 지반공학 표준 이론'으로만 표기할 것)"}`;
         } else {
           typeRequirement = `[주관식 (표채우기) 비교용 다열 표 유형으로 생성하십시오]
 - 🚨 [데이터 셀 100% 빈칸 강제 철칙]: 행 제목(첫 번째 열)을 제외한 모든 데이터 셀을 100% 전부 빈칸([INPUT_1], [INPUT_2]...)으로 뚫어내야 합니다. 비교 대상이 3개 이상이어서 열이 늘어나더라도 예외 없이 모든 칸을 비우십시오. 일부 칸만 비우고 나머지를 텍스트로 채우는 행위는 절대 금지합니다.`;
-          formatRequirement = `{"type": "주관식 (표채우기)", "question": "질문", "tableData": {"headers": ["구분 항목", "비교대상 1", "비교대상 2", "(비교 대상 3이 있다면 추가)"], "rows": [["항목 1", "[INPUT_1]", "[INPUT_2]", "[INPUT_3]"], ["항목 2", "[INPUT_4]", "[INPUT_5]", "[INPUT_6]"]]}, "answers": {"INPUT_1": "답1", "INPUT_2": "답2", "INPUT_3": "답3", "INPUT_4": "답4", "INPUT_5": "답5", "INPUT_6": "답6"}, "explanation": "해설 (🚨 반드시 마지막에 📚 참조 문헌(Standards & Literature) 출처 2~3개 명시)"}`;
+          formatRequirement = `{"type": "주관식 (표채우기)", "question": "질문", "tableData": {"headers": ["구분 항목", "비교대상 1", "비교대상 2", "(비교 대상 3이 있다면 추가)"], "rows": [["항목 1", "[INPUT_1]", "[INPUT_2]", "[INPUT_3]"], ["항목 2", "[INPUT_4]", "[INPUT_5]", "[INPUT_6]"]]}, "answers": {"INPUT_1": "답1", "INPUT_2": "답2", "INPUT_3": "답3", "INPUT_4": "답4", "INPUT_5": "답5", "INPUT_6": "답6"}, "explanation": "해설 (📚 참조 문헌: [🏛️ 국가건설기준(KCSC)] 또는 [원보고서]에 실제 KDS/KCS 코드가 명시된 경우에만 해당 정식 코드를 표기하고, 제공되지 않은 경우 절대로 가짜 KDS/KCS 코드 번호를 임의 창작하지 말고 '원보고서 본문 및 지반공학 표준 이론'으로만 표기할 것)"}`;
         }
       } else if (targetType === '주관식 (단답형)') {
         let subtypeInstruction = '';
@@ -899,11 +910,11 @@ ${otherQs.map((q, i) => `기존 문제 ${i + 1}: ${q.question || '없음'}`).joi
   * 🚨 [정답(answer) 서술형 작성 필수 규칙 - 극도로 중요!]: 정답(answer)은 단답형 단어가 아닌, 현장 대책과 공학적 원리가 포함된 50자~120자 내외의 완성된 서술형 문장이어야 합니다.`;
         }
         typeRequirement = `[주관식 (단답형) ${targetSubtype} 유형으로 생성하십시오]${subtypeInstruction}`;
-        formatRequirement = `{"type": "주관식 (단답형)", "question": "질문", "answer": "답안", "explanation": "해설 (🚨 반드시 마지막에 📚 참조 문헌(Standards & Literature) 출처 2~3개 명시)"}`;
+        formatRequirement = `{"type": "주관식 (단답형)", "question": "질문", "answer": "답안", "explanation": "해설 (📚 참조 문헌: [🏛️ 국가건설기준(KCSC)] 또는 [원보고서]에 실제 KDS/KCS 코드가 명시된 경우에만 해당 정식 코드를 표기하고, 제공되지 않은 경우 절대로 가짜 KDS/KCS 코드 번호를 임의 창작하지 말고 '원보고서 본문 및 지반공학 표준 이론'으로만 표기할 것)"}`;
       } else {
         typeRequirement = `[객관식 4지선다 유형으로 생성하십시오]
 - 🚨 [CoT-First 정답 일관성 철칙]: 반드시 "explanation"(해설) 필드를 가장 먼저 작성하여 수식 대입 및 논리 검증을 끝까지 완료한 뒤, 그 결론과 100% 일치하는 보기를 "options", "answer", "correctIndex"에 배치하십시오.`;
-        formatRequirement = `{"type": "객관식 (4지선다)", "question": "질문", "tableData": null, "explanation": "해설 (🚨 반드시 마지막에 📚 참조 문헌(Standards & Literature) 출처 2~3개 명시)", "options": ["보기1", "보기2", "보기3", "보기4"], "answer": "보기1", "correctIndex": 0}`;
+        formatRequirement = `{"type": "객관식 (4지선다)", "question": "질문", "tableData": null, "explanation": "해설 (📚 참조 문헌: [🏛️ 국가건설기준(KCSC)] 또는 [원보고서]에 실제 KDS/KCS 코드가 명시된 경우에만 해당 정식 코드를 표기하고, 제공되지 않은 경우 절대로 가짜 KDS/KCS 코드 번호를 임의 창작하지 말고 '원보고서 본문 및 지반공학 표준 이론'으로만 표기할 것)", "options": ["보기1", "보기2", "보기3", "보기4"], "answer": "보기1", "correctIndex": 0}`;
       }
 
       let flowchartDuplicationPrompt = '';
@@ -1028,7 +1039,7 @@ ${formatRequirement ? `[응답 포맷]:\n${formatRequirement}` : ''}`;
       if (progressId) {
         updateProgress(progressId, 2, '2단계: 생성 문제 정합성 검토 중...', 50);
       }
-      const validatedQ = await validateAndHealQuestion(healedQ, localCallLLM, topic.title, topic.keywords, fileText);
+      const validatedQ = await validateAndHealQuestion(healedQ, localCallLLM, topic.title, topic.keywords, fileText, kcscGrounding, wikiGrounding);
       const finalValidatedQ = healQuizQuestionObject({
         ...validatedQ,
         topic_id: Number(finalTopicId),
@@ -1152,7 +1163,7 @@ ${getActiveEngineeringStandards()}
       if (progressId) {
         updateProgress(progressId, 2, '2단계: 생성 문제 정합성 검토 중...', 50);
       }
-      const validatedQ = await validateAndHealQuestion(healedQ, localCallLLM, activeTopicTitle, activeTopicKeywords, activeTopicFileText);
+      const validatedQ = await validateAndHealQuestion(healedQ, localCallLLM, activeTopicTitle, activeTopicKeywords, activeTopicFileText, kcscGrounding, wikiGrounding);
       const finalValidatedQ = healQuizQuestionObject(validatedQ);
       if (progressId) {
         updateProgress(progressId, 2, '2단계: 문제 생성 및 검증 완료!', 100);
@@ -1307,7 +1318,7 @@ ${getActiveEngineeringStandards()}
       if (progressId) {
         updateProgress(progressId, 2, '2단계: 생성 문제 정합성 검토 중...', 50);
       }
-      const validatedQ = await validateAndHealQuestion(healedQ, localCallLLM, topic.title, topic.keywords, fileText);
+      const validatedQ = await validateAndHealQuestion(healedQ, localCallLLM, topic.title, topic.keywords, fileText, kcscGrounding, wikiGrounding);
       const finalValidatedQ = healQuizQuestionObject({
         ...validatedQ,
         topic_id: finalTopicId,
@@ -1449,7 +1460,7 @@ ${getActiveEngineeringStandards()}
       if (progressId) {
         updateProgress(progressId, 2, '2단계: 생성 문제 정합성 검토 중...', 50);
       }
-      const validatedQ = await validateAndHealQuestion(healedQ, localCallLLM, activeTopicTitle, activeTopicKeywords, activeTopicFileText);
+      const validatedQ = await validateAndHealQuestion(healedQ, localCallLLM, activeTopicTitle, activeTopicKeywords, activeTopicFileText, kcscGrounding, wikiGrounding);
       const finalValidatedQ = healQuizQuestionObject(validatedQ);
       if (progressId) {
         updateProgress(progressId, 2, '2단계: 문제 생성 및 검증 완료!', 100);
