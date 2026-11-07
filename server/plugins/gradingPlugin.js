@@ -237,10 +237,11 @@ export function evaluateStrictNumericFastTrack({
 }
 
 // Versioned Model Answer Cache + Single-Flight Map (Write-After-Verify)
-const MODEL_ANSWER_CACHE_VERSION = 'v5-prompt2.2-san2.1';
+const MODEL_ANSWER_CACHE_VERSION = 'v5.2-prompt2.3-san2.1';
+const PHASE1_PROMPT_SIGNATURE = 'phase1-single-cell-latex-intuitive-meaning-strict-grounding-v5.2';
 const PROMPT_TEMPLATE_HASH = crypto
   .createHash('sha256')
-  .update(baseSystemInstruction)
+  .update(`${baseSystemInstruction}||${PHASE1_PROMPT_SIGNATURE}`)
   .digest('hex')
   .slice(0, 12);
 const MODEL_ANSWER_CACHE_MAX_SIZE = 500;
@@ -259,7 +260,7 @@ export function buildModelAnswerCacheKey({
   wikiGrounding = '',
   gradingStandards = '',
   engineeringStandards = '',
-  modelId = 'claude-hybrid:fast(claude-haiku-5-5)'
+  modelId = 'default-fast'
 }) {
   const standardsHash = crypto
     .createHash('sha256')
@@ -352,6 +353,7 @@ export async function getOrGenerateVerifiedModelAnswer(params) {
   const {
     question,
     correctAnswer,
+    existingModelAnswer = '',
     rowHeader,
     colHeader,
     explanation,
@@ -361,7 +363,8 @@ export async function getOrGenerateVerifiedModelAnswer(params) {
     engineeringStandards,
     isReevaluation = false,
     kcscContext = '',
-    wikiGrounding = ''
+    wikiGrounding = '',
+    preferredModel = ''
   } = params;
 
   // C2: 재평가(isReevaluation=true)는 고온(0.85) 독립 탐색이므로 캐시 및 Single-Flight와 완전 격리
@@ -392,7 +395,8 @@ export async function getOrGenerateVerifiedModelAnswer(params) {
     kcscContext,
     wikiGrounding,
     gradingStandards,
-    engineeringStandards
+    engineeringStandards,
+    modelId: preferredModel || 'default-fast'
   });
 
   // 1) Versioned LRU Cache Hit 확인 (만료 시 즉시 제거, 히트 시 LRU 순서 갱신)
@@ -427,6 +431,29 @@ export async function getOrGenerateVerifiedModelAnswer(params) {
     };
   }
 
+  // 2-B) Lockscreen 재제출 시 이전 채점의 suggestedModelAnswer(existingModelAnswer)가 전달된 경우 Sanitize 후 즉시 재사용
+  if (existingModelAnswer && typeof existingModelAnswer === 'string' && existingModelAnswer.trim().length >= 90 && existingModelAnswer.includes('💡')) {
+    const verifiedExisting = verifyGroundedGradingResult({
+      question,
+      correctAnswer: '',
+      authoritativeModelAnswer: existingModelAnswer.trim(),
+      explanation,
+      kcscContext,
+      wikiGrounding
+    });
+    if (verifiedExisting.sanitizedModelAnswer && verifiedExisting.sanitizedModelAnswer.trim().length >= 90) {
+      const existingPayload = {
+        authoritativeModelAnswer: verifiedExisting.sanitizedModelAnswer,
+        groundingVerification: verifiedExisting.groundingVerification
+      };
+      setBoundedModelAnswerCache(cacheKey, existingPayload);
+      return {
+        ...existingPayload,
+        cacheStatus: 'existing_model_answer_reuse'
+      };
+    }
+  }
+
   // 3) Single-Flight Coalescing 확인 (동일 문항/빈칸 동시 채점 시 Phase 1 중복 호출 차단)
   if (singleFlightModelAnswerMap.has(cacheKey)) {
     const sharedResult = await singleFlightModelAnswerMap.get(cacheKey);
@@ -451,7 +478,7 @@ export async function getOrGenerateVerifiedModelAnswer(params) {
       authoritativeModelAnswer: verified.sanitizedModelAnswer,
       groundingVerification: verified.groundingVerification
     };
-    if (verified.groundingVerification?.verified && payload.authoritativeModelAnswer) {
+    if (payload.authoritativeModelAnswer && payload.authoritativeModelAnswer.trim().length > 0) {
       setBoundedModelAnswerCache(cacheKey, payload);
     }
     return payload;
@@ -634,7 +661,7 @@ ${LATEX_PROMPT_INSTRUCTIONS}`;
   return correctAnswer || '공학적 기준에 부합하는 표준 답안';
 }
 
-export async function gradeSubjective({ question, correctAnswer, userAnswer, rowHeader, colHeader, explanation, category, callLLMWithFailover, gradingStandards, engineeringStandards, isReevaluation = false, kcscContext = '', wikiGrounding = '' }) {
+export async function gradeSubjective({ question, correctAnswer, existingModelAnswer = '', userAnswer, rowHeader, colHeader, explanation, category, callLLMWithFailover, gradingStandards, engineeringStandards, isReevaluation = false, kcscContext = '', wikiGrounding = '', preferredModel = '' }) {
   if (!userAnswer) {
     return { isCorrect: false, score: 0, reason: '답안이 비어 있습니다.', suggestedModelAnswer: correctAnswer };
   }
@@ -656,6 +683,7 @@ export async function gradeSubjective({ question, correctAnswer, userAnswer, row
     const resolvedFast = await getOrGenerateVerifiedModelAnswer({
       question,
       correctAnswer,
+      existingModelAnswer,
       rowHeader,
       colHeader,
       explanation,
@@ -665,7 +693,8 @@ export async function gradeSubjective({ question, correctAnswer, userAnswer, row
       engineeringStandards,
       isReevaluation,
       kcscContext,
-      wikiGrounding
+      wikiGrounding,
+      preferredModel
     });
     const fastReason = isExactTextMatch
       ? '텍스트가 모범 답안과 정확히 일치합니다.'
@@ -688,6 +717,7 @@ export async function gradeSubjective({ question, correctAnswer, userAnswer, row
   const resolvedModelAnswer = await getOrGenerateVerifiedModelAnswer({
     question,
     correctAnswer,
+    existingModelAnswer,
     rowHeader,
     colHeader,
     explanation,
@@ -697,7 +727,8 @@ export async function gradeSubjective({ question, correctAnswer, userAnswer, row
     engineeringStandards,
     isReevaluation,
     kcscContext,
-    wikiGrounding
+    wikiGrounding,
+    preferredModel
   });
   const authoritativeModelAnswer = resolvedModelAnswer.authoritativeModelAnswer;
   const groundedVerificationResult = {

@@ -3525,7 +3525,8 @@ export default function App() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               sourceText: customSourceText || undefined,
-              topicTitle: finalTitle
+              topicTitle: finalTitle,
+              preferredModel: preferredModelRef.current || preferredModel
             })
           });
           break;
@@ -4499,11 +4500,26 @@ export default function App() {
     }
   };
 
+  useEffect(() => {
+    if (!showLockscreenQuiz || !lockscreenQuestion || lockscreenGradingResult) return;
+    const qText = lockscreenQuestion.question || lockscreenQuestion.fullTitle || '';
+    if (!qText.trim()) return;
+    fetch(`${API_BASE}/api/lockscreen/prewarm`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        question: lockscreenQuestion,
+        preferredModel: preferredModelRef.current || preferredModel
+      })
+    }).catch(() => {});
+  }, [showLockscreenQuiz, lockscreenQuestion?.lockscreen_id, lockscreenQuestion?.question]);
+
   const handleGradeLockscreenAnswer = async () => {
     if (!lockscreenQuestion || !lockscreenUserAnswer.trim() || lockscreenGradingLoading) return;
     const targetQ = lockscreenQuestion;
     const targetKey = getLockscreenQuestionKey(targetQ);
     const targetAnswer = lockscreenUserAnswer.trim();
+    const existingModelAns = lockscreenGradingResult?.suggestedModelAnswer || undefined;
     setLockscreenGradingLoading(true);
     try {
       const res = await fetch(`${API_BASE}/api/lockscreen/grade`, {
@@ -4513,6 +4529,7 @@ export default function App() {
           question: targetQ,
           userAnswer: targetAnswer,
           questionId: targetQ.id,
+          existingModelAnswer: existingModelAns,
           preferredModel: preferredModelRef.current || preferredModel
         })
       });
@@ -6272,7 +6289,15 @@ export default function App() {
         throw new Error('Network response not ok');
       })
       .then(data => {
-        if (data.model && !localVal) {
+        if (localVal) {
+          if (data.model !== localVal) {
+            fetch(`${API_BASE}/api/preferred-model`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ model: localVal })
+            }).catch(() => {});
+          }
+        } else if (data.model) {
           setPreferredModel(data.model);
           preferredModelRef.current = data.model;
         }
@@ -12580,6 +12605,7 @@ ${item.intuitive || ''}
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
+            preferredModel: preferredModelRef.current || preferredModel,
             examQuestions: updatedQuestions, 
             examRevealed: newRevealed, 
             examAnswers: newAnswers, 
@@ -12622,6 +12648,7 @@ ${item.intuitive || ''}
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
+            preferredModel: preferredModelRef.current || preferredModel,
             examQuestions: updatedQuestions, 
             examRevealed, 
             examAnswers, 
@@ -13216,7 +13243,7 @@ ${item.intuitive || ''}
       const res = await fetch(`${API_BASE}/api/question/option-explanation`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question, options, answer, progressId })
+        body: JSON.stringify({ question, options, answer, preferredModel: preferredModelRef.current || preferredModel, progressId })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || '보기별 해설을 생성하지 못했습니다.');
@@ -13323,6 +13350,7 @@ ${item.intuitive || ''}
         body: JSON.stringify({
           history: [],
           message: contextPrompt,
+          preferredModel: preferredModelRef.current || preferredModel,
           progressId
         })
       });
@@ -13516,7 +13544,7 @@ ${item.intuitive || ''}
       const res = await fetch(`${API_BASE}/api/exam/detailed-answer`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question, answer, progressId })
+        body: JSON.stringify({ question, answer, preferredModel: preferredModelRef.current || preferredModel, progressId })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || '답안 전문을 가져오는 중 오류가 발생했습니다.');
@@ -13942,6 +13970,7 @@ ${item.intuitive || ''}
           message: apiMessage,
           image: currentAttachedImage ? { mimeType: currentAttachedImage.mimeType, data: currentAttachedImage.data } : null,
           acronymMode: overrideAcronymMode || acronymModeActive,
+          preferredModel: preferredModelRef.current || preferredModel,
           progressId
         })
       });
@@ -14108,7 +14137,7 @@ ${item.intuitive || ''}
       const res = await fetch(`${API_BASE}/api/hint`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ questionText, progressId })
+        body: JSON.stringify({ questionText, preferredModel: preferredModelRef.current || preferredModel, progressId })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || '힌트 생성 실패');
@@ -15014,6 +15043,7 @@ ${item.intuitive || ''}
           image: currentAttachedImages.length === 1 ? { mimeType: currentAttachedImages[0].mimeType, data: currentAttachedImages[0].data } : null,
           images: currentAttachedImages.map(img => ({ mimeType: img.mimeType, data: img.data })),
           acronymMode: overrideAcronymMode || acronymModeActive,
+          preferredModel: preferredModelRef.current || preferredModel,
           progressId
         })
       });
@@ -15182,6 +15212,7 @@ ${item.intuitive || ''}
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          preferredModel: preferredModelRef.current || preferredModel,
           history: [],
           message: query,
           image: currentImage ? { mimeType: currentImage.mimeType, data: currentImage.data } : null,
@@ -15266,6 +15297,7 @@ ${item.intuitive || ''}
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          preferredModel: preferredModelRef.current || preferredModel,
           history: [],
           message: topic,
           image: null,
@@ -15403,6 +15435,7 @@ ${item.intuitive || ''}
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          preferredModel: preferredModelRef.current || preferredModel,
           history: [],
           message: promptText,
           image: null,
@@ -15932,6 +15965,7 @@ ${item.intuitive || ''}
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          preferredModel: preferredModelRef.current || preferredModel,
           history: [],
           message: ov.title,
           image: null,
@@ -16252,6 +16286,7 @@ ${item.intuitive || ''}
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          preferredModel: preferredModelRef.current || preferredModel,
           history: [],
           message: prompt,
           image: null
@@ -16460,6 +16495,7 @@ ${item.intuitive || ''}
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          preferredModel: preferredModelRef.current || preferredModel,
           history: [],
           message: prompt,
           image: null,
@@ -16643,6 +16679,7 @@ ${item.intuitive || ''}
         headers: { 'Content-Type': 'application/json' },
         signal: controller.signal,
         body: JSON.stringify({
+          preferredModel: preferredModelRef.current || preferredModel,
           history: [],
           message: query,
           image: null,
@@ -16783,6 +16820,7 @@ ${itemsStr}
         headers: { 'Content-Type': 'application/json' },
         signal: controller.signal,
         body: JSON.stringify({
+          preferredModel: preferredModelRef.current || preferredModel,
           history: [],
           message: query,
           image: null,
@@ -18533,6 +18571,7 @@ ${itemsStr}
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
+          preferredModel: preferredModelRef.current || preferredModel,
           history: chatHistory.map(h => ({ role: h.role, text: h.text })), 
           message: promptText,
           image: null,
@@ -18605,6 +18644,7 @@ ${itemsStr}
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          preferredModel: preferredModelRef.current || preferredModel,
           history: [],
           message: promptText,
           image: null,
@@ -18681,6 +18721,7 @@ ${itemsStr}
           })),
           message: promptText,
           image: currentAttachedImage ? { mimeType: currentAttachedImage.mimeType, data: currentAttachedImage.data } : null,
+          preferredModel: preferredModelRef.current || preferredModel,
           progressId
         })
       });

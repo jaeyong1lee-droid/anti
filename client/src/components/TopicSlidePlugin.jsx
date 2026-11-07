@@ -301,8 +301,11 @@ export default function TopicSlidePlugin({
     setGenerating(true);
     setErrorMsg(null);
     try {
+      const savedModel = typeof window !== 'undefined' ? (localStorage.getItem('anti_preferred_model') || 'gemini-3.5-flash-lite') : 'gemini-3.5-flash-lite';
       const res = await fetch(`${apiBase}/api/topics/${encodeURIComponent(topicId)}/slides/generate`, {
-        method: 'POST'
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ preferredModel: savedModel })
       });
       if (res.ok) {
         const data = await res.json();

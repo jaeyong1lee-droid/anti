@@ -644,7 +644,7 @@ router.post('/topics/:id/ai-questions', async (req, res) => {
   let progressTimer = null;
   try {
     const progressId = req.query.progressId || req.body.progressId;
-    const targetModel = (req.body && req.body.preferredModel) || req.query.preferredModel || globalPreferredModel || 'claude-hybrid';
+    const targetModel = (req.body && req.body.preferredModel) || req.query.preferredModel || globalPreferredModel || 'gemini-3.5-flash-lite';
     let standardsAnalysis = '';
     const localCallLLM = (sys, prompt, img, scenario, opts) => {
       const enrichedPrompt = standardsAnalysis ? `${standardsAnalysis}\n\n${prompt}` : prompt;
@@ -1236,7 +1236,7 @@ let parsedArray = null;
         kcscGrounding
       });
     } else {
-      const targetModel = (req.body && req.body.preferredModel) || globalPreferredModel || 'claude-hybrid';
+      const targetModel = (req.body && req.body.preferredModel) || req.query.preferredModel || globalPreferredModel || 'gemini-3.5-flash-lite';
       const isHybridMode = targetModel === 'claude-hybrid';
       const batch13Model = isHybridMode ? 'claude-sonnet-5-5' : targetModel;
       const batch2Model = isHybridMode ? 'claude-haiku-5-5' : targetModel;
@@ -2487,7 +2487,7 @@ function _noopUnused(question) {
 // POST /api/exam/all
 router.post('/exam/all', async (req, res) => {
   const progressId = req.query.progressId || req.body.progressId;
-  const targetModel = (req.body && req.body.preferredModel) || req.query.preferredModel || globalPreferredModel || 'claude-hybrid';
+  const targetModel = (req.body && req.body.preferredModel) || req.query.preferredModel || globalPreferredModel || 'gemini-3.5-flash-lite';
   let progressTimer = null;
   let standardsAnalysis = '';
   if (progressId) {
@@ -3003,6 +3003,7 @@ ${ENGINEERING_STANDARDS}
 // POST /api/exam/additional
 router.post('/exam/additional', async (req, res) => {
   const progressId = req.query.progressId || req.body.progressId;
+  const targetModel = (req.body && req.body.preferredModel) || req.query.preferredModel || globalPreferredModel || 'gemini-3.5-flash-lite';
   let progressTimer = null;
   try {
     if (progressId) {
@@ -3243,7 +3244,7 @@ ${ENGINEERING_STANDARDS}
 `;
       try {
         console.log(`[종합평가 추가 생성] (${i + 1}/${TOTAL_BATCHES}) 회차 프롬프트 전송 시작...`);
-        const rawText = await callLLMWithFailover(null, batchPrompt, null, 'question', { temperature: 1.0, preferredModel: (req.body && req.body.preferredModel) || req.query.preferredModel || globalPreferredModel || 'claude-hybrid', hybridRole: 'deep' });
+        const rawText = await callLLMWithFailover(null, batchPrompt, null, 'question', { temperature: 1.0, preferredModel: (req.body && req.body.preferredModel) || req.query.preferredModel || globalPreferredModel || 'gemini-3.5-flash-lite', hybridRole: 'deep' });
         let text = rawText.trim();
         if (text.startsWith('```')) {
           text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
@@ -3822,8 +3823,9 @@ router.put('/schedules/:id/score', async (req, res) => {
 // POST /api/exam/detailed-answer
 router.post('/exam/detailed-answer', async (req, res) => {
   const progressId = req.body.progressId || req.query.progressId;
+  const preferredModel = (req.body && req.body.preferredModel) || req.query.preferredModel || globalPreferredModel || 'gemini-3.5-flash-lite';
   const localCallLLM = (sys, prompt, img, scenario, opts) => 
-    callLLMWithFailover(sys, prompt, img, scenario, { ...opts, progressId });
+    callLLMWithFailover(sys, prompt, img, scenario, { ...opts, preferredModel, progressId });
 
   let progressTimer = null;
   if (progressId) {
@@ -3906,8 +3908,9 @@ ${LATEX_CHAT_PROMPT_INSTRUCTIONS}
 // POST /api/hint
 router.post('/hint', async (req, res) => {
   const progressId = req.body.progressId || req.query.progressId;
+  const preferredModel = (req.body && req.body.preferredModel) || req.query.preferredModel || globalPreferredModel || 'gemini-3.5-flash-lite';
   const localCallLLM = (sys, prompt, img, scenario, opts) => 
-    callLLMWithFailover(sys, prompt, img, scenario, { ...opts, progressId });
+    callLLMWithFailover(sys, prompt, img, scenario, { ...opts, preferredModel, progressId });
 
   let progressTimer = null;
   if (progressId) {

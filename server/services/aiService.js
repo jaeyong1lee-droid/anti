@@ -10,7 +10,7 @@ global.progressTracker = global.progressTracker || new Map();
 // 차트 지침(CHART_DIAGRAM_PROMPT)을 붙이지 않는 시나리오 (순수 텍스트/JSON 출력 전용)
 const NO_CHART_PROMPT_SCENARIOS = new Set(['grading', 'general', 'slides', 'ocr', 'source-search']);
 
-export let globalPreferredModel = 'claude-hybrid';
+export let globalPreferredModel = 'gemini-3.5-flash-lite';
 export let globalAnthropicApiKey = null;
 export const FALLBACK_MODELS = [
   'claude-hybrid',
@@ -212,7 +212,7 @@ export function normalizeClaudeModel(modelName, scenario = 'default', options = 
   if (!modelName || typeof modelName !== 'string') return 'claude-sonnet-5-5';
   const name = modelName.trim().toLowerCase();
   if (name === 'claude-hybrid') {
-    if (options.hybridRole === 'fast' || scenario === 'general' || scenario === 'source-search' || scenario === 'source') {
+    if (options.hybridRole === 'fast' || scenario === 'general' || scenario === 'source-search' || scenario === 'source' || scenario === 'slides') {
       return 'claude-haiku-5-5';
     }
     return 'claude-sonnet-5-5';
@@ -286,13 +286,15 @@ export async function withLlmConcurrencySlot(deadlineAt, fn) {
 }
 
 export async function callLLMWithFailover(systemInstruction, userPrompt, image = null, scenario = 'default', options = {}) {
-  const totalBudgetMs = options.timeoutBudgetMs || (scenario === 'grading' ? 35000 : 52000);
+  const defaultBudgetMs = scenario === 'grading' ? 35000 : (scenario === 'slides' ? 95000 : 52000);
+  const totalBudgetMs = options.timeoutBudgetMs || defaultBudgetMs;
   const deadlineAt = options.deadlineAt || (Date.now() + totalBudgetMs);
   return await _callLLMWithFailoverCore(systemInstruction, userPrompt, image, scenario, { ...options, deadlineAt });
 }
 
 async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = null, scenario = 'default', options = {}) {
-  const deadlineAt = options.deadlineAt || (Date.now() + (scenario === 'grading' ? 35000 : 52000));
+  const defaultBudgetMs = scenario === 'grading' ? 35000 : (scenario === 'slides' ? 95000 : 52000);
+  const deadlineAt = options.deadlineAt || (Date.now() + defaultBudgetMs);
   // SVG_DIAGRAM_PROMPT는 어설픈 그림 강제 방지를 위해 문제 출제에서 제외.
   // CHART_DIAGRAM_PROMPT는 5번 인터랙티브 그래프해석 문제의 Recharts 규격 유지를 위해 문제 출제 시 필수 포함.
   // 단, 차트 출력이 불필요한 단순 텍스트 시나리오(grading, general)에는 붙이지 않는다.
@@ -320,17 +322,16 @@ async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = n
 
   const executionList = [];
 
-  const targetPref = options.preferredModel || globalPreferredModel || 'claude-hybrid';
-  if (options.preferredModel && options.preferredModel !== globalPreferredModel && !options.hybridRole) {
-    globalPreferredModel = options.preferredModel;
-  }
+  const targetPref = options.preferredModel || globalPreferredModel || 'gemini-3.5-flash-lite';
   const isClaudePreferred = targetPref.trim().toLowerCase().startsWith('claude-');
 
   const addClaudeTasks = () => {
     if (!anthropicKey || !anthropicKey.startsWith('sk-ant-')) return;
     const resolvedPrimaryClaude = normalizeClaudeModel(targetPref, scenario, options);
     const claudeModels = isClaudePreferred
-      ? [...new Set([resolvedPrimaryClaude, 'claude-sonnet-5-5', 'claude-haiku-5-5', 'claude-opus-5-5'])]
+      ? (scenario === 'slides'
+          ? [resolvedPrimaryClaude]
+          : [...new Set([resolvedPrimaryClaude, 'claude-sonnet-5-5', 'claude-haiku-5-5', 'claude-opus-5-5'])])
       : ['claude-sonnet-5-5', 'claude-haiku-5-5'];
     for (const cm of claudeModels) {
       executionList.push({
@@ -373,7 +374,9 @@ async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = n
     addGeminiTasks();
   } else {
     addGeminiTasks();
-    addClaudeTasks();
+    if (options.allowCrossProviderFallback) {
+      addClaudeTasks();
+    }
   }
 
   let attemptedAny = false;
@@ -427,10 +430,12 @@ async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = n
           : '';
 
         // [P0/P1 Fix]: 세마포어 슬롯 획득 이후에 AbortController 타이머를 시작하고 응답 본문 수신까지 완료 후 finally에서 clearTimeout 보장
+        const maxTokensForScenario = (scenario === 'slides' || scenario === 'question') ? 16384 : 8192;
         const data = await withLlmConcurrencySlot(deadlineAt, async () => {
           const controller = new AbortController();
+          const perAttemptCapMs = scenario === 'grading' ? 28000 : (scenario === 'slides' ? 48000 : 50000);
           const perAttemptTimeoutMs = Math.min(
-            scenario === 'grading' ? 28000 : 50000,
+            perAttemptCapMs,
             Math.max(2500, (deadlineAt - Date.now()) - 400)
           );
           const timeoutId = setTimeout(() => controller.abort(), perAttemptTimeoutMs);
@@ -444,7 +449,7 @@ async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = n
               },
               body: JSON.stringify({
                 model: actualModelName,
-                max_tokens: 8192,
+                max_tokens: maxTokensForScenario,
                 system: (finalSystemInstruction || '') + jsonInstruction,
                 messages: [{ role: 'user', content: contentParts }]
               }),
@@ -475,6 +480,16 @@ async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = n
           .trim();
         text = text.replace(/^[ \t]*#[ \t]*$/gm, '');
         if (text) {
+          if (scenario === 'slides' || scenario === 'question') {
+            if (data.stop_reason === 'max_tokens') {
+              throw new Error(`Claude JSON output truncated by max_tokens (${maxTokensForScenario})`);
+            }
+            try {
+              parseLlmJson(text);
+            } catch (jsonErr) {
+              throw new Error(`Claude JSON parse validation failed (${jsonErr.message})`);
+            }
+          }
           console.log(`[Claude 성공] ${task.label} (${maskedKey}), 모델: ${modelName} (${actualModelName})`);
           return text;
         } else {

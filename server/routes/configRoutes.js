@@ -181,7 +181,7 @@ router.get('/preferred-model', async (req, res) => {
 // POST /api/preferred-model
 router.post('/preferred-model', async (req, res) => {
   const { model } = req.body;
-  if (typeof model === 'string' && model.startsWith('gemini-')) {
+  if (typeof model === 'string' && (model.startsWith('gemini-') || model.startsWith('claude-'))) {
     updatePreferredModel(model);
     try {
       await saveSessionValue('preferred_model', model);
@@ -891,8 +891,9 @@ router.post('/options/:key', async (req, res) => {
 router.post('/question/option-explanation', async (req, res) => {
   const { question, options, answer, topicId, topicTitle, category } = req.body;
   const progressId = req.body.progressId || req.query.progressId;
+  const preferredModel = req.body.preferredModel || req.query.preferredModel || globalPreferredModel;
   const localCallLLM = (sys, prompt, img, scenario, opts) => 
-    callLLMWithFailover(sys, prompt, img, scenario, { ...opts, progressId });
+    callLLMWithFailover(sys, prompt, img, scenario, { ...opts, preferredModel, progressId });
 
   if (!question || !options || !Array.isArray(options) || options.length !== 4) {
     return res.status(400).json({ error: '올바른 객관식 문제 정보가 아닙니다.' });
@@ -1235,8 +1236,9 @@ router.post('/chat', async (req, res) => {
   const { message, history, image, images, overviewMode, acronymMode } = req.body;
   const topicId = req.body.topicId || req.body.topic_id || null;
   const progressId = req.body.progressId || req.query.progressId;
+  const preferredModel = req.body.preferredModel || req.query.preferredModel || globalPreferredModel;
   const localCallLLM = (sys, prompt, img, scenario, opts) => 
-    callLLMWithFailover(sys, prompt, img, scenario, { ...opts, progressId });
+    callLLMWithFailover(sys, prompt, img, scenario, { ...opts, preferredModel, progressId });
 
   const rawImages = images || (image ? (Array.isArray(image) ? image : [image]) : []);
   let imageList = [];

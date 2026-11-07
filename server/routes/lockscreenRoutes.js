@@ -1,6 +1,6 @@
 import express from 'express';
 import { dbQuery } from '../database.js';
-import { saveSessionValue, callLLMWithFailover, getMatchingTopicContent } from '../services/aiService.js';
+import { saveSessionValue, callLLMWithFailover, getMatchingTopicContent, globalPreferredModel } from '../services/aiService.js';
 import { 
   getRandomLockscreenExamQuestion, 
   loadAllPastExamQuestions,
@@ -10,7 +10,7 @@ import {
   getRecentLockscreenSubmissions,
   saveRecentLockscreenSubmission
 } from '../services/pastExamService.js';
-import { gradeSubjective, GRADING_STANDARDS, gradingStandardsList } from '../plugins/gradingPlugin.js';
+import { gradeSubjective, getOrGenerateVerifiedModelAnswer, GRADING_STANDARDS, gradingStandardsList } from '../plugins/gradingPlugin.js';
 import { ENGINEERING_STANDARDS, engineeringStandardsList } from '../plugins/engineeringStandards.js';
 import { healLatexFormulas } from '../utils/latexUtils.js';
 import { getWikipediaKnowledge } from '../services/wikipediaService.js';
@@ -18,11 +18,110 @@ import { getKcscVerificationContext } from '../services/kcscService.js';
 
 const router = express.Router();
 
+function getResolvedLockscreenPreferredModel(req) {
+  return (req && (req.body?.preferredModel || req.query?.preferredModel)) || globalPreferredModel || 'gemini-3.5-flash-lite';
+}
+
 function getCallLLM(req) {
   const progressId = req && (req.query?.progressId || req.body?.progressId);
-  const preferredModel = req && (req.query?.preferredModel || req.body?.preferredModel);
-  return (sys, prompt, img, scenario, opts) => 
-    callLLMWithFailover(sys, prompt, img, scenario, { ...opts, preferredModel, progressId });
+  const basePrefModel = getResolvedLockscreenPreferredModel(req);
+  return (sys, prompt, img, scenario, opts) => {
+    let resolvedModel = basePrefModel;
+    if (basePrefModel === 'claude-hybrid') {
+      resolvedModel = (opts && opts.hybridRole === 'fast') ? 'claude-haiku-5-5' : 'claude-sonnet-5-5';
+    }
+    return callLLMWithFailover(sys, prompt, img, scenario, { ...opts, preferredModel: resolvedModel, progressId });
+  };
+}
+
+// In-memory Grounding LRU Cache + Single-Flight Coalescing for Lockscreen Questions
+const LOCKSCREEN_GROUNDING_CACHE_MAX = 200;
+const LOCKSCREEN_GROUNDING_TTL_MS = 30 * 60 * 1000;
+export const lockscreenGroundingCache = new Map();
+const singleFlightGroundingMap = new Map();
+
+export async function getCachedLockscreenGrounding(questionText) {
+  const key = (questionText || '').trim();
+  if (!key) return { wikiGrounding: '', kcscContext: '', topicGrounding: '' };
+  const cached = lockscreenGroundingCache.get(key);
+  if (cached && (Date.now() - cached.cachedAt) < LOCKSCREEN_GROUNDING_TTL_MS) {
+    lockscreenGroundingCache.delete(key);
+    lockscreenGroundingCache.set(key, cached);
+    return cached.data;
+  }
+  if (cached) lockscreenGroundingCache.delete(key);
+  if (singleFlightGroundingMap.has(key)) {
+    return await singleFlightGroundingMap.get(key);
+  }
+  const flight = (async () => {
+    let wikiGrounding = '';
+    let kcscContext = '';
+    let topicGrounding = '';
+    try {
+      const [wRes, kRes, tRes] = await Promise.allSettled([
+        getWikipediaKnowledge(key),
+        getKcscVerificationContext(key),
+        getMatchingTopicContent(key, null, 5000)
+      ]);
+      if (wRes.status === 'fulfilled') wikiGrounding = wRes.value || '';
+      if (kRes.status === 'fulfilled') kcscContext = kRes.value || '';
+      if (tRes.status === 'fulfilled') topicGrounding = tRes.value || '';
+    } catch (gErr) {
+      console.warn('[lockscreenRoutes] Grounding lookup error:', gErr.message);
+    }
+    const data = { wikiGrounding, kcscContext, topicGrounding };
+    if (lockscreenGroundingCache.size >= LOCKSCREEN_GROUNDING_CACHE_MAX) {
+      const oldest = lockscreenGroundingCache.keys().next().value;
+      if (oldest !== undefined) lockscreenGroundingCache.delete(oldest);
+    }
+    lockscreenGroundingCache.set(key, { data, cachedAt: Date.now() });
+    return data;
+  })();
+  singleFlightGroundingMap.set(key, flight);
+  try {
+    return await flight;
+  } finally {
+    singleFlightGroundingMap.delete(key);
+  }
+}
+
+function buildLockscreenExplanation(questionText, topicGrounding) {
+  return `본 문제는 대한민국 토질및기초기술사 제1교시 10점 만점 단답/서술형 문항입니다.
+문항: "${questionText}"
+채점관 평가 수칙:
+1. 사용자가 문제 제목이나 제시된 단어를 단순히 되묻거나(예: '?'), 문제 단어만 앵무새처럼 반복한 경우 반드시 0점~1점으로 엄격히 오답 처리하십시오.
+2. 1교시 기술사 문제에 걸맞게 해당 토픽의 정의(개념), 발생 메커니즘(원인 및 지반 거동 특성), 관련 공식(해당 토픽에 수식이 본질적으로 존재하는 경우), 판정 기준/설계 고려사항 중 유효한 공학적 설명이 실질적으로 포함되어 있는지를 엄격하게 평가하십시오.
+3. 고도화된 완성형 모범 답안(suggestedModelAnswer)에는 개념의 정의, 공학적 메커니즘(해당 토픽에 본질적 수식이 존재하는 경우에만 정확한 LaTeX 수식을 포함하며, 무관한 타 공법 수식 환각은 절대 금지), 그리고 실무/판정 기준을 체계적으로 서술하십시오.${topicGrounding ? `\n\n${topicGrounding}` : ''}`;
+}
+
+export async function prewarmLockscreenQuestion(question, req = null) {
+  const questionText = typeof question === 'string' ? question : (question?.question || question?.fullTitle || '');
+  if (!questionText || !questionText.trim()) return null;
+  const sessionInfo = question?.sessionName || '';
+  const numberInfo = question?.number ? `${question.number}번` : '';
+  const dynamicGradingStandards = gradingStandardsList && gradingStandardsList.length > 0
+    ? gradingStandardsList.map(s => s.content).join('\n\n')
+    : GRADING_STANDARDS;
+  const dynamicEngineeringStandards = engineeringStandardsList && engineeringStandardsList.length > 0
+    ? engineeringStandardsList.map(s => s.content).join('\n\n')
+    : ENGINEERING_STANDARDS;
+  const callLLM = getCallLLM(req);
+  const preferredModel = getResolvedLockscreenPreferredModel(req);
+  const { wikiGrounding, kcscContext, topicGrounding } = await getCachedLockscreenGrounding(questionText);
+  return await getOrGenerateVerifiedModelAnswer({
+    question: `[토질및기초기술사 기출문제 ${sessionInfo} 제1교시 ${numberInfo}] ${questionText}`,
+    correctAnswer: '',
+    rowHeader: sessionInfo || '기술사 기출문제',
+    colHeader: '기술사 제1교시 단답/서술형 (10점 만점)',
+    explanation: buildLockscreenExplanation(questionText, topicGrounding),
+    category: '일반',
+    callLLMWithFailover: callLLM,
+    gradingStandards: dynamicGradingStandards,
+    engineeringStandards: dynamicEngineeringStandards,
+    kcscContext,
+    wikiGrounding,
+    preferredModel
+  });
 }
 
 // GET /api/lockscreen/recent -> Return recent 10 lockscreen questions with submissions & grades
@@ -44,6 +143,9 @@ router.get('/random', async (req, res) => {
 
     const forceNew = req.query.forceNew === 'true' || req.query.force === 'true';
     const assignment = await getActiveLockscreenAssignment(forceNew);
+    if (assignment?.question && !assignment?.gradingResult) {
+      prewarmLockscreenQuestion(assignment.question, req).catch(() => {});
+    }
     return res.json({ 
       success: true, 
       question: assignment.question,
@@ -111,6 +213,23 @@ router.get('/pool', async (req, res) => {
   } catch (err) {
     console.error('GET /api/lockscreen/pool error:', err);
     res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/lockscreen/prewarm -> Pre-warm Grounding + Phase 1 Model Answer in background while user types answer
+router.post('/prewarm', async (req, res) => {
+  try {
+    const { question } = req.body || {};
+    if (!question) {
+      return res.json({ success: false });
+    }
+    const prewarmed = await prewarmLockscreenQuestion(question, req);
+    return res.json({
+      success: true,
+      cacheStatus: prewarmed?.cacheStatus || 'prewarmed'
+    });
+  } catch (err) {
+    return res.json({ success: false, error: err.message });
   }
 });
 
@@ -211,41 +330,25 @@ router.post('/grade', async (req, res) => {
 
     const callLLM = getCallLLM(req);
 
-    // 📚 락스크린 기출 채점 시 위키피디아 사전 지식 + KCSC 국가건설기준 공식 기준값 + 등록 토픽 본문 3대 근거 조회
-    let wikiGrounding = '';
-    let kcscContext = '';
-    let topicGrounding = '';
-    try {
-      const [wRes, kRes, tRes] = await Promise.allSettled([
-        getWikipediaKnowledge(questionText),
-        getKcscVerificationContext(questionText),
-        getMatchingTopicContent(questionText, null, 5000)
-      ]);
-      if (wRes.status === 'fulfilled') wikiGrounding = wRes.value || '';
-      if (kRes.status === 'fulfilled') kcscContext = kRes.value || '';
-      if (tRes.status === 'fulfilled') topicGrounding = tRes.value || '';
-    } catch (gErr) {
-      console.warn('[lockscreenRoutes] Grounding lookup error:', gErr.message);
-    }
+    const { wikiGrounding, kcscContext, topicGrounding } = await getCachedLockscreenGrounding(questionText);
+    const preferredModel = getResolvedLockscreenPreferredModel(req);
+    const existingModelAnswer = req.body?.existingModelAnswer || '';
 
     const gradingResult = await gradeSubjective({
       question: `[토질및기초기술사 기출문제 ${sessionInfo} 제1교시 ${numberInfo}] ${questionText}`,
       correctAnswer: '',
+      existingModelAnswer,
       userAnswer: userAnswer.trim(),
       rowHeader: sessionInfo || '기술사 기출문제',
       colHeader: '기술사 제1교시 단답/서술형 (10점 만점)',
-      explanation: `본 문제는 대한민국 토질및기초기술사 제1교시 10점 만점 단답/서술형 문항입니다.
-문항: "${questionText}"
-채점관 평가 수칙:
-1. 사용자가 문제 제목이나 제시된 단어를 단순히 되묻거나(예: '?'), 문제 단어만 앵무새처럼 반복한 경우 반드시 0점~1점으로 엄격히 오답 처리하십시오.
-2. 1교시 기술사 문제에 걸맞게 해당 토픽의 정의(개념), 발생 메커니즘(원인 및 지반 거동 특성), 관련 공식(해당 토픽에 수식이 본질적으로 존재하는 경우), 판정 기준/설계 고려사항 중 유효한 공학적 설명이 실질적으로 포함되어 있는지를 엄격하게 평가하십시오.
-3. 고도화된 완성형 모범 답안(suggestedModelAnswer)에는 개념의 정의, 공학적 메커니즘(해당 토픽에 본질적 수식이 존재하는 경우에만 정확한 LaTeX 수식을 포함하며, 무관한 타 공법 수식 환각은 절대 금지), 그리고 실무/판정 기준을 체계적으로 서술하십시오.${topicGrounding ? `\n\n${topicGrounding}` : ''}`,
+      explanation: buildLockscreenExplanation(questionText, topicGrounding),
       category: '일반',
       callLLMWithFailover: callLLM,
       gradingStandards: dynamicGradingStandards,
       engineeringStandards: dynamicEngineeringStandards,
       kcscContext,
-      wikiGrounding
+      wikiGrounding,
+      preferredModel
     });
 
     if (gradingResult) {

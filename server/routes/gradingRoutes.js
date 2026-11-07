@@ -100,13 +100,13 @@ router.post('/grade-subjective', async (req, res) => {
       ? `[🚨 0단계 AI가 사전 분석한 절대 채점 지침 준수 주의사항]:\n${standardsAnalysis}\n\n${prompt}` 
       : prompt;
     const targetTemp = typeof temperature === 'number' ? temperature : 0.7;
-    const basePrefModel = req.body.preferredModel || globalPreferredModel || 'claude-hybrid';
+    const basePrefModel = req.body.preferredModel || req.query.preferredModel || globalPreferredModel || 'gemini-3.5-flash-lite';
     let resolvedModel = basePrefModel;
     if (basePrefModel === 'claude-hybrid') {
       resolvedModel = (opts && opts.hybridRole === 'fast') ? 'claude-haiku-5-5' : 'claude-sonnet-5-5';
     }
     const finalTemp = (opts && typeof opts.temperature === 'number') ? opts.temperature : targetTemp;
-    return callLLMWithFailover(sys, enrichedPrompt, img, scenario, { preferredModel: resolvedModel, ...opts, temperature: finalTemp, progressId });
+    return callLLMWithFailover(sys, enrichedPrompt, img, scenario, { ...opts, preferredModel: resolvedModel, temperature: finalTemp, progressId });
   };
 
   let attempt = 0;
@@ -157,7 +157,8 @@ router.post('/grade-subjective', async (req, res) => {
           engineeringStandards: dynamicEngineeringStandards,
           isReevaluation: isReeval,
           kcscContext,
-          wikiGrounding
+          wikiGrounding,
+          preferredModel: req.body.preferredModel || req.query.preferredModel || globalPreferredModel || 'gemini-3.5-flash-lite'
         });
         if (progressId) {
           stopBackendProgressTimer(progressId, 90, '1단계: 제출 답안 AI 정밀 분석 완료', true, progressTimer);
@@ -457,9 +458,9 @@ router.post('/question/regenerate', async (req, res) => {
   let progressTimer = null;
   const localCallLLM = (sys, prompt, img, scenario, opts) => {
     const enrichedPrompt = standardsAnalysis ? `[🚨 0단계 AI가 사전 분석한 절대 지침 준수 주의사항]:\n${standardsAnalysis}\n\n${prompt}` : prompt;
-    const basePrefModel = req.body.preferredModel || globalPreferredModel || 'claude-hybrid';
+    const basePrefModel = req.body.preferredModel || req.query.preferredModel || globalPreferredModel || 'gemini-3.5-flash-lite';
     const resolvedModel = basePrefModel === 'claude-hybrid' ? 'claude-sonnet-5-5' : basePrefModel;
-    return callLLMWithFailover(sys, enrichedPrompt, img, scenario, { preferredModel: resolvedModel, ...opts, progressId, hybridRole: 'deep' });
+    return callLLMWithFailover(sys, enrichedPrompt, img, scenario, { ...opts, preferredModel: resolvedModel, progressId, hybridRole: 'deep' });
   };
   if (progressId) {
     standardsAnalysis = await analyzeStandardsBeforeTask(progressId, currentQuestion?.question || '문항 재생성', getActiveGenerationStandards(), 'generation');
@@ -1188,9 +1189,9 @@ router.post('/question/adjust', async (req, res) => {
   const { mode, topicId, currentQuestion, questionIdx, userFeedback } = req.body;
   const progressId = req.query.progressId || req.body.progressId;
   const localCallLLM = (sys, prompt, img, scenario, opts) => {
-    const basePrefModel = req.body.preferredModel || globalPreferredModel || 'claude-hybrid';
+    const basePrefModel = req.body.preferredModel || req.query.preferredModel || globalPreferredModel || 'gemini-3.5-flash-lite';
     const resolvedModel = basePrefModel === 'claude-hybrid' ? 'claude-sonnet-5-5' : basePrefModel;
-    return callLLMWithFailover(sys, prompt, img, scenario, { preferredModel: resolvedModel, ...opts, progressId, hybridRole: 'deep' });
+    return callLLMWithFailover(sys, prompt, img, scenario, { ...opts, preferredModel: resolvedModel, progressId, hybridRole: 'deep' });
   };
 
   let progressTimer = null;
