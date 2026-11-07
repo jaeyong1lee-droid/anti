@@ -221,7 +221,78 @@ export function normalizeClaudeModel(modelName, scenario = 'default', options = 
   return 'claude-sonnet-5-5';
 }
 
+// Server-side LLM Concurrency Semaphore & Rate-Limit Backoff Controller
+// [Blocker-2 Fix]: MAX_CONCURRENT_LLM=8 (클라이언트 6워커 수용 + 여유 슬롯 2개), 대기 예산 20초(deadline 기반), 백오프 sleep 중에는 슬롯을 즉시 반환하도록 네트워크 호출 단위로 슬롯 점유
+export const MAX_CONCURRENT_LLM = 8;
+export const MAX_SEMAPHORE_QUEUE = 24;
+export const MAX_QUEUE_WAIT_MS = 20000;
+let activeLlmCount = 0;
+const semaphoreWaitQueue = [];
+
+export function getLlmSemaphoreStats() {
+  return {
+    activeLlmCount,
+    queuedCount: semaphoreWaitQueue.length,
+    maxConcurrent: MAX_CONCURRENT_LLM,
+    maxQueue: MAX_SEMAPHORE_QUEUE
+  };
+}
+
+export async function acquireLlmSlot(deadlineAt) {
+  if (activeLlmCount < MAX_CONCURRENT_LLM) {
+    activeLlmCount++;
+    return;
+  }
+  const now = Date.now();
+  const remainingForQueue = deadlineAt ? (deadlineAt - now - 2000) : MAX_QUEUE_WAIT_MS;
+  if (semaphoreWaitQueue.length >= MAX_SEMAPHORE_QUEUE || remainingForQueue <= 200) {
+    throw new Error('LLM 동시 요청 대기열 초과 또는 데드라인 임박 (Concurrency Queue Full)');
+  }
+  const waitBudgetMs = Math.min(MAX_QUEUE_WAIT_MS, Math.max(200, remainingForQueue));
+  await new Promise((resolve, reject) => {
+    const entry = {
+      resolve: () => {
+        clearTimeout(entry.timer);
+        activeLlmCount++;
+        resolve();
+      },
+      timer: setTimeout(() => {
+        const idx = semaphoreWaitQueue.indexOf(entry);
+        if (idx !== -1) semaphoreWaitQueue.splice(idx, 1);
+        reject(new Error(`LLM 세마포어 대기 시간 초과 (${waitBudgetMs}ms)`));
+      }, waitBudgetMs)
+    };
+    semaphoreWaitQueue.push(entry);
+  });
+}
+
+export function releaseLlmSlot() {
+  activeLlmCount = Math.max(0, activeLlmCount - 1);
+  if (semaphoreWaitQueue.length > 0 && activeLlmCount < MAX_CONCURRENT_LLM) {
+    const nextEntry = semaphoreWaitQueue.shift();
+    if (nextEntry && typeof nextEntry.resolve === 'function') {
+      nextEntry.resolve();
+    }
+  }
+}
+
+export async function withLlmConcurrencySlot(deadlineAt, fn) {
+  await acquireLlmSlot(deadlineAt);
+  try {
+    return await fn();
+  } finally {
+    releaseLlmSlot();
+  }
+}
+
 export async function callLLMWithFailover(systemInstruction, userPrompt, image = null, scenario = 'default', options = {}) {
+  const totalBudgetMs = options.timeoutBudgetMs || (scenario === 'grading' ? 35000 : 52000);
+  const deadlineAt = options.deadlineAt || (Date.now() + totalBudgetMs);
+  return await _callLLMWithFailoverCore(systemInstruction, userPrompt, image, scenario, { ...options, deadlineAt });
+}
+
+async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = null, scenario = 'default', options = {}) {
+  const deadlineAt = options.deadlineAt || (Date.now() + (scenario === 'grading' ? 35000 : 52000));
   // SVG_DIAGRAM_PROMPT는 어설픈 그림 강제 방지를 위해 문제 출제에서 제외.
   // CHART_DIAGRAM_PROMPT는 5번 인터랙티브 그래프해석 문제의 Recharts 규격 유지를 위해 문제 출제 시 필수 포함.
   // 단, 차트 출력이 불필요한 단순 텍스트 시나리오(grading, general)에는 붙이지 않는다.
@@ -307,8 +378,14 @@ export async function callLLMWithFailover(systemInstruction, userPrompt, image =
 
   let attemptedAny = false;
   const failedKeys = new Set();
+  const retriedTaskIndices = new Set();
 
   for (let idx = 0; idx < executionList.length; idx++) {
+    const remainingBudget = deadlineAt - Date.now();
+    if (remainingBudget < 1500 && attemptedAny) {
+      console.warn(`[LLM Deadline Budget] 남은 시간 예산(${remainingBudget}ms) 부족으로 추가 모델 페일오버를 중단합니다.`);
+      break;
+    }
     const task = executionList[idx];
     const key = task.key;
 
@@ -349,37 +426,48 @@ export async function callLLMWithFailover(systemInstruction, userPrompt, image =
           ? '\n\n[CRITICAL JSON RULE]: 반드시 마크다운 코드블록(```json)이나 부연 설명 없이 순수 유효 JSON만 출력하십시오.'
           : '';
 
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 55000);
-        let response;
-        try {
-          response = await fetch('https://api.anthropic.com/v1/messages', {
-            method: 'POST',
-            headers: {
-              'x-api-key': key,
-              'anthropic-version': '2023-06-01',
-              'content-type': 'application/json'
-            },
-            body: JSON.stringify({
-              model: actualModelName,
-              max_tokens: 8192,
-              system: (finalSystemInstruction || '') + jsonInstruction,
-              messages: [{ role: 'user', content: contentParts }]
-            }),
-            signal: controller.signal
-          });
-        } finally {
-          clearTimeout(timeoutId);
-        }
-
-        if (!response.ok) {
-          const errText = await response.text();
-          const errObj = new Error(`Claude HTTP ${response.status}: ${errText}`);
-          errObj.status = response.status;
-          throw errObj;
-        }
-
-        const data = await response.json();
+        // [P0/P1 Fix]: 세마포어 슬롯 획득 이후에 AbortController 타이머를 시작하고 응답 본문 수신까지 완료 후 finally에서 clearTimeout 보장
+        const data = await withLlmConcurrencySlot(deadlineAt, async () => {
+          const controller = new AbortController();
+          const perAttemptTimeoutMs = Math.min(
+            scenario === 'grading' ? 28000 : 50000,
+            Math.max(2500, (deadlineAt - Date.now()) - 400)
+          );
+          const timeoutId = setTimeout(() => controller.abort(), perAttemptTimeoutMs);
+          try {
+            const response = await fetch('https://api.anthropic.com/v1/messages', {
+              method: 'POST',
+              headers: {
+                'x-api-key': key,
+                'anthropic-version': '2023-06-01',
+                'content-type': 'application/json'
+              },
+              body: JSON.stringify({
+                model: actualModelName,
+                max_tokens: 8192,
+                system: (finalSystemInstruction || '') + jsonInstruction,
+                messages: [{ role: 'user', content: contentParts }]
+              }),
+              signal: controller.signal
+            });
+            if (!response.ok) {
+              const errText = await response.text();
+              const errObj = new Error(`Claude HTTP ${response.status}: ${errText}`);
+              errObj.status = response.status;
+              const retryAfterHeader = response.headers?.get ? response.headers.get('retry-after') : null;
+              if (retryAfterHeader) {
+                const parsedSec = parseFloat(retryAfterHeader);
+                if (!isNaN(parsedSec) && parsedSec > 0) {
+                  errObj.retryAfterMs = Math.ceil(parsedSec * 1000);
+                }
+              }
+              throw errObj;
+            }
+            return await response.json();
+          } finally {
+            clearTimeout(timeoutId);
+          }
+        });
         let text = (data.content || [])
           .filter(part => part && part.type === 'text')
           .map(part => part.text)
@@ -395,6 +483,20 @@ export async function callLLMWithFailover(systemInstruction, userPrompt, image =
       } catch (err) {
         console.warn(`[Claude 시도 실패] ${task.label} (${maskedKey}), 모델: ${task.model}: ${err.message?.substring(0, 120)}`);
         keyErrors.push(`${task.label} (${task.model}): ${err.message?.substring(0, 120)}`);
+        if (err.status === 429 || err.status === 529 || err.message?.includes('rate_limit') || err.message?.includes('overloaded')) {
+          const jitterMs = Math.floor(Math.random() * 300);
+          const desiredWaitMs = err.retryAfterMs ? (err.retryAfterMs + jitterMs) : (1000 + jitterMs);
+          const remainingAfterWait = (deadlineAt - Date.now()) - desiredWaitMs;
+          if (remainingAfterWait >= 3500 && !retriedTaskIndices.has(idx)) {
+            retriedTaskIndices.add(idx);
+            console.log(`[Claude 429/529 백오프] ${desiredWaitMs}ms 대기 후 동일 모델(${actualModelName}) 1회 재시도...`);
+            await sleep(desiredWaitMs);
+            idx--;
+            continue;
+          } else if (remainingAfterWait >= 3500) {
+            await sleep(Math.min(desiredWaitMs, 1500));
+          }
+        }
         if (err.status === 401 || err.status === 403 || err.message?.includes('authentication_error')) {
           failedKeys.add(key);
         }
@@ -439,14 +541,28 @@ export async function callLLMWithFailover(systemInstruction, userPrompt, image =
       }
 
       reportLlmProgress(options, scenario, modelName);
-      const timeoutMs = 55000;
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error(`Gemini request timeout after ${timeoutMs}ms`)), timeoutMs)
-      );
-      const result = await Promise.race([
-        model.generateContent(generateContentArg),
-        timeoutPromise
-      ]);
+      // [Blocker-5 / P0 Fix]: timeoutPromise를 세마포어 슬롯 획득 콜백 내부에서 생성하고 finally에서 clearTimeout하여 슬롯 대기 실패 시 unhandledRejection 원천 차단
+      const result = await withLlmConcurrencySlot(deadlineAt, async () => {
+        const timeoutMs = Math.min(
+          scenario === 'grading' ? 28000 : 50000,
+          Math.max(2500, (deadlineAt - Date.now()) - 400)
+        );
+        let geminiTimeoutId = null;
+        const timeoutPromise = new Promise((_, reject) => {
+          geminiTimeoutId = setTimeout(
+            () => reject(new Error(`Gemini request timeout after ${timeoutMs}ms`)),
+            timeoutMs
+          );
+        });
+        try {
+          return await Promise.race([
+            model.generateContent(generateContentArg),
+            timeoutPromise
+          ]);
+        } finally {
+          if (geminiTimeoutId !== null) clearTimeout(geminiTimeoutId);
+        }
+      });
       let text = result.response.text().trim();
       text = text.replace(/^[ \t]*#[ \t]*$/gm, '');
       if (text) {

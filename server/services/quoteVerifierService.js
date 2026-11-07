@@ -321,12 +321,12 @@ function identifyQuoteSourceSection(quote, dossier) {
  */
 export function sanitizeUnfoundedBlockFormulas(targetText, { dossierText = '', question = '', correctAnswer = '' } = {}) {
   if (!targetText || typeof targetText !== 'string' || !targetText.includes('$$')) {
-    return { sanitizedText: targetText, removedFormulas: [], hadHallucinatedFormula: false };
+    return { sanitizedText: targetText, removedFormulas: [], removedCount: 0, hadHallucinatedFormula: false };
   }
 
   const referenceCorpusRaw = `${question || ''}\n${correctAnswer || ''}\n${dossierText || ''}`;
   if (!referenceCorpusRaw.trim()) {
-    return { sanitizedText: targetText, removedFormulas: [], hadHallucinatedFormula: false };
+    return { sanitizedText: targetText, removedFormulas: [], removedCount: 0, hadHallucinatedFormula: false };
   }
 
   const refLower = referenceCorpusRaw.toLowerCase();
@@ -341,10 +341,10 @@ export function sanitizeUnfoundedBlockFormulas(targetText, { dossierText = '', q
     const fClean = String(formulaInner || '').trim();
     if (!fClean) return fullMatch;
 
-    // 수식 좌변(LHS) 또는 핵심 기호 추출 (수식 내 첨자 변수 추출)
-    const subVars = [...fClean.matchAll(/\b([A-Za-z])\s*_\s*\{?([A-Za-z0-9]+)\}?/g)].map(m => ({
+    // 수식 좌변(LHS) 또는 핵심 기호 추출 (일반 알파벳 및 \sigma, \tau 등 LaTeX 그리스 문자 첨자 변수 모두 추출)
+    const subVars = [...fClean.matchAll(/(\\?[A-Za-z]+)\s*_\s*\{?([A-Za-z0-9]+)\}?/g)].map(m => ({
       raw: `${m[1]}_${m[2]}`.toLowerCase(),
-      collapsed: `${m[1]}${m[2]}`.toLowerCase(),
+      collapsed: `${m[1].replace(/^\\/, '')}${m[2]}`.toLowerCase(),
       base: m[1].toLowerCase()
     }));
 
@@ -373,6 +373,7 @@ export function sanitizeUnfoundedBlockFormulas(targetText, { dossierText = '', q
   return {
     sanitizedText: updatedText,
     removedFormulas,
+    removedCount: removedFormulas.length,
     hadHallucinatedFormula: removedFormulas.length > 0
   };
 }
@@ -493,6 +494,8 @@ export function verifyGroundedGradingResult({
       candidateValues: multiCand.candidates,
       hallucinatedFormulaRemoved: formulaCheck.hadHallucinatedFormula,
       removedFormulas: formulaCheck.removedFormulas,
+      removedFormulaCount: formulaCheck.removedFormulas.length,
+      removedKdsCodes: kdsCheck.removedCodes,
       dossierChars: dossier.totalChars,
       elapsedMs
     }

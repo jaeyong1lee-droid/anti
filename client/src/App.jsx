@@ -5526,7 +5526,7 @@ export default function App() {
       const queue = [...inputs];
       let completedCount = 0;
       const totalCount = queue.length;
-      const workers = Array.from({ length: Math.min(2, queue.length) }).map(async () => {
+      const workers = Array.from({ length: Math.min(6, queue.length) }).map(async () => {
         while (queue.length > 0) {
           const item = queue.shift();
           if (item) {

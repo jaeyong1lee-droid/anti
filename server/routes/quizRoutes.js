@@ -3597,9 +3597,9 @@ router.post('/quiz/submit', async (req, res) => {
         [solvedSessionKey, solvedSessionValue]
       );
 
-      // 보존 정책: 이전 세션 정리
+      // 보존 정책: 이전 세션 정리 (비핵심 retention 정리는 비동기 백그라운드 일괄 DELETE + 에러 로깅으로 응답 지연 차단)
       if (!isMixedReq) {
-        try {
+        Promise.resolve().then(async () => {
           const finishedSchedules = await dbQuery.all(
             `SELECT id FROM schedules 
              WHERE topic_id = ? AND (status = 'completed' OR status = 'failed') 
@@ -3607,36 +3607,37 @@ router.post('/quiz/submit', async (req, res) => {
             [topicIdInt]
           );
           if (finishedSchedules.length > 2) {
-            const oldSchedules = finishedSchedules.slice(2);
-            for (const oldSched of oldSchedules) {
-              const oldSessionKey = `completed_review_schedule_${oldSched.id}`;
-              await dbQuery.run('DELETE FROM app_session WHERE key = ?', [oldSessionKey]);
-            }
+            const oldKeys = finishedSchedules.slice(2).map(s => `completed_review_schedule_${s.id}`);
+            const placeholders = oldKeys.map(() => '?').join(', ');
+            await dbQuery.run(`DELETE FROM app_session WHERE key IN (${placeholders})`, oldKeys);
           }
-        } catch (policyErr) {
-          console.warn('[DB Session Policy] Error cleaning up old sessions:', policyErr.message);
-        }
+        }).catch(policyErr => {
+          console.error('[DB Session Policy Async Cleanup Error]:', policyErr.message);
+        });
       }
     }
 
-    // 캐시 삭제 (ensureSessionTable 호출 제거)
-    await dbQuery.run(
-      "DELETE FROM app_session WHERE key = ? OR key LIKE ?",
-      [`review_questions_topic_${topic_id}`, `review_questions_topic_${topic_id}_sess_%`]
-    );
-    if (!isMixedReq && targetScheduleId && targetScheduleId !== 9999 && targetScheduleId !== '9999') {
-      await dbQuery.run(
+    // [Blocker-1 Fix]: 캐시 삭제 및 다음 회차 생성은 응답 반환 전 동기(Promise.all 병렬)로 완료하여 재조회 시 stale 캐시 레이스 원천 차단
+    const postSubmitTasks = [
+      dbQuery.run(
         "DELETE FROM app_session WHERE key = ? OR key LIKE ?",
-        [`review_questions_schedule_${targetScheduleId}`, `review_questions_schedule_${targetScheduleId}_sess_%`]
+        [`review_questions_topic_${topic_id}`, `review_questions_topic_${topic_id}_sess_%`]
+      )
+    ];
+    if (!isMixedReq && targetScheduleId && targetScheduleId !== 9999 && targetScheduleId !== '9999') {
+      postSubmitTasks.push(
+        dbQuery.run(
+          "DELETE FROM app_session WHERE key = ? OR key LIKE ?",
+          [`review_questions_schedule_${targetScheduleId}`, `review_questions_schedule_${targetScheduleId}_sess_%`]
+        )
       );
     }
-
-    // 다음 회차 자동 생성
     if (!isMixedReq && isPassed && !isBonus && schedule.review_round !== 99) {
       // FIX: 망각곡선 주기 복습 추천은 '참조일자(referenceDate)'가 아닌 실제 '복습 완료일자(Date.now())'를 기준으로 해야 함
-      const baseDate = new Date(); 
-      await scheduleNextReviewRound(topicIdInt, schedule.review_round, baseDate);
+      const baseDate = new Date();
+      postSubmitTasks.push(scheduleNextReviewRound(topicIdInt, schedule.review_round, baseDate));
     }
+    await Promise.all(postSubmitTasks);
 
     res.json({
       success: true,

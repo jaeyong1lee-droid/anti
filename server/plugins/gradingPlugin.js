@@ -1,6 +1,7 @@
 /**
  * 주관식 채점 플러그인 (Grading Plugin)
  */
+import crypto from 'crypto';
 import { ENGINEERING_STANDARDS } from './engineeringStandards.js';
 import { LATEX_PROMPT_INSTRUCTIONS, parseLlmJson, healLatexFormulas } from '../utils/latexUtils.js';
 import {
@@ -111,6 +112,362 @@ ${LATEX_PROMPT_INSTRUCTIONS}`;
 }
 
 export const normalize = (s) => (s || '').trim().toLowerCase().replace(/\s+/g, '');
+
+// [Merge Condition C1]: SI 접두어 대소문자(M=10^6 vs m=10^-3, G=10^9, P vs p)를 보존하는 공학 단위 정규화
+export function normalizeUnitPreservingSiPrefix(unitRaw) {
+  if (!unitRaw || typeof unitRaw !== 'string') return '';
+  let u = unitRaw.trim()
+    .replace(/\s+/g, '')
+    .replace(/^\((.+)\)$/, '$1')
+    .replace(/^\[(.+)\]$/, '$1');
+  if (!u) return '';
+
+  // 지수 표기 통일 (^2 -> ², ^3 -> ³)
+  u = u.replace(/\^2\b/g, '²').replace(/\^3\b/g, '³');
+  u = u.replace(/([a-zA-Z])2\b/g, '$1²').replace(/([a-zA-Z])3\b/g, '$1³');
+
+  // SI 접두어 M(Mega) vs m(milli) 충돌이 없는 안전 동의어만 정규화
+  const lower = u.toLowerCase();
+  if (lower === 'sec' || lower === 'secs' || lower === '초') return 's';
+  if (lower === 'min' || lower === 'mins' || lower === '분') return 'min';
+  if (lower === 'hr' || lower === 'hrs' || lower === '시간') return 'h';
+  if (lower === 'deg' || lower === 'degree' || lower === 'degrees' || lower === '도') return '°';
+  if (lower === 'tonf' || lower === 'tf') return 'tf';
+  if (lower === 'kpa') return 'kPa';
+  if (lower === 'kn') return 'kN';
+  if (lower === 'kn/m²' || lower === 'kn/m2') return 'kN/m²';
+  if (lower === 'kn/m³' || lower === 'kn/m3') return 'kN/m³';
+  if (lower === 'kn·m' || lower === 'kn-m' || lower === 'kn*m') return 'kN·m';
+  if (lower === 't/m²' || lower === 't/m2' || lower === 'tf/m²') return 'tf/m²';
+  if (lower === 't/m³' || lower === 't/m3' || lower === 'tf/m³') return 'tf/m³';
+  if (lower === 'g/cm³' || lower === 'g/cm3') return 'g/cm³';
+  if (lower === 'kgf/cm²' || lower === 'kgf/cm2' || lower === 'kg/cm²') return 'kgf/cm²';
+
+  // M(Mega)과 m(milli)을 엄격 구분: 'MPa' !== 'mPa' ('mpa')
+  if (/^M[pP][aA]$/.test(u)) return 'MPa';
+  if (/^m[pP][aA]$/.test(u)) return 'mPa';
+  if (/^G[pP][aA]$/.test(u)) return 'GPa';
+  if (/^M[nN]$/.test(u)) return 'MN';
+  if (/^m[nN]$/.test(u)) return 'mN';
+
+  return u;
+}
+
+// 엄격한 수치 계산 Fast-Track 판정기 (오직 단일 수치 계산 문항 + 부호/단위/상대오차 ±1%(0 근방 절대오차 1e-4) 이내 일치 시에만 작동)
+export function evaluateStrictNumericFastTrack({
+  userAnswer,
+  correctAnswer,
+  colHeader = '',
+  category = '',
+  isReevaluation = false
+}) {
+  if (isReevaluation) return { fastTrack: false, reason: 'reevaluation_bypass' };
+  const isCalcQuestion = ((colHeader && colHeader.includes('수치 계산 답안')) || category === '계산');
+  if (!isCalcQuestion) return { fastTrack: false, reason: 'not_calc_question' };
+  if (!userAnswer || !correctAnswer) return { fastTrack: false, reason: 'empty_input' };
+
+  const uTrim = String(userAnswer).trim();
+  const cTrim = String(correctAnswer).trim();
+
+  // 등호, 덧셈, 곱셈, 분수(숫자/숫자), 범위(±, ~, 숫자-숫자)가 포함된 답변은 Fast-Track 금지 (LLM 채점으로 위임)
+  // 단, 복합 공학 단위(예: kN/m², kN/m2, tf/m³)의 슬래시(/)나 지수(2, 3)는 단위 파트에서 허용
+  if (/[=\+\*±~]/.test(uTrim) || /\d\s*\/\s*\d/.test(uTrim)) {
+    return { fastTrack: false, reason: 'contains_operator_or_equation' };
+  }
+  if (/\d\s*-\s*\d/.test(uTrim)) {
+    return { fastTrack: false, reason: 'contains_range_or_subtraction' };
+  }
+
+  // 단일 수치 + 선택적 단위 패턴 매칭 (예: "845.2 kN", "845.2 kN/m2", "-12.4 mm")
+  const singleNumUnitRegex = /^([-+]?\d+(?:,\d{3})*(?:\.\d+)?)\s*([a-zA-Z가-힣°%][a-zA-Z가-힣°%²³\/\·\-\^\d]*)?$/;
+  const uParsed = uTrim.match(singleNumUnitRegex);
+  if (!uParsed) {
+    const rawNums = uTrim.match(/[-+]?\d+(?:,\d{3})*(?:\.\d+)?/g) || [];
+    if (rawNums.length !== 1) return { fastTrack: false, reason: 'multiple_or_zero_numbers_in_user' };
+    return { fastTrack: false, reason: 'contains_operator_or_equation' };
+  }
+
+  // correctAnswer의 첫 줄(핵심 정답 줄, 💡 직관적 의미 이전)에서 단일 수치+단위 추출
+  const cMainLine = cTrim.split(/\n+/)[0].replace(/💡[\s\S]*$/, '').trim();
+  if (/[=\+\*±~]/.test(cMainLine) || /\d\s*\/\s*\d/.test(cMainLine) || /\d\s*-\s*\d/.test(cMainLine)) {
+    return { fastTrack: false, reason: 'range_or_equation_in_correct_answer' };
+  }
+  const cParsed = cMainLine.match(singleNumUnitRegex);
+  if (!cParsed) {
+    return { fastTrack: false, reason: 'multiple_or_zero_numbers_in_correct' };
+  }
+
+  const uVal = parseFloat(uParsed[1].replace(/,/g, ''));
+  const cVal = parseFloat(cParsed[1].replace(/,/g, ''));
+  if (!Number.isFinite(uVal) || !Number.isFinite(cVal)) return { fastTrack: false, reason: 'nan_value' };
+
+  // 부호 일치 검증
+  if (Math.sign(uVal) !== Math.sign(cVal) && !(Math.abs(uVal) < 1e-9 && Math.abs(cVal) < 1e-9)) {
+    return { fastTrack: false, reason: 'sign_mismatch' };
+  }
+
+  const uUnit = normalizeUnitPreservingSiPrefix(uParsed[2] || '');
+  const cUnit = normalizeUnitPreservingSiPrefix(cParsed[2] || '');
+
+  // 단위 일치 검증 (모범답안에 단위가 있을 때 학생 답안 단위가 없거나 다르면 Fast-Track 거부 -> LLM 채점)
+  if (cUnit) {
+    if (!uUnit || uUnit !== cUnit) {
+      return { fastTrack: false, reason: `unit_mismatch(${uUnit || 'none'} vs ${cUnit})` };
+    }
+  } else if (uUnit) {
+    return { fastTrack: false, reason: `unexpected_unit(${uUnit})` };
+  }
+
+  // 수치 허용오차: 0 근방은 절대오차 1e-4, 일반 수치는 상대오차 ±1% (0.01) 이내만 Fast-Track 만점 처리
+  const absDiff = Math.abs(uVal - cVal);
+  const isWithinTolerance = Math.abs(cVal) < 1e-6
+    ? absDiff <= 1e-4
+    : (absDiff / Math.abs(cVal)) <= 0.01;
+
+  if (!isWithinTolerance) {
+    return { fastTrack: false, reason: 'out_of_strict_1pct_tolerance' };
+  }
+
+  return {
+    fastTrack: true,
+    uVal,
+    cVal,
+    unit: cUnit
+  };
+}
+
+// Versioned Model Answer Cache + Single-Flight Map (Write-After-Verify)
+const MODEL_ANSWER_CACHE_VERSION = 'v5-prompt2.2-san2.1';
+const PROMPT_TEMPLATE_HASH = crypto
+  .createHash('sha256')
+  .update(baseSystemInstruction)
+  .digest('hex')
+  .slice(0, 12);
+const MODEL_ANSWER_CACHE_MAX_SIZE = 500;
+const MODEL_ANSWER_CACHE_TTL_MS = 30 * 60 * 1000; // 30분
+export const modelAnswerCache = new Map();
+export const singleFlightModelAnswerMap = new Map();
+
+export function buildModelAnswerCacheKey({
+  question = '',
+  rowHeader = '',
+  colHeader = '',
+  category = '',
+  correctAnswer = '',
+  explanation = '',
+  kcscContext = '',
+  wikiGrounding = '',
+  gradingStandards = '',
+  engineeringStandards = '',
+  modelId = 'claude-hybrid:fast(claude-haiku-5-5)'
+}) {
+  const standardsHash = crypto
+    .createHash('sha256')
+    .update(`${gradingStandards || GRADING_STANDARDS}||${engineeringStandards || ENGINEERING_STANDARDS}`)
+    .digest('hex')
+    .slice(0, 16);
+  const corpusHash = crypto
+    .createHash('sha256')
+    .update(`${explanation || ''}||${kcscContext || ''}||${wikiGrounding || ''}`)
+    .digest('hex')
+    .slice(0, 16);
+
+  const rawKey = JSON.stringify({
+    v: MODEL_ANSWER_CACHE_VERSION,
+    ph: PROMPT_TEMPLATE_HASH,
+    m: modelId,
+    cat: (category || '').trim(),
+    sh: standardsHash,
+    ch: corpusHash,
+    q: (question || '').trim(),
+    r: (rowHeader || '').trim(),
+    c: (colHeader || '').trim(),
+    a: (correctAnswer || '').trim()
+  });
+
+  return crypto.createHash('sha256').update(rawKey).digest('hex');
+}
+
+// [Blocker-3 Fix]: 자기참조(self-referential tautology) 원천 제거 — 외부 사료(explanation + kcscContext + wikiGrounding)만으로 검증하며 correctAnswer는 근거에서 제외
+export function isAlreadyGroundedRichModelAnswer({
+  correctAnswer,
+  question,
+  explanation,
+  kcscContext,
+  wikiGrounding
+}) {
+  if (!correctAnswer || typeof correctAnswer !== 'string') return null;
+  const trimmed = correctAnswer.trim();
+  // 다중 셀 딕셔너리 형태이거나 너무 짧거나 💡 직관적 의미가 없으면 Phase 1 생성 필요
+  if (trimmed.startsWith('{') || trimmed.length < 90 || !trimmed.includes('💡')) {
+    return null;
+  }
+  // 외부 사료(explanation, kcscContext, wikiGrounding)가 최소 1개 이상 존재할 때만 사전 검증 허용
+  const externalDossier = [explanation, kcscContext, wikiGrounding].filter(Boolean).join('\n').trim();
+  if (!externalDossier) {
+    return null;
+  }
+  // 중요: correctAnswer에 빈 문자열('')을 전달하여 trimmed가 자기 자신을 근거로 삼는 순환논리(tautology)를 원천 차단
+  const check = verifyGroundedGradingResult({
+    question,
+    correctAnswer: '',
+    authoritativeModelAnswer: trimmed,
+    explanation,
+    kcscContext,
+    wikiGrounding
+  });
+  const gv = check?.groundingVerification;
+  if (
+    gv &&
+    gv.verified === true &&
+    !gv.hallucinatedFormulaRemoved &&
+    (gv.removedFormulaCount || 0) === 0 &&
+    (!Array.isArray(gv.removedKdsCodes) || gv.removedKdsCodes.length === 0) &&
+    check.sanitizedModelAnswer === trimmed
+  ) {
+    return {
+      authoritativeModelAnswer: check.sanitizedModelAnswer,
+      groundingVerification: gv,
+      source: 'preverified_correct_answer'
+    };
+  }
+  return null;
+}
+
+function setBoundedModelAnswerCache(key, value) {
+  if (modelAnswerCache.has(key)) {
+    modelAnswerCache.delete(key);
+  } else if (modelAnswerCache.size >= MODEL_ANSWER_CACHE_MAX_SIZE) {
+    const oldestKey = modelAnswerCache.keys().next().value;
+    if (oldestKey !== undefined) modelAnswerCache.delete(oldestKey);
+  }
+  modelAnswerCache.set(key, {
+    ...value,
+    cachedAt: Date.now()
+  });
+}
+
+// [Merge Condition C2]: isReevaluation=true 완전 격리 (Read-Bypass / Single-Flight-Bypass / Write-No-Op)
+export async function getOrGenerateVerifiedModelAnswer(params) {
+  const {
+    question,
+    correctAnswer,
+    rowHeader,
+    colHeader,
+    explanation,
+    category,
+    callLLMWithFailover,
+    gradingStandards,
+    engineeringStandards,
+    isReevaluation = false,
+    kcscContext = '',
+    wikiGrounding = ''
+  } = params;
+
+  // C2: 재평가(isReevaluation=true)는 고온(0.85) 독립 탐색이므로 캐시 및 Single-Flight와 완전 격리
+  if (isReevaluation) {
+    const rawReevalAnswer = await generateAuthoritativeModelAnswer(params);
+    const verifiedReeval = verifyGroundedGradingResult({
+      question,
+      correctAnswer,
+      authoritativeModelAnswer: rawReevalAnswer,
+      explanation,
+      kcscContext,
+      wikiGrounding
+    });
+    return {
+      authoritativeModelAnswer: verifiedReeval.sanitizedModelAnswer,
+      groundingVerification: verifiedReeval.groundingVerification,
+      cacheStatus: 'reevaluation_isolated'
+    };
+  }
+
+  const cacheKey = buildModelAnswerCacheKey({
+    question,
+    rowHeader,
+    colHeader,
+    category,
+    correctAnswer,
+    explanation,
+    kcscContext,
+    wikiGrounding,
+    gradingStandards,
+    engineeringStandards
+  });
+
+  // 1) Versioned LRU Cache Hit 확인 (만료 시 즉시 제거, 히트 시 LRU 순서 갱신)
+  const cached = modelAnswerCache.get(cacheKey);
+  if (cached) {
+    if ((Date.now() - cached.cachedAt) < MODEL_ANSWER_CACHE_TTL_MS) {
+      modelAnswerCache.delete(cacheKey);
+      modelAnswerCache.set(cacheKey, cached);
+      return {
+        authoritativeModelAnswer: cached.authoritativeModelAnswer,
+        groundingVerification: cached.groundingVerification,
+        cacheStatus: 'cache_hit'
+      };
+    }
+    modelAnswerCache.delete(cacheKey);
+  }
+
+  // 2) Deterministic Pre-Verified Rich correctAnswer 확인 (0ms 즉시 재사용 + Write-After-Verify)
+  const preVerified = isAlreadyGroundedRichModelAnswer({
+    correctAnswer,
+    question,
+    explanation,
+    kcscContext,
+    wikiGrounding
+  });
+  if (preVerified) {
+    setBoundedModelAnswerCache(cacheKey, preVerified);
+    return {
+      authoritativeModelAnswer: preVerified.authoritativeModelAnswer,
+      groundingVerification: preVerified.groundingVerification,
+      cacheStatus: 'preverified_reuse'
+    };
+  }
+
+  // 3) Single-Flight Coalescing 확인 (동일 문항/빈칸 동시 채점 시 Phase 1 중복 호출 차단)
+  if (singleFlightModelAnswerMap.has(cacheKey)) {
+    const sharedResult = await singleFlightModelAnswerMap.get(cacheKey);
+    return {
+      ...sharedResult,
+      cacheStatus: 'single_flight_coalesced'
+    };
+  }
+
+  // 4) Phase 1 LLM 생성 + Grounding Verification + Write-After-Verify
+  const flightPromise = (async () => {
+    const rawModelAnswer = await generateAuthoritativeModelAnswer(params);
+    const verified = verifyGroundedGradingResult({
+      question,
+      correctAnswer,
+      authoritativeModelAnswer: rawModelAnswer,
+      explanation,
+      kcscContext,
+      wikiGrounding
+    });
+    const payload = {
+      authoritativeModelAnswer: verified.sanitizedModelAnswer,
+      groundingVerification: verified.groundingVerification
+    };
+    if (verified.groundingVerification?.verified && payload.authoritativeModelAnswer) {
+      setBoundedModelAnswerCache(cacheKey, payload);
+    }
+    return payload;
+  })();
+
+  singleFlightModelAnswerMap.set(cacheKey, flightPromise);
+  try {
+    const result = await flightPromise;
+    return {
+      ...result,
+      cacheStatus: 'generated_and_cached'
+    };
+  } finally {
+    singleFlightModelAnswerMap.delete(cacheKey);
+  }
+}
 
 export function isNumericAnswer(str) {
   if (!str) return false;
@@ -286,34 +643,49 @@ export async function gradeSubjective({ question, correctAnswer, userAnswer, row
     return { isCorrect: false, score: 0, reason: '출제 및 해설 정보가 부족하여 AI 채점을 진행할 수 없습니다.' };
   }
 
-  if (correctAnswer && normalize(userAnswer) === normalize(correctAnswer)) {
-    // 정확 일치 시에도 풍부한 모범 답안을 생성하여 학습 효과 극대화 (채점 LLM은 스킵하여 속도 최적화)
-    const richModelAnswer = await generateAuthoritativeModelAnswer({
-      question, correctAnswer, rowHeader, colHeader, explanation, category,
-      callLLMWithFailover, gradingStandards, engineeringStandards, isReevaluation,
-      kcscContext,
-      wikiGrounding
-    });
-    const groundedCheck = verifyGroundedGradingResult({
+  const isExactTextMatch = !isReevaluation && correctAnswer && normalize(userAnswer) === normalize(correctAnswer);
+  const numericFastTrack = evaluateStrictNumericFastTrack({
+    userAnswer,
+    correctAnswer,
+    colHeader,
+    category,
+    isReevaluation
+  });
+
+  if (isExactTextMatch || numericFastTrack.fastTrack) {
+    const resolvedFast = await getOrGenerateVerifiedModelAnswer({
       question,
       correctAnswer,
-      authoritativeModelAnswer: richModelAnswer,
-      reason: '텍스트가 모범 답안과 정확히 일치합니다.',
+      rowHeader,
+      colHeader,
       explanation,
+      category,
+      callLLMWithFailover,
+      gradingStandards,
+      engineeringStandards,
+      isReevaluation,
       kcscContext,
       wikiGrounding
     });
+    const fastReason = isExactTextMatch
+      ? '텍스트가 모범 답안과 정확히 일치합니다.'
+      : `최종 산출 수치(${numericFastTrack.uVal}${numericFastTrack.unit ? ' ' + numericFastTrack.unit : ''}) 및 단위가 모범 답안의 정밀 산출 결과와 정확히 일치합니다.`;
     return {
       isCorrect: true,
       score: 10,
-      reason: '텍스트가 모범 답안과 정확히 일치합니다.',
-      suggestedModelAnswer: groundedCheck.sanitizedModelAnswer,
-      groundingVerification: groundedCheck.groundingVerification
+      reason: fastReason,
+      suggestedModelAnswer: resolvedFast.authoritativeModelAnswer,
+      groundingVerification: {
+        ...(resolvedFast.groundingVerification || { verified: true }),
+        cacheStatus: resolvedFast.cacheStatus,
+        fastTrack: isExactTextMatch ? 'exact_text' : 'strict_numeric_1pct',
+        reasonSanitized: false
+      }
     };
   }
 
-  // 1. Generate Authoritative Model Answer (userAnswer is COMPLETELY ISOLATED from prompt)
-  const rawAuthoritativeModelAnswer = await generateAuthoritativeModelAnswer({
+  // 1. Resolve Verified Authoritative Model Answer (userAnswer is COMPLETELY ISOLATED from Phase 1 / Cache / Pre-Verified Reuse)
+  const resolvedModelAnswer = await getOrGenerateVerifiedModelAnswer({
     question,
     correctAnswer,
     rowHeader,
@@ -327,17 +699,14 @@ export async function gradeSubjective({ question, correctAnswer, userAnswer, row
     kcscContext,
     wikiGrounding
   });
-
-  // 🛡️ 1-B. NotebookLM 방식 1:1 원문 인용 및 수식 환각 검증 (QuoteVerifier & GroundingVerifier)
-  const groundedVerificationResult = verifyGroundedGradingResult({
-    question,
-    correctAnswer,
-    authoritativeModelAnswer: rawAuthoritativeModelAnswer,
-    explanation,
-    kcscContext,
-    wikiGrounding
-  });
-  const authoritativeModelAnswer = groundedVerificationResult.sanitizedModelAnswer;
+  const authoritativeModelAnswer = resolvedModelAnswer.authoritativeModelAnswer;
+  const groundedVerificationResult = {
+    sanitizedModelAnswer: authoritativeModelAnswer,
+    groundingVerification: {
+      ...(resolvedModelAnswer.groundingVerification || { verified: true }),
+      cacheStatus: resolvedModelAnswer.cacheStatus
+    }
+  };
 
   // 2. Grade User Answer against the Authoritative Model Answer
   const userPrompt = `
@@ -374,7 +743,8 @@ ${((colHeader && colHeader.includes('수치 계산 답안')) || category === '�
 - 오직 **최종 답안(숫자 수치)과 단위(해당되는 경우)**가 모범 답안의 최종 수치와 일치(±5% 이내 공학적 오차 허용)하는지만을 엄격히 평가하며, 숫자 답이 맞다면 만점(10점)을 부여하십시오.
 - 사용자가 계산식 없이 숫자만 덩그러니 적었더라도 절대 감점하지 마십시오.` : ''}
 
-🚨 **[채점 및 응답 포맷]**:
+🚨 **[부분점수 정밀 캘리브레이션 및 채점 포맷]**:
+- 기준 모범 답안(Canonical Model Answer)의 굵은 글씨(\`**...**\`)로 강조된 핵심 역학적 메커니즘/물리적 기전이 수험생 답안(userAnswer)에서 누락되고 부차적 현상이나 표면적 단어만 일부 언급된 경우, 점수는 **최대 6점 이하(score <= 6, isCorrect: false)**로 엄격히 제한하고 채점 사유(reason)에 누락된 핵심 메커니즘을 명시하십시오.
 - 사용자의 답안(userAnswer)이 기준 모범 답안(Canonical Model Answer)의 공학적 본질 및 메커니즘에 부합하는지 비교 평가하여 판정하십시오.
 - 응답은 마크다운 코드블록 없이 순수 JSON 객체로 반환하십시오:
 {
@@ -425,15 +795,37 @@ ${((colHeader && colHeader.includes('수치 계산 답안')) || category === '�
     const reason = findKey(result, 'reason') || result.reason || 'AI 채점 완료';
 
     let finalIsCorrect = isCorrect;
-    let finalScore = score;
+    const safeNumericScore = Number.isFinite(Number(score)) ? Number(score) : (isCorrect ? 10 : 0);
+    let finalScore = Math.max(0, Math.min(10, safeNumericScore));
     let finalReason = reason;
+
+    // 서버 측 점수-정답 여부 일관성 강제 (score <= 6이면 부분점수/오답 구간이므로 isCorrect=false 강제, score >= 8이면 true)
+    if (finalScore <= 6) {
+      finalIsCorrect = false;
+    } else if (finalScore >= 8) {
+      finalIsCorrect = true;
+    }
+
+    // 🛡️ Post-Phase-2 채점 사유(reason) 환각 코드/수식 정제
+    const dossierCombined = [explanation, kcscContext, wikiGrounding, authoritativeModelAnswer].filter(Boolean).join('\n\n');
+    const reasonFormulaSanitized = sanitizeUnfoundedBlockFormulas(String(finalReason || ''), {
+      dossierText: dossierCombined,
+      question,
+      correctAnswer: authoritativeModelAnswer
+    });
+    const reasonKdsSanitized = sanitizeHallucinatedKdsCodes(reasonFormulaSanitized.sanitizedText, dossierCombined);
+    finalReason = reasonKdsSanitized.sanitizedText;
+    const reasonSanitized = (reasonFormulaSanitized.removedCount > 0) || (Array.isArray(reasonKdsSanitized.removedCodes) && reasonKdsSanitized.removedCodes.length > 0);
 
     return {
       isCorrect: finalIsCorrect,
       score: finalScore,
       reason: finalReason,
       suggestedModelAnswer: authoritativeModelAnswer,
-      groundingVerification: groundedVerificationResult.groundingVerification
+      groundingVerification: {
+        ...(groundedVerificationResult.groundingVerification || { verified: true }),
+        reasonSanitized
+      }
     };
   } catch (parseErr) {
     console.error('All JSON parsing attempts failed in AI grading. Raw text:', text, parseErr);
