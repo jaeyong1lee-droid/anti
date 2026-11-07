@@ -1236,11 +1236,14 @@ let parsedArray = null;
         kcscGrounding
       });
     } else {
-      const targetModel = (req.body && req.body.preferredModel) || globalPreferredModel || 'gemini-3.5-flash-lite';
+      const targetModel = (req.body && req.body.preferredModel) || globalPreferredModel || 'claude-hybrid';
+      const isHybridMode = targetModel === 'claude-hybrid';
+      const batch13Model = isHybridMode ? 'claude-sonnet-5-5' : targetModel;
+      const batch2Model = isHybridMode ? 'claude-haiku-5-5' : targetModel;
       const [batch1Text, batch2Text, batch3Text] = await Promise.all([
-        localCallLLM(systemInstruction, promptBatch1, null, 'question', { temperature: 1.0, preferredModel: targetModel }),
-        localCallLLM(systemInstruction, promptBatch2, null, 'question', { temperature: 1.0, preferredModel: targetModel }),
-        localCallLLM(systemInstruction, promptBatch3, null, 'question', { temperature: 1.0, preferredModel: targetModel })
+        localCallLLM(systemInstruction, promptBatch1, null, 'question', { temperature: 1.0, preferredModel: batch13Model, hybridRole: 'deep' }),
+        localCallLLM(systemInstruction, promptBatch2, null, 'question', { temperature: 1.0, preferredModel: batch2Model, hybridRole: 'fast' }),
+        localCallLLM(systemInstruction, promptBatch3, null, 'question', { temperature: 1.0, preferredModel: batch13Model, hybridRole: 'deep' })
       ]);
 
       const parseBatch = (responseText, batchName) => {

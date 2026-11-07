@@ -10,18 +10,19 @@ global.progressTracker = global.progressTracker || new Map();
 // 차트 지침(CHART_DIAGRAM_PROMPT)을 붙이지 않는 시나리오 (순수 텍스트/JSON 출력 전용)
 const NO_CHART_PROMPT_SCENARIOS = new Set(['grading', 'general', 'slides', 'ocr', 'source-search']);
 
-export let globalPreferredModel = 'gemini-3.5-flash-lite';
+export let globalPreferredModel = 'claude-hybrid';
 export let globalAnthropicApiKey = null;
 export const FALLBACK_MODELS = [
+  'claude-hybrid',
+  'claude-sonnet-5-5',
+  'claude-haiku-5-5',
+  'claude-opus-5-5',
   'gemini-3.5-flash-lite',
   'gemini-3.8-flash',
   'gemini-3.7-flash',
   'gemini-3.1-flash-lite',
   'gemini-3.6-flash',
-  'gemini-3.5-flash',
-  'claude-sonnet-5-5',
-  'claude-haiku-5-5',
-  'claude-opus-5-5'
+  'gemini-3.5-flash'
 ];
 
 export async function loadPreferredModel() {
@@ -207,9 +208,15 @@ export function stopBackendProgressTimer(progressId, percentage, message, isSucc
   updateProgress(progressId, 2, message, percentage);
 }
 
-export function normalizeClaudeModel(modelName) {
+export function normalizeClaudeModel(modelName, scenario = 'default', options = {}) {
   if (!modelName || typeof modelName !== 'string') return 'claude-sonnet-5-5';
   const name = modelName.trim().toLowerCase();
+  if (name === 'claude-hybrid') {
+    if (options.hybridRole === 'fast' || scenario === 'general' || scenario === 'source-search' || scenario === 'source') {
+      return 'claude-haiku-5-5';
+    }
+    return 'claude-sonnet-5-5';
+  }
   if (name.startsWith('claude-')) return name;
   return 'claude-sonnet-5-5';
 }
@@ -242,23 +249,24 @@ export async function callLLMWithFailover(systemInstruction, userPrompt, image =
 
   const executionList = [];
 
-  const targetPref = options.preferredModel || globalPreferredModel || 'gemini-3.5-flash-lite';
-  if (options.preferredModel && options.preferredModel !== globalPreferredModel) {
+  const targetPref = options.preferredModel || globalPreferredModel || 'claude-hybrid';
+  if (options.preferredModel && options.preferredModel !== globalPreferredModel && !options.hybridRole) {
     globalPreferredModel = options.preferredModel;
   }
   const isClaudePreferred = targetPref.trim().toLowerCase().startsWith('claude-');
 
   const addClaudeTasks = () => {
     if (!anthropicKey || !anthropicKey.startsWith('sk-ant-')) return;
+    const resolvedPrimaryClaude = normalizeClaudeModel(targetPref, scenario, options);
     const claudeModels = isClaudePreferred
-      ? [...new Set([targetPref, 'claude-sonnet-5-5', 'claude-haiku-5-5', 'claude-opus-5-5'])]
+      ? [...new Set([resolvedPrimaryClaude, 'claude-sonnet-5-5', 'claude-haiku-5-5', 'claude-opus-5-5'])]
       : ['claude-sonnet-5-5', 'claude-haiku-5-5'];
     for (const cm of claudeModels) {
       executionList.push({
         key: anthropicKey,
         label: 'Claude Key',
         model: cm,
-        actualModel: normalizeClaudeModel(cm),
+        actualModel: normalizeClaudeModel(cm, scenario, options),
         type: 'claude'
       });
     }
