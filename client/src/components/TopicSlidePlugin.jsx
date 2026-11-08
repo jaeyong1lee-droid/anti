@@ -301,7 +301,7 @@ export default function TopicSlidePlugin({
     setGenerating(true);
     setErrorMsg(null);
     try {
-      const savedModel = typeof window !== 'undefined' ? (localStorage.getItem('anti_preferred_model') || 'gemini-3.5-flash-lite') : 'gemini-3.5-flash-lite';
+      const savedModel = (() => { try { const raw = typeof window !== 'undefined' ? localStorage.getItem('anti_stage_models') : null; if (raw) { const parsed = JSON.parse(raw); if (parsed && parsed.ppt) return parsed.ppt; } } catch (e) {} return 'claude-hybrid'; })();
       const res = await fetch(`${apiBase}/api/topics/${encodeURIComponent(topicId)}/slides/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

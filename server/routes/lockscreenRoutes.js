@@ -1,6 +1,6 @@
 import express from 'express';
 import { dbQuery } from '../database.js';
-import { saveSessionValue, callLLMWithFailover, getMatchingTopicContent, globalPreferredModel } from '../services/aiService.js';
+import { saveSessionValue, callLLMWithFailover, getMatchingTopicContent, globalPreferredModel, resolveStageModel } from '../services/aiService.js';
 import { 
   getRandomLockscreenExamQuestion, 
   loadAllPastExamQuestions,
@@ -18,19 +18,20 @@ import { getKcscVerificationContext } from '../services/kcscService.js';
 
 const router = express.Router();
 
-function getResolvedLockscreenPreferredModel(req) {
-  return (req && (req.body?.preferredModel || req.query?.preferredModel)) || globalPreferredModel || 'gemini-3.5-flash-lite';
+function getResolvedLockscreenPreferredModel(req, stage = 'grading') {
+  return resolveStageModel(stage, {
+    stage,
+    stageModels: req?.body?.stageModels,
+    preferredModel: req && (req.body?.preferredModel || req.query?.preferredModel)
+  });
 }
 
-function getCallLLM(req) {
+function getCallLLM(req, defaultStage = 'grading') {
   const progressId = req && (req.query?.progressId || req.body?.progressId);
-  const basePrefModel = getResolvedLockscreenPreferredModel(req);
   return (sys, prompt, img, scenario, opts) => {
-    let resolvedModel = basePrefModel;
-    if (basePrefModel === 'claude-hybrid') {
-      resolvedModel = (opts && opts.hybridRole === 'fast') ? 'claude-haiku-5-5' : 'claude-sonnet-5-5';
-    }
-    return callLLMWithFailover(sys, prompt, img, scenario, { ...opts, preferredModel: resolvedModel, progressId });
+    const stage = (opts && opts.stage) || defaultStage;
+    const resolvedModel = getResolvedLockscreenPreferredModel(req, stage);
+    return callLLMWithFailover(sys, prompt, img, scenario, { ...opts, stage, preferredModel: resolvedModel, progressId });
   };
 }
 
@@ -285,7 +286,7 @@ ${dynamicEngineeringStandards}`;
 [문제]
 ${sessionInfo ? `[${sessionInfo} ${numberInfo}] ` : ''}${text}`;
 
-    const responseText = await callLLM(systemInstruction, userPrompt, null, 'general');
+    const responseText = await callLLM(systemInstruction, userPrompt, null, 'general', { stage: 'tutor' });
     const healedText = typeof healLatexFormulas === 'function' ? healLatexFormulas(responseText) : responseText;
 
     res.json({

@@ -120,6 +120,33 @@ function getModelDisplayName(modelName) {
   return MODEL_DISPLAY_NAMES[modelName] || modelName;
 }
 
+const DEFAULT_STAGE_MODELS = {
+  ppt: 'claude-hybrid',
+  question: 'claude-hybrid',
+  grading: 'gemini-3.5-flash-lite',
+  tutor: 'gemini-3.5-flash-lite'
+};
+
+const STAGE_META_LIST = [
+  { key: 'ppt', label: 'PPT', desc: '시각 슬라이드 생성' },
+  { key: 'question', label: '문제출제', desc: '예상문제·기출복습·재출제' },
+  { key: 'grading', label: '문제채점', desc: '주관식·락스크린 채점' },
+  { key: 'tutor', label: 'AI 튜터', desc: '질의응답·심층해설·힌트' }
+];
+
+const ALL_SELECTABLE_MODELS = [
+  'claude-hybrid',
+  'claude-sonnet-5-5',
+  'claude-haiku-5-5',
+  'claude-opus-5-5',
+  'gemini-3.5-flash-lite',
+  'gemini-3.8-flash',
+  'gemini-3.7-flash',
+  'gemini-3.1-flash-lite',
+  'gemini-3.6-flash',
+  'gemini-3.5-flash'
+];
+
 
 // 공식 암기 팁 텍스트에서 연상법: 및 중복 수식($, $)을 필터링하여 순수 암기 문구만 노출하는 헬퍼 함수
 const cleanMemorizationTipText = (tip) => {
@@ -3174,7 +3201,7 @@ export default function App() {
             category: '앞글자',
             temperature: isReevaluation ? 0.85 : 0.7,
             isReevaluation: !!isReevaluation,
-            preferredModel: preferredModelRef.current || preferredModel,
+            preferredModel: getStageModel('grading'),
             progressId
           })
         });
@@ -3421,6 +3448,26 @@ export default function App() {
   useEffect(() => {
     preferredModelRef.current = preferredModel;
   }, [preferredModel]);
+  const [stageModels, setStageModels] = useState(() => {
+    try {
+      const savedRaw = localStorage.getItem('anti_stage_models');
+      if (savedRaw) {
+        const parsed = JSON.parse(savedRaw);
+        if (parsed && typeof parsed === 'object') {
+          return { ...DEFAULT_STAGE_MODELS, ...parsed };
+        }
+      }
+    } catch (e) {}
+    return { ...DEFAULT_STAGE_MODELS };
+  });
+  const stageModelsRef = useRef(stageModels);
+  useEffect(() => {
+    stageModelsRef.current = stageModels;
+  }, [stageModels]);
+  const getStageModel = (stageKey = 'tutor') => {
+    const cur = stageModelsRef.current || stageModels || DEFAULT_STAGE_MODELS;
+    return cur[stageKey] || DEFAULT_STAGE_MODELS[stageKey] || 'gemini-3.5-flash-lite';
+  };
   const [isLockscreenQuizEnabled, setIsLockscreenQuizEnabled] = useState(() => {
     return localStorage.getItem('anti_lockscreen_quiz_enabled') !== 'false';
   });
@@ -3526,7 +3573,7 @@ export default function App() {
             body: JSON.stringify({
               sourceText: customSourceText || undefined,
               topicTitle: finalTitle,
-              preferredModel: preferredModelRef.current || preferredModel
+              preferredModel: getStageModel('ppt')
             })
           });
           break;
@@ -4482,7 +4529,7 @@ export default function App() {
         body: JSON.stringify({
           question: lockscreenQuestion,
           questionText: lockscreenQuestion.question,
-          preferredModel: preferredModelRef.current || preferredModel
+          preferredModel: getStageModel('tutor')
         })
       });
       const data = await res.json();
@@ -4509,7 +4556,7 @@ export default function App() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         question: lockscreenQuestion,
-        preferredModel: preferredModelRef.current || preferredModel
+        preferredModel: getStageModel('grading')
       })
     }).catch(() => {});
   }, [showLockscreenQuiz, lockscreenQuestion?.lockscreen_id, lockscreenQuestion?.question]);
@@ -4530,7 +4577,7 @@ export default function App() {
           userAnswer: targetAnswer,
           questionId: targetQ.id,
           existingModelAnswer: existingModelAns,
-          preferredModel: preferredModelRef.current || preferredModel
+          preferredModel: getStageModel('grading')
         })
       });
       const data = await res.json();
@@ -5509,7 +5556,7 @@ export default function App() {
             category: showExam ? examTopic?.category : selectedTopic?.category,
             temperature: isReevaluation ? 0.85 : 0.7,
             isReevaluation: !!isReevaluation,
-            preferredModel: preferredModelRef.current || preferredModel,
+            preferredModel: getStageModel('grading'),
             progressId
           })
         });
@@ -5665,7 +5712,7 @@ export default function App() {
           category: '앞글자',
           temperature: isReevaluation ? 0.85 : 0.7,
           isReevaluation: !!isReevaluation,
-          preferredModel: preferredModelRef.current || preferredModel,
+          preferredModel: getStageModel('grading'),
           progressId
         })
       });
@@ -5862,7 +5909,7 @@ export default function App() {
           category: showExam ? examTopic?.category : selectedTopic?.category,
           temperature: isReevaluation ? 0.85 : 0.7,
           isReevaluation: !!isReevaluation,
-          preferredModel: preferredModelRef.current || preferredModel,
+          preferredModel: getStageModel('grading'),
           progressId
         })
       });
@@ -6091,7 +6138,7 @@ export default function App() {
           category: showExam ? examTopic?.category : selectedTopic?.category,
           temperature: isReevaluation ? 0.85 : 0.7,
           isReevaluation: !!isReevaluation,
-          preferredModel: preferredModelRef.current || preferredModel,
+          preferredModel: getStageModel('grading'),
           progressId
         })
       });
@@ -11599,7 +11646,7 @@ ${item.intuitive || ''}
       if (finalScheduleId) queryParams.push(`scheduleId=${finalScheduleId}`);
       if (isPractice) queryParams.push('isPractice=true');
       if (newSid) queryParams.push(`sessionId=${newSid}`);
-      const curModel = preferredModelRef.current || preferredModel;
+      const curModel = getStageModel('question');
       if (curModel) queryParams.push(`preferredModel=${encodeURIComponent(curModel)}`);
       url += '?' + queryParams.join('&');
       
@@ -12377,7 +12424,7 @@ ${item.intuitive || ''}
       if (currentRefreshScheduleId) {
         queryParams.push(`scheduleId=${currentRefreshScheduleId}`);
       }
-      const curModel = preferredModelRef.current || preferredModel;
+      const curModel = getStageModel('question');
       if (curModel) queryParams.push(`preferredModel=${encodeURIComponent(curModel)}`);
       url += '?' + queryParams.join('&');
       
@@ -12605,7 +12652,7 @@ ${item.intuitive || ''}
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
-            preferredModel: preferredModelRef.current || preferredModel,
+            preferredModel: getStageModel('question'),
             examQuestions: updatedQuestions, 
             examRevealed: newRevealed, 
             examAnswers: newAnswers, 
@@ -12648,7 +12695,7 @@ ${item.intuitive || ''}
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
-            preferredModel: preferredModelRef.current || preferredModel,
+            preferredModel: getStageModel('question'),
             examQuestions: updatedQuestions, 
             examRevealed, 
             examAnswers, 
@@ -12885,7 +12932,7 @@ ${item.intuitive || ''}
       const res = await fetch(`${API_BASE}/api/question/regenerate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
+        body: JSON.stringify({ ...body, preferredModel: getStageModel('question') })
       });
       
       console.log('[변환] 응답 수신:', { status: res.status, ok: res.ok });
@@ -13067,7 +13114,7 @@ ${item.intuitive || ''}
       const res = await fetch(`${API_BASE}/api/question/adjust`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
+        body: JSON.stringify({ ...body, preferredModel: getStageModel('question') })
       });
       
       const data = await res.json();
@@ -13243,7 +13290,7 @@ ${item.intuitive || ''}
       const res = await fetch(`${API_BASE}/api/question/option-explanation`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question, options, answer, preferredModel: preferredModelRef.current || preferredModel, progressId })
+        body: JSON.stringify({ question, options, answer, preferredModel: getStageModel('tutor'), progressId })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || '보기별 해설을 생성하지 못했습니다.');
@@ -13350,7 +13397,7 @@ ${item.intuitive || ''}
         body: JSON.stringify({
           history: [],
           message: contextPrompt,
-          preferredModel: preferredModelRef.current || preferredModel,
+          preferredModel: getStageModel('tutor'),
           progressId
         })
       });
@@ -13544,7 +13591,7 @@ ${item.intuitive || ''}
       const res = await fetch(`${API_BASE}/api/exam/detailed-answer`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question, answer, preferredModel: preferredModelRef.current || preferredModel, progressId })
+        body: JSON.stringify({ question, answer, preferredModel: getStageModel('tutor'), progressId })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || '답안 전문을 가져오는 중 오류가 발생했습니다.');
@@ -13970,7 +14017,7 @@ ${item.intuitive || ''}
           message: apiMessage,
           image: currentAttachedImage ? { mimeType: currentAttachedImage.mimeType, data: currentAttachedImage.data } : null,
           acronymMode: overrideAcronymMode || acronymModeActive,
-          preferredModel: preferredModelRef.current || preferredModel,
+          preferredModel: getStageModel('tutor'),
           progressId
         })
       });
@@ -14137,7 +14184,7 @@ ${item.intuitive || ''}
       const res = await fetch(`${API_BASE}/api/hint`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ questionText, preferredModel: preferredModelRef.current || preferredModel, progressId })
+        body: JSON.stringify({ questionText, preferredModel: getStageModel('tutor'), progressId })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || '힌트 생성 실패');
@@ -14202,6 +14249,28 @@ ${item.intuitive || ''}
       setModelPopupPos(null);
     }
     setShowModelSelectModal(true);
+  };
+
+  const handleStageModelChange = async (stageKey, nextModel) => {
+    const current = stageModelsRef.current || stageModels || DEFAULT_STAGE_MODELS;
+    const updated = { ...current, [stageKey]: nextModel };
+    stageModelsRef.current = updated;
+    setStageModels(updated);
+    localStorage.setItem('anti_stage_models', JSON.stringify(updated));
+    if (stageKey === 'tutor') {
+      preferredModelRef.current = nextModel;
+      setPreferredModel(nextModel);
+      localStorage.setItem('anti_preferred_model', nextModel);
+    }
+    try {
+      await fetch(`${API_BASE}/api/preferred-model`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stage: stageKey, model: nextModel, stageModels: updated })
+      });
+    } catch (error) {
+      console.warn('Failed to sync stage model to server:', error);
+    }
   };
 
   const handleModelSelect = async (nextModel) => {
@@ -15043,7 +15112,7 @@ ${item.intuitive || ''}
           image: currentAttachedImages.length === 1 ? { mimeType: currentAttachedImages[0].mimeType, data: currentAttachedImages[0].data } : null,
           images: currentAttachedImages.map(img => ({ mimeType: img.mimeType, data: img.data })),
           acronymMode: overrideAcronymMode || acronymModeActive,
-          preferredModel: preferredModelRef.current || preferredModel,
+          preferredModel: getStageModel('tutor'),
           progressId
         })
       });
@@ -15212,7 +15281,7 @@ ${item.intuitive || ''}
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          preferredModel: preferredModelRef.current || preferredModel,
+          preferredModel: getStageModel('tutor'),
           history: [],
           message: query,
           image: currentImage ? { mimeType: currentImage.mimeType, data: currentImage.data } : null,
@@ -15297,7 +15366,7 @@ ${item.intuitive || ''}
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          preferredModel: preferredModelRef.current || preferredModel,
+          preferredModel: getStageModel('tutor'),
           history: [],
           message: topic,
           image: null,
@@ -15435,7 +15504,7 @@ ${item.intuitive || ''}
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          preferredModel: preferredModelRef.current || preferredModel,
+          preferredModel: getStageModel('tutor'),
           history: [],
           message: promptText,
           image: null,
@@ -15965,7 +16034,7 @@ ${item.intuitive || ''}
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          preferredModel: preferredModelRef.current || preferredModel,
+          preferredModel: getStageModel('tutor'),
           history: [],
           message: ov.title,
           image: null,
@@ -16286,7 +16355,7 @@ ${item.intuitive || ''}
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          preferredModel: preferredModelRef.current || preferredModel,
+          preferredModel: getStageModel('tutor'),
           history: [],
           message: prompt,
           image: null
@@ -16495,7 +16564,7 @@ ${item.intuitive || ''}
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          preferredModel: preferredModelRef.current || preferredModel,
+          preferredModel: getStageModel('tutor'),
           history: [],
           message: prompt,
           image: null,
@@ -16679,7 +16748,7 @@ ${item.intuitive || ''}
         headers: { 'Content-Type': 'application/json' },
         signal: controller.signal,
         body: JSON.stringify({
-          preferredModel: preferredModelRef.current || preferredModel,
+          preferredModel: getStageModel('tutor'),
           history: [],
           message: query,
           image: null,
@@ -16820,7 +16889,7 @@ ${itemsStr}
         headers: { 'Content-Type': 'application/json' },
         signal: controller.signal,
         body: JSON.stringify({
-          preferredModel: preferredModelRef.current || preferredModel,
+          preferredModel: getStageModel('tutor'),
           history: [],
           message: query,
           image: null,
@@ -18571,7 +18640,7 @@ ${itemsStr}
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          preferredModel: preferredModelRef.current || preferredModel,
+          preferredModel: getStageModel('tutor'),
           history: chatHistory.map(h => ({ role: h.role, text: h.text })), 
           message: promptText,
           image: null,
@@ -18644,7 +18713,7 @@ ${itemsStr}
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          preferredModel: preferredModelRef.current || preferredModel,
+          preferredModel: getStageModel('tutor'),
           history: [],
           message: promptText,
           image: null,
@@ -18721,7 +18790,7 @@ ${itemsStr}
           })),
           message: promptText,
           image: currentAttachedImage ? { mimeType: currentAttachedImage.mimeType, data: currentAttachedImage.data } : null,
-          preferredModel: preferredModelRef.current || preferredModel,
+          preferredModel: getStageModel('tutor'),
           progressId
         })
       });
@@ -20667,9 +20736,7 @@ ${itemsStr}
                   title="Gemini AI 모델 순환 변경 (3.5 Lite -> 3.8 Flash -> 3.7 Flash -> 3.1 Lite -> 3.6 Flash -> 3.5 Flash)"
                   className="flex items-center justify-center px-3 py-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 hover:border-emerald-500/40 transition-all active:scale-98 text-[11px] font-black cursor-pointer shadow-md select-none"
                 >
-                  <span>
-                    {getModelDisplayName(preferredModel)}
-                  </span>
+                  <span>API</span>
                 </button>
 
                 <button
@@ -21475,9 +21542,7 @@ ${itemsStr}
                   className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 hover:text-white border border-emerald-500/40 rounded-xl text-[11px] sm:text-xs md:text-sm font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center whitespace-nowrap min-w-0 select-none shadow-md"
                   title="Gemini AI API 모델 선택 (3.5 Lite -> 3.8 Flash -> 3.7 Flash -> 3.1 Lite -> 3.6 Flash -> 3.5 Flash)"
                 >
-                  <span className="whitespace-nowrap">
-                    API: {getModelDisplayName(preferredModel)}
-                  </span>
+                  <span className="whitespace-nowrap">API</span>
                 </button>
               )}
               {selectedTopic && (
@@ -22973,7 +23038,7 @@ ${itemsStr}
                           className="px-2.5 py-1 text-[10px] font-black rounded-lg bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 hover:text-white border border-emerald-500/40 transition-all cursor-pointer active:scale-95 shadow-md select-none"
                           title="Gemini AI API 모델 선택 (3.5 Lite -> 3.8 Flash -> 3.7 Flash -> 3.1 Lite -> 3.6 Flash -> 3.5 Flash)"
                         >
-                          {getModelDisplayName(preferredModel)}
+                          API
                         </button>
                         <button
                           onClick={async () => { 
@@ -23081,9 +23146,7 @@ ${itemsStr}
                       title="API 모델 선택 (3.5 Lite -> 3.8 Flash -> 3.7 Flash -> 3.1 Lite -> 3.6 Flash -> 3.5 Flash)"
                     >
                       <span className="text-emerald-300">⚡</span>
-                      <span>
-                        {getModelDisplayName(preferredModel)}
-                      </span>
+                      <span>API</span>
                     </button>
                     <button
                       type="button"
@@ -24860,31 +24923,93 @@ ${itemsStr}
         </div>
       )}
 
-      {/* API 모델 선택 미니 팝업 */}
+      {/* 중요 단계별 API 모델 현황 및 드롭다운 선택 팝업 */}
       {showModelSelectModal && (
         <>
           {/* 투명 백드롭 (배경 블러 없음) */}
           <div className="fixed inset-0 z-[9998]" onClick={() => setShowModelSelectModal(false)} />
-          <div 
-            className="fixed z-[9999] w-48 flex flex-col bg-slate-900 border border-slate-700/60 rounded-xl shadow-2xl overflow-hidden animate-fadeIn" 
-            style={modelPopupPos ? { top: `${modelPopupPos.top}px`, left: `${modelPopupPos.left}px`, transform: 'translateX(-50%)' } : { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}
+          <div
+            className="fixed z-[9999] w-[320px] sm:w-[350px] flex flex-col bg-slate-900/98 border border-slate-700/70 rounded-2xl shadow-2xl overflow-hidden animate-fadeIn"
+            style={
+              modelPopupPos
+                ? {
+                    top: `${Math.min(modelPopupPos.top, (typeof window !== 'undefined' ? window.innerHeight : 800) - 310)}px`,
+                    left: `${Math.max(175, Math.min(modelPopupPos.left, (typeof window !== 'undefined' ? window.innerWidth : 1200) - 180))}px`,
+                    transform: 'translateX(-50%)'
+                  }
+                : { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }
+            }
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-1.5 flex flex-col gap-0.5 max-h-[60vh] overflow-y-auto">
-              {['claude-hybrid', 'claude-sonnet-5-5', 'claude-haiku-5-5', 'claude-opus-5-5', 'gemini-3.5-flash-lite', 'gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.1-flash-lite', 'gemini-3.6-flash', 'gemini-3.5-flash'].map((m) => (
-                <button
-                  key={m}
-                  onClick={() => handleModelSelect(m)}
-                  className={`flex items-center justify-between px-3 py-2.5 rounded-lg transition-all cursor-pointer text-left border-none ${
-                    preferredModel === m
-                      ? 'bg-emerald-500/10 text-emerald-400 font-extrabold'
-                      : 'bg-transparent text-slate-300 hover:bg-slate-800/80 hover:text-slate-100 font-medium'
-                  }`}
-                >
-                  <span className="text-[12px]">{getModelDisplayName(m)}</span>
-                  {preferredModel === m && <Check size={14} className="text-emerald-400" />}
-                </button>
-              ))}
+            {/* 헤더 */}
+            <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-800 bg-slate-950/70">
+              <div className="flex items-center gap-2">
+                <Cpu size={14} className="text-emerald-400" />
+                <span className="text-xs font-black text-white tracking-tight">중요 단계별 API 모델 현황</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowModelSelectModal(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+                title="닫기"
+              >
+                <X size={14} />
+              </button>
+            </div>
+
+            {/* 단계별 현황 및 드롭다운 목록 */}
+            <div className="p-3 flex flex-col gap-2.5">
+              {STAGE_META_LIST.map((stageItem) => {
+                const selectedVal = (stageModels && stageModels[stageItem.key]) || DEFAULT_STAGE_MODELS[stageItem.key];
+                const isClaude = selectedVal && selectedVal.startsWith('claude-');
+                return (
+                  <div
+                    key={stageItem.key}
+                    className="flex items-center justify-between gap-2.5 px-3 py-2 rounded-xl bg-slate-950/60 border border-slate-800/80 hover:border-slate-700/80 transition-colors"
+                  >
+                    <div className="flex flex-col min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-black text-slate-100 whitespace-nowrap">{stageItem.label}</span>
+                        <span
+                          className={`px-1.5 py-0.5 rounded text-[9px] font-extrabold whitespace-nowrap border ${
+                            isClaude
+                              ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                              : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                          }`}
+                        >
+                          {isClaude ? '클로드' : '제미나이'}
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-slate-400 truncate mt-0.5">{stageItem.desc}</span>
+                    </div>
+
+                    <select
+                      value={selectedVal}
+                      onChange={(e) => handleStageModelChange(stageItem.key, e.target.value)}
+                      className={`w-[155px] px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-slate-900 border outline-none cursor-pointer transition-colors ${
+                        isClaude
+                          ? 'text-amber-300 border-amber-500/40 focus:border-amber-400'
+                          : 'text-emerald-300 border-emerald-500/40 focus:border-emerald-400'
+                      }`}
+                    >
+                      <optgroup label="Claude API (클로드)" className="bg-slate-900 text-amber-300">
+                        {ALL_SELECTABLE_MODELS.filter(m => m.startsWith('claude-')).map(m => (
+                          <option key={m} value={m} className="bg-slate-900 text-slate-100 font-semibold">
+                            {getModelDisplayName(m)}
+                          </option>
+                        ))}
+                      </optgroup>
+                      <optgroup label="Gemini API (제미나이)" className="bg-slate-900 text-emerald-300">
+                        {ALL_SELECTABLE_MODELS.filter(m => m.startsWith('gemini-')).map(m => (
+                          <option key={m} value={m} className="bg-slate-900 text-slate-100 font-semibold">
+                            {getModelDisplayName(m)}
+                          </option>
+                        ))}
+                      </optgroup>
+                    </select>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </>
@@ -26658,9 +26783,7 @@ ${itemsStr}
                       title="API 모델 선택 (3.5 Lite -> 3.8 Flash -> 3.7 Flash -> 3.1 Lite -> 3.6 Flash -> 3.5 Flash)"
                     >
                       <span className="text-emerald-300">⚡</span>
-                      <span>
-                        {getModelDisplayName(preferredModel)}
-                      </span>
+                      <span>API</span>
                     </button>
                     <button
                       type="button"
@@ -27140,9 +27263,7 @@ ${itemsStr}
                           title="Gemini AI API 모델 선택 (3.5 Lite -> 3.8 Flash -> 3.7 Flash -> 3.1 Lite -> 3.6 Flash -> 3.5 Flash)"
                         >
                           <span className="text-emerald-300 flex-shrink-0">⚡</span>
-                          <span>
-                            {getModelDisplayName(preferredModel)}
-                          </span>
+                          <span>API</span>
                         </button>
                         <button
                           onClick={async () => { 

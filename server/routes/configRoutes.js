@@ -4,7 +4,7 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { dbQuery } from '../database.js';
 import { put, get } from '@vercel/blob';
-import { saveSessionValue, globalPreferredModel, updatePreferredModel, callLLMWithFailover, startBackendProgressTimer, updateProgress, getMatchingTopicContent } from '../services/aiService.js';
+import { saveSessionValue, globalPreferredModel, globalStageModels, updatePreferredModel, updateStageModels, resolveStageModel, callLLMWithFailover, startBackendProgressTimer, updateProgress, getMatchingTopicContent } from '../services/aiService.js';
 import { updateLiveEngineeringStandards, standardsList, ENGINEERING_STANDARDS } from '../plugins/engineeringStandards.js';
 import { updateLiveGradingStandards, gradingStandardsList } from '../plugins/gradingPlugin.js';
 import { updateLiveGenerationStandards, generationStandardsList } from '../plugins/generationStandards.js';
@@ -172,25 +172,49 @@ router.get('/preferred-model', async (req, res) => {
       updatePreferredModel(row.value);
       configMemoryCache.set('preferred_model', row.value);
     }
+    const stageRow = await dbQuery.get("SELECT value FROM app_session WHERE key = 'stage_preferred_models'");
+    if (stageRow && stageRow.value) {
+      try {
+        updateStageModels(JSON.parse(stageRow.value));
+      } catch (e) {}
+    }
   } catch (err) {
     console.warn("Failed to load preferred model from DB in GET /api/preferred-model:", err.message);
   }
-  res.json({ model: globalPreferredModel });
+  res.json({ model: globalPreferredModel, stageModels: globalStageModels });
 });
 
 // POST /api/preferred-model
 router.post('/preferred-model', async (req, res) => {
-  const { model } = req.body;
-  if (typeof model === 'string' && (model.startsWith('gemini-') || model.startsWith('claude-'))) {
-    updatePreferredModel(model);
-    try {
+  const { model, stage, stageModels } = req.body || {};
+  try {
+    if (stageModels && typeof stageModels === 'object') {
+      const updated = updateStageModels(stageModels);
+      await saveSessionValue('stage_preferred_models', JSON.stringify(updated));
+      await saveSessionValue('preferred_model', updated.tutor || globalPreferredModel);
+      configMemoryCache.set('preferred_model', updated.tutor || globalPreferredModel);
+      console.log('[Setting Saved] Stage Models updated to:', JSON.stringify(updated));
+      return res.json({ success: true, model: globalPreferredModel, stageModels: updated });
+    }
+    if (typeof stage === 'string' && ['ppt', 'question', 'grading', 'tutor'].includes(stage) && typeof model === 'string' && (model.startsWith('gemini-') || model.startsWith('claude-'))) {
+      const updated = updateStageModels({ [stage]: model });
+      await saveSessionValue('stage_preferred_models', JSON.stringify(updated));
+      if (stage === 'tutor') {
+        await saveSessionValue('preferred_model', model);
+        configMemoryCache.set('preferred_model', model);
+      }
+      console.log(`[Setting Saved] Stage [${stage}] Model updated to: ${model}`);
+      return res.json({ success: true, model: globalPreferredModel, stageModels: updated });
+    }
+    if (typeof model === 'string' && (model.startsWith('gemini-') || model.startsWith('claude-'))) {
+      updatePreferredModel(model);
       await saveSessionValue('preferred_model', model);
       configMemoryCache.set('preferred_model', model);
       console.log(`[Setting Saved] Preferred Model updated to: ${model}`);
-      return res.json({ success: true, model });
-    } catch (err) {
-      return res.status(500).json({ error: err.message });
+      return res.json({ success: true, model, stageModels: globalStageModels });
     }
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
   }
   return res.status(400).json({ error: 'Invalid model' });
 });

@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { dbQuery, isPostgres } from '../database.js';
-import { callLLMWithFailover, searchSourceDocumentWithGeminiLite, analyzeStandardsBeforeTask, saveSessionValue, getTopicText, getMatchingTopicContent, startBackendProgressTimer, updateProgress, globalPreferredModel } from '../services/aiService.js';
+import { callLLMWithFailover, searchSourceDocumentWithGeminiLite, analyzeStandardsBeforeTask, saveSessionValue, getTopicText, getMatchingTopicContent, startBackendProgressTimer, updateProgress, globalPreferredModel, resolveStageModel } from '../services/aiService.js';
 import { healLatexFormulas, healQuizQuestionObject, healAnswersheetQuestionObject, parseLlmJson, LATEX_PROMPT_INSTRUCTIONS, LATEX_CHAT_PROMPT_INSTRUCTIONS } from '../utils/latexUtils.js';
 import * as fileUtils from '../utils/fileUtils.js';
 import { GENERATION_STANDARDS, generationStandardsList } from '../plugins/generationStandards.js';
@@ -644,11 +644,11 @@ router.post('/topics/:id/ai-questions', async (req, res) => {
   let progressTimer = null;
   try {
     const progressId = req.query.progressId || req.body.progressId;
-    const targetModel = (req.body && req.body.preferredModel) || req.query.preferredModel || globalPreferredModel || 'gemini-3.5-flash-lite';
+    const targetModel = resolveStageModel('question', { stage: 'question', stageModels: req.body?.stageModels, preferredModel: (req.body && req.body.preferredModel) || req.query.preferredModel });
     let standardsAnalysis = '';
     const localCallLLM = (sys, prompt, img, scenario, opts) => {
       const enrichedPrompt = standardsAnalysis ? `${standardsAnalysis}\n\n${prompt}` : prompt;
-      return callLLMWithFailover(sys, enrichedPrompt, img, scenario, { preferredModel: targetModel, ...opts, progressId });
+      return callLLMWithFailover(sys, enrichedPrompt, img, scenario, { ...opts, stage: 'question', preferredModel: targetModel, progressId });
     };
 
     if (progressId) {
@@ -1236,14 +1236,10 @@ let parsedArray = null;
         kcscGrounding
       });
     } else {
-      const targetModel = (req.body && req.body.preferredModel) || req.query.preferredModel || globalPreferredModel || 'gemini-3.5-flash-lite';
-      const isHybridMode = targetModel === 'claude-hybrid';
-      const batch13Model = isHybridMode ? 'claude-sonnet-5-5' : targetModel;
-      const batch2Model = isHybridMode ? 'claude-haiku-5-5' : targetModel;
       const [batch1Text, batch2Text, batch3Text] = await Promise.all([
-        localCallLLM(systemInstruction, promptBatch1, null, 'question', { temperature: 1.0, preferredModel: batch13Model, hybridRole: 'deep' }),
-        localCallLLM(systemInstruction, promptBatch2, null, 'question', { temperature: 1.0, preferredModel: batch2Model, hybridRole: 'fast' }),
-        localCallLLM(systemInstruction, promptBatch3, null, 'question', { temperature: 1.0, preferredModel: batch13Model, hybridRole: 'deep' })
+        localCallLLM(systemInstruction, promptBatch1, null, 'question', { temperature: 1.0, stage: 'question', hybridRole: 'deep' }),
+        localCallLLM(systemInstruction, promptBatch2, null, 'question', { temperature: 1.0, stage: 'question', hybridRole: 'fast' }),
+        localCallLLM(systemInstruction, promptBatch3, null, 'question', { temperature: 1.0, stage: 'question', hybridRole: 'deep' })
       ]);
 
       const parseBatch = (responseText, batchName) => {
@@ -2750,7 +2746,7 @@ ${ENGINEERING_STANDARDS}
       try {
         console.log(`[종합평가 병렬 생성] #${idx + 1}번째 배치 전송 시작...`);
         const enrichedPrompt = standardsAnalysis ? `${standardsAnalysis}\n\n${batchPrompt}` : batchPrompt;
-        const rawText = await callLLMWithFailover(null, enrichedPrompt, null, 'question', { temperature: 1.0, preferredModel: targetModel, hybridRole: 'deep' });
+        const rawText = await callLLMWithFailover(null, enrichedPrompt, null, 'question', { temperature: 1.0, stage: 'question', preferredModel: resolveStageModel('question', { stage: 'question', stageModels: req.body?.stageModels, preferredModel: targetModel }), hybridRole: 'deep' });
         let text = rawText.trim();
         if (text.startsWith('```')) {
           text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
@@ -3244,7 +3240,7 @@ ${ENGINEERING_STANDARDS}
 `;
       try {
         console.log(`[종합평가 추가 생성] (${i + 1}/${TOTAL_BATCHES}) 회차 프롬프트 전송 시작...`);
-        const rawText = await callLLMWithFailover(null, batchPrompt, null, 'question', { temperature: 1.0, preferredModel: (req.body && req.body.preferredModel) || req.query.preferredModel || globalPreferredModel || 'gemini-3.5-flash-lite', hybridRole: 'deep' });
+        const rawText = await callLLMWithFailover(null, batchPrompt, null, 'question', { temperature: 1.0, stage: 'question', preferredModel: resolveStageModel('question', { stage: 'question', stageModels: req.body?.stageModels, preferredModel: (req.body && req.body.preferredModel) || req.query.preferredModel }), hybridRole: 'deep' });
         let text = rawText.trim();
         if (text.startsWith('```')) {
           text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
@@ -3823,9 +3819,9 @@ router.put('/schedules/:id/score', async (req, res) => {
 // POST /api/exam/detailed-answer
 router.post('/exam/detailed-answer', async (req, res) => {
   const progressId = req.body.progressId || req.query.progressId;
-  const preferredModel = (req.body && req.body.preferredModel) || req.query.preferredModel || globalPreferredModel || 'gemini-3.5-flash-lite';
+  const preferredModel = resolveStageModel('tutor', { stage: 'tutor', stageModels: req.body?.stageModels, preferredModel: (req.body && req.body.preferredModel) || req.query.preferredModel });
   const localCallLLM = (sys, prompt, img, scenario, opts) => 
-    callLLMWithFailover(sys, prompt, img, scenario, { ...opts, preferredModel, progressId });
+    callLLMWithFailover(sys, prompt, img, scenario, { ...opts, stage: 'tutor', preferredModel, progressId });
 
   let progressTimer = null;
   if (progressId) {
@@ -3908,9 +3904,9 @@ ${LATEX_CHAT_PROMPT_INSTRUCTIONS}
 // POST /api/hint
 router.post('/hint', async (req, res) => {
   const progressId = req.body.progressId || req.query.progressId;
-  const preferredModel = (req.body && req.body.preferredModel) || req.query.preferredModel || globalPreferredModel || 'gemini-3.5-flash-lite';
+  const preferredModel = resolveStageModel('tutor', { stage: 'tutor', stageModels: req.body?.stageModels, preferredModel: (req.body && req.body.preferredModel) || req.query.preferredModel });
   const localCallLLM = (sys, prompt, img, scenario, opts) => 
-    callLLMWithFailover(sys, prompt, img, scenario, { ...opts, preferredModel, progressId });
+    callLLMWithFailover(sys, prompt, img, scenario, { ...opts, stage: 'tutor', preferredModel, progressId });
 
   let progressTimer = null;
   if (progressId) {
@@ -4099,7 +4095,7 @@ ${contentStr}
 ]`;
 
     const systemPrompt = `당신은 토목/지반공학 기술사 자격시험 출제위원입니다. 한국어로 정밀하고 명확한 문제를 JSON 배열로만 출제하십시오.`;
-    const responseText = await callLLMWithFailover(systemPrompt, prompt, null, 'generation');
+    const responseText = await callLLMWithFailover(systemPrompt, prompt, null, 'generation', { stage: 'question' });
 
     let questions = [];
     try {
@@ -4180,7 +4176,7 @@ ${questions.map((q, i) => `문제 ${i + 1}: ${q.question}
 반드시 위 JSON 객체 형식만 출력하십시오.`;
 
     const systemPrompt = `당신은 대한민국 국가기술자격 기술사 시험 수석 채점관입니다. 주어진 수험생 답안을 객관적으로 심사하여 정밀한 JSON 결과로 반환하십시오.`;
-    const responseText = await callLLMWithFailover(systemPrompt, prompt, null, 'grading');
+    const responseText = await callLLMWithFailover(systemPrompt, prompt, null, 'grading', { stage: 'grading' });
 
     let resultJson = null;
     try {

@@ -3,7 +3,7 @@ import multer from 'multer';
 import pdfParse from 'pdf-parse';
 import { put, del } from '@vercel/blob';
 import { dbQuery } from '../database.js';
-import { getTopicText, saveSessionValue, callLLMWithFailover, globalPreferredModel } from '../services/aiService.js';
+import { getTopicText, saveSessionValue, callLLMWithFailover, globalPreferredModel, resolveStageModel } from '../services/aiService.js';
 import * as fileUtils from '../utils/fileUtils.js';
 import * as ocrPlugin from '../plugins/calculationPlugin.js';
 import { parseLlmJson, LATEX_PROMPT_INSTRUCTIONS } from '../utils/latexUtils.js';
@@ -1208,8 +1208,8 @@ router.post('/topics/:id/slides/generate', async (req, res) => {
 5. [기술사 답안 차별화 결론 & 실무 제언]: 고득점 팁, 비교표, 최종 총평`;
 
       try {
-        const preferredModel = req.body?.preferredModel || req.query?.preferredModel || globalPreferredModel || 'gemini-3.5-flash-lite';
-        const tutorKnowledge = await callLLMWithFailover(tutorSysPrompt, tutorUserPrompt, null, 'general', { preferredModel });
+        const preferredModel = resolveStageModel('slides', { stage: 'ppt', stageModels: req.body?.stageModels, preferredModel: req.body?.preferredModel || req.query?.preferredModel });
+        const tutorKnowledge = await callLLMWithFailover(tutorSysPrompt, tutorUserPrompt, null, 'general', { stage: 'ppt', preferredModel });
         if (tutorKnowledge && tutorKnowledge.length > 200) {
           sourceText = tutorKnowledge;
         }
@@ -1305,8 +1305,8 @@ ${kcscGrounding ? `\n${kcscGrounding}\n` : ''}
 [AI 튜터 전문 지식 및 상세 소스 텍스트]:
 ${(sourceText || '위키피디아 및 KCSC 기준과 토목/지반 기술사 전문 지식을 종합하여 작성하십시오.').slice(0, 7000)}`;
 
-    const slidePrefModel = req.body?.preferredModel || req.query?.preferredModel || globalPreferredModel || 'gemini-3.5-flash-lite';
-    const responseText = await callLLMWithFailover(systemPrompt, userPrompt, null, 'slides', { temperature: 0.2, preferredModel: slidePrefModel });
+    const slidePrefModel = resolveStageModel('slides', { stage: 'ppt', stageModels: req.body?.stageModels, preferredModel: req.body?.preferredModel || req.query?.preferredModel });
+    const responseText = await callLLMWithFailover(systemPrompt, userPrompt, null, 'slides', { temperature: 0.2, stage: 'ppt', preferredModel: slidePrefModel });
     let cleanDeckJson = (responseText || '').trim();
     const firstBraceIdx = cleanDeckJson.indexOf('{');
     const lastBraceIdx = cleanDeckJson.lastIndexOf('}');

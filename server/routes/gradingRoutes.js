@@ -1,7 +1,7 @@
 import express from 'express';
 import pdfParse from 'pdf-parse';
 import { dbQuery } from '../database.js';
-import { callLLMWithFailover, analyzeStandardsBeforeTask, getTopicText, getMatchingTopicContent, startBackendProgressTimer, updateProgress, stopBackendProgressTimer, globalPreferredModel } from '../services/aiService.js';
+import { callLLMWithFailover, analyzeStandardsBeforeTask, getTopicText, getMatchingTopicContent, startBackendProgressTimer, updateProgress, stopBackendProgressTimer, globalPreferredModel, resolveStageModel } from '../services/aiService.js';
 import { healQuizQuestionObject, parseLlmJson, healLatexFormulas } from '../utils/latexUtils.js';
 import * as fileUtils from '../utils/fileUtils.js';
 import { gradeSubjective, GRADING_STANDARDS, gradingStandardsList } from '../plugins/gradingPlugin.js';
@@ -100,13 +100,9 @@ router.post('/grade-subjective', async (req, res) => {
       ? `[🚨 0단계 AI가 사전 분석한 절대 채점 지침 준수 주의사항]:\n${standardsAnalysis}\n\n${prompt}` 
       : prompt;
     const targetTemp = typeof temperature === 'number' ? temperature : 0.7;
-    const basePrefModel = req.body.preferredModel || req.query.preferredModel || globalPreferredModel || 'gemini-3.5-flash-lite';
-    let resolvedModel = basePrefModel;
-    if (basePrefModel === 'claude-hybrid') {
-      resolvedModel = (opts && opts.hybridRole === 'fast') ? 'claude-haiku-5-5' : 'claude-sonnet-5-5';
-    }
+    const resolvedModel = resolveStageModel('grading', { stage: 'grading', stageModels: req.body?.stageModels, preferredModel: req.body?.preferredModel || req.query?.preferredModel });
     const finalTemp = (opts && typeof opts.temperature === 'number') ? opts.temperature : targetTemp;
-    return callLLMWithFailover(sys, enrichedPrompt, img, scenario, { ...opts, preferredModel: resolvedModel, temperature: finalTemp, progressId });
+    return callLLMWithFailover(sys, enrichedPrompt, img, scenario, { ...opts, stage: 'grading', preferredModel: resolvedModel, temperature: finalTemp, progressId });
   };
 
   let attempt = 0;
@@ -158,7 +154,7 @@ router.post('/grade-subjective', async (req, res) => {
           isReevaluation: isReeval,
           kcscContext,
           wikiGrounding,
-          preferredModel: req.body.preferredModel || req.query.preferredModel || globalPreferredModel || 'gemini-3.5-flash-lite'
+          preferredModel: resolveStageModel('grading', { stage: 'grading', stageModels: req.body?.stageModels, preferredModel: req.body?.preferredModel || req.query?.preferredModel })
         });
         if (progressId) {
           stopBackendProgressTimer(progressId, 90, '1단계: 제출 답안 AI 정밀 분석 완료', true, progressTimer);
@@ -458,9 +454,8 @@ router.post('/question/regenerate', async (req, res) => {
   let progressTimer = null;
   const localCallLLM = (sys, prompt, img, scenario, opts) => {
     const enrichedPrompt = standardsAnalysis ? `[🚨 0단계 AI가 사전 분석한 절대 지침 준수 주의사항]:\n${standardsAnalysis}\n\n${prompt}` : prompt;
-    const basePrefModel = req.body.preferredModel || req.query.preferredModel || globalPreferredModel || 'gemini-3.5-flash-lite';
-    const resolvedModel = basePrefModel === 'claude-hybrid' ? 'claude-sonnet-5-5' : basePrefModel;
-    return callLLMWithFailover(sys, enrichedPrompt, img, scenario, { ...opts, preferredModel: resolvedModel, progressId, hybridRole: 'deep' });
+    const resolvedModel = resolveStageModel('question', { stage: 'question', stageModels: req.body?.stageModels, preferredModel: req.body?.preferredModel || req.query?.preferredModel });
+    return callLLMWithFailover(sys, enrichedPrompt, img, scenario, { ...opts, stage: 'question', preferredModel: resolvedModel, progressId, hybridRole: 'deep' });
   };
   if (progressId) {
     standardsAnalysis = await analyzeStandardsBeforeTask(progressId, currentQuestion?.question || '문항 재생성', getActiveGenerationStandards(), 'generation');
@@ -1189,9 +1184,8 @@ router.post('/question/adjust', async (req, res) => {
   const { mode, topicId, currentQuestion, questionIdx, userFeedback } = req.body;
   const progressId = req.query.progressId || req.body.progressId;
   const localCallLLM = (sys, prompt, img, scenario, opts) => {
-    const basePrefModel = req.body.preferredModel || req.query.preferredModel || globalPreferredModel || 'gemini-3.5-flash-lite';
-    const resolvedModel = basePrefModel === 'claude-hybrid' ? 'claude-sonnet-5-5' : basePrefModel;
-    return callLLMWithFailover(sys, prompt, img, scenario, { ...opts, preferredModel: resolvedModel, progressId, hybridRole: 'deep' });
+    const resolvedModel = resolveStageModel('question', { stage: 'question', stageModels: req.body?.stageModels, preferredModel: req.body?.preferredModel || req.query?.preferredModel });
+    return callLLMWithFailover(sys, prompt, img, scenario, { ...opts, stage: 'question', preferredModel: resolvedModel, progressId, hybridRole: 'deep' });
   };
 
   let progressTimer = null;
@@ -1562,7 +1556,7 @@ ${isCalc ? `2. 지문의 모든 단위를 정확히 환산하여 대입하고, "
         prompt,
         null,
         'formula',
-        { preferredModel: globalPreferredModel }
+        { stage: 'grading', preferredModel: resolveStageModel('grading', { stage: 'grading', stageModels: req.body?.stageModels, preferredModel: req.body?.preferredModel }) }
       );
       const parsed = parseLlmJson(llmResult);
       if (parsed) {

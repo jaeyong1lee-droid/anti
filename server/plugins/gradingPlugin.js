@@ -577,7 +577,7 @@ ${gStandards}
 ${eStandards}
 
 ${LATEX_PROMPT_INSTRUCTIONS}`;
-    const rawRes = await callLLMWithFailover(sysInst, answerGenPrompt, null, 'general', { temperature: modelAnswerTemperature, hybridRole: 'fast' });
+    const rawRes = await callLLMWithFailover(sysInst, answerGenPrompt, null, 'general', { temperature: modelAnswerTemperature, hybridRole: 'fast', stage: 'grading' });
     let cleanAnswer = (rawRes || '').trim();
     cleanAnswer = cleanAnswer.replace(/^```[a-zA-Z]*\n?/, '').replace(/\n?```$/, '').trim();
     if ((cleanAnswer.startsWith('"') && cleanAnswer.endsWith('"')) || (cleanAnswer.startsWith("'") && cleanAnswer.endsWith("'"))) {
@@ -788,7 +788,7 @@ ${((colHeader && colHeader.includes('수치 계산 답안')) || category === '�
   const isCalcQuestion = ((colHeader && colHeader.includes('수치 계산 답안')) || category === '계산');
   const gradingTemperature = isCalcQuestion ? 0.1 : 0.7;
   const sysInst = getGradingSystemInstruction(gradingStandards, engineeringStandards);
-  const responseText = await callLLMWithFailover(sysInst, userPrompt, null, 'grading', { temperature: gradingTemperature, hybridRole: 'deep' });
+  const responseText = await callLLMWithFailover(sysInst, userPrompt, null, 'grading', { temperature: gradingTemperature, hybridRole: 'deep', stage: 'grading' });
   let text = responseText.trim();
   
   try {

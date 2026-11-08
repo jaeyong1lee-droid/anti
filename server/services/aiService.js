@@ -10,8 +10,48 @@ global.progressTracker = global.progressTracker || new Map();
 // 차트 지침(CHART_DIAGRAM_PROMPT)을 붙이지 않는 시나리오 (순수 텍스트/JSON 출력 전용)
 const NO_CHART_PROMPT_SCENARIOS = new Set(['grading', 'general', 'slides', 'ocr', 'source-search']);
 
+export const DEFAULT_STAGE_MODELS = {
+  ppt: 'claude-hybrid',
+  question: 'claude-hybrid',
+  grading: 'gemini-3.5-flash-lite',
+  tutor: 'gemini-3.5-flash-lite'
+};
+export let globalStageModels = { ...DEFAULT_STAGE_MODELS };
 export let globalPreferredModel = 'gemini-3.5-flash-lite';
 export let globalAnthropicApiKey = null;
+
+export function inferStageFromScenario(scenario = 'default', options = {}) {
+  if (options && typeof options.stage === 'string' && ['ppt', 'question', 'grading', 'tutor'].includes(options.stage)) {
+    return options.stage;
+  }
+  if (scenario === 'slides') return 'ppt';
+  if (scenario === 'question' || scenario === 'validation' || scenario === 'generation') return 'question';
+  if (scenario === 'grading') return 'grading';
+  return 'tutor';
+}
+
+export function resolveStageModel(scenario = 'default', options = {}) {
+  const stage = inferStageFromScenario(scenario, options);
+  if (options && options.stageModels && typeof options.stageModels === 'object' && options.stageModels[stage]) {
+    return options.stageModels[stage];
+  }
+  if (options && typeof options.preferredModel === 'string' && options.preferredModel.trim()) {
+    return options.preferredModel.trim();
+  }
+  return (globalStageModels && globalStageModels[stage]) || DEFAULT_STAGE_MODELS[stage] || 'gemini-3.5-flash-lite';
+}
+
+export function updateStageModels(nextStageModels = {}) {
+  if (!nextStageModels || typeof nextStageModels !== 'object') return globalStageModels;
+  for (const k of ['ppt', 'question', 'grading', 'tutor']) {
+    const v = nextStageModels[k];
+    if (typeof v === 'string' && (v.startsWith('gemini-') || v.startsWith('claude-'))) {
+      globalStageModels[k] = v;
+    }
+  }
+  globalPreferredModel = globalStageModels.tutor || 'gemini-3.5-flash-lite';
+  return { ...globalStageModels };
+}
 export const FALLBACK_MODELS = [
   'claude-hybrid',
   'claude-sonnet-5-5',
@@ -53,6 +93,16 @@ export async function loadPreferredModel() {
         globalPreferredModel = row.value;
         console.log(`[Setting Loaded] Preferred Model: ${globalPreferredModel}`);
       }
+    }
+    const stageRow = await dbQuery.get("SELECT value FROM app_session WHERE key = 'stage_preferred_models'");
+    if (stageRow && stageRow.value) {
+      try {
+        const parsedStages = JSON.parse(stageRow.value);
+        updateStageModels(parsedStages);
+        console.log('[Setting Loaded] Stage Models:', JSON.stringify(globalStageModels));
+      } catch (e) {}
+    } else {
+      await saveSessionValue('stage_preferred_models', JSON.stringify(globalStageModels));
     }
   } catch (e) {
     console.warn("Failed to load preferred model setting:", e);
@@ -212,6 +262,7 @@ export function normalizeClaudeModel(modelName, scenario = 'default', options = 
   if (!modelName || typeof modelName !== 'string') return 'claude-sonnet-5-5';
   const name = modelName.trim().toLowerCase();
   if (name === 'claude-hybrid') {
+    if (options.hybridRole === 'deep') return 'claude-sonnet-5-5';
     if (options.hybridRole === 'fast' || scenario === 'general' || scenario === 'source-search' || scenario === 'source' || scenario === 'slides') {
       return 'claude-haiku-5-5';
     }
@@ -322,7 +373,7 @@ async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = n
 
   const executionList = [];
 
-  const targetPref = options.preferredModel || globalPreferredModel || 'gemini-3.5-flash-lite';
+  const targetPref = resolveStageModel(scenario, options);
   const isClaudePreferred = targetPref.trim().toLowerCase().startsWith('claude-');
 
   const addClaudeTasks = () => {
