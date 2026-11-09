@@ -864,6 +864,36 @@ async function resolveTopic(topicId) {
 
 const MAX_RECENT_LOCKSCREEN_SLIDES = 10;
 
+export function sanitizeMetaSourceMentions(val) {
+  if (!val) return val;
+  if (typeof val === 'string') {
+    let cleaned = val;
+    // 1) 괄호로 둘러싸인 "(위키피디아)", "(Wikipedia)", "[위키피디아]" 등 완전 제거
+    cleaned = cleaned.replace(/[\(\[\{]\s*(?:위키피디아|위키디피아|Wikipedia|위키)\s*[\)\]\}]/gi, '');
+    // 2) "위키피디아 [영문/한글 표제어/사전] 정의와 같이, " / "위키피디아 ... 에 따르면, " 등의 절 전체 정제
+    cleaned = cleaned.replace(/(?:위키피디아|위키디피아|Wikipedia|위키)\s*(?:[A-Za-z가-힣\s]+)?\s*(?:정의와\s*같이|에\s*따르면|의\s*개념과\s*같이|사전에\s*따르면|의\s*정의처럼|의\s*정의대로|기준과\s*같이|기준으로|기반으로)?\s*[,，]?\s*/gi, '');
+    // 3) 단독으로 남은 "위키피디아", "위키디피아", "Wikipedia" 단어 제거
+    cleaned = cleaned.replace(/\b(?:위키피디아|위키디피아|Wikipedia)\b/gi, '');
+    cleaned = cleaned.replace(/(?:위키피디아|위키디피아)/g, '');
+    // 4) 빈 괄호 "()" 또는 "[]" 정리
+    cleaned = cleaned.replace(/[\(\[\{]\s*[\)\]\}]/g, '');
+    // 5) 문두의 어색한 쉼표나 다중 공백 정리
+    cleaned = cleaned.replace(/^\s*[,，]\s*/, '').replace(/\s{2,}/g, ' ').trim();
+    return cleaned;
+  }
+  if (Array.isArray(val)) {
+    return val.map(item => sanitizeMetaSourceMentions(item));
+  }
+  if (typeof val === 'object') {
+    const res = {};
+    for (const [k, v] of Object.entries(val)) {
+      res[k] = sanitizeMetaSourceMentions(v);
+    }
+    return res;
+  }
+  return val;
+}
+
 function normalizeSlideDeck(deck) {
   if (!deck || !Array.isArray(deck.slides)) return deck;
   const isSixSlideDeck = deck.slides.length >= 6 || deck.slides[0]?.slide_no === 0 || String(deck.slides[0]?.category_tag || '').includes('직관');
@@ -890,7 +920,8 @@ function normalizeSlideDeck(deck) {
     }
   });
   deck.total_slides = deck.slides.length;
-  return deck;
+  // 🛡️ 위키피디아/Wikipedia 등 시스템 내부 메타 출처명 찌꺼기 텍스트 전면 살균
+  return sanitizeMetaSourceMentions(deck);
 }
 
 async function getRecentLockscreenSlide(title) {
@@ -1219,7 +1250,10 @@ router.post('/topics/:id/slides/generate', async (req, res) => {
     }
 
     const systemPrompt = `당신은 최고 권위의 대한민국 토목/지반/터널 기술사 전문 수석 프레젠테이션 엔지니어이자 슬라이드 디자이너입니다.
-주어진 토픽의 원본 소스, 영문 위키피디아 사전 지식, KCSC 국가건설기준 및 AI 튜터 지식 베이스를 면밀히 분석하여, 초보자부터 기술사 수험생 및 실무 기술자까지 단번에 핵심을 완벽히 마스터할 수 있는 [0.직관적설명 - 1.서론 - 2.본론① - 3.본론② - 4.본론③ - 5.결론 총 6장 완결형 프레젠테이션 슬라이드 덱]을 JSON으로 생성하십시오.
+🚨 [시스템 내부 출처명('위키피디아', 'Wikipedia' 등) 본문 노출 전면 금지 철칙 - 극도로 중요!]:
+- 슬라이드 제목, 소제목, 본문 설명(bullet_points), 요약 카드(cards), 비교표(table), 직관적 설명(story_analogy, key_takeaway), 엔지니어 노트 등 사용자에게 표출되는 모든 텍스트 본문 어디에서도 '위키피디아', '위키디피아', 'Wikipedia', '위키피디아 정의와 같이', '위키피디아에 따르면', '원보고서에 따르면' 등의 시스템 내부 메타 명칭이나 웹사이트 이름을 직접 언급하거나 적는 것을 극도로 엄격히 금지합니다.
+- 오직 순수한 학술 공학 이론, 현상 메커니즘 및 실무적 사실 자체로만 완벽한 해설체 문장을 작성하십시오.
+주어진 토픽의 원본 소스, 공학 학술 지식 및 KCSC 국가건설기준을 면밀히 분석하여, 초보자부터 기술사 수험생 및 실무 기술자까지 단번에 핵심을 완벽히 마스터할 수 있는 [0.직관적설명 - 1.서론 - 2.본론① - 3.본론② - 4.본론③ - 5.결론 총 6장 완결형 프레젠테이션 슬라이드 덱]을 JSON으로 생성하십시오.
 
 반드시 다음 6장의 스토리라인을 정확히 준수하여 총 6장의 슬라이드(slide_no: 0 ~ 5)를 순서대로 작성해야 합니다:
 - Slide 0 (slide_no: 0): category_tag: "직관적 설명"
@@ -1303,7 +1337,7 @@ ${LATEX_PROMPT_INSTRUCTIONS}
 ${wikiGrounding ? `\n${wikiGrounding}\n` : ''}
 ${kcscGrounding ? `\n${kcscGrounding}\n` : ''}
 [AI 튜터 전문 지식 및 상세 소스 텍스트]:
-${(sourceText || '위키피디아 및 KCSC 기준과 토목/지반 기술사 전문 지식을 종합하여 작성하십시오.').slice(0, 7000)}`;
+${(sourceText || '국가건설기준(KDS) 및 토목/지반 기술사 전문 지식을 종합하여 작성하십시오.').slice(0, 7000)}`;
 
     const slidePrefModel = resolveStageModel('slides', { stage: 'ppt', stageModels: req.body?.stageModels, preferredModel: req.body?.preferredModel || req.query?.preferredModel });
     const responseText = await callLLMWithFailover(systemPrompt, userPrompt, null, 'slides', { temperature: 0.2, stage: 'ppt', preferredModel: slidePrefModel });

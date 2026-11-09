@@ -27,11 +27,25 @@ import { LatexRenderer } from './LatexRenderer';
  * 🪶 SlideLatex: 메인 LatexRenderer 기반 슬라이드 전용 수식/텍스트 렌더러
  * (수식 완전 보호, KaTeX 정밀 렌더링, 인라인 레이아웃 최적화)
  */
+function cleanMetaText(str) {
+  if (!str || typeof str !== 'string') return str;
+  return str
+    .replace(/[\(\[\{]\s*(?:위키피디아|위키디피아|Wikipedia|위키)\s*[\)\]\}]/gi, '')
+    .replace(/(?:위키피디아|위키디피아|Wikipedia|위키)\s*(?:[A-Za-z가-힣\s]+)?\s*(?:정의와\s*같이|에\s*따르면|의\s*개념과\s*같이|사전에\s*따르면|의\s*정의처럼|의\s*정의대로|기준과\s*같이|기준으로|기반으로)?\s*[,，]?\s*/gi, '')
+    .replace(/\b(?:위키피디아|위키디피아|Wikipedia)\b/gi, '')
+    .replace(/(?:위키피디아|위키디피아)/g, '')
+    .replace(/[\(\[\{]\s*[\)\]\}]/g, '')
+    .replace(/^\s*[,，]\s*/, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
 function SlideLatex({ text, className = '' }) {
   if (!text) return null;
+  const sanitized = cleanMetaText(text);
   return (
     <LatexRenderer 
-      text={text} 
+      text={sanitized} 
       className={className} 
       isMarkdown={true} 
       forceInline={true} 
@@ -885,7 +899,7 @@ export default function TopicSlidePlugin({
             /* 모드 2: AI 6-Slide Visual Presentation Deck (00 직관적 설명 + 01~05 서론/본론/결론) */
             <div className="w-full h-full flex flex-col justify-between relative overflow-hidden">
               {/* 메인 슬라이드 스테이지 */}
-              <div className="flex-1 min-h-0 w-full max-w-5xl mx-auto p-3 sm:p-5 md:p-6 flex flex-col justify-between overflow-y-auto scrollbar-none animate-fade-in relative">
+              <div className="flex-1 min-h-0 w-full max-w-5xl mx-auto p-3 sm:p-5 md:p-6 flex flex-col justify-start overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-slate-700 animate-fade-in relative [-webkit-overflow-scrolling:touch]">
                 {/* 슬라이드 상단 진행 바 */}
                 <div className="w-full flex items-center justify-between gap-3 mb-2 shrink-0">
                   <div className="flex items-center gap-2">
@@ -945,7 +959,7 @@ export default function TopicSlidePlugin({
 
                 {/* 슬라이드 본문: 00번(직관적 설명) 간결형 동적 레이아웃 vs 01~05번 2컬럼 공학 레이아웃 */}
                 {isCurrentIntuitiveSlide ? (
-                  <div className="flex-1 min-h-0 flex flex-col justify-center gap-4 py-1">
+                  <div className="w-full flex-1 flex flex-col justify-start md:justify-center gap-3.5 sm:gap-4 py-1 pb-4 min-h-fit">
                     {/* 1. 상단 핵심 직관 요약 배너 (중첩 박스 없이 깔끔한 단일 영역) */}
                     <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-emerald-950/50 via-slate-900/90 to-slate-900/90 border border-emerald-500/35 shadow-md">
                       {currentAiSlide.key_takeaway && (
@@ -971,7 +985,7 @@ export default function TopicSlidePlugin({
                       if (hasValidTable) {
                         return (
                           <div className="rounded-2xl border border-slate-700/80 bg-[#0E1626]/95 overflow-hidden shadow-lg">
-                            <div className="overflow-x-auto">
+                            <div className="overflow-x-auto touch-pan-y">
                               <table className="w-full text-left border-collapse">
                                 <thead>
                                   <tr className="bg-slate-800/90 border-b border-slate-700 text-emerald-300 text-xs sm:text-sm font-extrabold">
@@ -1322,29 +1336,7 @@ export default function TopicSlidePlugin({
             </div>
           )}
 
-          {/* AI 모드일 때 좌우 플로팅 버튼 */}
-          {activeView === 'ai' && (
-            <>
-              <button
-                type="button"
-                onClick={handlePrevSlide}
-                disabled={currentSlideIndex === 0}
-                className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-slate-900/80 hover:bg-amber-600 disabled:opacity-20 disabled:hover:bg-slate-900/80 border border-slate-700 text-white flex items-center justify-center transition-all cursor-pointer shadow-xl backdrop-blur-sm z-20 active:scale-95"
-                title="이전 슬라이드 (◀)"
-              >
-                <ChevronLeft size={22} />
-              </button>
-              <button
-                type="button"
-                onClick={handleNextSlide}
-                disabled={currentSlideIndex >= aiSlides.length - 1}
-                className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-slate-900/80 hover:bg-amber-600 disabled:opacity-20 disabled:hover:bg-slate-900/80 border border-slate-700 text-white flex items-center justify-center transition-all cursor-pointer shadow-xl backdrop-blur-sm z-20 active:scale-95"
-                title="다음 슬라이드 (▶)"
-              >
-                <ChevronRight size={22} />
-              </button>
-            </>
-          )}
+{/* 중간 페이지 전환 꺽쇠 제거: 상하단 슬라이드 탭 및 제스처/방향키 네비게이션 사용 */}
         </div>
 
         {/* ================================================================= */}
