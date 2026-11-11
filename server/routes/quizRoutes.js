@@ -2476,9 +2476,7 @@ async function validateAndHealQuestion(question, callLLMWithFailover, topicTitle
   if (!question || typeof question !== 'object') return question;
   return verifyAndHealSingleQuestionGrounding(healQuizQuestionObject(question), { topicTitle, topicKeywords, fileText, kcscGrounding, wikiGrounding });
 }
-function _noopUnused(question) {
-  return question;
-}
+
 
 // POST /api/exam/all
 router.post('/exam/all', async (req, res) => {

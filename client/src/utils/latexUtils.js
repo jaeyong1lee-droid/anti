@@ -251,6 +251,24 @@ export function healLatexFormulas(text, isNested = false) {
   // 3중 이상 연속 달러 기호($$$, $$$$) 찌꺼기를 표준 $$로 정제
   processed = processed.replace(/\${3,}/g, () => '$$');
   
+  // [블록 수식 앵커형 구분자 교정]: 독립 행의 비정상 구분자($$...$ 또는 $$...$|) 정제 (마크다운 표 | 행은 절대 침범하지 않음)
+  processed = processed.replace(/^[ \t]*\$\$([ \t]*\n[\s\S]*?\n[ \t]*|[^\$\n]+?)\$\|?[ \t]*$/gm, (m, p1) => {
+    return '$$\n' + p1.trim() + '\n$$';
+  });
+
+  // [\text{} 내부 수식 명령어 분리 구출]: \text{...\mu...} 등 KaTeX 텍스트모드 문법 위반 파싱 에러 방지
+  const mathCmds = 'mu|alpha|beta|gamma|delta|epsilon|zeta|eta|theta|iota|kappa|lambda|nu|xi|pi|rho|sigma|tau|upsilon|phi|chi|psi|omega|Delta|Gamma|Theta|Lambda|Xi|Pi|Sigma|Phi|Psi|Omega|cdot|times|pm|mp|le|ge|ne|approx|sim|equiv|infty|partial|nabla|sum|int|sqrt|frac';
+  const textModeMathRegex = new RegExp(`\\\\text\\{([^}]*?)\\\\(${mathCmds})\\b([^}]*?)\\}`, 'g');
+  let prevText;
+  do {
+    prevText = processed;
+    processed = processed.replace(textModeMathRegex, (m, before, cmd, after) => {
+      const b = before.trim() ? `\\text{${before.trim()}} ` : '';
+      const a = after.trim() ? ` \\text{${after.trim()}}` : '';
+      return `${b}\\${cmd}${a}`.trim();
+    });
+  } while (processed !== prevText);
+
   processed = processed.replace(/\${2,}([\s\S]*?)\${2,}/g, (m, p1) => '$$' + healDoubleSubscripts(p1).replace(/\|/g, '\\vert ') + '$$');
   processed = processed.replace(/\$([^\$\n]+)\$/g, (m, p1) => '$' + healDoubleSubscripts(p1).replace(/\|/g, '\\vert ') + '$');
   
@@ -397,6 +415,13 @@ export function healQuizQuestionObject(q) {
     }
     if (q.question && typeof q.question === 'string') {
       q.question = cleanQuizQuestion(q.question);
+    }
+    if (q.explanation && typeof q.explanation === 'string') {
+      // 객관식 해설 내 보기 순번 지칭 단독 문장(셔플 시 오류 유발) 안전하게 절제
+      q.explanation = q.explanation
+        .replace(/^[ \t]*(?:이와\s*같이\s*)?(?:산출된|계산된)?[^\n]*?보기\s*(?:중\s*)?(?:첫|두|세|네|[1-4]|일|이|삼|사)\s*번째\s*(?:항목|보기|선택지)[^\n]*?(?:\.|\n|$)/gmi, '')
+        .replace(/^[ \t]*(?:이와\s*같이\s*)?(?:산출된|계산된)?[^\n]*?보기\s*[1-4①-④번\s]+(?:에\s*해당합니다|이\s*정답입니다|가\s*정답입니다)[^\n]*?(?:\.|\n|$)/gmi, '')
+        .replace(/^[ \t]*따라서\s*정답은\s*보기\s*[1-4①-④번\s]+입니다\.?[ \t]*$/gmi, '');
     }
     if (typeof q.correctIndex === 'number' && Array.isArray(q.options) && q.correctIndex >= 0 && q.correctIndex < q.options.length) {
       if (!q.answer || !q.options.includes(q.answer)) {
@@ -926,6 +951,7 @@ export const LATEX_PROMPT_INSTRUCTIONS = `
 10. <div>, <span> 등의 HTML 태그 사용을 금지하며 강조는 마크다운(**강조**)을 사용하십시오.
 11. 내용이 없는 빈 소제목은 출력하지 마십시오.
 12. 🚨 [가독성 서식 및 문장 수준별 머리기호 불릿 수칙]: 해설 및 답변 서식은 자연스러운 구성을 기본으로 하되, 불릿과 번호의 중복('* (1)', '• 1.')을 금지하고, 공식 아래의 변수 정의는 번호 없이 '단, ...' 인라인 또는 가운뎃점('· ')으로 간결히 작성하며, 동일한 별표(*) 불릿을 평면적으로 남발하지 마십시오. 반드시 문장 수준(Depth)에 따라 머리기호 불릿을 단계별로 구분하십시오: 1수준(상위): 작은 크기 불릿('• '), 2수준(중위): 작은 빈 불릿('◦ '), 3수준(하위): 그냥 일반 점('· '), 4수준(세부): 대시('- ') 또는 별표('* ').
+13. 🚨 [\\text{} 내 수식 명령어 금지 및 단위 표기 수칙]: KaTeX 파싱 에러(빨간색 폰트)를 방지하기 위해 \\text{} 내부에는 \\mu, \\Delta, \\sigma 등 역슬래시(\\)로 시작하는 모든 LaTeX 수식 명령어를 절대로 입력하지 마십시오. 단위는 반드시 순수 영문 텍스트(\\text{ MPa}, \\text{ kPa}, \\text{ kN/m}^2 등)로 표기하고, 그리스 문자가 포함된 단위(예: 마이크로미터)는 \\mu\\text{m} 또는 \\mu\\mathrm{m}처럼 \\text{} 외부에 기호를 배치하십시오.
 
 [수학적 정합성 규칙]:
 - 객관식 문제의 정답(answer)은 해설(explanation)의 계산 결과와 반드시 완벽히 일치해야 합니다.

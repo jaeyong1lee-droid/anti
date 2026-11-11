@@ -9,7 +9,7 @@ import { updateLiveEngineeringStandards, standardsList, ENGINEERING_STANDARDS } 
 import { updateLiveGradingStandards, gradingStandardsList } from '../plugins/gradingPlugin.js';
 import { updateLiveGenerationStandards, generationStandardsList } from '../plugins/generationStandards.js';
 import { updateLiveLockscreenStandards, lockscreenStandardsList } from '../plugins/lockscreenStandards.js';
-import { healFormulaQuestionObject, healAnswersheetQuestionObject, healQuizQuestionObject, parseLlmJson, healLatexFormulas, LATEX_CHAT_PROMPT_INSTRUCTIONS } from '../utils/latexUtils.js';
+import { healFormulaQuestionObject, healAnswersheetQuestionObject, healQuizQuestionObject, parseLlmJson, healLatexFormulas, LATEX_CHAT_PROMPT_INSTRUCTIONS, LATEX_PROMPT_INSTRUCTIONS } from '../utils/latexUtils.js';
 import { defaultAcronyms, generateAcronymTutorResponse } from '../plugins/acronymsPlugin.js';
 import { defaultOverviews, generateOverviewTutorResponse } from '../plugins/overviewsPlugin.js';
 import { SVG_DIAGRAM_PROMPT } from '../plugins/svgDiagramPlugin.js';
@@ -463,13 +463,7 @@ router.post('/lockscreen-standards', async (req, res) => {
 
 
 
-const LATEX_PROMPT_INSTRUCTIONS = `
-[수학 공식/특수문자 표기 규칙 - 극도로 중요]:
-1. 인라인(글 중간)에 수학 공식이나 물리적 변수(예: kh, kv 등)를 적을 때는 반드시 단일 달러 기호 하나로 감싸서 LaTeX 형식으로 작성하십시오. (예: $k_h$, $k_v$, $\\beta$ 등)
-2. 디스플레이(독립된 단락) 수학 공식을 작성할 때는 반드시 이중 달러 기호로 감싸서 작성하십시오. (예: $$k_e = \\sqrt{k_h k_v}$$)
-3. 역슬래시 문자는 이스케이프가 중복 처리되지 않도록 한 번만 적어 전달되도록 주의하십시오.
-4. 이중 아래첨자(예: \\Delta_h_w, \\sigma_v_0) 절대 금지: $\\Delta h_w$ (공백 분리) 또는 $\\Delta_{hw}$처럼 중괄호({})로 묶거나 공백으로 분리하십시오.
-`;
+
 
 // GET /api/session/formula
 router.get('/session/formula', async (req, res) => {

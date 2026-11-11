@@ -2,7 +2,7 @@ import express from 'express';
 import pdfParse from 'pdf-parse';
 import { dbQuery } from '../database.js';
 import { callLLMWithFailover, analyzeStandardsBeforeTask, getTopicText, getMatchingTopicContent, startBackendProgressTimer, updateProgress, stopBackendProgressTimer, globalPreferredModel, resolveStageModel } from '../services/aiService.js';
-import { healQuizQuestionObject, parseLlmJson, healLatexFormulas } from '../utils/latexUtils.js';
+import { healQuizQuestionObject, parseLlmJson, healLatexFormulas, LATEX_PROMPT_INSTRUCTIONS, cleanQuizQuestion } from '../utils/latexUtils.js';
 import * as fileUtils from '../utils/fileUtils.js';
 import { gradeSubjective, GRADING_STANDARDS, gradingStandardsList } from '../plugins/gradingPlugin.js';
 import { ENGINEERING_STANDARDS, standardsList as engineeringStandardsList } from '../plugins/engineeringStandards.js';
@@ -39,18 +39,7 @@ function getActiveEngineeringStandards() {
     : ENGINEERING_STANDARDS;
 }
 
-const LATEX_PROMPT_INSTRUCTIONS = `
-[수학 공식/특수문자 표기 규칙 - 극도로 중요]:
-1. 인라인(글 중간)에 수학 공식이나 물리적 변수(예: kh, kv 등)를 적을 때는 반드시 단일 달러 기호 하나로 감싸서 LaTeX 형식으로 작성하십시오. (예: $k_h$, $k_v$, $\\beta$ 등)
-2. 디스플레이(독립된 단락) 수학 공식을 작성할 때는 반드시 이중 달러 기호($...$)로 감싸서 작성하십시오.
-3. 역슬래시 문자는 이스케이프가 중복 처리되지 않도록 한 번만 적어 전달되도록 주의하십시오.
-4. 이중 아래첨자 표기는 절대 금지하며, 중괄호({})로 묶거나 공백으로 분리하여 작성하십시오.
-`;
 
-function cleanQuizQuestion(q) {
-  if (!q) return q;
-  return q.trim();
-}
 
 
 
