@@ -401,20 +401,23 @@ async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = n
     if (secondaryKey && !secondaryKey.startsWith('gsk_') && secondaryKey !== primaryKey) keys.push({ key: secondaryKey, label: 'Key #2' });
     if (tertiaryKey && !tertiaryKey.startsWith('gsk_') && tertiaryKey !== primaryKey && tertiaryKey !== secondaryKey) keys.push({ key: tertiaryKey, label: 'Key #3' });
 
-    for (const k of keys) {
-      const geminiPref = isClaudePreferred ? 'gemini-3.5-flash-lite' : targetPref;
-      const rawFallbacks = [
-        geminiPref,
-        'gemini-3.5-flash-lite',
-        'gemini-3.8-flash',
-        'gemini-3.7-flash',
-        'gemini-3.1-flash-lite',
-        'gemini-3.6-flash',
-        'gemini-3.5-flash'
-      ];
-      const uniqueRaw = [...new Set(rawFallbacks.filter(Boolean))];
-      for (const modelName of uniqueRaw) {
-        const actual = normalizeGeminiModel(modelName);
+    const geminiPref = isClaudePreferred ? 'gemini-3.5-flash-lite' : targetPref;
+    const rawFallbacks = [
+      geminiPref,
+      'gemini-3.5-flash-lite',
+      'gemini-3.8-flash',
+      'gemini-3.7-flash',
+      'gemini-3.1-flash-lite',
+      'gemini-3.6-flash',
+      'gemini-3.5-flash'
+    ];
+    const uniqueRaw = [...new Set(rawFallbacks.filter(Boolean))];
+
+    // [Interleaved Key Rotation]: 동일 키 6개 모델 연속 시도로 타임아웃 낭비 방지
+    // 선호 모델을 모든 키(Key #1 -> Key #2 -> Key #3)에 걸쳐 먼저 시도한 뒤 차순위 모델로 순연
+    for (const modelName of uniqueRaw) {
+      const actual = normalizeGeminiModel(modelName);
+      for (const k of keys) {
         executionList.push({ key: k.key, label: k.label, model: modelName, actualModel: actual, type: 'gemini' });
       }
     }
@@ -425,13 +428,14 @@ async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = n
     addGeminiTasks();
   } else {
     addGeminiTasks();
-    if (options.allowCrossProviderFallback) {
+    if (options.allowCrossProviderFallback !== false) {
       addClaudeTasks();
     }
   }
 
   let attemptedAny = false;
   const failedKeys = new Set();
+  const rateLimitedKeys = new Set();
   const retriedTaskIndices = new Set();
 
   for (let idx = 0; idx < executionList.length; idx++) {
@@ -444,6 +448,9 @@ async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = n
     const key = task.key;
 
     if (failedKeys.has(key)) {
+      continue;
+    }
+    if (rateLimitedKeys.has(key)) {
       continue;
     }
 
@@ -610,7 +617,7 @@ async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = n
       // [Blocker-5 / P0 Fix]: timeoutPromise를 세마포어 슬롯 획득 콜백 내부에서 생성하고 finally에서 clearTimeout하여 슬롯 대기 실패 시 unhandledRejection 원천 차단
       const result = await withLlmConcurrencySlot(deadlineAt, async () => {
         const timeoutMs = Math.min(
-          scenario === 'grading' ? 28000 : 50000,
+          scenario === 'grading' ? 12000 : 50000,
           Math.max(2500, (deadlineAt - Date.now()) - 400)
         );
         let geminiTimeoutId = null;
@@ -652,8 +659,8 @@ async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = n
       }
 
       if (isQuota) {
-        console.log(`[모델 쿼터 초과 감지] ${task.label} (${task.model} -> ${actualModelName}) 쿼터 초과(429). 동일 키의 하위 백업 모델로 즉시 순연합니다.`);
-        await sleep(500);
+        rateLimitedKeys.add(key);
+        console.log(`[모델 쿼터 초과 감지] ${task.label} (${task.model} -> ${actualModelName}) 쿼터 초과(429). 해당 키(${task.label})의 잔여 시도를 건너뛰고 다음 키/제공자로 즉시 페일오버합니다.`);
         continue;
       }
 

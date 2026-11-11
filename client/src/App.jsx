@@ -1338,9 +1338,10 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
       const inputKey = `${questionIdx}_${inputId}`;
       const val = tableAnswers[inputKey] || '';
 
-      const isGraded = revealed || (tableGradingResults?.[inputKey] !== undefined);
       const gradingResult = tableGradingResults?.[inputKey];
-      const isCorrect = gradingResult ? gradingResult.isCorrect : false;
+      const isModified = gradingResult && gradingResult.gradedAnswer !== undefined && val.trim() !== gradingResult.gradedAnswer.trim();
+      const isGraded = !isModified && (revealed || (gradingResult !== undefined));
+      const isCorrect = isGraded && gradingResult ? gradingResult.isCorrect : false;
 
       const handleChange = (e) => {
         setTableAnswers(prev => ({
@@ -1435,7 +1436,12 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
       }
     });
 
-    const isAllGraded = boxInputs.length > 0 && boxInputs.every(bi => revealed || (tableGradingResults?.[bi.inputKey] !== undefined));
+    const isAllGraded = boxInputs.length > 0 && boxInputs.every(bi => {
+      const res = tableGradingResults?.[bi.inputKey];
+      const curVal = (tableAnswers?.[bi.inputKey] || '').trim();
+      const isStale = res && res.gradedAnswer !== undefined && res.gradedAnswer.trim() !== curVal;
+      return (revealed || (res !== undefined)) && !isStale;
+    });
     const isAllCorrect = boxInputs.length > 0 && boxInputs.every(bi => tableGradingResults?.[bi.inputKey]?.isCorrect || (tableGradingResults?.[bi.inputKey]?.score >= 8));
     const isAnyPartial = boxInputs.length > 0 && boxInputs.every(bi => tableGradingResults?.[bi.inputKey]?.isCorrect || (tableGradingResults?.[bi.inputKey]?.score >= 5));
     const isAnyLoading = boxInputs.some(bi => cellGradingLoading?.[bi.inputKey]);
@@ -5821,6 +5827,46 @@ export default function App() {
         }
       }
     }
+    const isFlowchart = q.question && (q.question.includes('┌──') || q.question.includes('▼') || q.question.includes('플로우차트') || q.question.includes('흐름도'));
+    if (isFlowchart) {
+      const match = inputId.match(/INPUT_(\d+)/);
+      if (match) {
+        const index = parseInt(match[1], 10);
+        const letter = String.fromCharCode(65 + index - 1);
+
+        // 흐름도 내 상자 단계 및 역할(제목 vs 세부내용) 동적 매핑
+        const lines = (q.question || '').split('\n');
+        let boxCount = 0;
+        let inBox = false;
+        let foundBoxNum = null;
+        let isTitle = false;
+        let isBullet = false;
+
+        for (let l of lines) {
+          if (l.includes('┌')) {
+            boxCount++;
+            inBox = true;
+          } else if (l.includes('└')) {
+            inBox = false;
+          } else if (inBox && l.includes(`(${letter})`)) {
+            foundBoxNum = boxCount;
+            if (l.includes(`[ (${letter}) ]`) || l.includes(`[(${letter})]`) || l.includes(`[ ${letter} ]`) || /\[\s*\([A-Z]\)\s*\]/.test(l)) {
+              isTitle = true;
+            }
+            if (l.trim().startsWith('-') || l.trim().startsWith('•') || l.includes(`- (${letter})`) || l.includes(`-(${letter})`)) {
+              isBullet = true;
+            }
+            break;
+          }
+        }
+
+        const roleName = isTitle ? '단계 제목(명칭)' : (isBullet ? '세부 활동/대책 내용' : '세부 활동');
+        const stepLabel = foundBoxNum ? `${foundBoxNum}단계` : '';
+        rowHeader = stepLabel ? `(${letter}) [${stepLabel} 상자의 ${roleName}]` : `(${letter}) [${roleName}]`;
+        colHeader = isTitle ? '단계 제목 답안' : '세부 활동 답안';
+      }
+    }
+
     if (!rowHeader && q.tableData && q.tableData.rows && q.tableData.headers) {
       q.tableData.rows.forEach((row) => {
         row.forEach((cell, colIdx) => {
@@ -5840,54 +5886,6 @@ export default function App() {
           }
         });
       });
-    }
-    if (!rowHeader) {
-      const isFlowchart = q.question && (q.question.includes('┌──') || q.question.includes('▼') || q.question.includes('플로우차트') || q.question.includes('흐름도'));
-      if (isFlowchart) {
-        const match = inputId.match(/INPUT_(\d+)/);
-        if (match) {
-          const index = parseInt(match[1], 10);
-          const letter = String.fromCharCode(65 + index - 1);
-
-          // 흐름도 내 상자 단계 및 역할(제목 vs 세부내용) 동적 매핑
-          const lines = (q.question || '').split('\n');
-          let boxCount = 0;
-          let inBox = false;
-          let foundBoxNum = null;
-          let isTitle = false;
-
-          for (let l of lines) {
-            if (l.includes('┌')) {
-              boxCount++;
-              inBox = true;
-            } else if (l.includes('└')) {
-              inBox = false;
-            } else if (inBox && l.includes(`(${letter})`)) {
-              foundBoxNum = boxCount;
-              if (l.includes(`[ (${letter}) ]`) || l.includes(`[(${letter})]`) || l.includes(`[ ${letter} ]`)) {
-                isTitle = true;
-              }
-              break;
-            }
-          }
-
-          const pairDefaults = {
-            'A': { step: '2단계', role: '단계 제목(명칭)' },
-            'B': { step: '2단계', role: '세부 설계 활동/검토 내용' },
-            'C': { step: '4단계', role: '단계 제목(명칭)' },
-            'D': { step: '4단계', role: '세부 설계 활동/검토 내용' },
-            'E': { step: '6단계(또는 분기 우측 단계)', role: '단계 제목(명칭)' },
-            'F': { step: '6단계(또는 분기 우측 단계)', role: '세부 설계 활동/검토 내용' }
-          };
-
-          const defaultInfo = pairDefaults[letter];
-          const stepName = defaultInfo ? defaultInfo.step : (foundBoxNum ? `${foundBoxNum}단계` : '');
-          const roleName = isTitle ? '단계 제목(명칭)' : (defaultInfo ? defaultInfo.role : '세부 활동');
-
-          rowHeader = stepName ? `(${letter}) [${stepName} 상자의 ${roleName}]` : `(${letter})`;
-          colHeader = isTitle ? '단계 제목 답안' : '세부 활동 답안';
-        }
-      }
     }
 
     let gradeData = null;
@@ -5919,17 +5917,29 @@ export default function App() {
         isCorrect: gradeData.isCorrect,
         score: gradeData.score,
         reason: gradeData.reason,
-        suggestedModelAnswer
+        suggestedModelAnswer,
+        gradedAnswer: userAnswer
       };
     } catch (err) {
       console.error('Single cell grading error:', err);
       const normalize = (s) => (s || '').trim().toLowerCase().replace(/\s+/g, '');
-      const isCorrect = normalize(userAnswer) === normalize(correctAnswer);
-      nextGrading[key] = {
-        isCorrect,
-        score: isCorrect ? 10 : 0,
-        reason: isCorrect ? '단순 일치(로컬 채점)' : '모범 답안과 불일치'
-      };
+      const isExactMatch = normalize(userAnswer) === normalize(correctAnswer);
+      if (isExactMatch) {
+        nextGrading[key] = {
+          isCorrect: true,
+          score: 10,
+          reason: '모범 답안과 정확히 일치 (로컬 채점)',
+          gradedAnswer: userAnswer
+        };
+      } else {
+        nextGrading[key] = {
+          isCorrect: false,
+          score: null,
+          isError: true,
+          reason: 'AI 채점 일시 지연 (재채점 버튼을 눌러주세요)',
+          gradedAnswer: userAnswer
+        };
+      }
     }
 
     activeSetGradingResults(nextGrading);
@@ -6160,8 +6170,9 @@ export default function App() {
       const isCorrect = normalize(userAnswer) === normalize(correctAnswer);
       newResult = {
         isCorrect,
-        score: isCorrect ? 10 : 0,
-        reason: isCorrect ? '단순 일치(로컬 채점)' : '모범 답안과 불일치'
+        score: isCorrect ? 10 : null,
+        isError: !isCorrect,
+        reason: isCorrect ? '단순 일치(로컬 채점)' : 'AI 채점 일시 지연 (재채점 버튼을 눌러주세요)'
       };
       stopProgressPolling('채점 실패', 100, false);
     }

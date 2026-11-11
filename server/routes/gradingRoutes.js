@@ -172,10 +172,11 @@ router.post('/grade-subjective', async (req, res) => {
     }
     res.json({
       isCorrect: localCorrect,
-      score: localCorrect ? 10 : 0,
+      score: localCorrect ? 10 : null,
+      isError: !localCorrect,
       reason: localCorrect 
         ? '로컬 단순 비교로 정답 판정' 
-        : 'AI 채점 오버로드로 평가 실패 (재평가 버튼을 눌러주세요)',
+        : 'AI 채점 일시 지연 (재평가 버튼을 눌러주세요)',
       wikiGrounding,
       kcscGrounding: kcscContext,
       topicGrounding
