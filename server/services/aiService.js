@@ -428,14 +428,14 @@ async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = n
     addGeminiTasks();
   } else {
     addGeminiTasks();
-    if (options.allowCrossProviderFallback !== false) {
+    if (options.allowCrossProviderFallback) {
       addClaudeTasks();
     }
   }
 
   let attemptedAny = false;
   const failedKeys = new Set();
-  const rateLimitedKeys = new Set();
+  const rateLimitedKeyModels = new Set();
   const retriedTaskIndices = new Set();
 
   for (let idx = 0; idx < executionList.length; idx++) {
@@ -450,13 +450,13 @@ async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = n
     if (failedKeys.has(key)) {
       continue;
     }
-    if (rateLimitedKeys.has(key)) {
+    const actualModelName = task.actualModel || (task.type === 'claude' ? normalizeClaudeModel(task.model, scenario, options) : normalizeGeminiModel(task.model));
+    if (rateLimitedKeyModels.has(`${key}:${actualModelName}`)) {
       continue;
     }
 
     const maskedKey = `${key.substring(0, 8)}...${key.substring(key.length - 4)}`;
     const modelName = task.model;
-    const actualModelName = task.actualModel || (task.type === 'claude' ? normalizeClaudeModel(modelName) : normalizeGeminiModel(modelName));
 
     attemptedAny = true;
 
@@ -659,8 +659,8 @@ async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = n
       }
 
       if (isQuota) {
-        rateLimitedKeys.add(key);
-        console.log(`[모델 쿼터 초과 감지] ${task.label} (${task.model} -> ${actualModelName}) 쿼터 초과(429). 해당 키(${task.label})의 잔여 시도를 건너뛰고 다음 키/제공자로 즉시 페일오버합니다.`);
+        rateLimitedKeyModels.add(`${key}:${actualModelName}`);
+        console.log(`[모델 쿼터 초과 감지] ${task.label} (${task.model} -> ${actualModelName}) 쿼터 초과(429). 다음 순번 모델/키로 즉시 페일오버합니다.`);
         continue;
       }
 
