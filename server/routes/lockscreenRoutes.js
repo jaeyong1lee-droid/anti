@@ -376,21 +376,24 @@ router.post('/grade', async (req, res) => {
       }
     }
 
-    // Synchronize grading result across all devices only for this specific question
-    updateActiveLockscreenAnswer(userAnswer.trim(), gradingResult, '', question).catch(err => {
-      console.warn('Failed to update active lockscreen assignment answer:', err);
-    });
-
-    // Save to recent questions list
-    if (question) {
-      saveRecentLockscreenSubmission({
-        question: typeof question === 'object' ? question : { question: questionText },
-        userAnswer: userAnswer.trim(),
-        gradingResult,
-        hint: ''
-      }).catch(err => {
-        console.warn('Failed to save recent lockscreen submission:', err);
+    // 🚨 gradingUnavailable일 경우 DB에 임시 실패 상태를 동기화/저장하지 않음
+    if (gradingResult && !gradingResult.gradingUnavailable) {
+      // Synchronize grading result across all devices only for this specific question
+      updateActiveLockscreenAnswer(userAnswer.trim(), gradingResult, '', question).catch(err => {
+        console.warn('Failed to update active lockscreen assignment answer:', err);
       });
+
+      // Save to recent questions list
+      if (question) {
+        saveRecentLockscreenSubmission({
+          question: typeof question === 'object' ? question : { question: questionText },
+          userAnswer: userAnswer.trim(),
+          gradingResult,
+          hint: ''
+        }).catch(err => {
+          console.warn('Failed to save recent lockscreen submission:', err);
+        });
+      }
     }
 
     res.json({

@@ -4572,9 +4572,12 @@ export default function App() {
     const targetQ = lockscreenQuestion;
     const targetKey = getLockscreenQuestionKey(targetQ);
     const targetAnswer = lockscreenUserAnswer.trim();
-    const existingModelAns = (lockscreenGradingResult?.suggestedModelAnswer && !lockscreenGradingResult.suggestedModelAnswer.includes('공학적 기준에 부합하는 표준 답안') && lockscreenGradingResult.suggestedModelAnswer.trim().length >= 50)
-      ? lockscreenGradingResult.suggestedModelAnswer
-      : undefined;
+    const existingModelAns = (
+      lockscreenGradingResult?.suggestedModelAnswer &&
+      !lockscreenGradingResult?.modelAnswerIsFallback &&
+      !lockscreenGradingResult.suggestedModelAnswer.includes('공학적 기준에 부합하는 표준 답안') &&
+      lockscreenGradingResult.suggestedModelAnswer.trim().length >= 50
+    ) ? lockscreenGradingResult.suggestedModelAnswer : undefined;
     setLockscreenGradingLoading(true);
     try {
       const res = await fetch(`${API_BASE}/api/lockscreen/grade`, {
@@ -4595,8 +4598,13 @@ export default function App() {
           setLockscreenGradingResult(data.result);
           scrollToLockscreenTop(true);
         }
-        saveLockscreenAnswerForQuestion(targetQ, targetAnswer, data.result, lockscreenHint);
-        localStorage.setItem('anti_last_lockscreen_submit_time', String(Date.now()));
+        // 🚨 [수정 2]: gradingUnavailable=true일 때 DB 저장 금지 및 재시도 안내
+        if (!data.result.gradingUnavailable) {
+          saveLockscreenAnswerForQuestion(targetQ, targetAnswer, data.result, lockscreenHint);
+          localStorage.setItem('anti_last_lockscreen_submit_time', String(Date.now()));
+        } else {
+          showNotification(data.result.reason || '모범답안 생성에 일시적으로 실패했습니다. 잠시 후 다시 채점해 주세요.', 'warning');
+        }
       } else {
         showNotification(data.error || 'AI 채점 중 오류가 발생했습니다.', 'error');
       }
@@ -19748,7 +19756,9 @@ ${itemsStr}
                 <div className="space-y-4 pt-1 animate-fade-in">
                   {/* Score & Verdict Card */}
                   <div className={`rounded-2xl p-4 border text-[14px] leading-relaxed shadow-lg ${
-                    lockscreenGradingResult.score >= 8
+                    lockscreenGradingResult.gradingUnavailable
+                      ? 'bg-amber-950/40 border-amber-500/40 text-amber-300'
+                      : lockscreenGradingResult.score >= 8
                       ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300'
                       : lockscreenGradingResult.score >= 5
                       ? 'bg-amber-950/40 border-amber-500/40 text-amber-300'
@@ -19757,16 +19767,18 @@ ${itemsStr}
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <span className={`px-2.5 py-1 rounded-xl text-xs font-black ${
+                          lockscreenGradingResult.gradingUnavailable ? 'bg-amber-600 text-white' :
                           lockscreenGradingResult.score >= 8 ? 'bg-emerald-600 text-white' :
                           lockscreenGradingResult.score >= 5 ? 'bg-amber-600 text-white' :
                           'bg-rose-600 text-white'
                         }`}>
-                          {lockscreenGradingResult.score >= 8 ? '⭕ 우수 (정답)' :
+                          {lockscreenGradingResult.gradingUnavailable ? '⚠️ 채점 일시 지연' :
+                           lockscreenGradingResult.score >= 8 ? '⭕ 우수 (정답)' :
                            lockscreenGradingResult.score >= 5 ? '⚠️ 보통 (부분점수)' :
                            '❌ 보완 필요'}
                         </span>
                         <span className="font-extrabold text-white text-base">
-                          {lockscreenGradingResult.score}점 / 10점
+                          {lockscreenGradingResult.gradingUnavailable ? '재시도 필요' : `${lockscreenGradingResult.score}점 / 10점`}
                         </span>
                       </div>
                     </div>

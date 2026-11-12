@@ -298,6 +298,22 @@ export function isValidRichModelAnswer(ans) {
   return true;
 }
 
+/**
+ * correctAnswer가 채점의 독립적인 기준으로 삼기에 충분한 공학적 내용을 갖추었는지 판정합니다.
+ * 
+ * [부실(Poor) 판정 기준]:
+ * 1) null, undefined, 비문자열 또는 공백 제외 텍스트 길이가 15자 미만인 경우 (단순 단어/단편적 문구/빈칸)
+ * 2) '공학적 기준에 부합하는 표준 답안' 등 시스템 내부 폴백 플레이스홀더 문자열인 경우
+ * 3) 주관식/기술사 문항에서 채점관이 독립적으로 채점할 수 있는 원리/메커니즘/수식/판정기준이 결여된 경우
+ */
+export function isPoorCorrectAnswer(correctAnswer) {
+  if (!correctAnswer || typeof correctAnswer !== 'string') return true;
+  const clean = correctAnswer.trim();
+  if (clean.length < 15) return true;
+  if (clean === '공학적 기준에 부합하는 표준 답안' || clean.includes('공학적 기준에 부합하는 표준 답안')) return true;
+  return false;
+}
+
 export function isAlreadyGroundedRichModelAnswer({
   correctAnswer,
   question,
@@ -377,7 +393,10 @@ export async function getOrGenerateVerifiedModelAnswer(params) {
 
   // C2: 재평가(isReevaluation=true)는 고온(0.85) 독립 탐색이므로 캐시 및 Single-Flight와 완전 격리
   if (isReevaluation) {
-    const rawReevalAnswer = await generateAuthoritativeModelAnswer(params);
+    const rawReevalRes = await generateAuthoritativeModelAnswer(params);
+    const rawReevalAnswer = typeof rawReevalRes === 'object' ? (rawReevalRes.text || '') : (rawReevalRes || '');
+    const isFallback = typeof rawReevalRes === 'object' ? Boolean(rawReevalRes.isFallback) : false;
+    const fallbackReason = typeof rawReevalRes === 'object' ? rawReevalRes.fallbackReason : null;
     const verifiedReeval = verifyGroundedGradingResult({
       question,
       correctAnswer,
@@ -389,6 +408,8 @@ export async function getOrGenerateVerifiedModelAnswer(params) {
     return {
       authoritativeModelAnswer: verifiedReeval.sanitizedModelAnswer,
       groundingVerification: verifiedReeval.groundingVerification,
+      isFallback,
+      fallbackReason,
       cacheStatus: 'reevaluation_isolated'
     };
   }
@@ -410,12 +431,15 @@ export async function getOrGenerateVerifiedModelAnswer(params) {
   // 1) Versioned LRU Cache Hit 확인 (만료 시 즉시 제거, 히트 시 LRU 순서 갱신)
   const cached = modelAnswerCache.get(cacheKey);
   if (cached) {
-    if ((Date.now() - cached.cachedAt) < MODEL_ANSWER_CACHE_TTL_MS && isValidRichModelAnswer(cached.authoritativeModelAnswer)) {
+    // 🚨 isFallback=true이거나 부실한 엔트리는 캐시 조회 시 즉시 삭제 후 재생성 (Read-Bypass)
+    if ((Date.now() - cached.cachedAt) < MODEL_ANSWER_CACHE_TTL_MS && !cached.isFallback && isValidRichModelAnswer(cached.authoritativeModelAnswer)) {
       modelAnswerCache.delete(cacheKey);
       modelAnswerCache.set(cacheKey, cached);
       return {
         authoritativeModelAnswer: cached.authoritativeModelAnswer,
         groundingVerification: cached.groundingVerification,
+        isFallback: false,
+        fallbackReason: null,
         cacheStatus: 'cache_hit'
       };
     }
@@ -431,15 +455,20 @@ export async function getOrGenerateVerifiedModelAnswer(params) {
     wikiGrounding
   });
   if (preVerified && isValidRichModelAnswer(preVerified.authoritativeModelAnswer)) {
-    setBoundedModelAnswerCache(cacheKey, preVerified);
+    const payload = {
+      ...preVerified,
+      isFallback: false,
+      fallbackReason: null
+    };
+    setBoundedModelAnswerCache(cacheKey, payload);
     return {
-      authoritativeModelAnswer: preVerified.authoritativeModelAnswer,
-      groundingVerification: preVerified.groundingVerification,
+      ...payload,
       cacheStatus: 'preverified_reuse'
     };
   }
 
   // 2-B) Lockscreen 재제출 시 이전 채점의 suggestedModelAnswer(existingModelAnswer)가 전달된 경우 Sanitize 후 즉시 재사용
+  // 🚨 [수정 1 요구사항 6]: 클라이언트 값을 신뢰하지 않음 — 사용자가 보낸 existingModelAnswer는 캐시에 쓰지 않고 이번 요청에서만 사용
   if (existingModelAnswer && typeof existingModelAnswer === 'string' && isValidRichModelAnswer(existingModelAnswer) && existingModelAnswer.trim().length >= 90 && existingModelAnswer.includes('💡')) {
     const verifiedExisting = verifyGroundedGradingResult({
       question,
@@ -450,13 +479,11 @@ export async function getOrGenerateVerifiedModelAnswer(params) {
       wikiGrounding
     });
     if (verifiedExisting.sanitizedModelAnswer && isValidRichModelAnswer(verifiedExisting.sanitizedModelAnswer) && verifiedExisting.sanitizedModelAnswer.trim().length >= 90) {
-      const existingPayload = {
-        authoritativeModelAnswer: verifiedExisting.sanitizedModelAnswer,
-        groundingVerification: verifiedExisting.groundingVerification
-      };
-      setBoundedModelAnswerCache(cacheKey, existingPayload);
       return {
-        ...existingPayload,
+        authoritativeModelAnswer: verifiedExisting.sanitizedModelAnswer,
+        groundingVerification: verifiedExisting.groundingVerification,
+        isFallback: false,
+        fallbackReason: null,
         cacheStatus: 'existing_model_answer_reuse'
       };
     }
@@ -473,7 +500,11 @@ export async function getOrGenerateVerifiedModelAnswer(params) {
 
   // 4) Phase 1 LLM 생성 + Grounding Verification + Write-After-Verify
   const flightPromise = (async () => {
-    const rawModelAnswer = await generateAuthoritativeModelAnswer(params);
+    const rawResObj = await generateAuthoritativeModelAnswer(params);
+    const rawModelAnswer = typeof rawResObj === 'object' ? (rawResObj.text || '') : (rawResObj || '');
+    const isFallback = typeof rawResObj === 'object' ? Boolean(rawResObj.isFallback) : false;
+    const fallbackReason = typeof rawResObj === 'object' ? (rawResObj.fallbackReason || null) : null;
+
     const verified = verifyGroundedGradingResult({
       question,
       correctAnswer,
@@ -484,9 +515,12 @@ export async function getOrGenerateVerifiedModelAnswer(params) {
     });
     const payload = {
       authoritativeModelAnswer: verified.sanitizedModelAnswer,
-      groundingVerification: verified.groundingVerification
+      groundingVerification: verified.groundingVerification,
+      isFallback,
+      fallbackReason
     };
-    if (isValidRichModelAnswer(payload.authoritativeModelAnswer)) {
+    // 🚨 isFallback=true면 절대 setBoundedModelAnswerCache 호출 금지!
+    if (!isFallback && isValidRichModelAnswer(payload.authoritativeModelAnswer)) {
       setBoundedModelAnswerCache(cacheKey, payload);
     }
     return payload;
@@ -591,7 +625,7 @@ ${LATEX_PROMPT_INSTRUCTIONS}`;
       hybridRole: 'fast', 
       stage: 'grading',
       preferredModel,
-      timeoutBudgetMs: 40000
+      timeoutBudgetMs: 25000
     });
     let cleanAnswer = (rawRes || '').trim();
     cleanAnswer = cleanAnswer.replace(/^```[a-zA-Z]*\n?/, '').replace(/\n?```$/, '').trim();
@@ -667,38 +701,51 @@ ${LATEX_PROMPT_INSTRUCTIONS}`;
     cleanAnswer = sanitizeHallucinatedKdsCodes(formulaSanitized.sanitizedText, dossierCombined).sanitizedText;
 
     if (cleanAnswer.length > 0 && !/^(success|ok|true|false)$/i.test(cleanAnswer)) {
-      return cleanAnswer;
+      // 🚨 LLM 정상 생성 성공: isFallback=false
+      return { text: cleanAnswer, isFallback: false };
     }
   } catch (err) {
     console.warn('[generateAuthoritativeModelAnswer] Phase 1 model answer derivation failed, falling back to correctAnswer:', err.message);
   }
 
-  // 1차: 기존 correctAnswer가 존재하면 반환
-  if (correctAnswer && correctAnswer.trim().length > 0) {
-    return correctAnswer;
+  // 1차: 기존 correctAnswer가 존재하고 부실하지 않으면 반환 (isFallback=true)
+  if (correctAnswer && typeof correctAnswer === 'string' && correctAnswer.trim().length > 0 && !isPoorCorrectAnswer(correctAnswer)) {
+    return { 
+      text: correctAnswer.trim(), 
+      isFallback: true, 
+      fallbackReason: 'correct_answer_fallback' 
+    };
   }
 
-  // 2차: explanation 사료가 존재하면 사료 요약 기반 임시 완성형 답안 반환
+  // 2차: explanation 사료가 존재하면 사료 요약 기반 임시 완성형 답안 반환 (isFallback=true)
   if (explanation && typeof explanation === 'string' && explanation.trim().length >= 80) {
     const cleanExp = explanation
       .replace(/본 문제는[\s\S]*?서술하십시오\./g, '')
       .replace(/\[토질및기초기술사[\s\S]*?\]/g, '')
       .trim();
     if (cleanExp.length >= 40) {
-      return `• ${question || '공학 기준 요약'}\n${cleanExp.slice(0, 350)}...\n\n💡 **직관적 의미**: 해당 문항의 핵심 역학적 메커니즘과 설계 기준을 종합 분석한 표준 답안입니다.`;
+      return { 
+        text: `• ${question || '공학 기준 요약'}\n${cleanExp.slice(0, 350)}...\n\n💡 **직관적 의미**: 해당 문항의 핵심 역학적 메커니즘과 설계 기준을 종합 분석한 표준 답안입니다.`, 
+        isFallback: true, 
+        fallbackReason: 'explanation_summary_fallback' 
+      };
     }
   }
 
-  return '공학적 기준에 부합하는 표준 답안';
+  return { 
+    text: '공학적 기준에 부합하는 표준 답안', 
+    isFallback: true, 
+    fallbackReason: 'generic_placeholder_fallback' 
+  };
 }
 
 export async function gradeSubjective({ question, correctAnswer, existingModelAnswer = '', userAnswer, rowHeader, colHeader, explanation, category, callLLMWithFailover, gradingStandards, engineeringStandards, isReevaluation = false, kcscContext = '', wikiGrounding = '', preferredModel = '' }) {
   if (!userAnswer) {
-    return { isCorrect: false, score: 0, reason: '답안이 비어 있습니다.', suggestedModelAnswer: correctAnswer };
+    return { isCorrect: false, score: 0, reason: '답안이 비어 있습니다.', suggestedModelAnswer: correctAnswer, modelAnswerIsFallback: false, gradingUnavailable: false };
   }
 
   if (!correctAnswer && !explanation && !question) {
-    return { isCorrect: false, score: 0, reason: '출제 및 해설 정보가 부족하여 AI 채점을 진행할 수 없습니다.' };
+    return { isCorrect: false, score: 0, reason: '출제 및 해설 정보가 부족하여 AI 채점을 진행할 수 없습니다.', modelAnswerIsFallback: true, gradingUnavailable: false };
   }
 
   const isExactTextMatch = !isReevaluation && correctAnswer && normalize(userAnswer) === normalize(correctAnswer);
@@ -733,8 +780,10 @@ export async function gradeSubjective({ question, correctAnswer, existingModelAn
     return {
       isCorrect: true,
       score: 10,
+      gradingUnavailable: false,
       reason: fastReason,
       suggestedModelAnswer: resolvedFast.authoritativeModelAnswer,
+      modelAnswerIsFallback: Boolean(resolvedFast.isFallback),
       groundingVerification: {
         ...(resolvedFast.groundingVerification || { verified: true }),
         cacheStatus: resolvedFast.cacheStatus,
@@ -762,6 +811,25 @@ export async function gradeSubjective({ question, correctAnswer, existingModelAn
     preferredModel
   });
   const authoritativeModelAnswer = resolvedModelAnswer.authoritativeModelAnswer;
+  const modelAnswerIsFallback = Boolean(resolvedModelAnswer.isFallback);
+
+  // 🚨 [수정 2]: 모범답안 생성 실패 시 채점 중단
+  // getOrGenerateVerifiedModelAnswer 결과가 isFallback=true이고 correctAnswer도 부실하면 2단계 LLM 채점을 호출하지 않음
+  if (modelAnswerIsFallback && isPoorCorrectAnswer(correctAnswer)) {
+    return {
+      isCorrect: false,
+      score: null,
+      gradingUnavailable: true,
+      reason: '모범답안 생성에 일시적으로 실패했습니다. 잠시 후 다시 채점해 주세요.',
+      suggestedModelAnswer: authoritativeModelAnswer || '',
+      modelAnswerIsFallback: true,
+      groundingVerification: {
+        ...(resolvedModelAnswer.groundingVerification || { verified: false }),
+        gradingUnavailable: true
+      }
+    };
+  }
+
   const groundedVerificationResult = {
     sanitizedModelAnswer: authoritativeModelAnswer,
     groundingVerification: {
@@ -822,7 +890,13 @@ ${((colHeader && colHeader.includes('수치 계산 답안')) || category === '�
   const isCalcQuestion = ((colHeader && colHeader.includes('수치 계산 답안')) || category === '계산');
   const gradingTemperature = isCalcQuestion ? 0.1 : 0.7;
   const sysInst = getGradingSystemInstruction(gradingStandards, engineeringStandards);
-  const responseText = await callLLMWithFailover(sysInst, userPrompt, null, 'grading', { temperature: gradingTemperature, hybridRole: 'deep', stage: 'grading' });
+  const responseText = await callLLMWithFailover(sysInst, userPrompt, null, 'grading', { 
+    temperature: gradingTemperature, 
+    hybridRole: 'deep', 
+    stage: 'grading',
+    preferredModel,
+    timeoutBudgetMs: 25000 
+  });
   let text = responseText.trim();
   
   try {
@@ -885,8 +959,10 @@ ${((colHeader && colHeader.includes('수치 계산 답안')) || category === '�
     return {
       isCorrect: finalIsCorrect,
       score: finalScore,
+      gradingUnavailable: false,
       reason: finalReason,
       suggestedModelAnswer: authoritativeModelAnswer,
+      modelAnswerIsFallback,
       groundingVerification: {
         ...(groundedVerificationResult.groundingVerification || { verified: true }),
         reasonSanitized
