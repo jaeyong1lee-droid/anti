@@ -4572,7 +4572,9 @@ export default function App() {
     const targetQ = lockscreenQuestion;
     const targetKey = getLockscreenQuestionKey(targetQ);
     const targetAnswer = lockscreenUserAnswer.trim();
-    const existingModelAns = lockscreenGradingResult?.suggestedModelAnswer || undefined;
+    const existingModelAns = (lockscreenGradingResult?.suggestedModelAnswer && !lockscreenGradingResult.suggestedModelAnswer.includes('공학적 기준에 부합하는 표준 답안') && lockscreenGradingResult.suggestedModelAnswer.trim().length >= 50)
+      ? lockscreenGradingResult.suggestedModelAnswer
+      : undefined;
     setLockscreenGradingLoading(true);
     try {
       const res = await fetch(`${API_BASE}/api/lockscreen/grade`, {

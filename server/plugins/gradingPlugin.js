@@ -290,6 +290,14 @@ export function buildModelAnswerCacheKey({
 }
 
 // [Blocker-3 Fix]: 자기참조(self-referential tautology) 원천 제거 — 외부 사료(explanation + kcscContext + wikiGrounding)만으로 검증하며 correctAnswer는 근거에서 제외
+export function isValidRichModelAnswer(ans) {
+  if (!ans || typeof ans !== 'string') return false;
+  const trimmed = ans.trim();
+  if (trimmed === '공학적 기준에 부합하는 표준 답안' || trimmed.includes('공학적 기준에 부합하는 표준 답안')) return false;
+  if (trimmed.length < 40) return false;
+  return true;
+}
+
 export function isAlreadyGroundedRichModelAnswer({
   correctAnswer,
   question,
@@ -402,7 +410,7 @@ export async function getOrGenerateVerifiedModelAnswer(params) {
   // 1) Versioned LRU Cache Hit 확인 (만료 시 즉시 제거, 히트 시 LRU 순서 갱신)
   const cached = modelAnswerCache.get(cacheKey);
   if (cached) {
-    if ((Date.now() - cached.cachedAt) < MODEL_ANSWER_CACHE_TTL_MS) {
+    if ((Date.now() - cached.cachedAt) < MODEL_ANSWER_CACHE_TTL_MS && isValidRichModelAnswer(cached.authoritativeModelAnswer)) {
       modelAnswerCache.delete(cacheKey);
       modelAnswerCache.set(cacheKey, cached);
       return {
@@ -422,7 +430,7 @@ export async function getOrGenerateVerifiedModelAnswer(params) {
     kcscContext,
     wikiGrounding
   });
-  if (preVerified) {
+  if (preVerified && isValidRichModelAnswer(preVerified.authoritativeModelAnswer)) {
     setBoundedModelAnswerCache(cacheKey, preVerified);
     return {
       authoritativeModelAnswer: preVerified.authoritativeModelAnswer,
@@ -432,7 +440,7 @@ export async function getOrGenerateVerifiedModelAnswer(params) {
   }
 
   // 2-B) Lockscreen 재제출 시 이전 채점의 suggestedModelAnswer(existingModelAnswer)가 전달된 경우 Sanitize 후 즉시 재사용
-  if (existingModelAnswer && typeof existingModelAnswer === 'string' && existingModelAnswer.trim().length >= 90 && existingModelAnswer.includes('💡')) {
+  if (existingModelAnswer && typeof existingModelAnswer === 'string' && isValidRichModelAnswer(existingModelAnswer) && existingModelAnswer.trim().length >= 90 && existingModelAnswer.includes('💡')) {
     const verifiedExisting = verifyGroundedGradingResult({
       question,
       correctAnswer: '',
@@ -441,7 +449,7 @@ export async function getOrGenerateVerifiedModelAnswer(params) {
       kcscContext,
       wikiGrounding
     });
-    if (verifiedExisting.sanitizedModelAnswer && verifiedExisting.sanitizedModelAnswer.trim().length >= 90) {
+    if (verifiedExisting.sanitizedModelAnswer && isValidRichModelAnswer(verifiedExisting.sanitizedModelAnswer) && verifiedExisting.sanitizedModelAnswer.trim().length >= 90) {
       const existingPayload = {
         authoritativeModelAnswer: verifiedExisting.sanitizedModelAnswer,
         groundingVerification: verifiedExisting.groundingVerification
@@ -478,7 +486,7 @@ export async function getOrGenerateVerifiedModelAnswer(params) {
       authoritativeModelAnswer: verified.sanitizedModelAnswer,
       groundingVerification: verified.groundingVerification
     };
-    if (payload.authoritativeModelAnswer && payload.authoritativeModelAnswer.trim().length > 0) {
+    if (isValidRichModelAnswer(payload.authoritativeModelAnswer)) {
       setBoundedModelAnswerCache(cacheKey, payload);
     }
     return payload;
@@ -516,7 +524,8 @@ export async function generateAuthoritativeModelAnswer({
   engineeringStandards,
   isReevaluation = false,
   kcscContext = '',
-  wikiGrounding = ''
+  wikiGrounding = '',
+  preferredModel = ''
 }) {
   const isCalcQuestion = ((colHeader && colHeader.includes('수치 계산 답안')) || category === '계산');
 
@@ -577,7 +586,13 @@ ${gStandards}
 ${eStandards}
 
 ${LATEX_PROMPT_INSTRUCTIONS}`;
-    const rawRes = await callLLMWithFailover(sysInst, answerGenPrompt, null, 'general', { temperature: modelAnswerTemperature, hybridRole: 'fast', stage: 'grading' });
+    const rawRes = await callLLMWithFailover(sysInst, answerGenPrompt, null, 'grading', { 
+      temperature: modelAnswerTemperature, 
+      hybridRole: 'fast', 
+      stage: 'grading',
+      preferredModel,
+      timeoutBudgetMs: 40000
+    });
     let cleanAnswer = (rawRes || '').trim();
     cleanAnswer = cleanAnswer.replace(/^```[a-zA-Z]*\n?/, '').replace(/\n?```$/, '').trim();
     if ((cleanAnswer.startsWith('"') && cleanAnswer.endsWith('"')) || (cleanAnswer.startsWith("'") && cleanAnswer.endsWith("'"))) {
@@ -658,7 +673,23 @@ ${LATEX_PROMPT_INSTRUCTIONS}`;
     console.warn('[generateAuthoritativeModelAnswer] Phase 1 model answer derivation failed, falling back to correctAnswer:', err.message);
   }
 
-  return correctAnswer || '공학적 기준에 부합하는 표준 답안';
+  // 1차: 기존 correctAnswer가 존재하면 반환
+  if (correctAnswer && correctAnswer.trim().length > 0) {
+    return correctAnswer;
+  }
+
+  // 2차: explanation 사료가 존재하면 사료 요약 기반 임시 완성형 답안 반환
+  if (explanation && typeof explanation === 'string' && explanation.trim().length >= 80) {
+    const cleanExp = explanation
+      .replace(/본 문제는[\s\S]*?서술하십시오\./g, '')
+      .replace(/\[토질및기초기술사[\s\S]*?\]/g, '')
+      .trim();
+    if (cleanExp.length >= 40) {
+      return `• ${question || '공학 기준 요약'}\n${cleanExp.slice(0, 350)}...\n\n💡 **직관적 의미**: 해당 문항의 핵심 역학적 메커니즘과 설계 기준을 종합 분석한 표준 답안입니다.`;
+    }
+  }
+
+  return '공학적 기준에 부합하는 표준 답안';
 }
 
 export async function gradeSubjective({ question, correctAnswer, existingModelAnswer = '', userAnswer, rowHeader, colHeader, explanation, category, callLLMWithFailover, gradingStandards, engineeringStandards, isReevaluation = false, kcscContext = '', wikiGrounding = '', preferredModel = '' }) {
