@@ -112,7 +112,8 @@ const MODEL_DISPLAY_NAMES = {
   'gemini-3.1-flash-lite': '3.1 Lite',
   'gemini-3.5-flash': '3.5 Flash',
   'gemini-3.0-flash': '3.0 Flash',
-  'gemini-2.5-flash': '2.5 Flash'
+  'gemini-2.5-flash': '2.5 Flash',
+  'gemini-4-hydrogen': '4 Hydrogen'
 };
 
 function getModelDisplayName(modelName) {
@@ -144,7 +145,8 @@ const ALL_SELECTABLE_MODELS = [
   'gemini-3.7-flash',
   'gemini-3.1-flash-lite',
   'gemini-3.6-flash',
-  'gemini-3.5-flash'
+  'gemini-3.5-flash',
+  'gemini-4-hydrogen'
 ];
 
 
@@ -5133,7 +5135,7 @@ export default function App() {
                   if (match) {
                     modelName = match[1].replace(/\s*엔진/i, '').trim().toLowerCase();
                   } else {
-                    const fallbackMatch = data.message.match(/(gemini-[0-9.]+-flash(?:-lite)?)/i);
+                    const fallbackMatch = data.message.match(/(gemini-[0-9.]+-flash(?:-lite)?|gemini-4-hydrogen)/i);
                     if (fallbackMatch) {
                       modelName = fallbackMatch[1].toLowerCase();
                     }
@@ -20758,7 +20760,7 @@ ${itemsStr}
                 <button
                   type="button"
                   onClick={handleTogglePreferredModel}
-                  title="Gemini AI 모델 순환 변경 (3.5 Lite -> 3.8 Flash -> 3.7 Flash -> 3.1 Lite -> 3.6 Flash -> 3.5 Flash)"
+                  title="Gemini AI 모델 순환 변경 (3.5 Lite -> 3.8 Flash -> 3.7 Flash -> 3.1 Lite -> 3.6 Flash -> 3.5 Flash -> 4 Hydrogen)"
                   className="flex items-center justify-center px-3 py-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 hover:border-emerald-500/40 transition-all active:scale-98 text-[11px] font-black cursor-pointer shadow-md select-none"
                 >
                   <span>API</span>
@@ -21565,7 +21567,7 @@ ${itemsStr}
                   type="button"
                   onClick={handleTogglePreferredModel}
                   className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 hover:text-white border border-emerald-500/40 rounded-xl text-[11px] sm:text-xs md:text-sm font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center whitespace-nowrap min-w-0 select-none shadow-md"
-                  title="Gemini AI API 모델 선택 (3.5 Lite -> 3.8 Flash -> 3.7 Flash -> 3.1 Lite -> 3.6 Flash -> 3.5 Flash)"
+                  title="Gemini AI API 모델 선택 (3.5 Lite -> 3.8 Flash -> 3.7 Flash -> 3.1 Lite -> 3.6 Flash -> 3.5 Flash -> 4 Hydrogen)"
                 >
                   <span className="whitespace-nowrap">API</span>
                 </button>
@@ -23061,7 +23063,7 @@ ${itemsStr}
                           type="button"
                           onClick={handleTogglePreferredModel}
                           className="px-2.5 py-1 text-[10px] font-black rounded-lg bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 hover:text-white border border-emerald-500/40 transition-all cursor-pointer active:scale-95 shadow-md select-none"
-                          title="Gemini AI API 모델 선택 (3.5 Lite -> 3.8 Flash -> 3.7 Flash -> 3.1 Lite -> 3.6 Flash -> 3.5 Flash)"
+                          title="Gemini AI API 모델 선택 (3.5 Lite -> 3.8 Flash -> 3.7 Flash -> 3.1 Lite -> 3.6 Flash -> 3.5 Flash -> 4 Hydrogen)"
                         >
                           API
                         </button>
@@ -23168,7 +23170,7 @@ ${itemsStr}
                       type="button"
                       onClick={handleTogglePreferredModel}
                       className="px-2.5 py-1 text-[10px] font-black bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 hover:text-white border border-emerald-500/40 rounded-lg transition-all cursor-pointer active:scale-95 shadow-md flex md:hidden items-center justify-center gap-1 select-none"
-                      title="API 모델 선택 (3.5 Lite -> 3.8 Flash -> 3.7 Flash -> 3.1 Lite -> 3.6 Flash -> 3.5 Flash)"
+                      title="API 모델 선택 (3.5 Lite -> 3.8 Flash -> 3.7 Flash -> 3.1 Lite -> 3.6 Flash -> 3.5 Flash -> 4 Hydrogen)"
                     >
                       <span className="text-emerald-300">⚡</span>
                       <span>API</span>
@@ -26805,7 +26807,7 @@ ${itemsStr}
                       type="button"
                       onClick={handleTogglePreferredModel}
                       className="px-2.5 py-1 text-[10px] font-black bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 hover:text-white border border-emerald-500/40 rounded-lg transition-all cursor-pointer active:scale-95 shadow-md flex md:hidden items-center justify-center gap-1 select-none"
-                      title="API 모델 선택 (3.5 Lite -> 3.8 Flash -> 3.7 Flash -> 3.1 Lite -> 3.6 Flash -> 3.5 Flash)"
+                      title="API 모델 선택 (3.5 Lite -> 3.8 Flash -> 3.7 Flash -> 3.1 Lite -> 3.6 Flash -> 3.5 Flash -> 4 Hydrogen)"
                     >
                       <span className="text-emerald-300">⚡</span>
                       <span>API</span>
@@ -27285,7 +27287,7 @@ ${itemsStr}
                           type="button"
                           onClick={handleTogglePreferredModel}
                           className="px-3 py-2 text-xs font-black rounded-xl bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 hover:text-white border border-emerald-500/40 transition-all cursor-pointer active:scale-95 shadow-md flex items-center justify-center gap-1.5 select-none"
-                          title="Gemini AI API 모델 선택 (3.5 Lite -> 3.8 Flash -> 3.7 Flash -> 3.1 Lite -> 3.6 Flash -> 3.5 Flash)"
+                          title="Gemini AI API 모델 선택 (3.5 Lite -> 3.8 Flash -> 3.7 Flash -> 3.1 Lite -> 3.6 Flash -> 3.5 Flash -> 4 Hydrogen)"
                         >
                           <span className="text-emerald-300 flex-shrink-0">⚡</span>
                           <span>API</span>

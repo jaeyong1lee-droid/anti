@@ -62,7 +62,8 @@ export const FALLBACK_MODELS = [
   'gemini-3.7-flash',
   'gemini-3.1-flash-lite',
   'gemini-3.6-flash',
-  'gemini-3.5-flash'
+  'gemini-3.5-flash',
+  'gemini-4-hydrogen'
 ];
 
 export async function loadPreferredModel() {
@@ -409,7 +410,8 @@ async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = n
       'gemini-3.7-flash',
       'gemini-3.1-flash-lite',
       'gemini-3.6-flash',
-      'gemini-3.5-flash'
+      'gemini-3.5-flash',
+      'gemini-4-hydrogen'
     ];
     const uniqueRaw = [...new Set(rawFallbacks.filter(Boolean))];
 
@@ -616,8 +618,11 @@ async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = n
       reportLlmProgress(options, scenario, modelName);
       // [Blocker-5 / P0 Fix]: timeoutPromise를 세마포어 슬롯 획득 콜백 내부에서 생성하고 finally에서 clearTimeout하여 슬롯 대기 실패 시 unhandledRejection 원천 차단
       const result = await withLlmConcurrencySlot(deadlineAt, async () => {
+        const perCallCapMs = scenario === 'grading'
+          ? (actualModelName === 'gemini-4-hydrogen' ? 20000 : 12000)
+          : 50000;
         const timeoutMs = Math.min(
-          scenario === 'grading' ? 12000 : 50000,
+          perCallCapMs,
           Math.max(2500, (deadlineAt - Date.now()) - 400)
         );
         let geminiTimeoutId = null;
