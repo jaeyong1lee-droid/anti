@@ -3165,12 +3165,18 @@ export default function App() {
     });
     
     const progressId = 'grade_acronym_' + Math.random().toString(36).substring(2, 9);
-    startProgressPolling(progressId);
+    const activeGradingModel = getStageModel('grading');
+    const isBatchAcronym = userRows.filter(r => !!r.acronym).length > 1;
+    startProgressPolling(progressId, null, activeGradingModel, { suppressServerPoll: isBatchAcronym });
     
     const userLetters = userRows.map(r => r.acronym);
     const mappedCorrectRows = matchUserRowsToCorrectRows(userLetters, q.correctRows);
+    const cellResponses = [];
+    const acronymQueue = userRows.map((userRow, rIdx) => ({ userRow, rIdx }));
+    let completedAcronymCount = 0;
+    const totalAcronymTargets = acronymQueue.filter(item => !!item.userRow.acronym).length;
 
-    const promises = userRows.map(async (userRow, rIdx) => {
+    const processAcronymRow = async ({ userRow, rIdx }) => {
       const userLetter = userRow.acronym;
       const userContent = userRow.combined;
       
@@ -3193,13 +3199,13 @@ export default function App() {
       
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 40000);
+        const timeoutId = setTimeout(() => controller.abort(), 45000);
 
         const res = await fetch(`${API_BASE}/api/grade-subjective`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           signal: controller.signal,
-          body: JSON.stringify({
+          body: JSON.stringify(buildGradingRequestPayload({
             question: `${q.question} (두문자: ${userLetter})`,
             correctAnswer,
             userAnswer: userContent,
@@ -3209,17 +3215,21 @@ export default function App() {
             category: '앞글자',
             temperature: isReevaluation ? 0.85 : 0.7,
             isReevaluation: !!isReevaluation,
-            preferredModel: getStageModel('grading'),
-            progressId
-          })
+            progressId,
+            suppressSharedProgress: isBatchAcronym
+          }))
         });
         clearTimeout(timeoutId);
         const data = await res.json();
+        cellResponses.push(data);
         results[`${qIdx}_ROW_${rIdx}_COMB`] = {
           isCorrect: data.isCorrect,
           score: data.score,
           reason: data.reason,
-          suggestedModelAnswer: data.suggestedModelAnswer
+          suggestedModelAnswer: data.suggestedModelAnswer,
+          modelUsed: data.modelUsed,
+          modelRequested: data.modelRequested,
+          failoverOccurred: Boolean(data.failoverOccurred)
         };
       } catch (err) {
         console.error('Acronym grading error:', err);
@@ -3230,11 +3240,29 @@ export default function App() {
           score: isCorrect ? 10 : 0,
           reason: isCorrect ? '단순 일치(로컬 채점)' : '모범 답안과 불일치'
         };
+      } finally {
+        completedAcronymCount++;
+        if (isBatchAcronym && totalAcronymTargets > 1) {
+          const pct = Math.min(95, Math.floor(15 + (completedAcronymCount / totalAcronymTargets) * 80));
+          setAiProgressPercent(pct);
+          setAiProgressMessage(`1단계: [${getModelDisplayName(activeGradingModel)}] 앞글자 주관식 채점 중... (${completedAcronymCount}/${totalAcronymTargets} 완료)`);
+        }
+      }
+    };
+
+    const acronymWorkers = Array.from({ length: Math.min(3, acronymQueue.length) }).map(async () => {
+      while (acronymQueue.length > 0) {
+        const nextItem = acronymQueue.shift();
+        if (nextItem) await processAcronymRow(nextItem);
       }
     });
-    
-    await Promise.all(promises);
-    stopProgressPolling('앞글자 채점 완료!', 100);
+    await Promise.all(acronymWorkers);
+
+    const acronymTelemetry = summarizeBatchGradingTelemetry(cellResponses, activeGradingModel);
+    if (acronymTelemetry.failoverOccurred) {
+      showNotification(`일시적 한도/오류로 백업 모델(${getModelDisplayName(acronymTelemetry.modelUsed)})로 전환되어 채점되었습니다.`, 'info');
+    }
+    stopProgressPolling('앞글자 채점 완료!', 100, true, acronymTelemetry);
     setGradingLoading(prev => ({ ...prev, [qIdx]: false }));
     
     const updatedGrading = { ...activeGradingRef.current, ...results };
@@ -3475,6 +3503,36 @@ export default function App() {
   const getStageModel = (stageKey = 'tutor') => {
     const cur = stageModelsRef.current || stageModels || DEFAULT_STAGE_MODELS;
     return cur[stageKey] || DEFAULT_STAGE_MODELS[stageKey] || 'gemini-3.5-flash-lite';
+  };
+  const [allowGradingFallback, setAllowGradingFallback] = useState(() => {
+    return localStorage.getItem('anti_grading_allow_fallback') === 'true';
+  });
+  const allowGradingFallbackRef = useRef(allowGradingFallback);
+  useEffect(() => {
+    allowGradingFallbackRef.current = allowGradingFallback;
+  }, [allowGradingFallback]);
+
+  const buildGradingRequestPayload = (extraFields = {}) => ({
+    preferredModel: getStageModel('grading'),
+    stageModels: stageModelsRef.current || stageModels || DEFAULT_STAGE_MODELS,
+    allowGradingFallback: Boolean(allowGradingFallbackRef.current),
+    ...extraFields
+  });
+
+  const summarizeBatchGradingTelemetry = (cellResponses = [], fallbackRequested = getStageModel('grading')) => {
+    const valid = (cellResponses || []).filter(Boolean);
+    const usedModels = [...new Set(valid.map(r => r.modelUsed).filter(Boolean))];
+    const failoverOccurred = valid.some(r => Boolean(r.failoverOccurred));
+    const modelRequested = valid.find(r => r.modelRequested)?.modelRequested || fallbackRequested;
+    const modelUsed = usedModels.length === 1
+      ? usedModels[0]
+      : (usedModels.length > 1 ? usedModels.join(', ') : modelRequested);
+    return {
+      modelRequested,
+      modelUsed,
+      usedModels,
+      failoverOccurred
+    };
   };
   const [isLockscreenQuizEnabled, setIsLockscreenQuizEnabled] = useState(() => {
     return localStorage.getItem('anti_lockscreen_quiz_enabled') !== 'false';
@@ -4562,10 +4620,9 @@ export default function App() {
     fetch(`${API_BASE}/api/lockscreen/prewarm`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        question: lockscreenQuestion,
-        preferredModel: getStageModel('grading')
-      })
+      body: JSON.stringify(buildGradingRequestPayload({
+        question: lockscreenQuestion
+      }))
     }).catch(() => {});
   }, [showLockscreenQuiz, lockscreenQuestion?.lockscreen_id, lockscreenQuestion?.question]);
 
@@ -4585,13 +4642,12 @@ export default function App() {
       const res = await fetch(`${API_BASE}/api/lockscreen/grade`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        body: JSON.stringify(buildGradingRequestPayload({
           question: targetQ,
           userAnswer: targetAnswer,
           questionId: targetQ.id,
-          existingModelAnswer: existingModelAns,
-          preferredModel: getStageModel('grading')
-        })
+          existingModelAnswer: existingModelAns
+        }))
       });
       const data = await res.json();
       if (data && data.success && data.result) {
@@ -4602,6 +4658,12 @@ export default function App() {
         }
         // 🚨 [수정 2]: gradingUnavailable=true일 때 DB 저장 금지 및 재시도 안내
         if (!data.result.gradingUnavailable) {
+          if (data.result.failoverOccurred && data.result.modelUsed) {
+            showNotification(
+              `요청 모델(${getModelDisplayName(data.result.modelRequested)}) 일시 오류로 백업 모델(${getModelDisplayName(data.result.modelUsed)})로 채점되었습니다.`,
+              'info'
+            );
+          }
           saveLockscreenAnswerForQuestion(targetQ, targetAnswer, data.result, lockscreenHint);
           localStorage.setItem('anti_last_lockscreen_submit_time', String(Date.now()));
         } else {
@@ -5055,12 +5117,14 @@ export default function App() {
   const [showMobileNavbarMemoryPopup, setShowMobileNavbarMemoryPopup] = useState(false);
   const activeProgressIdRef = useRef(null);
 
-  const startProgressPolling = (progressId, customQueryOrTitle = null) => {
+  const startProgressPolling = (progressId, customQueryOrTitle = null, overrideModelName = null, pollOptions = {}) => {
     if (progressIntervalRef.current) {
       clearInterval(progressIntervalRef.current);
       progressIntervalRef.current = null;
     }
-    setAiProgressMessage('준비 중...');
+    const suppressServerPoll = Boolean(pollOptions && pollOptions.suppressServerPoll);
+    const initialModelName = overrideModelName || (progressId.startsWith('grade_') ? getStageModel('grading') : (preferredModel || 'gemini-3.5-flash-lite'));
+    setAiProgressMessage(suppressServerPoll ? `1단계: [${getModelDisplayName(initialModelName)}] 채점 준비 중...` : '준비 중...');
     setAiProgressPercent(0);
     setShowAiProgress(true);
 
@@ -5097,9 +5161,9 @@ export default function App() {
       startTime: new Date().toISOString(),
       endTime: null,
       status: 'running',
-      modelName: preferredModel || 'gemini-3.5-flash-lite',
+      modelName: initialModelName,
       percent: 0,
-      timeline: ['준비 중...'],
+      timeline: [`[모델 지정] ${getModelDisplayName(initialModelName)} (${initialModelName}) 모델로 작업을 시작합니다.`],
       validationLogs: [],
       wikiGrounding: null,
       kcscGrounding: null
@@ -5110,6 +5174,10 @@ export default function App() {
       localStorage.setItem('anti_ai_history', JSON.stringify(updated));
       return updated;
     });
+
+    if (suppressServerPoll) {
+      return;
+    }
 
     progressIntervalRef.current = setInterval(async () => {
       try {
@@ -5183,10 +5251,14 @@ export default function App() {
           if (item.id === finishedId) {
             const timeline = Array.isArray(item.timeline) ? [...item.timeline] : [];
             
-            // Extract model name from questions data or fall back
+            // Extract model name from authoritative telemetry or fall back cleanly
             let modelName = item.modelName;
             if (data) {
-              if (data.modelName) {
+              if (data.modelUsed) {
+                modelName = data.modelUsed;
+              } else if (data.result && data.result.modelUsed) {
+                modelName = data.result.modelUsed;
+              } else if (data.modelName) {
                 modelName = data.modelName;
               } else if (data.questions && data.questions.some(q => q.modelName)) {
                 modelName = data.questions.find(q => q.modelName).modelName;
@@ -5194,7 +5266,15 @@ export default function App() {
                 modelName = data.question.modelName;
               }
             }
-            if (!modelName) modelName = 'gemini-3.5-flash';
+            if (!modelName) {
+              modelName = finishedId.startsWith('grade_')
+                ? getStageModel('grading')
+                : (preferredModel || 'gemini-3.5-flash-lite');
+            }
+            if (data && (data.failoverOccurred || (Array.isArray(data.usedModels) && data.usedModels.length > 1))) {
+              const reqM = data.modelRequested || getStageModel('grading');
+              timeline.push(`[모델 전환 알림] 요청 모델(${reqM})의 일시적 한도/오류로 백업 모델(${modelName})이 대신 응답했습니다.`);
+            }
 
             // Insert detailed timeline logs based on the scenario and actual data returned
             const hasQuestionsPayload = !!(data && (data.questions || data.question || data.isCached));
@@ -5448,10 +5528,13 @@ export default function App() {
     const nextGrading = { ...currentGrading };
     
     const progressId = 'grade_' + Math.random().toString(36).substring(2, 9);
-    startProgressPolling(progressId);
+    const activeGradingModel = getStageModel('grading');
+    const isBatchTable = inputs.length > 1;
+    startProgressPolling(progressId, null, activeGradingModel, { suppressServerPoll: isBatchTable });
 
     let lastWikiGrounding = null;
     let lastKcscGrounding = null;
+    const cellResponses = [];
 
     const processSingleInput = async (inputId) => {
       const userAnswer = getAnswerValue(activeAnswers, qIdx, inputId) || activeAnswers[`${qIdx}_${inputId}`] || '';
@@ -5558,13 +5641,13 @@ export default function App() {
       
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 40000);
+        const timeoutId = setTimeout(() => controller.abort(), 45000);
 
         const res = await fetch(`${API_BASE}/api/grade-subjective`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           signal: controller.signal,
-          body: JSON.stringify({
+          body: JSON.stringify(buildGradingRequestPayload({
             question: q.question,
             correctAnswer: cleanCorrect,
             userAnswer: cleanUser,
@@ -5574,11 +5657,13 @@ export default function App() {
             category: showExam ? examTopic?.category : selectedTopic?.category,
             temperature: isReevaluation ? 0.85 : 0.7,
             isReevaluation: !!isReevaluation,
-            preferredModel: getStageModel('grading'),
-            progressId
-          })
+            progressId,
+            suppressSharedProgress: inputs.length > 1
+          }))
         });
+        clearTimeout(timeoutId);
         const data = await res.json();
+        cellResponses.push(data);
         if (data.wikiGrounding) lastWikiGrounding = data.wikiGrounding;
         if (data.kcscGrounding) lastKcscGrounding = data.kcscGrounding;
         const suggestedModelAnswer = data.suggestedModelAnswer;
@@ -5586,7 +5671,10 @@ export default function App() {
           isCorrect: data.isCorrect,
           score: data.score,
           reason: data.reason,
-          suggestedModelAnswer
+          suggestedModelAnswer,
+          modelUsed: data.modelUsed,
+          modelRequested: data.modelRequested,
+          failoverOccurred: Boolean(data.failoverOccurred)
         };
         if (suggestedModelAnswer && !/^(success|ok|true|false)$/i.test(suggestedModelAnswer.trim())) {
           if (!q.answers) q.answers = {};
@@ -5608,7 +5696,7 @@ export default function App() {
       const queue = [...inputs];
       let completedCount = 0;
       const totalCount = queue.length;
-      const workers = Array.from({ length: Math.min(6, queue.length) }).map(async () => {
+      const workers = Array.from({ length: Math.min(3, queue.length) }).map(async () => {
         while (queue.length > 0) {
           const item = queue.shift();
           if (item) {
@@ -5617,7 +5705,7 @@ export default function App() {
             if (totalCount > 1) {
               const currentPercent = Math.min(95, Math.floor(15 + (completedCount / totalCount) * 80));
               setAiProgressPercent(currentPercent);
-              setAiProgressMessage(`1단계: 주관식 표 채우기 채점 중... (${completedCount}/${totalCount} 완료)`);
+              setAiProgressMessage(`1단계: [${getModelDisplayName(activeGradingModel)}] 주관식 표 채우기 채점 중... (${completedCount}/${totalCount} 완료)`);
             }
           }
         }
@@ -5655,9 +5743,14 @@ export default function App() {
         forceSaveActiveSessions(false, false, { examTableGradingResults: nextGrading });
       }
 
+      const batchTelemetry = summarizeBatchGradingTelemetry(cellResponses, activeGradingModel);
+      if (batchTelemetry.failoverOccurred) {
+        showNotification(`일시적 한도/오류로 백업 모델(${getModelDisplayName(batchTelemetry.modelUsed)})로 전환되어 채점되었습니다.`, 'info');
+      }
       stopProgressPolling('2단계: 주관식 표 채우기 채점 완료!', 100, true, {
         wikiGrounding: lastWikiGrounding,
-        kcscGrounding: lastKcscGrounding
+        kcscGrounding: lastKcscGrounding,
+        ...batchTelemetry
       });
       return nextGrading;
     } catch (e) {
@@ -5710,17 +5803,19 @@ export default function App() {
     
     const correctAnswer = correctRow.word ? `${correctRow.word} : ${correctRow.description}` : (q.explanation || '');
     const progressId = 'grade_acronym_cell_' + Math.random().toString(36).substring(2, 9);
-    startProgressPolling(progressId);
-    
+    const activeGradingModel = getStageModel('grading');
+    startProgressPolling(progressId, null, activeGradingModel);
+    let singleAcronymData = null;
+
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 40000);
+      const timeoutId = setTimeout(() => controller.abort(), 45000);
 
       const res = await fetch(`${API_BASE}/api/grade-subjective`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         signal: controller.signal,
-        body: JSON.stringify({
+        body: JSON.stringify(buildGradingRequestPayload({
           question: `${q.question} (두문자: ${userLetter})`,
           correctAnswer,
           userAnswer: userContent,
@@ -5730,17 +5825,23 @@ export default function App() {
           category: '앞글자',
           temperature: isReevaluation ? 0.85 : 0.7,
           isReevaluation: !!isReevaluation,
-          preferredModel: getStageModel('grading'),
           progressId
-        })
+        }))
       });
       clearTimeout(timeoutId);
       const data = await res.json();
+      singleAcronymData = data;
+      if (data.failoverOccurred && data.modelUsed) {
+        showNotification(`일시적 한도/오류로 백업 모델(${getModelDisplayName(data.modelUsed)})로 전환되어 채점되었습니다.`, 'info');
+      }
       nextGrading[combKey] = {
         isCorrect: data.isCorrect,
         score: data.score,
         reason: data.reason,
-        suggestedModelAnswer: data.suggestedModelAnswer
+        suggestedModelAnswer: data.suggestedModelAnswer,
+        modelUsed: data.modelUsed,
+        modelRequested: data.modelRequested,
+        failoverOccurred: Boolean(data.failoverOccurred)
       };
     } catch (err) {
       console.error('Acronym cell grading error:', err);
@@ -5753,7 +5854,7 @@ export default function App() {
       };
     }
     
-    stopProgressPolling();
+    stopProgressPolling('재채점 완료!', 100, true, singleAcronymData);
     activeSetGradingResults(nextGrading);
     if (showExam) {
       examTableGradingResultsRef.current = nextGrading;
@@ -5784,7 +5885,7 @@ export default function App() {
     const nextGrading = { ...currentGrading };
 
     const progressId = 'grade_cell_' + Math.random().toString(36).substring(2, 9);
-    startProgressPolling(progressId);
+    startProgressPolling(progressId, null, getStageModel('grading'));
 
     const userAnswer = getAnswerValue(activeAnswers, qIdx, inputId) || activeAnswers[key] || '';
     const correctAnswer = getCorrectAnswerForInput(q, inputId);
@@ -5903,13 +6004,13 @@ export default function App() {
     let gradeData = null;
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 40000);
+      const timeoutId = setTimeout(() => controller.abort(), 45000);
 
       const res = await fetch(`${API_BASE}/api/grade-subjective`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         signal: controller.signal,
-        body: JSON.stringify({
+        body: JSON.stringify(buildGradingRequestPayload({
           question: q.question,
           correctAnswer,
           userAnswer,
@@ -5919,18 +6020,24 @@ export default function App() {
           category: showExam ? examTopic?.category : selectedTopic?.category,
           temperature: isReevaluation ? 0.85 : 0.7,
           isReevaluation: !!isReevaluation,
-          preferredModel: getStageModel('grading'),
           progressId
-        })
+        }))
       });
+      clearTimeout(timeoutId);
       gradeData = await res.json();
+      if (gradeData.failoverOccurred && gradeData.modelUsed) {
+        showNotification(`일시적 한도/오류로 백업 모델(${getModelDisplayName(gradeData.modelUsed)})로 전환되어 채점되었습니다.`, 'info');
+      }
       const suggestedModelAnswer = gradeData.suggestedModelAnswer;
       nextGrading[key] = {
         isCorrect: gradeData.isCorrect,
         score: gradeData.score,
         reason: gradeData.reason,
         suggestedModelAnswer,
-        gradedAnswer: userAnswer
+        gradedAnswer: userAnswer,
+        modelUsed: gradeData.modelUsed,
+        modelRequested: gradeData.modelRequested,
+        failoverOccurred: Boolean(gradeData.failoverOccurred)
       };
     } catch (err) {
       console.error('Single cell grading error:', err);
@@ -6141,18 +6248,18 @@ export default function App() {
     const correctAnswer = getCanonicalModelAnswer(q);
     
     const progressId = 'grade_' + Math.random().toString(36).substring(2, 9);
-    startProgressPolling(progressId);
+    startProgressPolling(progressId, null, getStageModel('grading'));
 
     let newResult = null;
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 40000);
+      const timeoutId = setTimeout(() => controller.abort(), 45000);
 
       const res = await fetch(`${API_BASE}/api/grade-subjective`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         signal: controller.signal,
-        body: JSON.stringify({
+        body: JSON.stringify(buildGradingRequestPayload({
           question: q.question,
           correctAnswer,
           userAnswer,
@@ -6160,17 +6267,22 @@ export default function App() {
           category: showExam ? examTopic?.category : selectedTopic?.category,
           temperature: isReevaluation ? 0.85 : 0.7,
           isReevaluation: !!isReevaluation,
-          preferredModel: getStageModel('grading'),
           progressId
-        })
+        }))
       });
       clearTimeout(timeoutId);
       const data = await res.json();
+      if (data.failoverOccurred && data.modelUsed) {
+        showNotification(`일시적 한도/오류로 백업 모델(${getModelDisplayName(data.modelUsed)})로 전환되어 채점되었습니다.`, 'info');
+      }
       newResult = {
         isCorrect: data.isCorrect,
         score: data.score,
         reason: data.reason,
-        suggestedModelAnswer: data.suggestedModelAnswer
+        suggestedModelAnswer: data.suggestedModelAnswer,
+        modelUsed: data.modelUsed,
+        modelRequested: data.modelRequested,
+        failoverOccurred: Boolean(data.failoverOccurred)
       };
       if (data.suggestedModelAnswer && !/^(success|ok|true|false)$/i.test(data.suggestedModelAnswer.trim())) {
         q.answer = data.suggestedModelAnswer;
@@ -6346,30 +6458,36 @@ export default function App() {
       .catch(err => console.warn('Failed to load realtime_chat_history from database:', err));
   }, []);
 
-  // Load preferred AI model on mount
+  // Load preferred AI model, stage models & grading fallback policy on mount (Server DB authoritative)
   useEffect(() => {
-    const localVal = localStorage.getItem('anti_preferred_model');
-    if (localVal) {
-      setPreferredModel(localVal);
-      preferredModelRef.current = localVal;
-    }
     fetch(`${API_BASE}/api/preferred-model`)
       .then(res => {
         if (res.ok) return res.json();
         throw new Error('Network response not ok');
       })
       .then(data => {
-        if (localVal) {
-          if (data.model !== localVal) {
-            fetch(`${API_BASE}/api/preferred-model`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ model: localVal })
-            }).catch(() => {});
+        if (data && data.stageModels && typeof data.stageModels === 'object') {
+          const syncedStages = { ...DEFAULT_STAGE_MODELS, ...data.stageModels };
+          stageModelsRef.current = syncedStages;
+          setStageModels(syncedStages);
+          localStorage.setItem('anti_stage_models', JSON.stringify(syncedStages));
+
+          const syncedTutor = syncedStages.tutor || data.model;
+          if (syncedTutor) {
+            preferredModelRef.current = syncedTutor;
+            setPreferredModel(syncedTutor);
+            localStorage.setItem('anti_preferred_model', syncedTutor);
           }
-        } else if (data.model) {
-          setPreferredModel(data.model);
+        } else if (data && data.model) {
           preferredModelRef.current = data.model;
+          setPreferredModel(data.model);
+          localStorage.setItem('anti_preferred_model', data.model);
+        }
+
+        if (data && typeof data.allowGradingFallback === 'boolean') {
+          allowGradingFallbackRef.current = data.allowGradingFallback;
+          setAllowGradingFallback(data.allowGradingFallback);
+          localStorage.setItem('anti_grading_allow_fallback', String(data.allowGradingFallback));
         }
       })
       .catch(err => {
@@ -14242,6 +14360,31 @@ ${item.intuitive || ''}
       });
     } catch (error) {
       console.warn('Failed to sync stage model to server:', error);
+    }
+  };
+
+  const handleToggleGradingFallback = async () => {
+    const nextVal = !allowGradingFallbackRef.current;
+    allowGradingFallbackRef.current = nextVal;
+    setAllowGradingFallback(nextVal);
+    localStorage.setItem('anti_grading_allow_fallback', String(nextVal));
+    try {
+      const response = await fetch(`${API_BASE}/api/preferred-model`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ allowGradingFallback: nextVal })
+      });
+      if (!response.ok) {
+        throw new Error(`Server returned ${response.status}`);
+      }
+      showNotification(
+        nextVal
+          ? '채점 시 오류/한도 초과가 발생하면 백업 모델로 자동 전환됩니다.'
+          : '채점 시 선택한 모델로 고정됩니다 (동일 모델 다중 API 키만 재시도).',
+        'success'
+      );
+    } catch (error) {
+      console.warn('Failed to sync allowGradingFallback to server:', error);
     }
   };
 
@@ -24859,7 +25002,7 @@ ${itemsStr}
             style={
               modelPopupPos
                 ? {
-                    top: `${Math.min(modelPopupPos.top, (typeof window !== 'undefined' ? window.innerHeight : 800) - 310)}px`,
+                    top: `${Math.min(modelPopupPos.top, (typeof window !== 'undefined' ? window.innerHeight : 800) - 390)}px`,
                     left: `${Math.max(175, Math.min(modelPopupPos.left, (typeof window !== 'undefined' ? window.innerWidth : 1200) - 180))}px`,
                     transform: 'translateX(-50%)'
                   }
@@ -24936,6 +25079,45 @@ ${itemsStr}
                   </div>
                 );
               })}
+
+              {/* 옵션 B: 채점 시 타 모델 자동 폴백 허용 토글 */}
+              <div className="mt-1 pt-2.5 border-t border-slate-800/90 flex items-center justify-between gap-2.5 px-3 py-2 rounded-xl bg-slate-950/70 border border-slate-800/80">
+                <div className="flex flex-col min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px] font-black text-slate-100 whitespace-nowrap">채점 모델 자동 폴백</span>
+                    <span
+                      className={`px-1.5 py-0.5 rounded text-[9px] font-extrabold whitespace-nowrap border ${
+                        allowGradingFallback
+                          ? 'bg-sky-500/15 text-sky-300 border-sky-500/30'
+                          : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                      }`}
+                    >
+                      {allowGradingFallback ? '백업 허용' : '모델 고정'}
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-slate-400 leading-snug mt-0.5">
+                    {allowGradingFallback
+                      ? '오류/한도 시 백업 모델로 자동 전환'
+                      : '선택 모델 고정 (다중 API 키만 회전)'}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={allowGradingFallback}
+                  onClick={handleToggleGradingFallback}
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                    allowGradingFallback ? 'bg-sky-500' : 'bg-slate-700'
+                  }`}
+                  title="채점 중 오류/할당량 초과 발생 시 다른 모델로 자동 전환할지 여부"
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                      allowGradingFallback ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
             </div>
           </div>
         </>

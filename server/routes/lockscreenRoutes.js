@@ -1,6 +1,6 @@
 import express from 'express';
 import { dbQuery } from '../database.js';
-import { saveSessionValue, callLLMWithFailover, getMatchingTopicContent, globalPreferredModel, resolveStageModel } from '../services/aiService.js';
+import { saveSessionValue, callLLMWithFailover, getMatchingTopicContent, globalPreferredModel, globalAllowGradingFallback, resolveStageModel } from '../services/aiService.js';
 import { 
   getRandomLockscreenExamQuestion, 
   loadAllPastExamQuestions,
@@ -26,12 +26,27 @@ function getResolvedLockscreenPreferredModel(req, stage = 'grading') {
   });
 }
 
+function getResolvedAllowGradingFallback(req) {
+  return (req && typeof req.body?.allowGradingFallback === 'boolean')
+    ? req.body.allowGradingFallback
+    : globalAllowGradingFallback;
+}
+
 function getCallLLM(req, defaultStage = 'grading') {
   const progressId = req && (req.query?.progressId || req.body?.progressId);
+  const allowGradingFallback = getResolvedAllowGradingFallback(req);
   return (sys, prompt, img, scenario, opts) => {
     const stage = (opts && opts.stage) || defaultStage;
     const resolvedModel = getResolvedLockscreenPreferredModel(req, stage);
-    return callLLMWithFailover(sys, prompt, img, scenario, { ...opts, stage, preferredModel: resolvedModel, progressId });
+    return callLLMWithFailover(sys, prompt, img, scenario, {
+      ...opts,
+      stage,
+      preferredModel: resolvedModel,
+      allowFallback: (opts && typeof opts.allowFallback === 'boolean')
+        ? opts.allowFallback
+        : (stage === 'grading' ? allowGradingFallback : undefined),
+      progressId
+    });
   };
 }
 
@@ -121,7 +136,8 @@ export async function prewarmLockscreenQuestion(question, req = null) {
     engineeringStandards: dynamicEngineeringStandards,
     kcscContext,
     wikiGrounding,
-    preferredModel
+    preferredModel,
+    allowGradingFallback: getResolvedAllowGradingFallback(req)
   });
 }
 
@@ -349,7 +365,8 @@ router.post('/grade', async (req, res) => {
       engineeringStandards: dynamicEngineeringStandards,
       kcscContext,
       wikiGrounding,
-      preferredModel
+      preferredModel,
+      allowGradingFallback: getResolvedAllowGradingFallback(req)
     });
 
     if (gradingResult) {

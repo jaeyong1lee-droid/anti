@@ -388,7 +388,8 @@ export async function getOrGenerateVerifiedModelAnswer(params) {
     isReevaluation = false,
     kcscContext = '',
     wikiGrounding = '',
-    preferredModel = ''
+    preferredModel = '',
+    allowGradingFallback
   } = params;
 
   // C2: 재평가(isReevaluation=true)는 고온(0.85) 독립 탐색이므로 캐시 및 Single-Flight와 완전 격리
@@ -410,6 +411,7 @@ export async function getOrGenerateVerifiedModelAnswer(params) {
       groundingVerification: verifiedReeval.groundingVerification,
       isFallback,
       fallbackReason,
+      modelMeta: rawReevalRes?.modelMeta || null,
       cacheStatus: 'reevaluation_isolated'
     };
   }
@@ -517,7 +519,8 @@ export async function getOrGenerateVerifiedModelAnswer(params) {
       authoritativeModelAnswer: verified.sanitizedModelAnswer,
       groundingVerification: verified.groundingVerification,
       isFallback,
-      fallbackReason
+      fallbackReason,
+      modelMeta: rawResObj?.modelMeta || null
     };
     // 🚨 isFallback=true면 절대 setBoundedModelAnswerCache 호출 금지!
     if (!isFallback && isValidRichModelAnswer(payload.authoritativeModelAnswer)) {
@@ -559,7 +562,8 @@ export async function generateAuthoritativeModelAnswer({
   isReevaluation = false,
   kcscContext = '',
   wikiGrounding = '',
-  preferredModel = ''
+  preferredModel = '',
+  allowGradingFallback
 }) {
   const isCalcQuestion = ((colHeader && colHeader.includes('수치 계산 답안')) || category === '계산');
 
@@ -608,6 +612,7 @@ ${isReevaluation ? `🚨 **[심층 모범 답안 도출 철칙]**:
 💡 **직관적 의미**: [해당 원리나 개념의 물리적 본질, 핵심 메커니즘 또는 실무적 의미를 한눈에 직관적으로 단번에 이해할 수 있는 명쾌하고 쉬운 비유나 설명 1~2문장]
 ${getNotebookLmGroundedPromptBlock('grading')}`;
 
+  const phase1Meta = {};
   try {
     const gStandards = gradingStandards || GRADING_STANDARDS;
     const eStandards = engineeringStandards || ENGINEERING_STANDARDS;
@@ -625,7 +630,9 @@ ${LATEX_PROMPT_INSTRUCTIONS}`;
       hybridRole: 'fast', 
       stage: 'grading',
       preferredModel,
-      timeoutBudgetMs: 25000
+      allowFallback: allowGradingFallback,
+      timeoutBudgetMs: 32000,
+      metaOut: phase1Meta
     });
     let cleanAnswer = (rawRes || '').trim();
     cleanAnswer = cleanAnswer.replace(/^```[a-zA-Z]*\n?/, '').replace(/\n?```$/, '').trim();
@@ -702,7 +709,7 @@ ${LATEX_PROMPT_INSTRUCTIONS}`;
 
     if (cleanAnswer.length > 0 && !/^(success|ok|true|false)$/i.test(cleanAnswer)) {
       // 🚨 LLM 정상 생성 성공: isFallback=false
-      return { text: cleanAnswer, isFallback: false };
+      return { text: cleanAnswer, isFallback: false, modelMeta: Object.keys(phase1Meta).length ? phase1Meta : null };
     }
   } catch (err) {
     console.warn('[generateAuthoritativeModelAnswer] Phase 1 model answer derivation failed, falling back to correctAnswer:', err.message);
@@ -713,7 +720,8 @@ ${LATEX_PROMPT_INSTRUCTIONS}`;
     return { 
       text: correctAnswer.trim(), 
       isFallback: true, 
-      fallbackReason: 'correct_answer_fallback' 
+      fallbackReason: 'correct_answer_fallback',
+      modelMeta: Object.keys(phase1Meta).length ? phase1Meta : null
     };
   }
 
@@ -727,7 +735,8 @@ ${LATEX_PROMPT_INSTRUCTIONS}`;
       return { 
         text: `• ${question || '공학 기준 요약'}\n${cleanExp.slice(0, 350)}...\n\n💡 **직관적 의미**: 해당 문항의 핵심 역학적 메커니즘과 설계 기준을 종합 분석한 표준 답안입니다.`, 
         isFallback: true, 
-        fallbackReason: 'explanation_summary_fallback' 
+        fallbackReason: 'explanation_summary_fallback',
+        modelMeta: Object.keys(phase1Meta).length ? phase1Meta : null
       };
     }
   }
@@ -735,17 +744,48 @@ ${LATEX_PROMPT_INSTRUCTIONS}`;
   return { 
     text: '공학적 기준에 부합하는 표준 답안', 
     isFallback: true, 
-    fallbackReason: 'generic_placeholder_fallback' 
+    fallbackReason: 'generic_placeholder_fallback',
+    modelMeta: Object.keys(phase1Meta).length ? phase1Meta : null
   };
 }
 
-export async function gradeSubjective({ question, correctAnswer, existingModelAnswer = '', userAnswer, rowHeader, colHeader, explanation, category, callLLMWithFailover, gradingStandards, engineeringStandards, isReevaluation = false, kcscContext = '', wikiGrounding = '', preferredModel = '' }) {
+function buildGradingModelTelemetry({ preferredModel, phase1Meta = null, phase2Meta = null, cacheStatus = null, fastTrack = null }) {
+  const modelRequested = preferredModel || phase2Meta?.modelRequested || phase1Meta?.modelRequested || null;
+  const phase1Model = phase1Meta?.modelUsed || null;
+  const phase2Model = phase2Meta?.modelUsed || null;
+  const failoverOccurred = Boolean(phase1Meta?.failoverOccurred || phase2Meta?.failoverOccurred);
+  const keyRotated = Boolean(phase1Meta?.keyRotated || phase2Meta?.keyRotated);
+  const hybridSplit = Boolean(
+    !failoverOccurred &&
+    phase1Model &&
+    phase2Model &&
+    phase1Model !== phase2Model
+  );
+  const modelUsed = phase2Model || phase1Model || modelRequested || (fastTrack ? 'fast_track' : null);
+  return {
+    modelRequested,
+    modelUsed,
+    failoverOccurred,
+    modelTelemetry: {
+      modelRequested,
+      modelUsed,
+      phase1Model: phase1Model || (cacheStatus ? `cache:${cacheStatus}` : null),
+      phase2Model,
+      failoverOccurred,
+      keyRotated,
+      hybridSplit,
+      fastTrack: fastTrack || null
+    }
+  };
+}
+
+export async function gradeSubjective({ question, correctAnswer, existingModelAnswer = '', userAnswer, rowHeader, colHeader, explanation, category, callLLMWithFailover, gradingStandards, engineeringStandards, isReevaluation = false, kcscContext = '', wikiGrounding = '', preferredModel = '', allowGradingFallback }) {
   if (!userAnswer) {
-    return { isCorrect: false, score: 0, reason: '답안이 비어 있습니다.', suggestedModelAnswer: correctAnswer, modelAnswerIsFallback: false, gradingUnavailable: false };
+    return { isCorrect: false, score: 0, reason: '답안이 비어 있습니다.', suggestedModelAnswer: correctAnswer, modelAnswerIsFallback: false, gradingUnavailable: false, ...buildGradingModelTelemetry({ preferredModel }) };
   }
 
   if (!correctAnswer && !explanation && !question) {
-    return { isCorrect: false, score: 0, reason: '출제 및 해설 정보가 부족하여 AI 채점을 진행할 수 없습니다.', modelAnswerIsFallback: true, gradingUnavailable: false };
+    return { isCorrect: false, score: 0, reason: '출제 및 해설 정보가 부족하여 AI 채점을 진행할 수 없습니다.', modelAnswerIsFallback: true, gradingUnavailable: false, ...buildGradingModelTelemetry({ preferredModel }) };
   }
 
   const isExactTextMatch = !isReevaluation && correctAnswer && normalize(userAnswer) === normalize(correctAnswer);
@@ -772,8 +812,10 @@ export async function gradeSubjective({ question, correctAnswer, existingModelAn
       isReevaluation,
       kcscContext,
       wikiGrounding,
-      preferredModel
+      preferredModel,
+      allowGradingFallback
     });
+    const fastTrackKind = isExactTextMatch ? 'exact_text' : 'strict_numeric_1pct';
     const fastReason = isExactTextMatch
       ? '텍스트가 모범 답안과 정확히 일치합니다.'
       : `최종 산출 수치(${numericFastTrack.uVal}${numericFastTrack.unit ? ' ' + numericFastTrack.unit : ''}) 및 단위가 모범 답안의 정밀 산출 결과와 정확히 일치합니다.`;
@@ -784,10 +826,16 @@ export async function gradeSubjective({ question, correctAnswer, existingModelAn
       reason: fastReason,
       suggestedModelAnswer: resolvedFast.authoritativeModelAnswer,
       modelAnswerIsFallback: Boolean(resolvedFast.isFallback),
+      ...buildGradingModelTelemetry({
+        preferredModel,
+        phase1Meta: resolvedFast.modelMeta || null,
+        cacheStatus: resolvedFast.cacheStatus,
+        fastTrack: fastTrackKind
+      }),
       groundingVerification: {
         ...(resolvedFast.groundingVerification || { verified: true }),
         cacheStatus: resolvedFast.cacheStatus,
-        fastTrack: isExactTextMatch ? 'exact_text' : 'strict_numeric_1pct',
+        fastTrack: fastTrackKind,
         reasonSanitized: false
       }
     };
@@ -808,7 +856,8 @@ export async function gradeSubjective({ question, correctAnswer, existingModelAn
     isReevaluation,
     kcscContext,
     wikiGrounding,
-    preferredModel
+    preferredModel,
+    allowGradingFallback
   });
   const authoritativeModelAnswer = resolvedModelAnswer.authoritativeModelAnswer;
   const modelAnswerIsFallback = Boolean(resolvedModelAnswer.isFallback);
@@ -823,6 +872,11 @@ export async function gradeSubjective({ question, correctAnswer, existingModelAn
       reason: '모범답안 생성에 일시적으로 실패했습니다. 잠시 후 다시 채점해 주세요.',
       suggestedModelAnswer: authoritativeModelAnswer || '',
       modelAnswerIsFallback: true,
+      ...buildGradingModelTelemetry({
+        preferredModel,
+        phase1Meta: resolvedModelAnswer.modelMeta || null,
+        cacheStatus: resolvedModelAnswer.cacheStatus
+      }),
       groundingVerification: {
         ...(resolvedModelAnswer.groundingVerification || { verified: false }),
         gradingUnavailable: true
@@ -890,12 +944,15 @@ ${((colHeader && colHeader.includes('수치 계산 답안')) || category === '�
   const isCalcQuestion = ((colHeader && colHeader.includes('수치 계산 답안')) || category === '계산');
   const gradingTemperature = isCalcQuestion ? 0.1 : 0.7;
   const sysInst = getGradingSystemInstruction(gradingStandards, engineeringStandards);
+  const phase2Meta = {};
   const responseText = await callLLMWithFailover(sysInst, userPrompt, null, 'grading', { 
     temperature: gradingTemperature, 
     hybridRole: 'deep', 
     stage: 'grading',
     preferredModel,
-    timeoutBudgetMs: 25000 
+    allowFallback: allowGradingFallback,
+    timeoutBudgetMs: 32000,
+    metaOut: phase2Meta
   });
   let text = responseText.trim();
   
@@ -963,6 +1020,12 @@ ${((colHeader && colHeader.includes('수치 계산 답안')) || category === '�
       reason: finalReason,
       suggestedModelAnswer: authoritativeModelAnswer,
       modelAnswerIsFallback,
+      ...buildGradingModelTelemetry({
+        preferredModel,
+        phase1Meta: resolvedModelAnswer.modelMeta || null,
+        phase2Meta,
+        cacheStatus: resolvedModelAnswer.cacheStatus
+      }),
       groundingVerification: {
         ...(groundedVerificationResult.groundingVerification || { verified: true }),
         reasonSanitized

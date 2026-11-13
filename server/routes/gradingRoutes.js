@@ -1,7 +1,7 @@
 import express from 'express';
 import pdfParse from 'pdf-parse';
 import { dbQuery } from '../database.js';
-import { callLLMWithFailover, analyzeStandardsBeforeTask, getTopicText, getMatchingTopicContent, startBackendProgressTimer, updateProgress, stopBackendProgressTimer, globalPreferredModel, resolveStageModel } from '../services/aiService.js';
+import { callLLMWithFailover, analyzeStandardsBeforeTask, getTopicText, getMatchingTopicContent, startBackendProgressTimer, updateProgress, stopBackendProgressTimer, globalPreferredModel, globalAllowGradingFallback, resolveStageModel } from '../services/aiService.js';
 import { healQuizQuestionObject, parseLlmJson, healLatexFormulas, LATEX_PROMPT_INSTRUCTIONS, cleanQuizQuestion } from '../utils/latexUtils.js';
 import * as fileUtils from '../utils/fileUtils.js';
 import { gradeSubjective, GRADING_STANDARDS, gradingStandardsList } from '../plugins/gradingPlugin.js';
@@ -67,6 +67,15 @@ async function getFormattedTopicInstructions(topicId) {
 router.post('/grade-subjective', async (req, res) => {
   const { question, correctAnswer, userAnswer, rowHeader, colHeader, explanation, category, temperature, isReevaluation } = req.body;
   const progressId = req.body.progressId || req.query.progressId;
+  const suppressSharedProgress = Boolean(req.body?.suppressSharedProgress || req.body?.isBatchCell);
+  const resolvedGradingModel = resolveStageModel('grading', {
+    stage: 'grading',
+    stageModels: req.body?.stageModels,
+    preferredModel: req.body?.preferredModel || req.query?.preferredModel
+  });
+  const allowGradingFallback = (typeof req.body?.allowGradingFallback === 'boolean')
+    ? req.body.allowGradingFallback
+    : globalAllowGradingFallback;
   const isReeval = !!isReevaluation || (typeof temperature === 'number' && temperature > 0.75);
 
   const dynamicGradingStandards = gradingStandardsList && gradingStandardsList.length > 0
@@ -78,9 +87,9 @@ router.post('/grade-subjective', async (req, res) => {
 
   let standardsAnalysis = '';
   let progressTimer = null;
-  if (progressId) {
+  if (progressId && !suppressSharedProgress) {
     standardsAnalysis = await analyzeStandardsBeforeTask(progressId, question || '주관식 채점', dynamicGradingStandards, 'grading');
-    const modelUpper = (req.body.preferredModel || globalPreferredModel || 'gemini-3.5-flash-lite').toUpperCase();
+    const modelUpper = resolvedGradingModel.toUpperCase();
     progressTimer = startBackendProgressTimer(progressId, 1, `1단계: ${modelUpper} 엔진으로 제출 답안 채점 중...`, 85, 800, 4);
   }
 
@@ -89,14 +98,21 @@ router.post('/grade-subjective', async (req, res) => {
       ? `[🚨 0단계 AI가 사전 분석한 절대 채점 지침 준수 주의사항]:\n${standardsAnalysis}\n\n${prompt}` 
       : prompt;
     const targetTemp = typeof temperature === 'number' ? temperature : 0.7;
-    const resolvedModel = resolveStageModel('grading', { stage: 'grading', stageModels: req.body?.stageModels, preferredModel: req.body?.preferredModel || req.query?.preferredModel });
     const finalTemp = (opts && typeof opts.temperature === 'number') ? opts.temperature : targetTemp;
-    return callLLMWithFailover(sys, enrichedPrompt, img, scenario, { ...opts, stage: 'grading', preferredModel: resolvedModel, temperature: finalTemp, progressId });
+    return callLLMWithFailover(sys, enrichedPrompt, img, scenario, {
+      ...opts,
+      stage: 'grading',
+      preferredModel: resolvedGradingModel,
+      allowFallback: (opts && typeof opts.allowFallback === 'boolean') ? opts.allowFallback : allowGradingFallback,
+      temperature: finalTemp,
+      progressId: suppressSharedProgress ? null : progressId,
+      skipProgressUpdate: suppressSharedProgress
+    });
   };
 
   let attempt = 0;
-  const maxAttempts = 3; // 2→3: 순간 랙 및 Quota 지연에 대한 재시도 여유 확보
-  let delay = 300;       // 500ms→300ms: 재시도 반응 속도 단축
+  const maxAttempts = 2;
+  let delay = 300;
   let lastError = null;
 
   let activeExplanation = explanation || '';
@@ -143,10 +159,13 @@ router.post('/grade-subjective', async (req, res) => {
           isReevaluation: isReeval,
           kcscContext,
           wikiGrounding,
-          preferredModel: resolveStageModel('grading', { stage: 'grading', stageModels: req.body?.stageModels, preferredModel: req.body?.preferredModel || req.query?.preferredModel })
+          preferredModel: resolvedGradingModel,
+          allowGradingFallback
         });
-        if (progressId) {
+        if (progressId && !suppressSharedProgress) {
           stopBackendProgressTimer(progressId, 90, '1단계: 제출 답안 AI 정밀 분석 완료', true, progressTimer);
+        } else if (progressTimer) {
+          clearInterval(progressTimer);
         }
         return res.json({
           ...result,
@@ -167,13 +186,18 @@ router.post('/grade-subjective', async (req, res) => {
 
     const normalize = (s) => (s || '').trim().toLowerCase().replace(/\s+/g, '');
     const localCorrect = normalize(userAnswer) === normalize(correctAnswer);
-    if (progressId) {
+    if (progressId && !suppressSharedProgress) {
       stopBackendProgressTimer(progressId, 90, '1단계: 답안 비교 완료 (로컬)', true, progressTimer);
+    } else if (progressTimer) {
+      clearInterval(progressTimer);
     }
     res.json({
       isCorrect: localCorrect,
       score: localCorrect ? 10 : null,
       isError: !localCorrect,
+      modelRequested: resolvedGradingModel,
+      modelUsed: null,
+      failoverOccurred: false,
       reason: localCorrect 
         ? '로컬 단순 비교로 정답 판정' 
         : 'AI 채점 일시 지연 (재평가 버튼을 눌러주세요)',
@@ -1539,6 +1563,7 @@ ${isCalc ? `2. 지문의 모든 단위를 정확히 환산하여 대입하고, "
     let finalCorrectAnswer = null;
     let finalCorrectIndex = -1;
     let explanation = '';
+    const evalMeta = {};
 
     try {
       const llmResult = await callLLMWithFailover(
@@ -1546,7 +1571,12 @@ ${isCalc ? `2. 지문의 모든 단위를 정확히 환산하여 대입하고, "
         prompt,
         null,
         'formula',
-        { stage: 'grading', preferredModel: resolveStageModel('grading', { stage: 'grading', stageModels: req.body?.stageModels, preferredModel: req.body?.preferredModel }) }
+        {
+          stage: 'grading',
+          preferredModel: resolveStageModel('grading', { stage: 'grading', stageModels: req.body?.stageModels, preferredModel: req.body?.preferredModel }),
+          allowFallback: (typeof req.body?.allowGradingFallback === 'boolean') ? req.body.allowGradingFallback : globalAllowGradingFallback,
+          metaOut: evalMeta
+        }
       );
       const parsed = parseLlmJson(llmResult);
       if (parsed) {
@@ -1629,7 +1659,10 @@ ${isCalc ? `2. 지문의 모든 단위를 정확히 환산하여 대입하고, "
       correctAnswer: finalCorrectAnswer,
       correctIndex,
       explanation: explanation || '',
-      score: isCorrect ? 8 : 0
+      score: isCorrect ? 8 : 0,
+      modelRequested: evalMeta.modelRequested || null,
+      modelUsed: evalMeta.modelUsed || null,
+      failoverOccurred: Boolean(evalMeta.failoverOccurred)
     });
 
   } catch (err) {

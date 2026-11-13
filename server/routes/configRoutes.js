@@ -4,7 +4,7 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { dbQuery } from '../database.js';
 import { put, get } from '@vercel/blob';
-import { saveSessionValue, globalPreferredModel, globalStageModels, updatePreferredModel, updateStageModels, resolveStageModel, callLLMWithFailover, startBackendProgressTimer, updateProgress, getMatchingTopicContent } from '../services/aiService.js';
+import { saveSessionValue, globalPreferredModel, globalStageModels, globalAllowGradingFallback, updatePreferredModel, updateStageModels, updateAllowGradingFallback, resolveStageModel, callLLMWithFailover, startBackendProgressTimer, updateProgress, getMatchingTopicContent } from '../services/aiService.js';
 import { updateLiveEngineeringStandards, standardsList, ENGINEERING_STANDARDS } from '../plugins/engineeringStandards.js';
 import { updateLiveGradingStandards, gradingStandardsList } from '../plugins/gradingPlugin.js';
 import { updateLiveGenerationStandards, generationStandardsList } from '../plugins/generationStandards.js';
@@ -163,14 +163,21 @@ export const USER_CONVENTIONS = "";
 
 // GET /api/preferred-model
 router.get('/preferred-model', async (req, res) => {
-  if (configMemoryCache.has('preferred_model')) {
-    return res.json({ model: configMemoryCache.get('preferred_model') });
+  if (
+    configMemoryCache.has('preferred_model') &&
+    configMemoryCache.has('stage_preferred_models') &&
+    configMemoryCache.has('grading_allow_fallback')
+  ) {
+    return res.json({
+      model: configMemoryCache.get('preferred_model'),
+      stageModels: configMemoryCache.get('stage_preferred_models'),
+      allowGradingFallback: Boolean(configMemoryCache.get('grading_allow_fallback'))
+    });
   }
   try {
     const row = await dbQuery.get("SELECT value FROM app_session WHERE key = 'preferred_model'");
     if (row && row.value) {
       updatePreferredModel(row.value);
-      configMemoryCache.set('preferred_model', row.value);
     }
     const stageRow = await dbQuery.get("SELECT value FROM app_session WHERE key = 'stage_preferred_models'");
     if (stageRow && stageRow.value) {
@@ -178,40 +185,85 @@ router.get('/preferred-model', async (req, res) => {
         updateStageModels(JSON.parse(stageRow.value));
       } catch (e) {}
     }
+    const fallbackRow = await dbQuery.get("SELECT value FROM app_session WHERE key = 'grading_allow_fallback'");
+    if (fallbackRow && fallbackRow.value !== undefined && fallbackRow.value !== null) {
+      updateAllowGradingFallback(String(fallbackRow.value).trim().toLowerCase() === 'true');
+    }
+    configMemoryCache.set('preferred_model', globalPreferredModel);
+    configMemoryCache.set('stage_preferred_models', { ...globalStageModels });
+    configMemoryCache.set('grading_allow_fallback', Boolean(globalAllowGradingFallback));
   } catch (err) {
     console.warn("Failed to load preferred model from DB in GET /api/preferred-model:", err.message);
   }
-  res.json({ model: globalPreferredModel, stageModels: globalStageModels });
+  res.json({
+    model: globalPreferredModel,
+    stageModels: globalStageModels,
+    allowGradingFallback: Boolean(globalAllowGradingFallback)
+  });
 });
 
 // POST /api/preferred-model
 router.post('/preferred-model', async (req, res) => {
-  const { model, stage, stageModels } = req.body || {};
+  const { model, stage, stageModels, allowGradingFallback } = req.body || {};
+  let handled = false;
   try {
+    if (typeof allowGradingFallback === 'boolean') {
+      const updatedFallback = updateAllowGradingFallback(allowGradingFallback);
+      await saveSessionValue('grading_allow_fallback', String(updatedFallback));
+      configMemoryCache.set('grading_allow_fallback', updatedFallback);
+      console.log(`[Setting Saved] Allow Grading Fallback updated to: ${updatedFallback}`);
+      handled = true;
+    }
     if (stageModels && typeof stageModels === 'object') {
       const updated = updateStageModels(stageModels);
       await saveSessionValue('stage_preferred_models', JSON.stringify(updated));
       await saveSessionValue('preferred_model', updated.tutor || globalPreferredModel);
       configMemoryCache.set('preferred_model', updated.tutor || globalPreferredModel);
+      configMemoryCache.set('stage_preferred_models', { ...updated });
       console.log('[Setting Saved] Stage Models updated to:', JSON.stringify(updated));
-      return res.json({ success: true, model: globalPreferredModel, stageModels: updated });
+      return res.json({
+        success: true,
+        model: globalPreferredModel,
+        stageModels: updated,
+        allowGradingFallback: Boolean(globalAllowGradingFallback)
+      });
     }
     if (typeof stage === 'string' && ['ppt', 'question', 'grading', 'tutor'].includes(stage) && typeof model === 'string' && (model.startsWith('gemini-') || model.startsWith('claude-'))) {
       const updated = updateStageModels({ [stage]: model });
       await saveSessionValue('stage_preferred_models', JSON.stringify(updated));
+      configMemoryCache.set('stage_preferred_models', { ...updated });
       if (stage === 'tutor') {
         await saveSessionValue('preferred_model', model);
         configMemoryCache.set('preferred_model', model);
       }
       console.log(`[Setting Saved] Stage [${stage}] Model updated to: ${model}`);
-      return res.json({ success: true, model: globalPreferredModel, stageModels: updated });
+      return res.json({
+        success: true,
+        model: globalPreferredModel,
+        stageModels: updated,
+        allowGradingFallback: Boolean(globalAllowGradingFallback)
+      });
     }
     if (typeof model === 'string' && (model.startsWith('gemini-') || model.startsWith('claude-'))) {
       updatePreferredModel(model);
       await saveSessionValue('preferred_model', model);
       configMemoryCache.set('preferred_model', model);
+      configMemoryCache.set('stage_preferred_models', { ...globalStageModels });
       console.log(`[Setting Saved] Preferred Model updated to: ${model}`);
-      return res.json({ success: true, model, stageModels: globalStageModels });
+      return res.json({
+        success: true,
+        model,
+        stageModels: globalStageModels,
+        allowGradingFallback: Boolean(globalAllowGradingFallback)
+      });
+    }
+    if (handled) {
+      return res.json({
+        success: true,
+        model: globalPreferredModel,
+        stageModels: globalStageModels,
+        allowGradingFallback: Boolean(globalAllowGradingFallback)
+      });
     }
   } catch (err) {
     return res.status(500).json({ error: err.message });

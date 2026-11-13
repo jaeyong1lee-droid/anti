@@ -18,7 +18,13 @@ export const DEFAULT_STAGE_MODELS = {
 };
 export let globalStageModels = { ...DEFAULT_STAGE_MODELS };
 export let globalPreferredModel = 'gemini-3.5-flash-lite';
+export let globalAllowGradingFallback = false;
 export let globalAnthropicApiKey = null;
+
+export function updateAllowGradingFallback(allow = false) {
+  globalAllowGradingFallback = Boolean(allow);
+  return globalAllowGradingFallback;
+}
 
 export function inferStageFromScenario(scenario = 'default', options = {}) {
   if (options && typeof options.stage === 'string' && ['ppt', 'question', 'grading', 'tutor'].includes(options.stage)) {
@@ -105,6 +111,11 @@ export async function loadPreferredModel() {
     } else {
       await saveSessionValue('stage_preferred_models', JSON.stringify(globalStageModels));
     }
+    const fallbackRow = await dbQuery.get("SELECT value FROM app_session WHERE key = 'grading_allow_fallback'");
+    if (fallbackRow && fallbackRow.value !== undefined && fallbackRow.value !== null) {
+      globalAllowGradingFallback = String(fallbackRow.value).trim().toLowerCase() === 'true';
+      console.log(`[Setting Loaded] Allow Grading Fallback: ${globalAllowGradingFallback}`);
+    }
   } catch (e) {
     console.warn("Failed to load preferred model setting:", e);
   }
@@ -177,7 +188,7 @@ export function updateProgress(progressId, step, message, percentage = null) {
 }
 
 export function reportLlmProgress(options, scenario, modelName) {
-  if (options && options.progressId) {
+  if (options && options.progressId && !options.skipProgressUpdate) {
     const step = scenario === 'validation' ? 2 : 1;
     let stageText = '';
     const modelUpper = modelName ? modelName.toUpperCase() : 'AI';
@@ -338,14 +349,14 @@ export async function withLlmConcurrencySlot(deadlineAt, fn) {
 }
 
 export async function callLLMWithFailover(systemInstruction, userPrompt, image = null, scenario = 'default', options = {}) {
-  const defaultBudgetMs = scenario === 'grading' ? 35000 : (scenario === 'slides' ? 95000 : 52000);
+  const defaultBudgetMs = scenario === 'grading' ? 42000 : (scenario === 'slides' ? 95000 : 52000);
   const totalBudgetMs = options.timeoutBudgetMs || defaultBudgetMs;
   const deadlineAt = options.deadlineAt || (Date.now() + totalBudgetMs);
   return await _callLLMWithFailoverCore(systemInstruction, userPrompt, image, scenario, { ...options, deadlineAt });
 }
 
 async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = null, scenario = 'default', options = {}) {
-  const defaultBudgetMs = scenario === 'grading' ? 35000 : (scenario === 'slides' ? 95000 : 52000);
+  const defaultBudgetMs = scenario === 'grading' ? 42000 : (scenario === 'slides' ? 95000 : 52000);
   const deadlineAt = options.deadlineAt || (Date.now() + defaultBudgetMs);
   // SVG_DIAGRAM_PROMPT는 어설픈 그림 강제 방지를 위해 문제 출제에서 제외.
   // CHART_DIAGRAM_PROMPT는 5번 인터랙티브 그래프해석 문제의 Recharts 규격 유지를 위해 문제 출제 시 필수 포함.
@@ -376,15 +387,31 @@ async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = n
 
   const targetPref = resolveStageModel(scenario, options);
   const isClaudePreferred = targetPref.trim().toLowerCase().startsWith('claude-');
+  const allowFallback = (options && typeof options.allowFallback === 'boolean')
+    ? options.allowFallback
+    : (scenario === 'grading' ? globalAllowGradingFallback : true);
+  const primaryActualModel = isClaudePreferred
+    ? normalizeClaudeModel(targetPref, scenario, options)
+    : normalizeGeminiModel(targetPref);
 
   const addClaudeTasks = () => {
     if (!anthropicKey || !anthropicKey.startsWith('sk-ant-')) return;
     const resolvedPrimaryClaude = normalizeClaudeModel(targetPref, scenario, options);
-    const claudeModels = isClaudePreferred
-      ? (scenario === 'slides'
-          ? [resolvedPrimaryClaude]
-          : [...new Set([resolvedPrimaryClaude, 'claude-sonnet-5-5', 'claude-haiku-5-5', 'claude-opus-5-5'])])
-      : ['claude-sonnet-5-5', 'claude-haiku-5-5'];
+    let claudeModels;
+    if (scenario === 'grading') {
+      if (!allowFallback) {
+        claudeModels = [resolvedPrimaryClaude];
+      } else {
+        const secondaryClaude = resolvedPrimaryClaude === 'claude-sonnet-5-5' ? 'claude-haiku-5-5' : 'claude-sonnet-5-5';
+        claudeModels = [...new Set([resolvedPrimaryClaude, secondaryClaude])];
+      }
+    } else if (isClaudePreferred) {
+      claudeModels = (scenario === 'slides')
+        ? [resolvedPrimaryClaude]
+        : [...new Set([resolvedPrimaryClaude, 'claude-sonnet-5-5', 'claude-haiku-5-5', 'claude-opus-5-5'])];
+    } else {
+      claudeModels = ['claude-sonnet-5-5', 'claude-haiku-5-5'];
+    }
     for (const cm of claudeModels) {
       executionList.push({
         key: anthropicKey,
@@ -403,16 +430,23 @@ async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = n
     if (tertiaryKey && !tertiaryKey.startsWith('gsk_') && tertiaryKey !== primaryKey && tertiaryKey !== secondaryKey) keys.push({ key: tertiaryKey, label: 'Key #3' });
 
     const geminiPref = isClaudePreferred ? 'gemini-3.5-flash-lite' : targetPref;
-    const rawFallbacks = [
-      geminiPref,
-      'gemini-3.5-flash-lite',
-      'gemini-3.8-flash',
-      'gemini-3.7-flash',
-      'gemini-3.1-flash-lite',
-      'gemini-3.6-flash',
-      'gemini-3.5-flash',
-      'gemini-4-hydrogen'
-    ];
+    let rawFallbacks;
+    if (scenario === 'grading') {
+      rawFallbacks = allowFallback
+        ? [geminiPref, 'gemini-3.5-flash-lite', 'gemini-3.8-flash']
+        : [geminiPref];
+    } else {
+      rawFallbacks = [
+        geminiPref,
+        'gemini-3.5-flash-lite',
+        'gemini-3.8-flash',
+        'gemini-3.7-flash',
+        'gemini-3.1-flash-lite',
+        'gemini-3.6-flash',
+        'gemini-3.5-flash',
+        'gemini-4-hydrogen'
+      ];
+    }
     const uniqueRaw = [...new Set(rawFallbacks.filter(Boolean))];
 
     // [Interleaved Key Rotation]: 동일 키 6개 모델 연속 시도로 타임아웃 낭비 방지
@@ -427,15 +461,42 @@ async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = n
 
   if (isClaudePreferred) {
     addClaudeTasks();
-    addGeminiTasks();
+    if (scenario !== 'grading' || allowFallback) {
+      addGeminiTasks();
+    }
   } else {
     addGeminiTasks();
-    if (options.allowCrossProviderFallback) {
+    if (options.allowCrossProviderFallback && (scenario !== 'grading' || allowFallback)) {
       addClaudeTasks();
     }
   }
 
   let attemptedAny = false;
+  let attemptCount = 0;
+  const attemptsTrace = [];
+  const emitModelMeta = (task, actualModelName) => {
+    const switchedModel = actualModelName !== primaryActualModel;
+    const meta = {
+      modelRequested: targetPref,
+      resolvedPrimaryModel: primaryActualModel,
+      modelUsed: actualModelName,
+      configuredModelUsed: task.model,
+      provider: task.type,
+      keyLabel: task.label,
+      attemptCount,
+      keyRotated: attemptCount > 1 && !switchedModel,
+      switchedModel,
+      failoverOccurred: switchedModel,
+      allowFallback,
+      attempts: attemptsTrace
+    };
+    if (options && options.metaOut && typeof options.metaOut === 'object') {
+      Object.assign(options.metaOut, meta);
+    }
+    if (options && typeof options.onModelResolved === 'function') {
+      try { options.onModelResolved(meta); } catch {}
+    }
+  };
   const failedKeys = new Set();
   const rateLimitedKeyModels = new Set();
   const retriedTaskIndices = new Set();
@@ -461,6 +522,14 @@ async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = n
     const modelName = task.model;
 
     attemptedAny = true;
+    attemptCount++;
+    attemptsTrace.push({
+      attempt: attemptCount,
+      provider: task.type,
+      configuredModel: modelName,
+      actualModel: actualModelName,
+      keyLabel: task.label
+    });
 
     if (task.type === 'claude') {
       try {
@@ -551,6 +620,7 @@ async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = n
             }
           }
           console.log(`[Claude 성공] ${task.label} (${maskedKey}), 모델: ${modelName} (${actualModelName})`);
+          emitModelMeta(task, actualModelName);
           return text;
         } else {
           throw new Error('Claude response empty');
@@ -582,14 +652,6 @@ async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = n
     try {
       console.log(`[Gemini 시도] ${task.label} (${maskedKey}), 모델: ${modelName} -> ${actualModelName}`);
       const genAI = new GoogleGenerativeAI(key);
-      const model = genAI.getGenerativeModel({
-        model: actualModelName,
-        systemInstruction: finalSystemInstruction,
-        generationConfig: {
-          temperature: options.temperature !== undefined ? options.temperature : (scenario === 'tutor' ? 0.7 : 0.2),
-          ...((scenario === 'grading' || scenario === 'question' || scenario === 'slides') ? { responseMimeType: 'application/json' } : {})
-        }
-      }, { apiVersion: 'v1beta' });
 
       let generateContentArg = [userPrompt];
       if (Array.isArray(image)) {
@@ -616,20 +678,28 @@ async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = n
       }
 
       reportLlmProgress(options, scenario, modelName);
-      // [Blocker-5 / P0 Fix]: timeoutPromise를 세마포어 슬롯 획득 콜백 내부에서 생성하고 finally에서 clearTimeout하여 슬롯 대기 실패 시 unhandledRejection 원천 차단
+      // [Blocker-5 / P0 Fix]: 세마포어 슬롯 획득 이후 SDK timeout(AbortSignal) + 안전 타이머를 시작해 타임아웃 시 HTTP 소켓도 즉시 중단
       const result = await withLlmConcurrencySlot(deadlineAt, async () => {
         const perCallCapMs = scenario === 'grading'
-          ? (actualModelName === 'gemini-4-hydrogen' ? 20000 : 12000)
+          ? (actualModelName === 'gemini-4-hydrogen' ? 22000 : 18000)
           : 50000;
         const timeoutMs = Math.min(
           perCallCapMs,
           Math.max(2500, (deadlineAt - Date.now()) - 400)
         );
+        const model = genAI.getGenerativeModel({
+          model: actualModelName,
+          systemInstruction: finalSystemInstruction,
+          generationConfig: {
+            temperature: options.temperature !== undefined ? options.temperature : (scenario === 'tutor' ? 0.7 : 0.2),
+            ...((scenario === 'grading' || scenario === 'question' || scenario === 'slides') ? { responseMimeType: 'application/json' } : {})
+          }
+        }, { apiVersion: 'v1beta', timeout: timeoutMs });
         let geminiTimeoutId = null;
         const timeoutPromise = new Promise((_, reject) => {
           geminiTimeoutId = setTimeout(
             () => reject(new Error(`Gemini request timeout after ${timeoutMs}ms`)),
-            timeoutMs
+            timeoutMs + 250
           );
         });
         try {
@@ -645,6 +715,7 @@ async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = n
       text = text.replace(/^[ \t]*#[ \t]*$/gm, '');
       if (text) {
         console.log(`[Gemini 성공] ${task.label} (${maskedKey}), 모델: ${modelName} (${actualModelName})`);
+        emitModelMeta(task, actualModelName);
         return text;
       } else {
         throw new Error('Gemini response empty');
@@ -682,6 +753,18 @@ async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = n
     throw new Error('이미지 분석에는 Gemini API 키가 필요하지만, 현재 등록된 Gemini API 키가 없습니다. 관리자에게 문의해 주세요.');
   }
 
+  if (options && options.metaOut && typeof options.metaOut === 'object') {
+    Object.assign(options.metaOut, {
+      modelRequested: targetPref,
+      resolvedPrimaryModel: primaryActualModel,
+      modelUsed: null,
+      failoverOccurred: false,
+      allowFallback,
+      attemptCount,
+      attempts: attemptsTrace,
+      failed: true
+    });
+  }
   if (keyErrors.length > 0) {
     const uniqueErrors = [...new Set(keyErrors)].slice(0, 3);
     if (hasImage) {
