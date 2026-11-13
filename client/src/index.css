@@ -1091,3 +1091,10 @@ svg text:not([fill]) {
     padding-left: 0 !important;
   }
 }
+
+/* Defer layout and paint of offscreen quiz cards while lifting containment if a fixed overlay renders inside */
+.quiz-card-item:not(:has(.fixed)),
+.exam-card-item:not(:has(.fixed)) {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 420px;
+}

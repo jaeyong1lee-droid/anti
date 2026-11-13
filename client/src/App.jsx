@@ -5,7 +5,6 @@ import {
   healQuizQuestionObject, 
   healTheoryQuestionObject, 
   healFormulaQuestionObject, 
-  healAnswersheetQuestionObject,
   isCalculationQuestion,
   parseLlmJson
 } from './utils/latexUtils';
@@ -13,7 +12,10 @@ import { convertMarkdownTablesToHtml } from './utils/markdownTableRenderer';
 import { convertMarkdownAcronymsToHtml } from './utils/markdownAcronymRenderer';
 import { compressImage } from './utils/imageUtils';
 import { BufferedTextarea } from './components/BufferedInput';
+import { TutorChatComposer } from './components/TutorChatComposer';
 import { LatexRenderer } from './components/LatexRenderer';
+import { createTableColumnWidthManager } from './utils/tableColumnWidthManager';
+import { createDebouncedScrollSaver } from './utils/scrollPersistence';
 import { TableQuiz } from './components/TableQuiz';
 import { AcronymQuiz } from './components/AcronymQuiz';
 import { ReadOnlyTable } from './components/ReadOnlyTable';
@@ -27,13 +29,11 @@ import {
   buildHtmlDocument, 
   handleOpenHtmlAnswerPopup, 
   convertMarkdownToHtml, 
-  getOnlySourceAccordion,
   renderKatexString, 
   getSelectionTextWithLatex,
   isSameConditionValue,
   areCellsEqual,
   getTableScoreColorTheme,
-  formatGradingReason,
   stripHtmlTagsFromRawData,
   isOverviewReview,
   getAnswerValue,
@@ -1662,7 +1662,7 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
                   </div>
                   {item.reason && (
                     <div className="text-[14px] sm:text-[16px] text-slate-300 mt-1.5 leading-relaxed pl-6">
-                      <LatexRenderer text={formatGradingReason(item.reason)} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} />
+                      <LatexRenderer text={item.reason} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} />
                     </div>
                   )}
                   {(item.correctAnswer || item.suggestedModelAnswer) && (
@@ -3004,7 +3004,7 @@ export default function App() {
                   <div>
                     <span className={`mr-1.5 font-bold ${theme.text}`}>피드백:</span>
                     <span className={`font-normal leading-relaxed inline ${theme.text}`}>
-                      <LatexRenderer text={formatGradingReason(gradingResult.reason)} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} className="inline" />
+                      <LatexRenderer text={gradingResult.reason} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} className="inline" />
                     </span>
                   </div>
                 )}
@@ -6455,119 +6455,10 @@ export default function App() {
         .trim();
     };
 
-    window.__saveTableColumnWidths = (table) => {
-      if (!table) return;
-      
-      const key = table.getAttribute('data-table-key');
-      if (!key) return; // 렌더러에서 키를 주입받지 못한 표는 저장하지 않음
+    const tableWidthManager = createTableColumnWidthManager();
 
-      const ths = Array.from(table.querySelectorAll('th'));
-      if (ths.length === 0) return;
-      
-      const widths = ths.map(th => th.offsetWidth);
-      const tableWidth = table.style.width || '100%';
-      try {
-        localStorage.setItem(key, JSON.stringify({ widths, tableWidth }));
-      } catch (e) {}
-    };
-
-    window.__restoreAllTableColumnWidths = (container = document) => {
-      if (!container) return;
-      const tables = container.querySelectorAll ? container.querySelectorAll('.markdown-table-container table, .table-quiz-container table') : [];
-      tables.forEach(table => {
-        const key = table.getAttribute('data-table-key');
-        if (key) {
-          try {
-            const savedStr = localStorage.getItem(key);
-            if (savedStr) {
-              const saved = JSON.parse(savedStr);
-              const widths = saved.widths || saved;
-              if (Array.isArray(widths) && widths.length > 0) {
-                const allThs = Array.from(table.querySelectorAll('th'));
-                widths.forEach((w, i) => {
-                  if (allThs[i] && w) {
-                    const widthVal = typeof w === 'number' ? `${w}px` : (String(w).includes('px') || String(w).includes('%') ? w : `${w}px`);
-                    allThs[i].style.setProperty('width', widthVal, 'important');
-                    allThs[i].style.setProperty('min-width', widthVal, 'important');
-                    allThs[i].style.setProperty('max-width', widthVal, 'important');
-                  }
-                });
-                if (saved.tableWidth) {
-                  table.style.setProperty('width', saved.tableWidth, 'important');
-                  table.style.setProperty('min-width', saved.tableWidth, 'important');
-                }
-                table.classList.remove('table-auto');
-                table.classList.add('table-fixed');
-                return;
-              }
-            }
-          } catch(e) {}
-        }
-
-        // 이미 사용자가 커스텀하게 고정(fixed)한 표라면 덮어쓰지 않음
-        if (table.classList.contains('table-fixed')) {
-          return;
-        }
-
-        const tableContainer = table.closest('.markdown-table-container') || table.parentElement;
-        if (!tableContainer) return;
-        const containerWidth = tableContainer.clientWidth;
-        if (!containerWidth) return;
-
-        // 테이블이 table-auto 상태일 때 초과 여부 검사 (2열 더블클릭과 동일한 비율 분배 효과)
-        const allThs = Array.from(table.querySelectorAll('th'));
-        const colCount = allThs.length;
-        const MIN_WIDTH = 84;
-        
-        let needsFixed = false;
-        const naturalWidths = allThs.map(h => h.offsetWidth);
-        const sumNatural = naturalWidths.reduce((a, b) => a + b, 0);
-
-        // 1열 기준 5글자(약 90px), 나머지 열 10글자(약 170px) 기준 초과 여부 검사
-        if (true) {
-          needsFixed = true;
-          
-          // 1. 1열(구분 열) 처리: 최대 5글자(90px) 제한, 그 미만이면 타이트하게 유지
-          const col0MaxPx = 90;
-          const finalCol0Width = Math.min(naturalWidths[0], col0MaxPx);
-          
-          allThs[0].style.setProperty('width', finalCol0Width + 'px', 'important');
-          allThs[0].style.setProperty('max-width', finalCol0Width + 'px', 'important');
-          allThs[0].style.setProperty('min-width', finalCol0Width + 'px', 'important');
-
-          // 2. 1열 이후 나머지 열들 비례 배분
-          const numRemCols = colCount - 1;
-          if (numRemCols > 0) {
-            const maxRemBudgetPx = numRemCols * 170; // 열 개수 * 10글자 한도
-            const availableRemWidth = containerWidth - finalCol0Width;
-            
-            // 모바일처럼 좁을 때는 한도(스크롤 허용)를 따르고, PC처럼 넓을 때는 화면을 꽉 채우도록 둘 중 큰 값을 예산으로 잡음
-            const targetRemTotalPx = Math.max(maxRemBudgetPx, availableRemWidth);
-            const sumRemNaturalWidths = naturalWidths.slice(1).reduce((sum, w) => sum + w, 0);
-            
-            for (let i = 1; i < colCount; i++) {
-              let finalW = naturalWidths[i];
-              if (sumRemNaturalWidths > targetRemTotalPx) {
-                // 한도(예: 40글자)를 초과할 경우에만 비율에 맞춰 예산 분배
-                finalW = (naturalWidths[i] / sumRemNaturalWidths) * targetRemTotalPx;
-              }
-              
-              // 너무 작아지지 않도록 최소 너비 보장
-              finalW = Math.max(MIN_WIDTH, finalW);
-
-              allThs[i].style.setProperty('width', finalW + 'px', 'important');
-              allThs[i].style.setProperty('max-width', finalW + 'px', 'important');
-              allThs[i].style.setProperty('min-width', MIN_WIDTH + 'px', 'important');
-            }
-          }
-
-          table.classList.remove('table-auto');
-          table.classList.add('table-fixed');
-          table.style.setProperty('min-width', '100%', 'important');
-          table.style.setProperty('max-width', 'none', 'important');
-        }
-      });
-    };
+    window.__saveTableColumnWidths = tableWidthManager.saveTableColumnWidths;
+    window.__restoreAllTableColumnWidths = tableWidthManager.scheduleRestore;
 
     // Auto trigger table column width restoration on initial load & refresh
     if (window.__restoreAllTableColumnWidths) {
@@ -6634,6 +6525,7 @@ export default function App() {
         table.style.removeProperty('width');
         table.style.removeProperty('min-width');
         table.style.removeProperty('max-width');
+        tableWidthManager.invalidateTableWidthMark(table);
         table.classList.remove('table-fixed');
         table.classList.add('table-auto');
         
@@ -6834,6 +6726,7 @@ export default function App() {
     };
 
     return () => {
+      tableWidthManager.dispose();
       delete window.__handleFormulaConfirmRequest;
       delete window.__hideSelectionPopup;
       delete window.__handleTableColumnDoubleClick;
@@ -7601,10 +7494,6 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
     return () => window.removeEventListener('resize', updateTabletState);
   }, []);
 
-  // Mobile Status Bar States
-  const [statusBarTime, setStatusBarTime] = useState('');
-  const [batteryLevel, setBatteryLevel] = useState(88);
-  const [isCharging, setIsCharging] = useState(false);
 
   // Touch swipe gesture handling for Galaxy Z Flip 6 cover screen and mobile portrait views
   const swipeTouchStartX = useRef(null);
@@ -7654,41 +7543,6 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
     };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  // Mobile Status Bar Updater (Time & Battery)
-  useEffect(() => {
-    const updateTime = () => {
-      const now = new Date();
-      let hours = now.getHours();
-      const minutes = String(now.getMinutes()).padStart(2, '0');
-      setStatusBarTime(`${hours}:${minutes}`);
-    };
-    updateTime();
-    const timeInterval = setInterval(updateTime, 10000);
-
-    let batteryRef = null;
-    let updateBatteryRef = null;
-    if (navigator.getBattery) {
-      navigator.getBattery().then((battery) => {
-        batteryRef = battery;
-        updateBatteryRef = () => {
-          setBatteryLevel(Math.round(battery.level * 100));
-          setIsCharging(battery.charging);
-        };
-        updateBatteryRef();
-        battery.addEventListener('levelchange', updateBatteryRef);
-        battery.addEventListener('chargingchange', updateBatteryRef);
-      });
-    }
-
-    return () => {
-      clearInterval(timeInterval);
-      if (batteryRef && updateBatteryRef) {
-        batteryRef.removeEventListener('levelchange', updateBatteryRef);
-        batteryRef.removeEventListener('chargingchange', updateBatteryRef);
-      }
-    };
   }, []);
 
   // Mobile portrait fullscreen auto-request on user interaction (DISABLED to keep native status bar visible)
@@ -7896,7 +7750,7 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
   const theoryInputRevealed = {};
   const setTheoryInputRevealed = () => {};
   const [formulaInputRevealed, setFormulaInputRevealed] = useState({});
-  const [chatInput, setChatInput] = useState('');
+  const chatInputRef = useRef('');
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [showManageStandardsModal, setShowManageStandardsModal] = useState(false);
   const [showEditStandardModal, setShowEditStandardModal] = useState(false);
@@ -8065,14 +7919,109 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
       }
     };
 
-    document.addEventListener('touchstart', _onTouchStart, { passive: true });
-    document.addEventListener('touchmove', _onTouchMove, { passive: false }); // ← passive: false 필수
+    const mobileQuery = window.matchMedia('(max-width: 767px)');
+    let isTouchListenersBound = false;
 
-    return () => {
+    const attachTouchListeners = () => {
+      if (isTouchListenersBound) return;
+      document.addEventListener('touchstart', _onTouchStart, { passive: true });
+      document.addEventListener('touchmove', _onTouchMove, { passive: false }); // ← passive: false 필수
+      isTouchListenersBound = true;
+    };
+
+    const detachTouchListeners = () => {
+      if (!isTouchListenersBound) return;
       document.removeEventListener('touchstart', _onTouchStart);
       document.removeEventListener('touchmove', _onTouchMove);
+      isTouchListenersBound = false;
     };
-  }, []); // 마운트 시 1회만 등록
+
+    const syncTouchListeners = () => {
+      if (mobileQuery.matches) {
+        attachTouchListeners();
+      } else {
+        detachTouchListeners();
+      }
+    };
+
+    syncTouchListeners();
+    if (mobileQuery.addEventListener) {
+      mobileQuery.addEventListener('change', syncTouchListeners);
+    } else if (mobileQuery.addListener) {
+      mobileQuery.addListener(syncTouchListeners);
+    }
+
+    return () => {
+      detachTouchListeners();
+      if (mobileQuery.removeEventListener) {
+        mobileQuery.removeEventListener('change', syncTouchListeners);
+      } else if (mobileQuery.removeListener) {
+        mobileQuery.removeListener(syncTouchListeners);
+      }
+    };
+  }, []); // 모바일 뷰포트일 때만 non-passive touchmove 바인딩
+
+  const reviewActionsRef = useRef({});
+  const stableGradeSingleTableCell = useCallback((...args) => reviewActionsRef.current.gradeSingleTableCell(...args), []);
+  const stableGradeSingleAcronymCell = useCallback((...args) => reviewActionsRef.current.gradeSingleAcronymCell(...args), []);
+  const handleComposerSubmit = useCallback(() => reviewActionsRef.current.handleSendChat(), []);
+  const handleComposerImageAttach = useCallback((e) => reviewActionsRef.current.handleImageAttachment(e), []);
+  const handleComposerPasteImage = useCallback((e) => reviewActionsRef.current.handlePasteImage(e), []);
+  const handleCloseFloatingCalculator = useCallback(() => setShowFloatingCalculator(false), []);
+  const handleCloseFloatingMemorization = useCallback(() => setShowFloatingMemorization(false), []);
+
+  const quizScrollSaverRef = useRef(null);
+  if (!quizScrollSaverRef.current) {
+    quizScrollSaverRef.current = createDebouncedScrollSaver({ delayMs: 350 });
+  }
+  const flushQuizScrollSave = useCallback(() => {
+    quizScrollSaverRef.current?.flush();
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      quizScrollSaverRef.current?.flush();
+    };
+  }, [selectedTopic?.id, selectedTopic?.schedule_id]);
+
+  const reviewQuizHandlers = React.useMemo(() => (
+    (aiQuestions || []).map((q, idx) => ({
+      onSubmitAcronym: async () => {
+        if (reviewActionsRef.current.gradingLoading?.[idx]) return;
+        await reviewActionsRef.current.gradeAcronymQuestion(idx, q);
+        setRevealedQuestions(prev => ({ ...prev, [idx]: true }));
+      },
+      onSubmitTable: async () => {
+        if (reviewActionsRef.current.gradingLoading?.[idx]) return;
+        await reviewActionsRef.current.gradeTableQuestion(idx, q);
+        setRevealedQuestions(prev => ({ ...prev, [idx]: true }));
+      },
+      onGradeOverviewStep: async (step, targetInputs) => {
+        if (reviewActionsRef.current.gradingLoading?.[idx]) return;
+        await reviewActionsRef.current.gradeTableQuestion(idx, q, targetInputs);
+        if (step === 2) {
+          setRevealedQuestions(prev => ({ ...prev, [idx]: true }));
+        }
+      },
+    }))
+  ), [aiQuestions]);
+
+  const examQuizHandlers = React.useMemo(() => (
+    (examQuestions || []).map((q, idx) => ({
+      onSubmitTable: async () => {
+        if (reviewActionsRef.current.gradingLoading?.[idx]) return;
+        await reviewActionsRef.current.gradeTableQuestion(idx, q);
+        setExamRevealed(prev => ({ ...prev, [idx]: true }));
+      },
+      onGradeOverviewStep: async (step, targetInputs) => {
+        if (reviewActionsRef.current.gradingLoading?.[idx]) return;
+        await reviewActionsRef.current.gradeTableQuestion(idx, q, targetInputs);
+        if (step === 2) {
+          setExamRevealed(prev => ({ ...prev, [idx]: true }));
+        }
+      },
+    }))
+  ), [examQuestions]);
 
   const chatBodyRef = useRef(null);
   const tutorFileInputRef = useRef(null);
@@ -13384,7 +13333,7 @@ ${item.intuitive || ''}
             
             userAttemptInfo += `- [빈칸 ${inputLetter}] 사용자 입력: "${userVal}" (모범 답안: "${correctVal}")`;
             if (grading) {
-              userAttemptInfo += ` → 결과: ${grading.isCorrect ? '정답 인정' : '오답 판정'} (사유: ${formatGradingReason(grading.reason)})`;
+              userAttemptInfo += ` → 결과: ${grading.isCorrect ? '정답 인정' : '오답 판정'} (사유: ${grading.reason || ''})`;
             }
             userAttemptInfo += `\n`;
           });
@@ -13402,7 +13351,7 @@ ${item.intuitive || ''}
           userAttemptInfo += `■ 사용자가 입력한 답안: "${userVal}"\n`;
           const grading = tableGradingResults[`${idx}_INPUT`];
           if (grading) {
-            userAttemptInfo += `■ 채점 결과: ${grading.isCorrect ? '정답 인정' : '오답 판정'} (사유: ${formatGradingReason(grading.reason)})\n`;
+            userAttemptInfo += `■ 채점 결과: ${grading.isCorrect ? '정답 인정' : '오답 판정'} (사유: ${grading.reason || ''})\n`;
           }
         }
       }
@@ -15080,14 +15029,14 @@ ${item.intuitive || ''}
 
   // ── Gemini Sidebar Chat Handler ───────────────────────────────
   const handleSendChat = async (customMessage, overrideAcronymMode = false) => {
-    const userMessage = (typeof customMessage === 'string' ? customMessage : chatInput).trim();
+    const userMessage = (typeof customMessage === 'string' ? customMessage : chatInputRef.current).trim();
     if ((!userMessage && attachedImages.length === 0) || isChatLoading) return;
     
     const currentAttachedImages = [...attachedImages];
     if (typeof customMessage !== 'string') {
-      setChatInput('');
-      if (sidebarChatInputRef.current) sidebarChatInputRef.current.style.height = 'auto';
-      if (mobileChatInputRef.current) mobileChatInputRef.current.style.height = 'auto';
+      chatInputRef.current = '';
+      sidebarChatInputRef.current?.reset?.();
+      mobileChatInputRef.current?.reset?.();
     }
     setAttachedImages([]);
     
@@ -17694,7 +17643,7 @@ ${itemsStr}
       loadedData = [];
     }
 
-    const cleaned = (loadedData || []).map(healAnswersheetQuestionObject);
+    const cleaned = (loadedData || []).map(healQuizQuestionObject);
     // Auto-sort by answersheet_report_id in ascending order
     cleaned.sort((a, b) => (a.answersheet_report_id || 0) - (b.answersheet_report_id || 0));
     latestAnswersheetQuestionsRef.current = cleaned;
@@ -17706,7 +17655,7 @@ ${itemsStr}
 
   const handleSaveAnswersheetQuestions = async (qs = answersheetQuestions, showToast = true) => {
     try {
-      const healedQs = Array.isArray(qs) ? qs.map(healAnswersheetQuestionObject) : qs;
+      const healedQs = Array.isArray(qs) ? qs.map(healQuizQuestionObject) : qs;
       if (Array.isArray(healedQs)) {
         // Auto-sort by answersheet_report_id in ascending order
         healedQs.sort((a, b) => (a.answersheet_report_id || 0) - (b.answersheet_report_id || 0));
@@ -17875,7 +17824,7 @@ ${itemsStr}
                 };
               }
               return item;
-            }).map(healAnswersheetQuestionObject);
+            }).map(healQuizQuestionObject);
             latestAnswersheetQuestionsRef.current = updated;
             handleSaveAnswersheetQuestions(updated, false);
             return updated;
@@ -19165,7 +19114,21 @@ ${itemsStr}
     );
   }
 
+  reviewActionsRef.current = {
+    gradeAcronymQuestion,
+    gradeTableQuestion,
+    gradeSingleTableCell,
+    gradeSingleAcronymCell,
+    handleSendChat,
+    handleImageAttachment,
+    handlePasteImage,
+    gradingLoading,
+  };
+
   const isAnyFullScreenModalOpen = !!(selectedTopic || showExam || showFormulaExam || showTheoryExam || showAnswerSheet);
+  const isFloatingOverlayVisible = !!(showFormulaExam || showAnswerSheet || selectedTopic !== null || showExam);
+  const isFloatingCalcOpen = showFloatingCalculator && isFloatingOverlayVisible;
+  const isFloatingMemoOpen = showFloatingMemorization && isFloatingOverlayVisible;
 
   const isDesktopNavOpen = isTabletScreen
     ? !tabletNavHidden
@@ -20265,8 +20228,9 @@ ${itemsStr}
 
 
       {/* Main Content Area */}
+      {!isAnyFullScreenModalOpen && (
       <main
-        className={`w-full mx-auto px-3 md:px-12 mt-8 flex-grow ${isTabletScreen || viewMode === 'all_topics' ? 'max-w-none xl:max-w-none 2xl:max-w-none' : 'max-w-7xl xl:max-w-[85rem] 2xl:max-w-[95rem]'} ${isAnyFullScreenModalOpen ? 'hidden' : ''}`}
+        className={`w-full mx-auto px-3 md:px-12 mt-8 flex-grow ${isTabletScreen || viewMode === 'all_topics' ? 'max-w-none xl:max-w-none 2xl:max-w-none' : 'max-w-7xl xl:max-w-[85rem] 2xl:max-w-[95rem]'}`}
         style={{
           paddingLeft: isTabletScreen 
             ? (tabletNavHidden ? '12px' : '144px')
@@ -21242,6 +21206,7 @@ ${itemsStr}
           </section>
         )}
       </main>
+      )}
 
       {/* ===== HTML 원문수정 모달 ===== */}
       {showHtmlEditModal && (
@@ -21458,7 +21423,8 @@ ${itemsStr}
               <button
                 disabled={isSavingSession}
                 onClick={() => { 
-                  savedQuizScroll.current = quizBodyRef.current?.scrollTop || 0; 
+                  savedQuizScroll.current = quizBodyRef.current?.scrollTop || 0;
+                  flushQuizScrollSave();
                   setSelectedTopic(null); 
                 }}
                 className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800 hover:bg-slate-800/50 rounded-xl text-[11px] sm:text-xs md:text-sm font-black transition-all duration-200 cursor-pointer active:scale-95 text-center whitespace-nowrap min-w-0"
@@ -21641,12 +21607,7 @@ ${itemsStr}
                     const key = selectedTopic.schedule_id 
                       ? `anti_review_progress_sched_${selectedTopic.schedule_id}`
                       : `anti_review_progress_${selectedTopic.id}`;
-                    try {
-                      const existing = localStorage.getItem(key);
-                      const parsed = existing ? JSON.parse(existing) : {};
-                      parsed.savedQuizScroll = currentTop;
-                      localStorage.setItem(key, JSON.stringify(parsed));
-                    } catch (err) {}
+                    quizScrollSaverRef.current?.schedule(key, currentTop);
                   }
                 }}
                 onMouseDown={(e) => {
@@ -22144,7 +22105,7 @@ ${itemsStr}
                           setTableAnswers, 
                           revealedQuestions[idx], 
                           tableGradingResults, 
-                          gradeSingleTableCell, 
+                          stableGradeSingleTableCell, 
                           cellGradingLoading,
                           async () => {
                             if (gradingLoading[idx]) return;
@@ -22476,12 +22437,8 @@ ${itemsStr}
                                     katexLoaded={katexLoaded} 
                                     tableGradingResults={tableGradingResults}
                                     weight={W}
-                                    onSubmit={async () => {
-                                      if (gradingLoading[idx]) return;
-                                      await gradeAcronymQuestion(idx, q);
-                                      setRevealedQuestions(prev => ({ ...prev, [idx]: true }));
-                                    }}
-                                  gradeSingleAcronymCell={gradeSingleAcronymCell}
+                                    onSubmit={reviewQuizHandlers[idx]?.onSubmitAcronym}
+                                  gradeSingleAcronymCell={stableGradeSingleAcronymCell}
                                     cellGradingLoading={cellGradingLoading}
                                     floatedTableId={floatedTableId}
                                     setFloatedTableId={setFloatedTableId}
@@ -22512,7 +22469,11 @@ ${itemsStr}
                                 </div>
                               )}
                             </div>
-                          ) : isCalculationQuestion(q, selectedTopic?.category || examTopic?.category) ? (
+                          ) : isCalculationQuestion(q, selectedTopic?.category || examTopic?.category) ? (() => {
+                            const healedQ = healQuizQuestionObject(q);
+                            const items = healedQ.calcItems || [];
+                            const activeGradingResults = showExam ? examTableGradingResults : tableGradingResults;
+                            return (
                             <div className="space-y-3 w-full animate-fade-in">
                               <div className={`p-3.5 sm:p-5 rounded-xl border space-y-4 text-left transition-all ${getSubjectiveContainerClasses(idx, isRevd)}`}>
                                 <div className="flex items-center justify-between border-b border-slate-700/60 pb-2.5">
@@ -22520,21 +22481,12 @@ ${itemsStr}
                                     <span>🔢</span> 수치 계산 답안 작성
                                   </span>
                                   <span className="text-xs text-slate-400 font-medium">
-                                    {(() => {
-                                      const healedQ = healQuizQuestionObject(q);
-                                      const items = healedQ.calcItems || [];
-                                      return `총 ${items.length}개 항목`;
-                                    })()}
+                                    {`총 ${items.length}개 항목`}
                                   </span>
                                 </div>
 
                                 <div className="space-y-3">
-                                  {(() => {
-                                    const healedQ = healQuizQuestionObject(q);
-                                    const items = healedQ.calcItems || [];
-                                    const activeGradingResults = showExam ? examTableGradingResults : tableGradingResults;
-                                    
-                                    return items.map((item, iIdx) => {
+                                  {items.map((item, iIdx) => {
                                       const inputId = item.id || `INPUT_${iIdx+1}`;
                                       const inputKey = `${idx}_${inputId}`;
                                       const gradingResult = activeGradingResults[inputKey];
@@ -22612,8 +22564,7 @@ ${itemsStr}
                                           />
                                         </div>
                                       );
-                                    });
-                                  })()}
+                                    })}
                                 </div>
 
                                 {!isRevd ? (
@@ -22648,7 +22599,8 @@ ${itemsStr}
                                 )}
                               </div>
                             </div>
-                          ) : (!isCalculationQuestion(q, selectedTopic?.category || examTopic?.category) && !!(q.tableData || q.comparisonTableData)) ? (
+                            );
+                          })() : (!isCalculationQuestion(q, selectedTopic?.category || examTopic?.category) && !!(q.tableData || q.comparisonTableData)) ? (
                             <div className="space-y-3 w-full">
                               {(() => {
                                 const scoredIndices = [];
@@ -22671,20 +22623,10 @@ ${itemsStr}
                                     katexLoaded={katexLoaded} 
                                     tableGradingResults={tableGradingResults}
                                     weight={W}
-                                    onSubmit={async () => {
-                                      if (gradingLoading[idx]) return;
-                                      await gradeTableQuestion(idx, q);
-                                      setRevealedQuestions(prev => ({ ...prev, [idx]: true }));
-                                    }}
-                                    onGradeOverviewStep={async (step, targetInputs) => {
-                                      if (gradingLoading[idx]) return;
-                                      await gradeTableQuestion(idx, q, targetInputs);
-                                      if (step === 2) {
-                                        setRevealedQuestions(prev => ({ ...prev, [idx]: true }));
-                                      }
-                                    }}
+                                    onSubmit={reviewQuizHandlers[idx]?.onSubmitTable}
+                                    onGradeOverviewStep={reviewQuizHandlers[idx]?.onGradeOverviewStep}
                                     gradingLoading={!!gradingLoading[idx]}
-                                    gradeSingleTableCell={gradeSingleTableCell}
+                                    gradeSingleTableCell={stableGradeSingleTableCell}
                                     cellGradingLoading={cellGradingLoading}
                                     floatedTableId={floatedTableId}
                                     setFloatedTableId={setFloatedTableId}
@@ -22813,7 +22755,7 @@ ${itemsStr}
                                     <div className="text-[14px] sm:text-[16px] font-black flex justify-between items-center mb-0.5">
                                       <span className={getSubjectiveTextColorClass(idx)}>{getSubjectiveStatusText(idx)}</span>
                                     </div>
-                                    <div className="text-[14px] sm:text-[16px] leading-relaxed opacity-90"><LatexRenderer text={formatGradingReason(tableGradingResults[`${idx}_INPUT`].reason)} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} /></div>
+                                    <div className="text-[14px] sm:text-[16px] leading-relaxed opacity-90"><LatexRenderer text={tableGradingResults[`${idx}_INPUT`].reason} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} /></div>
                                     <div className="mt-1.5 pt-1.5 border-t border-current/10 text-[14px] sm:text-[16px] select-text model-answer-section">
                                       <span className="font-extrabold">💡 모범 답안:</span>
                                       <div className="mt-1 text-[14px] sm:text-[16px] text-slate-200 leading-relaxed">
@@ -23116,7 +23058,8 @@ ${itemsStr}
                         </button>
                         <button
                           onClick={() => { 
-                            savedQuizScroll.current = quizBodyRef.current?.scrollTop || 0; 
+                            savedQuizScroll.current = quizBodyRef.current?.scrollTop || 0;
+                            flushQuizScrollSave();
                             setSelectedTopic(null); 
                           }}
                           className="px-2.5 py-1 text-[10px] font-black rounded-lg bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800 hover:bg-slate-800/50 transition-all cursor-pointer active:scale-95 shadow-md"
@@ -23179,6 +23122,7 @@ ${itemsStr}
                       type="button"
                       onClick={async () => {
                         savedQuizScroll.current = quizBodyRef.current?.scrollTop || 0;
+                        flushQuizScrollSave();
                         if (selectedTopic?.isReadOnly) {
                           setSelectedTopic(null);
                         } else {
@@ -23375,62 +23319,17 @@ ${itemsStr}
                   </div>
                 )}
                 
-                <form 
-                  onSubmit={(e) => { e.preventDefault(); handleSendChat(); }} 
-                  className="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-2 flex items-center gap-1 focus-within:border-violet-500 focus-within:ring-1 focus-within:ring-violet-500/20 transition-all shadow-lg"
-                >
-                  {/* 파일 첨부 버튼 및 숨겨진 input */}
-                  <button
-                    type="button"
-                    onClick={() => tutorFileInputRef.current?.click()}
-                    disabled={isChatLoading}
-                    className="w-8 h-8 hover:bg-slate-700/50 text-slate-400 hover:text-slate-200 rounded-xl flex items-center justify-center transition-all cursor-pointer active:scale-95 flex-shrink-0"
-                    title="이미지 첨부"
-                  >
-                    <Paperclip size={13} />
-                  </button>
-                  <input 
-                    type="file" 
-                    ref={tutorFileInputRef} 
-                    onChange={handleImageAttachment} 
-                    accept="image/*" 
-                    multiple
-                    className="hidden" 
-                  />
-
-                  {/* 텍스트 입력창 */}
-                  <div className="flex-grow">
-                    <textarea
-                      ref={sidebarChatInputRef}
-                      rows={1}
-                      value={chatInput}
-                      onChange={e => {
-                        setChatInput(e.target.value);
-                        e.target.style.height = 'auto';
-                        e.target.style.height = `${Math.min(e.target.scrollHeight, 180)}px`;
-                      }}
-                      onKeyDown={e => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                          e.preventDefault();
-                          handleSendChat();
-                        }
-                      }}
-                      onPaste={handlePasteImage}
-                      placeholder="기술사 용어나 개념 질문..."
-                      disabled={isChatLoading}
-                      className="w-full bg-transparent border-0 p-1 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-0 resize-none"
-                    />
-                  </div>
-
-                  {/* 전송 버튼 */}
-                  <button
-                    type="submit"
-                    disabled={(!chatInput.trim() && attachedImages.length === 0) || isChatLoading}
-                    className="w-8 h-8 bg-slate-300 hover:bg-slate-200 disabled:opacity-30 disabled:hover:bg-slate-300 rounded-xl flex items-center justify-center transition-all cursor-pointer shadow-md shadow-slate-300/10 active:scale-95 flex-shrink-0"
-                  >
-                    <Send size={12} className="text-slate-900" />
-                  </button>
-                </form>
+                <TutorChatComposer
+                  ref={sidebarChatInputRef}
+                  theme="violet"
+                  isLoading={isChatLoading}
+                  hasAttachedImages={attachedImages.length > 0}
+                  inputValueRef={chatInputRef}
+                  fileInputRef={tutorFileInputRef}
+                  onSubmit={handleComposerSubmit}
+                  onImageAttach={handleComposerImageAttach}
+                  onPasteImage={handleComposerPasteImage}
+                />
               </div>
             </div>
 
@@ -25938,7 +25837,7 @@ ${itemsStr}
                         setExamTableAnswers,
                         !!examRevealed[idx],
                         examTableGradingResults,
-                        gradeSingleTableCell,
+                        stableGradeSingleTableCell,
                         cellGradingLoading,
                         null,
                         renderCardTutorChat,
@@ -26203,7 +26102,11 @@ ${itemsStr}
 
                       {/* Subjective Reveal */}
                       {isSubj && (
-                          isCalculationQuestion(q, selectedTopic?.category || examTopic?.category) ? (
+                          isCalculationQuestion(q, selectedTopic?.category || examTopic?.category) ? (() => {
+                            const healedQ = healQuizQuestionObject(q);
+                            const items = healedQ.calcItems || [];
+                            const isRevd = !!examRevealed[idx];
+                            return (
                             <div className="space-y-3 w-full animate-fade-in">
                               <div className={`p-3.5 sm:p-5 rounded-xl border space-y-4 text-left transition-all ${getSubjectiveContainerClasses(idx, !!examRevealed[idx])}`}>
                                 <div className="flex items-center justify-between border-b border-slate-700/60 pb-2.5">
@@ -26211,21 +26114,12 @@ ${itemsStr}
                                     <span>🔢</span> 수치 계산 답안 작성
                                   </span>
                                   <span className="text-xs text-slate-400 font-medium">
-                                    {(() => {
-                                      const healedQ = healQuizQuestionObject(q);
-                                      const items = healedQ.calcItems || [];
-                                      return `총 ${items.length}개 항목`;
-                                    })()}
+                                    {`총 ${items.length}개 항목`}
                                   </span>
                                 </div>
 
                                 <div className="space-y-3">
-                                  {(() => {
-                                    const healedQ = healQuizQuestionObject(q);
-                                    const items = healedQ.calcItems || [];
-                                    const isRevd = !!examRevealed[idx];
-                                    
-                                    return items.map((item, iIdx) => {
+                                  {items.map((item, iIdx) => {
                                       const inputId = item.id || `INPUT_${iIdx+1}`;
                                       const inputKey = `${idx}_${inputId}`;
                                       const gradingResult = examTableGradingResults[inputKey];
@@ -26303,8 +26197,7 @@ ${itemsStr}
                                           />
                                         </div>
                                       );
-                                    });
-                                  })()}
+                                    })}
                                 </div>
 
                                 {!examRevealed[idx] ? (
@@ -26339,7 +26232,8 @@ ${itemsStr}
                                 )}
                               </div>
                             </div>
-                          ) : (!isCalculationQuestion(q, selectedTopic?.category || examTopic?.category) && !!(q.tableData || q.comparisonTableData)) ? (
+                            );
+                          })() : (!isCalculationQuestion(q, selectedTopic?.category || examTopic?.category) && !!(q.tableData || q.comparisonTableData)) ? (
                             <div className="space-y-3 w-full">
                               {(() => {
                                 const scoredIndices = [];
@@ -26362,20 +26256,10 @@ ${itemsStr}
                                     katexLoaded={katexLoaded} 
                                     tableGradingResults={examTableGradingResults}
                                     weight={W}
-                                    onSubmit={async () => {
-                                      if (gradingLoading[idx]) return;
-                                      await gradeTableQuestion(idx, q);
-                                      setExamRevealed(prev => ({ ...prev, [idx]: true }));
-                                    }}
-                                    onGradeOverviewStep={async (step, targetInputs) => {
-                                      if (gradingLoading[idx]) return;
-                                      await gradeTableQuestion(idx, q, targetInputs);
-                                      if (step === 2) {
-                                        setExamRevealed(prev => ({ ...prev, [idx]: true }));
-                                      }
-                                    }}
+                                    onSubmit={examQuizHandlers[idx]?.onSubmitTable}
+                                    onGradeOverviewStep={examQuizHandlers[idx]?.onGradeOverviewStep}
                                     gradingLoading={!!gradingLoading[idx]}
-                                    gradeSingleTableCell={gradeSingleTableCell}
+                                    gradeSingleTableCell={stableGradeSingleTableCell}
                                     cellGradingLoading={cellGradingLoading}
                                     floatedTableId={floatedTableId}
                                     setFloatedTableId={setFloatedTableId}
@@ -26503,7 +26387,7 @@ ${itemsStr}
                                     <div className="text-[14px] sm:text-[16px] font-black flex justify-between items-center mb-0.5">
                                       <span className={getSubjectiveTextColorClass(idx)}>{getSubjectiveStatusText(idx)}</span>
                                     </div>
-                                    <div className="text-[14px] sm:text-[16px] leading-relaxed opacity-90"><LatexRenderer text={formatGradingReason(examTableGradingResults[`${idx}_INPUT`].reason)} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} /></div>
+                                    <div className="text-[14px] sm:text-[16px] leading-relaxed opacity-90"><LatexRenderer text={examTableGradingResults[`${idx}_INPUT`].reason} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} /></div>
                                     <div className="mt-1.5 pt-1.5 border-t border-current/10 text-[14px] sm:text-[16px] select-text model-answer-section">
                                       <span className="font-extrabold">💡 모범 답안:</span>
                                       <div className="mt-1 text-[14px] sm:text-[16px] text-slate-200 leading-relaxed">
@@ -26816,6 +26700,7 @@ ${itemsStr}
                       type="button"
                       onClick={async () => {
                         savedQuizScroll.current = quizBodyRef.current?.scrollTop || 0;
+                        flushQuizScrollSave();
                         if (selectedTopic?.isReadOnly) {
                           setSelectedTopic(null);
                         } else {
@@ -27001,62 +26886,17 @@ ${itemsStr}
                   </div>
                 )}
 
-                <form 
-                  onSubmit={(e) => { e.preventDefault(); handleSendChat(); }} 
-                  className="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-2 flex items-center gap-1 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500/20 transition-all shadow-lg"
-                >
-                  {/* 파일 첨부 버튼 및 숨겨진 input */}
-                  <button
-                    type="button"
-                    onClick={() => mobileTutorFileInputRef.current?.click()}
-                    disabled={isChatLoading}
-                    className="w-8 h-8 hover:bg-slate-700/50 text-slate-400 hover:text-slate-200 rounded-xl flex items-center justify-center transition-all cursor-pointer active:scale-95 flex-shrink-0"
-                    title="이미지 첨부"
-                  >
-                    <Paperclip size={13} />
-                  </button>
-                  <input 
-                    type="file" 
-                    ref={mobileTutorFileInputRef} 
-                    onChange={handleImageAttachment} 
-                    accept="image/*" 
-                    multiple
-                    className="hidden" 
-                  />
-
-                  {/* 텍스트 입력창 */}
-                  <div className="flex-grow">
-                    <textarea
-                      ref={mobileChatInputRef}
-                      rows={1}
-                      value={chatInput}
-                      onChange={e => {
-                        setChatInput(e.target.value);
-                        e.target.style.height = 'auto';
-                        e.target.style.height = `${Math.min(e.target.scrollHeight, 180)}px`;
-                      }}
-                      onKeyDown={e => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                          e.preventDefault();
-                          handleSendChat();
-                        }
-                      }}
-                      onPaste={handlePasteImage}
-                      placeholder="기술사 용어나 개념 질문..."
-                      disabled={isChatLoading}
-                      className="w-full bg-transparent border-0 p-1 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-0 resize-none"
-                    />
-                  </div>
-
-                  {/* 전송 버튼 */}
-                  <button
-                    type="submit"
-                    disabled={(!chatInput.trim() && attachedImages.length === 0) || isChatLoading}
-                    className="w-8 h-8 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-30 disabled:hover:bg-indigo-600 rounded-xl flex items-center justify-center transition-all cursor-pointer shadow-md shadow-indigo-600/10 active:scale-95 flex-shrink-0"
-                  >
-                    <Send size={12} className="text-white" />
-                  </button>
-                </form>
+                <TutorChatComposer
+                  ref={mobileChatInputRef}
+                  theme="indigo"
+                  isLoading={isChatLoading}
+                  hasAttachedImages={attachedImages.length > 0}
+                  inputValueRef={chatInputRef}
+                  fileInputRef={mobileTutorFileInputRef}
+                  onSubmit={handleComposerSubmit}
+                  onImageAttach={handleComposerImageAttach}
+                  onPasteImage={handleComposerPasteImage}
+                />
               </div>
             </div>
 
@@ -30305,7 +30145,7 @@ ${itemsStr}
                                         const trimmed = editAnswersheetTitle.trim();
                                         if (trimmed) {
                                           setAnswersheetQuestions(prev => {
-                                            const updated = prev.map((item, i) => i === idx ? { ...item, title: trimmed } : item).map(healAnswersheetQuestionObject);
+                                            const updated = prev.map((item, i) => i === idx ? { ...item, title: trimmed } : item).map(healQuizQuestionObject);
                                             handleSaveAnswersheetQuestions(updated, false);
                                             return updated;
                                           });
@@ -30324,7 +30164,7 @@ ${itemsStr}
                                       const trimmed = editAnswersheetTitle.trim();
                                       if (trimmed) {
                                         setAnswersheetQuestions(prev => {
-                                          const updated = prev.map((item, i) => i === idx ? { ...item, title: trimmed } : item).map(healAnswersheetQuestionObject);
+                                          const updated = prev.map((item, i) => i === idx ? { ...item, title: trimmed } : item).map(healQuizQuestionObject);
                                           handleSaveAnswersheetQuestions(updated, false);
                                           return updated;
                                         });
@@ -31074,16 +30914,16 @@ ${itemsStr}
 
       <React.Suspense fallback={null}>
         <FloatingCalculator 
-          isVisible={showFloatingCalculator && (showFormulaExam || showAnswerSheet || selectedTopic !== null || showExam)} 
-          onClose={() => setShowFloatingCalculator(false)} 
+          isVisible={isFloatingCalcOpen} 
+          onClose={handleCloseFloatingCalculator} 
         />
       </React.Suspense>
 
       <React.Suspense fallback={null}>
         <FloatingMemorization
-          isVisible={showFloatingMemorization && (showFormulaExam || showAnswerSheet || selectedTopic !== null || showExam)}
-          onClose={() => setShowFloatingMemorization(false)}
-          focusedQuestion={focusedQuestion}
+          isVisible={isFloatingMemoOpen}
+          onClose={handleCloseFloatingMemorization}
+          focusedQuestion={isFloatingMemoOpen ? focusedQuestion : null}
           formulaTables={formulaTables}
           setFormulaTables={setFormulaTables}
           loadingFormulaTables={loadingFormulaTables}

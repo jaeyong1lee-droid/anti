@@ -763,7 +763,7 @@ function OverviewComparisonTable({
   );
 }
 
-export function FloatingMemorization({
+export const FloatingMemorization = React.memo(function FloatingMemorization({
   isVisible,
   onClose,
   focusedQuestion,
@@ -2210,4 +2210,4 @@ export function FloatingMemorization({
         {quizPopupModal}
       </>
     );
-  }
+  });

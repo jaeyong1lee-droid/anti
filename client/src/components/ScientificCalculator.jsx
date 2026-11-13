@@ -3016,7 +3016,7 @@ export function ScientificCalculator() {
   );
 }
 
-export function FloatingCalculator({ isVisible, onClose }) {
+export const FloatingCalculator = React.memo(function FloatingCalculator({ isVisible, onClose }) {
   const dragRef = useRef(null);
 
   const isMobile = window.innerWidth < 768;
@@ -3164,4 +3164,4 @@ export function FloatingCalculator({ isVisible, onClose }) {
       {content}
     </div>
   );
-}
+});
