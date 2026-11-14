@@ -9,7 +9,7 @@ import { updateLiveEngineeringStandards, standardsList, ENGINEERING_STANDARDS } 
 import { updateLiveGradingStandards, gradingStandardsList } from '../plugins/gradingPlugin.js';
 import { updateLiveGenerationStandards, generationStandardsList } from '../plugins/generationStandards.js';
 import { updateLiveLockscreenStandards, lockscreenStandardsList } from '../plugins/lockscreenStandards.js';
-import { healFormulaQuestionObject, healAnswersheetQuestionObject, healQuizQuestionObject, parseLlmJson, healLatexFormulas, LATEX_CHAT_PROMPT_INSTRUCTIONS, LATEX_PROMPT_INSTRUCTIONS } from '../utils/latexUtils.js';
+import { healFormulaQuestionObject, healQuizQuestionObject, parseLlmJson, healLatexFormulas, LATEX_CHAT_PROMPT_INSTRUCTIONS, LATEX_PROMPT_INSTRUCTIONS } from '../utils/latexUtils.js';
 import { defaultAcronyms, generateAcronymTutorResponse } from '../plugins/acronymsPlugin.js';
 import { defaultOverviews, generateOverviewTutorResponse } from '../plugins/overviewsPlugin.js';
 import { SVG_DIAGRAM_PROMPT } from '../plugins/svgDiagramPlugin.js';
@@ -961,9 +961,13 @@ router.post('/options/:key', async (req, res) => {
 router.post('/question/option-explanation', async (req, res) => {
   const { question, options, answer, topicId, topicTitle, category } = req.body;
   const progressId = req.body.progressId || req.query.progressId;
-  const preferredModel = req.body.preferredModel || req.query.preferredModel || globalPreferredModel;
-  const localCallLLM = (sys, prompt, img, scenario, opts) => 
-    callLLMWithFailover(sys, prompt, img, scenario, { ...opts, preferredModel, progressId });
+  const preferredModel = resolveStageModel('tutor', {
+    stage: 'tutor',
+    stageModels: req.body?.stageModels,
+    preferredModel: req.body?.preferredModel || req.query?.preferredModel
+  });
+  const localCallLLM = (sys, prompt, img, scenario, opts) =>
+    callLLMWithFailover(sys, prompt, img, scenario, { ...opts, stage: 'tutor', preferredModel, progressId });
 
   if (!question || !options || !Array.isArray(options) || options.length !== 4) {
     return res.status(400).json({ error: '올바른 객관식 문제 정보가 아닙니다.' });
@@ -1251,7 +1255,12 @@ ${analysis}
 
 위 분석 정보를 바탕으로, 해당 분석 내용 중 핵심 공학 요소 하나를 짚어서 짧고 명확한 주관식 질문문 1개를 작성하십시오. (매번 다양하게 출제되도록 무작위 시드 ${Math.random()}을 반영하십시오.)`;
 
-    const responseText = await callLLMWithFailover(systemInstruction, userPrompt, null, 'formula');
+    const preferredModel = resolveStageModel('question', {
+      stage: 'question',
+      stageModels: req.body?.stageModels,
+      preferredModel: req.body?.preferredModel || req.query?.preferredModel
+    });
+    const responseText = await callLLMWithFailover(systemInstruction, userPrompt, null, 'formula', { stage: 'question', preferredModel });
     res.json({ success: true, question: responseText.trim() });
   } catch (err) {
     console.error('POST /api/image-standards/generate-question error:', err);
@@ -1306,9 +1315,13 @@ router.post('/chat', async (req, res) => {
   const { message, history, image, images, overviewMode, acronymMode } = req.body;
   const topicId = req.body.topicId || req.body.topic_id || null;
   const progressId = req.body.progressId || req.query.progressId;
-  const preferredModel = req.body.preferredModel || req.query.preferredModel || globalPreferredModel;
-  const localCallLLM = (sys, prompt, img, scenario, opts) => 
-    callLLMWithFailover(sys, prompt, img, scenario, { ...opts, preferredModel, progressId });
+  const preferredModel = resolveStageModel('tutor', {
+    stage: 'tutor',
+    stageModels: req.body?.stageModels,
+    preferredModel: req.body?.preferredModel || req.query?.preferredModel
+  });
+  const localCallLLM = (sys, prompt, img, scenario, opts) =>
+    callLLMWithFailover(sys, prompt, img, scenario, { ...opts, stage: 'tutor', preferredModel, progressId });
 
   const rawImages = images || (image ? (Array.isArray(image) ? image : [image]) : []);
   let imageList = [];

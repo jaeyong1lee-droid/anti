@@ -269,11 +269,11 @@ export function healLatexFormulas(text, isNested = false) {
     });
   } while (processed !== prevText);
 
-  processed = processed.replace(/\${2,}([\s\S]*?)\${2,}/g, (m, p1) => '$$' + healDoubleSubscripts(p1).replace(/\|/g, '\\vert ') + '$$');
-  processed = processed.replace(/\$([^\$\n]+)\$/g, (m, p1) => '$' + healDoubleSubscripts(p1).replace(/\|/g, '\\vert ') + '$');
-  
   processed = processed.replace(/\\\(([\s\S]*?)\\\)/g, (m, p1) => '$' + (p1 || '').trim() + '$');
   processed = processed.replace(/\\\[([\s\S]*?)\\\]/g, (m, p1) => '$$' + (p1 || '').trim() + '$$');
+
+  processed = processed.replace(/\${2,}([\s\S]*?)\${2,}/g, (m, p1) => '$$' + healDoubleSubscripts(p1).replace(/\|/g, '\\vert ') + '$$');
+  processed = processed.replace(/\$([^\$\n]+)\$/g, (m, p1) => '$' + healDoubleSubscripts(p1).replace(/\|/g, '\\vert ') + '$');
   processed = processed.replace(/[–—−]/g, '-');
 
   processed = processed.replace(/\\pu\s*\{([^}]+)\}/gi, (match, p1) => {
@@ -311,15 +311,6 @@ export function healLatexFormulas(text, isNested = false) {
   }
 
   return result;
-}
-
-export function cleanQuizQuestion(q) {
-  if (!q) return q;
-  let cleanText = typeof q === 'string' ? q : String(q || '');
-
-  // Removed destructive A, B, C regex logic that corrupts valid text
-  // Removed list garbage regex that corrupts valid text
-  return cleanText.trim();
 }
 
 export function healDeep(obj, parentKey = null) {
@@ -414,7 +405,7 @@ export function healQuizQuestionObject(q) {
       q.diagram_svg = svgStr;
     }
     if (q.question && typeof q.question === 'string') {
-      q.question = cleanQuizQuestion(q.question);
+      q.question = q.question.trim();
     }
     if (q.explanation && typeof q.explanation === 'string') {
       // 객관식 해설 내 보기 순번 지칭 단독 문장(셔플 시 오류 유발) 안전하게 절제
@@ -937,21 +928,19 @@ export function healQuizQuestionObject(q) {
 
 export function healTheoryQuestionObject(t) { return healDeep(t); }
 export function healFormulaQuestionObject(f) { return healDeep(f); }
-export function healAnswersheetQuestionObject(a) { return healQuizQuestionObject(a); }
 
 export const LATEX_PROMPT_INSTRUCTIONS = `
 [LaTeX 수식 및 마크다운 작성 지침]:
-1. 모든 수식, 변수 기호(예: $t$, $\\Delta t$, $\\sigma$, $\\gamma_w$, $S_t$, $\\alpha$, $\\beta$ 등)는 반드시 $ 또는 $$ 기호로 감싸서 출력하십시오. 날것의 텍스트 표기나 백틱(\`) 표기는 금지합니다.
+1. 모든 수식, 공식, 변수 기호(예: $t$, $\\Delta t$, $\\sigma'$, $j = i \\cdot \\gamma_w$, $\\alpha$, $\\beta$ 등)는 **한글 문장과 괄호 안을 포함하여 예외 없이** 반드시 \`$...$\` 또는 \`$$...$$\` 기호로 감싸십시오. \`(j = i \\cdot \\gamma_w)\`처럼 \`$\` 없이 LaTeX 명령어를 노출하거나 백틱(\`)으로 감싸는 것을 절대 금지합니다.
 2. 역슬래시(\\) 대신 샵(#) 등 임의의 기호를 사용하지 말고, 정규 LaTeX 명령어(\\sigma, \\frac 등)를 사용하십시오.
 3. 인라인 수식($...$) 작성 시 기호 안쪽에 공백이나 줄바꿈을 넣지 마십시오. ($수식$ (O) / $ 수식 $ (X))
-5. 수식 내부에서 부등호는 마크다운 파싱 오류를 방지하기 위해 반드시 \\lt, \\gt 로 표기하십시오.
-6. 달러 기호 자체를 이스케이프(\\$ 또는 \\\\$)하지 마십시오.
-8. 변수와 아래첨자(예: $N_c$, $D_f$, $k_h$)는 중간에 달러 기호를 쪼개지 말고 하나의 수식 블록으로 감싸십시오.
-9. 🚨 [이중 아래첨자 금지 및 다중 문자 아래첨자 중괄호 표기 철칙 - 극도로 중요!]: 동일 기호에 아래첨자를 연속(예: \\Delta_h_w, \\sigma_v_0, K_a_0 등)으로 붙이는 KaTeX 문법 위반을 절대 금지합니다. $\\Delta h_w$ (공백 분리) 또는 $\\Delta_{hw}$, $\\sigma_{v0}$, $K_{a0}$처럼 반드시 중괄호({})로 묶거나 공백으로 분리하여 출력하십시오.
-10. <div>, <span> 등의 HTML 태그 사용을 금지하며 강조는 마크다운(**강조**)을 사용하십시오.
-11. 내용이 없는 빈 소제목은 출력하지 마십시오.
-12. 🚨 [가독성 서식 및 문장 수준별 머리기호 불릿 수칙]: 해설 및 답변 서식은 자연스러운 구성을 기본으로 하되, 불릿과 번호의 중복('* (1)', '• 1.')을 금지하고, 공식 아래의 변수 정의는 번호 없이 '단, ...' 인라인 또는 가운뎃점('· ')으로 간결히 작성하며, 동일한 별표(*) 불릿을 평면적으로 남발하지 마십시오. 반드시 문장 수준(Depth)에 따라 머리기호 불릿을 단계별로 구분하십시오: 1수준(상위): 작은 크기 불릿('• '), 2수준(중위): 작은 빈 불릿('◦ '), 3수준(하위): 그냥 일반 점('· '), 4수준(세부): 대시('- ') 또는 별표('* ').
-13. 🚨 [\\text{} 내 수식 명령어 금지 및 단위 표기 수칙]: KaTeX 파싱 에러(빨간색 폰트)를 방지하기 위해 \\text{} 내부에는 \\mu, \\Delta, \\sigma 등 역슬래시(\\)로 시작하는 모든 LaTeX 수식 명령어를 절대로 입력하지 마십시오. 단위는 반드시 순수 영문 텍스트(\\text{ MPa}, \\text{ kPa}, \\text{ kN/m}^2 등)로 표기하고, 그리스 문자가 포함된 단위(예: 마이크로미터)는 \\mu\\text{m} 또는 \\mu\\mathrm{m}처럼 \\text{} 외부에 기호를 배치하십시오.
+4. 수식 내부에서 부등호는 마크다운 파싱 오류를 방지하기 위해 반드시 \\lt, \\gt 로 표기하십시오.
+5. 달러 기호 자체를 이스케이프(\\$ 또는 \\\\$)하지 마십시오.
+6. 변수와 아래첨자(예: $N_c$, $D_f$, $k_h$)는 중간에 달러 기호를 쪼개지 말고 하나의 수식 블록으로 감싸십시오.
+7. 🚨 [이중 아래첨자 금지 및 다중 문자 아래첨자 중괄호 표기 철칙 - 극도로 중요!]: 동일 기호에 아래첨자를 연속(예: \\Delta_h_w, \\sigma_v_0, K_a_0 등)으로 붙이는 KaTeX 문법 위반을 절대 금지합니다. $\\Delta h_w$ (공백 분리) 또는 $\\Delta_{hw}$, $\\sigma_{v0}$, $K_{a0}$처럼 반드시 중괄호({})로 묶거나 공백으로 분리하여 출력하십시오.
+8. <div>, <span> 등의 HTML 태그 사용을 금지하며 강조는 마크다운(**강조**)을 사용하십시오.
+9. 내용이 없는 빈 소제목은 출력하지 마십시오.
+10. 🚨 [\\text{} 내 수식 명령어 금지 및 단위 표기 수칙]: KaTeX 파싱 에러(빨간색 폰트)를 방지하기 위해 \\text{} 내부에는 \\mu, \\Delta, \\sigma 등 역슬래시(\\)로 시작하는 모든 LaTeX 수식 명령어를 절대로 입력하지 마십시오. 단위는 반드시 순수 영문 텍스트(\\text{ MPa}, \\text{ kPa}, \\text{ kN/m}^2 등)로 표기하고, 그리스 문자가 포함된 단위(예: 마이크로미터)는 \\mu\\text{m} 또는 \\mu\\mathrm{m}처럼 \\text{} 외부에 기호를 배치하십시오.
 
 [수학적 정합성 규칙]:
 - 객관식 문제의 정답(answer)은 해설(explanation)의 계산 결과와 반드시 완벽히 일치해야 합니다.

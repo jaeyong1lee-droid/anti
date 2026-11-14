@@ -3,6 +3,8 @@ import { Brain } from 'lucide-react';
 import { 
   convertMarkdownToHtml, 
   renderKatexString, 
+  renderInlineMathInHtml,
+  INLINE_MATH_REGEX,
   getSelectionTextWithLatex, 
   handleOpenHtmlAnswerPopup,
   buildHtmlDocument,
@@ -559,7 +561,7 @@ export const LatexRenderer = React.memo(function LatexRenderer({
           mathPlaceholders.push({ ph, content: m });
           return ph;
         })
-        .replace(/\$((?:[^\$\n<]|<(?![a-zA-Z/!]))+?)\$/g, m => {
+        .replace(INLINE_MATH_REGEX, m => {
           const ph = `___MATH_PH_${mIdx++}___`;
           mathPlaceholders.push({ ph, content: m });
           return ph;
@@ -733,11 +735,7 @@ export const LatexRenderer = React.memo(function LatexRenderer({
         const rendered = renderKatexString(math.trim(), { displayMode: true, throwOnError: false });
         return `<div class="formula-scroll-container py-1.5" style="text-align: center; margin-top: 0.5rem; margin-bottom: 0.5rem; width: 100%;">${rendered}</div>`;
       });
-      htmlContent = htmlContent.replace(/\$((?:[^\$\n<]|<(?![a-zA-Z/!]))+?)\$/g, (m, math) => {
-        const trimmed = math.trim();
-        if (!trimmed) return m;
-        return renderKatexString(trimmed, { displayMode: false, throwOnError: false });
-      });
+      htmlContent = renderInlineMathInHtml(htmlContent, { checkKorean: false });
     }
 
     const isInlineMode = className.includes('inline') && !htmlContent.includes('<table') && !htmlContent.includes('<div');
@@ -777,9 +775,7 @@ export const LatexRenderer = React.memo(function LatexRenderer({
       processedSvg = processedSvg.replace(/\${2,}\s*([\s\S]*?)\s*\${2,}/g, (m, math) => {
         return renderKatexString(math.trim(), { displayMode: true, throwOnError: false });
       });
-      processedSvg = processedSvg.replace(/\$((?:[^\$\n<]|<(?![a-zA-Z/!]))+?)\$/g, (m, math) => {
-        return renderKatexString(math.trim(), { displayMode: false, throwOnError: false });
-      });
+      processedSvg = renderInlineMathInHtml(processedSvg, { checkKorean: false });
     }
     
     isolatedSvgBlocks.push(processedSvg);
@@ -837,17 +833,7 @@ export const LatexRenderer = React.memo(function LatexRenderer({
             if (!isMarkdown) {
               htmlContent = htmlContent.replace(/<([a-zA-Z가-힣])/g, '&lt;$1');
             }
-            try {
-              htmlContent = htmlContent.replace(/\$((?:[^\$\n<]|<(?![a-zA-Z/!]))+?)\$/g, (m, math) => {
-                if (/[\uAC00-\uD7A3]/.test(math)) {
-                  const isRealFormula = /\\/.test(math) || /_/.test(math) || /\^/.test(math) || /[=+\-\*\/]/.test(math) || /\\cdot/.test(math);
-                  if (!isRealFormula) return m;
-                }
-                return renderKatexString(math.trim(), { displayMode: false, throwOnError: false });
-              });
-            } catch (e) {
-              console.warn(e);
-            }
+            htmlContent = renderInlineMathInHtml(htmlContent);
             return (
               <span 
                 key={idx}
@@ -891,16 +877,7 @@ export const LatexRenderer = React.memo(function LatexRenderer({
           if (!isMarkdown) {
             htmlContent = htmlContent.replace(/<([a-zA-Z가-힣])/g, '&lt;$1');
           }
-          try {
-            htmlContent = htmlContent.replace(/\$((?:[^\$\n<]|<(?![a-zA-Z/!]))+?)\$/g, (m, math) => {
-              if (/[\uAC00-\uD7A3]/.test(math) && !/\\/.test(math) && !/_/.test(math) && !/\^/.test(math) && !/[=+\-\*\/]/.test(math) && !/\\cdot/.test(math)) {
-                return m;
-              }
-              return renderKatexString(math.trim(), { displayMode: false, throwOnError: false });
-            });
-          } catch (e) {
-            console.warn(e);
-          }
+          htmlContent = renderInlineMathInHtml(htmlContent);
           // SVG 블록 원래 위치로 완벽히 복원 (격리되었던 렌더링 결과물)
           htmlContent = htmlContent.replace(/___ISOLATED_SVG_(\d+)___/g, (match, p1) => {
             return isolatedSvgBlocks[p1];

@@ -2,7 +2,7 @@ import express from 'express';
 import pdfParse from 'pdf-parse';
 import { dbQuery } from '../database.js';
 import { callLLMWithFailover, analyzeStandardsBeforeTask, getTopicText, getMatchingTopicContent, startBackendProgressTimer, updateProgress, stopBackendProgressTimer, globalPreferredModel, globalAllowGradingFallback, resolveStageModel } from '../services/aiService.js';
-import { healQuizQuestionObject, parseLlmJson, healLatexFormulas, LATEX_PROMPT_INSTRUCTIONS, cleanQuizQuestion } from '../utils/latexUtils.js';
+import { healQuizQuestionObject, parseLlmJson, healLatexFormulas, LATEX_PROMPT_INSTRUCTIONS } from '../utils/latexUtils.js';
 import * as fileUtils from '../utils/fileUtils.js';
 import { gradeSubjective, GRADING_STANDARDS, gradingStandardsList } from '../plugins/gradingPlugin.js';
 import { ENGINEERING_STANDARDS, standardsList as engineeringStandardsList } from '../plugins/engineeringStandards.js';
@@ -1042,7 +1042,7 @@ ${formatRequirement ? `[응답 포맷]:\n${formatRequirement}` : ''}`;
       let parsedQuestion = parseLlmJson(text);
       const healedQ = healQuizQuestionObject({
         ...parsedQuestion,
-        question: cleanQuizQuestion(parsedQuestion.question)
+        question: (parsedQuestion.question || '').trim()
       });
 
       if (progressTimer) clearInterval(progressTimer);
@@ -1166,7 +1166,7 @@ ${getActiveEngineeringStandards()}
       const healedQ = healQuizQuestionObject({
         ...parsedQuestion,
         topic_id: finalTopicId ? Number(finalTopicId) : null,
-        question: cleanQuizQuestion(parsedQuestion.question)
+        question: (parsedQuestion.question || '').trim()
       });
 
       if (progressTimer) clearInterval(progressTimer);
@@ -1320,7 +1320,7 @@ ${getActiveEngineeringStandards()}
       const healedQ = healQuizQuestionObject({
         ...parsedQuestion,
         topic_id: finalTopicId,
-        question: cleanQuizQuestion(parsedQuestion.question)
+        question: (parsedQuestion.question || '').trim()
       });
 
       if (progressTimer) clearInterval(progressTimer);
@@ -1462,7 +1462,7 @@ ${getActiveEngineeringStandards()}
       const healedQ = healQuizQuestionObject({
         ...parsedQuestion,
         topic_id: finalTopicId,
-        question: cleanQuizQuestion(parsedQuestion.question)
+        question: (parsedQuestion.question || '').trim()
       });
 
       if (progressTimer) clearInterval(progressTimer);

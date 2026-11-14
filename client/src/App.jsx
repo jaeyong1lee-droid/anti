@@ -5123,7 +5123,14 @@ export default function App() {
       progressIntervalRef.current = null;
     }
     const suppressServerPoll = Boolean(pollOptions && pollOptions.suppressServerPoll);
-    const initialModelName = overrideModelName || (progressId.startsWith('grade_') ? getStageModel('grading') : (preferredModel || 'gemini-3.5-flash-lite'));
+    const inferredProgressStage = progressId.startsWith('grade_')
+      ? 'grading'
+      : /^(gen_|ref_|exam_gen_|exam_ref_|recreate_|adj_)/.test(progressId)
+        ? 'question'
+        : progressId.startsWith('slide_')
+          ? 'ppt'
+          : 'tutor';
+    const initialModelName = overrideModelName || getStageModel(inferredProgressStage);
     setAiProgressMessage(suppressServerPoll ? `1단계: [${getModelDisplayName(initialModelName)}] 채점 준비 중...` : '준비 중...');
     setAiProgressPercent(0);
     setShowAiProgress(true);
@@ -7924,28 +7931,26 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
     if (!questionObj || !selectedOpt) return null;
     setEvaluatingJitKeys(prev => ({ ...prev, [rKey]: true }));
     try {
+      const evaluatePayload = JSON.stringify({
+        questionText: questionObj.question,
+        options: questionObj.options,
+        userSelectedOption: selectedOpt,
+        category: questionObj.category || '',
+        topicTitle: questionObj.topicTitle || '',
+        preferredModel: getStageModel('grading'),
+        stageModels: stageModelsRef.current,
+        allowGradingFallback: Boolean(allowGradingFallbackRef.current)
+      });
       let res = await fetch(`${API_BASE}/api/evaluate-answer`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          questionText: questionObj.question,
-          options: questionObj.options,
-          userSelectedOption: selectedOpt,
-          category: questionObj.category || '',
-          topicTitle: questionObj.topicTitle || ''
-        })
+        body: evaluatePayload
       });
       if (!res.ok) {
         res = await fetch(`${API_BASE}/api/grading/evaluate-answer`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            questionText: questionObj.question,
-            options: questionObj.options,
-            userSelectedOption: selectedOpt,
-            category: questionObj.category || '',
-            topicTitle: questionObj.topicTitle || ''
-          })
+          body: evaluatePayload
         });
       }
       const data = await res.json();
@@ -11406,7 +11411,9 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
                 body: JSON.stringify({
                   title: item.title,
                   analysis: item.analysis || '',
-                  intuitive: item.intuitive || ''
+                  intuitive: item.intuitive || '',
+                  preferredModel: getStageModel('question'),
+                  stageModels: stageModelsRef.current
                 })
               });
               if (qRes.ok) {
@@ -12307,7 +12314,9 @@ ${item.intuitive || ''}
                 body: JSON.stringify({
                   title: item.title,
                   analysis: item.analysis || '',
-                  intuitive: item.intuitive || ''
+                  intuitive: item.intuitive || '',
+                  preferredModel: getStageModel('question'),
+                  stageModels: stageModelsRef.current
                 })
               });
               if (qRes.ok) {
@@ -14388,27 +14397,6 @@ ${item.intuitive || ''}
     }
   };
 
-  const handleModelSelect = async (nextModel) => {
-    preferredModelRef.current = nextModel;
-    setPreferredModel(nextModel);
-    localStorage.setItem('anti_preferred_model', nextModel);
-    setShowModelSelectModal(false);
-
-    try {
-      const response = await fetch(`${API_BASE}/api/preferred-model`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ model: nextModel })
-      });
-      if (!response.ok) {
-        throw new Error(`Server returned ${response.status}`);
-      }
-    } catch (error) {
-      console.warn('Failed to sync preferred model to server:', error);
-    }
-  };
 
   const handleDeleteStandard = async (id) => {
     if (!window.confirm('정말 이 공학 기준을 삭제하시겠습니까?')) return;

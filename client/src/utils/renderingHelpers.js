@@ -210,11 +210,6 @@ export const getGradingResult = (tableGradingResults, questionIdx, inputId, isCo
   return undefined;
 };
 
-export const formatGradingReason = (reason) => {
-  if (!reason) return '';
-  return reason.replace(/(\b\d+(?:\.\d+)?)(점\s*(?:을\s*)?감점)/g, '10점 만점 기준 $1$2');
-};
-
 export const buildHtmlDocument = (text, isPopup = false) => {
   let cleanedText = text.replace(/\r\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
   
@@ -617,16 +612,21 @@ export function transformAsciiGraphToSvg(code) {
   return `<div class="w-full my-3 border border-amber-500/30 rounded-xl p-3 sm:p-4 bg-gradient-to-b from-slate-900 via-slate-950 to-slate-900 shadow-md select-text"><div class="flex items-center justify-between border-b border-slate-800/80 pb-2 mb-3"><div class="flex items-center gap-2"><span class="text-amber-400 font-bold text-sm sm:text-base">📈</span><span class="text-slate-100 font-bold text-xs sm:text-sm truncate">${title}</span></div><span class="px-2 py-0.5 text-[10px] sm:text-xs font-bold text-amber-300 bg-amber-500/15 border border-amber-500/30 rounded-md shrink-0">SVG 역해석 추세선</span></div><div class="relative w-full overflow-hidden py-1"><svg width="100%" height="150" viewBox="0 0 500 150" class="w-full h-[130px] sm:h-[150px]"><line x1="45" y1="12" x2="45" y2="125" stroke="#475569" stroke-width="1.5"/><line x1="45" y1="125" x2="480" y2="125" stroke="#475569" stroke-width="1.5"/><path d="M 41 17 L 45 10 L 49 17" fill="none" stroke="#475569" stroke-width="1.5"/><path d="M 473 121 L 483 125 L 473 129" fill="none" stroke="#475569" stroke-width="1.5"/><line x1="45" y1="50" x2="480" y2="50" stroke="#1e293b" stroke-width="1" stroke-dasharray="3,3"/><line x1="45" y1="88" x2="480" y2="88" stroke="#1e293b" stroke-width="1" stroke-dasharray="3,3"/><line x1="180" y1="12" x2="180" y2="125" stroke="#1e293b" stroke-width="1" stroke-dasharray="3,3"/><line x1="330" y1="12" x2="330" y2="125" stroke="#1e293b" stroke-width="1" stroke-dasharray="3,3"/><path d="M 52 118 Q 190 55 455 22" fill="none" stroke="#f59e0b" stroke-width="2.5"/><circle cx="52" cy="118" r="4" fill="#fbbf24"/><circle cx="160" cy="72" r="4" fill="#fbbf24"/><circle cx="310" cy="42" r="4" fill="#fbbf24"/><circle cx="455" cy="22" r="4" fill="#fbbf24"/></svg><div class="absolute top-0 left-[8px] text-amber-400 font-bold text-xs sm:text-sm">${renderedY}</div><div class="absolute bottom-0 right-[10px] text-slate-300 font-semibold text-xs sm:text-sm flex items-center gap-1">${renderedX} <span class="text-slate-400 text-xs font-normal">(시간 t)</span></div><div class="absolute top-[30%] left-[35%] -translate-x-1/2 -translate-y-1/2 px-2.5 py-1 bg-slate-950/95 border border-amber-500/60 rounded-lg shadow-lg text-amber-300 font-bold text-xs sm:text-sm flex items-center gap-1.5 z-10"><span class="text-amber-400 shrink-0">기울기=</span><span class="inline-block">${renderedSlope}</span></div></div></div>`;
 }
 
-export function removeSourceCitationsFromText(text) {
-  if (!text || typeof text !== 'string') return text;
-  // Separate multiple inline citation bullets onto their own lines
-  let formatted = text;
-  return formatted.replace(/\n{3,}/g, '\n\n').trim();
-}
+export const INLINE_MATH_REGEX = /\$((?:[^\$\n<]|<(?![a-zA-Z/!]))+?)\$/g;
 
-export function getOnlySourceAccordion(text, qTitle = '') {
-  return '';
-}
+export const isValidMathContent = (math) =>
+  !/[\uAC00-\uD7A3]/.test(math) || /[\\_=+\-*/^']/.test(math);
+
+export const renderInlineMathInHtml = (text, options = {}) => {
+  if (!text || typeof text !== 'string') return text;
+  const { checkKorean = true } = options;
+  return text.replace(INLINE_MATH_REGEX, (m, math) => {
+    const trimmed = math.trim();
+    if (!trimmed) return m;
+    if (checkKorean && !isValidMathContent(math)) return m;
+    return renderKatexString(trimmed, { displayMode: false, throwOnError: false });
+  });
+};
 
 export function sanitizeSvgDarkBackground(svgHtml) {
   if (!svgHtml || typeof svgHtml !== 'string') return svgHtml;
@@ -675,8 +675,8 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
   });
   tempText = tempText.replace(/:::[a-zA-Z0-9_-]*/g, '');
 
-  // Always remove inline source citation texts
-  tempText = removeSourceCitationsFromText(tempText);
+  // Normalize newlines cleanly (previously done by removed removeSourceCitationsFromText)
+  tempText = tempText.replace(/\n{3,}/g, '\n\n').trim();
 
   // Protect details/summary HTML blocks so markdown line splitters don't break them
   const detailsBlocks = [];
@@ -702,11 +702,7 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
       codeHtml = codeHtml.replace(/\$\$\s*([\s\S]*?)\s*\$\$/g, (m, math) => {
         return renderKatexString(math.trim(), { displayMode: false, throwOnError: false });
       });
-      codeHtml = codeHtml.replace(/\$((?:[^\$\n<]|<(?![a-zA-Z/!]))+?)\$/g, (m, math) => {
-        const isReal = !/[\uAC00-\uD7A3]/.test(math) || /\\/.test(math) || /_/.test(math) || /\^/.test(math) || /[=+\-\*\/]/.test(math) || /\\cdot/.test(math);
-        if (!isReal) return m;
-        return renderKatexString(math.trim(), { displayMode: false, throwOnError: false });
-      });
+      codeHtml = renderInlineMathInHtml(codeHtml, { checkKorean: false });
     }
     const hasSvgTag = codeHtml.includes('<svg') && codeHtml.includes('</svg>');
     
@@ -755,9 +751,8 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
   });
 
   // Protect $ ... $
-  tempText = tempText.replace(/\$((?:[^\$\n<]|<(?![a-zA-Z/!]))+?)\$/g, (match, math) => {
-    const isReal = !/[\uAC00-\uD7A3]/.test(math) || /\\/.test(math) || /_/.test(math) || /\^/.test(math) || /[+=]/.test(math) || /\\cdot/.test(math);
-    if (!isReal) {
+  tempText = tempText.replace(INLINE_MATH_REGEX, (match, math) => {
+    if (!isValidMathContent(math)) {
       return match;
     }
     const placeholder = `___INLINE_MATH_${placeholderIndex}___`;
@@ -1135,13 +1130,17 @@ export const cleanAndSanitizeMathText = (rawText) => {
   let cleaned = (rawText || '').replace(/₩/g, '\\');
   cleaned = healCorruptedKatexHtml(cleaned);
 
-  // Decode standard HTML entities and restore broken inequalities
-  cleaned = cleaned.replace(/&amp;(?:amp;)?/g, '&')
-                   .replace(/&(?:amp;)?(?:#gt|#x3e|gt|\\gt);?/gi, '>')
-                   .replace(/&(?:amp;)?(?:#lt|#x3c|lt|\\lt);?/gi, '<')
-                   .replace(/&(?:quot|#34|#x22);?/gi, '"')
-                   .replace(/&(?:apos|#39|#x27);?/gi, "'")
-                   .replace(/\\(?:gt|lt)\b/gi, m => m.toLowerCase() === '\\gt' ? '>' : '<');
+  // Decode standard HTML entities outside math blocks so \lt/\gt inside $...$ remain valid KaTeX commands (never turning $k_v\lt k_h$ into raw HTML-like <k_h)
+  cleaned = cleaned.split(/(\$\$[\s\S]*?\$\$|\$[^\$\n]+\$|\\\([\s\S]*?\\\)|\\\[[\s\S]*?\\\])/g).map((seg, idx) => {
+    if (idx % 2 === 1) return seg;
+    return seg
+      .replace(/&amp;(?:amp;)?/g, '&')
+      .replace(/&(?:amp;)?(?:#gt|#x3e|gt|\\gt);?/gi, '>')
+      .replace(/&(?:amp;)?(?:#lt|#x3c|lt|\\lt);?/gi, '<')
+      .replace(/&(?:quot|#34|#x22);?/gi, '"')
+      .replace(/&(?:apos|#39|#x27);?/gi, "'")
+      .replace(/\\(?:gt|lt)\b/gi, m => m.toLowerCase() === '\\gt' ? '>' : '<');
+  }).join('');
    
   // Normalize inline HTML bold tags/entities (<b>, strong, &lt;b&gt;, &lt;strong&gt;) into markdown **text**
   cleaned = cleaned.replace(/(?:<b\b[^>]*>|&lt;b&gt;|<strong\b[^>]*>|&lt;strong&gt;)([\s\S]*?)(?:<\/b>|&lt;\/b&gt;|<\/strong>|&lt;\/strong&gt;)/gi, '**$1**');
@@ -1198,18 +1197,7 @@ export const cleanAndSanitizeMathText = (rawText) => {
 
   cleaned = cleaned.replace(/<\s*\/?\s*(?:div|span|annotation|semantics|math|mrow|msub|msup|mfrac|msqrt|msubsup|mo|mi|mn|mtext|mspace|mstyle|mtd|mtr|mtable)\b[^>]*>/gi, '');
   
-  cleaned = healLatexFormulas(cleaned);
-
-  cleaned = cleaned.replace(/\\\[(\s*[\s\S]*?\s*)\\\]/g, (match, math) => {
-    return `$$${math}$$`;
-  });
-
-  cleaned = cleaned.replace(/\\\((\s*[\s\S]*?\s*)\\\)/g, (match, math) => {
-    if (/^[가-힣\s,.!?·()]+$/.test(math)) return match;
-    return `$${math}$`;
-  });
-
-  return cleaned;
+  return healLatexFormulas(cleaned);
 };
 
 export const stripHtmlTagsFromRawData = (text) => {

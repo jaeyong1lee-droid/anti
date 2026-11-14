@@ -386,10 +386,12 @@ async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = n
   const executionList = [];
 
   const targetPref = resolveStageModel(scenario, options);
+  const activeStage = inferStageFromScenario(scenario, options);
+  const isGradingStage = activeStage === 'grading';
   const isClaudePreferred = targetPref.trim().toLowerCase().startsWith('claude-');
   const allowFallback = (options && typeof options.allowFallback === 'boolean')
     ? options.allowFallback
-    : (scenario === 'grading' ? globalAllowGradingFallback : true);
+    : (isGradingStage ? globalAllowGradingFallback : true);
   const primaryActualModel = isClaudePreferred
     ? normalizeClaudeModel(targetPref, scenario, options)
     : normalizeGeminiModel(targetPref);
@@ -398,7 +400,7 @@ async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = n
     if (!anthropicKey || !anthropicKey.startsWith('sk-ant-')) return;
     const resolvedPrimaryClaude = normalizeClaudeModel(targetPref, scenario, options);
     let claudeModels;
-    if (scenario === 'grading') {
+    if (isGradingStage) {
       if (!allowFallback) {
         claudeModels = [resolvedPrimaryClaude];
       } else {
@@ -431,7 +433,7 @@ async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = n
 
     const geminiPref = isClaudePreferred ? 'gemini-3.5-flash-lite' : targetPref;
     let rawFallbacks;
-    if (scenario === 'grading') {
+    if (isGradingStage) {
       rawFallbacks = allowFallback
         ? [geminiPref, 'gemini-3.5-flash-lite', 'gemini-3.8-flash']
         : [geminiPref];
@@ -461,12 +463,12 @@ async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = n
 
   if (isClaudePreferred) {
     addClaudeTasks();
-    if (scenario !== 'grading' || allowFallback) {
+    if (!isGradingStage || allowFallback) {
       addGeminiTasks();
     }
   } else {
     addGeminiTasks();
-    if (options.allowCrossProviderFallback && (scenario !== 'grading' || allowFallback)) {
+    if (options.allowCrossProviderFallback && (!isGradingStage || allowFallback)) {
       addClaudeTasks();
     }
   }

@@ -4,7 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { dbQuery, isPostgres } from '../database.js';
 import { callLLMWithFailover, searchSourceDocumentWithGeminiLite, analyzeStandardsBeforeTask, saveSessionValue, getTopicText, getMatchingTopicContent, startBackendProgressTimer, updateProgress, globalPreferredModel, resolveStageModel } from '../services/aiService.js';
-import { healLatexFormulas, healQuizQuestionObject, healAnswersheetQuestionObject, parseLlmJson, LATEX_PROMPT_INSTRUCTIONS, LATEX_CHAT_PROMPT_INSTRUCTIONS } from '../utils/latexUtils.js';
+import { healLatexFormulas, healQuizQuestionObject, parseLlmJson, LATEX_PROMPT_INSTRUCTIONS, LATEX_CHAT_PROMPT_INSTRUCTIONS } from '../utils/latexUtils.js';
 import * as fileUtils from '../utils/fileUtils.js';
 import { GENERATION_STANDARDS, generationStandardsList } from '../plugins/generationStandards.js';
 import { ENGINEERING_STANDARDS, standardsList as engineeringStandardsList } from '../plugins/engineeringStandards.js';
@@ -100,11 +100,7 @@ const deduplicateQuestions = (questions) => {
 
 function cleanQuizQuestion(q) {
   if (!q) return q;
-  let cleanText = typeof q === 'string' ? q : String(q || '');
-
-  // 1. Removed destructive A, B, C regex logic that corrupts valid text
-  // 2. Removed list garbage regex that corrupts valid text
-
+  const cleanText = typeof q === 'string' ? q : String(q || '');
   const isFlowchart = cleanText.includes('┌──') || cleanText.includes('▼') || cleanText.includes('```') || cleanText.includes('흐름도') || cleanText.includes('플로우차트');
   if (isFlowchart) return cleanText.trim();
   return cleanText.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ').trim();
@@ -792,117 +788,9 @@ ${adjustments.map((a, idx) => `
       ? engineeringStandardsList.map((std, idx) => `${idx + 1}. **${std.title}**:\n   - ${std.content}`).join('\n')
       : ENGINEERING_STANDARDS;
 
-    const prompt = (topic.category === '계산') ? `
-[문제 생성 태스크 시작]:
-아래 제공되는 정보를 분석하여 총 정확히 4개의 계산 예상문제를 생성해 주십시오.
-[토픽 핵심 주제]: ${coreSubject}
-[토픽 원본 제목]: ${topic.title}
-[핵심 키워드]: ${topic.keywords || '제공되지 않음'}
-[첨부파일 본문 텍스트](HTML 공부노트): ${fileText || '제공되지 않음'}
-${wikiGrounding ? `\n${wikiGrounding}\n` : ''}
-${kcscGrounding ? `\n${kcscGrounding}\n` : ''}
-
-[출제 요구사항]:
-1. 1번 문항 (첨부 이미지의 물음과 본문 HTML의 답변을 분석한 표채우기 질문) - type: "주관식 (표채우기)"
-   🚨 **[1번 문항 계산 표채우기 표준 구조 철칙 - 가장 중요!]**:
-   - 함께 첨부된 문제 이미지(그림/그래프)와 본문 텍스트를 시각적으로 심층 분석하십시오.
-   - 문제 지문과 그림이 구하라고 요구하는 **모든 계산 평가 항목 (1), (2), (3)...** 또는 조건별 항목을 각각의 **행(Row)**으로 배치하십시오.
-   - 표 구조는 반드시 **headers: ["구하는 항목", "계산 결과 및 답안"]** 의 2열 헤더 규격으로 구성하십시오.
-
-   📌 **[표준 구조 예시]**:
-   - headers: ["구하는 항목", "계산 결과 및 답안"]
-   - rows:
-     [
-       ["(1) 구하는 첫번째 항목명 (단위)", "[INPUT_1]"],
-       ["(2) 구하는 두번째 항목명 (단위)", "[INPUT_2]"],
-       ["(3) 구하는 세번째 항목명 (단위)", "[INPUT_3]"],
-       ...
-     ]
-
-   🚨 **빈칸 및 답안 1:1 매칭 철칙**:
-   - 문제에서 묻는 계산 요구 항목이 N개이면, 행의 개수도 N개가 되며 반드시 [INPUT_1]부터 [INPUT_N]까지 N개의 빈칸을 생성하십시오.
-   - answers 객체에는 각 INPUT_N마다 대응되는 공학적 계산 정답 풀이 과정과 정확한 최종 수치(단위 포함)를 기재하십시오.
-
-2. 2번 문항 (개념 비교 표 칸채우기 문제) - type: "주관식 (표채우기)"
-   🚨 **[2번 문항 필수 구조 지침]**:
-   - 토픽과 관련된 두 가지 이상의 공법, 이론, 또는 조건을 비교하는 표로 설계하십시오.
-   - 🚨 [동일 층위/범주 비교 철칙]: 비교표(표채우기) 출제 시, '이론/해석 공식'과 '시공/현장 품질관리'처럼 범주와 층위가 다른 개념을 대등한 비교 대상으로 묶는 행위를 엄격히 금지함 (반드시 이론 vs 이론, 또는 공법 vs 공법 등 동일 범주끼리만 비교할 것).
-   - 열(Column)에 비교 대상을, 행(Row)에 구분 항목을 배치하십시오.
-   - 🚨 [데이터 셀 100% 빈칸 강제 철칙]: 행 제목(첫 번째 열)을 제외한 모든 데이터 셀을 100% 전부 빈칸([INPUT_1], [INPUT_2]...)으로 뚫어내야 합니다. 비교 대상이 3개 이상이어서 열이 늘어나더라도 예외 없이 모든 칸을 비우십시오. 일부 칸만 비우고 나머지를 텍스트로 채우는 행위는 절대 금지합니다.
-   - headers: ["구분 항목", "비교대상 1", "비교대상 2", "(비교 대상 3이 있다면 추가)"]
-   - 🚨 [헤더 하드코딩 금지]: "공법/이론 A", "대표 이론/공법 A"와 같은 더미 찌꺼기 헤더 작성을 절대 금지하며, 반드시 문제 지문이 다루는 실제 비교 명칭으로 헤더를 생성하십시오.
-
-3. 3번 문항 (공학적 의미/교훈 주관식 문제) - type: "주관식 (단답형)"
-4. 4번 문항 (관련 공학적 문제 발생 시 대책 주관식 문제) - type: "주관식 (단답형)"
-
-[응답 JSON 포맷]:
-반드시 아래 지정된 JSON 배열 포맷으로만 정확히 반환하십시오. 2번 문항(표채우기)은 비교 대상이 3개 이상일 경우 반드시 예시처럼 모든 데이터 칸을 [INPUT_N]으로 뚫어내야 합니다.
-\`\`\`json
-[
-  {
-    "type": "주관식 (표채우기)",
-    "question": "1번 문항: 수치 계산 결과 분석...",
-    "tableData": { "headers": ["구하는 항목", "계산 결과"], "rows": [["항목1", "[INPUT_1]"]] },
-    "answers": { "INPUT_1": "정답" },
-    "explanation": "해설 (📚 참조 문헌: [🏛️ 국가건설기준(KCSC)] 또는 [원보고서]에 실제 KDS/KCS 코드가 명시된 경우에만 해당 정식 코드를 표기하고, 제공되지 않은 경우 절대로 가짜 KDS/KCS 코드 번호를 임의 창작하지 말고 '원보고서 본문 및 지반공학 표준 이론'으로만 표기할 것)"
-  },
-  {
-    "type": "주관식 (표채우기)",
-    "question": "2번 문항: 다음 (비교 대상 공법명) 공법들의 주요 특징 비교표 빈칸에 들어갈 내용을 서술하시오.",
-    "tableData": {
-      "headers": ["구분 항목", "비교대상 1", "비교대상 2", "(비교 대상 3이 있다면 추가)"],
-      "rows": [
-        ["평가 항목 1", "[INPUT_1]", "[INPUT_2]", "[INPUT_3]"],
-        ["평가 항목 2", "[INPUT_4]", "[INPUT_5]", "[INPUT_6]"]
-      ]
-    },
-    "answers": {
-      "INPUT_1": "비교대상 1 서술",
-      "INPUT_2": "비교대상 2 서술",
-      "INPUT_3": "비교대상 3 서술",
-      "INPUT_4": "비교대상 1 두번째 서술",
-      "INPUT_5": "비교대상 2 두번째 서술",
-      "INPUT_6": "비교대상 3 두번째 서술"
-    },
-    "explanation": "해설 (📚 참조 문헌: [🏛️ 국가건설기준(KCSC)] 또는 [원보고서]에 실제 KDS/KCS 코드가 명시된 경우에만 해당 정식 코드를 표기하고, 제공되지 않은 경우 절대로 가짜 KDS/KCS 코드 번호를 임의 창작하지 말고 '원보고서 본문 및 지반공학 표준 이론'으로만 표기할 것)"
-  },
-  {
-    "type": "주관식 (단답형)",
-    "question": "3번 문항: 공학적 의미 질문...",
-    "answer": "정답 서술",
-    "explanation": "해설 (📚 참조 문헌: [🏛️ 국가건설기준(KCSC)] 또는 [원보고서]에 실제 KDS/KCS 코드가 명시된 경우에만 해당 정식 코드를 표기하고, 제공되지 않은 경우 절대로 가짜 KDS/KCS 코드 번호를 임의 창작하지 말고 '원보고서 본문 및 지반공학 표준 이론'으로만 표기할 것)"
-  },
-  {
-    "type": "주관식 (단답형)",
-    "question": "4번 문항: 대책 질문...",
-    "answer": "정답 서술",
-    "explanation": "해설 (📚 참조 문헌: [🏛️ 국가건설기준(KCSC)] 또는 [원보고서]에 실제 KDS/KCS 코드가 명시된 경우에만 해당 정식 코드를 표기하고, 제공되지 않은 경우 절대로 가짜 KDS/KCS 코드 번호를 임의 창작하지 말고 '원보고서 본문 및 지반공학 표준 이론'으로만 표기할 것)"
-  }
-]
-\`\`\`
-` : `
-[문제 생성 태스크 시작]:
-아래 제공되는 정보를 분석하여 총 정확히 13개의 예상문제를 생성해 주십시오. (객관식 3개, 그래프해석 주관식 1개, 개요 1개, 공식 1개, 표채우기 2개, 단답형 5개)
-[토픽 핵심 주제]: ${coreSubject}
-[토픽 원본 제목]: ${topic.title}
-[첨부파일 본문 텍스트]: ${fileText || '제공되지 않음'}
-`;
-
     const systemInstruction = `당신은 대한민국 국가건설기준설계코드(KDS) 및 지반공학 기술사 시험 출제위원입니다.
 JSON 배열 형식으로만 문제를 출력하십시오.
 ${getNotebookLmGroundedPromptBlock('quiz')}`;
-
-    const enrichedGenerationPrompt = `${prompt}
-
-[🚨 최우선 절대 지침 준수 선언]:
-아래 제공되는 [📋 문제 출제 기준 절대 지침 (Generation Standards)] 및 [🔬 공학 기준 절대 지침 (Engineering Standards)]은 사용자가 지정한 최우선 헌법적 출제 지침입니다. 그 어떤 내부 출제 방식이나 하드코딩된 알고리즘 규격보다 이 지침들이 1순위로 지켜져야 하며, 상충이 발생할 경우 이 지침들의 세부 내용(예: 비교 대상 가나 구분, 소수점 정확도 등)을 최우선적으로 엄격히 적용하십시오.
-
-[📋 문제 출제 기준 절대 지침 (Generation Standards)]:
-${activeGenerationStandards}
-
-[🔬 공학 기준 절대 지침 (Engineering Standards)]:
-${activeEngineeringStandards}
-`;
 
     const flowchartSpecificInstruction = "이번 흐름도 문제 출제 시, [1번 상자 채우기 지침]: 1번 상자는 설명 텍스트를 채워서 노출하고, 빈칸은 2번 상자부터 시작하여 (A), (B), (C), (D) 순서대로 1개씩 비우십시오. 상자 우측이나 바깥에 (A)~(F) 전체 목록을 덧붙이는 행위는 절대 금지됩니다.";
 
@@ -1115,9 +1003,9 @@ ${LATEX_PROMPT_INSTRUCTIONS}
       ]
     },
     "answers": {
-      "INPUT_1": "비교대상 1 서술",
-      "INPUT_2": "비교대상 2 서술",
-      "INPUT_3": "비교대상 3 서술",
+      "INPUT_1": "비교대상 1 서술 (한글 문장·괄호 안의 모든 수식·변수는 반드시 $j = i \\cdot \\gamma_w$, $\\sigma'$ 형태로 $로 감쌈)\n\n💡 **직관적 의미**: 해당 셀 거동의 핵심 직관 1~2문장",
+      "INPUT_2": "비교대상 2 서술\n\n💡 **직관적 의미**: 해당 셀 거동의 핵심 직관 1~2문장",
+      "INPUT_3": "비교대상 3 서술\n\n💡 **직관적 의미**: 해당 셀 거동의 핵심 직관 1~2문장",
       "INPUT_4": "비교대상 1 두번째 서술",
       "INPUT_5": "비교대상 2 두번째 서술",
       "INPUT_6": "비교대상 3 두번째 서술"
@@ -2135,7 +2023,7 @@ router.get('/session/answersheet', async (req, res) => {
     if (rows.length > 0 && rows[0].value) {
       const parsed = JSON.parse(rows[0].value);
       if (parsed && Array.isArray(parsed.questions)) {
-        parsed.questions = parsed.questions.map(q => healAnswersheetQuestionObject(q));
+        parsed.questions = parsed.questions.map(q => healQuizQuestionObject(q));
       }
       res.json({ data: parsed });
     } else {
@@ -2152,7 +2040,7 @@ router.post('/session/answersheet', async (req, res) => {
   try {
     const { answersheetQuestions } = req.body;
     const healedQuestions = Array.isArray(answersheetQuestions)
-      ? answersheetQuestions.map(healAnswersheetQuestionObject)
+      ? answersheetQuestions.map(healQuizQuestionObject)
       : answersheetQuestions;
     const value = JSON.stringify({ answersheetQuestions: healedQuestions });
     await saveSessionValue('answersheet_questions', value);
