@@ -11799,7 +11799,13 @@ ${item.intuitive || ''}
       
       console.log(`[handleOpenAIQuestions] Fetching questions: URL=${url}`);
       const res = await fetch(url, { method: 'POST' });
-      const data = await res.json();
+      const rawText = await res.text();
+      let data = {};
+      try {
+        data = rawText ? JSON.parse(rawText) : {};
+      } catch (parseErr) {
+        data = { error: `서버 응답 오류 (HTTP ${res.status}): ${rawText.slice(0, 120)}` };
+      }
 
       if (selectedTopicRef.current?.id !== topicId) {
         console.log(`[handleOpenAIQuestions] Topic changed. Ignoring loaded data for topicId=${topicId}`);

@@ -644,7 +644,7 @@ router.post('/topics/:id/ai-questions', async (req, res) => {
     let standardsAnalysis = '';
     const localCallLLM = (sys, prompt, img, scenario, opts) => {
       const enrichedPrompt = standardsAnalysis ? `${standardsAnalysis}\n\n${prompt}` : prompt;
-      return callLLMWithFailover(sys, enrichedPrompt, img, scenario, { ...opts, stage: 'question', preferredModel: targetModel, progressId });
+      return callLLMWithFailover(sys, enrichedPrompt, img, scenario, { allowCrossProviderFallback: true, ...opts, stage: 'question', preferredModel: targetModel, progressId });
     };
 
     if (progressId) {

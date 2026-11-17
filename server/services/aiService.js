@@ -348,15 +348,20 @@ export async function withLlmConcurrencySlot(deadlineAt, fn) {
   }
 }
 
+const MODEL_OVERLOAD_COOLDOWN_MS = 45 * 1000;
+const INVALID_KEY_COOLDOWN_MS = 10 * 60 * 1000;
+const transientOverloadedModels = new Map();
+const transientInvalidKeys = new Map();
+
 export async function callLLMWithFailover(systemInstruction, userPrompt, image = null, scenario = 'default', options = {}) {
-  const defaultBudgetMs = scenario === 'grading' ? 42000 : (scenario === 'slides' ? 95000 : 52000);
+  const defaultBudgetMs = scenario === 'grading' ? 42000 : (scenario === 'slides' ? 95000 : 54000);
   const totalBudgetMs = options.timeoutBudgetMs || defaultBudgetMs;
   const deadlineAt = options.deadlineAt || (Date.now() + totalBudgetMs);
   return await _callLLMWithFailoverCore(systemInstruction, userPrompt, image, scenario, { ...options, deadlineAt });
 }
 
 async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = null, scenario = 'default', options = {}) {
-  const defaultBudgetMs = scenario === 'grading' ? 42000 : (scenario === 'slides' ? 95000 : 52000);
+  const defaultBudgetMs = scenario === 'grading' ? 42000 : (scenario === 'slides' ? 95000 : 54000);
   const deadlineAt = options.deadlineAt || (Date.now() + defaultBudgetMs);
   // SVG_DIAGRAM_PROMPT는 어설픈 그림 강제 방지를 위해 문제 출제에서 제외.
   // CHART_DIAGRAM_PROMPT는 5번 인터랙티브 그래프해석 문제의 Recharts 규격 유지를 위해 문제 출제 시 필수 포함.
@@ -425,11 +430,34 @@ async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = n
     }
   };
 
+  const nowMs = Date.now();
+  const isModelInCooldown = (actualModelName) => {
+    const exp = transientOverloadedModels.get(actualModelName);
+    if (!exp) return false;
+    if (exp <= nowMs) {
+      transientOverloadedModels.delete(actualModelName);
+      return false;
+    }
+    return true;
+  };
+  const isKeyKnownInvalid = (key) => {
+    const exp = transientInvalidKeys.get(key);
+    if (!exp) return false;
+    if (exp <= nowMs) {
+      transientInvalidKeys.delete(key);
+      return false;
+    }
+    return true;
+  };
+
   const addGeminiTasks = () => {
-    const keys = [];
-    if (primaryKey && !primaryKey.startsWith('gsk_')) keys.push({ key: primaryKey, label: 'Key #1' });
-    if (secondaryKey && !secondaryKey.startsWith('gsk_') && secondaryKey !== primaryKey) keys.push({ key: secondaryKey, label: 'Key #2' });
-    if (tertiaryKey && !tertiaryKey.startsWith('gsk_') && tertiaryKey !== primaryKey && tertiaryKey !== secondaryKey) keys.push({ key: tertiaryKey, label: 'Key #3' });
+    const allKeys = [];
+    if (primaryKey && !primaryKey.startsWith('gsk_')) allKeys.push({ key: primaryKey, label: 'Key #1' });
+    if (secondaryKey && !secondaryKey.startsWith('gsk_') && secondaryKey !== primaryKey) allKeys.push({ key: secondaryKey, label: 'Key #2' });
+    if (tertiaryKey && !tertiaryKey.startsWith('gsk_') && tertiaryKey !== primaryKey && tertiaryKey !== secondaryKey) allKeys.push({ key: tertiaryKey, label: 'Key #3' });
+
+    const validKeys = allKeys.filter(k => !isKeyKnownInvalid(k.key));
+    const keys = validKeys.length > 0 ? validKeys : allKeys;
 
     const geminiPref = isClaudePreferred ? 'gemini-3.5-flash-lite' : targetPref;
     let rawFallbacks;
@@ -441,19 +469,26 @@ async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = n
       rawFallbacks = [
         geminiPref,
         'gemini-3.5-flash-lite',
+        'gemini-3.1-flash-lite',
         'gemini-3.8-flash',
         'gemini-3.7-flash',
-        'gemini-3.1-flash-lite',
         'gemini-3.6-flash',
         'gemini-3.5-flash',
         'gemini-4-hydrogen'
       ];
     }
     const uniqueRaw = [...new Set(rawFallbacks.filter(Boolean))];
+    // 자동 폴백이 허용되고 대체 모델이 존재하는 경우, 최근 503/타임아웃으로 불안정한 모델은 후순위로 미뤄 정상 모델부터 즉시 시도
+    const orderedRaw = (allowFallback && uniqueRaw.length > 1)
+      ? [
+          ...uniqueRaw.filter(m => !isModelInCooldown(normalizeGeminiModel(m))),
+          ...uniqueRaw.filter(m => isModelInCooldown(normalizeGeminiModel(m)))
+        ]
+      : uniqueRaw;
 
     // [Interleaved Key Rotation]: 동일 키 6개 모델 연속 시도로 타임아웃 낭비 방지
     // 선호 모델을 모든 키(Key #1 -> Key #2 -> Key #3)에 걸쳐 먼저 시도한 뒤 차순위 모델로 순연
-    for (const modelName of uniqueRaw) {
+    for (const modelName of orderedRaw) {
       const actual = normalizeGeminiModel(modelName);
       for (const k of keys) {
         executionList.push({ key: k.key, label: k.label, model: modelName, actualModel: actual, type: 'gemini' });
@@ -468,7 +503,7 @@ async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = n
     }
   } else {
     addGeminiTasks();
-    if (options.allowCrossProviderFallback && (!isGradingStage || allowFallback)) {
+    if ((options.allowCrossProviderFallback || scenario === 'question' || scenario === 'tutor') && (!isGradingStage || allowFallback)) {
       addClaudeTasks();
     }
   }
@@ -501,6 +536,7 @@ async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = n
   };
   const failedKeys = new Set();
   const rateLimitedKeyModels = new Set();
+  const skippedModelsThisCall = new Set();
   const retriedTaskIndices = new Set();
 
   for (let idx = 0; idx < executionList.length; idx++) {
@@ -516,9 +552,16 @@ async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = n
       continue;
     }
     const actualModelName = task.actualModel || (task.type === 'claude' ? normalizeClaudeModel(task.model, scenario, options) : normalizeGeminiModel(task.model));
+    if (skippedModelsThisCall.has(actualModelName)) {
+      continue;
+    }
     if (rateLimitedKeyModels.has(`${key}:${actualModelName}`)) {
       continue;
     }
+    const hasNextDistinctModel = executionList.slice(idx + 1).some(t => {
+      const m = t.actualModel || t.model;
+      return !failedKeys.has(t.key) && !skippedModelsThisCall.has(m) && m !== actualModelName;
+    });
 
     const maskedKey = `${key.substring(0, 8)}...${key.substring(key.length - 4)}`;
     const modelName = task.model;
@@ -564,7 +607,7 @@ async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = n
         const maxTokensForScenario = (scenario === 'slides' || scenario === 'question') ? 16384 : 8192;
         const data = await withLlmConcurrencySlot(deadlineAt, async () => {
           const controller = new AbortController();
-          const perAttemptCapMs = scenario === 'grading' ? 28000 : (scenario === 'slides' ? 48000 : 50000);
+          const perAttemptCapMs = scenario === 'grading' ? 28000 : (scenario === 'slides' ? 48000 : (hasNextDistinctModel ? 24000 : 45000));
           const perAttemptTimeoutMs = Math.min(
             perAttemptCapMs,
             Math.max(2500, (deadlineAt - Date.now()) - 400)
@@ -684,7 +727,9 @@ async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = n
       const result = await withLlmConcurrencySlot(deadlineAt, async () => {
         const perCallCapMs = scenario === 'grading'
           ? (actualModelName === 'gemini-4-hydrogen' ? 22000 : 18000)
-          : 50000;
+          : (scenario === 'slides'
+              ? 50000
+              : (hasNextDistinctModel ? (scenario === 'question' ? 22000 : 20000) : 45000));
         const timeoutMs = Math.min(
           perCallCapMs,
           Math.max(2500, (deadlineAt - Date.now()) - 400)
@@ -723,15 +768,19 @@ async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = n
         throw new Error('Gemini response empty');
       }
     } catch (err) {
-      console.warn(`[API 시도 실패] ${task.label} (${maskedKey}), 모델: ${task.model}: ${err.message?.substring(0, 120)}`);
-      keyErrors.push(`${task.label} (${task.model}): ${err.message?.substring(0, 120)}`);
+      const errMsg = String(err?.message || '');
+      console.warn(`[API 시도 실패] ${task.label} (${maskedKey}), 모델: ${task.model}: ${errMsg.substring(0, 140)}`);
+      keyErrors.push(`${task.label} (${task.model}): ${errMsg.substring(0, 140)}`);
 
-      const isQuota = err.status === 429 || err.message?.includes('429') || err.message?.includes('Quota') || err.message?.includes('quota') || err.message?.includes('rate');
-      const isNotFoundModel = err.status === 404 || err.message?.includes('404') || err.message?.includes('is not found') || err.message?.includes('models/');
-      const isAuthError = err.message?.includes('API_KEY_INVALID') || err.message?.includes('API key not valid') || err.status === 401 || err.status === 403;
+      const isQuota = err.status === 429 || /\b429\b|quota|rate[\s_-]?limit|too\s+many\s+requests|resource_exhausted/i.test(errMsg);
+      const isNotFoundModel = err.status === 404 || /\b404\b|is not found|not supported for generateContent/i.test(errMsg);
+      const isAuthError = errMsg.includes('API_KEY_INVALID') || errMsg.includes('API key not valid') || err.status === 401 || err.status === 403;
+      const isModelOverloaded = err.status === 503 || /\b503\b|high demand|overloaded|service unavailable/i.test(errMsg);
+      const isTimeoutError = /aborted|timeout|etimedout|timed out/i.test(errMsg);
 
       if (isAuthError) {
         failedKeys.add(key);
+        transientInvalidKeys.set(key, Date.now() + INVALID_KEY_COOLDOWN_MS);
         console.log(`[키 장애 감지] ${task.label} 키 유효성 오류(Auth)로 인해 다음 키로 즉시 페일오버합니다.`);
         continue;
       }
@@ -743,7 +792,17 @@ async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = n
       }
 
       if (isNotFoundModel) {
-        console.log(`[모델 미존재] 모델 '${task.model}'이 Gemini API에 존재하지 않으므로 재시도 없이 다음 모델로 건너땁니다.`);
+        if (allowFallback && hasNextDistinctModel) skippedModelsThisCall.add(actualModelName);
+        console.log(`[모델 미존재] 모델 '${task.model}'이 Gemini API에 존재하지 않으므로 다음 모델로 건너뜁니다.`);
+        continue;
+      }
+
+      if ((isModelOverloaded || isTimeoutError) && allowFallback && hasNextDistinctModel) {
+        skippedModelsThisCall.add(actualModelName);
+        if (!options.disableCooldown) {
+          transientOverloadedModels.set(actualModelName, Date.now() + MODEL_OVERLOAD_COOLDOWN_MS);
+        }
+        console.log(`[모델 과부하/지연 감지] ${actualModelName} (${isModelOverloaded ? '503 과부하' : '응답 시간초과'}). 동일 모델 추가 키 재시도를 생략하고 다음 정상 모델로 즉시 페일오버합니다.`);
         continue;
       }
 
