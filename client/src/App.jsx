@@ -1152,6 +1152,12 @@ const isFlowchartQuestion = (idx, q, isExam = false) => {
 };
 
 
+const unwrapFlowchartBracketTitle = (text) => {
+  if (typeof text !== 'string' || !text) return text;
+  // [N단계 제목] 처럼 첫 줄(또는 전체)이 대괄호로 대칭 래핑된 경우에만 양쪽 대괄호를 함께 해제 (숫자·내용 보존)
+  return text.replace(/^\[([^\[\]\n]+)\](\r?\n|$)/, '$1$2').trim();
+};
+
 const cleanFlowchartCorrectAnswer = (correctAnswer, letter) => {
   if (typeof correctAnswer !== 'string' || !correctAnswer) return correctAnswer;
 
@@ -1161,8 +1167,10 @@ const cleanFlowchartCorrectAnswer = (correctAnswer, letter) => {
     return '';
   }
 
+  const upperLetter = letter ? String(letter).trim().toUpperCase() : '';
+
   // 1-1) JSON 객체/문자열 형태의 다중 정답({ "A": "...", "B": "..." })에서 해당 letter만 정밀 추출
-  if (letter && (correctAnswer.includes(`"${letter}"`) || correctAnswer.includes(`'${letter}'`) || correctAnswer.trim().startsWith('{'))) {
+  if (upperLetter && (correctAnswer.includes(`"${upperLetter}"`) || correctAnswer.includes(`'${upperLetter}'`) || correctAnswer.trim().startsWith('{'))) {
     try {
       let jsonClean = correctAnswer.trim().replace(/^```[a-zA-Z]*\n?/, '').replace(/\n?```$/, '').trim();
       const firstBrace = jsonClean.indexOf('{');
@@ -1173,8 +1181,8 @@ const cleanFlowchartCorrectAnswer = (correctAnswer, letter) => {
         if (parsed && typeof parsed === 'object') {
           for (const [k, v] of Object.entries(parsed)) {
             const cleanK = k.replace(/[\(\)\[\]_'"\s]/g, '').toUpperCase();
-            if (cleanK === letter.toUpperCase() && typeof v === 'string' && v.trim().length > 0) {
-              return cleanAttachmentText(v.trim());
+            if (cleanK === upperLetter && typeof v === 'string' && v.trim().length > 0) {
+              return unwrapFlowchartBracketTitle(cleanAttachmentText(v.trim()));
             }
           }
         }
@@ -1184,45 +1192,55 @@ const cleanFlowchartCorrectAnswer = (correctAnswer, letter) => {
     }
 
     // JSON Regex fallback: "A": "..." or 'A': '...'
-    const jsonKeyRegex = new RegExp(`['"]\\s*\\(?\\s*${letter}\\s*\\)?\\s*['"]\\s*:\\s*['"]([\\s\\S]*?)['"]\\s*(?:,\\s*['"]|\\})`, 'i');
+    const jsonKeyRegex = new RegExp(`['"]\\s*\\(?\\s*${upperLetter}\\s*\\)?\\s*['"]\\s*:\\s*['"]([\\s\\S]*?)['"]\\s*(?:,\\s*['"]|\\})`);
     const jsonMatch = correctAnswer.match(jsonKeyRegex);
     if (jsonMatch && jsonMatch[1]) {
-      return cleanAttachmentText(jsonMatch[1].trim());
+      return unwrapFlowchartBracketTitle(cleanAttachmentText(jsonMatch[1].trim()));
     }
   }
 
-  // 2) (A) ..., (B) ..., [C] ... 형태의 다중 정답 문자열에서 해당 letter 구간만 정밀 추출
-  if (letter) {
-    const letterPattern = new RegExp('(?:\\(|\\[)\\s*' + letter + '\\s*(?:\\)|\\])\\s*([\\s\\S]*?)(?=(?:\\(|\\[)\\s*[A-Z]\\s*(?:\\)|\\])|$)', 'i');
+  // 2) 대문자 (A) ..., (B) ..., [C] ... 형태의 다중 정답 블록에서 해당 letter 구간만 추출
+  //    (소문자 수식 변수 (i), (u), (k) 나 [2단계...] 숫자에서 절대 잘리지 않도록 대문자 A-F 및 줄 경계만 매칭)
+  if (upperLetter) {
+    const startMarker = `(?:^|\\n)\\s*(?:\\(|\\[)\\s*${upperLetter}\\s*(?:\\)|\\])\\s*[:\\-]?\\s*`;
+    const nextMarker = `(?=\\n\\s*(?:\\(|\\[)\\s*[A-F]\\s*(?:\\)|\\])|$)`;
+    const letterPattern = new RegExp(`${startMarker}([\\s\\S]*?)${nextMarker}`);
     const match = correctAnswer.match(letterPattern);
     if (match && match[1]) {
       let clean = match[1].trim();
       clean = clean.replace(/^[:,\-\s]+/, '').replace(/(\\[nr]|[,;\-\s])+$/, '').trim();
-      clean = clean.replace(/^[#\s\-*\+\d\.\:\[\]]+/, '').trim();
-      clean = clean.replace(/[\[\]]+$/, '').trim();
+      clean = clean.replace(/^(?:#+\s+|[\-*+]\s+)/, '').trim();
       if (clean.length > 0) {
-        return cleanAttachmentText(clean);
+        return unwrapFlowchartBracketTitle(cleanAttachmentText(clean));
       }
     }
   }
 
-  // 3) 줄바꿈 단위로 해당 letter가 있는 줄 찾기
-  const lines = correctAnswer.split('\n').map(l => l.trim()).filter(Boolean);
-  if (letter) {
-    const markerRegex = new RegExp('(?:\\(|\\[)\\s*' + letter + '\\s*(?:\\)|\\])', 'i');
-    const targetLine = lines.find(line => markerRegex.test(line));
-    if (targetLine) {
-      let clean = targetLine.replace(markerRegex, '');
+  // 3) 줄바꿈 단위로 해당 대문자 letter 마커가 줄 앞에 있는 경우 해당 줄 이후(다음 [A-F] 마커 전까지) 보존
+  if (upperLetter) {
+    const rawLines = correctAnswer.split('\n');
+    const markerRegex = new RegExp(`^\\s*(?:\\(|\\[)\\s*${upperLetter}\\s*(?:\\)|\\])\\s*[:\\-]?\\s*`);
+    const nextUpperRegex = /^\s*(?:\(|\[)\s*[A-F]\s*(?:\)|\])/;
+    const startIdx = rawLines.findIndex(line => markerRegex.test(line));
+    if (startIdx !== -1) {
+      const collected = [];
+      collected.push(rawLines[startIdx].replace(markerRegex, ''));
+      for (let i = startIdx + 1; i < rawLines.length; i++) {
+        if (nextUpperRegex.test(rawLines[i])) break;
+        collected.push(rawLines[i]);
+      }
+      let clean = collected.join('\n').trim();
       clean = clean.replace(/^[:,\-\s]+/, '').replace(/(\\[nr]|[,;\-\s])+$/, '').trim();
-      clean = clean.replace(/^[#\s\-*\+\d\.\:\[\]]+/, '').trim();
-      clean = clean.replace(/[\[\]]+$/, '').trim();
-      return cleanAttachmentText(clean);
+      clean = clean.replace(/^(?:#+\s+|[\-*+]\s+)/, '').trim();
+      if (clean.length > 0) {
+        return unwrapFlowchartBracketTitle(cleanAttachmentText(clean));
+      }
     }
   }
 
-  // 4) 단독 정답인 경우 (뒷부분의 수식, 상세 해설, 직관적 의미를 잘라내지 않고 온전히 보존)
-  let clean = correctAnswer.replace(/^[#\s\-*\+\d\.\:\[\]]+/, '').replace(/(\\[nr]|[,;\-\s])+$/, '').trim();
-  return cleanAttachmentText(clean);
+  // 4) 단독 정답인 경우 (숫자·단계번호·수식·상세 해설·직관적 의미를 잘라내지 않고 온전히 보존)
+  let clean = correctAnswer.replace(/^(?:#+\s+|[\-*+]\s+)/, '').replace(/(\\[nr]|[,;\-\s])+$/, '').trim();
+  return unwrapFlowchartBracketTitle(cleanAttachmentText(clean));
 };
 
 
@@ -1605,7 +1623,7 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
               const letter = String.fromCharCode(65 + letterIdx);
               const result = tableGradingResults[key];
               if (result) {
-                const canonicalAns = getCorrectAnswerForInput(q, inputId);
+                const canonicalAns = cleanFlowchartCorrectAnswer(getCorrectAnswerForInput(q, inputId), letter);
                 const reevalAns = cleanFlowchartCorrectAnswer(result?.suggestedModelAnswer || result?.correctAnswer, letter);
                 let cleanedAns = (reevalAns && !/^(success|ok|true|false)$/i.test(reevalAns.trim()))
                   ? reevalAns
@@ -5458,6 +5476,74 @@ export default function App() {
   const [examShowAnswersState, setExamShowAnswersState] = useState({});
   const [gradingLoading, setGradingLoading] = useState({});
 
+  const resolveFlowchartCellHeaders = (q, inputId) => {
+    const qText = q?.question || '';
+    const isFlowchart = qText && (qText.includes('┌──') || qText.includes('▼') || qText.includes('플로우차트') || qText.includes('흐름도'));
+    if (!isFlowchart) return null;
+    const match = String(inputId || '').match(/INPUT_(\d+)/);
+    if (!match) return null;
+    const index = parseInt(match[1], 10);
+    const letter = String.fromCharCode(65 + index - 1);
+
+    const rawLines = qText.split('\n');
+    const lines = rawLines.flatMap(rawLine =>
+      (rawLine.includes('┌') && (rawLine.includes('│') || rawLine.includes('└')))
+        ? rawLine
+            .replace(/([^\n])([┌└])/g, '$1\n$2')
+            .replace(/([┐┘])\s+/g, '$1\n')
+            .replace(/([│┃])\s+([│┃])/g, '$1\n$2')
+            .split('\n')
+        : [rawLine]
+    );
+    let boxCount = 0;
+    let currentRowBase = 0;
+    let currentRowBoxes = 0;
+    let inBox = false;
+    let foundBoxNum = null;
+    let isTitle = false;
+    let isBullet = false;
+    const escapedLetter = letter.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const titleMarkerRegex = new RegExp(`\\[\\s*(?:\\(\\s*)?${escapedLetter}(?:\\s*\\))?\\s*\\]`);
+
+    for (const l of lines) {
+      if (l.includes('┌')) {
+        // 분기 연결선(┌──┴──┐ 등)은 단계 상자가 아니므로 카운트에서 제외
+        if (l.includes('┴')) continue;
+        const openings = (l.match(/┌/g) || []).length;
+        currentRowBase = boxCount;
+        currentRowBoxes = openings;
+        boxCount += openings;
+        inBox = true;
+      } else if (l.includes('└')) {
+        inBox = false;
+        currentRowBoxes = 0;
+      } else if (inBox && l.includes(`(${letter})`)) {
+        const segments = l.split(/[│┃]/).map(s => s.trim()).filter(Boolean);
+        const matchedSeg = segments.find(seg => seg.includes(`(${letter})`)) || l.trim();
+        let slotIdx = 0;
+        if (currentRowBoxes > 1 && segments.length > 1) {
+          const segIdx = segments.findIndex(seg => seg.includes(`(${letter})`));
+          if (segIdx !== -1) slotIdx = Math.min(segIdx, currentRowBoxes - 1);
+        }
+        foundBoxNum = currentRowBase + 1 + slotIdx;
+        if (titleMarkerRegex.test(matchedSeg)) {
+          isTitle = true;
+        }
+        if (/^[-•]/.test(matchedSeg) || matchedSeg.includes(`- (${letter})`) || matchedSeg.includes(`-(${letter})`)) {
+          isBullet = true;
+        }
+        break;
+      }
+    }
+
+    const roleName = isTitle ? '단계 제목(명칭)' : (isBullet ? '세부 활동/대책 내용' : '세부 활동');
+    const stepLabel = foundBoxNum ? `${foundBoxNum}단계` : '';
+    return {
+      rowHeader: stepLabel ? `(${letter}) [${stepLabel} 상자의 ${roleName}]` : `(${letter}) [${roleName}]`,
+      colHeader: isTitle ? '단계 제목 답안' : '세부 활동 답안'
+    };
+  };
+
   const gradeTableQuestion = async (qIdx, q, targetInputs = null, isReevaluation = false) => {
     if (targetInputs && Array.isArray(targetInputs) && targetInputs.length === 1) {
       const singleInputKey = `${qIdx}_${targetInputs[0]}`;
@@ -5614,6 +5700,13 @@ export default function App() {
           }
         }
       }
+      if (!rowHeader) {
+        const flowchartHeaders = resolveFlowchartCellHeaders(q, inputId);
+        if (flowchartHeaders) {
+          rowHeader = flowchartHeaders.rowHeader;
+          colHeader = flowchartHeaders.colHeader;
+        }
+      }
       if (!rowHeader && q.tableData && q.tableData.rows && q.tableData.headers) {
         q.tableData.rows.forEach((row) => {
           row.forEach((cell, colIdx) => {
@@ -5633,17 +5726,6 @@ export default function App() {
             }
           });
         });
-      }
-      if (!rowHeader) {
-        const isFlowchart = q.question && (q.question.includes('┌──') || q.question.includes('▼') || q.question.includes('플로우차트') || q.question.includes('흐름도'));
-        if (isFlowchart) {
-          const match = inputId.match(/INPUT_(\d+)/);
-          if (match) {
-            const index = parseInt(match[1], 10);
-            rowHeader = `(${String.fromCharCode(65 + index - 1)})`;
-            colHeader = '입력 답안';
-          }
-        }
       }
       
       try {
@@ -5947,43 +6029,11 @@ export default function App() {
         }
       }
     }
-    const isFlowchart = q.question && (q.question.includes('┌──') || q.question.includes('▼') || q.question.includes('플로우차트') || q.question.includes('흐름도'));
-    if (isFlowchart) {
-      const match = inputId.match(/INPUT_(\d+)/);
-      if (match) {
-        const index = parseInt(match[1], 10);
-        const letter = String.fromCharCode(65 + index - 1);
-
-        // 흐름도 내 상자 단계 및 역할(제목 vs 세부내용) 동적 매핑
-        const lines = (q.question || '').split('\n');
-        let boxCount = 0;
-        let inBox = false;
-        let foundBoxNum = null;
-        let isTitle = false;
-        let isBullet = false;
-
-        for (let l of lines) {
-          if (l.includes('┌')) {
-            boxCount++;
-            inBox = true;
-          } else if (l.includes('└')) {
-            inBox = false;
-          } else if (inBox && l.includes(`(${letter})`)) {
-            foundBoxNum = boxCount;
-            if (l.includes(`[ (${letter}) ]`) || l.includes(`[(${letter})]`) || l.includes(`[ ${letter} ]`) || /\[\s*\([A-Z]\)\s*\]/.test(l)) {
-              isTitle = true;
-            }
-            if (l.trim().startsWith('-') || l.trim().startsWith('•') || l.includes(`- (${letter})`) || l.includes(`-(${letter})`)) {
-              isBullet = true;
-            }
-            break;
-          }
-        }
-
-        const roleName = isTitle ? '단계 제목(명칭)' : (isBullet ? '세부 활동/대책 내용' : '세부 활동');
-        const stepLabel = foundBoxNum ? `${foundBoxNum}단계` : '';
-        rowHeader = stepLabel ? `(${letter}) [${stepLabel} 상자의 ${roleName}]` : `(${letter}) [${roleName}]`;
-        colHeader = isTitle ? '단계 제목 답안' : '세부 활동 답안';
+    if (!rowHeader) {
+      const flowchartHeaders = resolveFlowchartCellHeaders(q, inputId);
+      if (flowchartHeaders) {
+        rowHeader = flowchartHeaders.rowHeader;
+        colHeader = flowchartHeaders.colHeader;
       }
     }
 

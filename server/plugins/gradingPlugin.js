@@ -237,8 +237,8 @@ export function evaluateStrictNumericFastTrack({
 }
 
 // Versioned Model Answer Cache + Single-Flight Map (Write-After-Verify)
-const MODEL_ANSWER_CACHE_VERSION = 'v5.2-prompt2.3-san2.1';
-const PHASE1_PROMPT_SIGNATURE = 'phase1-single-cell-latex-intuitive-meaning-strict-grounding-v5.2';
+const MODEL_ANSWER_CACHE_VERSION = 'v5.3-prompt2.4-san2.1';
+const PHASE1_PROMPT_SIGNATURE = 'phase1-single-cell-latex-intuitive-meaning-strict-grounding-v5.3';
 const PROMPT_TEMPLATE_HASH = crypto
   .createHash('sha256')
   .update(`${baseSystemInstruction}||${PHASE1_PROMPT_SIGNATURE}`)
@@ -598,9 +598,11 @@ ${isReevaluation ? `🚨 **[심층 모범 답안 도출 철칙]**:
    - 표 채우기(Table Quiz) 또는 플로우차트 문항인 경우, 오직 해당 항목(행: ${rowHeader || '해당 행'}, 열: ${colHeader || '해당 열'}) 한 칸에 들어갈 '그 칸만의 고유하고 구체적인 정답 내용'으로만 작성하십시오.
    - ⚠️ 전체 빈칸을 묶은 JSON 객체({ "A": ..., "B": ..., "C": ... })나 전체 목록을 반환하는 것을 극도로 엄격히 금지합니다.
    - 오직 지정된 빈칸 ${targetLetter ? `(${targetLetter})` : (rowHeader || '')} 한 칸만의 순수 텍스트 정답을 출력하십시오.
-2. **[플로우차트 상자 및 빈칸 구조 절대 준수]**:
-   - 본 플로우차트 문항은 각 단계 상자마다 [단계 제목]과 [세부 활동] 2개의 빈칸이 짝을 이룹니다. (예: [2]단계 = (A) 단계명, (B) 세부활동 / [4]단계 = (C) 단계명, (D) 세부활동).
-   - 현재 채점 대상은 [${rowHeader || ''}] 입니다. 절대로 (B)를 [4]단계로 건너뛰어 오인하지 마십시오.
+2. **[플로우차트 상자 위치 정확 고정 및 제목/본문 충실 작성 철칙]**:
+   - 본 플로우차트 문항은 각 단계 상자마다 [단계 제목]과 [세부 활동] 2개의 빈칸이 짝을 이룹니다. (예: 2단계=(A)제목·(B)세부활동, 4단계=(C)제목·(D)세부활동).
+   - **현재 채점 대상 칸은 오직 '[${rowHeader || ''}]' (${colHeader || ''}) 단 하나입니다.** 반드시 흐름도에서 해당 알파벳이 속한 **바로 그 단계 번호의 상자**와 **기존 기준 요약(correctAnswer)**에 해당하는 공학적 내용만 작성하십시오. 다른 단계 상자(예: 4단계 칸에 2단계 내용)의 내용을 섞거나 대신 쓰지 마십시오.
+   - 빈칸 모양 '[ (A) ]'를 따라 답안을 '[2단계 ...]'처럼 대괄호 '[' ']'로 감싸지 말고 순수 텍스트로 작성하십시오.
+   - '단계 제목 답안'이라도 제목 1줄만 짧게 쓰고 끝내지 말고, **첫 줄에 핵심 단계 명칭을 명시한 뒤 그 단계에서 검토하는 공학적 원리·대상·판정 기준을 1~2문장으로 반드시 부연 설명**하고 하단에 '💡 **직관적 의미**'를 붙이십시오.
 3. **[공학적 메커니즘 중심 서술 및 무관한 수식 환각 절대 금지]**:
    - 해당 개념의 공학적 메커니즘과 핵심 원리를 원보고서 및 학술 기준에 입각하여 충실히 서술하십시오.
    - **문항의 공학적 본질이나 원보고서/출처 본문에 실제로 해당 수식이 존재하고 수식이 핵심인 경우에만 출처에 부합하는 정확한 수식(표준 LaTeX 표기)을 포함하며, 순수 개념/역학적 목적/시공 메커니즘 서술형 문항에 무관한 타 공법·타 이론의 수식(압밀식 등)을 억지로 끼워 넣거나 지어내는 환각(Hallucination)을 절대 금지합니다.**
@@ -686,6 +688,7 @@ ${LATEX_PROMPT_INSTRUCTIONS}`;
       }
     }
     cleanAnswer = cleanAnswer.replace(/^(모범\s*답안|정답|표준\s*답안)\s*[:：]\s*/i, '').trim();
+    cleanAnswer = cleanAnswer.replace(/^\[([^\[\]\n]+)\](\r?\n|$)/, '$1$2').trim();
 
     // 1) 3중 이상 연속 달러 기호($$$, $$$$) 찌꺼기를 표준 $$로 정제
     cleanAnswer = cleanAnswer.replace(/\${3,}/g, () => '$$');
