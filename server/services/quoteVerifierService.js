@@ -503,10 +503,77 @@ export function verifyGroundedGradingResult({
 }
 
 /**
+ * 단일 외곽 $...$로 잘못 감싸진 한글 서술형 객관식 보기의 달러 기호를 안전하게 제거합니다.
+ * - 순수 수식($q_u = ...$), \text{한글} 수식, 한글 아래첨자($q_{허용}$), 복수 인라인 수식($c=0$ ... $...$)은 100% 보존합니다.
+ * - 괄호 안 LaTeX 수식((\gamma = 0))이 포함된 한글 서술문은 바깥 $만 벗기고 괄호 안 수식은 ($\gamma = 0$)으로 보존합니다.
+ */
+export function unwrapBogusDollarOption(str) {
+  if (typeof str !== 'string') return str;
+  const trimmed = str.trim();
+  const outerMatch = trimmed.match(/^\$([^$]+)\$$/);
+  if (!outerMatch) return str;
+
+  const inner = outerMatch[1].trim();
+  if (!/[가-힣]/.test(inner)) return str;
+
+  // 수식 전용 기호(\ _ ^ = { })가 전혀 없으면 100% 한글 서술문/라벨
+  if (!/[\\_^={}]/.test(inner)) {
+    return inner;
+  }
+
+  // 정당한 수식 내 한글 컨테이너(\text{...}, \mathrm{...}, _{...}, ^{...}, _한, ^한) 제거
+  const strippedMathKorean = inner
+    .replace(/\\(?:text|textbf|textrm|mathrm|mathbf|mbox)\s*\{[^{}]*\}/g, '')
+    .replace(/[_^]\s*\{[^{}]*\}/g, '')
+    .replace(/[_^]\s*[가-힣a-zA-Z0-9]/g, '');
+
+  // 그 외 독립 한글이 없으면 정상 수식(예: $q_{허용} = q_u / FS$)으로 보존
+  if (!/[가-힣]/.test(strippedMathKorean)) return str;
+
+  // 괄호 바깥에 한글 조사/서술 어미가 존재하면 한글 서술문으로 판정 (순수 단어 등식 "$안전율 = ...$" 제외)
+  const withoutParens = strippedMathKorean.replace(/\([^()]*\)/g, '');
+  const hasProseParticlesOrEndings = /[가-힣]+(?:은|는|이|가|을|를|의|에|에서|으로|로|와|과|보다|하여|하고|하며|하므로|대한|따른|통해|가정함|해석함|모사함|무시함|산정함|설계함|가능함|있음|없음|됨|임)(?:\s|[,.):]|$)/.test(withoutParens);
+  if (!hasProseParticlesOrEndings) return str;
+
+  if (/^\s*\\/.test(inner)) return str;
+  const rescued = inner.replace(/\(([^()]*[\\_^][^()]*)\)/g, (_, expr) => `($${expr.trim()}$)`);
+  const withoutInlineMath = rescued.replace(/\$[^$]+\$/g, '');
+  if (/\\[a-zA-Z]+|[_^]\{/.test(withoutInlineMath)) return str;
+
+  return rescued;
+}
+
+/**
+ * 객관식 문항의 options 배열과 answer를 대칭으로 정제하여 불필요한 외곽 $...$를 제거합니다.
+ */
+export function sanitizeMcqDollarOptions(q) {
+  if (!q || typeof q !== 'object' || !Array.isArray(q.options) || q.options.length === 0) {
+    return q;
+  }
+  const sanitizedOptions = q.options.map(opt => unwrapBogusDollarOption(opt));
+  let nextAnswer = q.answer;
+  if (typeof q.answer === 'string') {
+    const origIdx = q.options.indexOf(q.answer);
+    nextAnswer = origIdx !== -1 ? sanitizedOptions[origIdx] : unwrapBogusDollarOption(q.answer);
+  }
+  const optionsChanged = sanitizedOptions.some((opt, idx) => opt !== q.options[idx]);
+  if (!optionsChanged && nextAnswer === q.answer) {
+    return q;
+  }
+  return {
+    ...q,
+    options: sanitizedOptions,
+    answer: nextAnswer
+  };
+}
+
+/**
  * 출제된 퀴즈 문항 배열 전체에 대한 NotebookLM 방식 원문 검증 수행 (< 5ms)
  */
 export function verifyQuizQuestionsGrounding(questions = [], { fileText = '', kcscGrounding = '', wikiGrounding = '' } = {}) {
   if (!Array.isArray(questions) || questions.length === 0) return questions;
+
+  const sanitizedQuestions = questions.map(sanitizeMcqDollarOptions);
 
   const dossier = buildFactDossier({
     topicText: fileText,
@@ -514,9 +581,9 @@ export function verifyQuizQuestionsGrounding(questions = [], { fileText = '', kc
     wikiGrounding
   });
 
-  if (!dossier.hasSource) return questions;
+  if (!dossier.hasSource) return sanitizedQuestions;
 
-  return questions.map(q => {
+  return sanitizedQuestions.map(q => {
     const formulaCheck = sanitizeUnfoundedBlockFormulas(q.answer || '', {
       dossierText: dossier.fullText,
       question: q.question || '',

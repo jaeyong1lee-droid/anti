@@ -15,7 +15,7 @@ import * as itemQuizPlugin from '../plugins/formulaItemQuizPlugin.js';
 import pdfParse from 'pdf-parse';
 import { getWikipediaKnowledge } from '../services/wikipediaService.js';
 import { getKcscVerificationContext } from '../services/kcscService.js';
-import { getNotebookLmGroundedPromptBlock, verifyQuizQuestionsGrounding, verifyAndHealSingleQuestionGrounding } from '../services/quoteVerifierService.js';
+import { getNotebookLmGroundedPromptBlock, verifyQuizQuestionsGrounding, verifyAndHealSingleQuestionGrounding, sanitizeMcqDollarOptions } from '../services/quoteVerifierService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -1075,7 +1075,7 @@ ${kcscGrounding ? `\n${kcscGrounding}\n` : ''}
 - 🚨 [해설 하단 직관적 의미 필수 표기 철칙 - 극도로 중요!]: 모든 객관식 문제의 "explanation"(해설) 본문 맨 아래(📚 참조 문헌 바로 앞)에 반드시 줄을 바꾼 뒤 다음 형식으로 직관적 의미를 1~2문장으로 필수 기재하십시오:
   💡 **직관적 의미**: [정답이 내포하는 물리적/공학적 본질이나 실무적 의미를 한눈에 직관적으로 이해할 수 있는 명쾌하고 쉬운 비유나 설명 1~2문장]
 - 🚨 [객관식 answer 및 correctIndex 필드 필수 포함 철칙 - 극도로 중요!]: 모든 객관식 문항에는 "options" 배열 중 정답 텍스트와 100% 일치하는 문자열을 "answer" 필드에 반드시 기재하고, 0부터 시작하는 해당 정답의 보기 인덱스를 "correctIndex" 필드에 반드시 기재하십시오. (mathContext 등 스키마 외 임의 찌꺼기 필드 생성 엄금)
-- 🚨 [보기 수식 표기 절대 철칙 - 극도로 중요!]: 보기(options) 항목이 공학 수식, 공식, 변수 기호인 경우 예외 없이 반드시 '$수식$' 형태로 달러 기호로 완벽히 감싸서 출력하십시오. 날것의 LaTeX 명령어(\\\\frac, \\\\gamma, \\\\sigma 등)를 달러 기호 없이 노출하는 것을 엄격히 금지합니다.
+- 🚨 [보기 수식 표기 절대 철칙 - 극도로 중요!]: 보기(options)와 정답(answer) 항목이 **순수 공학 수식이나 공식 전체**인 경우에만 '$수식$'으로 감싸고, 한글 문장 안에 일부 변수 기호만 포함될 때는 해당 기호만 감싸십시오(예: "기초폭 $B$의 영향"). **수식이 없는 일반 한글 서술형 보기 전체를 '$...$'로 감싸는 행위는 절대 금지**하며, 날것의 LaTeX 명령어(\\\\frac, \\\\gamma, \\\\sigma 등)를 달러 기호 없이 노출하는 것도 금지합니다.
 
 ${topicInstructionsPrompt}
 ${LATEX_PROMPT_INSTRUCTIONS}
@@ -1087,8 +1087,8 @@ ${LATEX_PROMPT_INSTRUCTIONS}
     "type": "객관식 (4지선다)",
     "question": "질문 내용",
     "explanation": "상세한 공학적 해설 (단위 환산 및 단계별 수식 계산을 먼저 수행하여 최종 정답 확정)...\n\n💡 **직관적 의미**: 정답의 핵심 직관적 설명 1~2문장\n\n📚 참조 문헌(Standards & Literature): [🏛️ 국가건설기준(KCSC)] 또는 [원보고서]에 실제 KDS/KCS 코드가 명시된 경우에만 해당 정식 코드를 표기하고, 제공되지 않은 경우 절대로 가짜 KDS/KCS 코드 번호를 임의 창작하지 말고 '원보고서 본문 및 지반공학 표준 이론'으로만 표기할 것",
-    "options": ["$수식 또는 보기 1$", "$수식 또는 보기 2$", "$수식 또는 보기 3$", "$수식 또는 보기 4$"],
-    "answer": "$수식 또는 보기 1$",
+    "options": ["보기 1", "보기 2", "보기 3", "보기 4"],
+    "answer": "보기 1",
     "correctIndex": 0
   }
 ]
@@ -1124,13 +1124,16 @@ let parsedArray = null;
         kcscGrounding
       });
     } else {
+      const b1Meta = {};
+      const b2Meta = {};
+      const b3Meta = {};
       const [batch1Text, batch2Text, batch3Text] = await Promise.all([
-        localCallLLM(systemInstruction, promptBatch1, null, 'question', { temperature: 1.0, stage: 'question', hybridRole: 'deep' }),
-        localCallLLM(systemInstruction, promptBatch2, null, 'question', { temperature: 1.0, stage: 'question', hybridRole: 'fast' }),
-        localCallLLM(systemInstruction, promptBatch3, null, 'question', { temperature: 1.0, stage: 'question', hybridRole: 'deep' })
+        localCallLLM(systemInstruction, promptBatch1, null, 'question', { temperature: 1.0, stage: 'question', hybridRole: 'deep', metaOut: b1Meta }),
+        localCallLLM(systemInstruction, promptBatch2, null, 'question', { temperature: 1.0, stage: 'question', hybridRole: 'fast', metaOut: b2Meta }),
+        localCallLLM(systemInstruction, promptBatch3, null, 'question', { temperature: 1.0, stage: 'question', hybridRole: 'deep', metaOut: b3Meta })
       ]);
 
-      const parseBatch = (responseText, batchName) => {
+      const parseBatch = (responseText, batchName, batchModelUsed = null) => {
         if (!responseText || typeof responseText !== 'string') return [];
         let text = responseText.trim();
         if (text.startsWith('```')) {
@@ -1156,19 +1159,23 @@ let parsedArray = null;
             parsed = arrayProp;
           }
         }
-        return Array.isArray(parsed) ? parsed : [];
+        if (!Array.isArray(parsed)) return [];
+        return batchModelUsed
+          ? parsed.map(item => (item && typeof item === 'object' ? { ...item, modelUsed: item.modelUsed || batchModelUsed } : item))
+          : parsed;
       };
 
-      let q1 = parseBatch(batch1Text, '1 (주관식 개요/공식/단답)');
-      let q2 = parseBatch(batch2Text, '2 (주관식 표채우기)');
-      let q3 = parseBatch(batch3Text, '3 (객관식)');
+      let q1 = parseBatch(batch1Text, '1 (주관식 개요/공식/단답)', b1Meta.modelUsed);
+      let q2 = parseBatch(batch2Text, '2 (주관식 표채우기)', b2Meta.modelUsed);
+      let q3 = parseBatch(batch3Text, '3 (객관식)', b3Meta.modelUsed);
 
       // 🚨 [객관식 누락 방지]: 만약 Batch 3(객관식) 결과가 3개 미만이면 즉시 단독 재시도 보충
       if (q3.length < 3) {
         console.warn(`[Quiz Gen] Batch 3 (객관식) 부족 감지 (${q3.length}/3). 단독 보충 호출 시작...`);
         try {
-          const retryBatch3Text = await localCallLLM(systemInstruction, promptBatch3, null, 'question', { temperature: 0.7, preferredModel: targetModel });
-          const retryQ3 = parseBatch(retryBatch3Text, '3 (객관식 보충)');
+          const retryB3Meta = {};
+          const retryBatch3Text = await localCallLLM(systemInstruction, promptBatch3, null, 'question', { temperature: 0.7, preferredModel: targetModel, metaOut: retryB3Meta });
+          const retryQ3 = parseBatch(retryBatch3Text, '3 (객관식 보충)', retryB3Meta.modelUsed);
           if (Array.isArray(retryQ3) && retryQ3.length > 0) {
             q3 = [...q3, ...retryQ3];
           }
@@ -1274,16 +1281,17 @@ let parsedArray = null;
   }
 ]
 `;
-        const backfillRaw = await localCallLLM(systemInstruction, backfillPrompt, null, 'question', { temperature: 0.7, preferredModel: targetModel });
-        const backfillList = parseBatch(backfillRaw, '보충 문항');
+        const bfMeta = {};
+        const backfillRaw = await localCallLLM(systemInstruction, backfillPrompt, null, 'question', { temperature: 0.7, preferredModel: targetModel, metaOut: bfMeta });
+        const backfillList = parseBatch(backfillRaw, '보충 문항', bfMeta.modelUsed);
         for (const bq of backfillList) {
           if (deduplicated.length >= 13) break;
-          const healedBq = healQuizQuestionObject({
+          const healedBq = sanitizeMcqDollarOptions(healQuizQuestionObject({
             ...bq,
             topic_id: Number(topicId),
             category: topic.category,
             question: cleanQuizQuestion(bq.question)
-          });
+          }));
           deduplicated.push(healedBq);
         }
       } catch (bfErr) {
@@ -2632,7 +2640,8 @@ ${ENGINEERING_STANDARDS}
       try {
         console.log(`[종합평가 병렬 생성] #${idx + 1}번째 배치 전송 시작...`);
         const enrichedPrompt = standardsAnalysis ? `${standardsAnalysis}\n\n${batchPrompt}` : batchPrompt;
-        const rawText = await callLLMWithFailover(null, enrichedPrompt, null, 'question', { temperature: 1.0, stage: 'question', preferredModel: resolveStageModel('question', { stage: 'question', stageModels: req.body?.stageModels, preferredModel: targetModel }), hybridRole: 'deep' });
+        const batchMeta = {};
+        const rawText = await callLLMWithFailover(null, enrichedPrompt, null, 'question', { temperature: 1.0, stage: 'question', preferredModel: resolveStageModel('question', { stage: 'question', stageModels: req.body?.stageModels, preferredModel: targetModel }), hybridRole: 'deep', metaOut: batchMeta });
         let text = rawText.trim();
         if (text.startsWith('```')) {
           text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
@@ -2644,7 +2653,7 @@ ${ENGINEERING_STANDARDS}
           parsedList = extractJsonArray(rawText);
         }
         if (parsedList && Array.isArray(parsedList)) {
-          return parsedList;
+          return parsedList.map(item => (item && typeof item === 'object' ? { ...item, modelUsed: item.modelUsed || batchMeta.modelUsed || null } : item));
         }
       } catch (err) {
         console.warn(`[종합평가 병렬 생성 실패] #${idx + 1}번째 배치 에러:`, err.message);
@@ -2772,7 +2781,8 @@ ${ENGINEERING_STANDARDS}
         explanation: q.explanation || '',
         concept: q.concept || '',
         flowchartIntuitive: q.flowchartIntuitive || null,
-        topic_id: topicId
+        topic_id: topicId,
+        ...(q.modelUsed ? { modelUsed: q.modelUsed } : {})
       };
     });
 
@@ -3126,7 +3136,8 @@ ${ENGINEERING_STANDARDS}
 `;
       try {
         console.log(`[종합평가 추가 생성] (${i + 1}/${TOTAL_BATCHES}) 회차 프롬프트 전송 시작...`);
-        const rawText = await callLLMWithFailover(null, batchPrompt, null, 'question', { temperature: 1.0, stage: 'question', preferredModel: resolveStageModel('question', { stage: 'question', stageModels: req.body?.stageModels, preferredModel: (req.body && req.body.preferredModel) || req.query.preferredModel }), hybridRole: 'deep' });
+        const batchMeta = {};
+        const rawText = await callLLMWithFailover(null, batchPrompt, null, 'question', { temperature: 1.0, stage: 'question', preferredModel: resolveStageModel('question', { stage: 'question', stageModels: req.body?.stageModels, preferredModel: (req.body && req.body.preferredModel) || req.query.preferredModel }), hybridRole: 'deep', metaOut: batchMeta });
         let text = rawText.trim();
         if (text.startsWith('```')) {
           text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
@@ -3140,7 +3151,7 @@ ${ENGINEERING_STANDARDS}
         }
 
         if (batchQuestions && Array.isArray(batchQuestions)) {
-          aggregatedAiQuestions.push(...batchQuestions);
+          aggregatedAiQuestions.push(...batchQuestions.map(item => (item && typeof item === 'object' ? { ...item, modelUsed: item.modelUsed || batchMeta.modelUsed || null } : item)));
           console.log(`[종합평가 추가 배치 성공] (${i + 1}/${TOTAL_BATCHES}) 회차 완료. 누적 문항 수: ${aggregatedAiQuestions.length}`);
         }
 
@@ -3190,7 +3201,8 @@ ${ENGINEERING_STANDARDS}
         explanation: q.explanation || '',
         concept: q.concept || '',
         flowchartIntuitive: q.flowchartIntuitive || null,
-        topic_id: topicId
+        topic_id: topicId,
+        ...(q.modelUsed ? { modelUsed: q.modelUsed } : {})
       };
     });
 

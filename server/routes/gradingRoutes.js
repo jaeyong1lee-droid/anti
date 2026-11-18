@@ -1033,7 +1033,8 @@ ${formatRequirement ? `[응답 포맷]:\n${formatRequirement}` : ''}`;
         }
       }
 
-      const responseText = await localCallLLM(null, prompt, imagePayload, 'question', { temperature: (topic?.category === '계산' && Number(questionIdx) === 0) ? 0.1 : 1.0 });
+      const llmMeta = {};
+      const responseText = await localCallLLM(null, prompt, imagePayload, 'question', { temperature: (topic?.category === '계산' && Number(questionIdx) === 0) ? 0.1 : 1.0, metaOut: llmMeta });
       let text = responseText.trim();
       if (text.startsWith('```')) {
         text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
@@ -1042,7 +1043,8 @@ ${formatRequirement ? `[응답 포맷]:\n${formatRequirement}` : ''}`;
       let parsedQuestion = parseLlmJson(text);
       const healedQ = healQuizQuestionObject({
         ...parsedQuestion,
-        question: (parsedQuestion.question || '').trim()
+        question: (parsedQuestion.question || '').trim(),
+        ...(llmMeta.modelUsed ? { modelUsed: llmMeta.modelUsed } : {})
       });
 
       if (progressTimer) clearInterval(progressTimer);
@@ -1150,7 +1152,8 @@ ${LATEX_PROMPT_INSTRUCTIONS}
 ${getActiveEngineeringStandards()}
 오직 순수 JSON 데이터만 반환하십시오.`;
 
-      const responseText = await localCallLLM(null, prompt, null, 'question', { temperature: 1.0 });
+      const llmMeta = {};
+      const responseText = await localCallLLM(null, prompt, null, 'question', { temperature: 1.0, metaOut: llmMeta });
       let text = responseText.trim();
       if (text.startsWith('```')) {
         text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
@@ -1166,7 +1169,8 @@ ${getActiveEngineeringStandards()}
       const healedQ = healQuizQuestionObject({
         ...parsedQuestion,
         topic_id: finalTopicId ? Number(finalTopicId) : null,
-        question: (parsedQuestion.question || '').trim()
+        question: (parsedQuestion.question || '').trim(),
+        ...(llmMeta.modelUsed ? { modelUsed: llmMeta.modelUsed } : {})
       });
 
       if (progressTimer) clearInterval(progressTimer);
@@ -1285,7 +1289,8 @@ ${LATEX_PROMPT_INSTRUCTIONS}
 ${getActiveEngineeringStandards()}
 오직 JSON 객체만 반환하십시오.`;
 
-      const responseText = await localCallLLM(null, prompt, null, 'question', { temperature: 1.0 });
+      const llmMeta = {};
+      const responseText = await localCallLLM(null, prompt, null, 'question', { temperature: 1.0, metaOut: llmMeta });
       let text = responseText.trim();
       if (text.startsWith('```')) {
         text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
@@ -1320,7 +1325,8 @@ ${getActiveEngineeringStandards()}
       const healedQ = healQuizQuestionObject({
         ...parsedQuestion,
         topic_id: finalTopicId,
-        question: (parsedQuestion.question || '').trim()
+        question: (parsedQuestion.question || '').trim(),
+        ...(llmMeta.modelUsed ? { modelUsed: llmMeta.modelUsed } : {})
       });
 
       if (progressTimer) clearInterval(progressTimer);
@@ -1426,7 +1432,8 @@ ${LATEX_PROMPT_INSTRUCTIONS}
 ${getActiveEngineeringStandards()}
 오직 JSON 객체만 반환하십시오.`;
 
-      const responseText = await localCallLLM(null, prompt, null, 'question', { temperature: 1.0 });
+      const llmMeta = {};
+      const responseText = await localCallLLM(null, prompt, null, 'question', { temperature: 1.0, metaOut: llmMeta });
       let text = responseText.trim();
       if (text.startsWith('```')) {
         text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
@@ -1462,7 +1469,8 @@ ${getActiveEngineeringStandards()}
       const healedQ = healQuizQuestionObject({
         ...parsedQuestion,
         topic_id: finalTopicId,
-        question: (parsedQuestion.question || '').trim()
+        question: (parsedQuestion.question || '').trim(),
+        ...(llmMeta.modelUsed ? { modelUsed: llmMeta.modelUsed } : {})
       });
 
       if (progressTimer) clearInterval(progressTimer);
