@@ -628,7 +628,9 @@ ${gStandards}
 ${eStandards}
 
 ${LATEX_PROMPT_INSTRUCTIONS}`;
-    const phase1DeadlineAt = deadlineAt ? Math.min(deadlineAt, Date.now() + 20000) : (Date.now() + 20000);
+    const phase1DeadlineAt = deadlineAt
+      ? Math.min(Math.max(Date.now() + 8000, deadlineAt - 11000), Date.now() + 21000)
+      : (Date.now() + 21000);
     const rawRes = await callLLMWithFailover(sysInst, answerGenPrompt, null, 'grading', { 
       temperature: modelAnswerTemperature, 
       hybridRole: 'fast', 
@@ -952,12 +954,16 @@ ${((colHeader && colHeader.includes('수치 계산 답안')) || category === '�
   const isCalcQuestion = ((colHeader && colHeader.includes('수치 계산 답안')) || category === '계산');
   const gradingTemperature = isCalcQuestion ? 0.1 : (isReevaluation ? 0.5 : 0.2);
   const sysInst = getGradingSystemInstruction(gradingStandards, engineeringStandards);
+  const phase1ResolvedModel = (!isReevaluation && resolvedModelAnswer?.modelMeta?.modelUsed)
+    ? resolvedModelAnswer.modelMeta.modelUsed
+    : null;
+  const phase2PreferredModel = phase1ResolvedModel || preferredModel;
   const phase2Meta = {};
   const responseText = await callLLMWithFailover(sysInst, userPrompt, null, 'grading', { 
     temperature: gradingTemperature, 
     hybridRole: 'deep', 
     stage: 'grading',
-    preferredModel,
+    preferredModel: phase2PreferredModel,
     allowFallback: allowGradingFallback,
     timeoutBudgetMs: 24000,
     ...(deadlineAt ? { deadlineAt } : {}),

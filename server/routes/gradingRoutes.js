@@ -103,7 +103,9 @@ router.post('/grade-subjective', async (req, res) => {
     return callLLMWithFailover(sys, enrichedPrompt, img, scenario, {
       ...opts,
       stage: 'grading',
-      preferredModel: resolvedGradingModel,
+      preferredModel: (opts && typeof opts.preferredModel === 'string' && opts.preferredModel.trim())
+        ? opts.preferredModel.trim()
+        : resolvedGradingModel,
       allowFallback: (opts && typeof opts.allowFallback === 'boolean') ? opts.allowFallback : allowGradingFallback,
       temperature: finalTemp,
       deadlineAt: opts?.deadlineAt || requestDeadlineAt,

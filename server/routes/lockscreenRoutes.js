@@ -41,7 +41,9 @@ function getCallLLM(req, defaultStage = 'grading') {
     return callLLMWithFailover(sys, prompt, img, scenario, {
       ...opts,
       stage,
-      preferredModel: resolvedModel,
+      preferredModel: (opts && typeof opts.preferredModel === 'string' && opts.preferredModel.trim())
+        ? opts.preferredModel.trim()
+        : resolvedModel,
       allowFallback: (opts && typeof opts.allowFallback === 'boolean')
         ? opts.allowFallback
         : (stage === 'grading' ? allowGradingFallback : undefined),

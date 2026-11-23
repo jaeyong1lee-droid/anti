@@ -13,7 +13,7 @@ const NO_CHART_PROMPT_SCENARIOS = new Set(['grading', 'general', 'slides', 'ocr'
 export const DEFAULT_STAGE_MODELS = {
   ppt: 'claude-hybrid',
   question: 'claude-hybrid',
-  grading: 'gemini-4-hydrogen',
+  grading: 'gemini-3.5-flash-lite',
   tutor: 'gemini-3.5-flash-lite'
 };
 export let globalStageModels = { ...DEFAULT_STAGE_MODELS };
@@ -348,7 +348,7 @@ export async function withLlmConcurrencySlot(deadlineAt, fn) {
   }
 }
 
-const MODEL_OVERLOAD_COOLDOWN_MS = 45 * 1000;
+const MODEL_OVERLOAD_COOLDOWN_MS = 300 * 1000;
 const RATE_LIMIT_COOLDOWN_MS = 60 * 1000;
 const INVALID_KEY_COOLDOWN_MS = 10 * 60 * 1000;
 const transientOverloadedModels = new Map();
@@ -461,11 +461,11 @@ async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = n
     const validKeys = allKeys.filter(k => !isKeyKnownInvalid(k.key));
     const keys = validKeys.length > 0 ? validKeys : allKeys;
 
-    const geminiPref = isClaudePreferred ? 'gemini-4-hydrogen' : targetPref;
+    const geminiPref = isClaudePreferred ? 'gemini-3.5-flash-lite' : targetPref;
     let rawFallbacks;
     if (isGradingStage) {
       rawFallbacks = allowFallback
-        ? [geminiPref, 'gemini-4-hydrogen', 'gemini-3.8-flash', 'gemini-3.5-flash-lite']
+        ? [geminiPref, 'gemini-3.5-flash-lite', 'gemini-4-hydrogen', 'gemini-3.8-flash']
         : [geminiPref];
     } else {
       rawFallbacks = [
@@ -508,6 +508,21 @@ async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = n
     if ((options.allowCrossProviderFallback || scenario === 'question' || scenario === 'tutor' || isGradingStage) && (!isGradingStage || allowFallback)) {
       addClaudeTasks();
     }
+  }
+
+  // [Sticky Healthy Routing]: 자동 폴백 시 최근 503/타임아웃으로 쿨다운 중인 모델(프로바이더 불문)은 정상 모델 뒤로 배치
+  if (allowFallback && executionList.length > 1) {
+    const healthyTasks = [];
+    const cooledTasks = [];
+    for (const t of executionList) {
+      if (isModelInCooldown(t.actualModel)) {
+        cooledTasks.push(t);
+      } else {
+        healthyTasks.push(t);
+      }
+    }
+    executionList.length = 0;
+    executionList.push(...healthyTasks, ...cooledTasks);
   }
 
   let attemptedAny = false;
@@ -713,6 +728,7 @@ async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = n
       }
     }
 
+    let effectiveTimeoutMs = 0;
     try {
       console.log(`[Gemini 시도] ${task.label} (${maskedKey}), 모델: ${modelName} -> ${actualModelName}`);
       const genAI = new GoogleGenerativeAI(key);
@@ -745,7 +761,7 @@ async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = n
       // [Blocker-5 / P0 Fix]: 세마포어 슬롯 획득 이후 SDK timeout(AbortSignal) + 안전 타이머를 시작해 타임아웃 시 HTTP 소켓도 즉시 중단
       const result = await withLlmConcurrencySlot(deadlineAt, async () => {
         const perCallCapMs = scenario === 'grading'
-          ? ((allowFallback && hasNextDistinctModel) ? 12000 : (actualModelName === 'gemini-4-hydrogen' ? 22000 : 18000))
+          ? ((allowFallback && hasNextDistinctModel) ? 7500 : (actualModelName === 'gemini-4-hydrogen' ? 22000 : 18000))
           : (scenario === 'slides'
               ? 50000
               : (hasNextDistinctModel ? (scenario === 'question' ? 22000 : 20000) : 45000));
@@ -753,6 +769,7 @@ async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = n
           perCallCapMs,
           Math.max(2500, (deadlineAt - Date.now()) - 400)
         );
+        effectiveTimeoutMs = timeoutMs;
         const model = genAI.getGenerativeModel({
           model: actualModelName,
           systemInstruction: finalSystemInstruction,
@@ -820,7 +837,7 @@ async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = n
         continue;
       }
 
-      if ((isModelOverloaded || isTimeoutError) && allowFallback && hasNextDistinctModel) {
+      if ((isModelOverloaded || (isTimeoutError && effectiveTimeoutMs >= 6000)) && allowFallback && hasNextDistinctModel) {
         skippedModelsThisCall.add(actualModelName);
         if (!options.disableCooldown) {
           transientOverloadedModels.set(actualModelName, Date.now() + MODEL_OVERLOAD_COOLDOWN_MS);

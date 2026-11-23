@@ -124,7 +124,7 @@ function getModelDisplayName(modelName) {
 const DEFAULT_STAGE_MODELS = {
   ppt: 'claude-hybrid',
   question: 'claude-hybrid',
-  grading: 'gemini-4-hydrogen',
+  grading: 'gemini-3.5-flash-lite',
   tutor: 'gemini-3.5-flash-lite'
 };
 
@@ -3291,9 +3291,7 @@ export default function App() {
     await Promise.all(acronymWorkers);
 
     const acronymTelemetry = summarizeBatchGradingTelemetry(cellResponses, activeGradingModel);
-    if (acronymTelemetry.failoverOccurred) {
-      showNotification(`일시적 한도/오류로 백업 모델(${getModelDisplayName(acronymTelemetry.modelUsed)})로 전환되어 채점되었습니다.`, 'info');
-    }
+    recordStickyGradingModel(acronymTelemetry);
     stopProgressPolling('앞글자 채점 완료!', 100, true, acronymTelemetry);
     setGradingLoading(prev => ({ ...prev, [qIdx]: false }));
     
@@ -3544,12 +3542,48 @@ export default function App() {
     allowGradingFallbackRef.current = allowGradingFallback;
   }, [allowGradingFallback]);
 
-  const buildGradingRequestPayload = (extraFields = {}) => ({
-    preferredModel: getStageModel('grading'),
-    stageModels: stageModelsRef.current || stageModels || DEFAULT_STAGE_MODELS,
-    allowGradingFallback: Boolean(allowGradingFallbackRef.current),
-    ...extraFields
-  });
+  const stickyGradingModelRef = useRef({ model: null, baseModel: null, expiresAt: 0 });
+  const getEffectiveGradingModel = () => {
+    const baseModel = getStageModel('grading');
+    if (!allowGradingFallbackRef.current) return baseModel;
+    const sticky = stickyGradingModelRef.current;
+    if (sticky && sticky.model && sticky.baseModel === baseModel && Date.now() < sticky.expiresAt) {
+      return sticky.model;
+    }
+    return baseModel;
+  };
+  const recordStickyGradingModel = (telemetry) => {
+    if (!allowGradingFallbackRef.current || !telemetry) return;
+    if (telemetry.isError || telemetry.gradingUnavailable) return;
+    const usedRaw = String(telemetry.modelUsed || '').split(',')[0].trim();
+    if (!usedRaw || usedRaw === 'fast_track' || usedRaw === 'null') return;
+    const baseModel = getStageModel('grading');
+    if (telemetry.failoverOccurred || (usedRaw !== baseModel && stickyGradingModelRef.current?.model === usedRaw)) {
+      const isNewPin = stickyGradingModelRef.current?.model !== usedRaw || Date.now() >= stickyGradingModelRef.current?.expiresAt;
+      stickyGradingModelRef.current = {
+        model: usedRaw,
+        baseModel,
+        expiresAt: Date.now() + 10 * 60 * 1000
+      };
+      if (isNewPin && usedRaw !== baseModel) {
+        showNotification(`일시적 한도/오류로 백업 모델(${getModelDisplayName(usedRaw)})로 전환되어 채점 세션 동안 유지됩니다.`, 'info');
+      }
+    }
+  };
+
+  const buildGradingRequestPayload = (extraFields = {}) => {
+    const baseStages = stageModelsRef.current || stageModels || DEFAULT_STAGE_MODELS;
+    const effectiveGradingModel = getEffectiveGradingModel();
+    return {
+      preferredModel: effectiveGradingModel,
+      stageModels: {
+        ...baseStages,
+        grading: effectiveGradingModel
+      },
+      allowGradingFallback: Boolean(allowGradingFallbackRef.current),
+      ...extraFields
+    };
+  };
 
   const summarizeBatchGradingTelemetry = (cellResponses = [], fallbackRequested = getStageModel('grading')) => {
     const valid = (cellResponses || []).filter(Boolean);
@@ -4690,12 +4724,7 @@ export default function App() {
         }
         // 🚨 [수정 2]: gradingUnavailable=true일 때 DB 저장 금지 및 재시도 안내
         if (!data.result.gradingUnavailable) {
-          if (data.result.failoverOccurred && data.result.modelUsed) {
-            showNotification(
-              `요청 모델(${getModelDisplayName(data.result.modelRequested)}) 일시 오류로 백업 모델(${getModelDisplayName(data.result.modelUsed)})로 채점되었습니다.`,
-              'info'
-            );
-          }
+          recordStickyGradingModel(data.result);
           saveLockscreenAnswerForQuestion(targetQ, targetAnswer, data.result, lockscreenHint);
           localStorage.setItem('anti_last_lockscreen_submit_time', String(Date.now()));
         } else {
@@ -5846,9 +5875,7 @@ export default function App() {
       }
 
       const batchTelemetry = summarizeBatchGradingTelemetry(cellResponses, activeGradingModel);
-      if (batchTelemetry.failoverOccurred) {
-        showNotification(`일시적 한도/오류로 백업 모델(${getModelDisplayName(batchTelemetry.modelUsed)})로 전환되어 채점되었습니다.`, 'info');
-      }
+      recordStickyGradingModel(batchTelemetry);
       stopProgressPolling('2단계: 주관식 표 채우기 채점 완료!', 100, true, {
         wikiGrounding: lastWikiGrounding,
         kcscGrounding: lastKcscGrounding,
@@ -5934,9 +5961,7 @@ export default function App() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       singleAcronymData = data;
-      if (data.failoverOccurred && data.modelUsed) {
-        showNotification(`일시적 한도/오류로 백업 모델(${getModelDisplayName(data.modelUsed)})로 전환되어 채점되었습니다.`, 'info');
-      }
+      recordStickyGradingModel(data);
       nextGrading[combKey] = {
         isCorrect: data.isCorrect,
         score: data.score,
@@ -6099,9 +6124,7 @@ export default function App() {
       clearTimeout(timeoutId);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       gradeData = await res.json();
-      if (gradeData.failoverOccurred && gradeData.modelUsed) {
-        showNotification(`일시적 한도/오류로 백업 모델(${getModelDisplayName(gradeData.modelUsed)})로 전환되어 채점되었습니다.`, 'info');
-      }
+      recordStickyGradingModel(gradeData);
       const suggestedModelAnswer = gradeData.suggestedModelAnswer;
       nextGrading[key] = {
         isCorrect: gradeData.isCorrect,
@@ -6348,9 +6371,7 @@ export default function App() {
       clearTimeout(timeoutId);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      if (data.failoverOccurred && data.modelUsed) {
-        showNotification(`일시적 한도/오류로 백업 모델(${getModelDisplayName(data.modelUsed)})로 전환되어 채점되었습니다.`, 'info');
-      }
+      recordStickyGradingModel(data);
       newResult = {
         isCorrect: data.isCorrect,
         score: data.score,
@@ -6545,6 +6566,7 @@ export default function App() {
           stageModelsRef.current = syncedStages;
           setStageModels(syncedStages);
           localStorage.setItem('anti_stage_models', JSON.stringify(syncedStages));
+          stickyGradingModelRef.current = { model: null, baseModel: null, expiresAt: 0 };
 
           const syncedTutor = syncedStages.tutor || data.model;
           if (syncedTutor) {
@@ -14429,6 +14451,9 @@ ${item.intuitive || ''}
     stageModelsRef.current = updated;
     setStageModels(updated);
     localStorage.setItem('anti_stage_models', JSON.stringify(updated));
+    if (stageKey === 'grading') {
+      stickyGradingModelRef.current = { model: null, baseModel: null, expiresAt: 0 };
+    }
     if (stageKey === 'tutor') {
       preferredModelRef.current = nextModel;
       setPreferredModel(nextModel);
@@ -14450,6 +14475,7 @@ ${item.intuitive || ''}
     allowGradingFallbackRef.current = nextVal;
     setAllowGradingFallback(nextVal);
     localStorage.setItem('anti_grading_allow_fallback', String(nextVal));
+    stickyGradingModelRef.current = { model: null, baseModel: null, expiresAt: 0 };
     try {
       const response = await fetch(`${API_BASE}/api/preferred-model`, {
         method: 'POST',
