@@ -3194,7 +3194,7 @@ export default function App() {
     });
     
     const progressId = 'grade_acronym_' + Math.random().toString(36).substring(2, 9);
-    const activeGradingModel = getStageModel('grading');
+    const activeGradingModel = getEffectiveGradingModel();
     const isBatchAcronym = userRows.filter(r => !!r.acronym).length > 1;
     startProgressPolling(progressId, null, activeGradingModel, { suppressServerPoll: isBatchAcronym });
     
@@ -3558,16 +3558,20 @@ export default function App() {
     const usedRaw = String(telemetry.modelUsed || '').split(',')[0].trim();
     if (!usedRaw || usedRaw === 'fast_track' || usedRaw === 'null') return;
     const baseModel = getStageModel('grading');
-    if (telemetry.failoverOccurred || (usedRaw !== baseModel && stickyGradingModelRef.current?.model === usedRaw)) {
-      const isNewPin = stickyGradingModelRef.current?.model !== usedRaw || Date.now() >= stickyGradingModelRef.current?.expiresAt;
+    if (usedRaw === baseModel) return;
+    const prev = stickyGradingModelRef.current;
+    const now = Date.now();
+    const hasActiveSamePin = Boolean(prev && prev.model === usedRaw && prev.baseModel === baseModel && now < prev.expiresAt);
+    if (hasActiveSamePin) {
+      return;
+    }
+    if (telemetry.failoverOccurred || usedRaw !== baseModel) {
       stickyGradingModelRef.current = {
         model: usedRaw,
         baseModel,
-        expiresAt: Date.now() + 10 * 60 * 1000
+        expiresAt: now + 10 * 60 * 1000
       };
-      if (isNewPin && usedRaw !== baseModel) {
-        showNotification(`일시적 한도/오류로 백업 모델(${getModelDisplayName(usedRaw)})로 전환되어 채점 세션 동안 유지됩니다.`, 'info');
-      }
+      showNotification(`일시적 한도/오류로 백업 모델(${getModelDisplayName(usedRaw)})로 전환되어 10분간 유지됩니다.`, 'info');
     }
   };
 
@@ -3585,7 +3589,7 @@ export default function App() {
     };
   };
 
-  const summarizeBatchGradingTelemetry = (cellResponses = [], fallbackRequested = getStageModel('grading')) => {
+  const summarizeBatchGradingTelemetry = (cellResponses = [], fallbackRequested = getEffectiveGradingModel()) => {
     const valid = (cellResponses || []).filter(Boolean);
     const usedModels = [...new Set(valid.map(r => r.modelUsed).filter(Boolean))];
     const failoverOccurred = valid.some(r => Boolean(r.failoverOccurred));
@@ -5664,7 +5668,7 @@ export default function App() {
     const nextGrading = { ...currentGrading };
     
     const progressId = 'grade_' + Math.random().toString(36).substring(2, 9);
-    const activeGradingModel = getStageModel('grading');
+    const activeGradingModel = getEffectiveGradingModel();
     const isBatchTable = inputs.length > 1;
     startProgressPolling(progressId, null, activeGradingModel, { suppressServerPoll: isBatchTable });
 
@@ -5932,7 +5936,7 @@ export default function App() {
     
     const correctAnswer = correctRow.word ? `${correctRow.word} : ${correctRow.description}` : (q.explanation || '');
     const progressId = 'grade_acronym_cell_' + Math.random().toString(36).substring(2, 9);
-    const activeGradingModel = getStageModel('grading');
+    const activeGradingModel = getEffectiveGradingModel();
     startProgressPolling(progressId, null, activeGradingModel);
     let singleAcronymData = null;
 
@@ -6015,7 +6019,7 @@ export default function App() {
     const nextGrading = { ...currentGrading };
 
     const progressId = 'grade_cell_' + Math.random().toString(36).substring(2, 9);
-    startProgressPolling(progressId, null, getStageModel('grading'));
+    startProgressPolling(progressId, null, getEffectiveGradingModel());
 
     const userAnswer = getAnswerValue(activeAnswers, qIdx, inputId) || activeAnswers[key] || '';
     const correctAnswer = getCorrectAnswerForInput(q, inputId);
@@ -6346,7 +6350,7 @@ export default function App() {
     const correctAnswer = getCanonicalModelAnswer(q);
     
     const progressId = 'grade_' + Math.random().toString(36).substring(2, 9);
-    startProgressPolling(progressId, null, getStageModel('grading'));
+    startProgressPolling(progressId, null, getEffectiveGradingModel());
 
     let newResult = null;
     try {

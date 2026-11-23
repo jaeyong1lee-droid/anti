@@ -534,7 +534,9 @@ export async function getOrGenerateVerifiedModelAnswer(params) {
     const result = await flightPromise;
     return {
       ...result,
-      cacheStatus: 'generated_and_cached'
+      cacheStatus: (!result.isFallback && isValidRichModelAnswer(result.authoritativeModelAnswer))
+        ? 'generated_and_cached'
+        : 'fallback_not_cached'
     };
   } finally {
     singleFlightModelAnswerMap.delete(cacheKey);
@@ -629,8 +631,8 @@ ${eStandards}
 
 ${LATEX_PROMPT_INSTRUCTIONS}`;
     const phase1DeadlineAt = deadlineAt
-      ? Math.min(Math.max(Date.now() + 8000, deadlineAt - 11000), Date.now() + 21000)
-      : (Date.now() + 21000);
+      ? Math.min(Math.max(Date.now() + 8000, deadlineAt - 11000), Date.now() + 22000)
+      : (Date.now() + 22000);
     const rawRes = await callLLMWithFailover(sysInst, answerGenPrompt, null, 'grading', { 
       temperature: modelAnswerTemperature, 
       hybridRole: 'fast', 
@@ -777,7 +779,7 @@ function buildGradingModelTelemetry({ preferredModel, phase1Meta = null, phase2M
     modelTelemetry: {
       modelRequested,
       modelUsed,
-      phase1Model: phase1Model || (cacheStatus ? `cache:${cacheStatus}` : null),
+      phase1Model: phase1Model || (cacheStatus ? (cacheStatus === 'fallback_not_cached' ? 'fallback:not_cached' : `cache:${cacheStatus}`) : null),
       phase2Model,
       failoverOccurred,
       keyRotated,

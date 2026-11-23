@@ -349,6 +349,7 @@ export async function withLlmConcurrencySlot(deadlineAt, fn) {
 }
 
 const MODEL_OVERLOAD_COOLDOWN_MS = 300 * 1000;
+const MODEL_TIMEOUT_COOLDOWN_MS = 45 * 1000;
 const RATE_LIMIT_COOLDOWN_MS = 60 * 1000;
 const INVALID_KEY_COOLDOWN_MS = 10 * 60 * 1000;
 const transientOverloadedModels = new Map();
@@ -761,7 +762,7 @@ async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = n
       // [Blocker-5 / P0 Fix]: 세마포어 슬롯 획득 이후 SDK timeout(AbortSignal) + 안전 타이머를 시작해 타임아웃 시 HTTP 소켓도 즉시 중단
       const result = await withLlmConcurrencySlot(deadlineAt, async () => {
         const perCallCapMs = scenario === 'grading'
-          ? ((allowFallback && hasNextDistinctModel) ? 7500 : (actualModelName === 'gemini-4-hydrogen' ? 22000 : 18000))
+          ? ((allowFallback && hasNextDistinctModel) ? 12000 : (actualModelName === 'gemini-4-hydrogen' ? 22000 : 18000))
           : (scenario === 'slides'
               ? 50000
               : (hasNextDistinctModel ? (scenario === 'question' ? 22000 : 20000) : 45000));
@@ -837,12 +838,31 @@ async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = n
         continue;
       }
 
-      if ((isModelOverloaded || (isTimeoutError && effectiveTimeoutMs >= 6000)) && allowFallback && hasNextDistinctModel) {
+      if (isModelOverloaded && allowFallback && hasNextDistinctModel) {
+        const hasNextKeyForSameModel = executionList.slice(idx + 1).some(t => {
+          const m = t.actualModel || t.model;
+          const tk = `${t.key}:${m}`;
+          const tRl = transientRateLimitedKeyModels.get(tk);
+          return m === actualModelName && !failedKeys.has(t.key) && !rateLimitedKeyModels.has(tk) && !(tRl && tRl > Date.now());
+        });
+        if (actualModelName === primaryActualModel && hasNextKeyForSameModel && (deadlineAt - Date.now()) >= 7000) {
+          console.log(`[선호 모델 503 키 전환] ${task.label} (${actualModelName}) 503 과부하 감지. 동일 선호 모델의 다음 API 키로 즉시 재시도합니다.`);
+          continue;
+        }
         skippedModelsThisCall.add(actualModelName);
         if (!options.disableCooldown) {
           transientOverloadedModels.set(actualModelName, Date.now() + MODEL_OVERLOAD_COOLDOWN_MS);
         }
-        console.log(`[모델 과부하/지연 감지] ${actualModelName} (${isModelOverloaded ? '503 과부하' : '응답 시간초과'}). 동일 모델 추가 키 재시도를 생략하고 다음 정상 모델로 즉시 페일오버합니다.`);
+        console.log(`[모델 과부하 감지] ${actualModelName} (503 과부하, 300초 쿨다운). 다음 정상 모델로 즉시 페일오버합니다.`);
+        continue;
+      }
+
+      if (isTimeoutError && effectiveTimeoutMs >= 6000 && allowFallback && hasNextDistinctModel) {
+        skippedModelsThisCall.add(actualModelName);
+        if (!options.disableCooldown) {
+          transientOverloadedModels.set(actualModelName, Date.now() + MODEL_TIMEOUT_COOLDOWN_MS);
+        }
+        console.log(`[모델 지연 감지] ${actualModelName} (응답 시간초과, 45초 쿨다운). 동일 모델 추가 키 재시도를 생략하고 다음 정상 모델로 즉시 페일오버합니다.`);
         continue;
       }
 
