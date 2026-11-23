@@ -13,7 +13,7 @@ const NO_CHART_PROMPT_SCENARIOS = new Set(['grading', 'general', 'slides', 'ocr'
 export const DEFAULT_STAGE_MODELS = {
   ppt: 'claude-hybrid',
   question: 'claude-hybrid',
-  grading: 'gemini-3.5-flash-lite',
+  grading: 'gemini-4-hydrogen',
   tutor: 'gemini-3.5-flash-lite'
 };
 export let globalStageModels = { ...DEFAULT_STAGE_MODELS };
@@ -349,8 +349,10 @@ export async function withLlmConcurrencySlot(deadlineAt, fn) {
 }
 
 const MODEL_OVERLOAD_COOLDOWN_MS = 45 * 1000;
+const RATE_LIMIT_COOLDOWN_MS = 60 * 1000;
 const INVALID_KEY_COOLDOWN_MS = 10 * 60 * 1000;
 const transientOverloadedModels = new Map();
+const transientRateLimitedKeyModels = new Map();
 const transientInvalidKeys = new Map();
 
 export async function callLLMWithFailover(systemInstruction, userPrompt, image = null, scenario = 'default', options = {}) {
@@ -459,11 +461,11 @@ async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = n
     const validKeys = allKeys.filter(k => !isKeyKnownInvalid(k.key));
     const keys = validKeys.length > 0 ? validKeys : allKeys;
 
-    const geminiPref = isClaudePreferred ? 'gemini-3.5-flash-lite' : targetPref;
+    const geminiPref = isClaudePreferred ? 'gemini-4-hydrogen' : targetPref;
     let rawFallbacks;
     if (isGradingStage) {
       rawFallbacks = allowFallback
-        ? [geminiPref, 'gemini-3.5-flash-lite', 'gemini-3.8-flash']
+        ? [geminiPref, 'gemini-4-hydrogen', 'gemini-3.8-flash', 'gemini-3.5-flash-lite']
         : [geminiPref];
     } else {
       rawFallbacks = [
@@ -503,7 +505,7 @@ async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = n
     }
   } else {
     addGeminiTasks();
-    if ((options.allowCrossProviderFallback || scenario === 'question' || scenario === 'tutor') && (!isGradingStage || allowFallback)) {
+    if ((options.allowCrossProviderFallback || scenario === 'question' || scenario === 'tutor' || isGradingStage) && (!isGradingStage || allowFallback)) {
       addClaudeTasks();
     }
   }
@@ -555,8 +557,25 @@ async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = n
     if (skippedModelsThisCall.has(actualModelName)) {
       continue;
     }
-    if (rateLimitedKeyModels.has(`${key}:${actualModelName}`)) {
+    const pairKey = `${key}:${actualModelName}`;
+    if (rateLimitedKeyModels.has(pairKey)) {
       continue;
+    }
+    const rlExp = transientRateLimitedKeyModels.get(pairKey);
+    if (rlExp) {
+      if (rlExp <= Date.now()) {
+        transientRateLimitedKeyModels.delete(pairKey);
+      } else {
+        const hasAlternativeUntried = executionList.slice(idx + 1).some(t => {
+          const m = t.actualModel || t.model;
+          const tk = `${t.key}:${m}`;
+          const tRl = transientRateLimitedKeyModels.get(tk);
+          return !failedKeys.has(t.key) && !skippedModelsThisCall.has(m) && !rateLimitedKeyModels.has(tk) && !(tRl && tRl > Date.now());
+        });
+        if (hasAlternativeUntried) {
+          continue;
+        }
+      }
     }
     const hasNextDistinctModel = executionList.slice(idx + 1).some(t => {
       const m = t.actualModel || t.model;
@@ -726,7 +745,7 @@ async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = n
       // [Blocker-5 / P0 Fix]: 세마포어 슬롯 획득 이후 SDK timeout(AbortSignal) + 안전 타이머를 시작해 타임아웃 시 HTTP 소켓도 즉시 중단
       const result = await withLlmConcurrencySlot(deadlineAt, async () => {
         const perCallCapMs = scenario === 'grading'
-          ? (actualModelName === 'gemini-4-hydrogen' ? 22000 : 18000)
+          ? ((allowFallback && hasNextDistinctModel) ? 12000 : (actualModelName === 'gemini-4-hydrogen' ? 22000 : 18000))
           : (scenario === 'slides'
               ? 50000
               : (hasNextDistinctModel ? (scenario === 'question' ? 22000 : 20000) : 45000));
@@ -786,7 +805,11 @@ async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = n
       }
 
       if (isQuota) {
-        rateLimitedKeyModels.add(`${key}:${actualModelName}`);
+        const rlPair = `${key}:${actualModelName}`;
+        rateLimitedKeyModels.add(rlPair);
+        if (!options.disableCooldown) {
+          transientRateLimitedKeyModels.set(rlPair, Date.now() + RATE_LIMIT_COOLDOWN_MS);
+        }
         console.log(`[모델 쿼터 초과 감지] ${task.label} (${task.model} -> ${actualModelName}) 쿼터 초과(429). 다음 순번 모델/키로 즉시 페일오버합니다.`);
         continue;
       }

@@ -563,14 +563,15 @@ export async function generateAuthoritativeModelAnswer({
   kcscContext = '',
   wikiGrounding = '',
   preferredModel = '',
-  allowGradingFallback
+  allowGradingFallback,
+  deadlineAt = null
 }) {
   const isCalcQuestion = ((colHeader && colHeader.includes('수치 계산 답안')) || category === '계산');
 
   // 🚨 [모든 채점에서 풍부한 모범 답안 생성]: 최초 채점/재평가 구분 없이 항상 LLM으로 권위 있는 심층 모범 답안을 생성합니다.
   // (기존 correctAnswer는 프롬프트의 '기존 기준 요약'으로 시드 역할만 수행)
 
-  const modelAnswerTemperature = isCalcQuestion ? 0.1 : (isReevaluation ? 0.85 : 0.7);
+  const modelAnswerTemperature = isCalcQuestion ? 0.1 : (isReevaluation ? 0.55 : 0.2);
 
   // 대상 빈칸 알파벳 추출 (예: "(B)" -> "B")
   const letterMatch = (rowHeader || '').match(/\(?\b([A-F])\b\)?/i);
@@ -627,13 +628,15 @@ ${gStandards}
 ${eStandards}
 
 ${LATEX_PROMPT_INSTRUCTIONS}`;
+    const phase1DeadlineAt = deadlineAt ? Math.min(deadlineAt, Date.now() + 20000) : (Date.now() + 20000);
     const rawRes = await callLLMWithFailover(sysInst, answerGenPrompt, null, 'grading', { 
       temperature: modelAnswerTemperature, 
       hybridRole: 'fast', 
       stage: 'grading',
       preferredModel,
       allowFallback: allowGradingFallback,
-      timeoutBudgetMs: 32000,
+      timeoutBudgetMs: 20000,
+      deadlineAt: phase1DeadlineAt,
       metaOut: phase1Meta
     });
     let cleanAnswer = (rawRes || '').trim();
@@ -782,7 +785,7 @@ function buildGradingModelTelemetry({ preferredModel, phase1Meta = null, phase2M
   };
 }
 
-export async function gradeSubjective({ question, correctAnswer, existingModelAnswer = '', userAnswer, rowHeader, colHeader, explanation, category, callLLMWithFailover, gradingStandards, engineeringStandards, isReevaluation = false, kcscContext = '', wikiGrounding = '', preferredModel = '', allowGradingFallback }) {
+export async function gradeSubjective({ question, correctAnswer, existingModelAnswer = '', userAnswer, rowHeader, colHeader, explanation, category, callLLMWithFailover, gradingStandards, engineeringStandards, isReevaluation = false, kcscContext = '', wikiGrounding = '', preferredModel = '', allowGradingFallback, deadlineAt = null }) {
   if (!userAnswer) {
     return { isCorrect: false, score: 0, reason: '답안이 비어 있습니다.', suggestedModelAnswer: correctAnswer, modelAnswerIsFallback: false, gradingUnavailable: false, ...buildGradingModelTelemetry({ preferredModel }) };
   }
@@ -816,7 +819,8 @@ export async function gradeSubjective({ question, correctAnswer, existingModelAn
       kcscContext,
       wikiGrounding,
       preferredModel,
-      allowGradingFallback
+      allowGradingFallback,
+      deadlineAt
     });
     const fastTrackKind = isExactTextMatch ? 'exact_text' : 'strict_numeric_1pct';
     const fastReason = isExactTextMatch
@@ -860,7 +864,8 @@ export async function gradeSubjective({ question, correctAnswer, existingModelAn
     kcscContext,
     wikiGrounding,
     preferredModel,
-    allowGradingFallback
+    allowGradingFallback,
+    deadlineAt
   });
   const authoritativeModelAnswer = resolvedModelAnswer.authoritativeModelAnswer;
   const modelAnswerIsFallback = Boolean(resolvedModelAnswer.isFallback);
@@ -945,7 +950,7 @@ ${((colHeader && colHeader.includes('수치 계산 답안')) || category === '�
 `;
 
   const isCalcQuestion = ((colHeader && colHeader.includes('수치 계산 답안')) || category === '계산');
-  const gradingTemperature = isCalcQuestion ? 0.1 : 0.7;
+  const gradingTemperature = isCalcQuestion ? 0.1 : (isReevaluation ? 0.5 : 0.2);
   const sysInst = getGradingSystemInstruction(gradingStandards, engineeringStandards);
   const phase2Meta = {};
   const responseText = await callLLMWithFailover(sysInst, userPrompt, null, 'grading', { 
@@ -954,7 +959,8 @@ ${((colHeader && colHeader.includes('수치 계산 답안')) || category === '�
     stage: 'grading',
     preferredModel,
     allowFallback: allowGradingFallback,
-    timeoutBudgetMs: 32000,
+    timeoutBudgetMs: 24000,
+    ...(deadlineAt ? { deadlineAt } : {}),
     metaOut: phase2Meta
   });
   let text = responseText.trim();

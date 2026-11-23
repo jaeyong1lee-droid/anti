@@ -124,7 +124,7 @@ function getModelDisplayName(modelName) {
 const DEFAULT_STAGE_MODELS = {
   ppt: 'claude-hybrid',
   question: 'claude-hybrid',
-  grading: 'gemini-3.5-flash-lite',
+  grading: 'gemini-4-hydrogen',
   tutor: 'gemini-3.5-flash-lite'
 };
 
@@ -1464,6 +1464,10 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
     });
     const isAllCorrect = boxInputs.length > 0 && boxInputs.every(bi => tableGradingResults?.[bi.inputKey]?.isCorrect || (tableGradingResults?.[bi.inputKey]?.score >= 8));
     const isAnyPartial = boxInputs.length > 0 && boxInputs.every(bi => tableGradingResults?.[bi.inputKey]?.isCorrect || (tableGradingResults?.[bi.inputKey]?.score >= 5));
+    const isAnyError = boxInputs.some(bi => {
+      const r = tableGradingResults?.[bi.inputKey];
+      return r && (r.isError || r.score === null);
+    });
     const isAnyLoading = boxInputs.some(bi => cellGradingLoading?.[bi.inputKey]);
 
     const handleBoxSubmit = async (e) => {
@@ -1563,11 +1567,13 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
             disabled={isAnyLoading}
             className={`px-3 py-1.5 text-[11px] font-black rounded border transition-all duration-200 select-none cursor-pointer outline-none focus:outline-none flex items-center justify-center shrink-0 min-w-[50px] shadow-none ${
               isAllGraded
-                ? isAllCorrect
-                  ? 'border-emerald-500/30 text-emerald-400 bg-transparent hover:scale-105'
-                  : isAnyPartial
-                    ? 'border-orange-500/30 text-orange-400 bg-transparent hover:scale-105'
-                    : 'border-rose-500/30 text-rose-400 bg-transparent hover:scale-105'
+                ? isAnyError
+                  ? 'border-amber-500/40 text-amber-400 bg-transparent hover:scale-105'
+                  : isAllCorrect
+                    ? 'border-emerald-500/30 text-emerald-400 bg-transparent hover:scale-105'
+                    : isAnyPartial
+                      ? 'border-orange-500/30 text-orange-400 bg-transparent hover:scale-105'
+                      : 'border-rose-500/30 text-rose-400 bg-transparent hover:scale-105'
                 : 'border-slate-700 bg-transparent text-white hover:bg-slate-800/40 hover:border-slate-600 active:scale-95'
             }`}
             title={isAllGraded ? "클릭하여 이 상자 내 모든 빈칸 재평가" : "이 상자의 모든 빈칸 채점 제출"}
@@ -1578,7 +1584,7 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
             ) : (
-              isAllGraded ? (isAllCorrect ? '✓' : (isAnyPartial ? '△' : '✗')) : '제출'
+              isAllGraded ? (isAnyError ? '⚠' : (isAllCorrect ? '✓' : (isAnyPartial ? '△' : '✗'))) : '제출'
             )}
           </button>
         )}
@@ -1667,15 +1673,20 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
                       <span>입력값: "{item.userVal || '빈칸'}"</span>
                     </span>
                     <span className={`text-[12px] sm:text-[14px] font-black ${
+                      (item.isError || item.score === null || item.score === undefined) ? 'text-amber-400' :
                       item.isCorrect || item.score >= 9 ? 'text-emerald-400' :
                       item.score >= 8 ? 'text-yellow-400' :
                       item.score >= 5 ? 'text-orange-400' :
                       'text-rose-400'
                     }`}>
-                      {item.isCorrect || item.score >= 9 ? '✅ 정답 인정' :
-                       item.score >= 8 ? '⚠️ 부분 인정 (우수)' :
-                       item.score >= 5 ? '⚠️ 부분 인정 (보통)' :
-                       '❌ 오답'} (점수: {item.score}점)
+                      {(item.isError || item.score === null || item.score === undefined)
+                        ? '⚠️ 채점 지연 (재채점 필요)'
+                        : `${
+                            item.isCorrect || item.score >= 9 ? '✅ 정답 인정' :
+                            item.score >= 8 ? '⚠️ 부분 인정 (우수)' :
+                            item.score >= 5 ? '⚠️ 부분 인정 (보통)' :
+                            '❌ 오답'
+                          } (점수: ${item.score}점)`}
                     </span>
                   </div>
                   {item.reason && (
@@ -3231,18 +3242,20 @@ export default function App() {
             colHeader: '암기단어 및 설명',
             explanation: correctAnswer,
             category: '앞글자',
-            temperature: isReevaluation ? 0.85 : 0.7,
+            temperature: isReevaluation ? 0.55 : 0.2,
             isReevaluation: !!isReevaluation,
             progressId,
             suppressSharedProgress: isBatchAcronym
           }))
         });
         clearTimeout(timeoutId);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         cellResponses.push(data);
         results[`${qIdx}_ROW_${rIdx}_COMB`] = {
           isCorrect: data.isCorrect,
           score: data.score,
+          isError: Boolean(data.isError || data.score === null),
           reason: data.reason,
           suggestedModelAnswer: data.suggestedModelAnswer,
           modelUsed: data.modelUsed,
@@ -3255,8 +3268,9 @@ export default function App() {
         const isCorrect = normalize(userContent) === normalize(correctAnswer);
         results[`${qIdx}_ROW_${rIdx}_COMB`] = {
           isCorrect,
-          score: isCorrect ? 10 : 0,
-          reason: isCorrect ? '단순 일치(로컬 채점)' : '모범 답안과 불일치'
+          score: isCorrect ? 10 : null,
+          isError: !isCorrect,
+          reason: isCorrect ? '단순 일치(로컬 채점)' : 'AI 채점 일시 지연 (재평가 버튼을 눌러주세요)'
         };
       } finally {
         completedAcronymCount++;
@@ -5744,13 +5758,14 @@ export default function App() {
             colHeader,
             explanation: q.explanation || q.extracted_text || (showExam ? (examTopic?.explanation || examTopic?.extracted_text) : (selectedTopic?.explanation || selectedTopic?.extracted_text)) || q.answer || '',
             category: showExam ? examTopic?.category : selectedTopic?.category,
-            temperature: isReevaluation ? 0.85 : 0.7,
+            temperature: isReevaluation ? 0.55 : 0.2,
             isReevaluation: !!isReevaluation,
             progressId,
             suppressSharedProgress: inputs.length > 1
           }))
         });
         clearTimeout(timeoutId);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         cellResponses.push(data);
         if (data.wikiGrounding) lastWikiGrounding = data.wikiGrounding;
@@ -5759,23 +5774,21 @@ export default function App() {
         nextGrading[`${qIdx}_${inputId}`] = {
           isCorrect: data.isCorrect,
           score: data.score,
+          isError: Boolean(data.isError || data.score === null),
           reason: data.reason,
           suggestedModelAnswer,
           modelUsed: data.modelUsed,
           modelRequested: data.modelRequested,
           failoverOccurred: Boolean(data.failoverOccurred)
         };
-        if (suggestedModelAnswer && !/^(success|ok|true|false)$/i.test(suggestedModelAnswer.trim())) {
-          if (!q.answers) q.answers = {};
-          q.answers[inputId] = suggestedModelAnswer;
-        }
       } catch (err) {
         console.warn('AI cell grading fallback:', inputId, err.message);
         const isMatch = normalize(cleanUser) === normalize(cleanCorrect);
         nextGrading[`${qIdx}_${inputId}`] = {
           isCorrect: isMatch,
-          score: isMatch ? 10 : 5,
-          reason: isMatch ? '정답과 일치합니다.' : '답안 제출 완료 (자동 채점)',
+          score: isMatch ? 10 : null,
+          isError: !isMatch,
+          reason: isMatch ? '단순 일치(로컬 채점)' : 'AI 채점 일시 지연 (재채점 버튼을 눌러주세요)',
           suggestedModelAnswer: cleanCorrect
         };
       }
@@ -5912,12 +5925,13 @@ export default function App() {
           colHeader: '암기단어 및 설명',
           explanation: correctAnswer,
           category: '앞글자',
-          temperature: isReevaluation ? 0.85 : 0.7,
+          temperature: isReevaluation ? 0.55 : 0.2,
           isReevaluation: !!isReevaluation,
           progressId
         }))
       });
       clearTimeout(timeoutId);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       singleAcronymData = data;
       if (data.failoverOccurred && data.modelUsed) {
@@ -5926,6 +5940,7 @@ export default function App() {
       nextGrading[combKey] = {
         isCorrect: data.isCorrect,
         score: data.score,
+        isError: Boolean(data.isError || data.score === null),
         reason: data.reason,
         suggestedModelAnswer: data.suggestedModelAnswer,
         modelUsed: data.modelUsed,
@@ -5938,8 +5953,9 @@ export default function App() {
       const isCorrect = normalize(userContent) === normalize(correctAnswer);
       nextGrading[combKey] = {
         isCorrect,
-        score: isCorrect ? 10 : 0,
-        reason: isCorrect ? '단순 일치(로컬 채점)' : '모범 답안과 불일치'
+        score: isCorrect ? 10 : null,
+        isError: !isCorrect,
+        reason: isCorrect ? '단순 일치(로컬 채점)' : 'AI 채점 일시 지연 (재채점 버튼을 눌러주세요)'
       };
     }
     
@@ -6075,12 +6091,13 @@ export default function App() {
           colHeader,
           explanation: q.explanation || q.extracted_text || (showExam ? (examTopic?.explanation || examTopic?.extracted_text) : (selectedTopic?.explanation || selectedTopic?.extracted_text)) || q.answer || '',
           category: showExam ? examTopic?.category : selectedTopic?.category,
-          temperature: isReevaluation ? 0.85 : 0.7,
+          temperature: isReevaluation ? 0.55 : 0.2,
           isReevaluation: !!isReevaluation,
           progressId
         }))
       });
       clearTimeout(timeoutId);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       gradeData = await res.json();
       if (gradeData.failoverOccurred && gradeData.modelUsed) {
         showNotification(`일시적 한도/오류로 백업 모델(${getModelDisplayName(gradeData.modelUsed)})로 전환되어 채점되었습니다.`, 'info');
@@ -6089,6 +6106,7 @@ export default function App() {
       nextGrading[key] = {
         isCorrect: gradeData.isCorrect,
         score: gradeData.score,
+        isError: Boolean(gradeData.isError || gradeData.score === null),
         reason: gradeData.reason,
         suggestedModelAnswer,
         gradedAnswer: userAnswer,
@@ -6165,14 +6183,14 @@ export default function App() {
         for (let rIdx = 0; rIdx < rowCount; rIdx++) {
           // Add acronym letter score (max 10)
           const letterGrading = tableGradingResults[`${idx}_ROW_${rIdx}_ACRONYM`];
-          if (letterGrading && letterGrading.score !== undefined) {
+          if (letterGrading && letterGrading.score !== undefined && letterGrading.score !== null) {
             sumVal += letterGrading.score;
           }
           countVal++;
           
           // Add content description score (max 10)
           const rowGrading = tableGradingResults[`${idx}_ROW_${rIdx}_COMB`];
-          if (rowGrading && rowGrading.score !== undefined) {
+          if (rowGrading && rowGrading.score !== undefined && rowGrading.score !== null) {
             sumVal += rowGrading.score;
           }
           countVal++;
@@ -6186,7 +6204,7 @@ export default function App() {
         let countVal = inputIds.length;
         inputIds.forEach(inputId => {
           const grading = tableGradingResults[`${idx}_${inputId}`];
-          if (grading && grading.score !== undefined) {
+          if (grading && grading.score !== undefined && grading.score !== null) {
             sumVal += grading.score;
           }
         });
@@ -6200,7 +6218,7 @@ export default function App() {
           let countVal = flowchartKeys.length;
           flowchartKeys.forEach(key => {
             const grading = tableGradingResults[key];
-            if (grading && grading.score !== undefined) {
+            if (grading && grading.score !== undefined && grading.score !== null) {
               sumVal += grading.score;
             }
           });
@@ -6209,7 +6227,7 @@ export default function App() {
           }
         } else {
           const grading = tableGradingResults[`${idx}_INPUT`];
-          if (grading && grading.score !== undefined) {
+          if (grading && grading.score !== undefined && grading.score !== null) {
             total += (grading.score / 10) * W;
           }
         }
@@ -6264,7 +6282,7 @@ export default function App() {
         let countVal = inputIds.length;
         inputIds.forEach(inputId => {
           const grading = examTableGradingResults[`${idx}_${inputId}`];
-          if (grading && grading.score !== undefined) {
+          if (grading && grading.score !== undefined && grading.score !== null) {
             sumVal += grading.score;
           }
         });
@@ -6278,7 +6296,7 @@ export default function App() {
           let countVal = flowchartKeys.length;
           flowchartKeys.forEach(key => {
             const grading = examTableGradingResults[key];
-            if (grading && grading.score !== undefined) {
+            if (grading && grading.score !== undefined && grading.score !== null) {
               sumVal += grading.score;
             }
           });
@@ -6287,7 +6305,7 @@ export default function App() {
           }
         } else {
           const grading = examTableGradingResults[`${idx}_INPUT`];
-          if (grading && grading.score !== undefined) {
+          if (grading && grading.score !== undefined && grading.score !== null) {
             total += (grading.score / 10) * W;
           }
         }
@@ -6322,12 +6340,13 @@ export default function App() {
           userAnswer,
           explanation: q.explanation || q.extracted_text || (showExam ? (examTopic?.explanation || examTopic?.extracted_text) : (selectedTopic?.explanation || selectedTopic?.extracted_text)) || q.answer || '',
           category: showExam ? examTopic?.category : selectedTopic?.category,
-          temperature: isReevaluation ? 0.85 : 0.7,
+          temperature: isReevaluation ? 0.55 : 0.2,
           isReevaluation: !!isReevaluation,
           progressId
         }))
       });
       clearTimeout(timeoutId);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       if (data.failoverOccurred && data.modelUsed) {
         showNotification(`일시적 한도/오류로 백업 모델(${getModelDisplayName(data.modelUsed)})로 전환되어 채점되었습니다.`, 'info');
@@ -6335,15 +6354,13 @@ export default function App() {
       newResult = {
         isCorrect: data.isCorrect,
         score: data.score,
+        isError: Boolean(data.isError || data.score === null),
         reason: data.reason,
         suggestedModelAnswer: data.suggestedModelAnswer,
         modelUsed: data.modelUsed,
         modelRequested: data.modelRequested,
         failoverOccurred: Boolean(data.failoverOccurred)
       };
-      if (data.suggestedModelAnswer && !/^(success|ok|true|false)$/i.test(data.suggestedModelAnswer.trim())) {
-        q.answer = data.suggestedModelAnswer;
-      }
       stopProgressPolling('채점 완료!', 100, true, data);
     } catch (err) {
       console.error('Grading error:', err);
@@ -22717,7 +22734,9 @@ ${itemsStr}
                                                   <span className="animate-spin text-[10px]">⏳</span>
                                                 ) : null}
                                                 <span>
-                                                  {score !== undefined ? `${Math.round(((score / 10) * (25 / items.length)) * 10) / 10}점` : '재채점'}
+                                                  {gradingResult?.isError || score === undefined || score === null
+                                                    ? '재채점'
+                                                    : `${Math.round(((score / 10) * (25 / items.length)) * 10) / 10}점`}
                                                 </span>
                                                 <span className="text-[10px] opacity-75">🔄</span>
                                               </button>
@@ -26389,7 +26408,9 @@ ${itemsStr}
                                                   <span className="animate-spin text-[10px]">⏳</span>
                                                 ) : null}
                                                 <span>
-                                                  {score !== undefined ? `${Math.round(((score / 10) * (25 / items.length)) * 10) / 10}점` : '재채점'}
+                                                  {gradingResult?.isError || score === undefined || score === null
+                                                    ? '재채점'
+                                                    : `${Math.round(((score / 10) * (25 / items.length)) * 10) / 10}점`}
                                                 </span>
                                                 <span className="text-[10px] opacity-75">🔄</span>
                                               </button>

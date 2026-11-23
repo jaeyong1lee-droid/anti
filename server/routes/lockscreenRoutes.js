@@ -350,6 +350,7 @@ router.post('/grade', async (req, res) => {
     const { wikiGrounding, kcscContext, topicGrounding } = await getCachedLockscreenGrounding(questionText);
     const preferredModel = getResolvedLockscreenPreferredModel(req);
     const existingModelAnswer = req.body?.existingModelAnswer || '';
+    const requestDeadlineAt = Date.now() + 38000;
 
     const gradingResult = await gradeSubjective({
       question: `[토질및기초기술사 기출문제 ${sessionInfo} 제1교시 ${numberInfo}] ${questionText}`,
@@ -366,7 +367,8 @@ router.post('/grade', async (req, res) => {
       kcscContext,
       wikiGrounding,
       preferredModel,
-      allowGradingFallback: getResolvedAllowGradingFallback(req)
+      allowGradingFallback: getResolvedAllowGradingFallback(req),
+      deadlineAt: requestDeadlineAt
     });
 
     if (gradingResult) {

@@ -143,7 +143,7 @@ export const TableQuiz = React.memo(function TableQuiz({
               : (normalize(value) === normalize(correctAnswer));
             const theme = getTableScoreColorTheme(gradingResult, isCorrect, value);
             
-            const cellObtained = gradingResult && gradingResult.score !== undefined
+            const cellObtained = gradingResult && gradingResult.score !== undefined && gradingResult.score !== null
               ? (gradingResult.score / 10) * (weight / inputIds.length)
               : 0;
             const displayScore = Math.round(cellObtained * 10) / 10;
@@ -220,8 +220,8 @@ export const TableQuiz = React.memo(function TableQuiz({
                     <span className={`font-bold ${theme.text}`}>내 답변:</span>
                     <span className={`font-semibold ${theme.text}`}>{value || '(미입력)'}</span>
                   </div>
-                  {gradingResult && gradingResult.score !== undefined && (
-                    <span className={theme.text}>{displayScore}점</span>
+                  {gradingResult && (gradingResult.isError || (gradingResult.score !== undefined && gradingResult.score !== null)) && (
+                    <span className={theme.text}>{gradingResult.isError || gradingResult.score === null ? '채점 지연' : `${displayScore}점`}</span>
                   )}
                 </div>
                 {gradingResult?.reason && (
@@ -1423,8 +1423,9 @@ export const TableQuiz = React.memo(function TableQuiz({
                               }}
                             />
                           </div>
-                          {isCellGraded && gradingResult && gradingResult.score !== undefined && (() => {
-                            const cellObtained = (gradingResult.score / 10) * (weight / inputIds.length);
+                          {isCellGraded && gradingResult && (gradingResult.isError || (gradingResult.score !== undefined && gradingResult.score !== null)) && (() => {
+                            const hasNumericScore = gradingResult.score !== undefined && gradingResult.score !== null && !gradingResult.isError;
+                            const cellObtained = hasNumericScore ? (gradingResult.score / 10) * (weight / inputIds.length) : 0;
                             const displayScore = Math.round(cellObtained * 10) / 10;
                             const isCellLoading = cellGradingLoading?.[`${questionIdx}_${inputId}`];
                             return (
@@ -1441,7 +1442,7 @@ export const TableQuiz = React.memo(function TableQuiz({
                                   isCellLoading ? 'animate-pulse' : ''
                                 }`}
                               >
-                                {isCellLoading ? '...' : `${displayScore}점 ↻`}
+                                {isCellLoading ? '...' : (hasNumericScore ? `${displayScore}점 ↻` : '재채점 ↻')}
                               </button>
                             );
                           })()}
@@ -1756,8 +1757,9 @@ export const TableQuiz = React.memo(function TableQuiz({
                                 }}
                               />
                             </div>
-                            {isCellGraded && gradingResult && gradingResult.score !== undefined && (() => {
-                              const cellObtained = (gradingResult.score / 10) * (weight / inputIds.length);
+                            {isCellGraded && gradingResult && (gradingResult.isError || (gradingResult.score !== undefined && gradingResult.score !== null)) && (() => {
+                              const hasNumericScore = gradingResult.score !== undefined && gradingResult.score !== null && !gradingResult.isError;
+                              const cellObtained = hasNumericScore ? (gradingResult.score / 10) * (weight / inputIds.length) : 0;
                               const displayScore = Math.round(cellObtained * 10) / 10;
                               const isCellLoading = cellGradingLoading?.[`${questionIdx}_${inputId}`];
                               return (
@@ -1774,7 +1776,7 @@ export const TableQuiz = React.memo(function TableQuiz({
                                     isCellLoading ? 'animate-pulse' : ''
                                   }`}
                                 >
-                                  {isCellLoading ? '...' : `${displayScore}점 ↻`}
+                                  {isCellLoading ? '...' : (hasNumericScore ? `${displayScore}점 ↻` : '재채점 ↻')}
                                 </button>
                               );
                             })()}

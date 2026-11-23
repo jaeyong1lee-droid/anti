@@ -93,11 +93,12 @@ router.post('/grade-subjective', async (req, res) => {
     progressTimer = startBackendProgressTimer(progressId, 1, `1단계: ${modelUpper} 엔진으로 제출 답안 채점 중...`, 85, 800, 4);
   }
 
+  const requestDeadlineAt = Date.now() + 38000;
   const localCallLLM = (sys, prompt, img, scenario, opts) => {
     const enrichedPrompt = standardsAnalysis 
       ? `[🚨 0단계 AI가 사전 분석한 절대 채점 지침 준수 주의사항]:\n${standardsAnalysis}\n\n${prompt}` 
       : prompt;
-    const targetTemp = typeof temperature === 'number' ? temperature : 0.7;
+    const targetTemp = typeof temperature === 'number' ? temperature : 0.2;
     const finalTemp = (opts && typeof opts.temperature === 'number') ? opts.temperature : targetTemp;
     return callLLMWithFailover(sys, enrichedPrompt, img, scenario, {
       ...opts,
@@ -105,6 +106,7 @@ router.post('/grade-subjective', async (req, res) => {
       preferredModel: resolvedGradingModel,
       allowFallback: (opts && typeof opts.allowFallback === 'boolean') ? opts.allowFallback : allowGradingFallback,
       temperature: finalTemp,
+      deadlineAt: opts?.deadlineAt || requestDeadlineAt,
       progressId: suppressSharedProgress ? null : progressId,
       skipProgressUpdate: suppressSharedProgress
     });
@@ -160,7 +162,8 @@ router.post('/grade-subjective', async (req, res) => {
           kcscContext,
           wikiGrounding,
           preferredModel: resolvedGradingModel,
-          allowGradingFallback
+          allowGradingFallback,
+          deadlineAt: requestDeadlineAt
         });
         if (progressId && !suppressSharedProgress) {
           stopBackendProgressTimer(progressId, 90, '1단계: 제출 답안 AI 정밀 분석 완료', true, progressTimer);
@@ -176,10 +179,16 @@ router.post('/grade-subjective', async (req, res) => {
       } catch (err) {
         lastError = err;
         attempt++;
-        if (attempt < maxAttempts) {
-          console.warn(`[AI grading retry] Attempt ${attempt} failed. Retrying...`, err.message);
+        const remainingMs = requestDeadlineAt - Date.now();
+        if (attempt < maxAttempts && remainingMs >= 12000) {
+          console.warn(`[AI grading retry] Attempt ${attempt} failed (${remainingMs}ms left). Retrying...`, err.message);
           await new Promise(resolve => setTimeout(resolve, delay));
           delay *= 2;
+        } else {
+          if (attempt < maxAttempts) {
+            console.warn(`[AI grading retry skipped] Remaining budget ${remainingMs}ms < 12000ms:`, err.message);
+          }
+          break;
         }
       }
     }
