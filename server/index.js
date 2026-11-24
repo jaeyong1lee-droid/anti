@@ -17,6 +17,9 @@ import { updateLiveLockscreenStandards, lockscreenStandardsList } from './plugin
 
 // Route Imports
 import configRoutes from './routes/configRoutes.js';
+import standardsRoutes from './routes/standardsRoutes.js';
+import mediaRoutes from './routes/mediaRoutes.js';
+import chatRoutes from './routes/chatRoutes.js';
 import topicRoutes from './routes/topicRoutes.js';
 import quizRoutes from './routes/quizRoutes.js';
 import gradingRoutes from './routes/gradingRoutes.js';
@@ -226,6 +229,9 @@ app.get('/api/health-db', async (req, res) => {
 
 // Bind Modularized Express Routers
 app.use('/api', configRoutes);
+app.use('/api', standardsRoutes);
+app.use('/api', mediaRoutes);
+app.use('/api', chatRoutes);
 app.use('/api', topicRoutes);
 app.use('/api', quizRoutes);
 app.use('/api', gradingRoutes);
