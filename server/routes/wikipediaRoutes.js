@@ -6,54 +6,9 @@
  */
 
 import express from 'express';
-import {
-  getWikiSummary,
-  searchWiki,
-  getWikipediaKnowledge,
-  refineQueryToEnglishWikiTitle
-} from '../services/wikipediaService.js';
+import { getWikipediaKnowledge } from '../services/wikipediaService.js';
 
 const router = express.Router();
-
-/**
- * GET /api/wiki/summary
- * 특정 표제어 요약 조회 (예: /api/wiki/summary?title=지반공학&lang=ko)
- */
-router.get('/summary', async (req, res) => {
-  try {
-    const { title, lang } = req.query;
-    if (!title) {
-      return res.status(400).json({ success: false, error: '표제어(title)를 입력하십시오.' });
-    }
-    const summary = await getWikiSummary(title, lang || 'ko');
-    if (!summary) {
-      return res.status(404).json({ success: false, error: '해당 표제어 정보를 찾지 못했습니다.' });
-    }
-    res.json({ success: true, data: summary });
-  } catch (err) {
-    console.error('[wikipediaRoutes] /summary error:', err.message);
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-/**
- * GET /api/wiki/search
- * 위키백과 본문/제목 검색 (예: /api/wiki/search?q=연약지반&lang=ko)
- */
-router.get('/search', async (req, res) => {
-  try {
-    const { q, lang, limit } = req.query;
-    if (!q) {
-      return res.status(400).json({ success: false, error: '검색어(q)를 입력하십시오.' });
-    }
-    const maxLimit = limit ? Math.min(Number(limit), 20) : 5;
-    const results = await searchWiki(q, lang || 'ko', maxLimit);
-    res.json({ success: true, count: results.length, data: results });
-  } catch (err) {
-    console.error('[wikipediaRoutes] /search error:', err.message);
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
 
 /**
  * GET /api/wiki/grounding
@@ -69,24 +24,6 @@ router.get('/grounding', async (req, res) => {
     res.json({ success: true, groundingContext: grounding });
   } catch (err) {
     console.error('[wikipediaRoutes] /grounding error:', err.message);
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-/**
- * GET /api/wiki/refine
- * 국문 질문/토픽을 AI 기반 영문 위키피디아 표준 표제어로 동적 정제
- */
-router.get('/refine', async (req, res) => {
-  try {
-    const { q } = req.query;
-    if (!q) {
-      return res.status(400).json({ success: false, error: '검색어(q)를 입력하십시오.' });
-    }
-    const refinedTitle = await refineQueryToEnglishWikiTitle(q);
-    res.json({ success: true, original: q, refinedTitle });
-  } catch (err) {
-    console.error('[wikipediaRoutes] /refine error:', err.message);
     res.status(500).json({ success: false, error: err.message });
   }
 });
