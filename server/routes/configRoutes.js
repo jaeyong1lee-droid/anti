@@ -1416,13 +1416,15 @@ router.post('/chat', async (req, res) => {
       }
     }
 
-    // Format conversation history as a structured string prompt
+    // Format recent conversation history (capped to avoid multi-turn prompt bloat)
     let structuredPrompt = '';
     if (history && Array.isArray(history) && history.length > 0) {
+      const recentHistory = history.slice(-6);
       structuredPrompt += "이전 대화 기록:\n";
-      for (const msg of history) {
+      for (const msg of recentHistory) {
         const sender = msg.role === 'user' ? '수험생' : '튜터';
-        structuredPrompt += `${sender}: ${msg.text}\n`;
+        const clipped = String(msg.text || '').trim().slice(0, 1200);
+        structuredPrompt += `${sender}: ${clipped}\n`;
       }
       structuredPrompt += "\n현재 질문:\n";
     }
