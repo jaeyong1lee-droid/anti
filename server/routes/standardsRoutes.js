@@ -4,8 +4,10 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { dbQuery } from '../database.js';
 import { saveSessionValue } from '../services/aiService.js';
+import { stampUpdatedStandards, syncStandardWithDb } from '../services/standardsSyncService.js';
 import { updateLiveEngineeringStandards, standardsList } from '../plugins/engineeringStandards.js';
 import { updateLiveGradingStandards, gradingStandardsList } from '../plugins/gradingPlugin.js';
+import { gradingStandardsList as fileGradingStandardsList } from '../plugins/gradingStandardsList.js';
 import { updateLiveGenerationStandards, generationStandardsList } from '../plugins/generationStandards.js';
 import { updateLiveLockscreenStandards, lockscreenStandardsList } from '../plugins/lockscreenStandards.js';
 
@@ -15,65 +17,9 @@ const serverDir = path.resolve(__dirname, '..');
 
 const router = express.Router();
 
-function stampUpdatedStandards(newList, oldList) {
-  if (!Array.isArray(newList)) return [];
-  const oldMap = new Map((oldList || []).map(item => [item.id, item]));
-  return newList.map(item => {
-    const oldItem = oldMap.get(item.id);
-    if (!oldItem || oldItem.content !== item.content || oldItem.title !== item.title || !item.updatedAt) {
-      return { ...item, updatedAt: new Date().toISOString() };
-    }
-    return item;
-  });
-}
-
 const isVercel = !!process.env.VERCEL;
 
-function mergeStandards(fileList, dbList, fileIsNewer = false) {
-  if (!dbList || dbList.length === 0) {
-    return fileList;
-  }
-
-  if (fileIsNewer) {
-    const dbMap = new Map((dbList || []).map(item => [item.id, item]));
-    const merged = fileList.map(fileItem => {
-      const dbItem = dbMap.get(fileItem.id);
-      if (!dbItem || dbItem.content !== fileItem.content || dbItem.title !== fileItem.title) {
-        return { ...fileItem, updatedAt: new Date().toISOString() };
-      }
-      return dbItem;
-    });
-
-    const fileIds = new Set(fileList.map(item => item.id));
-    for (const dbItem of dbList || []) {
-      if (!fileIds.has(dbItem.id) && String(dbItem.id || '').startsWith('user_')) {
-        merged.push(dbItem);
-      }
-    }
-    return merged;
-  } else {
-    // DB is newer: trust DB completely (including deletions of default standards in the UI)
-    return dbList;
-  }
-}
-
-async function checkIsFileNewer(fileName, dbKey) {
-  if (isVercel) return false;
-  try {
-    const filePath = path.join(serverDir, 'plugins', fileName);
-    if (!fs.existsSync(filePath)) return false;
-    const fileMtime = fs.statSync(filePath).mtime.getTime();
-
-    const row = await dbQuery.get("SELECT updated_at FROM app_session WHERE key = ?", [dbKey]);
-    if (!row || !row.updated_at) return true;
-    const dbUpdatedAt = new Date(row.updated_at).getTime();
-
-    return fileMtime > (dbUpdatedAt + 1000);
-  } catch (err) {
-    console.error(`Failed to check file mtime for ${fileName}:`, err.message);
-    return false;
-  }
-}
+const cloneList = (list) => (Array.isArray(list) ? list.map((item) => ({ ...item })) : []);
 
 async function writeStandardToFile(fileName, list) {
   if (isVercel) return;
@@ -148,229 +94,101 @@ export const USER_CONVENTIONS = "";
   }
 }
 
-// GET /api/engineering-standards
-router.get(['/engineering-standards', '/other-standards'], async (req, res) => {
-  try {
-    let dbList = [];
+/**
+ * Register GET and POST handlers for a standard category using declarative specs.
+ */
+function registerStandardRoutes(targetRouter, spec) {
+  const { paths, dbKey, fileName, defaultFileList, getLiveList, updateLive, label, onAfterSave } = spec;
+  const primaryPath = Array.isArray(paths) ? paths[0] : paths;
+
+  targetRouter.get(paths, async (req, res) => {
     try {
-      const row = await dbQuery.get("SELECT value FROM app_session WHERE key = 'engineering_standards'");
-      if (row && row.value) {
-        dbList = JSON.parse(row.value);
-      }
-    } catch (dbErr) {
-      console.error('Failed to read engineering standards from database:', dbErr.message);
+      const merged = await syncStandardWithDb({
+        fileName,
+        dbKey,
+        defaultFileList,
+        updateLive
+      });
+      res.json({ standards: merged });
+    } catch (err) {
+      console.error(`GET /api${primaryPath} error:`, err);
+      res.status(500).json({ error: err.message });
     }
-    const fileIsNewer = await checkIsFileNewer('engineeringStandards.js', 'engineering_standards');
-    const merged = mergeStandards(standardsList, dbList, fileIsNewer);
-    if (JSON.stringify(merged) !== JSON.stringify(dbList)) {
+  });
+
+  targetRouter.post(paths, async (req, res) => {
+    try {
+      const { standards } = req.body;
+      if (!Array.isArray(standards)) {
+        return res.status(400).json({ error: 'standards must be an array' });
+      }
+
+      const stamped = stampUpdatedStandards(standards, getLiveList());
+      updateLive(stamped);
+
       try {
-        await saveSessionValue('engineering_standards', JSON.stringify(merged));
-        console.log('[Sync] Automatically synced engineering standards to database.');
-      } catch (saveErr) {
-        console.error('Failed to auto-save merged engineering standards to database:', saveErr.message);
+        await saveSessionValue(dbKey, JSON.stringify(stamped));
+        if (typeof onAfterSave === 'function') {
+          await onAfterSave();
+        }
+        console.log(`Successfully saved ${label} standards to database.`);
+      } catch (dbErr) {
+        console.error(`Failed to save ${label} standards to database:`, dbErr.message);
       }
+
+      await writeStandardToFile(fileName, stamped);
+      res.json({ ok: true });
+    } catch (err) {
+      console.error(`POST /api${primaryPath} error:`, err);
+      res.status(500).json({ error: err.message });
     }
-    updateLiveEngineeringStandards(merged);
-    res.json({ standards: merged });
-  } catch (err) {
-    console.error('GET /api/engineering-standards error:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
+  });
+}
 
-// POST /api/engineering-standards
-router.post(['/engineering-standards', '/other-standards'], async (req, res) => {
-  try {
-    const { standards } = req.body;
-    if (!Array.isArray(standards)) {
-      return res.status(400).json({ error: 'standards must be an array' });
-    }
-
-    const stamped = stampUpdatedStandards(standards, standardsList);
-    updateLiveEngineeringStandards(stamped);
-
-    try {
-      await saveSessionValue('engineering_standards', JSON.stringify(stamped));
-      console.log('Successfully saved engineering standards to database.');
-    } catch (dbErr) {
-      console.error('Failed to save engineering standards to database:', dbErr.message);
-    }
-
-    await writeStandardToFile('engineeringStandards.js', stamped);
-    res.json({ ok: true });
-  } catch (err) {
-    console.error('POST /api/engineering-standards error:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// GET /api/grading-standards
-router.get('/grading-standards', async (req, res) => {
-  try {
-    let dbList = [];
-    try {
-      const row = await dbQuery.get("SELECT value FROM app_session WHERE key = 'grading_standards'");
-      if (row && row.value) {
-        dbList = JSON.parse(row.value);
-      }
-    } catch (dbErr) {
-      console.error('Failed to read grading standards from database:', dbErr.message);
-    }
-    const fileIsNewer = await checkIsFileNewer('gradingStandardsList.js', 'grading_standards');
-    const merged = mergeStandards(gradingStandardsList, dbList, fileIsNewer);
-    if (JSON.stringify(merged) !== JSON.stringify(dbList)) {
-      try {
-        await saveSessionValue('grading_standards', JSON.stringify(merged));
-        console.log('[Sync] Automatically synced grading standards to database.');
-      } catch (saveErr) {
-        console.error('Failed to auto-save merged grading standards to database:', saveErr.message);
-      }
-    }
-    updateLiveGradingStandards(merged);
-    res.json({ standards: merged });
-  } catch (err) {
-    console.error('GET /api/grading-standards error:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// POST /api/grading-standards
-router.post('/grading-standards', async (req, res) => {
-  try {
-    const { standards } = req.body;
-    if (!Array.isArray(standards)) {
-      return res.status(400).json({ error: 'standards must be an array' });
-    }
-
-    const stamped = stampUpdatedStandards(standards, gradingStandardsList);
-    updateLiveGradingStandards(stamped);
-
-    try {
-      await saveSessionValue('grading_standards', JSON.stringify(stamped));
-      console.log('Successfully saved grading standards to database.');
-    } catch (dbErr) {
-      console.error('Failed to save grading standards to database:', dbErr.message);
-    }
-
-    await writeStandardToFile('gradingStandardsList.js', stamped);
-    res.json({ ok: true });
-  } catch (err) {
-    console.error('POST /api/grading-standards error:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// GET /api/generation-standards
-router.get('/generation-standards', async (req, res) => {
-  try {
-    let dbList = [];
-    try {
-      const row = await dbQuery.get("SELECT value FROM app_session WHERE key = 'generation_standards'");
-      if (row && row.value) {
-        dbList = JSON.parse(row.value);
-      }
-    } catch (dbErr) {
-      console.error('Failed to read generation standards from database:', dbErr.message);
-    }
-    const fileIsNewer = await checkIsFileNewer('generationStandards.js', 'generation_standards');
-    const merged = mergeStandards(generationStandardsList, dbList, fileIsNewer);
-    if (JSON.stringify(merged) !== JSON.stringify(dbList)) {
-      try {
-        await saveSessionValue('generation_standards', JSON.stringify(merged));
-        console.log('[Sync] Automatically synced generation standards to database.');
-      } catch (saveErr) {
-        console.error('Failed to auto-save merged generation standards to database:', saveErr.message);
-      }
-    }
-    updateLiveGenerationStandards(merged);
-    res.json({ standards: merged });
-  } catch (err) {
-    console.error('GET /api/generation-standards error:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// POST /api/generation-standards
-router.post('/generation-standards', async (req, res) => {
-  try {
-    const { standards } = req.body;
-    if (!Array.isArray(standards)) {
-      return res.status(400).json({ error: 'standards must be an array' });
-    }
-
-    const stamped = stampUpdatedStandards(standards, generationStandardsList);
-    updateLiveGenerationStandards(stamped);
-
-    try {
-      await saveSessionValue('generation_standards', JSON.stringify(stamped));
-      console.log('Successfully saved generation standards to database.');
-    } catch (dbErr) {
-      console.error('Failed to save generation standards to database:', dbErr.message);
-    }
-
-    await writeStandardToFile('generationStandards.js', stamped);
-    res.json({ ok: true });
-  } catch (err) {
-    console.error('POST /api/generation-standards error:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// GET /api/lockscreen-standards
-router.get('/lockscreen-standards', async (req, res) => {
-  try {
-    let dbList = [];
-    try {
-      const row = await dbQuery.get("SELECT value FROM app_session WHERE key = 'lockscreen_standards'");
-      if (row && row.value) {
-        dbList = JSON.parse(row.value);
-      }
-    } catch (dbErr) {
-      console.error('Failed to read lockscreen standards from database:', dbErr.message);
-    }
-    const fileIsNewer = await checkIsFileNewer('lockscreenStandards.js', 'lockscreen_standards');
-    const merged = mergeStandards(lockscreenStandardsList, dbList, fileIsNewer);
-    if (JSON.stringify(merged) !== JSON.stringify(dbList)) {
-      try {
-        await saveSessionValue('lockscreen_standards', JSON.stringify(merged));
-        console.log('[Sync] Automatically synced lockscreen standards to database.');
-      } catch (saveErr) {
-        console.error('Failed to auto-save merged lockscreen standards to database:', saveErr.message);
-      }
-    }
-    updateLiveLockscreenStandards(merged);
-    res.json({ standards: merged });
-  } catch (err) {
-    console.error('GET /api/lockscreen-standards error:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// POST /api/lockscreen-standards
-router.post('/lockscreen-standards', async (req, res) => {
-  try {
-    const { standards } = req.body;
-    if (!Array.isArray(standards)) {
-      return res.status(400).json({ error: 'standards must be an array' });
-    }
-
-    const stamped = stampUpdatedStandards(standards, lockscreenStandardsList);
-    updateLiveLockscreenStandards(stamped);
-
-    try {
-      await saveSessionValue('lockscreen_standards', JSON.stringify(stamped));
+const STANDARD_SPECS = [
+  {
+    paths: ['/engineering-standards', '/other-standards'],
+    dbKey: 'engineering_standards',
+    fileName: 'engineeringStandards.js',
+    defaultFileList: cloneList(standardsList),
+    getLiveList: () => standardsList,
+    updateLive: updateLiveEngineeringStandards,
+    label: 'engineering'
+  },
+  {
+    paths: '/grading-standards',
+    dbKey: 'grading_standards',
+    fileName: 'gradingStandardsList.js',
+    defaultFileList: cloneList(fileGradingStandardsList),
+    getLiveList: () => gradingStandardsList,
+    updateLive: updateLiveGradingStandards,
+    label: 'grading'
+  },
+  {
+    paths: '/generation-standards',
+    dbKey: 'generation_standards',
+    fileName: 'generationStandards.js',
+    defaultFileList: cloneList(generationStandardsList),
+    getLiveList: () => generationStandardsList,
+    updateLive: updateLiveGenerationStandards,
+    label: 'generation'
+  },
+  {
+    paths: '/lockscreen-standards',
+    dbKey: 'lockscreen_standards',
+    fileName: 'lockscreenStandards.js',
+    defaultFileList: cloneList(lockscreenStandardsList),
+    getLiveList: () => lockscreenStandardsList,
+    updateLive: updateLiveLockscreenStandards,
+    label: 'lockscreen',
+    onAfterSave: async () => {
       await dbQuery.run("DELETE FROM app_session WHERE key = 'lockscreen_pregenerated_pool'");
-      console.log('Successfully saved lockscreen standards to database and cleared pregenerated pool.');
-    } catch (dbErr) {
-      console.error('Failed to save lockscreen standards to database:', dbErr.message);
     }
-
-    await writeStandardToFile('lockscreenStandards.js', stamped);
-    res.json({ ok: true });
-  } catch (err) {
-    console.error('POST /api/lockscreen-standards error:', err);
-    res.status(500).json({ error: err.message });
   }
-});
+];
+
+for (const spec of STANDARD_SPECS) {
+  registerStandardRoutes(router, spec);
+}
 
 export default router;
