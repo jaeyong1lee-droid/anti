@@ -309,7 +309,7 @@ export async function withLlmConcurrencySlot(deadlineAt, fn) {
   }
 }
 
-const MODEL_OVERLOAD_COOLDOWN_MS = 300 * 1000;
+const MODEL_OVERLOAD_COOLDOWN_MS = 60 * 1000;
 const MODEL_TIMEOUT_COOLDOWN_MS = 45 * 1000;
 const RATE_LIMIT_COOLDOWN_MS = 60 * 1000;
 const INVALID_KEY_COOLDOWN_MS = 10 * 60 * 1000;
@@ -455,11 +455,14 @@ async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = n
   }
 
   // [Sticky Healthy Routing]: 자동 폴백 시 최근 503/타임아웃으로 쿨다운 중인 모델(프로바이더 불문)은 정상 모델 뒤로 배치
+  // 단, tutor 시나리오에서는 사용자가 선택한 1순위 모델(primaryActualModel)을 항상 먼저 시도
   if (allowFallback && executionList.length > 1) {
+    const keepPrimaryFirst = (scenario === 'tutor');
     const healthyTasks = [];
     const cooledTasks = [];
     for (const t of executionList) {
-      if (isModelInCooldown(t.actualModel)) {
+      const demote = isModelInCooldown(t.actualModel) && !(keepPrimaryFirst && t.actualModel === primaryActualModel);
+      if (demote) {
         cooledTasks.push(t);
       } else {
         healthyTasks.push(t);
@@ -585,7 +588,13 @@ async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = n
         const maxTokensForScenario = (scenario === 'slides' || scenario === 'question') ? 16384 : 8192;
         const data = await withLlmConcurrencySlot(deadlineAt, async () => {
           const controller = new AbortController();
-          const perAttemptCapMs = scenario === 'grading' ? 28000 : (scenario === 'slides' ? 48000 : (hasNextDistinctModel ? 24000 : 45000));
+          const perAttemptCapMs = scenario === 'grading'
+            ? 28000
+            : (scenario === 'slides'
+                ? 48000
+                : (scenario === 'tutor'
+                    ? 35000
+                    : (hasNextDistinctModel ? 24000 : 45000)));
           const perAttemptTimeoutMs = Math.min(
             perAttemptCapMs,
             Math.max(2500, (deadlineAt - Date.now()) - 400)
@@ -796,7 +805,7 @@ async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = n
         if (!options.disableCooldown) {
           transientOverloadedModels.set(actualModelName, Date.now() + MODEL_OVERLOAD_COOLDOWN_MS);
         }
-        console.log(`[모델 과부하 감지] ${actualModelName} (503 과부하, 300초 쿨다운). 다음 정상 모델로 즉시 페일오버합니다.`);
+        console.log(`[모델 과부하 감지] ${actualModelName} (503 과부하, 60초 쿨다운). 다음 정상 모델로 즉시 페일오버합니다.`);
         continue;
       }
 
