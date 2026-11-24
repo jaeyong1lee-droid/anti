@@ -543,14 +543,6 @@ export async function getOrGenerateVerifiedModelAnswer(params) {
   }
 }
 
-export function isNumericAnswer(str) {
-  if (!str) return false;
-  const cleanStr = str.trim();
-  if (/[\*\+\=\-\/\^]/.test(cleanStr)) return false;
-  const numericRegex = /^[-+]?\d*\.?\d+\s*[a-zA-Z가-힣\/³\d]*$/;
-  return numericRegex.test(cleanStr);
-}
-
 export async function generateAuthoritativeModelAnswer({
   question,
   correctAnswer,

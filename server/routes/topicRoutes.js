@@ -3,7 +3,7 @@ import multer from 'multer';
 import pdfParse from 'pdf-parse';
 import { put, del } from '@vercel/blob';
 import { dbQuery } from '../database.js';
-import { getTopicText, saveSessionValue, callLLMWithFailover, globalPreferredModel, resolveStageModel } from '../services/aiService.js';
+import { getTopicText, saveSessionValue, callLLMWithFailover, resolveStageModel } from '../services/aiService.js';
 import * as fileUtils from '../utils/fileUtils.js';
 import * as ocrPlugin from '../plugins/calculationPlugin.js';
 import { parseLlmJson, LATEX_PROMPT_INSTRUCTIONS } from '../utils/latexUtils.js';

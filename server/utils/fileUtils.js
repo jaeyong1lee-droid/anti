@@ -1,5 +1,3 @@
-import { parseLlmJson } from './latexUtils.js';
-
 const cp1252CustomMap = {
   '\u20AC': 0x80, // €
   '\u201A': 0x82, // ‚
@@ -310,38 +308,4 @@ export function smartTruncate(text, maxLength) {
     return sub.substring(0, lastSentence + 1).trim() + ' ... [텍스트가 너무 길어 중략됨]';
   }
   return sub.trim() + ' ... [텍스트가 너무 길어 중략됨]';
-}
-
-export function extractFirstImageFromTopic(topic) {
-  if (!topic || !topic.pdf_data) return null;
-  const pdfName = (topic.pdf_name || '').toLowerCase();
-  const isImage = pdfName.endsWith('.png') || pdfName.endsWith('.jpg') || pdfName.endsWith('.jpeg') || pdfName.endsWith('.gif') || pdfName.endsWith('.webp');
-
-  if (isImage) {
-    const mimeType = pdfName.endsWith('.png') ? 'image/png' :
-                     (pdfName.endsWith('.gif') ? 'image/gif' :
-                      (pdfName.endsWith('.webp') ? 'image/webp' : 'image/jpeg'));
-    return {
-      data: topic.pdf_data.toString('base64'),
-      mimeType: mimeType
-    };
-  }
-
-  const isHtml = pdfName.endsWith('.html') || pdfName.endsWith('.htm') || isBufferHtml(topic.pdf_data);
-  if (isHtml) {
-    try {
-      const rawHtml = decodeHtmlBuffer(topic.pdf_data);
-      const imgRegex = /<img[^>]+src=["']data:(image\/[^;]+);base64,([^"']+)["']/i;
-      const match = imgRegex.exec(rawHtml);
-      if (match) {
-        return {
-          data: match[2],
-          mimeType: match[1]
-        };
-      }
-    } catch (e) {
-      console.warn('Failed to parse HTML base64 image in extractFirstImage:', e.message);
-    }
-  }
-  return null;
 }

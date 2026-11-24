@@ -7,7 +7,7 @@ import { fileURLToPath } from 'url';
 import fs from 'fs';
 import { initDatabase, dbQuery, isPostgres } from './database.js';
 import { startBackupScheduler } from './backupManager.js';
-import { loadPreferredModel, globalPreferredModel, saveSessionValue } from './services/aiService.js';
+import { loadPreferredModel, saveSessionValue } from './services/aiService.js';
 
 import { updateLiveEngineeringStandards, standardsList } from './plugins/engineeringStandards.js';
 import { updateLiveGradingStandards } from './plugins/gradingPlugin.js';

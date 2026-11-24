@@ -1,8 +1,8 @@
 import express from 'express';
 import pdfParse from 'pdf-parse';
 import { dbQuery } from '../database.js';
-import { callLLMWithFailover, analyzeStandardsBeforeTask, getTopicText, getMatchingTopicContent, startBackendProgressTimer, updateProgress, stopBackendProgressTimer, globalPreferredModel, globalAllowGradingFallback, resolveStageModel } from '../services/aiService.js';
-import { healQuizQuestionObject, parseLlmJson, healLatexFormulas, LATEX_PROMPT_INSTRUCTIONS } from '../utils/latexUtils.js';
+import { callLLMWithFailover, analyzeStandardsBeforeTask, getTopicText, getMatchingTopicContent, startBackendProgressTimer, updateProgress, stopBackendProgressTimer, globalAllowGradingFallback, resolveStageModel } from '../services/aiService.js';
+import { healQuizQuestionObject, parseLlmJson, LATEX_PROMPT_INSTRUCTIONS } from '../utils/latexUtils.js';
 import * as fileUtils from '../utils/fileUtils.js';
 import { gradeSubjective, GRADING_STANDARDS, gradingStandardsList } from '../plugins/gradingPlugin.js';
 import { ENGINEERING_STANDARDS, standardsList as engineeringStandardsList } from '../plugins/engineeringStandards.js';
@@ -25,7 +25,6 @@ async function validateAndHealQuestion(question, callLLM, topicTitle = '', topic
 }
 
 const router = express.Router();
-const BT = '```';
 
 function getActiveGenerationStandards() {
   return generationStandardsList && generationStandardsList.length > 0
@@ -44,24 +43,6 @@ function getActiveEngineeringStandards() {
 
 
 
-
-async function getFormattedTopicInstructions(topicId) {
-  if (!topicId) return '';
-  try {
-    const key = 'topic_instructions_' + topicId;
-    const row = await dbQuery.get("SELECT value FROM app_session WHERE key = ?", [key]);
-    if (row && row.value) {
-      const list = JSON.parse(row.value);
-      if (Array.isArray(list) && list.length > 0) {
-        const formatted = list.map((item, idx) => (idx + 1) + '. **' + item.title + '**:\n   - ' + item.content).join('\n');
-        return '\n[🚨 이 토픽(' + topicId + ')의 전용 문제 출제 및 변환 지침 - 반드시 반영하십시오]:\n' + formatted + '\n';
-      }
-    }
-  } catch (e) {
-    console.error('getFormattedTopicInstructions error:', e);
-  }
-  return '';
-}
 
 // POST /api/grade-subjective -> AI Subjective Grading
 router.post('/grade-subjective', async (req, res) => {

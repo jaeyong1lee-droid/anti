@@ -9,7 +9,7 @@ import { updateLiveEngineeringStandards, standardsList, ENGINEERING_STANDARDS } 
 import { updateLiveGradingStandards, gradingStandardsList } from '../plugins/gradingPlugin.js';
 import { updateLiveGenerationStandards, generationStandardsList } from '../plugins/generationStandards.js';
 import { updateLiveLockscreenStandards, lockscreenStandardsList } from '../plugins/lockscreenStandards.js';
-import { healFormulaQuestionObject, healQuizQuestionObject, parseLlmJson, healLatexFormulas, LATEX_CHAT_PROMPT_INSTRUCTIONS, LATEX_PROMPT_INSTRUCTIONS } from '../utils/latexUtils.js';
+import { healFormulaQuestionObject, parseLlmJson, healLatexFormulas, LATEX_CHAT_PROMPT_INSTRUCTIONS, LATEX_PROMPT_INSTRUCTIONS } from '../utils/latexUtils.js';
 import { defaultAcronyms, generateAcronymTutorResponse } from '../plugins/acronymsPlugin.js';
 import { defaultOverviews, generateOverviewTutorResponse } from '../plugins/overviewsPlugin.js';
 import { SVG_DIAGRAM_PROMPT } from '../plugins/svgDiagramPlugin.js';

@@ -1,8 +1,7 @@
 import express from 'express';
 import { dbQuery } from '../database.js';
-import { saveSessionValue, callLLMWithFailover, getMatchingTopicContent, globalPreferredModel, globalAllowGradingFallback, resolveStageModel } from '../services/aiService.js';
+import { saveSessionValue, callLLMWithFailover, getMatchingTopicContent, globalAllowGradingFallback, resolveStageModel } from '../services/aiService.js';
 import { 
-  getRandomLockscreenExamQuestion, 
   loadAllPastExamQuestions,
   getActiveLockscreenAssignment,
   selectActiveLockscreenAssignment,

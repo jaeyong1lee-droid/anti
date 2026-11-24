@@ -1,5 +1,4 @@
 import express from 'express';
-import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { dbQuery, isPostgres } from '../database.js';
@@ -19,7 +18,6 @@ import { getNotebookLmGroundedPromptBlock, verifyQuizQuestionsGrounding, verifyA
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const serverDir = path.resolve(__dirname, '..');
 
 const router = express.Router();
 

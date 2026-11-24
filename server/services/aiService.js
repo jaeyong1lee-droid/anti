@@ -1,7 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { dbQuery } from '../database.js';
 import { parseLlmJson } from '../utils/latexUtils.js';
-import { SVG_DIAGRAM_PROMPT } from '../plugins/svgDiagramPlugin.js';
 import { CHART_DIAGRAM_PROMPT } from '../plugins/chartPlugin.js';
 
 // Global AI progress tracker map
@@ -58,19 +57,6 @@ export function updateStageModels(nextStageModels = {}) {
   globalPreferredModel = globalStageModels.tutor || 'gemini-3.5-flash-lite';
   return { ...globalStageModels };
 }
-export const FALLBACK_MODELS = [
-  'claude-hybrid',
-  'claude-sonnet-5-5',
-  'claude-haiku-5-5',
-  'claude-opus-5-5',
-  'gemini-3.5-flash-lite',
-  'gemini-3.8-flash',
-  'gemini-3.7-flash',
-  'gemini-3.1-flash-lite',
-  'gemini-3.6-flash',
-  'gemini-3.5-flash',
-  'gemini-4-hydrogen'
-];
 
 export async function loadPreferredModel() {
   try {
@@ -221,22 +207,6 @@ export function reportLlmProgress(options, scenario, modelName) {
   }
 }
 
-export function reportValidationProgress(progressId, total) {
-  if (!progressId) return;
-  const progress = global.progressTracker.get(progressId) || {};
-  const validatedCount = (progress.validatedCount || 0) + 1;
-  const percentage = Math.floor(50 + (validatedCount / total) * 50);
-  global.progressTracker.set(progressId, {
-    ...progress,
-    step: 2,
-    validatedCount,
-    totalCount: total,
-    message: `2단계: 생성 문제 정합성 검토 중... (${validatedCount}/${total} 완료)`,
-    percentage: Math.min(percentage, 100),
-    timestamp: Date.now()
-  });
-}
-
 export function startBackendProgressTimer(progressId, step, initialMessage, maxPercentage = 88, intervalMs = 700, stepIncrement = 3) {
   if (!progressId) return null;
   const existing = global.progressTracker.get(progressId);
@@ -291,15 +261,6 @@ export const MAX_SEMAPHORE_QUEUE = 24;
 export const MAX_QUEUE_WAIT_MS = 20000;
 let activeLlmCount = 0;
 const semaphoreWaitQueue = [];
-
-export function getLlmSemaphoreStats() {
-  return {
-    activeLlmCount,
-    queuedCount: semaphoreWaitQueue.length,
-    maxConcurrent: MAX_CONCURRENT_LLM,
-    maxQueue: MAX_SEMAPHORE_QUEUE
-  };
-}
 
 export async function acquireLlmSlot(deadlineAt) {
   if (activeLlmCount < MAX_CONCURRENT_LLM) {
@@ -872,8 +833,6 @@ async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = n
   throw new Error('모든 API 키 호출에 실패하였습니다.');
 }
 
-global.standardsAnalysisCache = global.standardsAnalysisCache || new Map();
-
 export async function analyzeStandardsBeforeTask(progressId, topicTitle, standards, scenario = 'generation', preferredModel = null) {
   // [Performance Optimization] 사전 지침 분석 단계 생략
   // 메인 시스템 프롬프트(systemInstruction)에 전체 지침이 이미 모두 포함되어 전달되므로,
@@ -882,25 +841,6 @@ export async function analyzeStandardsBeforeTask(progressId, topicTitle, standar
     updateProgress(progressId, 0, '0단계: 사전 절대 지침 통과 (즉시 적용)', 20);
   }
   return '';
-}
-
-// Helper: Stream detection flags
-function isBufferPng(buf) {
-  if (!buf || buf.length < 8) return false;
-  return buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47 &&
-         buf[4] === 0x0d && buf[5] === 0x0a && buf[6] === 0x1a && buf[7] === 0x0a;
-}
-function isBufferJpeg(buf) {
-  if (!buf || buf.length < 3) return false;
-  return buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff;
-}
-function isBufferGif(buf) {
-  if (!buf || buf.length < 4) return false;
-  return buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x38;
-}
-function isBufferWebp(buf) {
-  if (!buf || buf.length < 12) return false;
-  return buf[8] === 0x57 && buf[9] === 0x45 && buf[10] === 0x42 && buf[11] === 0x50;
 }
 
 export async function getTopicText(topic, fileUtils, ocrPlugin, pdfParse) {

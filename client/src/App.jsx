@@ -1,15 +1,6 @@
 // Force deploy: 2026-07-07T23:16
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { 
-  healLatexFormulas, 
-  healQuizQuestionObject, 
-  healTheoryQuestionObject, 
-  healFormulaQuestionObject, 
-  isCalculationQuestion,
-  parseLlmJson
-} from './utils/latexUtils';
-import { convertMarkdownTablesToHtml } from './utils/markdownTableRenderer';
-import { convertMarkdownAcronymsToHtml } from './utils/markdownAcronymRenderer';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { healQuizQuestionObject, healFormulaQuestionObject, isCalculationQuestion, parseLlmJson } from './utils/latexUtils';
 import { compressImage } from './utils/imageUtils';
 import { BufferedTextarea } from './components/BufferedInput';
 import { TutorChatComposer } from './components/TutorChatComposer';
@@ -25,79 +16,9 @@ import SvgZoomModal from './components/SvgZoomModal';
 import ChartRenderer from './components/ChartRenderer';
 import DiagramSvgRenderer from './components/DiagramSvgRenderer';
 import TopicSlidePlugin from './components/TopicSlidePlugin';
-import { 
-  buildHtmlDocument, 
-  handleOpenHtmlAnswerPopup, 
-  convertMarkdownToHtml, 
-  renderKatexString, 
-  getSelectionTextWithLatex,
-  isSameConditionValue,
-  areCellsEqual,
-  getTableScoreColorTheme,
-  stripHtmlTagsFromRawData,
-  isOverviewReview,
-  getAnswerValue,
-  getGradingResult,
-  getCorrectAnswerForInput,
-  getCanonicalModelAnswer
-} from './utils/renderingHelpers';
+import { handleOpenHtmlAnswerPopup, getSelectionTextWithLatex, getTableScoreColorTheme, stripHtmlTagsFromRawData, isOverviewReview, getAnswerValue, getGradingResult, getCorrectAnswerForInput, getCanonicalModelAnswer } from './utils/renderingHelpers';
 import { parseChartJson } from './utils/parseChartJson';
-import { 
-  Brain, 
-  UploadCloud, 
-  CheckCircle, 
-  Calendar, 
-  List, 
-  Activity,
-  FileText, 
-  FileCode,
-  Sparkles, 
-  PlusCircle, 
-  RefreshCw, 
-  RotateCcw,
-  Trash2, 
-  Clock, 
-  ChevronDown, 
-  ChevronUp, 
-  ChevronRight,
-  Award, 
-  BookOpen, 
-  Sigma, 
-  Layers, 
-  Info,
-  Check,
-  Eye,
-  EyeOff,
-  Flame,
-  LayoutTemplate,
-  MessageSquare,
-  Send,
-  Save,
-  Edit2,
-  Search,
-  X,
-  Paperclip,
-  Copy,
-  ThumbsUp,
-  ThumbsDown,
-  Battery,
-  BatteryCharging,
-  Wifi,
-  Signal,
-  HelpCircle,
-  Sliders,
-  Image,
-  Lock,
-  Unlock,
-  Lightbulb,
-  Cpu,
-  Type,
-  ChevronLeft,
-  ArrowUp,
-  ArrowDown,
-  Clipboard,
-  Presentation
-} from 'lucide-react';
+import { Brain, UploadCloud, CheckCircle, Calendar, List, Activity, FileText, FileCode, Sparkles, PlusCircle, RefreshCw, RotateCcw, Trash2, Clock, ChevronDown, ChevronUp, ChevronRight, Award, BookOpen, Sigma, Layers, Info, Check, MessageSquare, Send, Save, Edit2, Search, X, Paperclip, Copy, ThumbsUp, HelpCircle, Sliders, Image, Lock, Unlock, Lightbulb, Cpu, Type, ChevronLeft, ArrowUp, ArrowDown, Presentation } from 'lucide-react';
 
 const MODEL_DISPLAY_NAMES = {
   'claude-hybrid': 'Claude Hybrid (추천)',
@@ -559,94 +480,6 @@ const parseAcronymContent = (content) => {
 };
 
 // Pure browser-side PDF-to-Image renderer using PDF.js CDN
-function PdfImageRenderer({ pdfUrl, pdfjsLoaded }) {
-  const containerRef = useRef(null);
-  const [loading, setLoading] = useState(true);
-  const [numPages, setNumPages] = useState(0);
-  const [hasError, setHasError] = useState(false);
-
-  useEffect(() => {
-    let active = true;
-    const renderPages = async () => {
-      if (!window.pdfjsLib) return;
-      setLoading(true);
-      setHasError(false);
-      try {
-        const loadingTask = window.pdfjsLib.getDocument(pdfUrl);
-        const pdf = await loadingTask.promise;
-        if (!active) return;
-        setNumPages(pdf.numPages);
-        
-        const container = containerRef.current;
-        if (!container) return;
-        container.innerHTML = '';
-
-        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-          const page = await pdf.getPage(pageNum);
-          if (!active) return;
-
-          const viewport = page.getViewport({ scale: 1.5 });
-          const canvas = document.createElement('canvas');
-          canvas.className = 'w-full max-w-3xl my-4 rounded-xl shadow-lg bg-white border border-slate-800 animate-fade-in';
-          
-          const context = canvas.getContext('2d');
-          canvas.height = viewport.height;
-          canvas.width = viewport.width;
-
-          const renderContext = {
-            canvasContext: context,
-            viewport: viewport
-          };
-          await page.render(renderContext).promise;
-          if (!active) return;
-          
-          container.appendChild(canvas);
-        }
-      } catch (err) {
-        console.error('Error rendering PDF as image, falling back to native iframe:', err);
-        if (active) {
-          setHasError(true);
-        }
-      } finally {
-        if (active) setLoading(false);
-      }
-    };
-
-    renderPages();
-    return () => {
-      active = false;
-    };
-  }, [pdfUrl, pdfjsLoaded]);
-
-  if (hasError) {
-    return (
-      <div className="w-full flex-grow flex flex-col items-center bg-white rounded-2xl overflow-hidden h-[55vh] border border-slate-800">
-        <iframe
-          src={pdfUrl}
-          className="w-full h-full border-0"
-          title="Document Fallback HTML Viewer"
-        />
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex-grow flex flex-col items-center overflow-y-auto max-h-[55vh] px-2 bg-slateCustom-950 rounded-2xl border border-slate-800">
-      {loading && (
-        <div className="py-20 flex flex-col items-center justify-center gap-3">
-          <div className="relative">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-500"></div>
-          </div>
-          <p className="text-xs text-slate-400">PDF를 고해상도 그림으로 변환하여 렌더링 중입니다...</p>
-        </div>
-      )}
-      <div ref={containerRef} className="w-full flex flex-col items-center"></div>
-      {!loading && numPages > 0 && (
-        <p className="text-[10px] text-slate-500 my-2">총 {numPages}페이지가 이미지로 정상 변환되었습니다.</p>
-      )}
-    </div>
-  );
-}
 
 // 1.4) HTML/시뮬레이터 감지 및 문서 템플릿 생성 헬퍼
 const isHeavyHtml = (rawText) => {
@@ -753,7 +586,6 @@ const getOrCreateSessionId = (topicId, scheduleId, reviewRound) => {
   const roundVal = reviewRound || '99';
   return `sess_topic_${topicId}_round_${roundVal}`;
 };
-
 
 
 const LOCAL_DISTRACTOR_FORMULAS = [
@@ -930,35 +762,6 @@ function rebuildMarkdownTable(headers, rows, separator = '\n') {
   return [headerLine, sepLine, ...rowLines].join(separator);
 }
 
-function getCoreSubjectFromTitle(title) {
-  if (!title) return '';
-  let subject = title;
-  const suffixes = [
-    /\s*상세\s*기술\s*보고서$/gi,
-    /\s*기술\s*보고서$/gi,
-    /\s*상세\s*보고서$/gi,
-    /\s*보고서$/gi,
-    /\s*유도\s*공식$/gi,
-    /\s*유도공식$/gi,
-    /\s*산정\s*공식$/gi,
-    /\s*산정공식$/gi,
-    /\s*유도$/gi,
-    /\s*증명$/gi,
-    /\s*해석$/gi,
-    /\s*산정$/gi,
-    /\s*설계$/gi,
-    /\s*분석$/gi,
-    /\s*평가$/gi,
-    /\s*대책$/gi
-  ];
-  for (const regex of suffixes) {
-    if (regex.test(subject)) {
-      subject = subject.replace(regex, '');
-      break;
-    }
-  }
-  return subject.trim();
-}
 
 // Single-line markdown table normalizer
 function normalizeSingleLineTable(text) {
@@ -1719,232 +1522,6 @@ const renderMobileFlowchart = (flowchartText, katexLoaded, questionKey, question
   );
 };
 
-const renderCompleteFlowchart = (flowchartText, katexLoaded, q) => {
-  const lines = flowchartText.split('\n');
-  const items = [];
-  let currentBoxes = null;
-
-  const flushBoxes = () => {
-    if (currentBoxes && currentBoxes.length > 0) {
-      const validBoxes = currentBoxes.filter(b => b.content.length > 0);
-      if (validBoxes.length === 1) {
-        items.push(validBoxes[0]);
-      } else if (validBoxes.length > 1) {
-        items.push({ type: 'branch', boxes: validBoxes });
-      }
-      currentBoxes = null;
-    }
-  };
-
-  for (let line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed) continue;
-
-    if (trimmed.startsWith('┌') || trimmed.startsWith('└') || trimmed.startsWith('─') || trimmed.includes('───') || trimmed.includes('━━━')) {
-      flushBoxes();
-      continue;
-    }
-
-    if (line.includes('│') || line.includes('┃')) {
-      const rawParts = line.split(/[│┃]/);
-      let cols = [];
-      if (rawParts.length > 2) {
-        cols = rawParts.slice(1, rawParts.length - 1).map(c => c.trim());
-      } else if (rawParts.length === 2) {
-        cols = [rawParts[0].trim(), rawParts[1].trim()].filter(Boolean);
-      } else {
-        cols = [line.trim()];
-      }
-
-      if (!currentBoxes) {
-        currentBoxes = [];
-      }
-      while (currentBoxes.length < cols.length) {
-        currentBoxes.push({ type: 'box', content: [] });
-      }
-      cols.forEach((colContent, colIdx) => {
-        if (colContent && currentBoxes[colIdx]) {
-          currentBoxes[colIdx].content.push(colContent);
-        }
-      });
-    } else {
-      flushBoxes();
-      if (trimmed === '│' || trimmed === '┃' || trimmed === '▼' || trimmed === '↓') {
-        items.push({ type: 'arrow', text: '▼' });
-      } else if (trimmed.includes('┌') || trimmed.includes('┴') || trimmed.includes('┐')) {
-        items.push({ type: 'arrow', text: '▼ (분기)' });
-      }
-    }
-  }
-  flushBoxes();
-
-  const cleanItems = [];
-  let lastWasArrow = false;
-  items.forEach(item => {
-    if (item.type === 'arrow') {
-      if (!lastWasArrow) {
-        cleanItems.push(item);
-        lastWasArrow = true;
-      }
-    } else {
-      cleanItems.push(item);
-      lastWasArrow = false;
-    }
-  });
-
-  // Extract real valid letters strictly from question schema (tableData or answers)
-  const validLetters = (() => {
-    const letters = new Set();
-    if (q && q.tableData && Array.isArray(q.tableData.rows)) {
-      q.tableData.rows.forEach(r => {
-        const m = String(r[0] || '').match(/\(([A-F])\)/i);
-        if (m) letters.add(m[1].toUpperCase());
-      });
-    }
-    if (letters.size === 0 && q && q.answers) {
-      Object.keys(q.answers).forEach(k => {
-        const m = k.match(/INPUT_(\d+)/i);
-        if (m) {
-          const num = parseInt(m[1], 10);
-          if (num >= 1 && num <= 26) {
-            letters.add(String.fromCharCode(64 + num));
-          }
-        }
-      });
-    }
-    return letters.size > 0 ? Array.from(letters) : ['A', 'B', 'C', 'D'];
-  })();
-
-  const renderLineContent = (rawContent) => {
-    const content = rawContent;
-    const targetRegex = /\(([A-F])\)/g;
-    if (!targetRegex.test(content)) {
-      return <LatexRenderer text={content} katexLoaded={katexLoaded} enableAddFormula={true} forceInline={true} />;
-    }
-
-    targetRegex.lastIndex = 0;
-    const parts = [];
-    let lastIndex = 0;
-    let match;
-
-    while ((match = targetRegex.exec(content)) !== null) {
-      const letter = match[1].toUpperCase();
-      if (validLetters.includes(letter)) {
-        const beforeText = content.substring(lastIndex, match.index);
-        if (beforeText) {
-          parts.push({ type: 'text', text: beforeText });
-        }
-        const letterIdx = letter.charCodeAt(0) - 65;
-        const inputId = `INPUT_${letterIdx + 1}`;
-        const rawAnswerVal = q.answers?.[inputId] || '';
-        const answerVal = cleanAttachmentText(rawAnswerVal);
-        parts.push({ type: 'answer', letter, text: answerVal });
-        lastIndex = targetRegex.lastIndex;
-      }
-    }
-    const afterText = content.substring(lastIndex);
-    if (afterText) {
-      parts.push({ type: 'text', text: afterText });
-    }
-
-    return (
-      <div className="flex items-baseline gap-1 flex-wrap my-0.5 select-text w-full h-auto whitespace-pre-wrap break-all flowchart-text-force">
-        {parts.map((p, pIdx) => {
-          if (p.type === 'text') {
-            return <span key={pIdx}>{p.text}</span>;
-          } else {
-            return (
-              <span key={pIdx} className="font-extrabold text-emerald-400 border-b-2 border-emerald-500/40 bg-emerald-950/20 px-1.5 py-0.5 rounded mx-1 select-text">
-                <span className="text-emerald-500/80 mr-1 select-none">({p.letter})</span>
-                <LatexRenderer text={p.text} katexLoaded={katexLoaded} className="inline font-bold" forceInline={true} />
-              </span>
-            );
-          }
-        })}
-      </div>
-    );
-  };
-
-  return (
-    <div className="w-full flex flex-col items-center gap-2 select-text my-3 flowchart-text-force">
-      {cleanItems.map((item, idx) => {
-        if (item.type === 'box') {
-          const title = item.content[0] || '';
-          const bodyLines = item.content.slice(1);
-          const hasBoxNumber = /\[[\d\*\s가-힣a-zA-Z\-]+\]/.test(title) || /\(([A-F])\)/.test(item.content.join('\n'));
-          if (!hasBoxNumber) {
-            return (
-              <div key={idx} className="w-full h-auto font-mono whitespace-pre bg-slate-950/70 border border-slate-800/80 p-3 rounded-xl overflow-x-auto text-left leading-relaxed my-2 select-text font-mono text-[12.5px] sm:text-[13.5px] shadow-sm">
-                <div className="font-bold flowchart-text-force text-slate-200 mb-0.5 w-full h-auto whitespace-pre font-mono">
-                  {renderLineContent(title)}
-                </div>
-                {bodyLines.map((bl, bIdx) => (
-                  <div key={bIdx} className="text-slate-300 my-0.5 w-full h-auto whitespace-pre font-mono">
-                    {renderLineContent(bl)}
-                  </div>
-                ))}
-              </div>
-            );
-          }
-          return (
-            <div key={idx} className="w-full h-auto min-h-fit border border-amber-400/70 bg-slate-900/60 p-2.5 rounded-xl text-left leading-relaxed shadow-sm flex flex-col gap-0.5 shadow-[0_0_12px_rgba(251,191,36,0.12)]">
-              <div className="font-bold text-[13px] sm:text-[14px] flowchart-text-force text-amber-400 mb-0.5 w-full h-auto whitespace-pre-wrap break-all">
-                {renderLineContent(title)}
-              </div>
-              {bodyLines.map((bl, bIdx) => (
-                <div key={bIdx} className="text-[13px] sm:text-[14px] flowchart-text-force text-slate-200 pl-1.5 border-l border-slate-700/50 my-0.5 w-full h-auto whitespace-pre-wrap break-all">
-                  {renderLineContent(bl)}
-                </div>
-              ))}
-            </div>
-          );
-        } else if (item.type === 'branch') {
-          return (
-            <div key={idx} className="w-full flex flex-col sm:flex-row gap-3 items-stretch justify-center">
-              {item.boxes.map((box, bIdx) => {
-                const title = box.content[0] || '';
-                const bodyLines = box.content.slice(1);
-                const hasBoxNumber = /\[[\d\*\s가-힣a-zA-Z\-]+\]/.test(title) || /\(([A-F])\)/.test(box.content.join('\n'));
-                if (!hasBoxNumber) {
-                  return (
-                    <div key={bIdx} className="flex-1 w-full h-auto font-mono whitespace-pre bg-slate-950/70 border border-slate-800/80 p-3 rounded-xl overflow-x-auto text-left leading-relaxed my-2 select-text font-mono flowchart-text-force shadow-sm">
-                      <div className="font-bold text-slate-200 mb-0.5 w-full h-auto whitespace-pre font-mono">
-                        {renderLineContent(title)}
-                      </div>
-                      {bodyLines.map((bl, blIdx) => (
-                        <div key={blIdx} className="flowchart-text-force text-slate-300 my-0.5 w-full h-auto whitespace-pre font-mono">
-                          {renderLineContent(bl)}
-                        </div>
-                      ))}
-                    </div>
-                  );
-                }
-                return (
-                  <div key={bIdx} className="flex-1 w-full h-auto min-h-fit border border-amber-400/70 bg-slate-900/60 p-2.5 rounded-xl text-left leading-relaxed shadow-sm flex flex-col gap-0.5 shadow-[0_0_12px_rgba(251,191,36,0.12)]">
-                    <div className="font-bold text-[13px] sm:text-[14px] flowchart-text-force text-amber-400 mb-0.5 w-full h-auto whitespace-pre-wrap break-all">
-                      {renderLineContent(title)}
-                    </div>
-                    {bodyLines.map((bl, blIdx) => (
-                      <div key={blIdx} className="text-[13px] sm:text-[14px] flowchart-text-force text-slate-200 pl-1.5 border-l border-slate-700/50 my-0.5 w-full h-auto whitespace-pre-wrap break-all">
-                        {renderLineContent(bl)}
-                      </div>
-                    ))}
-                  </div>
-                );
-              })}
-            </div>
-          );
-        } else {
-          return (
-            <div key={idx} className="text-emerald-400 font-extrabold text-[13px] sm:text-[14px] flowchart-text-force my-1 select-none">
-              ▼
-            </div>
-          );
-        }
-      })}
-    </div>
-  );
-};
 
 const renderResponsiveContent = (text, katexLoaded, questionKey, isMarkdown, questionIdx, tableAnswers, setTableAnswers, revealed, tableGradingResults, q, gradeSingleTableCell, cellGradingLoading, onSubmit, renderCardTutorChat, isExam = false) => {
   const flowchartRegex = /```(?:flowchart|step|sequence|[a-zA-Z0-9_-]*)?\n([\s\S]*?(?:┌|└|│|▼)[\s\S]*?\[[\d\*\s가-힣a-zA-Z\-\(\)]+\][\s\S]*?)```/gi;
@@ -2749,15 +2326,6 @@ export default function App() {
     return 'text-rose-400';
   };
 
-  const getSubjectiveBannerClasses = (idx) => {
-    const activeGradingResults = showExam ? examTableGradingResults : tableGradingResults;
-    const score = activeGradingResults[`${idx}_INPUT`]?.score;
-    if (score === undefined) return 'bg-slate-900 border-slate-800 text-slate-355';
-    if (score >= 9) return 'bg-emerald-950/20 border-emerald-500/30 text-emerald-400';
-    if (score >= 8) return 'bg-yellow-950/20 border-yellow-500/30 text-yellow-400';
-    if (score >= 5) return 'bg-orange-950/20 border-orange-500/30 text-orange-400';
-    return 'bg-rose-950/20 border-rose-500/30 text-rose-400';
-  };
 
   const getSubjectiveStatusText = (idx) => {
     const activeGradingResults = showExam ? examTableGradingResults : tableGradingResults;
@@ -2769,48 +2337,6 @@ export default function App() {
     return '❌ 오답 판정';
   };
 
-  const renderCompareKeywords = (correctAnswerText, userAnswerText) => {
-    if (!correctAnswerText) return null;
-    
-    const normalize = (s) => (s || '').trim().toLowerCase().replace(/\s+/g, '');
-    
-    // Split user keywords by comma
-    const userKws = (userAnswerText || '')
-      .split(/[,|]/)
-      .map(k => normalize(k))
-      .filter(Boolean);
-      
-    // Split correct keywords by comma
-    const correctKws = correctAnswerText
-      .split(/[,|]/)
-      .map(k => k.trim())
-      .filter(Boolean);
-
-    return (
-      <div className="flex flex-wrap gap-x-1.5 gap-y-1 items-center">
-        {correctKws.map((kw, i) => {
-          // Clean asterisks if present
-          const cleanKw = kw.replace(/\*\*/g, '');
-          const normKw = normalize(cleanKw);
-          
-          // Check if user input contains this keyword
-          const isMatched = userKws.some(ukw => {
-            return ukw && (normKw.includes(ukw) || ukw.includes(normKw));
-          });
-          
-          const colorClass = isMatched ? 'text-yellow-400 font-bold' : 'text-orange-500 font-bold'; // Yellow vs Dark Orange
-          return (
-            <span key={i} className="inline-flex items-center select-text">
-              <span className={colorClass}>
-                <LatexRenderer text={cleanKw} katexLoaded={katexLoaded} isMarkdown={false} enableAddFormula={true} />
-              </span>
-              {i < correctKws.length - 1 && <span className="text-slate-500 ml-1">,</span>}
-            </span>
-          );
-        })}
-      </div>
-    );
-  };
 
   const getTableAverageScore = (idx, q) => {
     if (q.type === '주관식 (앞글자)') {
@@ -2854,14 +2380,6 @@ export default function App() {
     return sumScore / gradedCount;
   };
 
-  const getTableBannerClasses = (idx, q) => {
-    const score = getTableAverageScore(idx, q);
-    if (score === undefined) return 'bg-slate-900/50 border-slate-800 text-slate-350';
-    if (score >= 9) return 'bg-emerald-950/20 border-emerald-500/30 text-emerald-400';
-    if (score >= 8) return 'bg-yellow-950/20 border-yellow-500/30 text-yellow-400';
-    if (score >= 5) return 'bg-orange-950/20 border-orange-500/30 text-orange-400';
-    return 'bg-rose-950/20 border-rose-500/30 text-rose-400';
-  };
 
   const getTableBannerTitleClasses = (idx, q) => {
     const score = getTableAverageScore(idx, q);
@@ -3608,30 +3126,6 @@ export default function App() {
     return localStorage.getItem('anti_lockscreen_quiz_enabled') !== 'false';
   });
 
-  const toggleLockscreenQuiz = async () => {
-    const newVal = !isLockscreenQuizEnabled;
-    setIsLockscreenQuizEnabled(newVal);
-    localStorage.setItem('anti_lockscreen_quiz_enabled', String(newVal));
-
-    if (newVal) {
-      triggerLockscreenQuiz(true);
-    } else {
-      setShowLockscreenQuiz(false);
-    }
-
-    try {
-      const res = await fetch(`${API_BASE}/api/options/lockscreen_quiz_enabled`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ value: String(newVal) })
-      });
-      if (!res.ok) {
-        throw new Error('Failed to update option on server');
-      }
-    } catch (err) {
-      console.error('잠금화면 퀴즈 설정 동기화 실패:', err);
-    }
-  };
 
   const [isLockscreenPoolModalOpen, setIsLockscreenPoolModalOpen] = useState(false);
   const [lockscreenPool, setLockscreenPool] = useState([]);
@@ -3655,10 +3149,6 @@ export default function App() {
     }
   };
 
-  const handleOpenLockscreenPoolModal = () => {
-    setIsLockscreenPoolModalOpen(true);
-    fetchLockscreenPool();
-  };
 
   const handleOpenQuestionPreview = (question) => {
     setSelectedPoolQuestion(question);
@@ -4930,8 +4420,7 @@ export default function App() {
   };
 
 
-  
-  // HTML Edit Modal States
+// HTML Edit Modal States
   const [showHtmlEditModal, setShowHtmlEditModal] = useState(false);
   const [editingHtmlTopicId, setEditingHtmlTopicId] = useState(null);
   const [editingHtmlTopicTitle, setEditingHtmlTopicTitle] = useState('');
@@ -4953,7 +4442,6 @@ export default function App() {
   const [keywords, setKeywords] = useState('');
   const [pdfFile, setPdfFile] = useState(null);
   const htmlTextareaRef = useRef(null);
-  const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef(null);
 
   // Calculation Problem Image Upload States
@@ -6441,10 +5929,9 @@ export default function App() {
   const [aiError, setAiError] = useState('');
   const [openSections, setOpenSections] = useState({}); // { 'qIdx-sIdx': bool } for section accordion
   const [questionFeedback, setQuestionFeedback] = useState({}); // Stores upvotes/downvotes of questions { `${topic_id}_${questionText}`: 'upvote' | 'downvote' }
-  
 
 
-  // Exam mode state
+// Exam mode state
   const [examQuestions, setExamQuestions] = useState([]);
   const [showExam, setShowExam] = useState(() => localStorage.getItem('anti_show_exam') === 'true');
   const [loadingExam, setLoadingExam] = useState(() => localStorage.getItem('anti_show_exam') === 'true');
@@ -6614,9 +6101,6 @@ export default function App() {
   }, []);
 
   // --- Formula Adjust States & Context Registration ---
-  const [adjustingFormulaInputKey, setAdjustingFormulaInputKey] = useState(null);
-  const [adjustingFormulaText, setAdjustingFormulaText] = useState({});
-  const [adjustingFormulaLoading, setAdjustingFormulaLoading] = useState({});
 
   const selectedTopicRefForFormula = useRef(null);
   selectedTopicRefForFormula.current = selectedTopic;
@@ -6644,8 +6128,7 @@ export default function App() {
   }, [aiQuestions, examQuestions, showExam, focusedQuestion]);
 
 
-
-  useEffect(() => {
+useEffect(() => {
     window.__handleFormulaConfirmRequest = (math, fullText, source) => {
       window.__isFormulaConfirmOpen = true; // Set synchronously to prevent race condition
       let contextText = fullText || "";
@@ -7085,21 +6568,14 @@ export default function App() {
   
   const showTheoryExam = false;
   const setShowTheoryExam = () => {};
-  const theoryBodyRef = { current: null };
-  const savedTheoryScroll = { current: 0 };
   const [formulaMobileTab, setFormulaMobileTab] = useState('list');
   const [formulaQuizQuestions, setFormulaQuizQuestions] = useState([]);
-  const [generatingFormulaQuiz, setGeneratingFormulaQuiz] = useState(false);
-  const theoryMobileTab = "list";
-  const setTheoryMobileTab = () => {};
   const formulaSplitContainerRef = useRef(null);
-  const theorySplitContainerRef = { current: null };
   const [reviewMobileTab, setReviewMobileTab] = useState('list');
   const [examMobileTab, setExamMobileTab] = useState('list');
   const reviewSplitContainerRef = useRef(null);
   const examSplitContainerRef = useRef(null);
   const [formulaQuestions, setFormulaQuestions] = useState([]);
-  const [generatingTipIds, setGeneratingTipIds] = useState({});
   const [editingTipIdx, setEditingTipIdx] = useState(null);
   const [editingTipText, setEditingTipText] = useState('');
   const [loadingFormula, setLoadingFormula] = useState(false);
@@ -7168,7 +6644,6 @@ export default function App() {
     }
   });
   const [activeEditCell, setActiveEditCell] = useState(null); // { tableId, type: 'header'|'cell', colIdx, rIdx }
-  const [activeAddDropdownTableId, setActiveAddDropdownTableId] = useState(null);
   const [tableRegeneratingIds, setTableRegeneratingIds] = useState({}); // { [tableId]: boolean }
   const [activeEditAcronymCell, setActiveEditAcronymCell] = useState(null); // { acronymId, rIdx, type: 'acronym'|'combined' }
   const [editingAcronymValue, setEditingAcronymValue] = useState('');
@@ -7325,7 +6800,6 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
     }
   });
   const [answersheetSearchQuery, setAnswersheetSearchQuery] = useState('');
-  const [refreshingAnswersheetIdx, setRefreshingAnswersheetIdx] = useState(null);
   const [uploadingAnswersheetPdf, setUploadingAnswersheetPdf] = useState(false);
   const [editingAnswersheetIdx, setEditingAnswersheetIdx] = useState(null);
   const [editAnswersheetTitle, setEditAnswersheetTitle] = useState('');
@@ -7714,8 +7188,6 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
 
 
   // Touch swipe gesture handling for Galaxy Z Flip 6 cover screen and mobile portrait views
-  const swipeTouchStartX = useRef(null);
-  const swipeTouchStartY = useRef(null);
 
   const handleSwipeTouchStart = (e) => {
     // Disabled to prevent horizontal dragging/swiping on mobile
@@ -7730,9 +7202,6 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
   const [formulaRefreshing, setFormulaRefreshing] = useState(false);
   const formulaTouchStartY = useRef(0);
 
-  const [theoryPull, setTheoryPull] = useState(0);
-  const [theoryRefreshing, setTheoryRefreshing] = useState(false);
-  const theoryTouchStartY = useRef(0);
 
   const [answersheetPull, setAnswersheetPull] = useState(0);
   const [answersheetRefreshing, setAnswersheetRefreshing] = useState(false);
@@ -7745,7 +7214,7 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
   const [examPull, setExamPull] = useState(0);
   const [examRefreshing, setExamRefreshing] = useState(false);
   const examTouchStartY = useRef(0);
-  const examTouchStartX = useRef(0); // iOS 수평 드래그 차단용
+// iOS 수평 드래그 차단용
 
   useEffect(() => {
     const handleResize = () => {
@@ -7769,8 +7238,7 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
   }, []);
 
 
-
-  // Mobile Back Button Interception logic to prevent accidental exit and close modals instead
+// Mobile Back Button Interception logic to prevent accidental exit and close modals instead
   const activeModalRef = useRef(null);
   const wasModalOpenRef = useRef(false);
   const ignoreNextPopState = useRef(false);
@@ -7882,91 +7350,12 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
   }, [selectedTopic, showExam, showFormulaExam, showTheoryExam, showAnswerSheet]);
   
   // Drag Resizable Splitter State and Event Handlers
-  const [reviewSplitRatio, setReviewSplitRatio] = useState(60);
-  const [examSplitRatio, setExamSplitRatio] = useState(60);
 
-  const startReviewResize = (e) => {
-    e.preventDefault();
-    const startX = e.clientX || (e.touches && e.touches[0].clientX);
-    const containerWidth = reviewSplitContainerRef.current?.clientWidth || 1000;
-    const startRatio = reviewSplitRatio;
 
-    const doResize = (moveEvent) => {
-      const currentX = moveEvent.clientX || (moveEvent.touches && moveEvent.touches[0].clientX);
-      const deltaX = currentX - startX;
-      const deltaRatio = (deltaX / containerWidth) * 100;
-      const newRatio = Math.max(30, Math.min(80, startRatio + deltaRatio));
-      setReviewSplitRatio(newRatio);
-    };
-
-    const stopResize = () => {
-      window.removeEventListener('mousemove', doResize);
-      window.removeEventListener('mouseup', stopResize);
-      window.removeEventListener('touchmove', doResize);
-      window.removeEventListener('touchend', stopResize);
-    };
-
-    window.addEventListener('mousemove', doResize);
-    window.addEventListener('mouseup', stopResize);
-    window.addEventListener('touchmove', doResize, { passive: false });
-    window.addEventListener('touchend', stopResize);
-  };
-
-  const startExamResize = (e) => {
-    e.preventDefault();
-    const startX = e.clientX || (e.touches && e.touches[0].clientX);
-    const containerWidth = examSplitContainerRef.current?.clientWidth || 1000;
-    const startRatio = examSplitRatio;
-
-    const doResize = (moveEvent) => {
-      const currentX = moveEvent.clientX || (moveEvent.touches && moveEvent.touches[0].clientX);
-      const deltaX = currentX - startX;
-      const deltaRatio = (deltaX / containerWidth) * 100;
-      const newRatio = Math.max(30, Math.min(80, startRatio + deltaRatio));
-      setExamSplitRatio(newRatio);
-    };
-
-    const stopResize = () => {
-      window.removeEventListener('mousemove', doResize);
-      window.removeEventListener('mouseup', stopResize);
-      window.removeEventListener('touchmove', doResize);
-      window.removeEventListener('touchend', stopResize);
-    };
-
-    window.addEventListener('mousemove', doResize);
-    window.addEventListener('mouseup', stopResize);
-    window.addEventListener('touchmove', doResize, { passive: false });
-    window.addEventListener('touchend', stopResize);
-  };
-  
-  // Theory questions states (independent of formulas)
-  const theoryQuestions = [];
-  const setTheoryQuestions = () => {};
-  const handleSaveTheoryQuestions = async () => {};
-  const loadingTheory = false;
-  const setLoadingTheory = () => {};
+// Theory questions states (independent of formulas)
   const theoryRevealed = {};
-  const setTheoryRevealed = () => {};
-  const theorySearchQuery = "";
-  const setTheorySearchQuery = () => {};
-  const refreshingTheoryIdx = null;
-  const setRefreshingTheoryIdx = () => {};
-  const uploadingTheoryPdf = false;
-  const setUploadingTheoryPdf = () => {};
 
   // Theory inline editing states
-  const editingTheoryIdx = null;
-  const setEditingTheoryIdx = () => {};
-  const editTheoryTitle = "";
-  const setEditTheoryTitle = () => {};
-  const editTheoryConcept = "";
-  const setEditTheoryConcept = () => {};
-  const editTheoryAssumptions = "";
-  const setEditTheoryAssumptions = () => {};
-  const editTheoryFormula = "";
-  const setEditTheoryFormula = () => {};
-  const theoryInputRevealed = {};
-  const setTheoryInputRevealed = () => {};
   const [formulaInputRevealed, setFormulaInputRevealed] = useState({});
   const chatInputRef = useRef('');
   const [isChatLoading, setIsChatLoading] = useState(false);
@@ -7987,10 +7376,9 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
   const [editingGradingContent, setEditingGradingContent] = useState('');
   const [isSavingGradingStandardsList, setIsSavingGradingStandardsList] = useState(false);
   const [isLoadingGradingStandardsList, setIsLoadingGradingStandardsList] = useState(false);
-  
 
-  
-  const [showManageGenerationStandardsModal, setShowManageGenerationStandardsModal] = useState(false);
+
+const [showManageGenerationStandardsModal, setShowManageGenerationStandardsModal] = useState(false);
   const [showEditGenerationStandardModal, setShowEditGenerationStandardModal] = useState(false);
   const [generationStandardsList, setGenerationStandardsList] = useState([]);
   const [editingGenerationStandard, setEditingGenerationStandard] = useState(null);
@@ -8069,17 +7457,13 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
   
   // PIN Code entry restriction states
   const [isPinVerified, setIsPinVerified] = useState(() => sessionStorage.getItem('pin_verified') === 'true');
-  const wasPinVerifiedOnMount = useRef(sessionStorage.getItem('pin_verified') === 'true');
   const [pinInput, setPinInput] = useState('');
   const [pinError, setPinError] = useState('');
   const [isPinVerifying, setIsPinVerifying] = useState(false);
   const [isPinInputShaking, setIsPinInputShaking] = useState(false);
 
 
-
-
-
-  // Proactive trigger of lockscreen quiz on app startup, mount, and refresh when enabled
+// Proactive trigger of lockscreen quiz on app startup, mount, and refresh when enabled
   useEffect(() => {
     if (isPinVerified && isLockscreenQuizEnabled) {
       triggerLockscreenQuiz(false);
@@ -8243,7 +7627,6 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
   const tutorFileInputRef = useRef(null);
   const mobileTutorFileInputRef = useRef(null);
   const [attachedImages, setAttachedImages] = useState([]); // Array of { id, name, mimeType, data }
-  const attachedImage = attachedImages.length > 0 ? attachedImages[0] : null;
   const setAttachedImage = (val) => {
     if (!val) setAttachedImages([]);
     else if (Array.isArray(val)) setAttachedImages(val);
@@ -8308,7 +7691,6 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
   const [resetConfirmTarget, setResetConfirmTarget] = useState(null); // { scheduleId, topicTitle, round }
   const [showFullReport, setShowFullReport] = useState(false);
   const [reportText, setReportText] = useState('');
-  const [loadingReport, setLoadingReport] = useState(false);
   const [reportViewType, setReportViewType] = useState('pdf'); // 'pdf' or 'image'
   const [pdfjsLoaded, setPdfjsLoaded] = useState(false);
   const [searchInput, setSearchInput] = useState('');
@@ -8324,7 +7706,6 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
   const lastExamScrollbarClickTime = useRef(0);
 
   // Latest values refs to prevent stale closure bugs in modal headers
-  const latestTheoryQuestionsRef = { current: [] };
 
   const latestFormulaQuestionsRef = useRef(formulaQuestions);
   useEffect(() => {
@@ -9240,8 +8621,7 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
   };
 
 
-
-  useEffect(() => {
+useEffect(() => {
     if (examTopic && examQuestions.length > 0) {
       const localProgress = localStorage.getItem('anti_exam_progress');
       if (localProgress) {
@@ -9284,8 +8664,7 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
   }, [viewMode, selectedTopic, openSections, isFallback, showExam]);
 
 
-
-  // ── Auto-sync Review state to server on changes (for multi-device real-time link and auto-save)
+// ── Auto-sync Review state to server on changes (for multi-device real-time link and auto-save)
   const lastSyncStateRef = React.useRef({
     selectedAnswers: null,
     revealedQuestions: null,
@@ -9536,17 +8915,7 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
   }, []);
 
   // ── Debounced Auto-Save to Server (Idea 1) & Visibility Sync (Idea 2) ──
-  const autoSaveTimeoutRef = useRef(null);
 
-  const saveActiveSessionDebounced = () => {
-    if (autoSaveTimeoutRef.current) {
-      clearTimeout(autoSaveTimeoutRef.current);
-    }
-    autoSaveTimeoutRef.current = setTimeout(() => {
-      console.log('[Auto-Save] Running debounced save...');
-      forceSaveActiveSessions().catch(err => console.warn('Debounced save failed:', err));
-    }, 5000);
-  };
 
   const syncReviewSessionImmediately = (questionsOverride = null, extraOverrideData = null, sessionIdOverride = null) => {
     const overrideObj = extraOverrideData ? { ...extraOverrideData } : {};
@@ -9606,41 +8975,6 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
     }
   };
 
-  const refreshActiveExamSession = async () => {
-    if (examQuestions.length === 0) return;
-    console.log('[Auto-Sync] Pulling latest exam session from server...');
-    try {
-      const res = await fetch(`${API_BASE}/api/session/exam?t=${Date.now()}`);
-      if (res.ok) {
-        const resData = await res.json();
-        if (resData && resData.data) {
-          const server = resData.data;
-          const isSame = JSON.stringify(server.examAnswers || {}) === JSON.stringify(examAnswers) &&
-                         JSON.stringify(server.examRevealed || {}) === JSON.stringify(examRevealed) &&
-                         JSON.stringify(server.examTableAnswers || {}) === JSON.stringify(examTableAnswers) &&
-                         JSON.stringify(server.examTableGradingResults || {}) === JSON.stringify(examTableGradingResults) &&
-                         JSON.stringify(server.chatHistory || []) === JSON.stringify(chatHistory);
-
-          if (!isSame) {
-            console.log('[Auto-Sync] Differences found, updating local exam state...');
-            if (server.examQuestions && Array.isArray(server.examQuestions)) {
-              setExamQuestions(server.examQuestions.map(q => healQuizQuestionObject(q)));
-            }
-            setExamAnswers(server.examAnswers || {});
-            setExamRevealed(server.examRevealed || {});
-            setExamTableAnswers(server.examTableAnswers || {});
-            setExamTableGradingResults(server.examTableGradingResults || {});
-            if (server.examTopic) setExamTopic(server.examTopic);
-            setChatHistory(server.chatHistory || []);
-          } else {
-            console.log('[Auto-Sync] No differences found.');
-          }
-        }
-      }
-    } catch (e) {
-      console.warn('[Auto-Sync] Failed to refresh active exam session:', e);
-    }
-  };
 
   // Effect 1: Debounced Auto-Save (Idea 1) - Disabled per user instructions
   /*
@@ -9682,10 +9016,7 @@ const syncQuestionsWithAcronyms = (questions, formulaAcronyms) => {
   */
 
 
-
-
-
-  const handlePullToRefreshReload = async (mode) => {
+const handlePullToRefreshReload = async (mode) => {
     if (mode === 'review' && selectedTopic) {
       const topicId = selectedTopic.id;
       const scheduleId = selectedTopic.schedule_id || '';
@@ -12003,89 +11334,6 @@ ${item.intuitive || ''}
   };
 
   // ── Reset All Review Answers (다시 풀기) ──────────────────
-  const handleRetakeReviewQuiz = async () => {
-    if (!selectedTopic) return;
-
-    // Renew session ID for a fresh retry round to bypass server solved-overwrite protection
-    const newSid = getOrCreateSessionId(selectedTopic.id, selectedTopic.schedule_id, selectedTopic.review_round);
-    setReviewSessionId(newSid);
-
-    const isReadOnly = !!selectedTopic.isReadOnly;
-    const confirmMessage = isReadOnly 
-      ? `이 복습 회차를 완료 해제하고 처음부터 다시 푸시겠습니까?`
-      : `현재 출제된 모든 문제의 풀이 상태(선택한 답)를 초기화하시겠습니까?`;
-
-    if (!window.confirm(confirmMessage)) return;
-
-    // If it's read-only (completed) and has a valid database schedule, reset it on the server
-    if (isReadOnly && selectedTopic.schedule_id && selectedTopic.schedule_id !== 9999) {
-      try {
-        const res = await fetch(`${API_BASE}/api/schedules/${selectedTopic.schedule_id}/reset`, {
-          method: 'POST',
-        });
-        const data = await res.json();
-
-        if (res.ok) {
-          showNotification(`[${selectedTopic.title}] ${selectedTopic.review_round}회차 복습이 대기 상태로 변경되었습니다.`);
-          fetchTodayReviews(referenceDate);
-          fetchAllTopics();
-        } else {
-          showNotification(data.error || '복습 상태 초기화에 실패했습니다.', 'error');
-          return;
-        }
-      } catch (err) {
-        console.error('Review reset error:', err);
-        showNotification('서버 오류로 초기화 처리에 실패했습니다.', 'error');
-        return;
-      }
-    }
-
-    // Reset local state of the quiz answers & revealed status
-    setSelectedAnswers({});
-    setRevealedQuestions({});
-    setReviewOptionExplanations({});
-    setTableAnswers({});
-    setTableGradingResults({});
-    setShowAnswersState({});
-    setExamShowAnswersState({});
-    setOpenSections({}); // Clear accordion open sections if any
-    
-    // Remove localStorage progress
-    const progressKey = selectedTopic.schedule_id 
-      ? `anti_review_progress_sched_${selectedTopic.schedule_id}`
-      : `anti_review_progress_${selectedTopic.id}`;
-    localStorage.removeItem(progressKey);
-
-    // Make it editable
-    if (isReadOnly) {
-      setSelectedTopic(prev => prev ? { ...prev, isReadOnly: false } : null);
-    }
-
-    // Force save/sync the reset state to the server session immediately
-    try {
-      await fetch(`${API_BASE}/api/session/review`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          topicId: selectedTopic.id,
-          scheduleId: selectedTopic.schedule_id,
-          sessionId: newSid,
-          questions: aiQuestions,
-          selectedAnswers: {},
-          revealedQuestions: {},
-          tableAnswers: {},
-          tableGradingResults: {},
-          savedQuizScroll: 0,
-          isResetAction: true
-        })
-      });
-      console.log('[handleRetakeReviewQuiz] Successfully synced cleared review session to server');
-    } catch (e) {
-      console.warn('[handleRetakeReviewQuiz] Failed to sync cleared session to server:', e);
-    }
-
-    showNotification('모든 문제의 풀이 상태가 초기화되었습니다. 다시 풀 수 있습니다.', 'success');
-  };
 
   const handleResetSingleExamAnswer = (idx) => {
     setExamAnswers(prev => {
@@ -12134,572 +11382,6 @@ ${item.intuitive || ''}
   };
 
   // ── Refresh All Review Questions (복습하기 전체 문제 재생성) ──────────────────
-  const handleRefreshReviewQuestions = async () => {
-    if (!selectedTopic?.id) return;
-    const isReadOnly = !!selectedTopic.isReadOnly;
-    const confirmMsg = isReadOnly
-      ? "이 완료된 복습 회차를 초기화하고, 새로운 실시간 AI 문제들로 다시 구성하여 처음부터 푸시겠습니까?"
-      : "현재 생성된 복습 문제들이 토픽의 본래 주제와 어긋납니까? 전체 문제를 삭제하고 실시간 AI로 다시 구성하겠습니다.";
-
-    if (!window.confirm(confirmMsg)) {
-      return;
-    }
-    
-    setLoadingAI(true);
-    setGeneratingTopicId(selectedTopic.id);
-    setAiQuestions([]);
-    setRevealedQuestions({});
-    setSelectedAnswers({});
-    setReviewOptionExplanations({});
-    setTableAnswers({});
-    savedQuizScroll.current = 0;
-    if (quizBodyRef.current) {
-      quizBodyRef.current.scrollTop = 0;
-    }
-    setTableGradingResults({});
-    setShowAnswersState({});
-    setExamShowAnswersState({});
-    setIsFallback(false);
-    setAiError('');
-    
-    const currentRefreshTopicId = selectedTopic.id;
-    const currentRefreshScheduleId = selectedTopic.schedule_id;
-
-    try {
-      if (currentRefreshTopicId && typeof currentRefreshTopicId === 'string' && currentRefreshTopicId.startsWith('mixed_')) {
-        const deleteUrl = `${API_BASE}/api/session/review/topic/${currentRefreshTopicId}`;
-        await fetch(deleteUrl, { method: 'DELETE' })
-          .catch(e => console.warn('복습 세션 초기화 실패:', e));
-        
-        const progressKey = `anti_review_progress_${currentRefreshTopicId}`;
-        localStorage.removeItem(progressKey);
-
-        const tables = await loadFormulaTables();
-        const acronyms = await loadFormulaAcronyms();
-        const overviews = await loadFormulaOverviews();
-        const images = await loadFormulaImages();
-        
-        const combinedItems = [
-          ...tables.map(t => ({ ...t, mixedType: 'table' })),
-          ...acronyms.map(a => ({ ...a, mixedType: 'acronym' })),
-          ...overviews.map(o => ({ ...o, mixedType: 'overview' })),
-          ...images.map(img => {
-            let itemDate = '';
-            if (img.id && img.id.startsWith('img_')) {
-              try {
-                const ts = parseInt(img.id.replace('img_', ''), 10);
-                if (!isNaN(ts)) {
-                  itemDate = new Date(ts).toISOString();
-                }
-              } catch (e) {}
-            }
-            return {
-              ...img,
-              mixedType: 'image',
-              createdAt: img.createdAt || itemDate || new Date().toISOString()
-            };
-          })
-        ];
-
-        // Filter and sort items dynamically (today first, then others)
-        const todayItems = combinedItems.filter(item => {
-          if (!item.createdAt) return false;
-          return item.createdAt.startsWith(referenceDate);
-        });
-        
-        const otherItems = combinedItems.filter(item => {
-          if (!item.createdAt) return true;
-          return !item.createdAt.startsWith(referenceDate);
-        });
-
-        // Use a new random seed so that we get a fresh shuffle when the user clicks 'AI 재출제'
-        const rng = getSeededRandom(Math.random().toString());
-        const shuffleWithRng = (arr) => {
-          const res = [...arr];
-          for (let i = res.length - 1; i > 0; i--) {
-            const j = Math.floor(rng() * (i + 1));
-            [res[i], res[j]] = [res[j], res[i]];
-          }
-          return res;
-        };
-
-        const shuffledToday = shuffleWithRng(todayItems);
-        const shuffledOthers = shuffleWithRng(otherItems);
-        const finalPool = [...shuffledToday, ...shuffledOthers];
-
-        // --- 100% Robust Category Selection Algorithm ---
-        const tablesPool = finalPool.filter(x => x.mixedType === 'table');
-        const acronymsPool = finalPool.filter(x => x.mixedType === 'acronym');
-        const overviewsPool = finalPool.filter(x => x.mixedType === 'overview');
-        const imagesPool = finalPool.filter(x => x.mixedType === 'image');
-        
-        const selectedItems = [];
-        
-        // 1. Pick 1 image if available (ensures at least 1 image is always shown!)
-        if (imagesPool.length > 0) selectedItems.push(imagesPool.shift());
-        // 2. Pick 1 overview if available
-        if (overviewsPool.length > 0) selectedItems.push(overviewsPool.shift());
-        // 3. Pick 1 acronym if available
-        if (acronymsPool.length > 0) selectedItems.push(acronymsPool.shift());
-        // 4. Pick 1 table if available
-        if (tablesPool.length > 0) selectedItems.push(tablesPool.shift());
-        
-        // 5. Keep picking from remaining pools round-robin until we have 10 items
-        const pools = [imagesPool, overviewsPool, acronymsPool, tablesPool];
-        let poolIdx = 0;
-        let poolAttempts = 0;
-        while (selectedItems.length < 10 && poolAttempts < 100) {
-          poolAttempts++;
-          const activePool = pools[poolIdx];
-          if (activePool && activePool.length > 0) {
-            selectedItems.push(activePool.shift());
-          }
-          poolIdx = (poolIdx + 1) % pools.length;
-          
-          if (pools.every(p => p.length === 0)) {
-            break;
-          }
-        }
-
-        const questions = await Promise.all(selectedItems.map(async (item, qIdx) => {
-          if (item.mixedType === 'table') {
-            const parsed = parseHtmlTable(item.html || item.content);
-            const answers = {};
-            const rows = (parsed.rows || []).map((row, rIdx) => {
-              return row.map((cell, cIdx) => {
-                if (cIdx === 0) return cell;
-                const inputId = `INPUT_${rIdx}_${cIdx}`;
-                answers[inputId] = cell;
-                return `[${inputId}]`;
-              });
-            });
-            
-            return {
-              id: `mixed_q_${qIdx}`,
-              type: '주관식 (표채우기)',
-              subtype: '표채우기',
-              question: item.title,
-              tableData: {
-                headers: parsed.headers && parsed.headers.length > 0 ? parsed.headers : ['구분', '내용'],
-                rows: rows
-              },
-              answers: answers,
-              explanation: item.html || item.content || item.title,
-              mixedType: 'table',
-              originalId: item.id
-            };
-          } else if (item.mixedType === 'overview') {
-            const matchedTable = (tables || []).find(t => t.title && item.title && (t.title.trim() === item.title.trim() || t.title.includes(item.title) || item.title.includes(t.title)));
-            
-            const parsed = parseOverviewContent(item.content);
-            const answers = {};
-            let rows = [];
-            let tableHeaders = ['구분', '내용'];
-            let comparisonTableData = null;
-
-            if (matchedTable && matchedTable.html) {
-              const parsedT = parseHtmlTable(matchedTable.html);
-              if (parsedT && parsedT.headers && parsedT.rows && parsedT.rows.length > 0) {
-                tableHeaders = parsedT.headers;
-                rows = parsedT.rows.map((row, rIdx) => {
-                  return row.map((cell, cIdx) => {
-                    if (cIdx === 0) return cell;
-                    const inputId = `INPUT_${rIdx}_${cIdx}`;
-                    answers[inputId] = cell;
-                    return `[${inputId}]`;
-                  });
-                });
-              }
-            }
-
-            if (rows.length === 0) {
-              if (parsed.definition) {
-                answers['INPUT_0_1'] = parsed.definition;
-                rows.push(['학술적 정의', '[INPUT_0_1]']);
-              }
-              if (parsed.mechanism) {
-                const rowIdx = rows.length;
-                answers[`INPUT_${rowIdx}_1`] = parsed.mechanism;
-                rows.push(['공학적 작동 메커니즘', `[INPUT_${rowIdx}_1]`]);
-              }
-
-              if (parsed.comparison) {
-                let normalizedComparison = parsed.comparison;
-                normalizedComparison = normalizedComparison.split('\n').map(line => {
-                  let l = line.trim();
-                  if (l && l.includes('|')) {
-                    if (!l.startsWith('|')) l = '| ' + l;
-                    if (!l.endsWith('|')) l = l + ' |';
-                  }
-                  return l;
-                }).join('\n');
-
-                const parsedComp = parseMarkdownTable(normalizedComparison);
-                if (parsedComp && parsedComp.tableData && parsedComp.tableData.headers && parsedComp.tableData.rows) {
-                  const compRows = parsedComp.tableData.rows.map((row, rIdx) => {
-                    return row.map((cell, cIdx) => {
-                      if (cIdx === 0) return cell;
-                      const inputId = `INPUT_${rows.length + rIdx}_${cIdx}`;
-                      answers[inputId] = cell;
-                      return `[${inputId}]`;
-                    });
-                  });
-                  comparisonTableData = {
-                    headers: parsedComp.tableData.headers,
-                    rows: compRows
-                  };
-                }
-              }
-            }
-
-            if (rows.length === 0) {
-              if (comparisonTableData && comparisonTableData.headers && comparisonTableData.rows && comparisonTableData.rows.length > 0) {
-                tableHeaders = comparisonTableData.headers;
-                rows = comparisonTableData.rows;
-                comparisonTableData = null;
-              } else {
-                const mdParsed = parseMarkdownTable(item.content);
-                if (mdParsed && mdParsed.tableData && mdParsed.tableData.headers && mdParsed.tableData.rows && mdParsed.tableData.rows.length > 0) {
-                  tableHeaders = mdParsed.tableData.headers;
-                  rows = mdParsed.tableData.rows.map((row, rIdx) => {
-                    return row.map((cell, cIdx) => {
-                      if (cIdx === 0) return cell;
-                      const inputId = `INPUT_${rIdx}_${cIdx}`;
-                      answers[inputId] = cell;
-                      return `[${inputId}]`;
-                    });
-                  });
-                } else {
-                  const labelName = (item.title && item.title.length <= 30) ? item.title.trim() : '핵심 평가 항목';
-                  const fallbackVal = item.content || item.answer || item.concept || '서술 답안';
-                  answers['INPUT_0_1'] = fallbackVal;
-                  rows.push([labelName, '[INPUT_0_1]']);
-                }
-              }
-            }
-
-            let explanationHtml = '';
-            if (parsed.definition) {
-              explanationHtml += `📖 **학술적 정의**\n${parsed.definition}\n\n`;
-            }
-            if (parsed.mechanism) {
-              explanationHtml += `⚙️ **공학적 작동 메커니즘**\n${parsed.mechanism}\n\n`;
-            }
-            if (parsed.comparison) {
-              explanationHtml += `⚖️ **비교표 / 장단점**\n${parsed.comparison}\n\n`;
-            }
-
-            return {
-              id: `mixed_q_${qIdx}`,
-              type: '주관식 (표채우기)',
-              subtype: '표채우기',
-              question: '[개요 복습] ' + item.title,
-              tableData: {
-                headers: tableHeaders,
-                rows: rows
-              },
-              comparisonTableData: comparisonTableData,
-              answers: answers,
-              explanation: explanationHtml || item.content || item.title,
-              mixedType: 'overview',
-              originalId: item.id
-            };
-          } else if (item.mixedType === 'image') {
-            let specificQuestion = '[그림 암기 복습] 아래 제시된 공학 그림/그래프 자료가 나타내는 핵심 공학 주제(개념명)와 공학적 의미(또는 설명)를 서술하시오.';
-            try {
-              const qRes = await fetch(`${API_BASE}/api/image-standards/generate-question`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  title: item.title,
-                  analysis: item.analysis || '',
-                  intuitive: item.intuitive || '',
-                  preferredModel: getStageModel('question'),
-                  stageModels: stageModelsRef.current
-                })
-              });
-              if (qRes.ok) {
-                const qBody = await qRes.json();
-                if (qBody && qBody.success && qBody.question) {
-                  specificQuestion = qBody.question;
-                }
-              }
-            } catch (e) {
-              console.warn('Failed to generate specific question, using fallback:', e);
-            }
-
-            const explanationHtml = `
-**📊 그림/그래프 공학적 분석**
-
-${item.analysis || ''}
-
----
-
-**💡 직관적 본질 (비유)**
-
-${item.intuitive || ''}
-            `;
-            return {
-              id: `mixed_q_${qIdx}`,
-              type: '주관식 (그림)',
-              subtype: '그림',
-              question: specificQuestion,
-              imageSrc: item.base64Images?.[0] || item.base64Image,
-              imageSrcs: item.base64Images || (item.base64Image ? [item.base64Image] : []),
-              answer: item.title,
-              concept: item.title,
-              explanation: explanationHtml,
-              mixedType: 'image',
-              originalId: item.id
-            };
-          } else {
-            const parsed = parseAcronymContent(item.content);
-            const blankRows = parsed.rows.map(() => {
-              return ['', ''];
-            });
-            
-            return {
-              id: `mixed_q_${qIdx}`,
-              type: '주관식 (앞글자)',
-              question: item.title,
-              acronym: parsed.acronym,
-              sentence: parsed.sentence,
-              correctRows: parsed.rows,
-              tableData: {
-                headers: ['두', '내용 (암기단어 : 설명)'],
-                rows: blankRows
-              },
-              explanation: item.content,
-              mixedType: 'acronym',
-              originalId: item.id
-            };
-          }
-        }));
-        
-        let flowQuestion = null;
-        try {
-          const flowRes = await fetch(`${API_BASE}/api/mixed/random-flow-question`);
-          if (flowRes.ok) {
-            const flowData = await flowRes.json();
-            if (flowData && flowData.success && flowData.question) {
-              flowQuestion = flowData.question;
-            }
-          }
-        } catch (e) {
-          console.warn('Failed to fetch random flow question:', e);
-        }
-
-        if (!flowQuestion) {
-          flowQuestion = {
-            id: 'mixed_q_10',
-            type: '주관식 (표채우기)',
-            subtype: '표채우기',
-            question: `[평사투영 암반사면안정 해석 절차]
-아래 흐름도 빈칸에 들어갈 올바른 분석 단계를 서술하시오.
-
-\`\`\`
-┌──────────────────────────────────────────────┐
-│           1단계: 불연속면 조사 및 분석         │
-└──────────────────────┬───────────────────────┘
-                       ▼
-┌──────────────────────────────────────────────┐
-│       2단계: 평사투영망 상에 불연속면 투영     │
-└──────────────────────┬───────────────────────┘
-                       ▼
-┌──────────────────────────────────────────────┐
-│           3단계: [INPUT_1] 영역 설정          │
-└──────────────────────┬───────────────────────┘
-                       ▼
-┌──────────────────────────────────────────────┐
-│       4단계: 사면의 경사면 평사투영 투영        │
-└──────────────────────┬───────────────────────┘
-                       ▼
-┌──────────────────────────────────────────────┐
-│       5단계: 위험 영역 내 교점 분석          │
-│          - [INPUT_2] 파괴: 교점이 위험선 내  │
-│          - 전도 파괴: 극점이 전도 영역 내    │
-└──────────────────────────────────────────────┘
-\`\`\``,
-            tableData: {
-              headers: ['구분', '내용'],
-              rows: [
-                ['3단계 분석 영역', '[INPUT_1]'],
-                ['5단계 위험 분석', '[INPUT_2]']
-              ]
-            },
-            answers: {
-              INPUT_1: '위험',
-              INPUT_2: '평면'
-            },
-            explanation: `평사투영법을 이용한 암반 사면의 안정성 해석 절차:
-1단계: 불연속면(절리, 단층 등)의 방향성(주향/경사)을 현장 조사하여 통계 분석합니다.
-2단계: 조사된 불연속면의 극점(Pole) 또는 대원(Great Circle)을 평사투영망(Stereonet) 상에 투영합니다.
-3단계: 사면의 방향과 경사각을 기준으로 파괴가 발생할 수 있는 '위험 영역(Daylight Envelope 및 마찰각 원)'을 설정합니다.
-4단계: 사면의 실제 경사면을 투영하여 안정성 검토 기준선이 형성됩니다.
-5단계: 위험 영역 내에 불연속면의 교점 또는 극점이 위치하는지 분석하여 평면파괴(교점이 위험선 내에 위치) 또는 전도파괴(극점이 전도 영역에 위치) 가능성을 판정합니다.`,
-            mixedType: 'overview'
-          };
-        }
-
-        flowQuestion.id = 'mixed_q_10';
-        questions.push(flowQuestion);
-        
-        const activeSid = `sess_mixed_${referenceDate}`;
-        setReviewSessionId(activeSid);
-        
-        const topicCategory = selectedTopic.category || '믹스';
-        
-        setAiQuestions(questions.map(q => healQuizQuestionObject({ ...q, category: topicCategory })));
-        setSelectedAnswers({});
-        setRevealedQuestions({});
-        setTableAnswers({});
-        setTableGradingResults({});
-        setTutorAnswers({});
-        setTutorInputText({});
-        setChatHistory([]);
-        
-        lastSyncStateRef.current = {
-          selectedAnswers: {},
-          revealedQuestions: {},
-          tableAnswers: {},
-          tableGradingResults: {},
-          tutorAnswers: {},
-          tutorInputText: {},
-          chatHistory: []
-        };
-        
-        await fetch(`${API_BASE}/api/session/review`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            topicId: currentRefreshTopicId,
-            scheduleId: currentRefreshScheduleId,
-            sessionId: activeSid,
-            questions: questions,
-            selectedAnswers: {},
-            revealedQuestions: {},
-            tableAnswers: {},
-            tableGradingResults: {},
-            savedQuizScroll: 0
-          })
-        }).catch(e => console.warn('Saving refreshed mixed review failed:', e));
-        
-        setLoadingAI(false);
-        return;
-      }
-
-      if (isReadOnly && currentRefreshScheduleId && currentRefreshScheduleId !== 9999) {
-        const resetRes = await fetch(`${API_BASE}/api/schedules/${currentRefreshScheduleId}/reset`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ topic_id: currentRefreshTopicId, review_round: selectedTopic.review_round })
-        });
-        if (!resetRes.ok) {
-          showNotification('복습 상태 초기화에 실패했습니다.', 'error');
-          setLoadingAI(false);
-          return;
-        }
-      }
-
-      // 1. 기존의 복습 세션 데이터를 API를 통해 삭제
-      const deleteUrl = currentRefreshScheduleId
-        ? `${API_BASE}/api/session/review/topic/${currentRefreshTopicId}?scheduleId=${currentRefreshScheduleId}`
-        : `${API_BASE}/api/session/review/topic/${currentRefreshTopicId}`;
-      await fetch(deleteUrl, { method: 'DELETE' })
-        .catch(e => console.warn('복습 세션 초기화 실패:', e));
-      
-      const progressKey = currentRefreshScheduleId 
-        ? `anti_review_progress_sched_${currentRefreshScheduleId}`
-        : `anti_review_progress_${currentRefreshTopicId}`;
-      localStorage.removeItem(progressKey); // 전체 재생성 시 로컬 복습 기록도 제거
-
-      // 2. 실시간 AI 생성 요청
-      const progressId = 'gen_' + Math.random().toString(36).substring(2, 9);
-      startProgressPolling(progressId);
-
-      let url = `${API_BASE}/api/topics/${currentRefreshTopicId}/ai-questions`;
-      const queryParams = [`progressId=${progressId}`];
-      if (currentRefreshScheduleId) {
-        queryParams.push(`scheduleId=${currentRefreshScheduleId}`);
-      }
-      const curModel = getStageModel('question');
-      if (curModel) queryParams.push(`preferredModel=${encodeURIComponent(curModel)}`);
-      url += '?' + queryParams.join('&');
-      
-      const res = await fetch(url, { method: 'POST' });
-      const data = await res.json();
-      
-      if (selectedTopicRef.current?.id !== currentRefreshTopicId) {
-        console.log(`[handleRefreshReviewQuestions] Topic changed. Ignoring refreshed data.`);
-        stopProgressPolling();
-        return;
-      }
-
-      if (res.ok) {
-        stopProgressPolling('성공적으로 예상 문제를 재생성했습니다!', 100, true, data);
-        const newQuestions = data.questions || [];
-        setAiQuestions(newQuestions);
-        setIsFallback(!!data.isFallback);
-        setAiError(data.error || '');
-        setTimeout(() => {
-          if (quizBodyRef.current) {
-            quizBodyRef.current.scrollTop = 0;
-          }
-        }, 100);
-        lastQuizTopicId.current = selectedTopic.id;
-        lastQuizScheduleId.current = selectedTopic.schedule_id;
-        setSelectedTopic(prev => prev ? { ...prev, isReadOnly: false } : null);
-        
-        // 공부중 버튼 캐시 및 상태 연동 업데이트
-        const activeInfo = {
-          topicId: selectedTopic.id,
-          title: selectedTopic.title,
-          keywords: selectedTopic.keywords || '',
-          pdfName: selectedTopic.pdf_name || '',
-          mode: 'ai',
-          scheduleId: selectedTopic.schedule_id,
-          reviewRound: selectedTopic.review_round,
-          isReadOnly: false
-        };
-        localStorage.setItem('anti_last_active_review', JSON.stringify(activeInfo));
-        setLastActiveReview(activeInfo);
-
-        // 즉시 DB 저장
-        fetch(`${API_BASE}/api/session/review`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            topicId: selectedTopic.id,
-            scheduleId: selectedTopic.schedule_id,
-            questions: newQuestions,
-            selectedAnswers: {},
-            revealedQuestions: {},
-            savedQuizScroll: 0
-          })
-        }).catch(e => console.warn('복습 세션 전체 재생성 즉시 저장 실패:', e));
-
-        if (isReadOnly) {
-          fetchTodayReviews(referenceDate);
-          fetchAllTopics();
-        }
-        showNotification('복습 문제가 성공적으로 다시 구성되었습니다.', 'success');
-      } else {
-        stopProgressPolling('문제 생성에 실패했습니다.', 100, false);
-        showNotification(data.error || 'AI 기출문제를 생성하지 못했습니다.', 'error');
-      }
-    } catch (err) {
-      stopProgressPolling('문제 생성 중 오류가 발생했습니다.', 100, false);
-      if (selectedTopicRef.current?.id !== currentRefreshTopicId) {
-        return;
-      }
-      console.error('AI refresh call error:', err);
-      showNotification('서버 통신 오류로 AI 예상문제를 로드하지 못했습니다.', 'error');
-      setAiError(err.message || '서버 통신 오류');
-    } finally {
-      setGeneratingTopicId(null);
-      setLoadingAI(false);
-    }
-  };
 
   // ── Refresh Exam Questions (종합평가 1~10번 삭제 및 하단 10문항 추가) ──────────────────
   const handleRefreshExamQuestions = async () => {
@@ -13736,70 +12418,8 @@ ${item.intuitive || ''}
   };
 
   // ── Ask AI Tutor About a Specific Question ──────────────────────────
-  const handleAskTutorAboutQuestion = async (q, mode = 'review') => {
-    if (isChatLoading) return;
-
-    let promptText = `[기술사 학습 질문]\n다음 문제에 대해 핵심 전공 지식과 풀이 방식을 매우 친절하고 깊이 있게 설명해 주세요.\n\n`;
-    promptText += `■ 문제:\n${q.question}\n\n`;
-    
-    if (q.options && q.options.length > 0) {
-      promptText += `■ 객관식 보기:\n${q.options.map((opt, i) => `${i + 1}) ${opt}`).join('\n')}\n\n`;
-      promptText += `■ 정답/해설:\n${q.answer || '확인 필요'}\n`;
-      if (q.explanation) {
-        promptText += `(해설 요약: ${q.explanation})\n`;
-      }
-    } else {
-      if (q.concept) {
-        promptText += `■ 핵심 개념:\n${q.concept}\n\n`;
-      }
-      if (q.formula) {
-        promptText += `■ 공식/개념도:\n${q.formula}\n\n`;
-      }
-      if (q.answer) {
-        promptText += `■ 예시 답안:\n${q.answer}\n`;
-      }
-    }
-
-    // Switch tab to Tutor in the respective split containers
-    if (mode === 'review') {
-      setReviewMobileTab('tutor');
-      requestAnimationFrame(() => {
-        const containerWidth = reviewSplitContainerRef.current?.clientWidth || 0;
-        reviewSplitContainerRef.current?.scrollTo({ left: containerWidth, behavior: 'smooth' });
-      });
-    } else if (mode === 'exam') {
-      setExamMobileTab('tutor');
-      requestAnimationFrame(() => {
-        const containerWidth = examSplitContainerRef.current?.clientWidth || 0;
-        examSplitContainerRef.current?.scrollTo({ left: containerWidth, behavior: 'smooth' });
-      });
-    }
-
-    // Send immediately via handleSendChat
-    await handleSendChat(promptText);
-  };
 
   // ── Request Detailed Answer for Exam Questions ────────────────────────
-  const handleRequestDetailedAnswer = async (idx, question, answer) => {
-    setDetailedAnswers(prev => ({ ...prev, [idx]: { loading: true, text: '', error: '' } }));
-    const progressId = 'detailed_' + Math.random().toString(36).substring(2, 9);
-    startProgressPolling(progressId);
-
-    try {
-      const res = await fetch(`${API_BASE}/api/exam/detailed-answer`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question, answer, preferredModel: getStageModel('tutor'), progressId })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || '답안 전문을 가져오는 중 오류가 발생했습니다.');
-      stopProgressPolling('심층 해설 생성이 완료되었습니다!', 100);
-      setDetailedAnswers(prev => ({ ...prev, [idx]: { loading: false, text: data.text, error: '' } }));
-    } catch (err) {
-      stopProgressPolling('심층 해설 생성 실패', 100, false);
-      setDetailedAnswers(prev => ({ ...prev, [idx]: { loading: false, text: '', error: err.message } }));
-    }
-  };
 
   // ── Scroll Quiz Question Up/Down for Desktop Split-View ────────────
   const handleScrollQuestion = (direction) => {
@@ -14726,8 +13346,7 @@ ${item.intuitive || ''}
   }, [showEditLockscreenStandardModal]);
 
 
-
-  useEffect(() => {
+useEffect(() => {
     if (showEditGenerationStandardModal) {
       setTimeout(() => {
         if (editGenerationTitleRef.current) {
@@ -14739,8 +13358,7 @@ ${item.intuitive || ''}
   }, [showEditGenerationStandardModal]);
 
 
-
-  const handleOpenManageTopicInstructionsModal = async () => {
+const handleOpenManageTopicInstructionsModal = async () => {
     const activeTopic = selectedTopic || examTopic;
     if (!activeTopic?.id) {
       showNotification('선택된 토픽이 없습니다.', 'error');
@@ -14858,8 +13476,7 @@ ${item.intuitive || ''}
   };
 
 
-
-  const handleOpenManageGenerationStandardsModal = async () => {
+const handleOpenManageGenerationStandardsModal = async () => {
     setShowManageGenerationStandardsModal(true);
     setIsLoadingGenerationStandardsList(true);
     try {
@@ -15345,19 +13962,6 @@ ${item.intuitive || ''}
     }
   };
 
-  const handleAcronymFileSelect = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const compressed = await compressImageFile(file);
-    if (compressed) {
-      setAcronymPromptImage({
-        ...compressed,
-        name: file.name
-      });
-      showNotification('이미지가 첨부되었습니다.', 'success');
-    }
-    e.target.value = '';
-  };
 
   const suggestAcronymTopicFromImage = async (compressedData) => {
     try {
@@ -15611,8 +14215,7 @@ ${item.intuitive || ''}
   };
 
 
-
-  const handleDragAiSubmit = (forcedQuestion = null) => {
+const handleDragAiSubmit = (forcedQuestion = null) => {
     const qText = forcedQuestion ? forcedQuestion.trim() : selectionPopup.question.trim();
     if (!qText) return;
     
@@ -16299,28 +14902,8 @@ ${item.intuitive || ''}
     }
   };
 
-  const handleUpdateOverviewCell = async (overviewId, field, value) => {
-    const idx = formulaOverviews.findIndex(item => item.id === overviewId);
-    if (idx === -1) return;
-    const updated = [...formulaOverviews];
-    updated[idx] = { ...updated[idx], [field]: value };
-    setFormulaOverviews(updated);
-    await handleSaveFormulaOverviews(updated, false);
-  };
 
-  const handleMoveOverview = async (idx, direction) => {
-    if (direction === 'up' && idx === 0) return;
-    if (direction === 'down' && idx === formulaOverviews.length - 1) return;
-    const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
-    const updated = [...formulaOverviews];
-    const temp = updated[idx];
-    updated[idx] = updated[targetIdx];
-    updated[targetIdx] = temp;
-    setFormulaOverviews(updated);
-    await handleSaveFormulaOverviews(updated, false);
-  };
-
-  const loadFormulaImages = async () => {
+const loadFormulaImages = async () => {
     setLoadingFormulaImages(true);
     let loadedData = null;
 
@@ -16395,14 +14978,6 @@ ${item.intuitive || ''}
     }
   };
 
-  const handleDeleteOverview = async (overviewId) => {
-    if (window.confirm('이 토픽 개요를 삭제하시겠습니까?')) {
-      const updated = formulaOverviews.filter(item => item.id !== overviewId);
-      setFormulaOverviews(updated);
-      await handleSaveFormulaOverviews(updated, false);
-      showNotification('개요가 삭제되었습니다.', 'info');
-    }
-  };
 
   const matchUserRowsToCorrectRows = (userLetters, correctRows) => {
     if (!correctRows) return [];
@@ -17177,50 +15752,6 @@ ${itemsStr}
     }
   };
 
-  const handleUpdateAcronymCombinedCell = async (acronymId, rowIdx, value) => {
-    const acronymIdx = formulaAcronyms.findIndex(item => item.id === acronymId);
-    if (acronymIdx === -1) return;
-    const updated = [...formulaAcronyms];
-    const ac = updated[acronymIdx];
-    const rows = getAcronymRows(ac.content);
-    if (rows.length === 0) {
-      showNotification('앞글자 표 파싱 실패: 마크다운 표 형태가 잘못되었습니다.', 'warning');
-      return;
-    }
-
-    // Parse word and description
-    const colonIdx = value.indexOf(':');
-    let word = '';
-    let description = '';
-    if (colonIdx !== -1) {
-      word = value.substring(0, colonIdx).trim();
-      description = value.substring(colonIdx + 1).trim();
-    } else {
-      word = value.trim();
-      description = '';
-    }
-
-    rows[rowIdx].word = word;
-    rows[rowIdx].description = description;
-
-    const newAcronymLetters = rows.map(r => r.acronym).join('');
-    const sentenceMatch = ac.content.match(/^연상문장:\s*([^\n]+)/m);
-    const existingSentence = sentenceMatch ? sentenceMatch[1].trim() : '';
-
-    let newContent = `두문자: ${newAcronymLetters}\n`;
-    if (existingSentence) {
-      newContent += `연상문장: ${existingSentence}\n`;
-    }
-    newContent += `| 두문자 | 암기단어 | 설명 |\n`;
-    newContent += `| :---: | :---: | :--- |\n`;
-    for (const r of rows) {
-      newContent += `| ${r.acronym || ' '} | ${r.word || ' '} | ${r.description || ' '} |\n`;
-    }
-
-    updated[acronymIdx] = { ...ac, content: newContent.trim() };
-    setFormulaAcronyms(updated);
-    await handleSaveFormulaAcronyms(updated, false);
-  };
 
   const latestChatHistoryRef = useRef([]);
   latestChatHistoryRef.current = (formulaChatHistory && formulaChatHistory.length > 0)
@@ -17449,138 +15980,15 @@ ${itemsStr}
     }
   }, [formulaQuestions]);
 
-  const fetchQuestionContent = async (quizItem) => {
-    const targetFormula = formulaQuestions.find(f => f.title === quizItem.formulaTitle);
-    if (!targetFormula) {
-      return {
-        ...quizItem,
-        loading: false,
-        error: '공식 정보를 찾을 수 없습니다.'
-      };
-    }
 
-    try {
-      const res = await fetch(`${API_BASE}/api/formula/generate-quiz-question`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          formulaTitle: targetFormula.title,
-          formula: targetFormula.formula,
-          concept: targetFormula.concept || '',
-          assumptions: ''
-        })
-      });
-
-      if (!res.ok) {
-        throw new Error(`HTTP error! status: ${res.status}`);
-      }
-
-      const data = await res.json();
-      if (data.error) {
-        throw new Error(data.error);
-      }
-
-      const correctOptionIndex = data.options.indexOf(data.answer);
-      const finalCorrectIdx = correctOptionIndex !== -1 ? correctOptionIndex : 0;
-
-      return {
-        ...quizItem,
-        loading: false,
-        question: data.question,
-        options: data.options,
-        correctOptionIndex: finalCorrectIdx,
-        explanation: data.explanation,
-        isAiGenerated: true
-      };
-    } catch (err) {
-      console.warn('AI 공식 계산 문제 생성 실패. 로컬 백업 질문 생성으로 전환합니다:', err);
-      const validFormulas = formulaQuestions.filter(f => f.title && f.formula);
-      return generateLocalConceptQuestion(quizItem, targetFormula, validFormulas);
-    }
-  };
-
-  const handleGenerateExtraQuizQuestion = async () => {
-    const validFormulas = formulaQuestions.filter(f => f.title && f.formula);
-    if (validFormulas.length < 1) {
-      showNotification('등록된 공식이 없습니다. 먼저 공식을 추가해 주세요.', 'error');
-      return;
-    }
-
-    setGeneratingFormulaQuiz(true);
-
-    const target = validFormulas[Math.floor(Math.random() * validFormulas.length)];
-    const tempId = `quiz_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-    const newQPlaceholder = {
-      id: tempId,
-      formulaTitle: target.title,
-      question: '',
-      options: [],
-      correctOptionIndex: 0,
-      userAnswerIndex: null,
-      isCorrect: false,
-      loading: true,
-      error: null,
-      dateAdded: new Date().toLocaleDateString('sv-SE')
-    };
-
-    const listWithPlaceholder = [...formulaQuizQuestions, newQPlaceholder];
-    setFormulaQuizQuestions(listWithPlaceholder);
-    localStorage.setItem('anti_formula_quiz_questions', JSON.stringify(listWithPlaceholder));
-    showNotification('공식 문제를 출제하고 있습니다. 잠시만 기다려주세요...', 'info');
-
-    try {
-      const resolvedQ = await fetchQuestionContent(newQPlaceholder);
-      setFormulaQuizQuestions(prev => {
-        const updated = prev.map(item => item.id === tempId ? resolvedQ : item);
-        localStorage.setItem('anti_formula_quiz_questions', JSON.stringify(updated));
-        return updated;
-      });
-      showNotification('새로운 공식 문제가 성공적으로 추가되었습니다!', 'success');
-    } catch (err) {
-      setFormulaQuizQuestions(prev => {
-        const updated = prev.map(item => item.id === tempId ? { ...item, loading: false, error: '문제 출제 실패' } : item);
-        localStorage.setItem('anti_formula_quiz_questions', JSON.stringify(updated));
-        return updated;
-      });
-    } finally {
-      setGeneratingFormulaQuiz(false);
-    }
-  };
-
-  const confirmAndGenerateQuizQuestion = async (shouldNavigateMobile = false) => {
-    const hasConfirmed = window.confirm("새로운 공식 문제를 생성하시겠습니까?");
-    if (hasConfirmed) {
-      await handleGenerateExtraQuizQuestion();
-      if (shouldNavigateMobile && !isDesktop) {
-        setFormulaMobileTab('tutor');
-      }
-    } else {
-      if (shouldNavigateMobile && !isDesktop) {
-        setFormulaMobileTab('tutor');
-      }
-    }
-  };
-
-  const handleRemoveFormulaQuizQuestion = (quizId) => {
-    const updated = formulaQuizQuestions.filter(q => q.id !== quizId);
-    setFormulaQuizQuestions(updated);
-    localStorage.setItem('anti_formula_quiz_questions', JSON.stringify(updated));
-    showNotification('공식 문제가 목록에서 제거되었습니다.', 'success');
-  };
-
-
-
-
-  useEffect(() => {
+useEffect(() => {
     if (showFormulaExam && formulaQuestions.length >= 1) {
       initializeFormulaQuiz();
     }
   }, [showFormulaExam, formulaQuestions, initializeFormulaQuiz]);
 
 
-
-  const loadFormulaQuestions = async () => {
+const loadFormulaQuestions = async () => {
     setLoadingFormula(true);
     let loadedData = null;
 
@@ -17757,106 +16165,11 @@ ${itemsStr}
     return cleaned;
   };
 
-  const handleGenerateMemorizationTip = async (idx) => {
-    const q = formulaQuestions[idx];
-    if (!q) {
-      console.error('[GenerateTip] formulaQuestion at index not found:', idx);
-      return;
-    }
-    setGeneratingTipIds(prev => ({ ...prev, [idx]: true }));
-    console.log('[GenerateTip] Requesting tip for:', q.title);
-    try {
-      const url = `${API_BASE || ''}/api/formula/generate-memorization-tip`;
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: q.title || q.question,
-          concept: q.concept,
-          formula: q.formula
-        })
-      });
-      if (res.ok) {
-        const body = await res.json();
-        if (body && body.memorizationTip) {
-          const updated = [...formulaQuestions];
-          updated[idx] = { ...updated[idx], memorizationTip: body.memorizationTip };
-          latestFormulaQuestionsRef.current = updated;
-          setFormulaQuestions(updated);
-          handleSaveFormulaQuestions(updated, true); // true로 변경하여 서버 저장 토스트 표출 및 동기화 인지
-          showNotification('공식 암기법이 생성되어 서버 및 핸드폰과 동기화되었습니다!', 'success');
-        } else {
-          console.warn('[GenerateTip] Empty response body:', body);
-          showNotification('암기법 생성 결과가 올바르지 않습니다.', 'error');
-        }
-      } else {
-        const errText = await res.text();
-        console.error('[GenerateTip] API failure response:', res.status, errText);
-        showNotification(`AI 암기법 생성 실패 (${res.status})`, 'error');
-      }
-    } catch (err) {
-      console.error('[GenerateTip] Error during fetch:', err);
-      showNotification('AI 암기법을 생성하는 과정에 오류가 발생했습니다.', 'error');
-    } finally {
-      setGeneratingTipIds(prev => ({ ...prev, [idx]: false }));
-    }
-  };
 
   const loadTheoryQuestions = async () => { return []; };
 
 
-  const handleRefreshTheory = (idx) => {
-    if (idx === null || idx === undefined) return;
-    const q = theoryQuestions[idx];
-    if (!q) return;
-
-    setRefreshingTheoryIdx(idx);
-    showNotification(`[${q.title || `Q${idx + 1}`}] 이론 유도를 AI가 정밀 고도화하여 갱신하고 있습니다...`);
-
-    fetch(`${API_BASE}/api/theory/refresh`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        title: q.title,
-        answer: q.formula
-      })
-    })
-      .then(res => {
-        if (!res.ok) throw new Error('AI 고도화 실패');
-        return res.json();
-      })
-      .then(data => {
-        if (data && data.title && data.answer) {
-          setTheoryQuestions(prev => {
-            const updated = prev.map((item, i) => {
-              if (i === idx) {
-                return {
-                  ...item,
-                  title: data.title,
-                  concept: data.concept || item.concept,
-                  assumptions: data.assumptions || '',
-                  formula: data.answer
-                };
-              }
-              return item;
-            }).map(healTheoryQuestionObject);
-            latestTheoryQuestionsRef.current = updated;
-            handleSaveTheoryQuestions(updated, false);
-            return updated;
-          });
-          showNotification(`[${data.title}] 이론 유도가 성공적으로 갱신되었습니다!`, 'success');
-        }
-      })
-      .catch(err => {
-        console.error('Theory refresh error:', err);
-        showNotification('이론 갱신에 실패했습니다.', 'error');
-      })
-      .finally(() => {
-        setRefreshingTheoryIdx(null);
-      });
-  };
-
-    const loadAnswersheetQuestions = async () => {
+const loadAnswersheetQuestions = async () => {
     setLoadingAnswersheet(true);
     let loadedData = null;
 
@@ -18024,68 +16337,8 @@ ${itemsStr}
     }
   };
 
-  const handleRefreshAnswersheet = (idx) => {
-    if (idx === null || idx === undefined) return;
-    const q = answersheetQuestions[idx];
-    if (!q) return;
 
-    setRefreshingAnswersheetIdx(idx);
-    showNotification(`[${q.title || `Q${idx + 1}`}] 답안을 AI가 정밀 고도화하여 갱신하고 있습니다...`);
-
-    fetch(`${API_BASE}/api/theory/refresh`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        title: q.title,
-        answer: q.formula
-      })
-    })
-      .then(res => {
-        if (!res.ok) throw new Error('AI 고도화 실패');
-        return res.json();
-      })
-      .then(data => {
-        if (data && data.title && data.answer) {
-          setAnswersheetQuestions(prev => {
-            const updated = prev.map((item, i) => {
-              if (i === idx) {
-                return {
-                  ...item,
-                  title: data.title,
-                  concept: data.concept || item.concept,
-                  assumptions: data.assumptions || '',
-                  formula: data.answer
-                };
-              }
-              return item;
-            }).map(healQuizQuestionObject);
-            latestAnswersheetQuestionsRef.current = updated;
-            handleSaveAnswersheetQuestions(updated, false);
-            return updated;
-          });
-          showNotification(`[${data.title}] 답안이 성공적으로 갱신되었습니다!`, 'success');
-        }
-      })
-      .catch(err => {
-        console.error('Answersheet refresh error:', err);
-        showNotification('답안 갱신에 실패했습니다.', 'error');
-      })
-      .finally(() => {
-        setRefreshingAnswersheetIdx(null);
-      });
-  };
-
-  const scrollToAnswersheetCard = (idx) => {
-    const container = answersheetBodyRef.current;
-    if (!container) return;
-    const cards = container.querySelectorAll('.formula-card-item');
-    if (cards && cards[idx]) {
-      const offsetTop = cards[idx].offsetTop;
-      container.scrollTo({ top: offsetTop, behavior: 'smooth' });
-    }
-  };
-
-  const handleOpenAnswerSheet = async () => {
+const handleOpenAnswerSheet = async () => {
     setShowAnswerSheet(true);
     setShowExam(false);
     setShowFormulaExam(false);
@@ -18172,10 +16425,8 @@ ${itemsStr}
     localStorage.setItem('anti_locked_overview_ids', JSON.stringify(lockedOverviewIds));
   }, [lockedOverviewIds]);
 
-  const handleOpenTheoryExam = async () => {};
 
-
-  const handleOpenFormulaExam = async () => {
+const handleOpenFormulaExam = async () => {
     setShowFormulaExam(true);
     setFormulaMobileTab('list');
     requestAnimationFrame(() => {
@@ -18223,37 +16474,6 @@ ${itemsStr}
     }
   };
 
-  const handleScrollTheory = (direction) => {
-    if (!theoryBodyRef.current) return;
-    const cards = theoryBodyRef.current.querySelectorAll('.formula-card-item');
-    if (cards.length === 0) return;
-
-    const containerTop = theoryBodyRef.current.getBoundingClientRect().top;
-    
-    let currentIndex = 0;
-    let minDiff = Infinity;
-    
-    cards.forEach((card, idx) => {
-      const rect = card.getBoundingClientRect();
-      const diff = Math.abs(rect.top - containerTop - 10);
-      if (diff < minDiff) {
-        minDiff = diff;
-        currentIndex = idx;
-      }
-    });
-
-    let targetIndex = currentIndex;
-    if (direction === 'down') {
-      targetIndex = Math.min(currentIndex + 1, cards.length - 1);
-    } else if (direction === 'up') {
-      targetIndex = Math.max(currentIndex - 1, 0);
-    }
-
-    const targetCard = cards[targetIndex];
-    if (targetCard) {
-      targetCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  };
 
   // 정답확인 클릭 시 카드가 스크롤 영역 상단에 부드럽게 안착되도록 돕는 헬퍼 함수
   const scrollToFormulaCard = (idx) => {
@@ -18267,107 +16487,8 @@ ${itemsStr}
     }, 120);
   };
 
-  const scrollToTheoryCard = (idx) => {
-    setTimeout(() => {
-      const cardEl = document.getElementById(`theory-card-${idx}`);
-      if (cardEl && theoryBodyRef.current) {
-        const container = theoryBodyRef.current;
-        const offsetTop = cardEl.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop - 16;
-        container.scrollTo({ top: offsetTop, behavior: 'smooth' });
-      }
-    }, 120);
-  };
 
   // 실시간 튜터 대화에서 공식 마이닝 및 필수공식 리스트 추가 함수
-  const handleAddFormulaFromChat = (text) => {
-    if (!text) return;
-
-    // 1. Title 마이닝
-    const lines = text.split('\n').map(line => line.trim()).filter(Boolean);
-    let title = "실시간 추가 공식";
-    
-    for (let i = 0; i < Math.min(lines.length, 3); i++) {
-      const line = lines[i];
-      const cleanLine = line.replace(/^(#+\s*|\*+\s*)/, '').replace(/\*+$/, '').trim();
-      if (cleanLine && cleanLine.length < 30 && !cleanLine.includes('$') && !cleanLine.includes(':')) {
-        title = cleanLine;
-        break;
-      }
-    }
-
-    // 2. formula (LaTeX 수식 블록) 발굴
-    let formula = "";
-    const blockMathRegex = /\$\$(.*?)\$\$/gs;
-    const inlineMathRegex = /\$(.*?)\$/g;
-    
-    let blockMatch = blockMathRegex.exec(text);
-    if (blockMatch) {
-      formula = `$$${blockMatch[1].trim()}$$`;
-    } else {
-      let inlineMatch = inlineMathRegex.exec(text);
-      if (inlineMatch) {
-        formula = `$$${inlineMatch[1].trim()}$$`;
-      }
-    }
-
-    // 3. 기호 정의 목록 발굴
-    const definitionLines = [];
-    const definitionRegex = /^\s*[-*]\s*(.*?)$/;
-    
-    lines.forEach(line => {
-      if (definitionRegex.test(line) || (line.includes(':') && !line.startsWith('http') && line.length < 100)) {
-        definitionLines.push(line);
-      }
-    });
-
-    if (definitionLines.length > 0) {
-      if (formula) {
-        formula += "\n\n" + definitionLines.join('\n');
-      } else {
-        formula = definitionLines.join('\n');
-      }
-    }
-
-    // 4. concept 수확
-    let concept = "실시간 튜터링을 통해 추가된 전공 공식에 대한 설명입니다.";
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      const cleanLine = line.replace(/^(#+\s*|\*+\s*)/, '').replace(/\*+$/, '').trim();
-      if (
-        cleanLine &&
-        !cleanLine.includes('$') &&
-        !cleanLine.includes(':') &&
-        !cleanLine.startsWith('-') &&
-        !cleanLine.startsWith('*') &&
-        cleanLine.length > 10 &&
-        cleanLine !== title
-      ) {
-        concept = cleanLine;
-        break;
-      }
-    }
-
-    // 5. Question 합성
-    const question = title;
-
-    // 6. structure 합성
-    const structure = "1. 공식 구성 인자의 물리적/역학적 상관관계 분석\n2. 기술사 답안 작성을 위한 공식의 실무적 의의 이해";
-
-    const newFormula = {
-      title,
-      question,
-      concept,
-      formula,
-      structure
-    };
-
-    setFormulaQuestions(prev => {
-      const updated = [newFormula, ...prev].map(healFormulaQuestionObject);
-      handleSaveFormulaQuestions(updated, false);
-      return updated;
-    });
-    showNotification(`[${title}] 공식이 필수공식 퀴즈(Q1)에 성공적으로 추가되었습니다!`);
-  };
 
   // 특정 큰 수식 블록 우측에서 개별 추가 시 지능적 마이닝 처리 함수
   const handleAddSpecificFormula = (mathContent, fullText) => {
@@ -18675,207 +16796,8 @@ ${itemsStr}
   };
 
   // 필수공식 개별 AI 조정 (사용자 의견 반영 재작성)
-  const handleAdjustFormula = async (idx) => {
-    if (idx === null || idx === undefined) return;
-    const q = formulaQuestions[idx];
-    if (!q) return;
-
-    const feedbackText = adjustingFormulaText[idx] || '';
-    if (!feedbackText.trim()) {
-      showNotification('공식 조정 의견을 입력해 주세요.', 'warning');
-      return;
-    }
-
-    // 수식 본문 내 LaTeX 추출
-    let mathContent = "";
-    const match = q.formula.match(/\$\$(.*?)\$\$/s);
-    if (match) {
-      mathContent = match[1].trim();
-    } else {
-      mathContent = q.formula.replace(/^\$\$|\$\$$/g, '').trim();
-    }
-
-    setAdjustingFormulaLoading(prev => ({ ...prev, [idx]: true }));
-    showNotification(`[${q.title || `Q${idx + 1}`}] 공식을 사용자 피드백을 반영하여 재조정 중입니다...`);
-
-    const progressId = `formula_adj_${Date.now()}`;
-    const newRecord = {
-      id: progressId,
-      taskName: 'AI 공식 피드백 조정',
-      topicTitle: q.title || `Q${idx + 1}`,
-      startTime: new Date().toISOString(),
-      endTime: null,
-      status: 'running',
-      modelName: 'gemini-3.5-flash',
-      percent: 30,
-      timeline: [
-        '준비 중...',
-        `1단계: 사용자 피드백 반영 분석 ("${feedbackText.length > 30 ? feedbackText.slice(0, 30) + '...' : feedbackText}")`,
-        '2단계: Gemini API 호출하여 의견 반영된 공식 속성 재구성 중...'
-      ],
-      validationLogs: []
-    };
-    setAiHistory(prev => {
-      const updated = [newRecord, ...prev].slice(0, 50);
-      localStorage.setItem('anti_ai_history', JSON.stringify(updated));
-      return updated;
-    });
-
-    try {
-      const res = await fetch(`${API_BASE}/api/formula/suggest-title`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          mathContent,
-          fullText: `${q.concept || ''}\n${q.formula || ''}`,
-          userFeedback: feedbackText
-        })
-      });
-
-      if (!res.ok) {
-        throw new Error(`HTTP error! status: ${res.status}`);
-      }
-
-      const data = await res.json();
-      if (data && data.error) {
-        throw new Error(data.error);
-      }
-
-      if (data && data.title) {
-        const suggestedTitle = data.title;
-        const suggestedConcept = data.concept;
-        const suggestedStructure = data.structure;
-
-        setFormulaQuestions(prev => {
-          const updated = prev.map((f, i) => {
-            if (i === idx) {
-              return {
-                ...f,
-                title: suggestedTitle,
-                question: suggestedTitle,
-                concept: suggestedConcept || f.concept,
-                formula: `$$${mathContent}$$` + (suggestedStructure ? "\n\n" + suggestedStructure : ""),
-                structure: suggestedStructure || f.structure,
-                  memorizationTip: data.memorizationTip || f.memorizationTip
-              };
-            }
-            return f;
-          }).map(healFormulaQuestionObject);
-          latestFormulaQuestionsRef.current = updated;
-          handleSaveFormulaQuestions(updated, false);
-          return updated;
-        });
-
-        setAiHistory(prev => {
-          const updated = prev.map(item => {
-            if (item.id === progressId) {
-              return {
-                ...item,
-                status: 'success',
-                endTime: new Date().toISOString(),
-                percent: 100,
-                modelName: data.modelName || item.modelName,
-                timeline: [
-                  ...item.timeline,
-                  '3단계: 사용자 피드백이 반영된 공식 속성 분석 성공',
-                  '4단계: 공식 카드 데이터 피드백 적용 완료!'
-                ]
-              };
-            }
-            return item;
-          });
-          localStorage.setItem('anti_ai_history', JSON.stringify(updated));
-          return updated;
-        });
-
-        showNotification(`[${suggestedTitle}] 공식이 사용자 피드백을 반영하여 재조정되었습니다!`, 'success');
-        setAdjustingFormulaInputKey(null); // 입력창 닫기
-      } else {
-        throw new Error('API returned empty title');
-      }
-    } catch (err) {
-      console.warn('공식 피드백 AI 조정 실패:', err);
-
-      setAiHistory(prev => {
-        const updated = prev.map(item => {
-          if (item.id === progressId) {
-            return {
-              ...item,
-              status: 'failure',
-              endTime: new Date().toISOString(),
-              percent: 100,
-              timeline: [
-                ...item.timeline,
-                `오류 발생: ${err.message || 'AI 조정 피드백 반영 실패'}`
-              ]
-            };
-          }
-          return item;
-        });
-        localStorage.setItem('anti_ai_history', JSON.stringify(updated));
-        return updated;
-      });
-
-      showNotification('AI 공식 조정 호출 중 오류가 발생했습니다.', 'error');
-    } finally {
-      setAdjustingFormulaLoading(prev => ({ ...prev, [idx]: false }));
-    }
-  };
 
   // 필수공식 이론유도 질문 (실시간 튜터 연동)
-  const handleAskTheoryDerivation = async (title, formula) => {
-    if (isChatLoading) return;
-    
-    // LaTeX 기호 마크다운 전처리
-    const cleanTitle = (title || '').replace(/\$/g, '').trim();
-    const promptText = `기술사 시험을 대비하여, [${cleanTitle}] 공식의 상세한 이론적 배경과 수학적/역학적 유도 과정을 수험생의 눈높이에 맞춰 친절하고 구조적으로 유도해 설명해 주세요.\n\n공식 식: ${formula || ''}`;
-    
-    const userMsgIdx = chatHistory.length;
-    setChatHistory(prev => [...prev, { role: 'user', text: promptText }]);
-    setIsChatLoading(true);
-
-    requestAnimationFrame(() => {
-      if (chatBodyRef.current) chatBodyRef.current.scrollTop = chatBodyRef.current.scrollHeight;
-    });
-
-    const progressId = 'tutor_' + Math.random().toString(36).substring(2, 9);
-    startProgressPolling(progressId);
-
-    try {
-      const res = await fetch(`${API_BASE}/api/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          preferredModel: getStageModel('tutor'),
-          history: chatHistory.map(h => ({ role: h.role, text: h.text })), 
-          message: promptText,
-          image: null,
-          progressId
-        })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || '답변 생성 실패');
-      stopProgressPolling('유도 및 설명 생성이 완료되었습니다!', 100);
-      setChatHistory(prev => [...prev, { role: 'model', text: data.text }]);
-    } catch (err) {
-      stopProgressPolling('이론 유도 생성 실패', 100, false);
-      setChatHistory(prev => [...prev, { role: 'model', text: `오류가 발생했습니다: ${err.message}` }]);
-    } finally {
-      setIsChatLoading(false);
-      requestAnimationFrame(() => {
-        const parent = chatBodyRef.current;
-        const userMsgEl = parent?.querySelector(`#chat-msg-${userMsgIdx}`);
-        if (parent && userMsgEl) {
-          const parentRect = parent.getBoundingClientRect();
-          const childRect = userMsgEl.getBoundingClientRect();
-          const relativeTop = childRect.top - parentRect.top + parent.scrollTop;
-          parent.scrollTo({ top: relativeTop, behavior: 'smooth' });
-        } else if (parent) {
-          parent.scrollTop = parent.scrollHeight;
-        }
-      });
-    }
-  };
 
   // Formula AI Tutor handlers
   const handleFormulaSelect = (idx) => {
@@ -19025,76 +16947,13 @@ ${itemsStr}
   };
 
   // View full report text
-  const handleViewFullReport = async (topicId) => {
-    setLoadingReport(true);
-    setShowFullReport(true);
-    try {
-      const res = await fetch(`${API_BASE}/api/topics/${topicId}/text`);
-      const data = await res.json();
-      if (res.ok) {
-        setReportText(data.text || '보고서 내용이 비어 있습니다.');
-      } else {
-        setReportText(`오류: ${data.error || '보고서를 불러오지 못했습니다.'}`);
-      }
-    } catch (err) {
-      console.error("Error fetching report:", err);
-      setReportText("서버 통신 오류로 보고서를 불러오지 못했습니다.");
-    } finally {
-      setLoadingReport(false);
-    }
-  };
 
   // Toggle reveal state for specific question index
-  const handleToggleReveal = (index) => {
-    setRevealedQuestions(prev => ({
-      ...prev,
-      [index]: !prev[index]
-    }));
-  };
 
   // Drag and Drop File Handlers
-  const handleDrag = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === 'dragenter' || e.type === 'dragover') {
-      setDragActive(true);
-    } else if (e.type === 'dragleave') {
-      setDragActive(false);
-    }
-  };
 
-  const handleDrop = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
 
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const file = e.dataTransfer.files[0];
-      const fileNameLower = file.name.toLowerCase();
-      const isPdf = file.type === 'application/pdf' || fileNameLower.endsWith('.pdf');
-      const isHtml = file.type === 'text/html' || fileNameLower.endsWith('.html') || fileNameLower.endsWith('.htm');
-      if (isPdf || isHtml) {
-        setPdfFile(file);
-        // Auto-populate title with filename without extension
-        const baseName = file.name.replace(/\.[^/.]+$/, "");
-        setTitle(baseName);
-      } else {
-        showNotification('PDF 또는 HTML 파일 형식만 업로드 가능합니다.', 'error');
-      }
-    }
-  };
-
-  const handleFileChange = (e) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setPdfFile(file);
-      // Auto-populate title with filename without extension
-      const baseName = file.name.replace(/\.[^/.]+$/, "");
-      setTitle(baseName);
-    }
-  };
-
-  const getCategoryBadgeText = (category, pdfName, title, keywords) => {
+const getCategoryBadgeText = (category, pdfName, title, keywords) => {
     const extractTopicNumber = (str) => {
       if (!str) return '';
       // Check if it matches a pattern like "1-1 - Text" or "01-02 - Text"
@@ -20973,8 +18832,7 @@ ${itemsStr}
                 </button>
 
 
-
-                <button
+<button
                   type="button"
                   onClick={handleOpenManageGenerationStandardsModal}
                   className="hidden md:flex items-center justify-center px-3 py-1.5 rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 hover:border-amber-500/30 transition-all active:scale-98 text-[11px] font-black cursor-pointer shadow-md"
@@ -21586,10 +19444,9 @@ ${itemsStr}
               <span className="text-sm font-black text-slate-200">풀이 상태 저장 중...</span>
             </div>
           )}
-          
 
 
-          {/* Main Layout Area */}
+{/* Main Layout Area */}
           <div className="flex-1 flex flex-row min-h-0 w-full overflow-hidden">
             {/* Layout Split Container (Mobile Portrait: Tab toggle, Mobile Landscape / PC: Side-by-Side) */}
             <div 
@@ -22258,8 +20115,7 @@ ${itemsStr}
                             )}
 
 
-
-                            {/* 추천/비추천 피드백 버튼 */}
+{/* 추천/비추천 피드백 버튼 */}
                             <button
                               onClick={() => handleToggleFeedback(q.topic_id || selectedTopic?.id || examTopic?.id, q.question, 'upvote')}
                               className={`flex-1 sm:flex-none justify-center flex items-center gap-0 sm:gap-1.5 text-[9.5px] sm:text-[11px] font-bold px-1.5 py-1 rounded-lg border transition-all duration-300 active:scale-95 cursor-pointer whitespace-nowrap ${
@@ -22350,8 +20206,7 @@ ${itemsStr}
                         )}
 
 
-
-                        {/* MC Options */}
+{/* MC Options */}
                         {isMC && (
                           <div className="space-y-2">
                             {q.options?.map((opt, oIdx) => {
@@ -22980,11 +20835,7 @@ ${itemsStr}
                                     })()}
 
 
-
-
-
-
-                                  </div>
+</div>
                                 </div>
                                 {isRevd && tableGradingResults[`${idx}_INPUT`] && (
                                   <div className="mt-2 p-0 sm:p-2.5 select-text text-left animate-fade-in text-slate-100 text-[14px] sm:text-[16px]">
@@ -24009,8 +21860,7 @@ ${itemsStr}
       )}
 
 
-
-      {/* ⚙️ 문제생성 지침 통합 관리 모달 (Generation Standards Management Modal) */}
+{/* ⚙️ 문제생성 지침 통합 관리 모달 (Generation Standards Management Modal) */}
       {showManageGenerationStandardsModal && (
         <div className="fixed inset-0 z-[200] overflow-y-auto flex items-center justify-center p-4 bg-black/45 backdrop-blur-sm transition-all duration-300 animate-fade-in" onClick={() => setShowManageGenerationStandardsModal(false)}>
           <div className="w-full max-w-4xl bg-slateCustom-900 border border-white/20 rounded-2xl overflow-hidden shadow-2xl p-6 space-y-4 animate-scale-up text-left" onClick={(e) => e.stopPropagation()}>
@@ -24565,8 +22415,7 @@ ${itemsStr}
       )}
 
 
-
-      {/* ⚙️ 토픽 전용 출제 지침 통합 관리 모달 */}
+{/* ⚙️ 토픽 전용 출제 지침 통합 관리 모달 */}
       {showManageTopicInstructionsModal && (
         <div className="fixed inset-0 z-[200] overflow-y-auto flex items-center justify-center p-4 bg-black/45 backdrop-blur-sm transition-all duration-300 animate-fade-in" onClick={() => setShowManageTopicInstructionsModal(false)}>
           <div className="w-full max-w-4xl bg-slateCustom-900 border border-white/20 rounded-2xl overflow-hidden shadow-2xl p-6 space-y-4 animate-scale-up text-left" onClick={(e) => e.stopPropagation()}>
@@ -25494,10 +23343,9 @@ ${itemsStr}
             transition: 'padding-left 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
           }}
         >
-          
 
 
-          {/* Main Layout Area */}
+{/* Main Layout Area */}
           <div className="flex-1 flex flex-row min-h-0 w-full overflow-hidden">
             {/* Layout Split Container (Mobile Portrait: Tab toggle, Mobile Landscape / PC: Side-by-Side) */}
             <div 
@@ -26007,8 +23855,7 @@ ${itemsStr}
                           )}
 
 
-
-                          {/* 추천/비추천 피드백 버튼 */}
+{/* 추천/비추천 피드백 버튼 */}
                           <button
                             onClick={() => handleToggleFeedback(q.topic_id || selectedTopic?.id || examTopic?.id, q.question, 'upvote')}
                             className={`flex-1 sm:flex-none justify-center flex items-center gap-0 sm:gap-1.5 text-[9.5px] sm:text-[11px] font-bold px-1.5 py-1 rounded-lg border transition-all duration-300 active:scale-95 cursor-pointer whitespace-nowrap ${
@@ -26653,11 +24500,7 @@ ${itemsStr}
                                     })()}
 
 
-
-
-
-
-                                  </div>
+</div>
                                 </div>
                                 {examRevealed[idx] && examTableGradingResults[`${idx}_INPUT`] && (
                                   <div className="mt-2 p-0 sm:p-2.5 select-text text-left animate-fade-in text-slate-100 text-[14px] sm:text-[16px]">
@@ -27505,8 +25348,7 @@ ${itemsStr}
           )}
 
 
-
-          {/* Layout Split Container (Mobile: Hides inactive column to lock layout, PC: Side-by-Side) */}
+{/* Layout Split Container (Mobile: Hides inactive column to lock layout, PC: Side-by-Side) */}
           <div 
             ref={formulaSplitContainerRef}
             className="flex-1 flex flex-row overflow-x-hidden overflow-y-hidden min-h-0 w-full scrollbar-none bg-slate-950"
@@ -30589,8 +28431,7 @@ ${itemsStr}
                         </div>
 
 
-
-                        {/* Input Area */}
+{/* Input Area */}
                         {isInputVisible && (
                           <div className="space-y-1 pt-1 animate-fade-in">
                             <span className="text-[10px] font-black text-slate-400 block select-none">✍️ 입력창 (여기에 텍스트, HTML 및 LaTeX 수식 복사-붙여넣기)</span>
