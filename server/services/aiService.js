@@ -387,9 +387,6 @@ async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = n
   }
 
   const keyErrors = [];
-  const hasImage = Array.isArray(image)
-    ? image.some(img => img && img.data && img.mimeType)
-    : !!(image && image.data && image.mimeType);
 
   const executionList = [];
 
@@ -420,7 +417,9 @@ async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = n
         ? [resolvedPrimaryClaude]
         : [...new Set([resolvedPrimaryClaude, 'claude-sonnet-5-5', 'claude-haiku-5-5', 'claude-opus-5-5'])];
     } else {
-      claudeModels = ['claude-sonnet-5-5', 'claude-haiku-5-5'];
+      claudeModels = (scenario === 'tutor')
+        ? ['claude-haiku-5-5', 'claude-sonnet-5-5']
+        : ['claude-sonnet-5-5', 'claude-haiku-5-5'];
     }
     for (const cm of claudeModels) {
       executionList.push({
@@ -469,29 +468,12 @@ async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = n
         ? [geminiPref, 'gemini-3.5-flash-lite', 'gemini-4-hydrogen', 'gemini-3.8-flash']
         : [geminiPref];
     } else {
-      rawFallbacks = [
-        geminiPref,
-        'gemini-3.5-flash-lite',
-        'gemini-3.1-flash-lite',
-        'gemini-3.8-flash',
-        'gemini-3.7-flash',
-        'gemini-3.6-flash',
-        'gemini-3.5-flash',
-        'gemini-4-hydrogen'
-      ];
+      rawFallbacks = [geminiPref, 'gemini-3.5-flash-lite'];
     }
     const uniqueRaw = [...new Set(rawFallbacks.filter(Boolean))];
-    // 자동 폴백이 허용되고 대체 모델이 존재하는 경우, 최근 503/타임아웃으로 불안정한 모델은 후순위로 미뤄 정상 모델부터 즉시 시도
-    const orderedRaw = (allowFallback && uniqueRaw.length > 1)
-      ? [
-          ...uniqueRaw.filter(m => !isModelInCooldown(normalizeGeminiModel(m))),
-          ...uniqueRaw.filter(m => isModelInCooldown(normalizeGeminiModel(m)))
-        ]
-      : uniqueRaw;
 
-    // [Interleaved Key Rotation]: 동일 키 6개 모델 연속 시도로 타임아웃 낭비 방지
     // 선호 모델을 모든 키(Key #1 -> Key #2 -> Key #3)에 걸쳐 먼저 시도한 뒤 차순위 모델로 순연
-    for (const modelName of orderedRaw) {
+    for (const modelName of uniqueRaw) {
       const actual = normalizeGeminiModel(modelName);
       for (const k of keys) {
         executionList.push({ key: k.key, label: k.label, model: modelName, actualModel: actual, type: 'gemini' });
@@ -506,7 +488,7 @@ async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = n
     }
   } else {
     addGeminiTasks();
-    if ((options.allowCrossProviderFallback || scenario === 'question' || scenario === 'tutor' || isGradingStage) && (!isGradingStage || allowFallback)) {
+    if (!isGradingStage || allowFallback) {
       addClaudeTasks();
     }
   }
@@ -870,10 +852,6 @@ async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = n
     }
   }
 
-  if (hasImage && !attemptedAny) {
-    throw new Error('이미지 분석에는 Gemini API 키가 필요하지만, 현재 등록된 Gemini API 키가 없습니다. 관리자에게 문의해 주세요.');
-  }
-
   if (options && options.metaOut && typeof options.metaOut === 'object') {
     Object.assign(options.metaOut, {
       modelRequested: targetPref,
@@ -888,11 +866,7 @@ async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = n
   }
   if (keyErrors.length > 0) {
     const uniqueErrors = [...new Set(keyErrors)].slice(0, 3);
-    if (hasImage) {
-      throw new Error(`이미지 분석을 위한 모든 API 키가 할당량 초과(429) 또는 오류로 인해 실패했습니다. (상세 오류 요약: ${uniqueErrors.join(' | ')})`);
-    } else {
-      throw new Error(`[AI 호출 실패] ${uniqueErrors.join(' | ')}`);
-    }
+    throw new Error(`[AI 호출 실패] ${uniqueErrors.join(' | ')}`);
   }
 
   throw new Error('모든 API 키 호출에 실패하였습니다.');

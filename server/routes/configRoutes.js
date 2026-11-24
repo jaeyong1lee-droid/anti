@@ -13,7 +13,6 @@ import { healFormulaQuestionObject, healQuizQuestionObject, parseLlmJson, healLa
 import { defaultAcronyms, generateAcronymTutorResponse } from '../plugins/acronymsPlugin.js';
 import { defaultOverviews, generateOverviewTutorResponse } from '../plugins/overviewsPlugin.js';
 import { SVG_DIAGRAM_PROMPT } from '../plugins/svgDiagramPlugin.js';
-import { CHART_DIAGRAM_PROMPT } from '../plugins/chartPlugin.js';
 import { getWikipediaKnowledge } from '../services/wikipediaService.js';
 import { getKcscVerificationContext } from '../services/kcscService.js';
 
@@ -1472,7 +1471,6 @@ router.post('/chat', async (req, res) => {
      * 4수준 (세부 설명/추가 보충): 대시 ('- ') 또는 별표 ('* ')
 ${ENGINEERING_STANDARDS}
 ${SVG_DIAGRAM_PROMPT}
-${CHART_DIAGRAM_PROMPT}
 ${LATEX_CHAT_PROMPT_INSTRUCTIONS}`;
 
       const responseText = await localCallLLM(systemInstruction, structuredPrompt, imageArg, 'tutor');
