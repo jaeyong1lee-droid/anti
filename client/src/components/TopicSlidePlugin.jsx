@@ -174,6 +174,15 @@ export default function TopicSlidePlugin({
 
   const containerRef = useRef(null);
   const fileInputRef = useRef(null);
+  const bottomTabRefs = useRef([]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const activeTab = bottomTabRefs.current[currentSlideIndex];
+    if (activeTab && typeof activeTab.scrollIntoView === 'function') {
+      activeTab.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    }
+  }, [currentSlideIndex, viewMode, isOpen, slideMeta]);
 
   // 1. 슬라이드 메타데이터 조회 및 JPG 변환 처리
   const fetchSlideMeta = async () => {
@@ -557,7 +566,7 @@ export default function TopicSlidePlugin({
 
   return (
     <div
-      className="fixed inset-0 z-[9999999] flex items-center justify-center p-2 sm:p-4 bg-black/85 backdrop-blur-md animate-fade-in text-slate-100 select-none"
+      className="fixed inset-0 z-[9999999] flex items-center justify-center p-0 sm:p-4 bg-black/85 backdrop-blur-md animate-fade-in text-slate-100 select-none"
       onClick={() => {
         if (!showUploadModal) onClose();
       }}
@@ -565,8 +574,8 @@ export default function TopicSlidePlugin({
       <div
         ref={containerRef}
         className={`relative w-full ${
-          isFullscreen ? 'w-screen h-screen max-w-none rounded-none' : 'max-w-6xl max-h-[94vh] rounded-2xl'
-        } bg-[#0A0F1D] border border-amber-500/30 shadow-2xl flex flex-col overflow-hidden transition-all duration-300`}
+          isFullscreen ? 'w-screen h-dvh max-w-none rounded-none' : 'h-dvh sm:h-auto max-w-6xl max-h-dvh sm:max-h-[94dvh] rounded-none sm:rounded-2xl'
+        } bg-[#0A0F1D] border-0 sm:border border-amber-500/30 shadow-2xl flex flex-col overflow-hidden transition-all duration-300`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* ================================================================= */}
@@ -580,7 +589,7 @@ export default function TopicSlidePlugin({
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                <span className="text-xs sm:text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 whitespace-nowrap">
                   {activeView === 'jpg' ? '16:9 이미지 슬라이드' : `${aiSlides.length || 6}장 프레젠테이션 덱`}
                 </span>
                 <span className="text-[11px] text-slate-400 font-mono hidden sm:inline">
@@ -591,7 +600,7 @@ export default function TopicSlidePlugin({
                     : '프레젠테이션'}
                 </span>
               </div>
-              <h2 className="text-xs sm:text-sm font-black text-white truncate max-w-md" title={topicTitle}>
+              <h2 className="text-[15px] sm:text-sm font-black text-white truncate max-w-md" title={topicTitle}>
                 <SlideLatex text={topicTitle} />
               </h2>
             </div>
@@ -899,11 +908,11 @@ export default function TopicSlidePlugin({
             /* 모드 2: AI 6-Slide Visual Presentation Deck (00 직관적 설명 + 01~05 서론/본론/결론) */
             <div className="w-full h-full flex flex-col justify-between relative overflow-hidden">
               {/* 메인 슬라이드 스테이지 */}
-              <div className="flex-1 min-h-0 w-full max-w-5xl mx-auto p-3 sm:p-5 md:p-6 flex flex-col justify-start overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-slate-700 animate-fade-in relative [-webkit-overflow-scrolling:touch]">
+              <div className="flex-1 min-h-0 w-full max-w-5xl mx-auto px-3.5 py-3 sm:p-5 md:p-6 flex flex-col justify-start overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-slate-700 animate-fade-in relative [-webkit-overflow-scrolling:touch]">
                 {/* 슬라이드 상단 진행 바 */}
                 <div className="w-full flex items-center justify-between gap-3 mb-2 shrink-0">
                   <div className="flex items-center gap-2">
-                    <span className={`text-[10px] font-extrabold uppercase tracking-widest px-2.5 py-0.5 rounded-full border ${
+                    <span className={`text-xs sm:text-[10px] font-extrabold uppercase tracking-widest px-2.5 py-0.5 rounded-full border whitespace-nowrap ${
                       isCurrentIntuitiveSlide
                         ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
                         : 'bg-amber-500/20 text-amber-300 border-amber-500/40'
@@ -912,11 +921,11 @@ export default function TopicSlidePlugin({
                         ? '직관적 설명'
                         : <SlideLatex text={currentAiSlide.category_tag || `SLIDE ${formatAiSlideNum(currentSlideIndex)}`} />}
                     </span>
-                    <span className="text-[10px] text-slate-400 font-mono">
+                    <span className="text-xs sm:text-[10px] text-slate-400 font-mono whitespace-nowrap">
                       SLIDE {formatAiSlideNum(currentSlideIndex)} ({currentSlideIndex + 1} OF {aiSlides.length})
                     </span>
                   </div>
-                  <div className="flex items-center gap-1.5">
+                  <div className="hidden sm:flex items-center gap-1.5">
                     {aiSlides.map((slide, idx) => {
                       const stages6 = ['00 직관', '01 서론', '02 본론①', '03 본론②', '04 본론③', '05 결론'];
                       const stages5 = ['서론', '본론①', '본론②', '본론③', '결론'];
@@ -943,14 +952,14 @@ export default function TopicSlidePlugin({
                 {/* 슬라이드 헤더 (00번 직관 시트는 불필요한 슬로건 제목 문구를 제거하고 본문에서 바로 직관 요약 표출) */}
                 {!isCurrentIntuitiveSlide && (
                   <div className="border-b border-slate-800 pb-2.5 mb-2.5 shrink-0">
-                    <h1 className="text-base sm:text-lg md:text-xl font-black text-white tracking-tight flex items-center gap-2">
+                    <h1 className="text-[19px] sm:text-lg md:text-xl leading-snug font-black text-white tracking-tight flex items-center gap-2">
                       <span className="font-mono text-amber-400">
                         {formatAiSlideNum(currentSlideIndex)}.
                       </span>
                       <span><SlideLatex text={currentAiSlide.title} /></span>
                     </h1>
                     {currentAiSlide.key_takeaway && (
-                      <p className="text-xs sm:text-sm font-medium mt-1 pl-4 border-l-2 text-amber-300/90 border-amber-500/60 leading-relaxed">
+                      <p className="text-[15px] sm:text-sm font-medium mt-1 pl-4 border-l-2 text-amber-300/90 border-amber-500/60 leading-relaxed">
                         💡 <SlideLatex text={currentAiSlide.key_takeaway} />
                       </p>
                     )}
@@ -963,13 +972,13 @@ export default function TopicSlidePlugin({
                     {/* 1. 상단 핵심 직관 요약 배너 (중첩 박스 없이 깔끔한 단일 영역) */}
                     <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-emerald-950/50 via-slate-900/90 to-slate-900/90 border border-emerald-500/35 shadow-md">
                       {currentAiSlide.key_takeaway && (
-                        <div className="text-sm sm:text-base font-extrabold text-emerald-300 leading-snug mb-2 flex items-start gap-2">
+                        <div className="text-base sm:text-base font-extrabold text-emerald-300 leading-snug mb-2 flex items-start gap-2">
                           <span className="shrink-0">💡</span>
                           <span><SlideLatex text={currentAiSlide.key_takeaway} /></span>
                         </div>
                       )}
                       {currentAiSlide.story_analogy && (
-                        <p className="text-xs sm:text-sm text-slate-200 leading-relaxed pl-6">
+                        <p className="text-[15px] sm:text-sm text-slate-200 leading-relaxed pl-0 sm:pl-6">
                           <SlideLatex text={currentAiSlide.story_analogy} />
                         </p>
                       )}
@@ -988,11 +997,11 @@ export default function TopicSlidePlugin({
                             <div className="overflow-x-auto touch-pan-y">
                               <table className="w-full text-left border-collapse">
                                 <thead>
-                                  <tr className="bg-slate-800/90 border-b border-slate-700 text-emerald-300 text-xs sm:text-sm font-extrabold">
+                                  <tr className="bg-slate-800/90 border-b border-slate-700 text-emerald-300 text-sm sm:text-sm font-extrabold">
                                     {headers.map((h, i) => (
                                       <th
                                         key={i}
-                                        className={`py-3 px-4 ${i === 0 ? 'w-[22%] text-slate-300' : ''}`}
+                                        className={`py-2.5 px-3 sm:py-3 sm:px-4 ${i === 0 ? 'w-[22%] text-slate-300' : ''}`}
                                       >
                                         <SlideLatex text={String(h)} />
                                       </th>
@@ -1005,7 +1014,7 @@ export default function TopicSlidePlugin({
                                       {(Array.isArray(row) ? row : Object.values(row)).map((cell, cIdx) => (
                                         <td
                                           key={cIdx}
-                                          className={`py-3.5 px-4 text-xs sm:text-sm leading-relaxed ${
+                                          className={`py-2.5 px-3 sm:py-3.5 sm:px-4 text-sm sm:text-sm leading-relaxed ${
                                             cIdx === 0
                                               ? 'font-extrabold text-amber-300/95 bg-slate-900/50 whitespace-nowrap'
                                               : 'text-slate-200 font-medium'
@@ -1032,14 +1041,14 @@ export default function TopicSlidePlugin({
                             >
                               <div>
                                 {b.badge && (
-                                  <span className="inline-block text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border border-emerald-500/40 bg-emerald-950/30 text-emerald-300 mb-2">
+                                  <span className="inline-block text-xs sm:text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border border-emerald-500/40 bg-emerald-950/30 text-emerald-300 mb-2">
                                     <SlideLatex text={b.badge} />
                                   </span>
                                 )}
-                                <h4 className="text-sm sm:text-base font-black text-white mb-1.5 leading-snug">
+                                <h4 className="text-base sm:text-base font-black text-white mb-1.5 leading-snug">
                                   <SlideLatex text={b.title} />
                                 </h4>
-                                <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                                <p className="text-[15px] sm:text-sm text-slate-300 leading-relaxed">
                                   <SlideLatex text={b.desc || ''} />
                                 </p>
                               </div>
@@ -1052,23 +1061,23 @@ export default function TopicSlidePlugin({
                 ) : (
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-4 flex-1 min-h-0 items-stretch">
                   {/* 좌측 6컬럼: 핵심 불릿 카드 */}
-                  <div className="md:col-span-6 space-y-2 flex flex-col justify-center">
+                  <div className="md:col-span-6 space-y-2.5 sm:space-y-2 flex flex-col justify-center">
                     {(currentAiSlide.bullet_points || []).map((b, bIdx) => (
                       <div
                         key={bIdx}
-                        className="p-2.5 sm:p-3 bg-[#111827]/80 hover:bg-[#152033] border border-slate-800 hover:border-amber-500/40 rounded-xl transition-all shadow-sm group"
+                        className="p-3.5 sm:p-3 bg-[#111827]/80 hover:bg-[#152033] border border-slate-800 hover:border-amber-500/40 rounded-xl transition-all shadow-sm group"
                       >
-                        <div className="flex items-center gap-2 mb-1">
+                        <div className="flex items-center flex-wrap gap-2 mb-1.5 sm:mb-1">
                           {b.badge && (
-                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-950/80 text-amber-300 border border-amber-500/30 shrink-0">
+                            <span className="text-xs sm:text-[9px] font-bold px-2 sm:px-1.5 py-0.5 rounded bg-amber-950/80 text-amber-300 border border-amber-500/30 shrink-0">
                               <SlideLatex text={b.badge} />
                             </span>
                           )}
-                          <h4 className="text-xs sm:text-sm font-bold text-white group-hover:text-amber-300 transition-colors">
+                          <h4 className="text-base sm:text-sm font-bold text-white group-hover:text-amber-300 transition-colors">
                             <SlideLatex text={b.title} />
                           </h4>
                         </div>
-                        <div className="text-[11px] sm:text-xs text-slate-300 leading-relaxed pl-1">
+                        <div className="text-[15px] sm:text-xs text-slate-300 leading-relaxed sm:pl-1">
                           <SlideLatex text={b.desc || ''} />
                         </div>
                       </div>
@@ -1080,11 +1089,11 @@ export default function TopicSlidePlugin({
                     <div className="p-3 sm:p-4 bg-gradient-to-br from-[#121B2F] to-[#0A101D] border border-blue-500/30 rounded-2xl shadow-lg h-full flex flex-col justify-between">
                       {/* 비주얼 컴포넌트 헤더 */}
                       <div className="flex items-center justify-between pb-2 border-b border-slate-800 shrink-0">
-                        <span className="text-[10px] font-black uppercase text-blue-400 tracking-wider flex items-center gap-1.5">
+                        <span className="text-xs sm:text-[10px] font-black uppercase text-blue-400 tracking-wider flex items-center gap-1.5">
                           <CheckCircle size={12} className="text-emerald-400" />
                           <span>Core Engineering Visual</span>
                         </span>
-                        <span className="text-[9px] text-slate-500 font-mono">
+                        <span className="text-xs sm:text-[9px] text-slate-500 font-mono">
                           {(() => {
                             const chartData = currentAiSlide.visual_component?.chart || 
                                               currentAiSlide.visual_component?.chart_data || 
@@ -1165,10 +1174,10 @@ export default function TopicSlidePlugin({
                                     : 'bg-[#0E1626] border-slate-800 text-slate-300'
                                 }`}
                               >
-                                <span className="text-[9.5px] font-bold text-slate-400 tracking-wider">
+                                <span className="text-xs sm:text-[9.5px] font-bold text-slate-400 tracking-wider">
                                   <SlideLatex text={card.label || card.title || `Point ${cIdx + 1}`} />
                                 </span>
-                                <span className="text-xs font-black leading-snug">
+                                <span className="text-[15px] sm:text-xs font-black leading-snug">
                                   <SlideLatex text={card.content || card.desc || card.value || ''} />
                                 </span>
                               </div>
@@ -1189,7 +1198,7 @@ export default function TopicSlidePlugin({
                           <div className="my-2 overflow-x-auto rounded-xl border border-slate-800 bg-[#0E1626]/80 p-2">
                             <table className="w-full text-left text-xs border-collapse">
                               <thead>
-                                <tr className="border-b border-slate-700/60 text-slate-400 text-[10px] font-bold">
+                                <tr className="border-b border-slate-700/60 text-slate-400 text-xs sm:text-[10px] font-bold">
                                   {headers.map((h, i) => (
                                     <th key={i} className="pb-1.5 px-2"><SlideLatex text={String(h)} /></th>
                                   ))}
@@ -1199,7 +1208,7 @@ export default function TopicSlidePlugin({
                                 {rows.map((row, rIdx) => (
                                   <tr key={rIdx} className="border-b border-slate-800/40 text-slate-300 hover:bg-slate-800/30">
                                     {(Array.isArray(row) ? row : Object.values(row)).map((cell, cIdx) => (
-                                      <td key={cIdx} className="py-1.5 px-2 text-[11px]"><SlideLatex text={String(cell)} /></td>
+                                      <td key={cIdx} className="py-2 sm:py-1.5 px-2.5 sm:px-2 text-sm sm:text-[11px]"><SlideLatex text={String(cell)} /></td>
                                     ))}
                                   </tr>
                                 ))}
@@ -1226,10 +1235,10 @@ export default function TopicSlidePlugin({
 
                         return (
                           <div className="my-3 p-3.5 rounded-xl bg-slate-900/70 border border-slate-800 flex flex-col gap-2 shadow-inner">
-                            <div className="text-[10px] font-bold text-sky-400 tracking-wider flex items-center gap-1.5">
+                            <div className="text-xs sm:text-[10px] font-bold text-sky-400 tracking-wider flex items-center gap-1.5">
                               <span>💡 Core Takeaway & Focus</span>
                             </div>
-                            <p className="text-xs text-slate-200 leading-relaxed font-medium">
+                            <p className="text-[15px] sm:text-xs text-slate-200 leading-relaxed font-medium">
                               <SlideLatex text={currentAiSlide.key_takeaway || '핵심 공학 개념과 실무 시사점을 종합 검토하십시오.'} />
                             </p>
                           </div>
@@ -1239,10 +1248,10 @@ export default function TopicSlidePlugin({
                       {/* 기술사 착안점 & 엔지니어 노트 */}
                       {currentAiSlide.engineer_note && (
                         <div className="mt-2 p-2.5 bg-indigo-950/50 border border-indigo-500/40 rounded-xl shrink-0">
-                          <div className="text-[9.5px] font-bold text-indigo-300 flex items-center gap-1 mb-0.5">
+                          <div className="text-xs sm:text-[9.5px] font-bold text-indigo-300 flex items-center gap-1 mb-0.5">
                             <span>🎯 기술사 답안 차별화 & 실무 착안점</span>
                           </div>
-                          <p className="text-[11px] text-indigo-100 font-medium leading-relaxed">
+                          <p className="text-sm sm:text-[11px] text-indigo-100 font-medium leading-relaxed">
                             <SlideLatex text={currentAiSlide.engineer_note} />
                           </p>
                         </div>
@@ -1255,7 +1264,7 @@ export default function TopicSlidePlugin({
               </div>
 
               {/* 하단 6장(00 직관적 설명 ~ 05 결론) 네비게이션 스트립 */}
-              <div className="w-full bg-[#0B101D] border-t border-slate-800/90 px-4 py-2 flex items-center justify-between gap-3 shrink-0">
+              <div className="w-full bg-[#0B101D] border-t border-slate-800/90 px-3 sm:px-4 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:py-2 flex items-center justify-between gap-3 shrink-0">
                 <div className="flex items-center gap-2 overflow-x-auto scrollbar-none py-0.5 max-w-full">
                   {aiSlides.map((slide, sIdx) => {
                     const stageNames6 = ['직관적 설명', '서론 | 정의', '본론 ① | 메커니즘', '본론 ② | KDS 수식', '본론 ③ | 실무 시공', '결론 | 고득점 제언'];
@@ -1267,9 +1276,10 @@ export default function TopicSlidePlugin({
                     return (
                       <button
                         key={sIdx}
+                        ref={(el) => { bottomTabRefs.current[sIdx] = el; }}
                         type="button"
                         onClick={() => setCurrentSlideIndex(sIdx)}
-                        className={`relative flex items-center gap-2 px-3 py-1.5 rounded-xl transition-all cursor-pointer group shrink-0 ${
+                        className={`relative flex items-center gap-2 px-3 py-2 sm:py-1.5 rounded-xl transition-all cursor-pointer group shrink-0 ${
                           sIdx === currentSlideIndex
                             ? (isZeroTab
                                 ? 'ring-2 ring-emerald-400 bg-emerald-500/25 text-emerald-300 font-black shadow-md'
@@ -1278,10 +1288,10 @@ export default function TopicSlidePlugin({
                         }`}
                         title={`Slide ${formatAiSlideNum(sIdx)}: ${slide.title || ''}`}
                       >
-                        <span className={`font-mono text-xs font-bold ${isZeroTab ? 'text-emerald-400' : 'text-amber-400'}`}>
+                        <span className={`font-mono text-[13px] sm:text-xs font-bold ${isZeroTab ? 'text-emerald-400' : 'text-amber-400'}`}>
                           {formatAiSlideNum(sIdx)}
                         </span>
-                        <span className="text-xs font-bold">{stageLabel}</span>
+                        <span className="text-[13px] sm:text-xs font-bold">{stageLabel}</span>
                       </button>
                     );
                   })}
