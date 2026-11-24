@@ -5,8 +5,10 @@ import { fileURLToPath } from 'url';
 import { dbQuery } from '../database.js';
 import { put, get } from '@vercel/blob';
 import { saveSessionValue, globalPreferredModel, globalStageModels, globalAllowGradingFallback, updatePreferredModel, updateStageModels, updateAllowGradingFallback, resolveStageModel, callLLMWithFailover, startBackendProgressTimer, updateProgress, getMatchingTopicContent } from '../services/aiService.js';
+import { stampUpdatedStandards, syncStandardWithDb } from '../services/standardsSyncService.js';
 import { updateLiveEngineeringStandards, standardsList, ENGINEERING_STANDARDS } from '../plugins/engineeringStandards.js';
 import { updateLiveGradingStandards, gradingStandardsList } from '../plugins/gradingPlugin.js';
+import { gradingStandardsList as fileGradingStandardsList } from '../plugins/gradingStandardsList.js';
 import { updateLiveGenerationStandards, generationStandardsList } from '../plugins/generationStandards.js';
 import { updateLiveLockscreenStandards, lockscreenStandardsList } from '../plugins/lockscreenStandards.js';
 import { healFormulaQuestionObject, parseLlmJson, healLatexFormulas, LATEX_CHAT_PROMPT_INSTRUCTIONS, LATEX_PROMPT_INSTRUCTIONS } from '../utils/latexUtils.js';
@@ -27,65 +29,12 @@ const router = express.Router();
 // Config In-Memory Cache to bypass DB queries on high frequency reads
 const configMemoryCache = new Map();
 
-function stampUpdatedStandards(newList, oldList) {
-  if (!Array.isArray(newList)) return [];
-  const oldMap = new Map((oldList || []).map(item => [item.id, item]));
-  return newList.map(item => {
-    const oldItem = oldMap.get(item.id);
-    if (!oldItem || oldItem.content !== item.content || oldItem.title !== item.title || !item.updatedAt) {
-      return { ...item, updatedAt: new Date().toISOString() };
-    }
-    return item;
-  });
-}
-
 const isVercel = !!process.env.VERCEL;
 
-function mergeStandards(fileList, dbList, fileIsNewer = false) {
-  if (!dbList || dbList.length === 0) {
-    return fileList;
-  }
-
-  if (fileIsNewer) {
-    const dbMap = new Map((dbList || []).map(item => [item.id, item]));
-    const merged = fileList.map(fileItem => {
-      const dbItem = dbMap.get(fileItem.id);
-      if (!dbItem || dbItem.content !== fileItem.content || dbItem.title !== fileItem.title) {
-        return { ...fileItem, updatedAt: new Date().toISOString() };
-      }
-      return dbItem;
-    });
-
-    const fileIds = new Set(fileList.map(item => item.id));
-    for (const dbItem of dbList || []) {
-      if (!fileIds.has(dbItem.id) && String(dbItem.id || '').startsWith('user_')) {
-        merged.push(dbItem);
-      }
-    }
-    return merged;
-  } else {
-    // DB is newer: trust DB completely (including deletions of default standards in the UI)
-    return dbList;
-  }
-}
-
-async function checkIsFileNewer(fileName, dbKey) {
-  if (isVercel) return false;
-  try {
-    const filePath = path.join(serverDir, 'plugins', fileName);
-    if (!fs.existsSync(filePath)) return false;
-    const fileMtime = fs.statSync(filePath).mtime.getTime();
-
-    const row = await dbQuery.get("SELECT updated_at FROM app_session WHERE key = ?", [dbKey]);
-    if (!row || !row.updated_at) return true;
-    const dbUpdatedAt = new Date(row.updated_at).getTime();
-
-    return fileMtime > (dbUpdatedAt + 1000);
-  } catch (err) {
-    console.error(`Failed to check file mtime for ${fileName}:`, err.message);
-    return false;
-  }
-}
+const defaultEngineeringStandards = standardsList.map((item) => ({ ...item }));
+const defaultGradingStandards = fileGradingStandardsList.map((item) => ({ ...item }));
+const defaultGenerationStandards = generationStandardsList.map((item) => ({ ...item }));
+const defaultLockscreenStandards = lockscreenStandardsList.map((item) => ({ ...item }));
 
 async function writeStandardToFile(fileName, list) {
   if (isVercel) return;
@@ -288,26 +237,12 @@ router.post('/verify-pin', (req, res) => {
 // GET /api/engineering-standards
 router.get(['/engineering-standards', '/other-standards'], async (req, res) => {
   try {
-    let dbList = [];
-    try {
-      const row = await dbQuery.get("SELECT value FROM app_session WHERE key = 'engineering_standards'");
-      if (row && row.value) {
-        dbList = JSON.parse(row.value);
-      }
-    } catch (dbErr) {
-      console.error('Failed to read engineering standards from database:', dbErr.message);
-    }
-    const fileIsNewer = await checkIsFileNewer('engineeringStandards.js', 'engineering_standards');
-    const merged = mergeStandards(standardsList, dbList, fileIsNewer);
-    if (JSON.stringify(merged) !== JSON.stringify(dbList)) {
-      try {
-        await saveSessionValue('engineering_standards', JSON.stringify(merged));
-        console.log('[Sync] Automatically synced engineering standards to database.');
-      } catch (saveErr) {
-        console.error('Failed to auto-save merged engineering standards to database:', saveErr.message);
-      }
-    }
-    updateLiveEngineeringStandards(merged);
+    const merged = await syncStandardWithDb({
+      fileName: 'engineeringStandards.js',
+      dbKey: 'engineering_standards',
+      defaultFileList: defaultEngineeringStandards,
+      updateLive: updateLiveEngineeringStandards
+    });
     res.json({ standards: merged });
   } catch (err) {
     console.error('GET /api/engineering-standards error:', err);
@@ -344,26 +279,12 @@ router.post(['/engineering-standards', '/other-standards'], async (req, res) => 
 // GET /api/grading-standards
 router.get('/grading-standards', async (req, res) => {
   try {
-    let dbList = [];
-    try {
-      const row = await dbQuery.get("SELECT value FROM app_session WHERE key = 'grading_standards'");
-      if (row && row.value) {
-        dbList = JSON.parse(row.value);
-      }
-    } catch (dbErr) {
-      console.error('Failed to read grading standards from database:', dbErr.message);
-    }
-    const fileIsNewer = await checkIsFileNewer('gradingStandardsList.js', 'grading_standards');
-    const merged = mergeStandards(gradingStandardsList, dbList, fileIsNewer);
-    if (JSON.stringify(merged) !== JSON.stringify(dbList)) {
-      try {
-        await saveSessionValue('grading_standards', JSON.stringify(merged));
-        console.log('[Sync] Automatically synced grading standards to database.');
-      } catch (saveErr) {
-        console.error('Failed to auto-save merged grading standards to database:', saveErr.message);
-      }
-    }
-    updateLiveGradingStandards(merged);
+    const merged = await syncStandardWithDb({
+      fileName: 'gradingStandardsList.js',
+      dbKey: 'grading_standards',
+      defaultFileList: defaultGradingStandards,
+      updateLive: updateLiveGradingStandards
+    });
     res.json({ standards: merged });
   } catch (err) {
     console.error('GET /api/grading-standards error:', err);
@@ -402,26 +323,12 @@ router.post('/grading-standards', async (req, res) => {
 // GET /api/generation-standards
 router.get('/generation-standards', async (req, res) => {
   try {
-    let dbList = [];
-    try {
-      const row = await dbQuery.get("SELECT value FROM app_session WHERE key = 'generation_standards'");
-      if (row && row.value) {
-        dbList = JSON.parse(row.value);
-      }
-    } catch (dbErr) {
-      console.error('Failed to read generation standards from database:', dbErr.message);
-    }
-    const fileIsNewer = await checkIsFileNewer('generationStandards.js', 'generation_standards');
-    const merged = mergeStandards(generationStandardsList, dbList, fileIsNewer);
-    if (JSON.stringify(merged) !== JSON.stringify(dbList)) {
-      try {
-        await saveSessionValue('generation_standards', JSON.stringify(merged));
-        console.log('[Sync] Automatically synced generation standards to database.');
-      } catch (saveErr) {
-        console.error('Failed to auto-save merged generation standards to database:', saveErr.message);
-      }
-    }
-    updateLiveGenerationStandards(merged);
+    const merged = await syncStandardWithDb({
+      fileName: 'generationStandards.js',
+      dbKey: 'generation_standards',
+      defaultFileList: defaultGenerationStandards,
+      updateLive: updateLiveGenerationStandards
+    });
     res.json({ standards: merged });
   } catch (err) {
     console.error('GET /api/generation-standards error:', err);
@@ -458,26 +365,12 @@ router.post('/generation-standards', async (req, res) => {
 // GET /api/lockscreen-standards
 router.get('/lockscreen-standards', async (req, res) => {
   try {
-    let dbList = [];
-    try {
-      const row = await dbQuery.get("SELECT value FROM app_session WHERE key = 'lockscreen_standards'");
-      if (row && row.value) {
-        dbList = JSON.parse(row.value);
-      }
-    } catch (dbErr) {
-      console.error('Failed to read lockscreen standards from database:', dbErr.message);
-    }
-    const fileIsNewer = await checkIsFileNewer('lockscreenStandards.js', 'lockscreen_standards');
-    const merged = mergeStandards(lockscreenStandardsList, dbList, fileIsNewer);
-    if (JSON.stringify(merged) !== JSON.stringify(dbList)) {
-      try {
-        await saveSessionValue('lockscreen_standards', JSON.stringify(merged));
-        console.log('[Sync] Automatically synced lockscreen standards to database.');
-      } catch (saveErr) {
-        console.error('Failed to auto-save merged lockscreen standards to database:', saveErr.message);
-      }
-    }
-    updateLiveLockscreenStandards(merged);
+    const merged = await syncStandardWithDb({
+      fileName: 'lockscreenStandards.js',
+      dbKey: 'lockscreen_standards',
+      defaultFileList: defaultLockscreenStandards,
+      updateLive: updateLiveLockscreenStandards
+    });
     res.json({ standards: merged });
   } catch (err) {
     console.error('GET /api/lockscreen-standards error:', err);

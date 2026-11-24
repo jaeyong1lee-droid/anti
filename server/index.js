@@ -7,7 +7,8 @@ import { fileURLToPath } from 'url';
 import fs from 'fs';
 import { initDatabase, dbQuery, isPostgres } from './database.js';
 import { startBackupScheduler } from './backupManager.js';
-import { loadPreferredModel, saveSessionValue } from './services/aiService.js';
+import { loadPreferredModel } from './services/aiService.js';
+import { syncStandardWithDb } from './services/standardsSyncService.js';
 
 import { updateLiveEngineeringStandards, standardsList } from './plugins/engineeringStandards.js';
 import { updateLiveGradingStandards } from './plugins/gradingPlugin.js';
@@ -55,76 +56,27 @@ app.use((req, res, next) => {
 // AI Progress Tracker State
 global.progressTracker = global.progressTracker || new Map();
 
-function mergeStandards(fileList, dbList, fileIsNewer = false) {
-  if (!dbList || dbList.length === 0) {
-    return fileList;
-  }
-
-  if (fileIsNewer) {
-    const dbMap = new Map((dbList || []).map(item => [item.id, item]));
-    const merged = fileList.map(fileItem => {
-      const dbItem = dbMap.get(fileItem.id);
-      if (!dbItem || dbItem.content !== fileItem.content || dbItem.title !== fileItem.title) {
-        return { ...fileItem, updatedAt: new Date().toISOString() };
-      }
-      return dbItem;
-    });
-
-    const fileIds = new Set(fileList.map(item => item.id));
-    for (const dbItem of dbList || []) {
-      if (!fileIds.has(dbItem.id)) {
-        merged.push(dbItem);
-      }
-    }
-    return merged;
-  } else {
-    return dbList;
-  }
-}
-
-async function checkIsFileNewer(fileName, dbKey) {
-  try {
-    const filePath = path.resolve(__dirname, 'plugins', fileName);
-    if (!fs.existsSync(filePath)) return false;
-    const fileMtime = fs.statSync(filePath).mtime.getTime();
-
-    const row = await dbQuery.get("SELECT updated_at FROM app_session WHERE key = ?", [dbKey]);
-    if (!row || !row.updated_at) return true;
-    const dbUpdatedAt = new Date(row.updated_at).getTime();
-
-    return fileMtime > (dbUpdatedAt + 1000);
-  } catch (err) {
-    console.error(`Failed to check file mtime for ${fileName}:`, err.message);
-    return false;
-  }
-}
+// Boot-time snapshots of default plugin lists (immutable reference for file->DB comparison)
+const defaultEngineeringStandards = standardsList.map((item) => ({ ...item }));
+const defaultGradingStandards = gradingStandardsList.map((item) => ({ ...item }));
+const defaultGenerationStandards = generationStandardsList.map((item) => ({ ...item }));
+const defaultLockscreenStandards = lockscreenStandardsList.map((item) => ({ ...item }));
 
 async function initializeAllStandards() {
-  const syncStandard = async (fileName, dbKey, fileList, updateFn) => {
+  const specs = [
+    { fileName: 'engineeringStandards.js', dbKey: 'engineering_standards', defaultFileList: defaultEngineeringStandards, updateLive: updateLiveEngineeringStandards },
+    { fileName: 'gradingStandardsList.js', dbKey: 'grading_standards', defaultFileList: defaultGradingStandards, updateLive: updateLiveGradingStandards },
+    { fileName: 'generationStandards.js', dbKey: 'generation_standards', defaultFileList: defaultGenerationStandards, updateLive: updateLiveGenerationStandards },
+    { fileName: 'lockscreenStandards.js', dbKey: 'lockscreen_standards', defaultFileList: defaultLockscreenStandards, updateLive: updateLiveLockscreenStandards }
+  ];
+
+  for (const spec of specs) {
     try {
-      let dbList = [];
-      const row = await dbQuery.get("SELECT value FROM app_session WHERE key = ?", [dbKey]);
-      if (row && row.value) {
-        dbList = JSON.parse(row.value);
-      }
-
-      const fileIsNewer = await checkIsFileNewer(fileName, dbKey);
-      const merged = mergeStandards(fileList, dbList, fileIsNewer);
-
-      if (JSON.stringify(merged) !== JSON.stringify(dbList)) {
-        await saveSessionValue(dbKey, JSON.stringify(merged));
-        console.log(`[Startup Sync] Automatically synced ${dbKey} to database.`);
-      }
-      updateFn(merged);
+      await syncStandardWithDb({ ...spec, logPrefix: '[Startup Sync]' });
     } catch (err) {
-      console.warn(`[Startup Sync] Failed to load/sync ${dbKey}:`, err.message);
+      console.warn(`[Startup Sync] Failed to load/sync ${spec.dbKey}:`, err.message);
     }
-  };
-
-  await syncStandard('engineeringStandards.js', 'engineering_standards', standardsList, updateLiveEngineeringStandards);
-  await syncStandard('gradingStandardsList.js', 'grading_standards', gradingStandardsList, updateLiveGradingStandards);
-  await syncStandard('generationStandards.js', 'generation_standards', generationStandardsList, updateLiveGenerationStandards);
-  await syncStandard('lockscreenStandards.js', 'lockscreen_standards', lockscreenStandardsList, updateLiveLockscreenStandards);
+  }
 }
 
 // Database Initialization Safeguard (Runs BEFORE route handling)
@@ -138,8 +90,6 @@ async function ensureDbInitialized() {
       try {
         console.log('[Startup] Initializing Database connection...');
         await initDatabase();
-        console.log('[Startup] DB WIPE IN PROGRESS FOR FULL ROLLBACK...');
-        await dbQuery.run("DELETE FROM app_session WHERE key IN ('engineering_standards', 'grading_standards', 'generation_standards', 'lockscreen_standards')");
         isDbInitialized = true;
         // Non-blocking background sync of standards and preferred model
         initializeAllStandards().catch(e => console.warn('[Background Standards Sync Warning]:', e.message));
