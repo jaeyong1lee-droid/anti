@@ -1,0 +1,13 @@
+{
+  "schema_version": "1.0",
+  "updated_at": "2026-11-24T22:15:09.921Z",
+  "entries": [
+    {
+      "rule": "CL-1(미선언심볼)",
+      "file": "server/routes/quizRoutes.js",
+      "line": 1284,
+      "symbol": "parseBatch",
+      "fingerprint": "a49e8d03869328c8"
+    }
+  ]
+}

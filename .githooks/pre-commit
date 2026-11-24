@@ -1,0 +1,34 @@
+#!/bin/sh
+# Antigravity Tier-1 Pre-Commit Gate
+# Bypasses (--no-verify / ALLOW_PROTECTED_EDIT=1) are user-only.
+set -u
+cd "$(git rev-parse --show-toplevel)" || exit 1
+
+NODE_BIN=""
+for c in node node.exe; do
+  if command -v "$c" >/dev/null 2>&1; then
+    NODE_BIN="$c"
+    break
+  fi
+done
+
+if [ -z "$NODE_BIN" ] && [ -x "./node-v22.12.0-win-x64/node.exe" ]; then
+  NODE_BIN="./node-v22.12.0-win-x64/node.exe"
+fi
+
+if [ -z "$NODE_BIN" ]; then
+  echo "[pre-commit] WARN: node 실행 파일을 찾지 못해 gate_fast를 건너뜁니다."
+  exit 0
+fi
+
+"$NODE_BIN" scripts/gate_fast.mjs --staged
+RC=$?
+if [ $RC -ne 0 ]; then
+  echo ""
+  echo "[pre-commit] ❌ Tier-1 Fast Gate 실패로 커밋이 차단되었습니다."
+  echo "  - 코드 위반을 수정하거나, 의도적 예외에는 '// anti-lens: ok <사유>' 를 추가하세요."
+  echo "  - 보호 파일(LatexRenderer/latexUtils/백업 3종) 명시적 수정 허가 시 ALLOW_PROTECTED_EDIT=1 환경변수를 사용하세요."
+  exit $RC
+fi
+
+exit 0

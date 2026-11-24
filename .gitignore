@@ -47,6 +47,8 @@ scratch/
 node-v*
 *.zip
 *.mjs
+!server/tests/*.mjs
+!scripts/gate_fast.mjs
 server/data/kcsc_cache/*.json
 server/data/wiki_cache/*.json
 

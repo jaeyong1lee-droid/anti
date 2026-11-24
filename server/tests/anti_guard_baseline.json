@@ -1,0 +1,931 @@
+{
+  "schema_version": "1.0",
+  "reason": "initial baseline freeze",
+  "updated_at": "2026-11-24T22:15:10.154Z",
+  "entries": [
+    {
+      "id": "AL-4",
+      "file": "client/src/App.jsx",
+      "line": 302,
+      "snippet": "catch (e) {}",
+      "fingerprint": "f9af0c2f6104ce65"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/App.jsx",
+      "line": 1942,
+      "snippet": "catch (e) {}",
+      "fingerprint": "f9af0c2f6104ce65"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/App.jsx",
+      "line": 2111,
+      "snippet": "catch (e) {}",
+      "fingerprint": "f9af0c2f6104ce65"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/App.jsx",
+      "line": 2186,
+      "snippet": "catch (e) {}",
+      "fingerprint": "f9af0c2f6104ce65"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/App.jsx",
+      "line": 2968,
+      "snippet": "catch (e) {}",
+      "fingerprint": "f9af0c2f6104ce65"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/App.jsx",
+      "line": 3044,
+      "snippet": "catch (e) {}",
+      "fingerprint": "f9af0c2f6104ce65"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/App.jsx",
+      "line": 3350,
+      "snippet": "catch (e) {}",
+      "fingerprint": "f9af0c2f6104ce65"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/App.jsx",
+      "line": 3414,
+      "snippet": "catch (e) {}",
+      "fingerprint": "f9af0c2f6104ce65"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/App.jsx",
+      "line": 3422,
+      "snippet": "catch (e) {}",
+      "fingerprint": "f9af0c2f6104ce65"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/App.jsx",
+      "line": 3522,
+      "snippet": "catch (e) {}",
+      "fingerprint": "f9af0c2f6104ce65"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/App.jsx",
+      "line": 3543,
+      "snippet": "catch (e) {}",
+      "fingerprint": "f9af0c2f6104ce65"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/App.jsx",
+      "line": 3591,
+      "snippet": "catch (e) {}",
+      "fingerprint": "f9af0c2f6104ce65"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/App.jsx",
+      "line": 3619,
+      "snippet": "catch (e) {}",
+      "fingerprint": "f9af0c2f6104ce65"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/App.jsx",
+      "line": 3726,
+      "snippet": "catch (e) {}",
+      "fingerprint": "f9af0c2f6104ce65"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/App.jsx",
+      "line": 3754,
+      "snippet": "catch (e) {}",
+      "fingerprint": "f9af0c2f6104ce65"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/App.jsx",
+      "line": 3821,
+      "snippet": "catch (e) {}",
+      "fingerprint": "f9af0c2f6104ce65"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/App.jsx",
+      "line": 3834,
+      "snippet": "catch (e) {}",
+      "fingerprint": "f9af0c2f6104ce65"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/App.jsx",
+      "line": 3845,
+      "snippet": "catch (e) {}",
+      "fingerprint": "f9af0c2f6104ce65"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/App.jsx",
+      "line": 3852,
+      "snippet": "catch (e) {}",
+      "fingerprint": "f9af0c2f6104ce65"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/App.jsx",
+      "line": 3873,
+      "snippet": "catch (e) {}",
+      "fingerprint": "f9af0c2f6104ce65"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/App.jsx",
+      "line": 3895,
+      "snippet": "catch (e) {}",
+      "fingerprint": "f9af0c2f6104ce65"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/App.jsx",
+      "line": 3939,
+      "snippet": "catch (e) {}",
+      "fingerprint": "f9af0c2f6104ce65"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/App.jsx",
+      "line": 3995,
+      "snippet": "catch (e) {}",
+      "fingerprint": "f9af0c2f6104ce65"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/App.jsx",
+      "line": 4024,
+      "snippet": "catch (e) {}",
+      "fingerprint": "f9af0c2f6104ce65"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/App.jsx",
+      "line": 4057,
+      "snippet": "catch (e) {}",
+      "fingerprint": "f9af0c2f6104ce65"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/App.jsx",
+      "line": 4090,
+      "snippet": "catch (e) {}",
+      "fingerprint": "f9af0c2f6104ce65"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/App.jsx",
+      "line": 4186,
+      "snippet": ".catch(() => {})",
+      "fingerprint": "6f0150ee9716544c"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/App.jsx",
+      "line": 4269,
+      "snippet": "catch (e) {}",
+      "fingerprint": "f9af0c2f6104ce65"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/App.jsx",
+      "line": 4321,
+      "snippet": "catch (e) {}",
+      "fingerprint": "f9af0c2f6104ce65"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/App.jsx",
+      "line": 4363,
+      "snippet": "catch (e) {}",
+      "fingerprint": "f9af0c2f6104ce65"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/App.jsx",
+      "line": 4392,
+      "snippet": "catch (e) {}",
+      "fingerprint": "f9af0c2f6104ce65"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/App.jsx",
+      "line": 4532,
+      "snippet": "catch (e) {}",
+      "fingerprint": "f9af0c2f6104ce65"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/App.jsx",
+      "line": 4545,
+      "snippet": "catch (e) {}",
+      "fingerprint": "f9af0c2f6104ce65"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/App.jsx",
+      "line": 6041,
+      "snippet": "catch (e) {}",
+      "fingerprint": "f9af0c2f6104ce65"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/App.jsx",
+      "line": 7078,
+      "snippet": "catch (e) {}",
+      "fingerprint": "f9af0c2f6104ce65"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/App.jsx",
+      "line": 7092,
+      "snippet": "catch (e) {}",
+      "fingerprint": "f9af0c2f6104ce65"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/App.jsx",
+      "line": 7150,
+      "snippet": "catch (e) {}",
+      "fingerprint": "f9af0c2f6104ce65"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/App.jsx",
+      "line": 7180,
+      "snippet": "catch (e) {}",
+      "fingerprint": "f9af0c2f6104ce65"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/App.jsx",
+      "line": 7986,
+      "snippet": "catch (e) {}",
+      "fingerprint": "f9af0c2f6104ce65"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/App.jsx",
+      "line": 8055,
+      "snippet": "catch (e) {}",
+      "fingerprint": "f9af0c2f6104ce65"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/App.jsx",
+      "line": 8229,
+      "snippet": "catch (err) {}",
+      "fingerprint": "4666538803adc61b"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/App.jsx",
+      "line": 8275,
+      "snippet": "catch (err) {}",
+      "fingerprint": "4666538803adc61b"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/App.jsx",
+      "line": 8401,
+      "snippet": "catch (err) {}",
+      "fingerprint": "4666538803adc61b"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/App.jsx",
+      "line": 8639,
+      "snippet": "catch (e) {}",
+      "fingerprint": "f9af0c2f6104ce65"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/App.jsx",
+      "line": 9545,
+      "snippet": "catch (e) {}",
+      "fingerprint": "f9af0c2f6104ce65"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/App.jsx",
+      "line": 10732,
+      "snippet": "catch (e) {}",
+      "fingerprint": "f9af0c2f6104ce65"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/App.jsx",
+      "line": 15449,
+      "snippet": "catch (e) {}",
+      "fingerprint": "f9af0c2f6104ce65"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/App.jsx",
+      "line": 17125,
+      "snippet": "catch (e) {}",
+      "fingerprint": "f9af0c2f6104ce65"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/App.jsx",
+      "line": 17134,
+      "snippet": "catch (e) {}",
+      "fingerprint": "f9af0c2f6104ce65"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/App.jsx",
+      "line": 19660,
+      "snippet": "catch (err) {}",
+      "fingerprint": "4666538803adc61b"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/App.jsx",
+      "line": 30288,
+      "snippet": "catch (e) {}",
+      "fingerprint": "f9af0c2f6104ce65"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/components/AcronymQuiz.jsx",
+      "line": 47,
+      "snippet": "catch (e) {}",
+      "fingerprint": "8eaa8f1339b4d0d5"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/components/FloatingMemorization.jsx",
+      "line": 33,
+      "snippet": "catch (e) {}",
+      "fingerprint": "c302761f714172a1"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/components/FloatingMemorization.jsx",
+      "line": 1063,
+      "snippet": "catch (e) {}",
+      "fingerprint": "c302761f714172a1"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/components/FloatingMemorization.jsx",
+      "line": 1075,
+      "snippet": "catch (e) {}",
+      "fingerprint": "c302761f714172a1"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/components/InteractiveQuizModal.jsx",
+      "line": 165,
+      "snippet": "catch (e) {}",
+      "fingerprint": "f48a5315755d5341"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/components/LatexRenderer.jsx",
+      "line": 401,
+      "snippet": "catch (e) {}",
+      "fingerprint": "ff7fa384fa1e18fd"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/components/LatexRenderer.jsx",
+      "line": 697,
+      "snippet": "catch (err) {}",
+      "fingerprint": "17dba7e17fd9a757"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/components/PopoutWindow.jsx",
+      "line": 19,
+      "snippet": "catch (e) {}",
+      "fingerprint": "7d136aef7646cbfa"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/components/PopoutWindow.jsx",
+      "line": 32,
+      "snippet": "catch (e) {}",
+      "fingerprint": "7d136aef7646cbfa"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/components/PopoutWindow.jsx",
+      "line": 153,
+      "snippet": "catch (err) {}",
+      "fingerprint": "ed9c2f1d4d328000"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/components/ReadOnlyTable.jsx",
+      "line": 26,
+      "snippet": "catch (e) {}",
+      "fingerprint": "810179de124c13cd"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/components/ReadOnlyTable.jsx",
+      "line": 33,
+      "snippet": "catch (e) {}",
+      "fingerprint": "810179de124c13cd"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/components/ReadOnlyTable.jsx",
+      "line": 65,
+      "snippet": "catch (e) {}",
+      "fingerprint": "810179de124c13cd"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/components/ReadOnlyTable.jsx",
+      "line": 80,
+      "snippet": "catch (e) {}",
+      "fingerprint": "810179de124c13cd"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/components/ReadOnlyTable.jsx",
+      "line": 94,
+      "snippet": "catch (e) {}",
+      "fingerprint": "810179de124c13cd"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/components/ReadOnlyTable.jsx",
+      "line": 224,
+      "snippet": "catch(e) {}",
+      "fingerprint": "be0aa1776ccd680b"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/components/ReadOnlyTable.jsx",
+      "line": 238,
+      "snippet": "catch(e) {}",
+      "fingerprint": "be0aa1776ccd680b"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/components/ReadOnlyTable.jsx",
+      "line": 263,
+      "snippet": "catch(e) {}",
+      "fingerprint": "be0aa1776ccd680b"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/components/ReadOnlyTable.jsx",
+      "line": 268,
+      "snippet": "catch(e) {}",
+      "fingerprint": "be0aa1776ccd680b"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/components/ScientificCalculator.jsx",
+      "line": 568,
+      "snippet": "catch (e) {}",
+      "fingerprint": "ad4590387c3d777a"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/components/ScientificCalculator.jsx",
+      "line": 1800,
+      "snippet": "catch (e) {}",
+      "fingerprint": "ad4590387c3d777a"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/components/TableQuiz.jsx",
+      "line": 264,
+      "snippet": "catch (e) {}",
+      "fingerprint": "e97d86c064f88b00"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/components/TableQuiz.jsx",
+      "line": 282,
+      "snippet": "catch (e) {}",
+      "fingerprint": "e97d86c064f88b00"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/components/TableQuiz.jsx",
+      "line": 317,
+      "snippet": "catch (e) {}",
+      "fingerprint": "e97d86c064f88b00"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/components/TableQuiz.jsx",
+      "line": 327,
+      "snippet": "catch (e) {}",
+      "fingerprint": "e97d86c064f88b00"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/components/TableQuiz.jsx",
+      "line": 344,
+      "snippet": "catch (e) {}",
+      "fingerprint": "e97d86c064f88b00"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/components/TableQuiz.jsx",
+      "line": 365,
+      "snippet": "catch (e) {}",
+      "fingerprint": "e97d86c064f88b00"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/components/TableQuiz.jsx",
+      "line": 502,
+      "snippet": "catch(e) {}",
+      "fingerprint": "395b8e72b8d69547"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/components/TableQuiz.jsx",
+      "line": 506,
+      "snippet": "catch(e) {}",
+      "fingerprint": "395b8e72b8d69547"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/components/TableQuiz.jsx",
+      "line": 640,
+      "snippet": "catch (e) {}",
+      "fingerprint": "e97d86c064f88b00"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/components/TableQuiz.jsx",
+      "line": 650,
+      "snippet": "catch(e) {}",
+      "fingerprint": "395b8e72b8d69547"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/components/TableQuiz.jsx",
+      "line": 686,
+      "snippet": "catch(e) {}",
+      "fingerprint": "395b8e72b8d69547"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/components/TableQuiz.jsx",
+      "line": 731,
+      "snippet": "catch (e) {}",
+      "fingerprint": "e97d86c064f88b00"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/components/TableQuiz.jsx",
+      "line": 759,
+      "snippet": "catch (e) {}",
+      "fingerprint": "e97d86c064f88b00"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/components/TableQuiz.jsx",
+      "line": 908,
+      "snippet": "catch(e) {}",
+      "fingerprint": "395b8e72b8d69547"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/components/TableQuiz.jsx",
+      "line": 922,
+      "snippet": "catch(e) {}",
+      "fingerprint": "395b8e72b8d69547"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/components/TableQuiz.jsx",
+      "line": 1020,
+      "snippet": "catch (err) {}",
+      "fingerprint": "e0c0e4da4ceb12ea"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/components/TableQuiz.jsx",
+      "line": 1074,
+      "snippet": "catch (err) {}",
+      "fingerprint": "e0c0e4da4ceb12ea"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/components/TableQuiz.jsx",
+      "line": 1142,
+      "snippet": "catch (err) {}",
+      "fingerprint": "e0c0e4da4ceb12ea"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/components/TopicSlidePlugin.jsx",
+      "line": 318,
+      "snippet": "catch (e) {}",
+      "fingerprint": "10aebeb2a21e771b"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/utils/markdownTableRenderer.js",
+      "line": 145,
+      "snippet": "catch (e) {}",
+      "fingerprint": "5c73eb0f55833e6e"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/utils/tableColumnWidthManager.js",
+      "line": 110,
+      "snippet": "catch (e) {}",
+      "fingerprint": "6ecf39d23aa0b838"
+    },
+    {
+      "id": "AL-4",
+      "file": "client/src/utils/tableColumnWidthManager.js",
+      "line": 139,
+      "snippet": "catch (e) {}",
+      "fingerprint": "6ecf39d23aa0b838"
+    },
+    {
+      "id": "AL-4",
+      "file": "server/plugins/calculationPlugin.js",
+      "line": 329,
+      "snippet": "catch (err) {}",
+      "fingerprint": "22242c0ccd7c507d"
+    },
+    {
+      "id": "AL-4",
+      "file": "server/routes/configRoutes.js",
+      "line": 35,
+      "snippet": "catch (e) {}",
+      "fingerprint": "c21528aa5cdd8fe0"
+    },
+    {
+      "id": "AL-4",
+      "file": "server/routes/gradingRoutes.js",
+      "line": 1019,
+      "snippet": "catch (err) {}",
+      "fingerprint": "2498a7a3c363626f"
+    },
+    {
+      "id": "AL-4",
+      "file": "server/routes/gradingRoutes.js",
+      "line": 1458,
+      "snippet": "catch (pruneErr) {}",
+      "fingerprint": "e6d7e1466f6e5859"
+    },
+    {
+      "id": "AL-4",
+      "file": "server/routes/gradingRoutes.js",
+      "line": 1459,
+      "snippet": "catch (dbErr) {}",
+      "fingerprint": "f99122e2f225edf9"
+    },
+    {
+      "id": "AL-4",
+      "file": "server/routes/lockscreenRoutes.js",
+      "line": 165,
+      "snippet": ".catch(() => {})",
+      "fingerprint": "2749d816e8b97ad3"
+    },
+    {
+      "id": "AL-4",
+      "file": "server/routes/lockscreenRoutes.js",
+      "line": 202,
+      "snippet": ".catch(() => {})",
+      "fingerprint": "b1bf6efaca020b89"
+    },
+    {
+      "id": "AL-4",
+      "file": "server/routes/lockscreenRoutes.js",
+      "line": 459,
+      "snippet": ".catch(() => {})",
+      "fingerprint": "b1bf6efaca020b89"
+    },
+    {
+      "id": "AL-4",
+      "file": "server/routes/quizRoutes.js",
+      "line": 68,
+      "snippet": "catch (err) {}",
+      "fingerprint": "b9ee67005e7c5217"
+    },
+    {
+      "id": "AL-4",
+      "file": "server/routes/quizRoutes.js",
+      "line": 495,
+      "snippet": "catch (e) {}",
+      "fingerprint": "1ef726b1753942df"
+    },
+    {
+      "id": "AL-4",
+      "file": "server/routes/quizRoutes.js",
+      "line": 586,
+      "snippet": "catch (e) {}",
+      "fingerprint": "1ef726b1753942df"
+    },
+    {
+      "id": "AL-4",
+      "file": "server/routes/quizRoutes.js",
+      "line": 744,
+      "snippet": "catch (fbErr) {}",
+      "fingerprint": "e30beb7a1b8c6fc3"
+    },
+    {
+      "id": "AL-4",
+      "file": "server/routes/quizRoutes.js",
+      "line": 763,
+      "snippet": "catch (adjErr) {}",
+      "fingerprint": "7c45dc3f817d2e19"
+    },
+    {
+      "id": "AL-4",
+      "file": "server/routes/quizRoutes.js",
+      "line": 1643,
+      "snippet": "catch (e) {}",
+      "fingerprint": "1ef726b1753942df"
+    },
+    {
+      "id": "AL-4",
+      "file": "server/routes/quizRoutes.js",
+      "line": 1705,
+      "snippet": "catch (e) {}",
+      "fingerprint": "1ef726b1753942df"
+    },
+    {
+      "id": "AL-4",
+      "file": "server/routes/quizRoutes.js",
+      "line": 1807,
+      "snippet": "catch (e) {}",
+      "fingerprint": "1ef726b1753942df"
+    },
+    {
+      "id": "AL-4",
+      "file": "server/routes/quizRoutes.js",
+      "line": 3858,
+      "snippet": "catch (e) {}",
+      "fingerprint": "1ef726b1753942df"
+    },
+    {
+      "id": "AL-3",
+      "file": "server/services/aiService.js",
+      "line": 82,
+      "snippet": "=== 'gemini-3.89-flash'",
+      "fingerprint": "b2ce9bb92a301758"
+    },
+    {
+      "id": "AL-3",
+      "file": "server/services/aiService.js",
+      "line": 134,
+      "snippet": "=== 'claude-hybrid'",
+      "fingerprint": "cd540692d48687c9"
+    },
+    {
+      "id": "AL-3",
+      "file": "server/services/aiService.js",
+      "line": 266,
+      "snippet": "=== 'claude-sonnet-5-5'",
+      "fingerprint": "5b2de182301323ae"
+    },
+    {
+      "id": "AL-3",
+      "file": "server/services/aiService.js",
+      "line": 611,
+      "snippet": "=== 'gemini-4-hydrogen'",
+      "fingerprint": "b62a2211f242d178"
+    },
+    {
+      "id": "AL-4",
+      "file": "server/services/aiService.js",
+      "line": 100,
+      "snippet": "catch (e) {}",
+      "fingerprint": "785d2afadaca463c"
+    },
+    {
+      "id": "AL-4",
+      "file": "server/services/aiService.js",
+      "line": 240,
+      "snippet": "catch (e) {}",
+      "fingerprint": "785d2afadaca463c"
+    },
+    {
+      "id": "AL-4",
+      "file": "server/services/aiService.js",
+      "line": 391,
+      "snippet": "catch {}",
+      "fingerprint": "0cd52e0c1165d8d9"
+    },
+    {
+      "id": "AL-4",
+      "file": "server/services/kcscService.js",
+      "line": 34,
+      "snippet": "catch (err) {}",
+      "fingerprint": "0bfed58d420b96fd"
+    },
+    {
+      "id": "AL-4",
+      "file": "server/services/kcscService.js",
+      "line": 201,
+      "snippet": "catch (e) {}",
+      "fingerprint": "488426864d760a07"
+    },
+    {
+      "id": "AL-4",
+      "file": "server/services/kcscService.js",
+      "line": 260,
+      "snippet": "catch (e) {}",
+      "fingerprint": "488426864d760a07"
+    },
+    {
+      "id": "AL-4",
+      "file": "server/services/pastExamService.js",
+      "line": 143,
+      "snippet": "catch (e) {}",
+      "fingerprint": "0216392588072187"
+    },
+    {
+      "id": "AL-4",
+      "file": "server/services/pastExamService.js",
+      "line": 427,
+      "snippet": ".catch(() => {})",
+      "fingerprint": "54d7e310965f8afe"
+    },
+    {
+      "id": "AL-4",
+      "file": "server/services/pastExamService.js",
+      "line": 444,
+      "snippet": ".catch(() => {})",
+      "fingerprint": "54d7e310965f8afe"
+    },
+    {
+      "id": "AL-4",
+      "file": "server/services/progressService.js",
+      "line": 81,
+      "snippet": "catch (e) {}",
+      "fingerprint": "0a78660d706b9e1a"
+    },
+    {
+      "id": "AL-4",
+      "file": "server/services/wikipediaService.js",
+      "line": 38,
+      "snippet": "catch (err) {}",
+      "fingerprint": "480c192b53dfd45b"
+    },
+    {
+      "id": "AL-4",
+      "file": "server/services/wikipediaService.js",
+      "line": 520,
+      "snippet": "catch (e) {}",
+      "fingerprint": "9004a861efbe4558"
+    },
+    {
+      "id": "AL-4",
+      "file": "server/services/wikipediaService.js",
+      "line": 543,
+      "snippet": "catch (e) {}",
+      "fingerprint": "9004a861efbe4558"
+    },
+    {
+      "id": "AL-4",
+      "file": "server/services/wikipediaService.js",
+      "line": 546,
+      "snippet": "catch (err) {}",
+      "fingerprint": "480c192b53dfd45b"
+    },
+    {
+      "id": "AL-4",
+      "file": "server/services/wikipediaService.js",
+      "line": 563,
+      "snippet": "catch (e) {}",
+      "fingerprint": "9004a861efbe4558"
+    },
+    {
+      "id": "AL-4",
+      "file": "server/services/wikipediaService.js",
+      "line": 644,
+      "snippet": "catch (e) {}",
+      "fingerprint": "9004a861efbe4558"
+    },
+    {
+      "id": "AL-4",
+      "file": "server/services/wikipediaService.js",
+      "line": 667,
+      "snippet": "catch (err) {}",
+      "fingerprint": "480c192b53dfd45b"
+    }
+  ]
+}

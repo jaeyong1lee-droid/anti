@@ -1,0 +1,76 @@
+{
+  "schema_version": "1.0",
+  "description": "안티(Anti) 자기증식 가드 규칙 원장 — 1회 지적 = 영구 면역 (Strict rules block immediately; Baseline rules freeze existing count and block new additions)",
+  "protected_files": [
+    "client/src/components/LatexRenderer.jsx",
+    "client/src/utils/latexUtils.js",
+    "server/utils/latexUtils.js",
+    "server/restore.js",
+    "server/backup_sqlite.js",
+    "server/backupManager.js"
+  ],
+  "size_ratchet": {
+    "file_large_threshold": 1500,
+    "file_delta_limit": 50,
+    "scan_dirs": ["server", "client/src"],
+    "exclude_dirs": ["node_modules", "dist", "tests", "data", "db_volume", "backups", "scripts"]
+  },
+  "rules": [
+    {
+      "id": "AL-1",
+      "name": "AL-1(미인증디버그·관리자라우트금지)",
+      "severity": "HIGH",
+      "mode": "strict",
+      "pattern": "(?:app|router)\\.(?:get|post|put|delete|patch)\\s*\\(\\s*['\"]\\/(?:api\\/)?(?:debug-|admin\\/)",
+      "flags": "i",
+      "extensions": [".js"],
+      "path_prefix": "server/",
+      "exclude_paths": [],
+      "suggestion": "인증 없는 /debug-* 또는 /admin/* 라우트 등록은 금지됩니다. 1회성 관리 작업은 server/scripts/ 아래로 격리하십시오.",
+      "origin": "61b9051 보안 감사: 무인증 /api/debug-env, /api/debug-db, /api/admin/heal-schedules 노출 제거",
+      "added_at": "2026-11-25"
+    },
+    {
+      "id": "AL-2",
+      "name": "AL-2(부팅시지침일괄삭제금지)",
+      "severity": "HIGH",
+      "mode": "strict",
+      "pattern": "DELETE\\s+FROM\\s+app_session\\s+WHERE\\s+key\\s+IN",
+      "flags": "i",
+      "extensions": [".js"],
+      "path_prefix": "server/index.js",
+      "exclude_paths": [],
+      "suggestion": "부팅 시 app_session 지침을 일괄 삭제하면 Vercel UI 편집이 모두 소실됩니다. standardsSyncService를 사용하십시오.",
+      "origin": "3200f96 장애 감사: server/index.js c543cc8 롤백 DELETE 잔존으로 Vercel 지침 매번 초기화",
+      "added_at": "2026-11-25"
+    },
+    {
+      "id": "AL-3",
+      "name": "AL-3(모델명하드코딩분기차단)",
+      "severity": "MEDIUM",
+      "mode": "baseline",
+      "pattern": "(?:===|!==)\\s*['\"](?:gemini|claude)-[a-z0-9.\\-]+['\"]",
+      "flags": "",
+      "extensions": [".js"],
+      "path_prefix": "server/services/aiService.js",
+      "exclude_paths": [],
+      "suggestion": "특정 모델명 문자열을 ===/!==로 직접 분기하지 말고 primaryActualModel 또는 stage/scenario 기준을 사용하십시오 (AGENTS.md Rule #8).",
+      "origin": "b3b2598 클로드 리뷰: 튜터 1순위 타임아웃 조건을 모델명 대신 actualModelName === primaryActualModel로 일반화",
+      "added_at": "2026-11-25"
+    },
+    {
+      "id": "AL-4",
+      "name": "AL-4(빈Catch침묵예외차단)",
+      "severity": "MEDIUM",
+      "mode": "baseline",
+      "pattern": "(?:catch\\s*(?:\\([^)]*\\))?\\s*\\{\\s*\\}|\\.catch\\s*\\(\\s*(?:\\([^)]*\\)|[A-Za-z_$][\\w$]*)?\\s*=>\\s*\\{\\s*\\}\\s*\\))",
+      "flags": "",
+      "extensions": [".js", ".jsx"],
+      "path_prefix": "",
+      "exclude_paths": [],
+      "suggestion": "오류를 조용히 삼키는 빈 catch {} 또는 .catch(() => {})를 새로 추가하지 마십시오. 의도적 생략이면 '// anti-lens: ok <사유>'를 남기십시오.",
+      "origin": "AI 프로젝트 Rule 0-2(Ask-First Guard) 이식: 빈 catch 122건 기준선 동결 및 신규 차단",
+      "added_at": "2026-11-25"
+    }
+  ]
+}

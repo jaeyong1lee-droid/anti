@@ -1,0 +1,16 @@
+{
+  "schema_version": "1.0",
+  "reason": "initial baseline freeze",
+  "updated_at": "2026-11-24T22:15:10.156Z",
+  "threshold": 1500,
+  "delta_limit": 50,
+  "files": {
+    "client/src/App.jsx": 30492,
+    "client/src/components/FloatingMemorization.jsx": 2214,
+    "client/src/components/ScientificCalculator.jsx": 3168,
+    "client/src/components/TableQuiz.jsx": 1997,
+    "server/routes/gradingRoutes.js": 1666,
+    "server/routes/quizRoutes.js": 3931,
+    "server/routes/topicRoutes.js": 1767
+  }
+}
