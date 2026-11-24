@@ -211,6 +211,203 @@ async function verifyAiServiceContractAndUnitTests() {
   assert.equal(afterErr, 'ok');
 }
 
+async function verifyStandardsSyncOptionB() {
+  const indexSrc = fs.readFileSync(path.join(serverDir, 'index.js'), 'utf8');
+  assert.ok(!indexSrc.includes('DB WIPE IN PROGRESS'), 'Startup wipe log must remain removed from server/index.js');
+  assert.ok(
+    !indexSrc.includes("DELETE FROM app_session WHERE key IN ('engineering_standards'"),
+    'Startup standards DELETE must remain removed from server/index.js'
+  );
+
+  const syncMod = await import(pathToFileURL(path.join(serverDir, 'services', 'standardsSyncService.js')).href);
+
+  const makeMockDb = (initialRows = {}) => {
+    const store = new Map(Object.entries(initialRows));
+    return {
+      store,
+      db: {
+        async get(sql, [key]) {
+          return store.get(key) || null;
+        }
+      },
+      async saveSession(key, value) {
+        store.set(key, { value, updated_at: new Date().toISOString() });
+      }
+    };
+  };
+
+  const fileV1 = [
+    { id: 'def_1', title: '기본1', content: '파일V1', updatedAt: '2026-01-01T00:00:00Z' },
+    { id: 'def_2', title: '기본2', content: '파일V1_2', updatedAt: '2026-01-01T00:00:00Z' }
+  ];
+  const fileV1Reloaded = [
+    { id: 'def_1', title: '기본1', content: '파일V1', updatedAt: new Date(Date.now() + 99999).toISOString() },
+    { id: 'def_2', title: '기본2', content: '파일V1_2', updatedAt: new Date(Date.now() + 99999).toISOString() }
+  ];
+  const fileV2Updated = [{ id: 'def_1', title: '기본1', content: '파일V2_업데이트' }];
+  const uiEditedDb = [
+    { id: 'def_1', title: '기본1', content: 'UI에서수정함', updatedAt: '2026-11-24T10:00:00Z' },
+    { id: 'def_2', title: '기본2', content: '파일V1_2', updatedAt: '2026-11-24T10:00:00Z' },
+    { id: 'user_custom_1', title: '사용자지침', content: '유저추가내용', updatedAt: '2026-11-24T10:00:00Z' }
+  ];
+
+  // 1. Canonical hash ignores updatedAt
+  assert.equal(syncMod.computeStandardsHash(fileV1), syncMod.computeStandardsHash(fileV1Reloaded));
+
+  // 2. Vercel first-boot migration (no _file_hash yet) preserves existing DB UI edits and writes baseline hash
+  {
+    const m = makeMockDb({ engineering_standards: { value: JSON.stringify(uiEditedDb), updated_at: '2026-11-24T10:00:00Z' } });
+    let live = null;
+    const merged = await syncMod.syncStandardWithDb(
+      { fileName: 'engineeringStandards.js', dbKey: 'engineering_standards', defaultFileList: fileV1, updateLive: (x) => { live = x; } },
+      { db: m.db, saveSession: m.saveSession, isVercel: true }
+    );
+    assert.equal(merged.find((x) => x.id === 'def_1').content, 'UI에서수정함');
+    assert.equal(merged.find((x) => x.id === 'user_custom_1').content, '유저추가내용');
+    assert.equal(m.store.get('engineering_standards_file_hash').value, syncMod.computeStandardsHash(fileV1));
+    assert.deepEqual(live, merged);
+  }
+
+  // 3. Vercel cold start / unrelated redeploy (matching hash) preserves UI edits
+  {
+    const m = makeMockDb({
+      engineering_standards: { value: JSON.stringify(uiEditedDb), updated_at: '2026-11-24T10:00:00Z' },
+      engineering_standards_file_hash: { value: syncMod.computeStandardsHash(fileV1), updated_at: '2026-11-24T10:00:00Z' }
+    });
+    const merged = await syncMod.syncStandardWithDb(
+      { fileName: 'engineeringStandards.js', dbKey: 'engineering_standards', defaultFileList: fileV1Reloaded, updateLive: () => {} },
+      { db: m.db, saveSession: m.saveSession, isVercel: true }
+    );
+    assert.equal(merged.find((x) => x.id === 'def_1').content, 'UI에서수정함');
+    assert.equal(merged.find((x) => x.id === 'user_custom_1').content, '유저추가내용');
+  }
+
+  // 4. Vercel standard .js updated deploy (hash differs): merges file changes, keeps user_*, keeps deleted defaults deleted
+  {
+    const m = makeMockDb({
+      engineering_standards: { value: JSON.stringify(uiEditedDb), updated_at: '2026-11-24T10:00:00Z' },
+      engineering_standards_file_hash: { value: syncMod.computeStandardsHash(fileV1), updated_at: '2026-11-24T10:00:00Z' }
+    });
+    const merged = await syncMod.syncStandardWithDb(
+      { fileName: 'engineeringStandards.js', dbKey: 'engineering_standards', defaultFileList: fileV2Updated, updateLive: () => {} },
+      { db: m.db, saveSession: m.saveSession, isVercel: true }
+    );
+    assert.equal(merged.find((x) => x.id === 'def_1').content, '파일V2_업데이트');
+    assert.equal(merged.some((x) => x.id === 'def_2'), false);
+    assert.equal(merged.some((x) => x.id === 'user_custom_1'), true);
+    assert.equal(m.store.get('engineering_standards_file_hash').value, syncMod.computeStandardsHash(fileV2Updated));
+  }
+
+  // 5. Local SQLite UTC timestamp parsing & mtime guard
+  {
+    const dbUtcStr = '2026-11-24 21:00:00';
+    const expectedUtcMs = Date.parse('2026-11-24T21:00:00Z');
+    assert.equal(syncMod.parseDbTimestampMs(dbUtcStr), expectedUtcMs);
+    const m = makeMockDb({ engineering_standards: { value: JSON.stringify(uiEditedDb), updated_at: dbUtcStr } });
+    assert.equal(
+      await syncMod.checkIsFileNewer('engineeringStandards.js', 'engineering_standards', fileV1, {
+        db: m.db,
+        isVercel: false,
+        fsModule: { existsSync: () => true, statSync: () => ({ mtime: new Date(expectedUtcMs + 400) }) },
+        serverDirOverride: '.'
+      }),
+      false
+    );
+    assert.equal(
+      await syncMod.checkIsFileNewer('engineeringStandards.js', 'engineering_standards', fileV1, {
+        db: m.db,
+        isVercel: false,
+        fsModule: { existsSync: () => true, statSync: () => ({ mtime: new Date(expectedUtcMs + 5000) }) },
+        serverDirOverride: '.'
+      }),
+      true
+    );
+  }
+
+  // 6. stampUpdatedStandards preserves timestamps on unchanged items
+  {
+    const prev = [
+      { id: 'a', title: 'A', content: 'C1', updatedAt: 'T_A' },
+      { id: 'b', title: 'B', content: 'C2', updatedAt: 'T_B' }
+    ];
+    const next = [
+      { id: 'a', title: 'A', content: 'C1', updatedAt: 'T_A' },
+      { id: 'b', title: 'B', content: 'C2_EDITED', updatedAt: 'T_B' }
+    ];
+    const stamped = syncMod.stampUpdatedStandards(next, prev);
+    assert.equal(stamped[0].updatedAt, 'T_A');
+    assert.notEqual(stamped[1].updatedAt, 'T_B');
+  }
+
+  // 7. Empty DB initializes cleanly from fileList and records hash baseline
+  {
+    const m = makeMockDb({});
+    const merged = await syncMod.syncStandardWithDb(
+      { fileName: 'engineeringStandards.js', dbKey: 'engineering_standards', defaultFileList: fileV1, updateLive: () => {} },
+      { db: m.db, saveSession: m.saveSession, isVercel: true }
+    );
+    assert.deepEqual(merged, fileV1);
+    assert.equal(m.store.get('engineering_standards_file_hash').value, syncMod.computeStandardsHash(fileV1));
+  }
+}
+
+async function verifyGroundingService5Sites() {
+  const { fetchStandardGrounding } = await import(
+    pathToFileURL(path.join(serverDir, 'services', 'groundingService.js')).href
+  );
+  assert.equal(typeof fetchStandardGrounding, 'function');
+
+  // Default / hint maxChars=3500
+  const calls = [];
+  const res3500 = await fetchStandardGrounding(
+    '압밀침하',
+    { topicId: 12, category: '지반', maxChars: 3500, logTag: 'hint' },
+    {
+      getTopic: async (q, id, max) => {
+        calls.push({ q, id, max });
+        return 'TOPIC_TXT';
+      },
+      getKcsc: async (q, cat) => {
+        calls.push({ q, cat });
+        return 'KCSC_TXT';
+      },
+      getWiki: async (q) => {
+        calls.push({ q });
+        return 'WIKI_TXT';
+      }
+    }
+  );
+  assert.equal(calls[0].id, 12);
+  assert.equal(calls[0].max, 3500);
+  assert.equal(calls[1].cat, '지반');
+  assert.equal(res3500.topicGrounding, 'TOPIC_TXT');
+  assert.equal(res3500.kcscGrounding, 'KCSC_TXT');
+  assert.equal(res3500.wikiGrounding, 'WIKI_TXT');
+  assert.equal(res3500.groundingBlock, 'TOPIC_TXT\n\nKCSC_TXT\n\nWIKI_TXT');
+
+  // skipTopic=true (#16 /api/search-source when documentText provided) + partial rejection resilience
+  let topicCalled = false;
+  const resSkip = await fetchStandardGrounding(
+    '전단강도',
+    { topicId: 5, category: '', skipTopic: true, logTag: 'search-source' },
+    {
+      getTopic: async () => {
+        topicCalled = true;
+        return 'SHOULD_NOT_RUN';
+      },
+      getKcsc: async () => {
+        throw new Error('kcsc down');
+      },
+      getWiki: async () => 'WIKI_ONLY'
+    }
+  );
+  assert.equal(topicCalled, false);
+  assert.equal(resSkip.topicGrounding, '');
+  assert.equal(resSkip.kcscGrounding, '');
+  assert.equal(resSkip.wikiGrounding, 'WIKI_ONLY');
+  assert.equal(resSkip.groundingBlock, 'WIKI_ONLY');
+}
+
 async function verifyAllServerModulesLoad() {
   const dirs = ['routes', 'services', 'plugins'];
   let loaded = 0;
@@ -245,6 +442,12 @@ async function main() {
 
   await verifyAiServiceContractAndUnitTests();
   console.log('[PASS] aiService Export Contract (30 exports) & Pure Unit Tests');
+
+  await verifyStandardsSyncOptionB();
+  console.log('[PASS] standardsSyncService Option B Sync & Startup Wipe Removal (7 scenarios)');
+
+  await verifyGroundingService5Sites();
+  console.log('[PASS] groundingService 5-Site Helper Contract (skipTopic, maxChars, fallback)');
 
   const moduleCount = await verifyAllServerModulesLoad();
   console.log(`[PASS] Server Module ESM Load Check: ${moduleCount} modules loaded cleanly (DB isolated)`);
