@@ -11,6 +11,7 @@ import { FLOWCHART_QUIZ_GENERATION_PROMPT } from '../plugins/flowchartQuizPlugin
 import * as ocrPlugin from '../plugins/calculationPlugin.js';
 import { getKcscVerificationContext } from '../services/kcscService.js';
 import { getWikipediaKnowledge } from '../services/wikipediaService.js';
+import { fetchStandardGrounding } from '../services/groundingService.js';
 import { verifyQuote, detectMultipleCandidates, verifyGroundedGradingResult, buildFactDossier, verifyAndHealSingleQuestionGrounding } from '../services/quoteVerifierService.js';
 
 async function validateAndHealQuestion(question, callLLM, topicTitle = '', topicKeywords = '', fileText = '', kcscGrounding = '', wikiGrounding = '') {
@@ -1515,22 +1516,12 @@ router.post('/evaluate-answer', async (req, res) => {
     }
 
     const gQuery = `${topicTitle || ''} ${questionText} ${Array.isArray(options) ? options.join(' ') : ''}`.trim();
-    let topicGrounding = '';
-    let kcscGrounding = '';
-    let wikiGrounding = '';
-    try {
-      const [tRes, kRes, wRes] = await Promise.allSettled([
-        getMatchingTopicContent(gQuery, topicId || null, 4500),
-        getKcscVerificationContext(gQuery, category || ''),
-        getWikipediaKnowledge(gQuery)
-      ]);
-      if (tRes.status === 'fulfilled') topicGrounding = tRes.value || '';
-      if (kRes.status === 'fulfilled') kcscGrounding = kRes.value || '';
-      if (wRes.status === 'fulfilled') wikiGrounding = wRes.value || '';
-    } catch (gErr) {
-      console.warn('[evaluate-answer] Grounding lookup warning:', gErr.message);
-    }
-    const groundingBlock = [topicGrounding, kcscGrounding, wikiGrounding].filter(Boolean).join('\n\n');
+    const { groundingBlock } = await fetchStandardGrounding(gQuery, {
+      topicId,
+      category,
+      maxChars: 4500,
+      logTag: 'evaluate-answer'
+    });
 
     const isCalc = (category !== '믹스' && category !== '일반' && category !== '이론' && category !== '서술') && (category === '계산' || questionText.includes('계산') || questionText.includes('구하시오') || questionText.includes('값은'));
     const prompt = `

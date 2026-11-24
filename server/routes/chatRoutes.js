@@ -7,6 +7,7 @@ import { generateOverviewTutorResponse } from '../plugins/overviewsPlugin.js';
 import { SVG_DIAGRAM_PROMPT } from '../plugins/svgDiagramPlugin.js';
 import { getWikipediaKnowledge } from '../services/wikipediaService.js';
 import { getKcscVerificationContext } from '../services/kcscService.js';
+import { fetchStandardGrounding } from '../services/groundingService.js';
 
 const router = express.Router();
 
@@ -33,23 +34,12 @@ router.post('/question/option-explanation', async (req, res) => {
 
   try {
     const gQuery = `${topicTitle || ''} ${question} ${options.join(' ')}`.trim();
-    let topicGrounding = '';
-    let kcscGrounding = '';
-    let wikiGrounding = '';
-    try {
-      const [tRes, kRes, wRes] = await Promise.allSettled([
-        getMatchingTopicContent(gQuery, topicId || null, 4500),
-        getKcscVerificationContext(gQuery, category || ''),
-        getWikipediaKnowledge(gQuery)
-      ]);
-      if (tRes.status === 'fulfilled') topicGrounding = tRes.value || '';
-      if (kRes.status === 'fulfilled') kcscGrounding = kRes.value || '';
-      if (wRes.status === 'fulfilled') wikiGrounding = wRes.value || '';
-    } catch (gErr) {
-      console.warn('[option-explanation] Grounding lookup warning:', gErr.message);
-    }
-
-    const groundingBlock = [topicGrounding, kcscGrounding, wikiGrounding].filter(Boolean).join('\n\n');
+    const { groundingBlock } = await fetchStandardGrounding(gQuery, {
+      topicId,
+      category,
+      maxChars: 4500,
+      logTag: 'option-explanation'
+    });
 
     const prompt = `
 당신은 대한민국 국가건설기준설계코드(KDS) 및 지반공학 기술사 시험 출제위원입니다.

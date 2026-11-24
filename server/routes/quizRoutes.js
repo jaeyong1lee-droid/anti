@@ -2,7 +2,7 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { dbQuery, isPostgres } from '../database.js';
-import { callLLMWithFailover, searchSourceDocumentWithGeminiLite, analyzeStandardsBeforeTask, saveSessionValue, getTopicText, getMatchingTopicContent, startBackendProgressTimer, updateProgress, globalPreferredModel, resolveStageModel } from '../services/aiService.js';
+import { callLLMWithFailover, searchSourceDocumentWithGeminiLite, analyzeStandardsBeforeTask, saveSessionValue, getTopicText, startBackendProgressTimer, updateProgress, globalPreferredModel, resolveStageModel } from '../services/aiService.js';
 import { healLatexFormulas, healQuizQuestionObject, parseLlmJson, LATEX_PROMPT_INSTRUCTIONS, LATEX_CHAT_PROMPT_INSTRUCTIONS } from '../utils/latexUtils.js';
 import * as fileUtils from '../utils/fileUtils.js';
 import { GENERATION_STANDARDS, generationStandardsList } from '../plugins/generationStandards.js';
@@ -13,6 +13,7 @@ import { generateCalcTopicQuiz } from '../plugins/calculationPlugin.js';
 import pdfParse from 'pdf-parse';
 import { getWikipediaKnowledge } from '../services/wikipediaService.js';
 import { getKcscVerificationContext } from '../services/kcscService.js';
+import { fetchStandardGrounding } from '../services/groundingService.js';
 import { getNotebookLmGroundedPromptBlock, verifyQuizQuestionsGrounding, verifyAndHealSingleQuestionGrounding, sanitizeMcqDollarOptions } from '../services/quoteVerifierService.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -3706,22 +3707,12 @@ router.post('/exam/detailed-answer', async (req, res) => {
     }
 
     const gQuery = `${topicTitle || ''} ${question || ''} ${answer || ''}`.trim();
-    let topicGrounding = '';
-    let kcscGrounding = '';
-    let wikiGrounding = '';
-    try {
-      const [tRes, kRes, wRes] = await Promise.allSettled([
-        getMatchingTopicContent(gQuery, topicId || null, 4500),
-        getKcscVerificationContext(gQuery, category || ''),
-        getWikipediaKnowledge(gQuery)
-      ]);
-      if (tRes.status === 'fulfilled') topicGrounding = tRes.value || '';
-      if (kRes.status === 'fulfilled') kcscGrounding = kRes.value || '';
-      if (wRes.status === 'fulfilled') wikiGrounding = wRes.value || '';
-    } catch (gErr) {
-      console.warn('[detailed-answer] Grounding lookup warning:', gErr.message);
-    }
-    const groundingBlock = [topicGrounding, kcscGrounding, wikiGrounding].filter(Boolean).join('\n\n');
+    const { groundingBlock } = await fetchStandardGrounding(gQuery, {
+      topicId,
+      category,
+      maxChars: 4500,
+      logTag: 'detailed-answer'
+    });
 
     const prompt = `
 당신은 대한민국 국가기술자격 기술사 시험 출제위원 및 최고 권위자입니다.
@@ -3796,22 +3787,12 @@ router.post('/hint', async (req, res) => {
     }
 
     const gQuery = `${topicTitle || ''} ${questionText}`.trim();
-    let topicGrounding = '';
-    let kcscGrounding = '';
-    let wikiGrounding = '';
-    try {
-      const [tRes, kRes, wRes] = await Promise.allSettled([
-        getMatchingTopicContent(gQuery, topicId || null, 3500),
-        getKcscVerificationContext(gQuery, category || ''),
-        getWikipediaKnowledge(gQuery)
-      ]);
-      if (tRes.status === 'fulfilled') topicGrounding = tRes.value || '';
-      if (kRes.status === 'fulfilled') kcscGrounding = kRes.value || '';
-      if (wRes.status === 'fulfilled') wikiGrounding = wRes.value || '';
-    } catch (gErr) {
-      console.warn('[hint] Grounding lookup warning:', gErr.message);
-    }
-    const groundingBlock = [topicGrounding, kcscGrounding, wikiGrounding].filter(Boolean).join('\n\n');
+    const { groundingBlock } = await fetchStandardGrounding(gQuery, {
+      topicId,
+      category,
+      maxChars: 3500,
+      logTag: 'hint'
+    });
 
     const systemInstruction = `당신은 대한민국 기술사 시험 전문 튜터입니다.
 수험생이 풀고 있는 주관식 또는 객관식 문제에 대해 아래 제공된 [공학 표준 근거 자료]에 기반하여 **매우 쉽고 직관적이며 간단한 힌트**를 한 문단(3줄 이내)으로 제공해 주십시오.
@@ -3916,21 +3897,13 @@ router.post('/search-source', async (req, res) => {
     const { query, topicTitle, topicId, category, documentText, progressId } = req.body;
     const gQuery = `${topicTitle || ''} ${query || ''}`.trim();
 
-    let topicGrounding = '';
-    let kcscGrounding = '';
-    let wikiGrounding = '';
-    try {
-      const [tRes, kRes, wRes] = await Promise.allSettled([
-        documentText ? Promise.resolve('') : getMatchingTopicContent(gQuery, topicId || null, 4500),
-        getKcscVerificationContext(gQuery, category || ''),
-        getWikipediaKnowledge(gQuery)
-      ]);
-      if (tRes.status === 'fulfilled') topicGrounding = tRes.value || '';
-      if (kRes.status === 'fulfilled') kcscGrounding = kRes.value || '';
-      if (wRes.status === 'fulfilled') wikiGrounding = wRes.value || '';
-    } catch (gErr) {
-      console.warn('[search-source] Grounding lookup warning:', gErr.message);
-    }
+    const { topicGrounding, kcscGrounding, wikiGrounding } = await fetchStandardGrounding(gQuery, {
+      topicId,
+      category,
+      maxChars: 4500,
+      skipTopic: Boolean(documentText),
+      logTag: 'search-source'
+    });
 
     const groundingBlock = [
       documentText ? `[📄 전달된 원문 텍스트]:\n${documentText}` : '',
