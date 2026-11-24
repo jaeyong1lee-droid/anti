@@ -408,6 +408,184 @@ async function verifyGroundingService5Sites() {
   assert.equal(resSkip.groundingBlock, 'WIKI_ONLY');
 }
 
+async function verifyTutorFailoverAndPromptOptimization() {
+  // 1. vercel.json maxDuration check (Track B)
+  const vercelCfg = JSON.parse(fs.readFileSync(path.resolve(serverDir, '..', 'vercel.json'), 'utf8'));
+  const nodeBuild = (vercelCfg.builds || []).find((b) => String(b.src).includes('server/index.js'));
+  assert.ok(nodeBuild && nodeBuild.config && nodeBuild.config.maxDuration === 120, 'vercel.json server/index.js maxDuration must be 120');
+
+  // 2. Static checks for Track A (conditional visual prompts + isolated wiki AI refine)
+  const wikiSrc = fs.readFileSync(path.join(serverDir, 'services', 'wikipediaService.js'), 'utf8');
+  assert.ok(wikiSrc.includes("allowFallback: false") && wikiSrc.includes("timeoutBudgetMs: 4000"), 'wikipediaService AI refine must block fallback and cap timeout at 4000ms');
+
+  const chatSrc = fs.readFileSync(path.join(serverDir, 'routes', 'chatRoutes.js'), 'utf8');
+  assert.ok(chatSrc.includes('VISUAL_DIAGRAM_REQUEST_REGEX'), 'chatRoutes must define VISUAL_DIAGRAM_REQUEST_REGEX');
+  assert.ok(chatSrc.includes('skipChartPrompt: !needsVisualPrompt'), 'chatRoutes must gate CHART_DIAGRAM_PROMPT with skipChartPrompt');
+
+  // 3. End-to-end mocked failover + prompt gating checks (zero real network/LLM calls)
+  const ai = await import(pathToFileURL(path.join(serverDir, 'services', 'aiService.js')).href);
+  const origFetch = globalThis.fetch;
+  const origEnv = {
+    GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+    GEMINI_API_KEY_SECONDARY: process.env.GEMINI_API_KEY_SECONDARY,
+    GEMINI_API_KEY_TERTIARY: process.env.GEMINI_API_KEY_TERTIARY,
+    ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY
+  };
+
+  const getHeader = (headers, name) => {
+    if (!headers) return '';
+    if (typeof headers.get === 'function') return headers.get(name) || '';
+    const found = Object.keys(headers).find((k) => k.toLowerCase() === name.toLowerCase());
+    return found ? String(headers[found]) : '';
+  };
+
+  try {
+    process.env.GEMINI_API_KEY = 'mock-gem-key-1-aaaaaaaaaaaa';
+    process.env.GEMINI_API_KEY_SECONDARY = 'mock-gem-key-2-bbbbbbbbbbbb';
+    delete process.env.GEMINI_API_KEY_TERTIARY;
+    process.env.ANTHROPIC_API_KEY = 'sk-ant-mock-key-cccccccccccc';
+
+    // Scenario A: Hydrogen K1 503 + Hydrogen K2 Abort/Timeout -> 3.5-lite K1 503 -> 3.5-lite K2 OK (no Claude)
+    {
+      const calls = [];
+      globalThis.fetch = async (url, init = {}) => {
+        const u = String(url);
+        if (u.includes('anthropic.com')) {
+          calls.push({ provider: 'claude', url: u });
+          throw new Error('Claude must not be called when 3.5-lite Key #2 succeeds');
+        }
+        const apiKey = getHeader(init.headers, 'x-goog-api-key');
+        const bodyObj = init.body ? JSON.parse(init.body) : {};
+        const modelMatch = u.match(/models\/([^/:?]+)/);
+        const modelName = modelMatch ? modelMatch[1] : 'unknown';
+        calls.push({ provider: 'gemini', modelName, apiKey, bodyObj });
+
+        if (modelName === 'gemini-4-hydrogen' && apiKey === process.env.GEMINI_API_KEY) {
+          return new Response(JSON.stringify({ error: { code: 503, message: '503 high demand' } }), {
+            status: 503,
+            statusText: 'Service Unavailable',
+            headers: { 'content-type': 'application/json' }
+          });
+        }
+        if (modelName === 'gemini-4-hydrogen' && apiKey === process.env.GEMINI_API_KEY_SECONDARY) {
+          const abortErr = new Error('This operation was aborted');
+          abortErr.name = 'AbortError';
+          throw abortErr;
+        }
+        if (modelName === 'gemini-3.5-flash-lite' && apiKey === process.env.GEMINI_API_KEY) {
+          return new Response(JSON.stringify({ error: { code: 503, message: '503 overloaded' } }), {
+            status: 503,
+            statusText: 'Service Unavailable',
+            headers: { 'content-type': 'application/json' }
+          });
+        }
+        if (modelName === 'gemini-3.5-flash-lite' && apiKey === process.env.GEMINI_API_KEY_SECONDARY) {
+          return new Response(JSON.stringify({
+            candidates: [{ content: { parts: [{ text: 'RESCUED_BY_LITE_KEY2' }] } }]
+          }), { status: 200, headers: { 'content-type': 'application/json' } });
+        }
+        throw new Error(`Unexpected fetch call: ${modelName}`);
+      };
+
+      const metaOut = {};
+      const answer = await ai.callLLMWithFailover('SYS_BASE', '질문 테스트', null, 'tutor', {
+        preferredModel: 'gemini-4-hydrogen',
+        disableCooldown: true,
+        skipChartPrompt: true,
+        metaOut
+      });
+      assert.equal(answer, 'RESCUED_BY_LITE_KEY2');
+      assert.equal(metaOut.modelUsed, 'gemini-3.5-flash-lite');
+      assert.equal(metaOut.keyLabel, 'Key #2');
+      assert.equal(calls.filter((c) => c.provider === 'claude').length, 0, 'Claude must NOT be called');
+      assert.deepEqual(
+        calls.map((c) => `${c.modelName}:${c.apiKey === process.env.GEMINI_API_KEY ? 'K1' : 'K2'}`),
+        ['gemini-4-hydrogen:K1', 'gemini-4-hydrogen:K2', 'gemini-3.5-flash-lite:K1', 'gemini-3.5-flash-lite:K2']
+      );
+      const sentSys = JSON.stringify(calls[0].bodyObj.systemInstruction || '');
+      assert.ok(!sentSys.includes('인터랙티브 차트그래프 작도 지침'), 'skipChartPrompt:true must omit CHART_DIAGRAM_PROMPT');
+    }
+
+    // Scenario B: Hydrogen K1 503 + K2 Abort + 3.5-lite K1 & K2 both 503 -> falls back cleanly to Claude Haiku
+    {
+      const calls = [];
+      globalThis.fetch = async (url, init = {}) => {
+        const u = String(url);
+        if (u.includes('anthropic.com')) {
+          const bodyObj = init.body ? JSON.parse(init.body) : {};
+          calls.push({ provider: 'claude', modelName: bodyObj.model });
+          return new Response(JSON.stringify({
+            content: [{ type: 'text', text: 'RESCUED_BY_CLAUDE' }]
+          }), { status: 200, headers: { 'content-type': 'application/json' } });
+        }
+        const apiKey = getHeader(init.headers, 'x-goog-api-key');
+        const bodyObj = init.body ? JSON.parse(init.body) : {};
+        const modelMatch = u.match(/models\/([^/:?]+)/);
+        const modelName = modelMatch ? modelMatch[1] : 'unknown';
+        calls.push({ provider: 'gemini', modelName, apiKey, bodyObj });
+        if (modelName === 'gemini-4-hydrogen' && apiKey === process.env.GEMINI_API_KEY_SECONDARY) {
+          const abortErr = new Error('This operation was aborted');
+          abortErr.name = 'AbortError';
+          throw abortErr;
+        }
+        return new Response(JSON.stringify({ error: { code: 503, message: '503 high demand' } }), {
+          status: 503,
+          statusText: 'Service Unavailable',
+          headers: { 'content-type': 'application/json' }
+        });
+      };
+
+      const metaOut = {};
+      const answer = await ai.callLLMWithFailover('SYS_BASE', '그래프 그려줘', null, 'tutor', {
+        preferredModel: 'gemini-4-hydrogen',
+        disableCooldown: true,
+        skipChartPrompt: false,
+        metaOut
+      });
+      assert.equal(answer, 'RESCUED_BY_CLAUDE');
+      assert.equal(metaOut.provider, 'claude');
+      assert.equal(metaOut.modelUsed, 'claude-haiku-5-5');
+      const sentSys = JSON.stringify(calls[0].bodyObj.systemInstruction || '');
+      assert.ok(sentSys.includes('인터랙티브 차트그래프 작도 지침'), 'skipChartPrompt:false must include CHART_DIAGRAM_PROMPT');
+    }
+
+    // Scenario C: allowFallback=false (Wikipedia refine) blocks both secondary Gemini model and Claude
+    {
+      const calls = [];
+      globalThis.fetch = async (url, init = {}) => {
+        const u = String(url);
+        if (u.includes('anthropic.com')) {
+          calls.push({ provider: 'claude' });
+          throw new Error('Claude must not be called when allowFallback=false');
+        }
+        const modelMatch = u.match(/models\/([^/:?]+)/);
+        calls.push({ provider: 'gemini', modelName: modelMatch ? modelMatch[1] : 'unknown' });
+        return new Response(JSON.stringify({ error: { code: 503, message: '503 high demand' } }), {
+          status: 503,
+          statusText: 'Service Unavailable',
+          headers: { 'content-type': 'application/json' }
+        });
+      };
+
+      await assert.rejects(
+        ai.callLLMWithFailover('SYS_REFINE', 'test query', null, 'general', {
+          preferredModel: 'gemini-3.5-flash-lite',
+          allowFallback: false,
+          timeoutBudgetMs: 4000,
+          disableCooldown: true
+        })
+      );
+      assert.equal(calls.filter((c) => c.provider === 'claude').length, 0, 'allowFallback:false must never call Claude');
+    }
+  } finally {
+    globalThis.fetch = origFetch;
+    for (const [k, v] of Object.entries(origEnv)) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+  }
+}
+
 async function verifyAllServerModulesLoad() {
   const dirs = ['routes', 'services', 'plugins'];
   let loaded = 0;
@@ -448,6 +626,9 @@ async function main() {
 
   await verifyGroundingService5Sites();
   console.log('[PASS] groundingService 5-Site Helper Contract (skipTopic, maxChars, fallback)');
+
+  await verifyTutorFailoverAndPromptOptimization();
+  console.log('[PASS] Tutor Budget/Failover (Key #2 503 rescue, Claude fallback, allowFallback:false) & Chart Gating');
 
   const moduleCount = await verifyAllServerModulesLoad();
   console.log(`[PASS] Server Module ESM Load Check: ${moduleCount} modules loaded cleanly (DB isolated)`);

@@ -651,7 +651,7 @@ export async function refineQueryToEnglishWikiTitle(queryText) {
       `Input text: "${cleanInput}"\nCanonical English Wikipedia title:`,
       null,
       'general',
-      { temperature: 0.1, preferredModel: 'gemini-3.5-flash-lite' }
+      { temperature: 0.1, preferredModel: 'gemini-3.5-flash-lite', allowFallback: false, timeoutBudgetMs: 4000 }
     );
     const cleanTitle = (rawEnTitle || '')
       .trim()

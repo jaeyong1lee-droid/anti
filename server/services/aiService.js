@@ -206,19 +206,24 @@ const transientRateLimitedKeyModels = new Map();
 const transientInvalidKeys = new Map();
 
 export async function callLLMWithFailover(systemInstruction, userPrompt, image = null, scenario = 'default', options = {}) {
-  const defaultBudgetMs = scenario === 'grading' ? 42000 : (scenario === 'slides' ? 95000 : 54000);
+  const defaultBudgetMs = scenario === 'grading'
+    ? 42000
+    : (scenario === 'slides' ? 95000 : (scenario === 'tutor' ? 110000 : 54000));
   const totalBudgetMs = options.timeoutBudgetMs || defaultBudgetMs;
   const deadlineAt = options.deadlineAt || (Date.now() + totalBudgetMs);
   return await _callLLMWithFailoverCore(systemInstruction, userPrompt, image, scenario, { ...options, deadlineAt });
 }
 
 async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = null, scenario = 'default', options = {}) {
-  const defaultBudgetMs = scenario === 'grading' ? 42000 : (scenario === 'slides' ? 95000 : 54000);
+  const defaultBudgetMs = scenario === 'grading'
+    ? 42000
+    : (scenario === 'slides' ? 95000 : (scenario === 'tutor' ? 110000 : 54000));
   const deadlineAt = options.deadlineAt || (Date.now() + defaultBudgetMs);
   // SVG_DIAGRAM_PROMPT는 어설픈 그림 강제 방지를 위해 문제 출제에서 제외.
   // CHART_DIAGRAM_PROMPT는 5번 인터랙티브 그래프해석 문제의 Recharts 규격 유지를 위해 문제 출제 시 필수 포함.
-  // 단, 차트 출력이 불필요한 단순 텍스트 시나리오(grading, general)에는 붙이지 않는다.
-  const diagramInstructions = NO_CHART_PROMPT_SCENARIOS.has(scenario) ? '' : ('\n\n' + CHART_DIAGRAM_PROMPT);
+  // 단, 차트 출력이 불필요한 단순 텍스트 시나리오(grading, general) 및 skipChartPrompt 옵션 지정 시에는 붙이지 않는다.
+  const skipChartPrompt = NO_CHART_PROMPT_SCENARIOS.has(scenario) || Boolean(options?.skipChartPrompt);
+  const diagramInstructions = skipChartPrompt ? '' : ('\n\n' + CHART_DIAGRAM_PROMPT);
   const finalSystemInstruction = (systemInstruction || '') + diagramInstructions;
   const primaryKey = process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY.trim().replace(/^['"]|['"]$/g, '') : null;
   const secondaryKey = process.env.GEMINI_API_KEY_SECONDARY ? process.env.GEMINI_API_KEY_SECONDARY.trim().replace(/^['"]|['"]$/g, '') : null;
@@ -317,7 +322,7 @@ async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = n
         ? [geminiPref, 'gemini-3.5-flash-lite', 'gemini-4-hydrogen', 'gemini-3.8-flash']
         : [geminiPref];
     } else {
-      rawFallbacks = [geminiPref, 'gemini-3.5-flash-lite'];
+      rawFallbacks = allowFallback ? [geminiPref, 'gemini-3.5-flash-lite'] : [geminiPref];
     }
     const uniqueRaw = [...new Set(rawFallbacks.filter(Boolean))];
 
@@ -332,12 +337,12 @@ async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = n
 
   if (isClaudePreferred) {
     addClaudeTasks();
-    if (!isGradingStage || allowFallback) {
+    if (allowFallback) {
       addGeminiTasks();
     }
   } else {
     addGeminiTasks();
-    if (!isGradingStage || allowFallback) {
+    if (allowFallback) {
       addClaudeTasks();
     }
   }
@@ -601,11 +606,14 @@ async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = n
       reportLlmProgress(options, scenario, modelName);
       // [Blocker-5 / P0 Fix]: 세마포어 슬롯 획득 이후 SDK timeout(AbortSignal) + 안전 타이머를 시작해 타임아웃 시 HTTP 소켓도 즉시 중단
       const result = await withLlmConcurrencySlot(deadlineAt, async () => {
+        const isPrimaryTutorGemini = (scenario === 'tutor' && actualModelName === primaryActualModel);
         const perCallCapMs = scenario === 'grading'
           ? ((allowFallback && hasNextDistinctModel) ? 12000 : (actualModelName === 'gemini-4-hydrogen' ? 22000 : 18000))
           : (scenario === 'slides'
               ? 50000
-              : (hasNextDistinctModel ? (scenario === 'question' ? 22000 : 20000) : 45000));
+              : (isPrimaryTutorGemini
+                  ? 45000
+                  : (hasNextDistinctModel ? (scenario === 'question' ? 22000 : 20000) : 45000)));
         const timeoutMs = Math.min(
           perCallCapMs,
           Math.max(2500, (deadlineAt - Date.now()) - 400)
@@ -685,8 +693,8 @@ async function _callLLMWithFailoverCore(systemInstruction, userPrompt, image = n
           const tRl = transientRateLimitedKeyModels.get(tk);
           return m === actualModelName && !failedKeys.has(t.key) && !rateLimitedKeyModels.has(tk) && !(tRl && tRl > Date.now());
         });
-        if (actualModelName === primaryActualModel && hasNextKeyForSameModel && (deadlineAt - Date.now()) >= 7000) {
-          console.log(`[선호 모델 503 키 전환] ${task.label} (${actualModelName}) 503 과부하 감지. 동일 선호 모델의 다음 API 키로 즉시 재시도합니다.`);
+        if (hasNextKeyForSameModel && (deadlineAt - Date.now()) >= 10000) {
+          console.log(`[503 키 전환] ${task.label} (${actualModelName}) 503 과부하 감지. 동일 모델의 다음 API 키로 즉시 재시도합니다.`);
           continue;
         }
         skippedModelsThisCall.add(actualModelName);

@@ -11,6 +11,8 @@ import { fetchStandardGrounding } from '../services/groundingService.js';
 
 const router = express.Router();
 
+const VISUAL_DIAGRAM_REQUEST_REGEX = /(그래프|차트|곡선|그려|도표|도해|그림|단면도?|모식도?|다이어그램|플롯|시각화|svg|chart|plot|diagram)/i;
+
 // POST /api/question/option-explanation
 router.post('/question/option-explanation', async (req, res) => {
   const { question, options, answer, topicId, topicTitle, category } = req.body;
@@ -447,6 +449,7 @@ router.post('/chat', async (req, res) => {
     }
 
     try {
+      const needsVisualPrompt = VISUAL_DIAGRAM_REQUEST_REGEX.test(String(message || ''));
       const systemInstruction = `당신은 대한민국 국가기술자격 기술사 시험(토질및기초기술사, 토목구조기술사, 토목시공기술사, 도로및공항기술사, 수자원개발기술사, 상하수도기술사, 터널기술사 등 토목공학 전 분야) 최고 권위의 기술사 시험 전문 튜터입니다.
 수험생의 질문이나 이미지 자료에 대해 학회 표준 및 기술사 시험 수준의 전문 용어를 사용하여 매우 깊이 있는 기술적/실무적 답변을 제시해 주십시오.
 
@@ -473,11 +476,10 @@ router.post('/chat', async (req, res) => {
      * 2수준 (중위 세부 설명/원리/상황): 작은 빈 불릿 ('◦ ')
      * 3수준 (하위 부가 요소/소항목): 그냥 일반 점 ('· ')
      * 4수준 (세부 설명/추가 보충): 대시 ('- ') 또는 별표 ('* ')
-${ENGINEERING_STANDARDS}
-${SVG_DIAGRAM_PROMPT}
+${ENGINEERING_STANDARDS}${needsVisualPrompt ? `\n${SVG_DIAGRAM_PROMPT}` : ''}
 ${LATEX_CHAT_PROMPT_INSTRUCTIONS}`;
 
-      const responseText = await localCallLLM(systemInstruction, structuredPrompt, imageArg, 'tutor');
+      const responseText = await localCallLLM(systemInstruction, structuredPrompt, imageArg, 'tutor', { skipChartPrompt: !needsVisualPrompt });
       const healedText = healLatexFormulas(responseText);
       if (progressId) {
         updateProgress(progressId, 1, '1단계: 답변 생성 완료!', 100);
